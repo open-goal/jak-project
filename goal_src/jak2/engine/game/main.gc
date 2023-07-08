@@ -90,24 +90,10 @@
   "Draw blackout over the whole screen.
    This isn't used - instead they adjust some GS setting to fade the whole
    screen to black, which is much faster than drawing over the entire screen."
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id debug-no-zbuf2)
+                               )
     (draw-sprite2d-xy-absolute s5-0 0 0 512 416 (new 'static 'rgba :a #x80))
-    (let ((a3-1 (-> s5-0 base)))
-      (let ((v1-6 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-6) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id debug-no-zbuf2)
-        gp-0
-        (the-as (pointer dma-tag) a3-1)
-        )
-      )
     )
   (none)
   )
@@ -1093,23 +1079,22 @@
             (send-event *target* 'get-pickup 7 #x447a0000)
             (send-event *target* 'get-pickup 22 #x447a0000)
             (send-event *target* 'get-pickup 21 #x447a0000)
-            (set! (-> *game-info* features)
-                  (logior (game-feature
-                            gun
-                            gun-yellow
-                            gun-red
-                            gun-blue
-                            gun-dark
-                            board
-                            darkjak
-                            darkjak-bomb0
-                            darkjak-bomb1
-                            darkjak-invinc
-                            darkjak-giant
-                            )
-                          (-> *game-info* features)
-                          )
-                  )
+            (logior!
+              (-> *game-info* features)
+              (game-feature
+                gun
+                gun-yellow
+                gun-red
+                gun-blue
+                gun-dark
+                board
+                darkjak
+                darkjak-bomb0
+                darkjak-bomb1
+                darkjak-invinc
+                darkjak-giant
+                )
+              )
             (logior!
               (-> *game-info* debug-features)
               (game-feature gun gun-yellow gun-red gun-blue gun-dark board darkjak)
@@ -1221,24 +1206,23 @@
           (else
             (when (process-spawn-function
                     process
-                    (lambda ((arg0 time-frame)) (with-pp
-                                                  (set-blackout-frames (seconds 100))
-                                                  (set! (-> *setting-control* user-default allow-pause) #f)
-                                                  (set! (-> *setting-control* user-default allow-progress) #f)
-                                                  (apply-settings *setting-control*)
-                                                  (set! (-> *setting-control* user-default sfx-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default music-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default dialog-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default ambient-volume) 0.0)
-                                                  (let ((s5-0 (current-time)))
-                                                    (until (>= (- (current-time) s5-0) (seconds 0.1))
-                                                      (suspend)
-                                                      )
-                                                    )
-                                                  (kernel-shutdown)
-                                                  (none)
-                                                  )
-                            )
+                    (lambda ((arg0 time-frame))
+                      (set-blackout-frames (seconds 100))
+                      (set! (-> *setting-control* user-default allow-pause) #f)
+                      (set! (-> *setting-control* user-default allow-progress) #f)
+                      (apply-settings *setting-control*)
+                      (set! (-> *setting-control* user-default sfx-volume) 0.0)
+                      (set! (-> *setting-control* user-default music-volume) 0.0)
+                      (set! (-> *setting-control* user-default dialog-volume) 0.0)
+                      (set! (-> *setting-control* user-default ambient-volume) 0.0)
+                      (let ((s5-0 (current-time)))
+                        (until (>= (- (current-time) s5-0) (seconds 0.1))
+                          (suspend)
+                          )
+                        )
+                      (kernel-shutdown)
+                      (none)
+                      )
                     (if (= *master-exit* 'movie)
                         2
                         1
@@ -1712,12 +1696,9 @@
     (set! *teleport* #t)
     (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
-    (format 0 "about to display-sync~%")
     (display-sync gp-1)
-    (format 0 "about to swap-display~%")
     (swap-display gp-1)
-    (format 0 "about to install-handler~%")
-    (install-handler 3 vblank-handler) ;; TODO: this never gets called.
+    (install-handler 3 vblank-handler)
     (free-nodes *touching-list*)
     (prepare *collide-rider-pool*)
     (update-actor-hash)
@@ -1767,7 +1748,6 @@
                                        )
                                      )
           )
-    (format 0 "SKIP: level activation in on~%")
     (cond
       ((or (level-get-with-status *level* 'loaded)
            (level-get-with-status *level* 'alive)

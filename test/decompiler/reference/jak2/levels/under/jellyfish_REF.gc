@@ -1,0 +1,1546 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type jellyfish-formation
+(deftype jellyfish-formation (hover-formation)
+  ()
+  :heap-base #x10
+  :method-count-assert 16
+  :size-assert         #x90
+  :flag-assert         #x1000100090
+  )
+
+;; definition for method 3 of type jellyfish-formation
+(defmethod inspect jellyfish-formation ((obj jellyfish-formation))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hover-formation inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 15 of type jellyfish-formation
+(defmethod hover-formation-method-15 jellyfish-formation ((obj jellyfish-formation) (arg0 vector) (arg1 vector))
+  (logior! (-> obj formation flags) 2)
+  0
+  )
+
+;; definition of type jellyfish-chain-physics
+(deftype jellyfish-chain-physics (chain-physics)
+  ()
+  :method-count-assert 18
+  :size-assert         #x570
+  :flag-assert         #x1200000570
+  )
+
+;; definition for method 3 of type jellyfish-chain-physics
+(defmethod inspect jellyfish-chain-physics ((obj jellyfish-chain-physics))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tchain-joints[20] @ #x~X~%" (-> obj chain-joints))
+  (format #t "~1Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~1Troot-joint-index: ~D~%" (-> obj root-joint-index))
+  (format #t "~1Tjoint-length: ~f~%" (-> obj joint-length))
+  (format #t "~1Tgravity: #<vector @ #x~X>~%" (-> obj gravity))
+  (format #t "~1Tgravity-target: #<vector @ #x~X>~%" (-> obj gravity-target))
+  (format #t "~1Tstretch-vel: ~f~%" (-> obj stretch-vel))
+  (format #t "~1Tstretch-vel-parallel: ~f~%" (-> obj stretch-vel-parallel))
+  (format #t "~1Tcompress-vel: ~f~%" (-> obj compress-vel))
+  (format #t "~1Tcompress-vel-parallel: ~f~%" (-> obj compress-vel-parallel))
+  (format #t "~1Tnegate-y: ~A~%" (-> obj negate-y))
+  (format #t "~1Taxial-slop: ~f~%" (-> obj axial-slop))
+  (format #t "~1Tmaximum-stretch: ~f~%" (-> obj maximum-stretch))
+  (format #t "~1Tturn-off-start: ~D~%" (-> obj turn-off-start))
+  (format #t "~1Tturn-off-duration: ~D~%" (-> obj turn-off-duration))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 13 of type jellyfish-chain-physics
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-gravity jellyfish-chain-physics ((obj jellyfish-chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
+  (vector-float*!
+    arg0
+    (-> obj gravity)
+    (* 4096.0 (-> self clock time-adjust-ratio) (lerp-scale 0.01 0.1 (the float arg1) 0.0 5.0))
+    )
+  (vector+float*! arg0 arg0 (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* arg1 64))) 0.2)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type jellyfish-chain-physics
+;; WARN: Return type mismatch int vs none.
+(defmethod chain-physics-method-14 jellyfish-chain-physics ((obj jellyfish-chain-physics) (arg0 vector) (arg1 int))
+  (vector-float*!
+    arg0
+    (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* (+ arg1 1) 64)))
+    (lerp-scale 0.1 0.9 (the float arg1) 0.0 5.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type jellyfish-chain-physics
+(defmethod chain-physics-method-16 jellyfish-chain-physics ((obj jellyfish-chain-physics) (arg0 int))
+  (if (zero? arg0)
+      0.0
+      5461.3335
+      )
+  )
+
+;; definition for method 12 of type jellyfish-chain-physics
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod gravity-update jellyfish-chain-physics ((obj jellyfish-chain-physics) (arg0 process-drawable))
+  ((method-of-type chain-physics gravity-update) obj arg0)
+  (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+    (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
+      (let ((s4-0 (new 'stack-no-clear 'sphere)))
+        (set! (-> s4-0 quad) (-> (the-as collide-shape-moving (-> arg0 root)) root-prim prim-core world-sphere quad))
+        (vector+float*!
+          (the-as vector s4-0)
+          (the-as vector s4-0)
+          (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))
+          -14336.0
+          )
+        (set! (-> s4-0 r) 12288.0)
+        (set-from-sphere! s5-0 s4-0)
+        )
+      (set! (-> gp-0 collide-with) (collide-spec backgnd))
+      (set! (-> gp-0 ignore-process0) #f)
+      (set! (-> gp-0 ignore-process1) #f)
+      (set! (-> gp-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> gp-0 action-mask) (collide-action solid))
+      (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer s5-0) 32)
+      )
+    (fill-using-bounding-box *collide-cache* gp-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type jellyfish-chain-physics
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod chain-physics-method-17 jellyfish-chain-physics ((obj jellyfish-chain-physics) (arg0 vector) (arg1 int))
+  (local-vars (v1-26 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let* ((s5-0 (new 'stack-no-clear 'collide-query))
+           (v1-2 (-> obj chain-joints arg1))
+           (s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> v1-2 position)))
+           (s3-0 0)
+           )
+      (set! (-> arg0 quad) (-> v1-2 position quad))
+      (until (or (< 6 s3-0) (begin
+                              (.lvf vf1 (&-> s4-1 quad))
+                              (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                              (.mul.vf vf1 vf1 vf1)
+                              (.mul.x.vf acc vf2 vf1 :mask #b1)
+                              (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                              (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                              (.mov v1-26 vf1)
+                              (let ((f0-7 v1-26)
+                                    (f1-5 409.6)
+                                    )
+                                (< f0-7 (* f1-5 f1-5))
+                                )
+                              )
+                 )
+        (+! s3-0 1)
+        (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+        (set! (-> s5-0 move-dist quad) (-> s4-1 quad))
+        (let ((v1-7 s5-0))
+          (set! (-> v1-7 radius) 1228.8)
+          (set! (-> v1-7 collide-with) (collide-spec backgnd))
+          (set! (-> v1-7 ignore-process0) #f)
+          (set! (-> v1-7 ignore-process1) #f)
+          (set! (-> v1-7 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+          (set! (-> v1-7 action-mask) (collide-action solid))
+          )
+        (set! (-> s5-0 num-spheres) (the-as uint #f))
+        (let ((f0-1 (probe-using-line-sphere *collide-cache* s5-0)))
+          (cond
+            ((>= f0-1 0.0)
+             (let ((f0-2 (fmin 1.0 f0-1)))
+               (vector+float*! arg0 arg0 s4-1 f0-2)
+               (vector-float*! s4-1 s4-1 (- 1.0 f0-2))
+               )
+             (let ((f0-5 (vector-dot s4-1 (-> s5-0 best-other-tri normal))))
+               (vector--float*! s4-1 s4-1 (-> s5-0 best-other-tri normal) (* 1.2 f0-5))
+               )
+             )
+            (else
+              (vector+! arg0 arg0 s4-1)
+              (goto cfg-11)
+              )
+            )
+          )
+        )
+      )
+    (label cfg-11)
+    0
+    (none)
+    )
+  )
+
+;; definition of type jellyfish
+(deftype jellyfish (hover-enemy)
+  ((los                   los-control             :inline :offset-assert 784)
+   (sync                  sync-eased              :inline :offset-assert 936)
+   (sound-id              sound-id                        :offset-assert 980)
+   (path-player-u         float                           :offset-assert 984)
+   (path-my-u             float                           :offset-assert 988)
+   (path-y-offset         float                           :offset-assert 992)
+   (path-stare-u          float                           :offset-assert 996)
+   (tentacle-clock        float                           :offset-assert 1000)
+   (tentacle-blend        float                           :offset-assert 1004)
+   (last-attack-time      time-frame                      :offset-assert 1008)
+   (last-fire-time        time-frame                      :offset-assert 1016)
+   (charge-path-timer     time-frame                      :offset-assert 1024)
+   (tentacles             jellyfish-chain-physics 5       :offset-assert 1032)
+   (tentacles-initialized symbol                          :offset-assert 1052)
+   (stare-pos             vector                  :inline :offset-assert 1056)
+   (charge-pos            vector                  :inline :offset-assert 1072)
+   (grab-front            symbol                          :offset-assert 1088)
+   (grab-offset           vector                  :inline :offset-assert 1104)
+   (grab-start-pos        vector                  :inline :offset-assert 1120)
+   (grab-start-quat       quaternion              :inline :offset-assert 1136)
+   (focus-rot             quaternion              :inline :offset-assert 1152)
+   (attach-lerp           float                           :offset-assert 1168)
+   )
+  :heap-base #x420
+  :method-count-assert 165
+  :size-assert         #x494
+  :flag-assert         #xa504200494
+  (:methods
+    (jellyfish-method-156 () none 156)
+    (threaten () _type_ :state 157)
+    (charge-attack () _type_ :state 158)
+    (grab-mech () _type_ :state 159)
+    (die-now () _type_ :state 160)
+    (jellyfish-method-161 (_type_ vector float) vector 161)
+    (jellyfish-method-162 (_type_) symbol 162)
+    (jellyfish-method-163 (_type_ process-focusable) symbol 163)
+    (jellyfish-method-164 (_type_ process-focusable) symbol 164)
+    )
+  )
+
+;; definition for method 3 of type jellyfish
+(defmethod inspect jellyfish ((obj jellyfish))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hover-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tlos: #<los-control @ #x~X>~%" (-> obj los))
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tpath-player-u: ~f~%" (-> obj path-player-u))
+  (format #t "~2Tpath-my-u: ~f~%" (-> obj path-my-u))
+  (format #t "~2Tpath-y-offset: ~f~%" (-> obj path-y-offset))
+  (format #t "~2Tpath-stare-u: ~f~%" (-> obj path-stare-u))
+  (format #t "~2Ttentacle-clock: ~f~%" (-> obj tentacle-clock))
+  (format #t "~2Ttentacle-blend: ~f~%" (-> obj tentacle-blend))
+  (format #t "~2Tlast-attack-time: ~D~%" (-> obj last-attack-time))
+  (format #t "~2Tlast-fire-time: ~D~%" (-> obj last-fire-time))
+  (format #t "~2Tcharge-path-timer: ~D~%" (-> obj charge-path-timer))
+  (format #t "~2Ttentacles[5] @ #x~X~%" (-> obj tentacles))
+  (format #t "~2Ttentacles-initialized: ~A~%" (-> obj tentacles-initialized))
+  (format #t "~2Tstare-pos: #<vector @ #x~X>~%" (-> obj stare-pos))
+  (format #t "~2Tcharge-pos: #<vector @ #x~X>~%" (-> obj charge-pos))
+  (format #t "~2Tgrab-front: ~A~%" (-> obj grab-front))
+  (format #t "~2Tgrab-offset: #<vector @ #x~X>~%" (-> obj grab-offset))
+  (format #t "~2Tgrab-start-pos: #<vector @ #x~X>~%" (-> obj grab-start-pos))
+  (format #t "~2Tgrab-start-quat: #<quaternion @ #x~X>~%" (-> obj grab-start-quat))
+  (format #t "~2Tfocus-rot: #<quaternion @ #x~X>~%" (-> obj focus-rot))
+  (format #t "~2Tattach-lerp: ~f~%" (-> obj attach-lerp))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *jellyfish-mech-reserved*, type symbol
+(define *jellyfish-mech-reserved* #f)
+
+;; definition of type jellyfish-joint-mod-tentacle-info
+(deftype jellyfish-joint-mod-tentacle-info (structure)
+  ((axis   vector :inline :offset-assert   0)
+   (angle  float          :offset-assert  16)
+   (period float          :offset-assert  20)
+   (offset float          :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; definition for method 3 of type jellyfish-joint-mod-tentacle-info
+(defmethod inspect jellyfish-joint-mod-tentacle-info ((obj jellyfish-joint-mod-tentacle-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'jellyfish-joint-mod-tentacle-info)
+  (format #t "~1Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~1Tangle: ~f~%" (-> obj angle))
+  (format #t "~1Tperiod: ~f~%" (-> obj period))
+  (format #t "~1Toffset: ~f~%" (-> obj offset))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-jellyfish jellyfish jellyfish-lod0-jg jellyfish-idle-ja
+              ((jellyfish-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -1.8 0 5)
+              )
+
+;; definition for symbol *jellyfish-mainvein-chain-setup*, type (array chain-physics-setup)
+(define *jellyfish-mainvein-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                           (new 'static 'chain-physics-setup :joint-index 11)
+                                           (new 'static 'chain-physics-setup :joint-index 12)
+                                           (new 'static 'chain-physics-setup :joint-index 13)
+                                           (new 'static 'chain-physics-setup :joint-index 14)
+                                           (new 'static 'chain-physics-setup :joint-index 15)
+                                           )
+        )
+
+;; definition for symbol *jellyfish-lfront-chain-setup*, type (array chain-physics-setup)
+(define *jellyfish-lfront-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                         (new 'static 'chain-physics-setup :joint-index 17)
+                                         (new 'static 'chain-physics-setup :joint-index 18)
+                                         (new 'static 'chain-physics-setup :joint-index 19)
+                                         (new 'static 'chain-physics-setup :joint-index 20)
+                                         )
+        )
+
+;; definition for symbol *jellyfish-rfront-chain-setup*, type (array chain-physics-setup)
+(define *jellyfish-rfront-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                         (new 'static 'chain-physics-setup :joint-index 22)
+                                         (new 'static 'chain-physics-setup :joint-index 23)
+                                         (new 'static 'chain-physics-setup :joint-index 24)
+                                         (new 'static 'chain-physics-setup :joint-index 25)
+                                         )
+        )
+
+;; definition for symbol *jellyfish-lrear-chain-setup*, type (array chain-physics-setup)
+(define *jellyfish-lrear-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                        (new 'static 'chain-physics-setup :joint-index 27)
+                                        (new 'static 'chain-physics-setup :joint-index 28)
+                                        (new 'static 'chain-physics-setup :joint-index 29)
+                                        (new 'static 'chain-physics-setup :joint-index 30)
+                                        )
+        )
+
+;; definition for symbol *jellyfish-rrear-chain-setup*, type (array chain-physics-setup)
+(define *jellyfish-rrear-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                        (new 'static 'chain-physics-setup :joint-index 32)
+                                        (new 'static 'chain-physics-setup :joint-index 33)
+                                        (new 'static 'chain-physics-setup :joint-index 34)
+                                        (new 'static 'chain-physics-setup :joint-index 35)
+                                        )
+        )
+
+;; definition for symbol *jellyfish-enemy-info*, type enemy-info
+(define *jellyfish-enemy-info* (new 'static 'enemy-info
+                                 :use-die-falling #t
+                                 :use-victory #f
+                                 :use-jump-blocked #f
+                                 :debug-draw-neck #f
+                                 :jump-debug-draw #f
+                                 :move-to-ground #f
+                                 :hover-if-no-ground #f
+                                 :idle-anim-script #f
+                                 :idle-anim 2
+                                 :notice-anim 2
+                                 :hostile-anim 2
+                                 :hit-anim 2
+                                 :knocked-anim 2
+                                 :knocked-land-anim 2
+                                 :die-anim 3
+                                 :die-falling-anim 3
+                                 :victory-anim 2
+                                 :jump-wind-up-anim -1
+                                 :jump-in-air-anim -1
+                                 :jump-land-anim -1
+                                 :neck-joint 36
+                                 :look-at-joint 3
+                                 :bullseye-joint 3
+                                 :sound-hit (static-sound-name "jellyfish-hit")
+                                 :sound-die (static-sound-name "jellyfish-die")
+                                 :notice-distance (meters 45)
+                                 :notice-distance-delta (meters 4)
+                                 :proximity-notice-distance (meters 20)
+                                 :default-hit-points 1
+                                 :gnd-collide-with (collide-spec backgnd)
+                                 :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+                                 :movement-gravity (meters -100)
+                                 :friction 0.8
+                                 :attack-shove-back (meters 3)
+                                 :attack-shove-up (meters 2)
+                                 :attack-mode 'generic
+                                 :attack-damage 2
+                                 :jump-height-min (meters 3)
+                                 :jump-height-factor 0.5
+                                 :knocked-seek-ry-clamp 2730.6667
+                                 :knocked-soft-vxz-lo 72089.6
+                                 :knocked-soft-vxz-hi 108134.4
+                                 :knocked-soft-vy-lo 81920.0
+                                 :knocked-soft-vy-hi 122880.0
+                                 :knocked-medium-vxz-lo 28672.0
+                                 :knocked-medium-vxz-hi 65536.0
+                                 :knocked-medium-vy-lo 12288.0
+                                 :knocked-medium-vy-hi 36864.0
+                                 :knocked-hard-vxz-lo 78643.2
+                                 :knocked-hard-vxz-hi 117964.8
+                                 :knocked-hard-vy-lo 183500.8
+                                 :knocked-hard-vy-hi 209715.2
+                                 :knocked-huge-vxz-lo 164659.2
+                                 :knocked-huge-vxz-hi 249036.8
+                                 :knocked-huge-vy-lo 183500.8
+                                 :knocked-huge-vy-hi 217907.2
+                                 :knocked-yellow-vxz-lo 40960.0
+                                 :knocked-yellow-vxz-hi 49152.0
+                                 :knocked-yellow-vy-lo 57344.0
+                                 :knocked-yellow-vy-hi 81920.0
+                                 :knocked-red-vxz-lo 24576.0
+                                 :knocked-red-vxz-hi 196608.0
+                                 :knocked-red-vy-lo 94208.0
+                                 :knocked-red-vy-hi 151552.0
+                                 :knocked-blue-vxz-lo 40960.0
+                                 :knocked-blue-vxz-hi 49152.0
+                                 :knocked-blue-vy-lo 24576.0
+                                 :knocked-blue-vy-hi 81920.0
+                                 :shadow-size (meters 2)
+                                 :shadow-max-y (meters 10)
+                                 :shadow-min-y (meters -20)
+                                 :shadow-locus-dist (meters 150)
+                                 :gem-joint 36
+                                 :gem-seg #x2
+                                 :gem-no-seg #x4
+                                 :gem-offset (new 'static 'sphere :y -409.6 :z 4751.36 :r 163840.0)
+                                 )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *jellyfish-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 151 of type jellyfish
+(defmethod hover-enemy-method-151 jellyfish ((obj jellyfish))
+  (new 'static 'hover-enemy-info
+    :fly-forward-anim 2
+    :fly-backward-anim 2
+    :fly-left-anim 2
+    :fly-right-anim 2
+    :shoot-anim 2
+    :main-joint 3
+    :gun-base 40
+    :engine-left -1
+    :engine-right -1
+    )
+  )
+
+;; definition for method 152 of type jellyfish
+(defmethod hover-enemy-method-152 jellyfish ((obj jellyfish))
+  (new 'static 'hover-nav-params :max-speed 32768.0 :max-acceleration 24576.0 :friction 0.8)
+  )
+
+;; failed to figure out what this is:
+(defstate active (jellyfish)
+  :virtual #t
+  :enter (behavior ()
+    (let ((gp-1 (jellyfish-method-161 self (new 'stack-no-clear 'vector) (get-norm! (-> self sync) 0)))
+          (v1-6 (jellyfish-method-161
+                  self
+                  (new 'stack-no-clear 'vector)
+                  (get-norm! (-> self sync) (the-as int (+ (current-time) (seconds 1))))
+                  )
+                )
+          (s5-2 (new 'stack-no-clear 'vector))
+          )
+      (vector-! s5-2 v1-6 gp-1)
+      (vector-normalize! s5-2 1.0)
+      (hover-nav-control-method-10 (-> self hover) gp-1 s5-2 (the-as vector #t))
+      )
+    (set! (-> self restart-fly-anims) #t)
+    (none)
+    )
+  :trans (behavior ()
+    (local-vars (a0-8 vector) (gp-2 vector))
+    (seek! (-> self tentacle-blend) 1.0 (-> self clock seconds-per-frame))
+    (hover-nav-control-method-11
+      (-> self hover)
+      (jellyfish-method-161 self (new 'stack-no-clear 'vector) (get-norm! (-> self sync) 0))
+      )
+    (when (and (jellyfish-method-164 self (the-as process-focusable #f))
+               (begin
+                 (set! gp-2 (jellyfish-method-161 self (new 'stack-no-clear 'vector) (get-norm! (-> self sync) 0)))
+                 (set! a0-8 (jellyfish-method-161 self (new 'stack-no-clear 'vector) (-> self path-player-u)))
+                 (-> self focus-pos)
+                 (< (fabs (- (-> self root trans y) (-> gp-2 y))) 8192.0)
+                 )
+               (< (vector-vector-xz-distance a0-8 gp-2) 16384.0)
+               )
+      (set! (-> self path-stare-u) (get-norm! (-> self sync) 0))
+      (go-virtual stare)
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior jellyfish) hover-enemy-fly-code)
+  :post (behavior ()
+    (debug-draw (-> self path))
+    (hover-enemy-dest-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate stare (jellyfish)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-1 (-> (the-as (state enemy) (find-parent-method jellyfish 35)) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (jellyfish-method-161 self (-> self stare-pos) (-> self path-stare-u))
+    (+! (-> self stare-pos y) -32768.0)
+    (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+      (set! (-> gp-0 start-pos quad) (-> self stare-pos quad))
+      (+! (-> gp-0 start-pos y) 8192.0)
+      (set-vector! (-> gp-0 move-dist) 0.0 -81920.0 0.0 0.0)
+      (let ((v1-8 gp-0))
+        (set! (-> v1-8 radius) 819.2)
+        (set! (-> v1-8 collide-with) (collide-spec backgnd))
+        (set! (-> v1-8 ignore-process0) self)
+        (set! (-> v1-8 ignore-process1) #f)
+        (set! (-> v1-8 ignore-pat) (-> self root pat-ignore-mask))
+        (set! (-> v1-8 action-mask) (collide-action solid))
+        )
+      (if (>= (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0)
+          (set! (-> self stare-pos y) (fmax (-> self stare-pos y) (+ 24576.0 (-> gp-0 best-other-tri intersect y))))
+          )
+      )
+    (set! (-> self charge-path-timer) 0)
+    (look-at-target! self (enemy-flag lock-focus))
+    (none)
+    )
+  :trans (behavior ()
+    (local-vars (gp-0 vector))
+    (seek! (-> self tentacle-blend) 1.0 (-> self clock seconds-per-frame))
+    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+      (let ((v1-4 (-> self focus aware)))
+        (cond
+          ((>= 1 (the-as int v1-4))
+           (go-virtual active)
+           )
+          ((= v1-4 (enemy-aware unaware))
+           (go-flee self)
+           )
+          )
+        )
+      (if (and (>= (- (current-time) (-> self state-time)) (seconds 2))
+               (not (jellyfish-method-164 self (the-as process-focusable #f)))
+               )
+          (go-virtual active)
+          )
+      (if (and (not *jellyfish-mech-reserved*)
+               (>= (- (current-time) (-> self state-time)) (seconds 1))
+               (jellyfish-method-163 self (the-as process-focusable #f))
+               (begin
+                 (set! gp-0 (jellyfish-method-161 self (new 'stack-no-clear 'vector) (-> self path-stare-u)))
+                 (< (vector-vector-xz-distance (-> self root trans) gp-0) 12288.0)
+                 )
+               (< (fabs (- (-> self root trans y) (-> gp-0 y))) 40960.0)
+               )
+          (go-virtual threaten)
+          )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (hover-nav-control-method-11 (-> self hover) (-> self stare-pos))
+    (hover-enemy-dest-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate threaten (jellyfish)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :enter (behavior ()
+    (set! *jellyfish-mech-reserved* #t)
+    (none)
+    )
+  :exit (behavior ()
+    (set! *jellyfish-mech-reserved* #f)
+    (none)
+    )
+  :trans (behavior ()
+    (seek! (-> self tentacle-blend) 0.0 (-> self clock seconds-per-frame))
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self restart-fly-anims) #t)
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! jellyfish-notice-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-ja) frames num-frames) -1)) 1.4)
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 1.4))
+      )
+    (let ((gp-0 (handle->process (-> self focus handle)))
+          (s5-0 (-> self root trans))
+          )
+      (cond
+        ((not (jellyfish-method-163 self (the-as process-focusable gp-0)))
+         (go-virtual stare)
+         )
+        ((< (vector-vector-distance s5-0 (get-trans (the-as process-focusable gp-0) 3)) 20480.0)
+         (go-virtual grab-mech)
+         )
+        ((jellyfish-method-162 self)
+         (go-virtual charge-attack)
+         )
+        (else
+          (go-virtual stare)
+          )
+        )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
+    (hover-enemy-dest-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate charge-attack (jellyfish)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :enter (behavior ()
+    (set! *jellyfish-mech-reserved* #t)
+    (look-at-target! self (enemy-flag death-start))
+    (hover-nav-control-method-14 (-> self hover) 8.0 10.0)
+    (hover-nav-control-method-10
+      (-> self hover)
+      (-> self charge-pos)
+      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> self charge-pos) (-> self root trans)) 1.0)
+      (the-as vector #t)
+      )
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :exit (behavior ()
+    (hover-nav-control-method-14 (-> self hover) 1.0 1.0)
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (hover-nav-control-method-20 (-> self hover))
+    (set! *jellyfish-mech-reserved* #f)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self root trans)))
+      (if (< (vector-vector-distance gp-0 (-> self charge-pos)) 16384.0)
+          (go-virtual threaten)
+          )
+      (let ((s5-0 (handle->process (-> self focus handle))))
+        (cond
+          ((not (jellyfish-method-163 self (the-as process-focusable s5-0)))
+           (go-virtual stare)
+           )
+          ((< (vector-vector-distance gp-0 (get-trans (the-as process-focusable s5-0) 3)) 20480.0)
+           (go-virtual grab-mech)
+           )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-no-eval :group! jellyfish-notice-charge-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-charge-ja) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until #f
+      (ja-no-eval :group! jellyfish-notice-charge-loop-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-charge-loop-ja) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let* ((gp-0 (-> self root trans))
+           (s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self charge-pos) gp-0))
+           )
+      (let* ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) gp-0))
+             (f30-0 (vector-length s5-1))
+             (f28-0 (vector-length s4-1))
+             )
+        (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+          (vector-normalize! s5-1 1.0)
+          (vector-normalize! s4-1 1.0)
+          (quaternion-from-two-vectors-partial! s3-0 s5-1 s4-1 (* 8.0 (-> self clock seconds-per-frame)))
+          (vector-orient-by-quat! s5-1 s5-1 s3-0)
+          )
+        (vector-normalize! s5-1 (fmin f30-0 (+ 16384.0 f28-0)))
+        )
+      (vector+! (-> self charge-pos) gp-0 s5-1)
+      )
+    (hover-nav-control-method-11 (-> self hover) (-> self charge-pos))
+    (hover-enemy-dest-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate grab-mech (jellyfish)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :enter (behavior ()
+    (set! *jellyfish-mech-reserved* #t)
+    (set! (-> self attach-lerp) 0.0)
+    (let ((gp-0 *target*))
+      (if (and gp-0 (focus-test? gp-0 mech) (not (logtest? (-> gp-0 focus-status) (focus-status dead ignore))))
+          (set! (-> self grab-front) (< (vector-dot
+                                          (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+                                          (-> gp-0 manipy 0 node-list data 3 bone transform vector 2)
+                                          )
+                                        0.0
+                                        )
+                )
+          )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (hover-enemy-method-147 self)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (dotimes (gp-0 3)
+      (initialize-chain-joints (-> self tentacles gp-0))
+      )
+    (set! *jellyfish-mech-reserved* #f)
+    (none)
+    )
+  :trans (behavior ()
+    (let ((gp-0 *target*))
+      (cond
+        ((not (jellyfish-method-163 self gp-0))
+         (set! (-> self last-attack-time) (current-time))
+         (go-virtual active)
+         )
+        (else
+          (let ((gp-1 (-> gp-0 manipy 0 node-list data 3)))
+            (vector<-cspace! (-> self focus-pos) gp-1)
+            (matrix-with-scale->quaternion (-> self focus-rot) (-> gp-1 bone transform))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (dotimes (gp-0 3)
+      (turn-off (-> self tentacles gp-0) (seconds 0.93))
+      )
+    (ja-channel-push! 1 (seconds 0.1))
+    (set-vector! (-> self grab-offset) 0.0 14336.0 0.0 0.0)
+    (set! (-> self grab-start-pos quad) (-> self root trans quad))
+    (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
+    (ja-no-eval :group! jellyfish-grab-start-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-start-ja) frames num-frames) -1)) 1.2)
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 0.0 14.0))
+      (suspend)
+      (ja :num! (seek! max 1.2))
+      )
+    (let ((v1-34 (-> self root root-prim)))
+      (set! (-> v1-34 prim-core collide-as) (collide-spec))
+      (set! (-> v1-34 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (-> self grab-front)
+        (set-vector! (-> self grab-offset) 0.0 9179.136 -3682.304 0.0)
+        (set-vector! (-> self grab-offset) 0.0 9179.136 4354.048 0.0)
+        )
+    (set! (-> self grab-start-pos quad) (-> self root trans quad))
+    (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
+    (ja-no-eval :group! jellyfish-grab-attach-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-attach-ja) frames num-frames) -1)) 1.2)
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 14.0 23.0))
+      (suspend)
+      (ja :num! (seek! max 1.2))
+      )
+    (set! (-> self grab-start-pos quad) (-> self root trans quad))
+    (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
+    (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-11 from) (process->ppointer self))
+      (set! (-> a1-11 num-params) 2)
+      (set! (-> a1-11 message) 'shove)
+      (set! (-> a1-11 param 0) (the-as uint #f))
+      (let ((v1-70 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id))))
+        (let* ((a0-29 *game-info*)
+               (a2-7 (+ (-> a0-29 attack-id) 1))
+               )
+          (set! (-> a0-29 attack-id) a2-7)
+          (set! (-> v1-70 id) a2-7)
+          )
+        (set! (-> v1-70 shove-up) 12288.0)
+        (set! (-> v1-70 shove-back) 0.0)
+        (set! (-> v1-70 mode) 'shock)
+        (set! (-> a1-11 param 1) (the-as uint v1-70))
+        )
+      (send-event-function *target* a1-11)
+      )
+    (let ((gp-3 *target*))
+      (dotimes (s5-2 2)
+        (ja-no-eval :group! jellyfish-grab-attach-loop-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-attach-loop-ja) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (when (and gp-3 (focus-test? gp-3 mech) (not (logtest? (-> gp-3 focus-status) (focus-status dead ignore))))
+            (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-13 from) (process->ppointer self))
+              (set! (-> a1-13 num-params) 2)
+              (set! (-> a1-13 message) 'attack)
+              (set! (-> a1-13 param 0) (the-as uint #f))
+              (let ((v1-95 (new 'static 'attack-info :mask (attack-info-mask intersection mode id))))
+                (let* ((a0-37 *game-info*)
+                       (a2-10 (+ (-> a0-37 attack-id) 1))
+                       )
+                  (set! (-> a0-37 attack-id) a2-10)
+                  (set! (-> v1-95 id) a2-10)
+                  )
+                (set! (-> v1-95 mode) 'shock)
+                (set! (-> v1-95 intersection quad) (-> self root trans quad))
+                (set! (-> a1-13 param 1) (the-as uint v1-95))
+                )
+              (send-event-function gp-3 a1-13)
+              )
+            )
+          (sound-play "squid-attack" :id (-> self sound-id))
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (sound-stop (-> self sound-id))
+    (set-vector! (-> self grab-offset) 0.0 20480.0 0.0 0.0)
+    (set! (-> self grab-start-pos quad) (-> self root trans quad))
+    (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
+    (dotimes (gp-4 3)
+      (initialize-chain-joints (-> self tentacles gp-4))
+      )
+    (ja-no-eval :group! jellyfish-grab-detach-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-detach-ja) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 48.0 65.0))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self last-attack-time) (current-time))
+    (go-virtual active)
+    (none)
+    )
+  :post (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self grab-offset quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self focus-rot))))
+        (vector-orient-by-quat! gp-0 gp-0 s5-0)
+        (vector+! gp-0 (-> self focus-pos) gp-0)
+        (if (-> self grab-front)
+            (quaternion-rotate-y! s5-0 s5-0 32768.0)
+            )
+        (vector-lerp! (-> self root trans) (-> self grab-start-pos) gp-0 (-> self attach-lerp))
+        (quaternion-slerp! (-> self root quat) (-> self grab-start-quat) s5-0 (-> self attach-lerp))
+        )
+      )
+    (enemy-simple-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (jellyfish)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :code (behavior ()
+    (dispose! self)
+    (logclear! (-> self focus-status) (focus-status dangerous))
+    (enemy-method-52 self (-> self root transv))
+    (let ((gp-0 (current-time)))
+      (ja-no-eval :group! jellyfish-die-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-die-ja) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (let ((s5-0 (ja-group))
+              (f0-4 (ja-aframe-num 0))
+              )
+          (when (and (= s5-0 jellyfish-die-ja) (>= f0-4 0.0) (>= 0.5 f0-4))
+            (when (>= (- (current-time) gp-0) (seconds 0.05))
+              (process-drawable-shock-skel-effect
+                self
+                (-> *lightning-spec-id-table* 5)
+                lightning-probe-callback
+                (-> *part-id-table* 166)
+                2048.0
+                -1
+                -1
+                )
+              (set! gp-0 (current-time))
+              )
+            )
+          )
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (let ((v1-52 (-> self root root-prim)))
+      (set! (-> v1-52 prim-core collide-as) (collide-spec))
+      (set! (-> v1-52 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (the-as (function none :behavior jellyfish) enemy-falling-post)
+  )
+
+;; failed to figure out what this is:
+(defstate die-now (jellyfish)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :code (behavior ()
+    (dispose! self)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (ja-no-eval :group! jellyfish-die-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-die-ja) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; definition for method 74 of type jellyfish
+(defmethod general-event-handler jellyfish ((obj jellyfish) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> obj mask) (process-mask actor-pause))
+     (logclear! (-> obj focus-status) (focus-status dangerous))
+     (logclear! (-> obj enemy-flags) (enemy-flag enable-on-notice))
+     (logior! (-> obj enemy-flags) (enemy-flag chase-startup))
+     (logior! (-> obj focus-status) (focus-status hit))
+     (if (zero? (-> obj hit-points))
+         (logior! (-> obj focus-status) (focus-status dead))
+         )
+     (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (enemy-method-62 obj)
+     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (go (method-of-object obj die))
+     #t
+     )
+    (else
+      ((method-of-type hover-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 161 of type jellyfish
+(defmethod jellyfish-method-161 jellyfish ((obj jellyfish) (arg0 vector) (arg1 float))
+  (get-point-in-path! (-> obj path) arg0 arg1 'interp)
+  (+! (-> arg0 y) (-> obj path-y-offset))
+  arg0
+  )
+
+;; definition for method 164 of type jellyfish
+;; WARN: Return type mismatch object vs symbol.
+(defmethod jellyfish-method-164 jellyfish ((obj jellyfish) (arg0 process-focusable))
+  (local-vars (v1-10 object))
+  (jellyfish-method-161 obj (new 'stack-no-clear 'vector) (get-norm! (-> obj sync) 0))
+  (let ((s5-1 (jellyfish-method-161 obj (new 'stack-no-clear 'vector) (-> obj path-player-u)))
+        (gp-1 (-> obj focus-pos))
+        )
+    (-> obj root trans)
+    (the-as
+      symbol
+      (and (and (if arg0
+                    arg0
+                    (handle->process (-> obj focus handle))
+                    )
+                (focus-test?
+                  (the-as process-focusable (if arg0
+                                                arg0
+                                                (handle->process (-> obj focus handle))
+                                                )
+                          )
+                  mech
+                  )
+                (begin
+                  (let ((v1-13 #t))
+                    (set! arg0 (cond
+                                 (arg0
+                                   (empty)
+                                   arg0
+                                   )
+                                 (else
+                                   (the-as process-focusable (handle->process (-> obj focus handle)))
+                                   )
+                                 )
+                          )
+                    (let ((a0-18 (the-as focus-status (logand (-> arg0 focus-status) (focus-status dead ignore)))))
+                      (cmove-#f-nonzero v1-10 a0-18 v1-13)
+                      )
+                    )
+                  v1-10
+                  )
+                )
+           (< (vector-vector-xz-distance s5-1 gp-1) 122880.0)
+           (< (fabs (- (-> s5-1 y) (-> gp-1 y))) 65536.0)
+           )
+      )
+    )
+  )
+
+;; definition for method 163 of type jellyfish
+;; WARN: Return type mismatch object vs symbol.
+(defmethod jellyfish-method-163 jellyfish ((obj jellyfish) (arg0 process-focusable))
+  (local-vars (v1-8 object))
+  (jellyfish-method-161 obj (new 'stack-no-clear 'vector) (-> obj path-stare-u))
+  (let ((s5-0 (-> obj focus-pos)))
+    (-> obj root trans)
+    (the-as
+      symbol
+      (and (and (if arg0
+                    arg0
+                    (handle->process (-> obj focus handle))
+                    )
+                (focus-test?
+                  (the-as process-focusable (if arg0
+                                                arg0
+                                                (handle->process (-> obj focus handle))
+                                                )
+                          )
+                  mech
+                  )
+                (begin
+                  (let ((v1-11 #t))
+                    (set! arg0 (cond
+                                 (arg0
+                                   (empty)
+                                   arg0
+                                   )
+                                 (else
+                                   (the-as process-focusable (handle->process (-> obj focus handle)))
+                                   )
+                                 )
+                          )
+                    (let ((a0-16 (the-as focus-status (logand (-> arg0 focus-status) (focus-status dead ignore)))))
+                      (cmove-#f-nonzero v1-8 a0-16 v1-11)
+                      )
+                    )
+                  v1-8
+                  )
+                )
+           (< (vector-vector-xz-distance s5-0 (-> obj stare-pos)) 81920.0)
+           (< (fabs (- (-> s5-0 y) (-> obj stare-pos y))) 32768.0)
+           )
+      )
+    )
+  )
+
+;; definition for method 162 of type jellyfish
+;; INFO: Used lq/sq
+(defmethod jellyfish-method-162 jellyfish ((obj jellyfish))
+  (local-vars (sv-624 int))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let* ((s5-0 (-> obj root trans))
+           (s3-1 (vector-! (new 'stack-no-clear 'vector) (-> obj focus-pos) s5-0))
+           (s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0))
+           (f0-0 (vector-length s3-1))
+           (f28-0 (+ 16384.0 f0-0))
+           )
+      (vector-normalize! s3-1 f28-0)
+      (vector+! (-> obj charge-pos) s5-0 s3-1)
+      (let ((f30-0 f28-0)
+            (f28-1 (* 0.000024414063 f28-0))
+            (s3-2 0)
+            (s2-0 (new 'stack-no-clear 'vector))
+            (s1-0 (new 'stack-no-clear 'vector))
+            (s0-0 (new 'stack-no-clear 'collide-query))
+            (f26-0 40960.0)
+            )
+        (set! sv-624 0)
+        (while (< sv-624 (the int f28-1))
+          (let ((a2-1 s2-0))
+            (let ((v1-9 s5-0)
+                  (a0-6 s4-0)
+                  (a1-2 s3-2)
+                  )
+              (.lvf vf2 (&-> a0-6 quad))
+              (.lvf vf1 (&-> v1-9 quad))
+              (.mov vf3 a1-2)
+              )
+            (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+            (.mul.x.vf acc vf2 vf3)
+            (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
+            (.svf (&-> a2-1 quad) vf4)
+            )
+          (when (> sv-624 0)
+            (set! (-> s0-0 start-pos quad) (-> s1-0 quad))
+            (vector-! (-> s0-0 move-dist) s2-0 s1-0)
+            (let ((v1-14 s0-0))
+              (set! (-> v1-14 radius) (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 0 local-sphere w))
+              (set! (-> v1-14 collide-with) (collide-spec backgnd enemy obstacle hit-by-others-list))
+              (set! (-> v1-14 ignore-process0) obj)
+              (set! (-> v1-14 ignore-process1) #f)
+              (set! (-> v1-14 ignore-pat) (-> obj root pat-ignore-mask))
+              (set! (-> v1-14 action-mask) (collide-action solid))
+              )
+            (if (>= (fill-and-probe-using-line-sphere *collide-cache* s0-0) 0.0)
+                (return #f)
+                )
+            )
+          (set! (-> s1-0 quad) (-> s2-0 quad))
+          (set! f30-0 (fmax 0.0 (+ -40960.0 f30-0)))
+          (+! s3-2 (the int (fmin 40960.0 f30-0)))
+          (set! f26-0 (+ -4915.2 f26-0))
+          (set! sv-624 (+ sv-624 1))
+          )
+        )
+      )
+    #t
+    )
+  )
+
+;; definition for function jellyfish-joint-mod-tentacle
+(defun jellyfish-joint-mod-tentacle ((arg0 cspace) (arg1 transformq))
+  (let* ((s4-0 (-> arg0 param1))
+         (s3-0 (the-as structure (-> arg0 param2)))
+         (f0-0 4.0)
+         (t9-0 sin)
+         (f1-0 65536.0)
+         (f2-1
+           (+ (-> (the-as jellyfish s4-0) tentacle-clock) (-> (the-as jellyfish-joint-mod-tentacle-info s3-0) offset))
+           )
+         (f0-4 (* (t9-0 (* f1-0 (/ (- f2-1 (* (the float (the int (/ f2-1 f0-0))) f0-0)) f0-0)))
+                  (-> (the-as jellyfish-joint-mod-tentacle-info s3-0) angle)
+                  )
+               )
+         (s2-0 (new 'stack-no-clear 'quaternion))
+         )
+    (let ((a2-1 (quaternion-vector-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> (the-as jellyfish-joint-mod-tentacle-info s3-0) axis)
+                  f0-4
+                  )
+                )
+          )
+      (quaternion-normalize! (quaternion*! s2-0 (-> arg1 quat) a2-1))
+      )
+    (quaternion-slerp! (-> arg1 quat) (-> arg1 quat) s2-0 (-> (the-as jellyfish s4-0) tentacle-blend))
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+;; definition for method 55 of type jellyfish
+;; INFO: Used lq/sq
+(defmethod track-target! jellyfish ((obj jellyfish))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (with-pp
+    (let ((v1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> obj main-joint-acc) (-> obj root quat))))
+      (+! (-> obj tentacle-clock)
+          (* (lerp-scale 1.0 10.0 (fmax (fmax (fmax 0.0 (fabs (-> v1-1 x))) (-> v1-1 y)) (fabs (-> v1-1 z))) 0.0 24576.0)
+             (-> pp clock seconds-per-frame)
+             )
+          )
+      )
+    (when (not (-> obj tentacles-initialized))
+      (set! (-> obj tentacles-initialized) #t)
+      (dotimes (s5-0 5)
+        (initialize-chain-joints (-> obj tentacles s5-0))
+        )
+      )
+    (dotimes (s5-1 5)
+      (update (-> obj tentacles s5-1) obj)
+      )
+    (let ((a1-3 (handle->process (-> obj focus handle))))
+      (if a1-3
+          (los-control-method-9 (-> obj los) (the-as process-focusable a1-3) (the-as vector #f) 4096.0)
+          )
+      )
+    (let ((a0-10 (handle->process (-> obj focus handle))))
+      (when (and a0-10
+                 (focus-test? (the-as process-focusable a0-10) mech)
+                 (not (logtest? (-> (the-as process-focusable a0-10) focus-status) (focus-status dead ignore)))
+                 )
+        (set! (-> obj focus-pos quad) (-> (get-trans (the-as process-focusable a0-10) 0) quad))
+        (set! (-> obj path-player-u) (get-furthest-point-on-path (-> obj path) (-> obj focus-pos)))
+        )
+      )
+    (set! (-> obj path-my-u) (get-furthest-point-on-path (-> obj path) (-> obj root trans)))
+    ((method-of-type hover-enemy track-target!) obj)
+    (none)
+    )
+  )
+
+;; definition for method 116 of type jellyfish
+;; WARN: Return type mismatch object vs none.
+(defmethod go-idle jellyfish ((obj jellyfish))
+  (go (method-of-object obj active))
+  (none)
+  )
+
+;; definition for method 149 of type jellyfish
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-149 jellyfish ((obj jellyfish))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-jellyfish" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 150 of type jellyfish
+(defmethod hover-enemy-method-150 jellyfish ((obj jellyfish))
+  *jellyfish-enemy-info*
+  )
+
+;; definition for method 114 of type jellyfish
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! jellyfish ((obj jellyfish))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec backgnd jak bot enemy obstacle player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid deadly))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -7372.8 0.0 20480.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec backgnd jak bot enemy obstacle player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid deadly))
+      (set-vector! (-> v1-14 local-sphere) 0.0 1228.8 -2048.0 6144.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec backgnd jak bot enemy obstacle player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid deadly))
+      (set-vector! (-> v1-16 local-sphere) 0.0 -819.2 -2048.0 4915.2)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec backgnd jak bot enemy obstacle player-list))
+      (set! (-> v1-18 prim-core action) (collide-action solid deadly))
+      (set-vector! (-> v1-18 local-sphere) 0.0 3276.8 -2048.0 4915.2)
+      )
+    (let ((v1-20 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-20 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-20 prim-core action) (collide-action semi-solid))
+      (set! (-> v1-20 transform-index) 3)
+      (set-vector! (-> v1-20 local-sphere) 0.0 0.0 1228.8 8192.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-23 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-23 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type jellyfish
+;; WARN: Return type mismatch hover-enemy vs jellyfish.
+(defmethod relocate jellyfish ((obj jellyfish) (arg0 int))
+  (dotimes (v1-0 5)
+    (if (nonzero? (-> obj tentacles v1-0))
+        (&+! (-> obj tentacles v1-0) arg0)
+        )
+    )
+  (the-as jellyfish ((method-of-type hover-enemy relocate) obj arg0))
+  )
+
+;; definition for method 10 of type jellyfish
+(defmethod deactivate jellyfish ((obj jellyfish))
+  (sound-stop (-> obj sound-id))
+  ((the-as (function process-drawable none) (find-parent-method jellyfish 10)) obj)
+  (none)
+  )
+
+;; definition for method 115 of type jellyfish
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! jellyfish ((obj jellyfish))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (hover-enemy-method-149 obj)
+  (init-enemy-behaviour-and-stats! obj (hover-enemy-method-150 obj))
+  (hover-enemy-method-155 obj)
+  (set-vector! (-> obj offset) 0.0 6144.0 61440.0 1.0)
+  (set! (-> obj knocked-fall-dist) 0.0)
+  (let ((v1-8 (-> obj neck)))
+    (set! (-> v1-8 up) (the-as uint 1))
+    (set! (-> v1-8 nose) (the-as uint 2))
+    (set! (-> v1-8 ear) (the-as uint 0))
+    (set! (-> v1-8 twist-speed-x) 0.05)
+    (set! (-> v1-8 twist-speed-y) 0.06)
+    (set! (-> v1-8 max-dist) 122880.0)
+    )
+  (set! (-> obj root dynam gravity y) 40960.0)
+  (set! (-> obj root dynam gravity-length) 40960.0)
+  (set! (-> obj root dynam gravity-max) 40960.0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> obj enemy-flags) (enemy-flag notice))
+  (new-source! (-> obj los) obj (seconds 1) (collide-spec backgnd enemy obstacle hit-by-others-list))
+  (set! (-> obj last-fire-time) (current-time))
+  (set! (-> obj last-attack-time) 0)
+  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (-> obj entity) #f))
+  (set! (-> obj path-player-u) 0.0)
+  (set! (-> obj path-my-u) 0.0)
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-y-offset) (res-lump-float (-> obj entity) 'y-offset))
+  (let ((a1-4 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-32 0))
+      (if #t
+          (set! v1-32 (logior v1-32 1))
+          )
+      (set! (-> a1-4 sync-type) 'sync-eased)
+      (set! (-> a1-4 sync-flags) (the-as sync-flags v1-32))
+      )
+    (set! (-> a1-4 period) (the-as uint 6000))
+    (set! (-> a1-4 entity) (-> obj entity))
+    (set! (-> a1-4 percent) 0.0)
+    (set! (-> a1-4 ease-in) 0.15)
+    (set! (-> a1-4 ease-out) 0.15)
+    (set! (-> a1-4 pause-in) 0.0)
+    (set! (-> a1-4 pause-out) 0.0)
+    (initialize! (-> obj sync) a1-4)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x 1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x -1187.84 :y -3112.96 :z 1392.64 :w 163840.0)
+    )
+  (add-connection *part-engine* obj 36 obj 743 (new 'static 'vector :y 1433.6 :z 1228.8 :w 163840.0))
+  (dotimes (s5-1 5)
+    (set! (-> obj tentacles s5-1) (new 'process 'jellyfish-chain-physics))
+    )
+  (chain-physics-initialize obj (-> obj tentacles 0) 10 4096.0 *jellyfish-mainvein-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 1) 16 4096.0 *jellyfish-lfront-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 2) 21 4096.0 *jellyfish-rfront-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 3) 26 4096.0 *jellyfish-lrear-chain-setup*)
+  (chain-physics-initialize obj (-> obj tentacles 4) 31 4096.0 *jellyfish-rrear-chain-setup*)
+  (set! (-> obj tentacles 2 negate-y) #t)
+  (set! (-> obj tentacles 4 negate-y) #t)
+  (let ((a0-35 (-> obj skel root-channel 0)))
+    (set! (-> a0-35 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-35 frame-num) 0.0)
+    (joint-control-channel-group! a0-35 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (ja-post)
+  (dotimes (s5-2 5)
+    (initialize-chain-joints (-> obj tentacles s5-2))
+    )
+  (let ((a1-15 (-> obj node-list data 16))
+        (v1-68
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 3094.7556
+            :offset 30.0
+            )
+          )
+        )
+    (set! (-> a1-15 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-15 param1) obj)
+    (set! (-> a1-15 param2) (the-as basic v1-68))
+    )
+  (let ((a1-16 (-> obj node-list data 21))
+        (v1-70
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 3094.7556
+            :offset 30.0
+            )
+          )
+        )
+    (set! (-> a1-16 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-16 param1) obj)
+    (set! (-> a1-16 param2) (the-as basic v1-70))
+    )
+  (let ((a1-17 (-> obj node-list data 26))
+        (v1-72
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 4369.067
+            :offset 45.0
+            )
+          )
+        )
+    (set! (-> a1-17 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-17 param1) obj)
+    (set! (-> a1-17 param2) (the-as basic v1-72))
+    )
+  (let ((a1-18 (-> obj node-list data 31))
+        (v1-74
+          (new 'static 'jellyfish-joint-mod-tentacle-info
+            :axis (new 'static 'vector :z 1.0 :w 1.0)
+            :angle 4369.067
+            :offset 45.0
+            )
+          )
+        )
+    (set! (-> a1-18 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-18 param1) obj)
+    (set! (-> a1-18 param2) (the-as basic v1-74))
+    )
+  (let ((a1-19 (-> obj node-list data 10))
+        (v1-76
+          (new 'static 'jellyfish-joint-mod-tentacle-info :axis (new 'static 'vector :x 1.0 :w 1.0) :angle 2730.6667)
+          )
+        )
+    (set! (-> a1-19 param0) jellyfish-joint-mod-tentacle)
+    (set! (-> a1-19 param1) obj)
+    (set! (-> a1-19 param2) (the-as basic v1-76))
+    )
+  (set! (-> obj tentacles-initialized) #f)
+  (set! (-> obj tentacle-clock) 0.0)
+  (set! (-> obj tentacle-blend) 1.0)
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x 1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    obj
+    36
+    obj
+    318
+    (new 'static 'vector :x -1966.08 :y -1843.2 :z 2129.92 :w 163840.0)
+    )
+  0
+  (none)
+  )

@@ -1,0 +1,438 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vehicle-rider.gc
+;; name in dgo: vehicle-rider
+;; dgos: CWI
+
+;; DECOMP BEGINS
+
+(deftype vehicle-rider (process-focusable)
+  ((parent      (pointer vehicle)  :override)
+   (flags       uint8              :offset-assert 204)
+   (riding-anim int32              :offset-assert 208)
+   (anim-t      float              :offset-assert 212)
+   (anim-speed  float              :offset-assert 216)
+   (seat-index  int8               :offset-assert 220)
+   )
+  :heap-base #x60
+  :method-count-assert 36
+  :size-assert         #xdd
+  :flag-assert         #x24006000dd
+  (:methods
+    (inactive () _type_ :state 27)
+    (active () _type_ :state 28)
+    (taunt () _type_ :state 29)
+    (got-passed () _type_ :state 30)
+    (initialize-collision (_type_) none 31)
+    (vehicle-rider-method-32 (_type_ traffic-object-spawn-params) none 32)
+    (vehicle-rider-method-33 (_type_) none 33)
+    (vehicle-rider-method-34 (_type_) none 34)
+    (vehicle-rider-method-35 (_type_) none 35)
+    )
+  )
+
+
+(defmethod get-trans vehicle-rider ((obj vehicle-rider) (arg0 int))
+  "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
+  (-> obj root trans)
+  )
+
+(defmethod vehicle-rider-method-33 vehicle-rider ((obj vehicle-rider))
+  (let* ((s4-0 (ppointer->process (-> obj parent)))
+         (s5-0 (if (type? s4-0 vehicle)
+                   s4-0
+                   )
+               )
+         )
+    (logand! (-> obj flags) -5)
+    (if (and s5-0 (nonzero? (vehicle-method-72 s5-0)))
+        (logior! (-> obj flags) 4)
+        )
+    (put-rider-in-seat s5-0 (-> obj seat-index) obj)
+    )
+  (set! (-> obj anim-speed) (rand-vu-float-range 0.8 1.2))
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-35 vehicle-rider ((obj vehicle-rider))
+  (logior! (-> obj draw status) (draw-control-status no-draw))
+  (put-rider-in-seat
+    (the-as vehicle (ppointer->process (-> obj parent)))
+    (-> obj seat-index)
+    (the-as process-focusable #f)
+    )
+  (go (method-of-object obj inactive))
+  0
+  (none)
+  )
+
+(defmethod initialize-collision vehicle-rider ((obj vehicle-rider))
+  (stack-size-set! (-> obj main-thread) 16)
+  (lwide-entity-hack)
+  (when (not (-> obj entity))
+    (format 0 "vehicle-rider::initialize-collision: ERROR, no lwide entity found~%")
+    (stack-size-set! (-> obj main-thread) 256)
+    (go process-drawable-art-error "no lwide entity found")
+    )
+  (set! (-> obj root) (the-as collide-shape (new 'process 'trsqv)))
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-32 vehicle-rider ((obj vehicle-rider) (arg0 traffic-object-spawn-params))
+  (logior! (-> obj flags) 1)
+  (set! (-> obj draw lod-set lod 0 dist) 40960.0)
+  (set! (-> obj draw lod-set lod 1 dist) 122880.0)
+  (set! (-> obj draw lod-set lod 2 dist) 245760.0)
+  (set! (-> obj draw lod-set lod 3 dist) 614400.0)
+  (set! (-> obj seat-index) 0)
+  (set! (-> obj anim-t) (* 65536.0 (rand-vu)))
+  (vehicle-rider-method-33 obj)
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-34 vehicle-rider ((obj vehicle-rider))
+  (with-pp
+    (let ((a0-1 (ppointer->process (-> obj parent))))
+      (when a0-1
+        (+! (-> obj anim-t) (* 41870.223 (-> obj anim-speed) (-> pp clock seconds-per-frame)))
+        (if (< 65536.0 (-> obj anim-t))
+            (+! (-> obj anim-t) -65536.0)
+            )
+        (let* ((f0-5 (vehicle-method-75 a0-1))
+               (f0-9 (+ (* 5.0 (- 1.0 f0-5)) (sin (-> obj anim-t))))
+               (gp-1 (-> obj skel root-channel 0))
+               )
+          (set! (-> gp-1 num-func) num-func-identity)
+          (set! (-> gp-1 frame-num) (ja-aframe f0-9 0))
+          )
+        )
+      )
+    (ja-post)
+    0
+    (none)
+    )
+  )
+
+(defbehavior vehicle-rider-event-handler vehicle-rider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('traffic-on)
+     (logior! (-> self flags) 2)
+     (when (logtest? (-> self flags) 1)
+       (vehicle-rider-method-33 self)
+       (go-virtual active)
+       )
+     )
+    (('traffic-off)
+     (logand! (-> self flags) -3)
+     (vehicle-rider-method-35 self)
+     )
+    (('knocked-off)
+     (let ((gp-0 (new 'stack 'traffic-object-spawn-params)))
+       (let ((v1-14 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
+         (set! (-> gp-0 object-type) (traffic-type citizen-norm-1))
+         (set! (-> gp-0 behavior) (the-as uint 11))
+         (set! (-> gp-0 id) (the-as uint 0))
+         (set! (-> gp-0 nav-mesh) v1-14)
+         )
+       (set! (-> gp-0 nav-branch) #f)
+       (set! (-> gp-0 proc) #f)
+       (set! (-> gp-0 handle) (process->handle (-> self parent 0)))
+       (set! (-> gp-0 user-data) (-> self draw seg-mask))
+       (set! (-> gp-0 flags) (traffic-spawn-flags))
+       (set! (-> gp-0 guard-type) (the-as uint 7))
+       (vector-reset! (-> gp-0 velocity))
+       (when (logtest? (-> self flags) 8)
+         (send-event *traffic-manager* 'increase-alert-level 2)
+         (set! (-> gp-0 object-type) (traffic-type crimson-guard-1))
+         )
+       (set! (-> gp-0 position quad) (-> self root trans quad))
+       (quaternion-copy! (-> gp-0 rotation) (-> self root quat))
+       (send-event *traffic-manager* 'activate-object gp-0)
+       )
+     (logand! (-> self flags) -3)
+     (vehicle-rider-method-35 self)
+     )
+    (('race-pass 'taunt)
+     (go-virtual taunt)
+     )
+    (('race-got-passed)
+     (go-virtual got-passed)
+     )
+    (('hide)
+     (logior! (-> self draw status) (draw-control-status no-draw))
+     )
+    (('unhide)
+     (logclear! (-> self draw status) (draw-control-status no-draw))
+     )
+    (('rider-on)
+     (logior! (-> self flags) 1)
+     (if (logtest? (-> self flags) 2)
+         (go-virtual active)
+         )
+     )
+    (('rider-off)
+     (logand! (-> self flags) -2)
+     (vehicle-rider-method-35 self)
+     )
+    )
+  (none)
+  )
+
+(defstate active (vehicle-rider)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior vehicle-rider)
+    vehicle-rider-event-handler
+    )
+  :enter (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja :group! (-> self draw art-group data (-> self riding-anim)))
+    (none)
+    )
+  :code (the-as (function none :behavior vehicle-rider) sleep-code)
+  :post (behavior ()
+    (vehicle-rider-method-34 self)
+    (none)
+    )
+  )
+
+(defstate taunt (vehicle-rider)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior vehicle-rider)
+    vehicle-rider-event-handler
+    )
+  :code (the-as (function none :behavior vehicle-rider) sleep-code)
+  :post (behavior ()
+    (go-virtual active)
+    (vehicle-rider-method-34 self)
+    (none)
+    )
+  )
+
+(defstate got-passed (vehicle-rider)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior vehicle-rider)
+    vehicle-rider-event-handler
+    )
+  :code (the-as (function none :behavior vehicle-rider) sleep-code)
+  :post (behavior ()
+    (go-virtual active)
+    (vehicle-rider-method-34 self)
+    (none)
+    )
+  )
+
+(defstate inactive (vehicle-rider)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior vehicle-rider)
+    vehicle-rider-event-handler
+    )
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :code (the-as (function none :behavior vehicle-rider) sleep-code)
+  )
+
+;; WARN: Return type mismatch entity-perm-status vs none.
+(defmethod init-from-entity! vehicle-rider ((obj vehicle-rider) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (process-entity-status! obj (entity-perm-status dead) #t)
+  (none)
+  )
+
+(defbehavior vehicle-rider-init-by-other vehicle-rider ((arg0 traffic-object-spawn-params))
+  (initialize-collision self)
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 rotation))
+  (logior! (-> self focus-status) (focus-status pilot-riding))
+  (vehicle-rider-method-32 self arg0)
+  (cond
+    ((= (-> arg0 behavior) 1)
+     (vehicle-rider-method-35 self)
+     )
+    (else
+      (logior! (-> self flags) 2)
+      (go-virtual active)
+      )
+    )
+  (none)
+  )
+
+(defun vehicle-rider-spawn ((arg0 vehicle) (arg1 type) (arg2 traffic-object-spawn-params))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* arg1 #x4000))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg0 (symbol->string (-> arg1 symbol)) (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 vehicle-rider-init-by-other arg2)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    gp-0
+    )
+  )
+
+(deftype citizen-norm-rider (vehicle-rider)
+  ()
+  :heap-base #x60
+  :method-count-assert 36
+  :size-assert         #xdd
+  :flag-assert         #x24006000dd
+  )
+
+
+(defskelgroup skel-citizen-norm-rider citizen-norm-rider citizen-norm-rider-lod0-jg citizen-norm-rider-idle-ja
+              ((citizen-norm-rider-lod0-mg (meters 20)) (citizen-norm-rider-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+(defmethod vehicle-rider-method-33 citizen-norm-rider ((obj citizen-norm-rider))
+  ((the-as (function vehicle-rider none) (find-parent-method citizen-norm-rider 33)) obj)
+  (setup-masks (-> obj draw) 0 -1)
+  (setup-masks (-> obj draw) 32 0)
+  (cond
+    ((logtest? (-> obj flags) 4)
+     (set! (-> obj riding-anim) 5)
+     (setup-masks (-> obj draw) #x40000 0)
+     )
+    (else
+      (set! (-> obj riding-anim) 4)
+      (setup-masks (-> obj draw) #x20000 0)
+      )
+    )
+  (let ((v1-12 (rand-vu-int-count 2)))
+    (cond
+      ((zero? v1-12)
+       (setup-masks (-> obj draw) 2 0)
+       )
+      ((= v1-12 1)
+       (setup-masks (-> obj draw) 4096 0)
+       )
+      )
+    )
+  (let ((v1-18 (rand-vu-int-count 3)))
+    (cond
+      ((zero? v1-18)
+       (setup-masks (-> obj draw) 8 0)
+       )
+      ((= v1-18 1)
+       (setup-masks (-> obj draw) 512 0)
+       )
+      ((= v1-18 2)
+       (setup-masks (-> obj draw) #x4000 0)
+       )
+      )
+    )
+  (let ((v1-26 (rand-vu-int-count 4)))
+    (cond
+      ((zero? v1-26)
+       (setup-masks (-> obj draw) 4 0)
+       )
+      ((= v1-26 1)
+       (setup-masks (-> obj draw) 256 0)
+       )
+      ((= v1-26 2)
+       (setup-masks (-> obj draw) 8192 0)
+       )
+      )
+    )
+  (let ((v1-34 (rand-vu-int-count 3)))
+    (cond
+      ((zero? v1-34)
+       (setup-masks (-> obj draw) 64 0)
+       )
+      ((= v1-34 1)
+       (setup-masks (-> obj draw) 2048 0)
+       )
+      ((= v1-34 2)
+       (setup-masks (-> obj draw) #x10000 0)
+       )
+      )
+    )
+  (setup-masks (-> obj draw) 16 0)
+  (if (zero? (rand-vu-int-count 3))
+      (setup-masks (-> obj draw) 128 0)
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-32 citizen-norm-rider ((obj citizen-norm-rider) (arg0 traffic-object-spawn-params))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-citizen-norm-rider" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj flags) 1)
+  (set! (-> obj draw lod-set lod 0 dist) 122880.0)
+  (set! (-> obj draw lod-set lod 1 dist) 286720.0)
+  (vehicle-rider-method-33 obj)
+  0
+  (none)
+  )
+
+(deftype crimson-guard-rider (vehicle-rider)
+  ()
+  :heap-base #x60
+  :method-count-assert 36
+  :size-assert         #xdd
+  :flag-assert         #x24006000dd
+  )
+
+
+(defskelgroup skel-crimson-guard-rider crimson-guard crimson-guard-lod0-jg crimson-guard-idle-ja
+              ((crimson-guard-lod0-mg (meters 20)) (crimson-guard-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+(defmethod vehicle-rider-method-33 crimson-guard-rider ((obj crimson-guard-rider))
+  ((the-as (function vehicle-rider none) (find-parent-method crimson-guard-rider 33)) obj)
+  (setup-masks (-> obj draw) 0 28)
+  (setup-masks (-> obj draw) 3 0)
+  (if (logtest? (-> obj flags) 4)
+      (set! (-> obj riding-anim) 36)
+      (set! (-> obj riding-anim) 35)
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-32 crimson-guard-rider ((obj crimson-guard-rider) (arg0 traffic-object-spawn-params))
+  (initialize-skeleton
+    obj
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-crimson-guard-rider" (the-as (pointer uint32) #f))
+      )
+    (the-as pair 0)
+    )
+  (logior! (-> obj flags) 9)
+  (set! (-> obj draw lod-set lod 0 dist) 122880.0)
+  (set! (-> obj draw lod-set lod 1 dist) 286720.0)
+  (vehicle-rider-method-33 obj)
+  0
+  (none)
+  )

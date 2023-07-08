@@ -1,0 +1,809 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: race-obs.gc
+;; name in dgo: race-obs
+;; dgos: STD, STC, LERLCHAL, STB, LPRTRACE
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-race-signal race-start-light race-start-light-lod0-jg race-start-light-idle-ja
+              ((race-start-light-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-race-signal-banner race-start-light-banner race-start-light-banner-lod0-jg race-start-light-banner-idle-ja
+              ((race-start-light-banner-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -5 0 4)
+              )
+
+(deftype race-signal-banner (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defstate idle (race-signal-banner)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior race-signal-banner) ja-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior race-signal-banner-init-by-other race-signal-banner ((arg0 vector) (arg1 quaternion))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+  (set! (-> self level) (level-get *level* 'lracelit))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-race-signal-banner" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self draw shadow-mask) (the-as uint 30))
+  (set! (-> self draw shadow-values) (the-as uint #x22220))
+  (go-virtual idle)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs race-signal-banner.
+(defbehavior race-signal-banner-spawn race-signal-banner ((arg0 process) (arg1 vector) (arg2 quaternion))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn race-signal-banner arg1 arg2 :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as race-signal-banner gp-0)
+    )
+  )
+
+(deftype race-signal (process-drawable)
+  ((pos           vector      :inline :offset-assert 208)
+   (y-offset      float               :offset-assert 224)
+   (dest-y-offset float               :offset-assert 228)
+   (bob-time      time-frame          :offset-assert 232)
+   (start-time    time-frame          :offset-assert 240)
+   (banner        handle              :offset-assert 248)
+   (curve         cubic-curve :inline :offset-assert 256)
+   )
+  :heap-base #xc0
+  :method-count-assert 30
+  :size-assert         #x140
+  :flag-assert         #x1e00c00140
+  (:methods
+    (spawn-banner () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (count-3 () _type_ :state 22)
+    (count-2 () _type_ :state 23)
+    (count-1 () _type_ :state 24)
+    (count-go () _type_ :state 25)
+    (die () _type_ :state 26)
+    (test () _type_ :state 27)
+    (race-signal-method-28 (_type_) none 28)
+    (race-signal-method-29 (_type_) none 29)
+    )
+  )
+
+
+(defmethod race-signal-method-29 race-signal ((obj race-signal))
+  (with-pp
+    (+! (-> obj y-offset)
+        (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (-> pp clock seconds-per-frame))))
+        )
+    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
+      (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
+      (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
+      )
+    (let ((v1-15 (handle->process (-> obj banner))))
+      (when v1-15
+        (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
+        (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
+        )
+      )
+    (ja-post)
+    0
+    (none)
+    )
+  )
+
+(defbehavior race-signal-event-handler race-signal ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (format #t "race-signal: got event ~s from ~s~%" arg2 arg0)
+  (cond
+    ((= arg2 'ready)
+     (set! (-> self dest-y-offset) 0.0)
+     )
+    ((= arg2 'count-3)
+     (go-virtual count-3)
+     )
+    ((= arg2 'count-2)
+     (go-virtual count-2)
+     )
+    ((= arg2 'count-1)
+     (go-virtual count-1)
+     )
+    ((= arg2 'count-go)
+     (go-virtual count-go)
+     )
+    ((= arg2 'die)
+     (go-virtual die)
+     )
+    )
+  )
+
+(defstate spawn-banner (race-signal)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self banner)
+          (process->handle (race-signal-banner-spawn self (-> self root trans) (-> self root quat)))
+          )
+    (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
+    (go-virtual idle)
+    (none)
+    )
+  )
+
+(defstate idle (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (the-as (function none :behavior race-signal) sleep-code)
+  :post (behavior ()
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+(defstate count-3 (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (behavior ()
+    (sound-play "red-light")
+    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 194) 1500 #f #f self 5 :to self)
+    (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 2.0 0)) :frame-num (ja-aframe 0.0 0))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 2.0 0)))
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+(defstate count-2 (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (behavior ()
+    (sound-play "red-light")
+    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 195) 1500 #f #f self 7 :to self)
+    (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 2.0 0))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 4.0 0)))
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+(defstate count-1 (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (behavior ()
+    (sound-play "red-light")
+    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 196) 1500 #f #f self 9 :to self)
+    (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 4.0 0))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 6.0 0)))
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+(defstate count-go (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (behavior ()
+    (sound-play "green-light")
+    (process-spawn
+      part-tracker
+      :init part-tracker-init
+      (-> *part-group-id-table* 197)
+      1500
+      #f
+      #f
+      self
+      10
+      :to self
+      )
+    (let ((v1-8 (new 'stack-no-clear 'matrix)))
+      (vector-reset! (-> v1-8 vector 2))
+      (vector-reset! (-> v1-8 trans))
+      (set! (-> v1-8 trans y) 204800.0)
+      (set! (-> v1-8 vector 0 quad) (-> self pos quad))
+      (set! (-> v1-8 vector 1 quad) (-> self pos quad))
+      (+! (-> v1-8 vector 1 y) 204800.0)
+      (cubic-curve-method-9
+        (-> self curve)
+        (the-as vector (-> v1-8 vector))
+        (-> v1-8 vector 2)
+        (-> v1-8 vector 1)
+        (-> v1-8 trans)
+        )
+      )
+    (set! (-> self start-time) (current-time))
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> self start-time))))))
+      (cubic-curve-method-10 (-> self curve) (-> self pos) f30-0)
+      (if (< 1.0 f30-0)
+          (go-virtual die)
+          )
+      )
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+(defstate die (race-signal)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+(defstate test (race-signal)
+  :virtual #t
+  :event race-signal-event-handler
+  :code (behavior ()
+    (until #f
+      (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
+      (let ((gp-1 (current-time)))
+        (until (>= (- (current-time) gp-1) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 2.0 0)) :frame-num (ja-aframe 0.0 0))
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 2.0 0)))
+        )
+      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 196) 600 #f #f self 5 :to self)
+      (let ((gp-5 (current-time)))
+        (until (>= (- (current-time) gp-5) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 2.0 0))
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 4.0 0)))
+        )
+      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 195) 300 #f #f self 7 :to self)
+      (let ((gp-9 (current-time)))
+        (until (>= (- (current-time) gp-9) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 4.0 0))
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 6.0 0)))
+        )
+      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 194) 300 #f #f self 9 :to self)
+      (let ((gp-13 (current-time)))
+        (until (>= (- (current-time) gp-13) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 197) 300 #f #f self 10 :to self)
+      (let ((gp-15 (current-time)))
+        (until (>= (- (current-time) gp-15) (seconds 0.5))
+          (suspend)
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (race-signal-method-29 self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior race-signal-init-by-other race-signal ((arg0 vector) (arg1 quaternion))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self pos quad) (-> arg0 quad))
+  (set! (-> self y-offset) 204800.0)
+  (set! (-> self dest-y-offset) 0.0)
+  (set! (-> self root trans quad) (-> self pos quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+  (set! (-> self level) (level-get *level* 'lracelit))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-race-signal" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self bob-time) (current-time))
+  (set! (-> self banner) (the-as handle #f))
+  (set! (-> self draw shadow-mask) (the-as uint 30))
+  (set! (-> self draw shadow-values) (the-as uint #x22220))
+  (go-virtual spawn-banner)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs race-signal.
+(defbehavior race-signal-spawn race-signal ((arg0 process) (arg1 vector) (arg2 quaternion))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn race-signal arg1 arg2 :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as race-signal gp-0)
+    )
+  )
+
+(deftype stadium-racer (vehicle-rider)
+  ((rider-type uint8  :offset-assert 221)
+   )
+  :heap-base #x60
+  :method-count-assert 36
+  :size-assert         #xde
+  :flag-assert         #x24006000de
+  )
+
+
+(defskelgroup skel-stadium-racer stadium-racer stadium-racer-lod0-jg stadium-racer-idle-ja
+              ((stadium-racer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 3)
+              )
+
+(defmethod vehicle-rider-method-33 stadium-racer ((obj stadium-racer))
+  (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
+    (t9-0 obj)
+    )
+  (setup-masks (-> obj draw) 0 -1)
+  (let ((s4-0 0)
+        (s5-0 0)
+        )
+    (case (-> obj rider-type)
+      ((3)
+       (set! s4-0 0)
+       (set! s5-0 0)
+       )
+      ((4)
+       (set! s4-0 1)
+       (set! s5-0 1)
+       )
+      ((5)
+       (set! s4-0 2)
+       (set! s5-0 2)
+       )
+      ((6)
+       (set! s4-0 0)
+       (set! s5-0 1)
+       )
+      ((7)
+       (set! s4-0 0)
+       (set! s5-0 2)
+       )
+      ((8)
+       (set! s4-0 1)
+       (set! s5-0 0)
+       )
+      ((9)
+       (set! s4-0 1)
+       (set! s5-0 2)
+       )
+      ((10)
+       (set! s4-0 2)
+       (set! s5-0 0)
+       )
+      ((11)
+       (set! s4-0 2)
+       (set! s5-0 1)
+       )
+      )
+    (let ((v1-14 s4-0))
+      (cond
+        ((zero? v1-14)
+         (setup-masks (-> obj draw) 32 0)
+         )
+        ((= v1-14 1)
+         (setup-masks (-> obj draw) 4096 0)
+         )
+        ((= v1-14 2)
+         (setup-masks (-> obj draw) #x40000 0)
+         )
+        )
+      )
+    (let ((v1-22 s4-0))
+      (cond
+        ((zero? v1-22)
+         (setup-masks (-> obj draw) 128 0)
+         )
+        ((= v1-22 1)
+         (setup-masks (-> obj draw) #x4000 0)
+         )
+        ((= v1-22 2)
+         (setup-masks (-> obj draw) #x80000 0)
+         )
+        )
+      )
+    (let ((v1-30 s4-0))
+      (cond
+        ((zero? v1-30)
+         (setup-masks (-> obj draw) 512 0)
+         )
+        ((= v1-30 1)
+         (setup-masks (-> obj draw) #x8000 0)
+         )
+        ((= v1-30 2)
+         (setup-masks (-> obj draw) #x100000 0)
+         )
+        )
+      )
+    (cond
+      ((zero? s4-0)
+       (setup-masks (-> obj draw) 2048 0)
+       )
+      ((= s4-0 1)
+       (setup-masks (-> obj draw) #x20000 0)
+       )
+      ((= s4-0 2)
+       (setup-masks (-> obj draw) #x400000 0)
+       )
+      )
+    (let ((v1-49 s5-0))
+      (cond
+        ((zero? v1-49)
+         (setup-masks (-> obj draw) 1024 0)
+         )
+        ((= v1-49 1)
+         (setup-masks (-> obj draw) #x10000 0)
+         )
+        ((= v1-49 2)
+         (setup-masks (-> obj draw) #x200000 0)
+         )
+        )
+      )
+    (let ((v1-58 (min 1 s5-0)))
+      (cond
+        ((zero? v1-58)
+         (setup-masks (-> obj draw) 64 0)
+         )
+        ((= v1-58 1)
+         (setup-masks (-> obj draw) 8192 0)
+         )
+        )
+      )
+    (if (not (logtest? s5-0 1))
+        (setup-masks (-> obj draw) 256 0)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod initialize-collision stadium-racer ((obj stadium-racer))
+  (set! (-> obj level) (level-get *level* 'lracelit))
+  (stack-size-set! (-> obj main-thread) 256)
+  (when (not (-> obj level))
+    (format 0 "stadium-racer::initialize-collision: ERROR, no lracelit level~%")
+    (go process-drawable-art-error "no lracelit level")
+    )
+  (set! (-> obj root) (the-as collide-shape (new 'process 'trsqv)))
+  0
+  (none)
+  )
+
+(defmethod vehicle-rider-method-32 stadium-racer ((obj stadium-racer) (arg0 traffic-object-spawn-params))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stadium-racer" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj flags) 1)
+  (set! (-> obj draw lod-set lod 0 dist) 286720.0)
+  (set! (-> obj rider-type) (-> arg0 user-data))
+  (vehicle-rider-method-33 obj)
+  (if (logtest? (-> obj flags) 4)
+      (set! (-> obj riding-anim) 5)
+      (set! (-> obj riding-anim) 4)
+      )
+  0
+  (none)
+  )
+
+(defstate taunt (stadium-racer)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior stadium-racer)
+    vehicle-rider-event-handler
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (cond
+      ((zero? (rand-vu-int-count 2))
+       (ja-no-eval :group! (-> self draw art-group data 6)
+                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
+                   :frame-num 0.0
+                   )
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 7)
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (go-virtual active)
+    (none)
+    )
+  :post (behavior ()
+    (ja-post)
+    (none)
+    )
+  )
+
+(deftype errol-rider (stadium-racer)
+  ()
+  :heap-base #x60
+  :method-count-assert 36
+  :size-assert         #xde
+  :flag-assert         #x24006000de
+  )
+
+
+(defstate taunt (errol-rider)
+  :virtual #t
+  :enter (behavior ()
+    (format #t "errol-rider::taunt race-errol-pass~%")
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-53))
+    (none)
+    )
+  )
+
+(defstate got-passed (errol-rider)
+  :virtual #t
+  :enter (behavior ()
+    (format #t "errol-rider::got-passed~%")
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-54))
+    (none)
+    )
+  )
+
+(defmethod vehicle-rider-method-33 errol-rider ((obj errol-rider))
+  (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
+    (t9-0 obj)
+    )
+  (setup-masks (-> obj draw) 0 -1)
+  (setup-masks (-> obj draw) 2 0)
+  (setup-masks (-> obj draw) 4 0)
+  (setup-masks (-> obj draw) 8 0)
+  (setup-masks (-> obj draw) 16 0)
+  0
+  (none)
+  )
+
+(deftype turbo-pickup (process-drawable)
+  ((root      collide-shape-moving  :override)
+   (available symbol                :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xcc
+  :flag-assert         #x17005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (find-ground (_type_) symbol 22)
+    )
+  )
+
+
+(defmethod find-ground turbo-pickup ((obj turbo-pickup))
+  (let ((s4-0 #f))
+    (let ((gp-0 (new 'stack-no-clear 'do-push-aways-work)))
+      (set! (-> gp-0 push-vel quad) (-> obj root trans quad))
+      (set! (-> gp-0 cquery start-pos quad) (-> gp-0 push-vel quad))
+      (vector-reset! (-> gp-0 vec33))
+      (set! (-> gp-0 vec33 y) 1.0)
+      (set-vector! (-> gp-0 cquery move-dist) 0.0 -40960.0 0.0 1.0)
+      (let ((v1-5 (-> gp-0 cquery)))
+        (set! (-> v1-5 radius) 1024.0)
+        (set! (-> v1-5 collide-with) (collide-spec backgnd))
+        (set! (-> v1-5 ignore-process0) #f)
+        (set! (-> v1-5 ignore-process1) #f)
+        (set! (-> v1-5 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> v1-5 action-mask) (collide-action solid))
+        )
+      (let ((f0-6 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 cquery))))
+        (when (>= f0-6 0.0)
+          (vector+float*! (-> gp-0 push-vel) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f0-6)
+          (set! (-> gp-0 vec33 quad) (-> gp-0 cquery best-other-tri normal quad))
+          (+! (-> gp-0 push-vel y) 4915.2)
+          (set! s4-0 #t)
+          (format #t "turbo-pickup::find-ground: ground y ~M~%" (-> gp-0 push-vel y))
+          )
+        )
+      (set! (-> obj root trans quad) (-> gp-0 push-vel quad))
+      (forward-up-nopitch->quaternion (-> obj root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> gp-0 vec33))
+      )
+    s4-0
+    )
+  )
+
+(defstate idle (turbo-pickup)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touched)
+       (when (-> self available)
+         (when (send-event proc 'turbo-pickup)
+           (set! (-> self available) #f)
+           (go-virtual die)
+           )
+         )
+       )
+      )
+    )
+  :code (the-as (function none :behavior turbo-pickup) sleep-code)
+  :post (behavior ()
+    (spawn (-> self part) (-> self root trans))
+    0
+    (none)
+    )
+  )
+
+(defstate die (turbo-pickup)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self state-time) (current-time))
+    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-0
+        (let ((t9-1 (method-of-type part-tracker activate)))
+          (t9-1
+            (the-as part-tracker gp-0)
+            *entity-pool*
+            (symbol->string (-> part-tracker symbol))
+            (the-as pointer #x70004000)
+            )
+          )
+        (let ((t9-2 run-function-in-process)
+              (a0-2 gp-0)
+              (a1-2 part-tracker-init)
+              (a2-4 (-> *part-group-id-table* 199))
+              (a3-1 0)
+              (t0-0 #f)
+              (t1-0 #f)
+              (t2-0 #f)
+              (t3-0 *launch-matrix*)
+              )
+          (set! (-> t3-0 trans quad) (-> self root trans quad))
+          ((the-as (function object object object object object object object object none) t9-2)
+           a0-2
+           a1-2
+           a2-4
+           a3-1
+           t0-0
+           t1-0
+           t2-0
+           t3-0
+           )
+          )
+        (-> gp-0 ppointer)
+        )
+      )
+    (let ((v1-11 (-> self root root-prim)))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec))
+      )
+    0
+    (until (>= (- (current-time) (-> self state-time)) (seconds 2))
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior turbo-pickup-init-by-other turbo-pickup ((arg0 vector))
+  (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrate-using) (the-as penetrate -1))
+    (set! (-> s5-0 penetrated-by) (the-as penetrate -1))
+    (let ((v1-4 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-4 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-4 prim-core collide-with) (collide-spec vehicle-sphere hit-by-others-list))
+      (set-vector! (-> v1-4 local-sphere) 0.0 0.0 0.0 12288.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-4)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-7 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-7 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-7 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> self root) (the-as collide-shape-moving s5-0))
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (update-transforms (-> self root))
+  (set! (-> self available) #t)
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
+  (go-virtual idle)
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs turbo-pickup.
+(defbehavior turbo-pickup-spawn turbo-pickup ((arg0 process) (arg1 vector))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn turbo-pickup arg1 :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as turbo-pickup gp-0)
+    )
+  )

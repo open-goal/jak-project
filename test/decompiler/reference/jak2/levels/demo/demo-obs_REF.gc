@@ -518,13 +518,21 @@
   (sound-play "dmenu-hit")
   (let ((gp-1 (cond
                 ((= *kernel-boot-message* 'demo-shared)
-                 (new 'static 'boxed-array :type uint32 #x24f #x250 #x123)
+                 (new 'static 'boxed-array :type text-id
+                   (text-id atoll-unknown)
+                   (text-id strip-unknown)
+                   (text-id progress-demo-exit)
+                   )
                  )
                 ((= (scf-get-territory) 1)
-                 (new 'static 'boxed-array :type uint32 #x24f #x250)
+                 (new 'static 'boxed-array :type text-id (text-id atoll-unknown) (text-id strip-unknown))
                  )
                 (else
-                  (new 'static 'boxed-array :type uint32 #x24f #x250 #x251)
+                  (new 'static 'boxed-array :type text-id
+                    (text-id atoll-unknown)
+                    (text-id strip-unknown)
+                    (text-id watch-trailer)
+                    )
                   )
                 )
               )
@@ -532,19 +540,15 @@
     (until #f
       (when (not (paused?))
         (cond
-          ((and (logtest? (pad-buttons up l-analog-down) (-> *cpad-list* cpads 0 button0-rel 0))
-                (> (-> self selected) 0)
-                )
+          ((and (cpad-pressed? 0 up l-analog-up) (> (-> self selected) 0))
            (seekl! (-> self selected) 0 1)
            (sound-play "dmenu-move")
            )
-          ((and (logtest? (pad-buttons down l-analog-up) (-> *cpad-list* cpads 0 button0-rel 0))
-                (< (-> self selected) (+ (-> gp-1 length) -1))
-                )
+          ((and (cpad-pressed? 0 down l-analog-down) (< (-> self selected) (+ (-> gp-1 length) -1)))
            (seekl! (-> self selected) (+ (-> gp-1 length) -1) 1)
            (sound-play "dmenu-move")
            )
-          ((logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
+          ((cpad-pressed? 0 confirm)
            (sound-play "dmenu-pick")
            (return (the-as object (-> self selected)))
            )
@@ -565,14 +569,8 @@
               (set! (-> sv-112 color) (font-color progress-old-selected))
               (set! (-> sv-112 color) (font-color white))
               )
-          (print-game-text
-            (lookup-text! *common-text* (the-as text-id (-> gp-1 s5-4)) #f)
-            sv-112
-            #f
-            44
-            (bucket-id progress)
-            )
-          (set! (-> sv-112 origin y) (+ 22.0 (-> sv-112 origin y)))
+          (print-game-text (lookup-text! *common-text* (-> gp-1 s5-4) #f) sv-112 #f 44 (bucket-id progress))
+          (+! (-> sv-112 origin y) 22.0)
           )
         )
       (suspend)
