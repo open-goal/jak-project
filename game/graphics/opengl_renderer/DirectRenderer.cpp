@@ -265,7 +265,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     // This is the usual atest with FB_ONLY issue.
     // we should check what pcsx2 does
     int n_batch = m_prim_buffer.vert_count;
-    if (n_batch > 300 && n_batch < 700 && (n_batch % 2) == 0) {
+    if (n_batch > 50 && n_batch < 700 && (n_batch % 2) == 0) {
       n_batch = n_batch / 2;
     } else {
       // printf("not splitting batch %d\n", n_batch);
