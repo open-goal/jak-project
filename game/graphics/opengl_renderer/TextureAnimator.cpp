@@ -6,6 +6,9 @@
 
 #include "game/graphics/texture/TexturePool.h"
 
+#define dprintf(...) printf(__VA_ARGS__)
+#define dfmt(...) fmt::print(__VA_ARGS__)
+
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
@@ -64,10 +67,13 @@ enum PcTextureAnimCodes {
 
 struct TextureAnimPcUpload {
   u32 data;
-  u32 width;
-  u32 height;
+  u16 width;
+  u16 height;
   u32 dest;
+  u8 format;
+  u8 pad[3];
 };
+static_assert(sizeof(TextureAnimPcUpload) == 16);
 
 struct TextureAnimPcTransform {
   u32 src_tbp;
@@ -79,7 +85,7 @@ struct TextureAnimPcTransform {
 void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
                                                const u8* ee_mem,
                                                TexturePool* texture_pool) {
-  printf("animator\n");
+  dprintf("animator\n");
   m_current_shader = {};
   glBindVertexArray(m_vao);
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
@@ -125,8 +131,9 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           ASSERT_NOT_REACHED();
       }
     } else {
-      // printf("[tex anim] unhandled\n");
-      // ASSERT_NOT_REACHED();
+      dprintf("[tex anim] unhandled VIF in main loop\n");
+      fmt::print("{} {}\n", vif0.print(), tf.vifcode1().print());
+      ASSERT_NOT_REACHED();
     }
   }
 
@@ -143,19 +150,16 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
       in.id = texture_pool->allocate_pc_port_texture(GameVersion::Jak2);
       entry.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
       entry.needs_pool_creation = false;
-      // printf("creat texture %d\n", tbp);
+      dprintf("create texture %d\n", tbp);
     } else if (entry.needs_pool_update) {
-      // TODO: this funciton is definitely wrong.
       texture_pool->update_gl_texture(entry.pool_gpu_tex, entry.tex_width, entry.tex_height,
                                       entry.tex.value().texture());
-      //      texture_pool->update_gl_texture_by_tbp(tbp, entry.tex_width, entry.tex_height,
-      //                                             entry.tex.value().texture());
       texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
       entry.needs_pool_update = false;
-      // printf("update texture %d\n", tbp);
+      dprintf("update texture %d\n", tbp);
     } else {
       texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
-      // printf("no change %d\n", tbp);
+      dprintf("no change %d\n", tbp);
     }
   }
 
@@ -176,10 +180,10 @@ void debug_save_opengl_texture(const std::string& out, GLuint texture) {
 }
 
 void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
-  // printf("[tex anim] rg -> ba\n");
+  dprintf("[tex anim] rg -> ba\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
-  // printf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
+  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
   const auto& src = m_dest_textures.find(data->src_tbp);
   const auto& dst = m_dest_textures.find(data->dst_tbp);
   if (src != m_dest_textures.end() && dst != m_dest_textures.end()) {
@@ -228,36 +232,51 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
 }
 
 void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem) {
-  // printf("[tex anim] upload clut 16 16\n");
+  dprintf("[tex anim] upload clut 16 16\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
   ASSERT(upload->width == 16);
   ASSERT(upload->height == 16);
-  // printf("  dest is 0x%x\n", upload->dest);
+  dprintf("  dest is 0x%x\n", upload->dest);
   auto& vram = m_vram_entries[upload->dest];
-  vram.kind = VramEntry::Kind::CLUT16_16;
-  vram.data_psm32.resize(16 * 16 * 4);
+  vram.kind = VramEntry::Kind::CLUT16_16_IN_PSM32;
+  vram.data.resize(16 * 16 * 4);
   vram.width = upload->width;
   vram.height = upload->height;
-  memcpy(vram.data_psm32.data(), ee_mem + upload->data, vram.data_psm32.size());
+  memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
 }
 
 void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem) {
-  // printf("[tex anim] upload generic @ 0x%lx\n", tf.data - ee_mem);
+  dprintf("[tex anim] upload generic @ 0x%lx\n", tf.data - ee_mem);
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
-  // printf(" size %d x %d\n", upload->width, upload->height);
-  // printf(" dest is 0x%x\n", upload->dest);
+  dprintf(" size %d x %d\n", upload->width, upload->height);
+  dprintf(" dest is 0x%x\n", upload->dest);
   auto& vram = m_vram_entries[upload->dest];
-  vram.kind = VramEntry::Kind::GENERIC_PSM32;
-  vram.data_psm32.resize(upload->width * upload->height * 4);
-  vram.width = upload->width;
-  vram.height = upload->height;
-  memcpy(vram.data_psm32.data(), ee_mem + upload->data, vram.data_psm32.size());
+
+  switch (upload->format) {
+    case (int)GsTex0::PSM::PSMCT32:
+      vram.kind = VramEntry::Kind::GENERIC_PSM32;
+      vram.data.resize(upload->width * upload->height * 4);
+      vram.width = upload->width;
+      vram.height = upload->height;
+      memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+      break;
+    case (int)GsTex0::PSM::PSMT8:
+      vram.kind = VramEntry::Kind::GENERIC_PSMT8;
+      vram.data.resize(upload->width * upload->height);
+      vram.width = upload->width;
+      vram.height = upload->height;
+      memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+      break;
+    default:
+      fmt::print("Unhandled format: {}\n", upload->format);
+      ASSERT_NOT_REACHED();
+  }
 }
 
 void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
-  // printf("[tex anim] erase destination texture\n");
+  printf("[tex anim] erase destination texture\n");
   // auto& out = m_new_dest_textures.emplace_back();
   DestinationTextureEntry* entry = nullptr;
 
@@ -269,32 +288,32 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     ASSERT(ad_transfer.vifcode1().kind == VifCode::Kind::DIRECT);
     const u64* ad_data = (const u64*)(ad_transfer.data + 16);
 
-    // for (int i = 0; i < 9; i++) {
-    // printf(" ad: 0x%lx 0x%lx\n", ad_data[i * 2], ad_data[i * 2 + 1]);
-    // }
+    for (int i = 0; i < 9; i++) {
+      dprintf(" ad: 0x%lx 0x%lx\n", ad_data[i * 2], ad_data[i * 2 + 1]);
+    }
     // 0 (scissor-1 (new 'static 'gs-scissor :scax1 (+ tex-width -1) :scay1 (+ tex-height -1)))
     ASSERT(ad_data[0 * 2 + 1] == (int)GsRegisterAddress::SCISSOR_1);
     GsScissor scissor(ad_data[0]);
     int tex_width = scissor.x1() + 1;
     int tex_height = scissor.y1() + 1;
-    // printf(" size: %d x %d\n", tex_width, tex_height);
+    dprintf(" size: %d x %d\n", tex_width, tex_height);
 
     // 1 (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x8000 :ofy #x8000))
     // 2 (frame-1 (new 'static 'gs-frame :fbw (/ (+ tex-width 63) 64) :fbp fbp-for-tex))
     ASSERT(ad_data[2 * 2 + 1] == (int)GsRegisterAddress::FRAME_1);
     GsFrame frame(ad_data[2 * 2]);
     int dest_texture_address = 32 * frame.fbp();
-    // printf(" dest: 0x%x\n", dest_texture_address);
+    dprintf(" dest: 0x%x\n", dest_texture_address);
 
     // 3 (test-1 (-> anim test))
     ASSERT(ad_data[2 * 3 + 1] == (int)GsRegisterAddress::TEST_1);
     m_current_shader.test = GsTest(ad_data[3 * 2]);
-    // fmt::print(" test: {}", m_current_shader.test.print());
+    dfmt(" test: {}", m_current_shader.test.print());
 
     // 4 (alpha-1 (-> anim alpha))
     ASSERT(ad_data[2 * 4 + 1] == (int)GsRegisterAddress::ALPHA_1);
     m_current_shader.alpha = GsAlpha(ad_data[4 * 2]);
-    // fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
+    dfmt(" alpha: {}\n", m_current_shader.alpha.print());
 
     // 5 (clamp-1 (-> anim clamp))
     ASSERT(ad_data[2 * 5 + 1] == (int)GsRegisterAddress::CLAMP_1);
@@ -303,7 +322,7 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     m_current_shader.clamp_v = creg & 0b100;
     u64 mask = ~0b101;
     ASSERT((creg & mask) == 0);
-    // fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
+    dfmt(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
 
     // 6 (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
     // 7 (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
@@ -316,11 +335,11 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     if (existing_opengl) {
       if (existing_dest->second.tex_height != tex_height ||
           existing_dest->second.tex_width != tex_width) {
-        // printf(" can't reuse, size mismatch\n");
+        dprintf(" can't reuse, size mismatch\n");
         can_reuse = false;
       }
     } else {
-      // printf(" can't reuse, first time using this address\n");
+      dprintf(" can't reuse, first time using this address\n");
       can_reuse = false;
     }
 
@@ -350,7 +369,7 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     math::Vector<u32, 4> rgba_u32;
     memcpy(rgba_u32.data(), clear_transfer.data + 16, 16);
     entry->rgba_clear = rgba_u32.cast<u8>();
-    // fmt::print(" clear: {}\n", entry->rgba_clear.to_string_hex_byte());
+    dfmt(" clear: {}\n", entry->rgba_clear.to_string_hex_byte());
   }
 
   // create the opengl output texture.
@@ -378,7 +397,7 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
 }
 
 void TextureAnimator::handle_set_shader(DmaFollower& dma) {
-  // printf("[tex anim] set shader\n");
+  dprintf("[tex anim] set shader\n");
   auto ad_transfer = dma.read_and_advance();
   const int num_regs = (ad_transfer.size_bytes - 16) / 16;
   ASSERT(ad_transfer.vifcode0().kind == VifCode::Kind::NOP ||
@@ -394,29 +413,28 @@ void TextureAnimator::handle_set_shader(DmaFollower& dma) {
       case GsRegisterAddress::TEX0_1:
         m_current_shader.tex0 = GsTex0(data);
         m_current_shader.source_texture_set = true;
-
-        // fmt::print(" tex0: {}", m_current_shader.tex0.print());
+        dfmt(" tex0: {}", m_current_shader.tex0.print());
         break;
       case GsRegisterAddress::TEX1_1:
         m_current_shader.tex1 = GsTex1(data);
-        // fmt::print(" tex1: {}", m_current_shader.tex1.print());
+        dfmt(" tex1: {}", m_current_shader.tex1.print());
         break;
       case GsRegisterAddress::TEST_1:
         m_current_shader.test = GsTest(data);
-        // fmt::print(" test: {}", m_current_shader.test.print());
+        dfmt(" test: {}", m_current_shader.test.print());
         break;
       case GsRegisterAddress::ALPHA_1:
         m_current_shader.alpha = GsAlpha(data);
-        // fmt::print(" alpha: {}\n", m_current_shader.alpha.print());
+        dfmt(" alpha: {}\n", m_current_shader.alpha.print());
         break;
       case GsRegisterAddress::CLAMP_1:
         m_current_shader.clamp_u = data & 0b001;
         m_current_shader.clamp_v = data & 0b100;
         ASSERT((data & (~(u64(0b101)))) == 0);
-        // fmt::print(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
+        dfmt(" clamp: {} {}\n", m_current_shader.clamp_u, m_current_shader.clamp_v);
         break;
       default:
-        // fmt::print("unknown reg {}\n", addr);
+        dfmt("unknown reg {}\n", addr);
         ASSERT_NOT_REACHED();
     }
   }
@@ -425,7 +443,7 @@ void TextureAnimator::handle_set_shader(DmaFollower& dma) {
 void TextureAnimator::handle_draw(DmaFollower& dma) {
   // NOTE: assuming ABE set from the template here. If this function is used for other templates,
   // we'll need to actually check.
-  // printf("[tex anim] Draw\n");
+  dprintf("[tex anim] Draw\n");
   DrawData draw_data;
   auto draw_xfer = dma.read_and_advance();
   ASSERT(draw_xfer.size_bytes == sizeof(DrawData));
@@ -449,6 +467,20 @@ void TextureAnimator::handle_draw(DmaFollower& dma) {
   }
 }
 
+const u32* TextureAnimator::get_current_clut_16_16_psm32() {
+  const auto& clut_lookup = m_vram_entries.find(m_current_shader.tex0.cbp());
+  if (clut_lookup == m_vram_entries.end()) {
+    printf("set shader referenced an unknown clut texture in %d\n", m_current_shader.tex0.cbp());
+    ASSERT_NOT_REACHED();
+  }
+
+  if (clut_lookup->second.kind != VramEntry::Kind::CLUT16_16_IN_PSM32) {
+    ASSERT_NOT_REACHED();
+  }
+
+  return (const u32*)clut_lookup->second.data.data();
+}
+
 void TextureAnimator::load_clut_to_converter() {
   const auto& clut_lookup = m_vram_entries.find(m_current_shader.tex0.cbp());
   if (clut_lookup == m_vram_entries.end()) {
@@ -457,9 +489,9 @@ void TextureAnimator::load_clut_to_converter() {
   }
 
   switch (clut_lookup->second.kind) {
-    case VramEntry::Kind::CLUT16_16:
-      m_converter.upload_width(clut_lookup->second.data_psm32.data(), m_current_shader.tex0.cbp(),
-                               16, 16);
+    case VramEntry::Kind::CLUT16_16_IN_PSM32:
+      m_converter.upload_width(clut_lookup->second.data.data(), m_current_shader.tex0.cbp(), 16,
+                               16);
       break;
     default:
       printf("unhandled clut source kind: %d\n", (int)clut_lookup->second.kind);
@@ -508,7 +540,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
           ASSERT(h == vram_entry->height * 2);
 
           Timer timer;
-          m_converter.upload_width(vram_entry->data_psm32.data(), m_current_shader.tex0.tbp0(),
+          m_converter.upload_width(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
                                    vram_entry->width, vram_entry->height);
 
           // also needs clut lookup
@@ -522,7 +554,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
             //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
             //              m_current_shader.tex0.tw(),
             //                                        1 << m_current_shader.tex0.th());
-            // printf("processing %d x %d took %.3f ms\n", w, h, timer.getMs());
+            dprintf("processing %d x %d took %.3f ms\n", w, h, timer.getMs());
             return make_temp_gpu_texture(rgba_data.data(), w, h);
           }
 
@@ -533,8 +565,27 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
           ASSERT_NOT_REACHED();
       }
       break;
-    case VramEntry::Kind::CLUT16_16:
+    case VramEntry::Kind::CLUT16_16_IN_PSM32:
       ASSERT_NOT_REACHED();
+    case VramEntry::Kind::GENERIC_PSMT8: {
+      fmt::print("drawing: {}\n", (int)m_current_shader.tex0.psm());
+      ASSERT(m_current_shader.tex0.psm() == GsTex0::PSM::PSMT8);
+      ASSERT(m_current_shader.tex0.cpsm() == 0);  // psm32.
+      int tw = 1 << m_current_shader.tex0.tw();
+      int th = 1 << m_current_shader.tex0.th();
+      ASSERT(tw == vram_entry->width);
+      ASSERT(th == vram_entry->height);
+      std::vector<u32> rgba_data(tw * th);
+      const u32* clut = get_current_clut_16_16_psm32();
+      for (int r = 0; r < th; r++) {
+        for (int c = 0; c < tw; c++) {
+          rgba_data[c + r * tw] = clut[vram_entry->data[c + r * tw]];
+        }
+      }
+      return make_temp_gpu_texture(rgba_data.data(), tw, th);
+    }
+
+    break;
     default:
       ASSERT_NOT_REACHED();
   }

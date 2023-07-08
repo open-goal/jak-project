@@ -14,9 +14,9 @@
 #include "game/graphics/texture/TextureConverter.h"
 
 struct VramEntry {
-  enum class Kind { CLUT16_16, GENERIC_PSM32 } kind;
+  enum class Kind { CLUT16_16_IN_PSM32, GENERIC_PSM32, GENERIC_PSMT8 } kind;
   int width, height;
-  std::vector<u8> data_psm32;
+  std::vector<u8> data;
 };
 struct GpuTexture;
 struct DestinationTextureEntry {
@@ -62,6 +62,7 @@ class TextureAnimator {
                                 bool prim_abe);
 
   void load_clut_to_converter();
+  const u32* get_current_clut_16_16_psm32();
 
   GLuint make_temp_gpu_texture(const u32* data, u32 width, u32 height);
 

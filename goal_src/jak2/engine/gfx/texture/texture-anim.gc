@@ -179,10 +179,13 @@
 
 (deftype texture-anim-pc-upload (structure)
   ((data pointer)
-   (width uint32)
-   (height uint32)
+   (width uint16)
+   (height uint16)
    (dest uint32)
+   (format gs-psm)
+   (pad uint8 3)
    )
+  :size-assert 16
   )
 
 (deftype texture-anim-pc-texture-transform (structure)
@@ -694,7 +697,7 @@
         )
 
       ;; reset GS registers - we messed with frame/scissor.
-      (reset-display-gs-state *display* dma-buf)
+      ;(reset-display-gs-state *display* dma-buf)
 
       ;; added: flag for the PC port to indicate end of texture anim data:
       (dma-buffer-add-cnt-vif2
@@ -1130,6 +1133,7 @@
       (set! (-> upload-record width) 16)
       (set! (-> upload-record height) 16)
       (set! (-> upload-record dest) (-> arg1 tex clutdest))
+      (set! (-> upload-record format) (gs-psm ct32))
       )
     (&+! (-> arg0 base) 16)
 
@@ -1282,6 +1286,7 @@
       (set! (-> upload-record width) 16)
       (set! (-> upload-record height) 16)
       (set! (-> upload-record dest) (-> arg1 tex clutdest))
+      (set! (-> upload-record format) (gs-psm ct32))
       )
     (&+! (-> arg0 base) 16)
 
