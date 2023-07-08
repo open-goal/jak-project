@@ -316,7 +316,7 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
       m_display_manager(std::make_shared<DisplayManager>(window)),
       m_input_manager(std::make_shared<InputManager>()) {
   m_main = is_main;
-
+  m_display_manager->set_input_manager(m_input_manager);
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
                                     CommandBinding(SDLK_F12, [&]() {
@@ -466,13 +466,9 @@ void GLDisplay::process_sdl_events() {
         ImGui_ImplSDL2_ProcessEvent(&evt);
       }
     }
-    ImGuiIO& io = ImGui::GetIO();
     {
-      auto p = scoped_prof("sdl-input-monitor");
-      // Ignore relevant inputs from the window if ImGUI is capturing them
-      // On the first frame, this will clear any current inputs in an attempt to reduce unexpected
-      // behaviour
-      m_input_manager->process_sdl_event(evt, io.WantCaptureMouse, io.WantCaptureKeyboard);
+      auto p = scoped_prof("sdl-input-monitor-process-event");
+      m_input_manager->process_sdl_event(evt);
     }
   }
 }
@@ -481,7 +477,27 @@ void GLDisplay::process_sdl_events() {
  * Main function called to render graphics frames. This is called in a loop.
  */
 void GLDisplay::render() {
-  // Process SDL Events
+  // Before we process the current frames SDL events we for keyboard/mouse button inputs.
+  //
+  // This technically means that keyboard/mouse button inputs will be a frame behind but the
+  // event-based code is buggy and frankly not worth stressing over.  Leaving this as a note incase
+  // someone complains. Binding handling is still taken care of by the event code though.
+  {
+    auto p = scoped_prof("sdl-input-monitor-poll-for-kb-mouse");
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) {
+      m_input_manager->clear_keyboard_actions();
+    } else {
+      m_input_manager->poll_keyboard_data();
+    }
+    if (io.WantCaptureMouse) {
+      m_input_manager->clear_mouse_actions();
+    } else {
+      m_input_manager->poll_mouse_data();
+    }
+    m_input_manager->finish_polling();
+  }
+  // Now process SDL Events
   process_sdl_events();
   // Also process any display related events received from the EE (the game)
   // this is done here so they run from the perspective of the graphics thread

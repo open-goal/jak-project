@@ -88,6 +88,14 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         // framerate we don't handle that
         update_curr_display_info();
         break;
+      case SDL_WINDOWEVENT_ENTER:
+        if (m_input_manager && m_input_manager.value()->auto_hiding_cursor()) {
+          m_input_manager.value()->hide_cursor(true);
+        }
+        break;
+      case SDL_WINDOWEVENT_LEAVE:
+        m_input_manager.value()->hide_cursor(false);
+        break;
     }
   } else if (event_type == SDL_DISPLAYEVENT) {
     // https://wiki.libsdl.org/SDL2/SDL_DisplayEventID

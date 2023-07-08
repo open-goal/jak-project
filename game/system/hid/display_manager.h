@@ -8,6 +8,7 @@
 #include <variant>
 
 #include "game/settings/settings.h"
+#include "game/system/hid/input_manager.h"
 
 #include "third-party/SDL/include/SDL.h"
 
@@ -89,9 +90,14 @@ class DisplayManager {
   void enqueue_set_window_display_mode(WindowDisplayMode mode);
   void enqueue_set_fullscreen_display_id(int display_id);
 
+  void set_input_manager(std::shared_ptr<InputManager> input_manager) {
+    m_input_manager = input_manager;
+  }
+
  private:
   SDL_Window* m_window;
   game_settings::DisplaySettings m_display_settings;
+  std::optional<std::shared_ptr<InputManager>> m_input_manager;
 
   std::mutex event_queue_mtx;
   std::queue<EEDisplayEvent> ee_event_queue;
