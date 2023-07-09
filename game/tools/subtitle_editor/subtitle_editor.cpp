@@ -288,7 +288,10 @@ void SubtitleEditor::draw_scene_node(const bool base_cutscenes,
 void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
   std::unordered_set<std::string> scenes_to_delete;
   for (auto& [scene_name, scene_info] : m_subtitle_db.m_banks.at(m_current_language)->m_scenes) {
-    if (!scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base)) {
+    if (!scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base) ||
+        (!base_cutscenes &&
+         m_subtitle_db.m_banks[m_current_language]->m_file_base_path.has_value() &&
+         scene_info.only_defined_in_base)) {
       continue;
     }
     if ((!m_filter_cutscenes.empty() && m_filter_cutscenes != m_filter_placeholder) &&
@@ -308,7 +311,10 @@ void SubtitleEditor::draw_all_cutscenes(bool base_cutscenes) {
 void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
   std::unordered_set<std::string> scenes_to_delete;
   for (auto& [scene_name, scene_info] : m_subtitle_db.m_banks.at(m_current_language)->m_scenes) {
-    if (scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base)) {
+    if (scene_info.is_cutscene || (base_cutscenes && !scene_info.only_defined_in_base) ||
+        (!base_cutscenes &&
+         m_subtitle_db.m_banks[m_current_language]->m_file_base_path.has_value() &&
+         scene_info.only_defined_in_base)) {
       continue;
     }
     if ((!m_filter_non_cutscenes.empty() && m_filter_non_cutscenes != m_filter_placeholder) &&
