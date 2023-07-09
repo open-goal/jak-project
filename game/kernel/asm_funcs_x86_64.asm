@@ -1,7 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;
-;; asm_funcs.nasm ;;
-;;;;;;;;;;;;;;;;;;;;
-
 ;; GOAL Runtime assembly functions. These exist only in the x86 version of GOAL.
 
 SECTION .text
