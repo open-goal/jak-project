@@ -777,12 +777,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
     m_subtitle_editor->draw_window();
   }
-  if (settings.draw_subtitle2_editor_window) {
-    if (m_subtitle2_editor == nullptr) {
-      m_subtitle2_editor = new Subtitle2Editor(m_version);
-    }
-    m_subtitle2_editor->draw_window();
-  }
 
   if (settings.draw_filters_window) {
     m_filters_menu.draw_window();

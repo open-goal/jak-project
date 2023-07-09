@@ -385,7 +385,6 @@ void render_game_frame(int game_width,
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
-    options.draw_subtitle2_editor_window = g_gfx_data->debug_gui.should_draw_subtitle2_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.quick_screenshot = false;
