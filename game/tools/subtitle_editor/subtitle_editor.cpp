@@ -205,6 +205,9 @@ void SubtitleEditor::draw_speaker_options() {
   if (ImGui::TreeNode("Speakers")) {
     const auto& bank = m_subtitle_db.m_banks[m_current_language];
     for (auto& [speaker_id, speaker_localized] : bank->m_speakers) {
+      if (speaker_id == "none") {
+        continue;
+      }
       // Insertion or deletion not needed here as it has to be wired up in .gc and C++ code
       // nothing would get persisted and there has to be a translation for all speakers (even if
       // it's no translation at all)
