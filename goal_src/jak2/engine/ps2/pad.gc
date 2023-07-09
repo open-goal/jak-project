@@ -38,13 +38,13 @@ The cpad-set-buzz! function can be used for vibration.
     (x        14)
     (square   15)
     ;; only 16 buttons are mapped to hardware, the rest are 'actions' or something else
-    (l-analog-down 16)
+    (l-analog-up 16)
     (l-analog-right 17)
-    (l-analog-up 18)
+    (l-analog-down 18)
     (l-analog-left 19)
-    (r-analog-down 20)
+    (r-analog-up 20)
     (r-analog-right 21)
-    (r-analog-up 22)
+    (r-analog-down 22)
     (r-analog-left 23)
     (confirm 24)
     )
@@ -284,7 +284,7 @@ The cpad-set-buzz! function can be used for vibration.
         (cpad-get-data pad)
         (adjust-to-screen-flip pad)
         (cond
-          ((zero? (logand (-> pad valid) 128))
+          ((not (logtest? (-> pad valid) 128))
            (dotimes (buzz-i 2)
              (cond
                ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time buzz-i)) (= *master-mode* 'game))
@@ -402,10 +402,10 @@ The cpad-set-buzz! function can be used for vibration.
            (let ((buttons-pushed (the-as pad-buttons (-> pad button0))))
              (cond
                ((< (-> pad lefty) (the-as uint 30))
-                (set! buttons-pushed (logior (pad-buttons l-analog-down) buttons-pushed))
+                (set! buttons-pushed (logior (pad-buttons l-analog-up) buttons-pushed))
                 )
                ((< (the-as uint 225) (-> pad lefty))
-                (set! buttons-pushed (logior (pad-buttons l-analog-up) buttons-pushed))
+                (set! buttons-pushed (logior (pad-buttons l-analog-down) buttons-pushed))
                 )
                )
              (cond
@@ -418,10 +418,10 @@ The cpad-set-buzz! function can be used for vibration.
                )
              (cond
                ((< (-> pad righty) (the-as uint 30))
-                (set! buttons-pushed (logior (pad-buttons r-analog-down) buttons-pushed))
+                (set! buttons-pushed (logior (pad-buttons r-analog-up) buttons-pushed))
                 )
                ((< (the-as uint 225) (-> pad righty))
-                (set! buttons-pushed (logior (pad-buttons r-analog-up) buttons-pushed))
+                (set! buttons-pushed (logior (pad-buttons r-analog-down) buttons-pushed))
                 )
                )
              (cond
@@ -585,6 +585,10 @@ The cpad-set-buzz! function can be used for vibration.
   )
 
 (define *mouse* (new 'global 'mouse-info))
+(#when PC_PORT
+;; added so we can hide the mouse
+(define *disable-mouse* #f)
+)
 
 ;; WARN: Return type mismatch mouse-info vs none.
 (defun service-mouse ()
@@ -619,7 +623,7 @@ The cpad-set-buzz! function can be used for vibration.
        (set! (-> gp-0 button0-rel 0) (logclear (-> gp-0 button0-abs 0) (-> gp-0 button0-abs 1)))
        )
       )
-    (if (and (-> gp-0 active) (-> gp-0 valid) (-> gp-0 cursor))
+    (if (and (-> gp-0 active) (-> gp-0 valid) (-> gp-0 cursor) (#if PC_PORT (not *disable-mouse*) #t))
         (add-debug-cursor
           #t
           (bucket-id debug-no-zbuf2)

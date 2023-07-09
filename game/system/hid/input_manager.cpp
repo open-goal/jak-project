@@ -124,6 +124,8 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   if (hide_cursor == m_mouse_currently_hidden) {
     return;
   }
+  // NOTE - seems like an SDL bug, but the cursor will be visible / locked to the center of the
+  // screen if you use the 'start menu' to exit the window / return to it (atleast in windowed mode)
   auto ok = SDL_ShowCursor(hide_cursor ? SDL_DISABLE : SDL_ENABLE);
   if (ok < 0) {
     sdl_util::log_error("Unable to show/hide mouse cursor");
@@ -132,9 +134,7 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   }
 }
 
-void InputManager::process_sdl_event(const SDL_Event& event,
-                                     const bool ignore_mouse,
-                                     const bool ignore_kb) {
+void InputManager::process_sdl_event(const SDL_Event& event) {
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
@@ -142,18 +142,11 @@ void InputManager::process_sdl_event(const SDL_Event& event,
     refresh_device_list();
   }
 
-  if (!m_ignored_device_last_frame && (ignore_mouse || ignore_kb)) {
-    clear_inputs();
-    m_ignored_device_last_frame = true;
-  } else if (m_ignored_device_last_frame && !ignore_mouse && !ignore_kb) {
-    m_ignored_device_last_frame = false;
-  }
-
   if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
     m_keyboard.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
-                             m_waiting_for_bind, ignore_kb || !m_keyboard_enabled);
+                             m_waiting_for_bind);
     m_mouse.process_event(event, m_command_binds, m_data.at(m_keyboard_and_mouse_port),
-                          m_waiting_for_bind, ignore_mouse || !m_mouse_enabled);
+                          m_waiting_for_bind);
   }
 
   // Send event to active controller device
@@ -168,15 +161,58 @@ void InputManager::process_sdl_event(const SDL_Event& event,
   // Clear the binding assignment if we got one
   if (m_waiting_for_bind && m_waiting_for_bind->assigned) {
     stop_waiting_for_bind();
+    // NOTE - this is a total hack, but it's to prevent immediately re-assigning the "confirmation"
+    // bind if you use a source that is polled
+    // TODO: There's a correct way to do this....figure it out eventually
+    m_skip_polling_for_n_frames = 60;
   }
 
   // Adjust mouse cursor visibility
   if (m_auto_hide_mouse) {
-    if (event.type == SDL_MOUSEMOTION) {
+    if (event.type == SDL_MOUSEMOTION && !m_mouse.is_camera_being_controlled()) {
       hide_cursor(false);
     } else if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
       hide_cursor(true);
     }
+  }
+}
+
+void InputManager::poll_keyboard_data() {
+  if (m_keyboard_enabled && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_keyboard.poll_state(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
+void InputManager::clear_keyboard_actions() {
+  if (m_keyboard_enabled) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_keyboard.clear_actions(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
+void InputManager::poll_mouse_data() {
+  if (m_mouse_enabled && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_mouse.poll_state(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
+void InputManager::clear_mouse_actions() {
+  if (m_mouse_enabled && !m_waiting_for_bind) {
+    if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
+      m_mouse.clear_actions(m_data.at(m_keyboard_and_mouse_port));
+    }
+  }
+}
+
+void InputManager::finish_polling() {
+  m_skip_polling_for_n_frames--;
+  if (m_skip_polling_for_n_frames < 0) {
+    m_skip_polling_for_n_frames = 0;
   }
 }
 

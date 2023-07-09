@@ -37,19 +37,17 @@
               )
 
 (defstate plat-flip-idle (plat-flip)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'bonk)
-                        (activate! (-> self smush) -1.0 90 300 1.0 1.0)
-                        )
-                       ((= v1-0 'touch)
-                        (send-event arg0 'no-look-around (seconds 1.5))
-                        (the-as smush-control #f)
-                        )
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('bonk)
+                      (activate! (-> self smush) -1.0 90 300 1.0 1.0)
+                      )
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      (the-as smush-control #f)
+                      )
+                     )
+            )
     )
   :trans (the-as (function none :behavior plat-flip) rider-trans)
   :code (behavior ()
@@ -109,7 +107,7 @@
 
 (defmethod init-from-entity! plat-flip ((obj plat-flip) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag))
-  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (logior! (-> obj mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -183,7 +181,3 @@
   (go plat-flip-idle)
   (none)
   )
-
-
-
-

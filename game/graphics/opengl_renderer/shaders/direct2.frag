@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
@@ -8,19 +8,19 @@ uniform float alpha_reject;
 uniform float color_mult;
 uniform vec4 fog_color;
 
-in flat uvec2 tex_info;
+flat in uvec2 tex_info;
 in float fog;
 
-layout (binding = 0) uniform sampler2D tex_T0;
-layout (binding = 1) uniform sampler2D tex_T1;
-layout (binding = 2) uniform sampler2D tex_T2;
-layout (binding = 3) uniform sampler2D tex_T3;
-layout (binding = 4) uniform sampler2D tex_T4;
-layout (binding = 5) uniform sampler2D tex_T5;
-layout (binding = 6) uniform sampler2D tex_T6;
-layout (binding = 7) uniform sampler2D tex_T7;
-layout (binding = 8) uniform sampler2D tex_T8;
-layout (binding = 9) uniform sampler2D tex_T9;
+uniform sampler2D tex_T0;
+uniform sampler2D tex_T1;
+uniform sampler2D tex_T2;
+uniform sampler2D tex_T3;
+uniform sampler2D tex_T4;
+uniform sampler2D tex_T5;
+uniform sampler2D tex_T6;
+uniform sampler2D tex_T7;
+uniform sampler2D tex_T8;
+uniform sampler2D tex_T9;
 
 
 vec4 sample_tex(vec2 coord, uint unit) {

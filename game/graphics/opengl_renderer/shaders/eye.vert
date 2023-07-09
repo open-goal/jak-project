@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 layout (location = 0) in vec4 xyst_in;
 
 out vec2 st;

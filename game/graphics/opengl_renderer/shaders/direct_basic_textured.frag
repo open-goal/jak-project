@@ -1,10 +1,10 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
 in vec4 fragment_color;
 in vec3 tex_coord;
-in flat uint use_uv;
+flat in uint use_uv;
 in vec4 gs_scissor;
 uniform float alpha_reject;
 uniform float color_mult;
@@ -17,20 +17,20 @@ uniform vec4 game_sizes;
 
 uniform vec4 fog_color;
 
-in flat uvec4 tex_info;
+flat in uvec4 tex_info;
 in float fog;
 
-layout (binding = 20) uniform sampler2D tex_T0;
+uniform sampler2D tex_T20;
 
 vec4 sample_tex(vec2 coord, uint unit) {
-  return texture(tex_T0, coord);
+  return texture(tex_T20, coord);
 }
 
 vec4 sample_tex_px(vec2 coordf, uint unit) {
   ivec2 coord;
   coord.x = int(coordf.x / 16);
   coord.y = int(coordf.y / 16);
-  return texelFetch(tex_T0, coord, 0);
+  return texelFetch(tex_T20, coord, 0);
 }
 
 void main() {

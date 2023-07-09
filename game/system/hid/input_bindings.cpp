@@ -193,28 +193,11 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
   return entry;
 }
 
-void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
-                                            InputBindAssignmentMeta& bind_meta,
-                                            const std::optional<InputModifiers> modifiers) {
-  // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
-  // unmapped
-  const auto current_binds =
-      lookup_analog_binds((PadData::AnalogIndex)bind_meta.pad_idx, bind_meta.for_analog_minimum);
-  if (analog_axii.find(sdl_idx) != analog_axii.end()) {
-    const auto existing_binds = analog_axii.at(sdl_idx);
-    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
-                                         bind_meta.for_analog_minimum, modifiers)};
-    // there already a bind, so swap (as long as it's not the same key)
-    if (!current_binds.empty() && (u32)current_binds.front().sdl_idx != sdl_idx) {
-      analog_axii[current_binds.front().sdl_idx] = existing_binds;
-    }
-  } else {
-    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
-                                         bind_meta.for_analog_minimum, modifiers)};
-  }
-  // The underlying data structures support multiple binds for the same input, but the UX doesn't
-  // so we have to wipe out any shared bindings after an assignment
-  for (auto it = analog_axii.begin(); it != analog_axii.end();) {
+void InputBindingGroups::remove_multiple_binds(
+    u32 sdl_idx,
+    InputBindAssignmentMeta& bind_meta,
+    std::unordered_map<u32, std::vector<InputBinding>>& bind_map) {
+  for (auto it = bind_map.begin(); it != bind_map.end();) {
     if (it->first == sdl_idx) {
       it++;
       continue;
@@ -225,7 +208,7 @@ void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
           bind.minimum_in_range != bind_meta.for_analog_minimum) {
         continue;
       }
-      it = analog_axii.erase(it);
+      it = bind_map.erase(it);
       found_match = true;
       break;
     }
@@ -233,10 +216,89 @@ void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
       it++;
     }
   }
+}
 
+std::optional<std::pair<InputBinding, bool>> InputBindingGroups::find_button_bind_from_sdl_idx(
+    u32 sdl_idx,
+    const std::optional<InputModifiers> modifiers) {
+  // We need to check that there isn't a shared SDL key on the button group side
+  for (const auto& [sdl_code, binds] : buttons) {
+    if (sdl_code == sdl_idx) {
+      for (const auto bind : binds) {
+        if (!modifiers || bind.modifiers == modifiers.value()) {
+          std::pair<InputBinding, bool> result = {bind, false};
+          return result;
+        }
+      }
+    }
+  }
+  for (const auto& [sdl_code, binds] : button_axii) {
+    if (sdl_code == sdl_idx) {
+      for (const auto bind : binds) {
+        if (!modifiers || bind.modifiers == modifiers.value()) {
+          std::pair<InputBinding, bool> result = {bind, true};
+          return result;
+        }
+      }
+    }
+  }
+  return {};
+}
+
+void InputBindingGroups::assign_analog_bind(u32 sdl_idx,
+                                            InputBindAssignmentMeta& bind_meta,
+                                            const std::optional<InputModifiers> modifiers) {
+  // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
+  // unmapped
+  const auto current_analog_binds =
+      lookup_analog_binds((PadData::AnalogIndex)bind_meta.pad_idx, bind_meta.for_analog_minimum);
+  const auto current_button_bind = find_button_bind_from_sdl_idx(sdl_idx, modifiers);
+  if (analog_axii.find(sdl_idx) != analog_axii.end()) {
+    const auto existing_binds = analog_axii.at(sdl_idx);
+    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
+                                         bind_meta.for_analog_minimum, modifiers)};
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_analog_binds.empty() && (u32)current_analog_binds.front().sdl_idx != sdl_idx) {
+      analog_axii[current_analog_binds.front().sdl_idx] = existing_binds;
+    }
+  } else if (!current_analog_binds.empty() && current_button_bind.has_value()) {
+    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
+                                         bind_meta.for_analog_minimum, modifiers)};
+    if (current_button_bind->second) {
+      // button_axii
+      button_axii.erase(sdl_idx);
+      button_axii[current_analog_binds.front().sdl_idx] = {current_button_bind->first};
+    } else {
+      // button
+      buttons.erase(sdl_idx);
+      buttons[current_analog_binds.front().sdl_idx] = {current_button_bind->first};
+    }
+  } else {
+    analog_axii[sdl_idx] = {InputBinding((PadData::AnalogIndex)bind_meta.pad_idx,
+                                         bind_meta.for_analog_minimum, modifiers)};
+  }
+  remove_multiple_binds(sdl_idx, bind_meta, analog_axii);
   // Invalidate lookup cache
   m_analog_lookup.clear();
+  m_button_lookup.clear();
   bind_meta.assigned = true;
+}
+
+std::optional<std::pair<InputBinding, bool>> InputBindingGroups::find_analog_bind_from_sdl_idx(
+    u32 sdl_idx,
+    const std::optional<InputModifiers> modifiers) {
+  // We need to check that there isn't a shared SDL key on the button group side
+  for (const auto& [sdl_code, binds] : analog_axii) {
+    if (sdl_code == sdl_idx) {
+      for (const auto bind : binds) {
+        if (!modifiers || bind.modifiers == modifiers.value()) {
+          std::pair<InputBinding, bool> result = {bind, false};
+          return result;
+        }
+      }
+    }
+  }
+  return {};
 }
 
 void InputBindingGroups::assign_button_bind(u32 sdl_idx,
@@ -245,7 +307,8 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
                                             const std::optional<InputModifiers> modifiers) {
   // Find out if the PS2 input is already bound, if it is we will do a swap so no input is ever left
   // unmapped
-  const auto current_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
+  const auto current_button_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
+  const auto current_analog_bind = find_analog_bind_from_sdl_idx(sdl_idx, modifiers);
   if (buttons.find(sdl_idx) != buttons.end()) {
     const auto existing_binds = buttons.at(sdl_idx);
     if (analog_button) {
@@ -254,13 +317,21 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
       buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     }
     // there already a bind, so swap (as long as it's not the same key)
-    if (!current_binds.empty() && current_binds.front().sdl_idx != (s32)sdl_idx) {
-      if (current_binds.front().analog_button) {
-        button_axii[current_binds.front().sdl_idx] = existing_binds;
+    if (!current_button_binds.empty() && current_button_binds.front().sdl_idx != (s32)sdl_idx) {
+      if (current_button_binds.front().analog_button) {
+        button_axii[current_button_binds.front().sdl_idx] = existing_binds;
       } else {
-        buttons[current_binds.front().sdl_idx] = existing_binds;
+        buttons[current_button_binds.front().sdl_idx] = existing_binds;
       }
     }
+  } else if (!current_button_binds.empty() && current_analog_bind.has_value()) {
+    if (analog_button) {
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    } else {
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    }
+    analog_axii.erase(sdl_idx);
+    analog_axii[current_button_binds.front().sdl_idx] = {current_analog_bind->first};
   } else {
     if (analog_button) {
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
@@ -268,47 +339,11 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
       buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     }
   }
-  // The underlying data structures support multiple binds for the same input, but the UX doesn't
-  // so we have to wipe out any shared bindings after an assignment
-  for (auto it = buttons.begin(); it != buttons.end();) {
-    if (it->first == sdl_idx) {
-      it++;
-      continue;
-    }
-    bool found_match = false;
-    for (const auto& bind : it->second) {
-      if (bind.pad_data_index != bind_meta.pad_idx) {
-        continue;
-      }
-      it = buttons.erase(it);
-      found_match = true;
-      break;
-    }
-    if (!found_match) {
-      it++;
-    }
-  }
-  for (auto it = button_axii.begin(); it != button_axii.end();) {
-    if (it->first == sdl_idx) {
-      it++;
-      continue;
-    }
-    bool found_match = false;
-    for (const auto& bind : it->second) {
-      if (bind.pad_data_index != bind_meta.pad_idx) {
-        continue;
-      }
-      it = button_axii.erase(it);
-      found_match = true;
-      break;
-    }
-    if (!found_match) {
-      it++;
-    }
-  }
-
+  remove_multiple_binds(sdl_idx, bind_meta, buttons);
+  remove_multiple_binds(sdl_idx, bind_meta, button_axii);
   // Invalidate lookup cache
   m_button_lookup.clear();
+  m_analog_lookup.clear();
   bind_meta.assigned = true;
 }
 

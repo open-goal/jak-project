@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec2 xy;
 layout (location = 1) in vec2 st;
@@ -6,7 +6,7 @@ layout (location = 1) in vec2 st;
 uniform vec4 u_color;
 uniform float u_depth;
 
-out flat vec4 fragment_color;
+flat out vec4 fragment_color;
 out vec2 tex_coord;
 
 void main() {
