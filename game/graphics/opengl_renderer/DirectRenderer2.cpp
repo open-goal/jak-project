@@ -1,6 +1,10 @@
 #include "DirectRenderer2.h"
 
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
 #include <immintrin.h>
+#endif
 
 #include "common/log/log.h"
 

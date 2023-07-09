@@ -1,6 +1,10 @@
 #include "SkyBlendCPU.h"
 
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
 #include <immintrin.h>
+#endif
 
 #include "common/util/os.h"
 
