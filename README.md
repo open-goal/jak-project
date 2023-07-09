@@ -244,7 +244,7 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 Ensure that you have Xcode command line tools installed (this installs things like Apple Clang).  If you don't, you can run the following command:
 
 ```bash
-xcode-select –install
+xcode-select --install
 ```
 
 #### Intel Based
