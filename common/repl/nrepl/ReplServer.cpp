@@ -73,8 +73,8 @@ void ReplServer::eval_response(int socket, const std::string& request) {
 
 void ReplServer::shutdown_response(int socket) {
   // Send a farewell message
-  std::string ping = fmt::format("Disconnecting from OpenGOAL nREPL. Goodbye.\n");
-  respond(socket, ping);
+  std::string bye = fmt::format("Disconnecting from OpenGOAL nREPL. Goodbye.\n");
+  respond(socket, bye);
 
   // shut down the socket
   close_socket(socket);
