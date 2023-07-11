@@ -156,7 +156,7 @@
 (defmethod run-logic? pegasus ((obj pegasus))
   "Calls [[process-tree::12]] if we are considered in-range of the [[pegasus]], otherwise returns [[#t]]"
   (let ((min-distance 491520.0))
-    (if (< (* min-distance min-distance) (vector-vector-distance-squared (-> obj root-override2 trans) (camera-pos)))
+    (if (< (* min-distance min-distance) (vector-vector-distance-squared (-> obj root trans) (camera-pos)))
         ((method-of-type enemy run-logic?) obj)
         #t
         )
@@ -170,14 +170,14 @@
       (let ((inaccuracy-dir (new 'stack-no-clear 'vector))
             (inaccuracy-vec (new 'stack-no-clear 'vector))
             )
-        (vector-! inaccuracy-dir (-> obj root-override2 trans) (-> target gun fire-point))
+        (vector-! inaccuracy-dir (-> obj root trans) (-> target gun fire-point))
         (vector+float*!
           inaccuracy-vec
           (-> target gun fire-point)
           (-> target gun fire-dir-out)
           (vector-length inaccuracy-dir)
           )
-        (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> obj root-override2 trans)))
+        (let ((inaccuracy-mag (vector-vector-distance-squared inaccuracy-vec (-> obj root trans)))
               (threshold 20480.0)
               )
           (if (< inaccuracy-mag (* threshold threshold))
@@ -223,7 +223,7 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
             )
         (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
         (enemy-method-62 obj)
-        (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+        (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
         (process-contact-action proc)
         (send-event proc 'get-attack-count 1)
         (kill-prefer-falling obj)
@@ -356,7 +356,7 @@ Additional debug text will be displayed as well.  This is useful as many paths o
       )
     (cond
       ((and influenced-by-target? *target*)
-       (vector-! flee-direction-vec (-> self root-override2 trans) (target-pos 0))
+       (vector-! flee-direction-vec (-> self root trans) (target-pos 0))
        (vector-normalize! flee-direction-vec 1.0)
        )
       ((= (-> self speed) 0.0)
@@ -373,7 +373,7 @@ Additional debug text will be displayed as well.  This is useful as many paths o
     (vector-matrix*! flee-direction-vec (-> self facing) rotation-matrix)
     (vector-normalize! flee-direction-vec 1.0)
     (forward-down->inv-matrix rotation-matrix flee-direction-vec (new 'static 'vector :y -1.0))
-    (matrix->quaternion (-> self root-override2 quat) rotation-matrix)
+    (matrix->quaternion (-> self root quat) rotation-matrix)
     (set! (-> self run-blend-interp) (acos (vector-dot flee-direction-vec (-> self facing))))
     (set! (-> self run-blend-interp) (* 0.0002746582 (-> self run-blend-interp)))
     (if (< (vector-dot (-> self facing) (the-as vector (-> rotation-matrix vector))) 0.0)
@@ -403,10 +403,10 @@ In practice, this is never called"
      (set! (-> self curve-position) 0.0)
      )
     ((< 1.0 (-> self curve-position))
-     (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+     (+! (-> self curve-position) -1.0)
      )
     ((< (-> self curve-position) 0.0)
-     (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+     (+! (-> self curve-position) 1.0)
      )
     )
   (none)
@@ -540,17 +540,17 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
   (pegasus-choose-path)
   (get-point-at-percent-along-path!
     (-> self path-info (-> self current-path) path-data)
-    (-> self root-override2 trans)
+    (-> self root trans)
     (-> self curve-position)
     'interp
     )
-  (let ((y-pos (+ -81920.0 (-> self root-override2 trans y)))
+  (let ((y-pos (+ -81920.0 (-> self root trans y)))
         (draw-shadow? #f)
         )
     (let ((cquery (new 'stack 'collide-query))
           (start-pos (new 'stack-no-clear 'vector))
           )
-      (set! (-> start-pos quad) (-> self root-override2 trans quad))
+      (set! (-> start-pos quad) (-> self root trans quad))
       (set! (-> self over-ground) #f)
       (when (enemy-above-ground? self cquery start-pos (collide-spec backgnd) 12288.0 81920.0 1024.0)
         (set! y-pos (-> cquery best-other-tri intersect y))
@@ -588,13 +588,13 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
          )
        )
       )
-    (+! (-> self root-override2 trans y) (-> self y-offset))
-    (when (< (-> self root-override2 trans y) y-pos)
-      (set! (-> self y-offset) (- y-pos (- (-> self root-override2 trans y) (-> self y-offset))))
-      (set! (-> self root-override2 trans y) y-pos)
+    (+! (-> self root trans y) (-> self y-offset))
+    (when (< (-> self root trans y) y-pos)
+      (set! (-> self y-offset) (- y-pos (- (-> self root trans y) (-> self y-offset))))
+      (set! (-> self root trans y) y-pos)
       (set! (-> self y-vel) (fmax 0.0 (-> self y-vel)))
       )
-    (set! (-> self on-ground) (< (fabs (- (-> self root-override2 trans y) y-pos)) 409.6))
+    (set! (-> self on-ground) (< (fabs (- (-> self root trans y) y-pos)) 409.6))
     (cond
       (draw-shadow?
         (let ((shadow-ctrl (-> self draw shadow-ctrl)))
@@ -602,7 +602,7 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
           )
         0
         (let ((_shadow-ctrl (-> self draw shadow-ctrl)))
-          (set! (-> _shadow-ctrl settings bot-plane w) (- (+ (- -6144.0 (-> self root-override2 trans y)) y-pos)))
+          (set! (-> _shadow-ctrl settings bot-plane w) (- (+ (- -6144.0 (-> self root trans y)) y-pos)))
           )
         0
         )
@@ -626,7 +626,7 @@ This function also is what causes the pegasus to flip around
 @param max-speed The maximum speed the pegasus can go
 @param min-speed The minimum speed the pegasus can go
 @returns If there should be a reaction to the target via [[enemy::72]]"
-  (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (-> self root-override2 trans) (target-pos 0)))
+  (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (target-pos 0)))
         (react-to-target? #f)
         )
     (set! (-> dir-to-target y) 0.0)
@@ -729,15 +729,15 @@ The faster it's moving the fast it flaps it's wings, etc
           )
         (cond
           ((< 1.0 (-> self curve-position))
-           (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+           (+! (-> self curve-position) -1.0)
            )
           ((< (-> self curve-position) 0.0)
-           (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+           (+! (-> self curve-position) 1.0)
            )
           )
         (get-point-at-percent-along-path!
           (-> self path-info (-> self current-path) path-data)
-          (-> self root-override2 trans)
+          (-> self root trans)
           (-> self curve-position)
           'interp
           )
@@ -1029,10 +1029,9 @@ The faster it's moving the fast it flaps it's wings, etc
           )
       )
     (cond
-      ((and *target*
-            (and (>= 102400.0 (vector-vector-xz-distance (-> self root-override2 trans) (-> *target* control trans)))
-                 (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
-                 )
+      ((and *target* (and (>= 102400.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))
+                          (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                          )
             )
        (set! (-> self state-time) (the-as time-frame (max (+ (current-time) (seconds -10)) (-> self state-time))))
        )
@@ -1090,7 +1089,7 @@ The faster it's moving the fast it flaps it's wings, etc
         )
       )
     (when (and *target*
-               (and (>= 102400.0 (vector-vector-xz-distance (-> self root-override2 trans) (-> *target* control trans)))
+               (and (>= 102400.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))
                     (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                     )
                )
@@ -1284,7 +1283,7 @@ The faster it's moving the fast it flaps it's wings, etc
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override2) cshape)
+    (set! (-> obj root) cshape)
     )
   0
   (none)
@@ -1362,7 +1361,7 @@ The faster it's moving the fast it flaps it's wings, etc
   (set! (-> obj curve-position) (res-lump-float (-> obj entity) 'initial-spline-pos))
   (get-point-at-percent-along-path!
     (-> obj path-info (-> obj current-path) path-data)
-    (-> obj root-override2 trans)
+    (-> obj root trans)
     (-> obj curve-position)
     'interp
     )
@@ -1374,7 +1373,7 @@ The faster it's moving the fast it flaps it's wings, etc
   (set! (-> obj facing quad) (-> obj tangent quad))
   (let ((matrix (new 'stack-no-clear 'matrix)))
     (forward-down->inv-matrix matrix (-> obj facing) (new 'static 'vector :y -1.0))
-    (matrix->quaternion (-> obj root-override2 quat) matrix)
+    (matrix->quaternion (-> obj root quat) matrix)
     )
   (set! (-> obj y-vel) 0.0)
   (set! (-> obj water-height) (res-lump-float (-> obj entity) 'water-height))

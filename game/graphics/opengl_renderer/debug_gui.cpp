@@ -106,19 +106,13 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Tools")) {
-      if (m_version == GameVersion::Jak1) {
-        ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
-      } else {
-        ImGui::MenuItem("Subtitle2 Editor", nullptr, &m_subtitle2_editor);
-      }
-
       if (ImGui::BeginMenu("Screenshot")) {
         ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
         ImGui::InputText("File", m_screenshot_save_name, 50);
         ImGui::InputInt("Width", &screenshot_width);
         ImGui::InputInt("Height", &screenshot_height);
         ImGui::InputInt("MSAA", &screenshot_samples);
-        ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
+        ImGui::Checkbox("Screenshot on F2", &screenshot_hotkey_enabled);
         ImGui::EndMenu();
       }
       ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);

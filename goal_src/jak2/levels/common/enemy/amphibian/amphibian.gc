@@ -244,7 +244,7 @@
     :walk-travel-speed (meters 3)
     :walk-acceleration (meters 4)
     :walk-turning-acceleration (meters 3)
-    :maximum-rotation-rate (degrees 180.0)
+    :maximum-rotation-rate (degrees 180)
     :notice-nav-radius (meters 2)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -277,7 +277,7 @@
          )
      (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (enemy-method-62 obj)
-     (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (when (= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
@@ -391,13 +391,11 @@
            ((method-of-type nav-enemy enemy-method-51) obj)
            )
           (else
-            (set! f0-1 (quaternion-y-angle (-> obj root-override2 quat)))
+            (set! f0-1 (quaternion-y-angle (-> obj root quat)))
             (let ((a0-5 (handle->process (-> obj focus handle))))
               (when a0-5
                 (let ((v1-12 (get-trans (the-as process-focusable a0-5) 0)))
-                  (set! f0-1
-                        (atan (- (-> v1-12 x) (-> obj root-override2 trans x)) (- (-> v1-12 z) (-> obj root-override2 trans z)))
-                        )
+                  (set! f0-1 (atan (- (-> v1-12 x) (-> obj root trans x)) (- (-> v1-12 z) (-> obj root trans z))))
                   )
                 )
               )
@@ -565,7 +563,7 @@
       (else
         (when (focus-test? obj touch-water)
           (let ((s3-0 (new 'stack-no-clear 'water-info)))
-            (water-info-init! (-> obj root-override2) s3-0 (collide-action solid semi-solid))
+            (water-info-init! (-> obj root) s3-0 (collide-action solid semi-solid))
             (let ((v1-12 #f))
               (cond
                 ((not (logtest? (water-flags touch-water) (-> s3-0 flags)))
@@ -575,7 +573,7 @@
                  (logclear! (-> obj focus-status) (focus-status touch-water under-water))
                  )
                 ((focus-test? obj under-water)
-                 (let* ((a0-18 (-> obj root-override2 root-prim prim-core))
+                 (let* ((a0-18 (-> obj root root-prim prim-core))
                         (f0-1 (+ (-> a0-18 world-sphere y) (-> a0-18 world-sphere w)))
                         )
                    (if (< (-> s3-0 trans y) f0-1)
@@ -587,7 +585,7 @@
               (when v1-12
                 (logclear! (-> obj focus-status) (focus-status under-water))
                 (let ((s2-0 (new 'stack-no-clear 'vector)))
-                  (set! (-> s2-0 quad) (-> obj root-override2 trans quad))
+                  (set! (-> s2-0 quad) (-> obj root trans quad))
                   (when (logtest? (water-flags touch-water) (-> s3-0 flags))
                     (set! (-> s2-0 y) (-> s3-0 trans y))
                     (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -646,7 +644,7 @@
               (s4-1 (and v1-35 (= v1-35 (-> obj draw art-group data 36))))
               )
          (cond
-           ((and (not s4-1) (< (-> obj root-override2 transv y) 0.0))
+           ((and (not s4-1) (< (-> obj root transv y) 0.0))
             (ja-channel-push! 1 (seconds 0.1))
             (let ((a0-37 (-> obj skel root-channel 0)))
               (set! (-> a0-37 frame-group) (the-as art-joint-anim (-> obj draw art-group data 36)))
@@ -790,7 +788,7 @@
                 (set! (-> v1-11 vector quad) (-> s5-0 quad))
                 (set! (-> v1-11 shove-back) 16384.0)
                 (set! (-> v1-11 shove-up) 12288.0)
-                (set! (-> v1-11 damage) (the float (-> obj enemy-info-override attack-damage)))
+                (set! (-> v1-11 damage) (the float (-> obj enemy-info attack-damage)))
                 (set! (-> a1-4 param 1) (the-as uint v1-11))
                 )
               (send-event-function (-> s4-1 cshape process) a1-4)
@@ -810,9 +808,7 @@
     )
   (the-as
     symbol
-    (when (and (logtest? (-> (the-as process-focusable arg0) root-override root-prim prim-core collide-as)
-                         (collide-spec jak bot)
-                         )
+    (when (and (logtest? (-> (the-as process-focusable arg0) root root-prim prim-core collide-as) (collide-spec jak bot))
                (-> obj next-state)
                (let ((v1-8 (-> obj next-state name)))
                  (or (= v1-8 'stare) (= v1-8 'hostile))
@@ -827,15 +823,15 @@
 (defmethod go-stare amphibian ((obj amphibian))
   (let ((s5-0 (-> obj focus aware)))
     (cond
-      ((or (and (-> obj enemy-info-override use-frustration) (logtest? (enemy-flag not-frustrated) (-> obj enemy-flags)))
+      ((or (and (-> obj enemy-info use-frustration) (logtest? (enemy-flag not-frustrated) (-> obj enemy-flags)))
            (nav-enemy-method-163 obj)
            )
        (go-stare2 obj)
        )
-      ((and (= s5-0 (enemy-aware enemy-aware-3)) (-> obj enemy-info-override use-circling))
+      ((and (= s5-0 (enemy-aware enemy-aware-3)) (-> obj enemy-info use-circling))
        (go (method-of-object obj circling))
        )
-      ((and (= s5-0 (enemy-aware enemy-aware-2)) (-> obj enemy-info-override use-pacing))
+      ((and (= s5-0 (enemy-aware enemy-aware-2)) (-> obj enemy-info use-pacing))
        (go (method-of-object obj pacing))
        )
       ((= s5-0 (enemy-aware unaware))
@@ -875,7 +871,7 @@
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (set! (-> obj prev-ry) (-> obj prev-ry1))
-  (set! (-> obj prev-ry1) (quaternion-y-angle (-> obj root-override2 quat)))
+  (set! (-> obj prev-ry1) (quaternion-y-angle (-> obj root quat)))
   ((method-of-type nav-enemy track-target!) obj)
   (none)
   )
@@ -884,7 +880,7 @@
   (with-pp
     (let* ((f30-0 (-> obj nav state speed))
            (f26-0 0.0)
-           (f0-1 (quaternion-y-angle (-> obj root-override2 quat)))
+           (f0-1 (quaternion-y-angle (-> obj root quat)))
            (f28-0 (deg- f0-1 (-> obj prev-ry)))
            )
       (let ((s5-0 #f))
@@ -921,7 +917,7 @@
             )
           (if s4-0
               (logior! (-> obj flags) 1)
-              (set! (-> obj flags) (logand -2 (-> obj flags)))
+              (logand! (-> obj flags) -2)
               )
           )
         (cond
@@ -944,7 +940,7 @@
                       )
                     (set! (-> s5-3 frame-num) (ja-aframe f26-0 0))
                     )
-                  (set! (-> obj flags) (logand -2 (-> obj flags)))
+                  (logand! (-> obj flags) -2)
                   )
                 )
                (else
@@ -966,7 +962,7 @@
                             )
                           (set! (-> s5-4 frame-num) (ja-aframe f26-0 0))
                           )
-                        (set! (-> obj flags) (logand -2 (-> obj flags)))
+                        (logand! (-> obj flags) -2)
                         )
                       )
                      (else
@@ -980,7 +976,7 @@
                            )
                          (set! (-> s5-5 frame-num) (ja-aframe f26-0 0))
                          )
-                       (set! (-> obj flags) (logand -2 (-> obj flags)))
+                       (logand! (-> obj flags) -2)
                        )
                      )
                    )
@@ -1005,7 +1001,7 @@
                     )
                   (set! (-> s5-6 frame-num) (ja-aframe f26-0 0))
                   )
-                (set! (-> obj flags) (logand -2 (-> obj flags)))
+                (logand! (-> obj flags) -2)
                 )
               )
             )
@@ -1042,13 +1038,10 @@
           )
         0
         (nav-enemy-method-167 self)
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (seek!
                       (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
-                                  frames
-                                  num-frames
-                                  )
+                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
                               -1
                               )
                            )
@@ -1061,13 +1054,10 @@
           (ja :num! (seek!))
           )
         (until (not (enemy-method-123 self 0.2))
-          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                       :num! (seek!
                         (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override idle-anim)))
-                                    frames
-                                    num-frames
-                                    )
+                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
                                 -1
                                 )
                              )
@@ -1084,7 +1074,7 @@
               (set! (-> v1-83 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-83 enemy-flags))))
               )
           (set! (-> v1-83 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-83 enemy-flags))))
-          (set! (-> v1-83 nav callback-info) (-> v1-83 enemy-info-override callback-info))
+          (set! (-> v1-83 nav callback-info) (-> v1-83 enemy-info callback-info))
           )
         0
         (nav-enemy-method-165 self)
@@ -1117,9 +1107,9 @@
                      gp-0
                      )
                    (else
-                     (vector-z-quaternion! (-> self focus-pos) (-> self root-override2 quat))
+                     (vector-z-quaternion! (-> self focus-pos) (-> self root quat))
                      (vector-normalize! (-> self focus-pos) 24576.0)
-                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root-override2 trans))
+                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root trans))
                      )
                    )
             )
@@ -1132,13 +1122,13 @@
           (a1-3 (-> self draw art-group data (-> *amphibian-global-info* notice-anim (get-rand-int self 2))))
           (gp-1 (new 'stack-no-clear 'vector))
           )
-      (vector-! gp-1 (-> self focus-pos) (-> self root-override2 trans))
+      (vector-! gp-1 (-> self focus-pos) (-> self root trans))
       (ja-no-eval :group! a1-3
                   :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)) f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (seek-toward-heading-vec! (-> self root-override2) gp-1 65536.0 (seconds 0.02))
+        (seek-toward-heading-vec! (-> self root) gp-1 65536.0 (seconds 0.02))
         (suspend)
         (ja :num! (seek! max f30-0))
         )
@@ -1148,7 +1138,7 @@
       )
     0
     (let ((gp-2 (new 'stack-no-clear 'vector)))
-      (vector-z-quaternion! gp-2 (-> self root-override2 quat))
+      (vector-z-quaternion! gp-2 (-> self root quat))
       (set! (-> self nav state heading quad) (-> gp-2 quad))
       )
     0
@@ -1207,7 +1197,7 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-8 (-> self nav)))
       (set! (-> v1-8 turning-acceleration) 204800.0)
       )
@@ -1220,7 +1210,7 @@
                      gp-0
                      )
                    (else
-                     (vector-z-quaternion! (-> self focus-pos) (-> self root-override2 quat))
+                     (vector-z-quaternion! (-> self focus-pos) (-> self root quat))
                      (let ((f30-0 (get-rand-float-range self 8192.0 16384.0)))
                        (if (zero? (get-rand-int self 2))
                            (set! f30-0 (- f30-0))
@@ -1228,7 +1218,7 @@
                        (vector-rotate-around-y! (-> self focus-pos) (-> self focus-pos) f30-0)
                        )
                      (vector-normalize! (-> self focus-pos) 12288.0)
-                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root-override2 trans))
+                     (vector+! (-> self focus-pos) (-> self focus-pos) (-> self root trans))
                      )
                    )
             )
@@ -1257,9 +1247,9 @@
           (gp-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack-no-clear 'vector))
           )
-      (vector-z-quaternion! s4-0 (-> self root-override2 quat))
+      (vector-z-quaternion! s4-0 (-> self root quat))
       (set-vector! s5-0 (- (-> s4-0 z)) 0.0 (-> s4-0 x) 1.0)
-      (vector-! gp-0 (-> self focus-pos) (-> self root-override2 trans))
+      (vector-! gp-0 (-> self focus-pos) (-> self root trans))
       (vector-normalize! s4-0 1.0)
       (vector-normalize! gp-0 1.0)
       (cond
@@ -1293,7 +1283,7 @@
       (ja :num! (seek!))
       )
     (until (>= (ja-aframe-num 0) (ja-aframe 6.0 0))
-      (seek-to-point-toward-point! (-> self root-override2) (-> self focus-pos) 546133.3 (seconds 0.1))
+      (seek-to-point-toward-point! (-> self root) (-> self focus-pos) 546133.3 (seconds 0.1))
       (suspend)
       (ja :num! (seek!))
       )
@@ -1355,12 +1345,12 @@
     (let ((a0-2 (get-enemy-target self)))
       (when a0-2
         (let* ((s5-0 (get-trans a0-2 0))
-               (f30-0 (vector-vector-xz-distance s5-0 (-> self root-override2 trans)))
+               (f30-0 (vector-vector-xz-distance s5-0 (-> self root trans)))
                )
           (when (>= 20480.0 f30-0)
             (let ((gp-0 (new 'stack-no-clear 'vector)))
-              (vector-! gp-0 s5-0 (-> self root-override2 trans))
-              (let ((f28-0 (quaternion-y-angle (-> self root-override2 quat)))
+              (vector-! gp-0 s5-0 (-> self root trans))
+              (let ((f28-0 (quaternion-y-angle (-> self root quat)))
                     (f0-3 (atan (-> gp-0 x) (-> gp-0 z)))
                     )
                 (if (>= 8192.0 (fabs (deg- f28-0 f0-3)))
@@ -1391,7 +1381,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1460,13 +1450,13 @@
       (set! (-> v1-3 turning-acceleration) 204800.0)
       )
     0
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-7 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-7 enemy-flags)))
           (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-7 enemy-flags))))
           )
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-7 enemy-flags))))
-      (set! (-> v1-7 nav callback-info) (-> v1-7 enemy-info-override callback-info))
+      (set! (-> v1-7 nav callback-info) (-> v1-7 enemy-info callback-info))
       )
     0
     (let ((v1-10 self))
@@ -1522,7 +1512,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -1563,7 +1553,7 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior amphibian) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1614,9 +1604,9 @@
           (gp-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack-no-clear 'vector))
           )
-      (vector-z-quaternion! s4-0 (-> self root-override2 quat))
+      (vector-z-quaternion! s4-0 (-> self root quat))
       (set-vector! s5-0 (- (-> s4-0 z)) 0.0 (-> s4-0 x) 1.0)
-      (vector-! gp-0 (-> self focus-pos) (-> self root-override2 trans))
+      (vector-! gp-0 (-> self focus-pos) (-> self root trans))
       (vector-normalize! s4-0 1.0)
       (vector-normalize! gp-0 1.0)
       (cond
@@ -1655,7 +1645,7 @@
           )
       )
     (until (>= (ja-aframe-num 0) (ja-aframe 6.0 0))
-      (seek-to-point-toward-point! (-> self root-override2) (-> self focus-pos) 546133.3 (seconds 0.1))
+      (seek-to-point-toward-point! (-> self root) (-> self focus-pos) 546133.3 (seconds 0.1))
       (suspend)
       (ja :num! (seek!))
       )
@@ -1684,7 +1674,7 @@
     (nav-enemy-method-167 self)
     (set! (-> self tongue-scale) 0.0)
     (set! (-> self tongue-mode) (the-as uint 0))
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (sound-play "tongue-warn")
     (let ((gp-1 (new 'stack-no-clear 'amphibian-tongue-attack-info)))
       (amphibian-method-185 self gp-1)
@@ -1844,7 +1834,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1871,8 +1861,8 @@
     (set! (-> v1-8 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
-  (set! (-> obj prev-ry) (quaternion-y-angle (-> obj root-override2 quat)))
+  (set-gravity-length (-> obj root dynam) 573440.0)
+  (set! (-> obj prev-ry) (quaternion-y-angle (-> obj root quat)))
   (set! (-> obj prev-ry1) (-> obj prev-ry))
   0
   (none)

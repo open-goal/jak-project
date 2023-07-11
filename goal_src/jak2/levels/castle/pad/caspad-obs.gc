@@ -38,11 +38,11 @@
 @see [[path-control]] and [[elevator]]"
   (let ((path-point-a (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-a 'interp))
         (path-point-b (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) point-b 'interp))
-        (elevator-trans (-> obj root-override trans))
+        (elevator-trans (-> obj root trans))
         )
     (when (and (< (-> path-point-b y) (-> path-point-a y)) (< (-> vec y) (+ -8192.0 (-> elevator-trans y))))
       (let ((s4-2 (vector-! (new 'stack-no-clear 'vector) vec elevator-trans)))
-        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root-override quat))
+        (vector-inv-orient-by-quat! s4-2 s4-2 (-> obj root quat))
         (and (< (fabs (-> s4-2 x)) 49152.0) (< (fabs (-> s4-2 z)) 49152.0))
         )
       )
@@ -59,9 +59,9 @@
          )
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
-             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> obj root-override trans)))
+             (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> obj root trans)))
              )
-        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> obj root-override quat))
+        (vector-inv-orient-by-quat! dist-from-center dist-from-center (-> obj root quat))
         (and (< (fabs (-> dist-from-center x)) 40960.0) (< (fabs (-> dist-from-center z)) 40960.0))
         )
       )
@@ -71,7 +71,7 @@
 (defmethod configure-collision cpad-elevator ((obj cpad-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
 @param collide-with-jak? If set, the elevator will collide with Jak"
-  (let ((prim (-> (the-as collide-shape-prim-group (-> obj root-override root-prim)) child 1)))
+  (let ((prim (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 1)))
     (cond
       (collide-with-jak?
         (set! (-> prim prim-core collide-as) (collide-spec obstacle pusher))
@@ -164,7 +164,7 @@
 (defmethod set-ambient-sound! cpad-elevator ((obj cpad-elevator))
   "Sets the elevator's [[ambient-sound]] up"
   (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "cpad-elevator-l" :fo-max 70) (-> obj root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "cpad-elevator-l" :fo-max 70) (-> obj root trans))
         )
   (none)
   )
@@ -217,7 +217,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> cshape-moving backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) cshape-moving)
+    (set! (-> obj root) cshape-moving)
     )
   (none)
   )

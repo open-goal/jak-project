@@ -1,12 +1,14 @@
-#include <regex>
-#include <string>
 #include <vector>
+#include <unordered_map>
+#include <string>
+#include <regex>
 #include <cerrno>
 #include <cctype>
 #include <cstdlib>
 #include <utility>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <chrono>
 
@@ -14,20 +16,27 @@
 #include "util.h"
 
 using Replxx = replxx::Replxx;
+using namespace replxx::color;
 
 class Tick {
 	typedef std::vector<char32_t> keys_t;
 	std::thread _thread;
 	int _tick;
+	int _promptState;
 	bool _alive;
 	keys_t _keys;
+	bool _tickMessages;
+	bool _promptFan;
 	Replxx& _replxx;
 public:
-	Tick( Replxx& replxx_, std::string const& keys_ = {} )
+	Tick( Replxx& replxx_, std::string const& keys_, bool tickMessages_, bool promptFan_ )
 		: _thread()
 		, _tick( 0 )
+		, _promptState( 0 )
 		, _alive( false )
 		, _keys( keys_.begin(), keys_.end() )
+		, _tickMessages( tickMessages_ )
+		, _promptFan( promptFan_ )
 		, _replxx( replxx_ ) {
 	}
 	void start() {
@@ -40,26 +49,56 @@ public:
 	}
 	void run() {
 		std::string s;
+		static char const PROMPT_STATES[] = "-\\|/";
 		while ( _alive ) {
-			if ( _keys.empty() ) {
+			if ( _tickMessages ) {
 				_replxx.print( "%d\n", _tick );
-			} else if ( _tick < static_cast<int>( _keys.size() ) ) {
+			}
+			if ( _tick < static_cast<int>( _keys.size() ) ) {
 				_replxx.emulate_key_press( _keys[_tick] );
-			} else {
+			}
+			if ( ! _tickMessages && ! _promptFan && ( _tick >= static_cast<int>( _keys.size() ) ) ) {
 				break;
 			}
+			if ( _promptFan ) {
+				for ( int i( 0 ); i < 4; ++ i ) {
+					char prompt[] = "\x1b[1;32mreplxx\x1b[0m[ ]> ";
+					prompt[18] = PROMPT_STATES[_promptState % 4];
+					++ _promptState;
+					_replxx.set_prompt( prompt );
+					std::this_thread::sleep_for( std::chrono::milliseconds( 250 ) );
+				}
+			} else {
+				std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+			}
 			++ _tick;
-			std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
 		}
 	}
 };
 
 // prototypes
-Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& user_data);
-Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& user_data);
-void hook_color(std::string const& str, Replxx::colors_t& colors, std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
+Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& user_data, bool);
+Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& user_data, bool);
+typedef std::vector<std::pair<std::string, Replxx::Color>> syntax_highlight_t;
+typedef std::unordered_map<std::string, Replxx::Color> keyword_highlight_t;
+void hook_color( std::string const& str, Replxx::colors_t& colors, syntax_highlight_t const&, keyword_highlight_t const& );
+void hook_modify( std::string& line, int& cursorPosition, Replxx* );
 
-Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& examples) {
+bool eq( std::string const& l, std::string const& r, int s, bool ic ) {
+	if ( static_cast<int>( l.length() ) < s ) {
+		return false;
+	}
+	if ( static_cast<int>( r.length() ) < s ) {
+		return false;
+	}
+	bool same( true );
+	for ( int i( 0 ); same && ( i < s ); ++ i ) {
+		same = ( ic && ( towlower( l[i] ) == towlower( r[i] ) ) ) || ( l[i] == r[i] );
+	}
+	return same;
+}
+
+Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& examples, bool ignoreCase) {
 	Replxx::completions_t completions;
 	int utf8ContextLen( context_len( context.c_str() ) );
 	int prefixLen( static_cast<int>( context.length() ) - utf8ContextLen );
@@ -74,7 +113,8 @@ Replxx::completions_t hook_completion(std::string const& context, int& contextLe
 		completions.push_back( "π" );
 	} else {
 		for (auto const& e : examples) {
-			if (e.compare(0, prefix.size(), prefix) == 0) {
+			bool lowerCasePrefix( std::none_of( prefix.begin(), prefix.end(), iswupper ) );
+			if ( eq( e, prefix, static_cast<int>( prefix.size() ), ignoreCase && lowerCasePrefix ) ) {
 				Replxx::Color c( Replxx::Color::DEFAULT );
 				if ( e.find( "brightred" ) != std::string::npos ) {
 					c = Replxx::Color::BRIGHTRED;
@@ -89,7 +129,7 @@ Replxx::completions_t hook_completion(std::string const& context, int& contextLe
 	return completions;
 }
 
-Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& examples) {
+Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& examples, bool ignoreCase) {
 	Replxx::hints_t hints;
 
 	// only show hint if prefix is at least 'n' chars long
@@ -101,8 +141,9 @@ Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::C
 	std::string prefix { context.substr(prefixLen) };
 
 	if (prefix.size() >= 2 || (! prefix.empty() && prefix.at(0) == '.')) {
+		bool lowerCasePrefix( std::none_of( prefix.begin(), prefix.end(), iswupper ) );
 		for (auto const& e : examples) {
-			if (e.compare(0, prefix.size(), prefix) == 0) {
+			if ( eq( e, prefix, prefix.size(), ignoreCase && lowerCasePrefix ) ) {
 				hints.emplace_back(e.c_str());
 			}
 		}
@@ -116,7 +157,11 @@ Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::C
 	return hints;
 }
 
-void hook_color(std::string const& context, Replxx::colors_t& colors, std::vector<std::pair<std::string, Replxx::Color>> const& regex_color) {
+inline bool is_kw( char ch ) {
+	return isalnum( ch ) || ( ch == '_' );
+}
+
+void hook_color( std::string const& context, Replxx::colors_t& colors, syntax_highlight_t const& regex_color, keyword_highlight_t const& word_color ) {
 	// highlight matching regex sequences
 	for (auto const& e : regex_color) {
 		size_t pos {0};
@@ -137,6 +182,69 @@ void hook_color(std::string const& context, Replxx::colors_t& colors, std::vecto
 			str = match.suffix();
 		}
 	}
+	bool inWord( false );
+	int wordStart( 0 );
+	int wordEnd( 0 );
+	int colorOffset( 0 );
+	auto dohl = [&](int i) {
+		inWord = false;
+		std::string intermission( context.substr( wordEnd, wordStart - wordEnd ) );
+		colorOffset += utf8str_codepoint_len( intermission.c_str(), intermission.length() );
+		int wordLen( i - wordStart );
+		std::string keyword( context.substr( wordStart, wordLen ) );
+		bool bold( false );
+		if ( keyword.substr( 0, 5 ) == "bold_" ) {
+			keyword = keyword.substr( 5 );
+			bold = true;
+		}
+		bool underline( false );
+		if ( keyword.substr( 0, 10 ) == "underline_" ) {
+			keyword = keyword.substr( 10 );
+			underline = true;
+		}
+		keyword_highlight_t::const_iterator it( word_color.find( keyword ) );
+		Replxx::Color color = Replxx::Color::DEFAULT;
+		if ( it != word_color.end() ) {
+			color = it->second;
+		}
+		if ( bold ) {
+			color = replxx::color::bold( color );
+		}
+		if ( underline ) {
+			color = replxx::color::underline( color );
+		}
+		for ( int k( 0 ); k < wordLen; ++ k ) {
+			Replxx::Color& c( colors.at( colorOffset + k ) );
+			if ( color != Replxx::Color::DEFAULT ) {
+				c = color;
+			}
+		}
+		colorOffset += wordLen;
+		wordEnd = i;
+	};
+	for ( int i( 0 ); i < static_cast<int>( context.length() ); ++ i ) {
+		if ( !inWord ) {
+			if ( is_kw( context[i] ) ) {
+				inWord = true;
+				wordStart = i;
+			}
+		} else if ( inWord && !is_kw( context[i] ) ) {
+			dohl(i);
+		}
+		if ( ( context[i] != '_' ) && ispunct( context[i] ) ) {
+			wordStart = i;
+			dohl( i + 1 );
+		}
+	}
+	if ( inWord ) {
+		dohl(context.length());
+	}
+}
+
+void hook_modify( std::string& currentInput_, int&, Replxx* rx ) {
+	char prompt[64];
+	snprintf( prompt, 64, "\x1b[1;32mreplxx\x1b[0m[%lu]> ", currentInput_.length() );
+	rx->set_prompt( prompt );
 }
 
 Replxx::ACTION_RESULT message( Replxx& replxx, std::string s, char32_t ) {
@@ -154,31 +262,33 @@ int main( int argc_, char** argv_ ) {
 		"color_black", "color_red", "color_green", "color_brown", "color_blue",
 		"color_magenta", "color_cyan", "color_lightgray", "color_gray",
 		"color_brightred", "color_brightgreen", "color_yellow", "color_brightblue",
-		"color_brightmagenta", "color_brightcyan", "color_white", "color_normal",
+		"color_brightmagenta", "color_brightcyan", "color_white",
+		"determinANT", "determiNATION", "deterMINE", "deteRMINISM", "detERMINISTIC", "deTERMINED",
+		"star", "star_galaxy_cluser_supercluster_observable_universe",
 	};
 
 	// highlight specific words
 	// a regex string, and a color
 	// the order matters, the last match will take precedence
 	using cl = Replxx::Color;
-	std::vector<std::pair<std::string, cl>> regex_color {
+	keyword_highlight_t word_color {
 		// single chars
-		{"\\`", cl::BRIGHTCYAN},
-		{"\\'", cl::BRIGHTBLUE},
-		{"\\\"", cl::BRIGHTBLUE},
-		{"\\-", cl::BRIGHTBLUE},
-		{"\\+", cl::BRIGHTBLUE},
-		{"\\=", cl::BRIGHTBLUE},
-		{"\\/", cl::BRIGHTBLUE},
-		{"\\*", cl::BRIGHTBLUE},
-		{"\\^", cl::BRIGHTBLUE},
-		{"\\.", cl::BRIGHTMAGENTA},
-		{"\\(", cl::BRIGHTMAGENTA},
-		{"\\)", cl::BRIGHTMAGENTA},
-		{"\\[", cl::BRIGHTMAGENTA},
-		{"\\]", cl::BRIGHTMAGENTA},
-		{"\\{", cl::BRIGHTMAGENTA},
-		{"\\}", cl::BRIGHTMAGENTA},
+		{"`", cl::BRIGHTCYAN},
+		{"'", cl::BRIGHTBLUE},
+		{"\"", cl::BRIGHTBLUE},
+		{"-", cl::BRIGHTBLUE},
+		{"+", cl::BRIGHTBLUE},
+		{"=", cl::BRIGHTBLUE},
+		{"/", cl::BRIGHTBLUE},
+		{"*", cl::BRIGHTBLUE},
+		{"^", cl::BRIGHTBLUE},
+		{".", cl::BRIGHTMAGENTA},
+		{"(", cl::BRIGHTMAGENTA},
+		{")", cl::BRIGHTMAGENTA},
+		{"[", cl::BRIGHTMAGENTA},
+		{"]", cl::BRIGHTMAGENTA},
+		{"{", cl::BRIGHTMAGENTA},
+		{"}", cl::BRIGHTMAGENTA},
 
 		// color keywords
 		{"color_black", cl::BLACK},
@@ -197,16 +307,16 @@ int main( int argc_, char** argv_ ) {
 		{"color_brightmagenta", cl::BRIGHTMAGENTA},
 		{"color_brightcyan", cl::BRIGHTCYAN},
 		{"color_white", cl::WHITE},
-		{"color_normal", cl::NORMAL},
 
 		// commands
-		{"\\.help", cl::BRIGHTMAGENTA},
-		{"\\.history", cl::BRIGHTMAGENTA},
-		{"\\.quit", cl::BRIGHTMAGENTA},
-		{"\\.exit", cl::BRIGHTMAGENTA},
-		{"\\.clear", cl::BRIGHTMAGENTA},
-		{"\\.prompt", cl::BRIGHTMAGENTA},
-
+		{"help", cl::BRIGHTMAGENTA},
+		{"history", cl::BRIGHTMAGENTA},
+		{"quit", cl::BRIGHTMAGENTA},
+		{"exit", cl::BRIGHTMAGENTA},
+		{"clear", cl::BRIGHTMAGENTA},
+		{"prompt", cl::BRIGHTMAGENTA},
+	};
+	syntax_highlight_t regex_color {
 		// numbers
 		{"[\\-|+]{0,1}[0-9]+", cl::YELLOW}, // integers
 		{"[\\-|+]{0,1}[0-9]*\\.[0-9]+", cl::YELLOW}, // decimals
@@ -216,17 +326,89 @@ int main( int argc_, char** argv_ ) {
 		{"\".*?\"", cl::BRIGHTGREEN}, // double quotes
 		{"\'.*?\'", cl::BRIGHTGREEN}, // single quotes
 	};
+	static int const MAX_LABEL_NAME( 32 );
+	char label[MAX_LABEL_NAME];
+	for ( int r( 0 ); r < 6; ++ r ) {
+		for ( int g( 0 ); g < 6; ++ g ) {
+			for ( int b( 0 ); b < 6; ++ b ) {
+				snprintf( label, MAX_LABEL_NAME, "rgb%d%d%d", r, g, b );
+				word_color.insert( std::make_pair( label, replxx::color::rgb666( r, g, b ) ) );
+				for ( int br( 0 ); br < 6; ++ br ) {
+					for ( int bg( 0 ); bg < 6; ++ bg ) {
+						for ( int bb( 0 ); bb < 6; ++ bb ) {
+							snprintf( label, MAX_LABEL_NAME, "fg%d%d%dbg%d%d%d", r, g, b, br, bg, bb );
+							word_color.insert(
+								std::make_pair(
+									label,
+									rgb666( r, g, b ) | replxx::color::bg( rgb666( br, bg, bb ) )
+								)
+							);
+						}
+					}
+				}
+			}
+		}
+	}
+	for ( int gs( 0 ); gs < 24; ++ gs ) {
+		snprintf( label, MAX_LABEL_NAME, "gs%d", gs );
+		word_color.insert( std::make_pair( label, grayscale( gs ) ) );
+		for ( int bgs( 0 ); bgs < 24; ++ bgs ) {
+			snprintf( label, MAX_LABEL_NAME, "gs%dgs%d", gs, bgs );
+			word_color.insert( std::make_pair( label, grayscale( gs ) | bg( grayscale( bgs ) ) ) );
+		}
+	}
+	Replxx::Color colorCodes[] = {
+		Replxx::Color::BLACK, Replxx::Color::RED, Replxx::Color::GREEN, Replxx::Color::BROWN, Replxx::Color::BLUE,
+		Replxx::Color::CYAN, Replxx::Color::MAGENTA, Replxx::Color::LIGHTGRAY, Replxx::Color::GRAY, Replxx::Color::BRIGHTRED,
+		Replxx::Color::BRIGHTGREEN, Replxx::Color::YELLOW, Replxx::Color::BRIGHTBLUE, Replxx::Color::BRIGHTCYAN,
+		Replxx::Color::BRIGHTMAGENTA, Replxx::Color::WHITE
+	};
+	for ( Replxx::Color bg : colorCodes ) {
+		for ( Replxx::Color fg : colorCodes ) {
+			snprintf( label, MAX_LABEL_NAME, "c_%d_%d", static_cast<int>( fg ), static_cast<int>( bg ) );
+			word_color.insert( std::make_pair( label, fg | replxx::color::bg( bg ) ) );
+		}
+	}
+
+	bool tickMessages( false );
+	bool promptFan( false );
+	bool promptInCallback( false );
+	bool indentMultiline( false );
+	bool bracketedPaste( false );
+	bool ignoreCase( false );
+	std::string keys;
+	std::string prompt;
+	int hintDelay( 0 );
+	while ( argc_ > 1 ) {
+		-- argc_;
+		++ argv_;
+		switch ( (*argv_)[0] ) {
+			case ( 'm' ): tickMessages = true; break;
+			case ( 'F' ): promptFan = true; break;
+			case ( 'P' ): promptInCallback = true; break;
+			case ( 'I' ): indentMultiline = true; break;
+			case ( 'i' ): ignoreCase = true; break;
+			case ( 'k' ): keys = (*argv_) + 1; break;
+			case ( 'd' ): hintDelay = std::stoi( (*argv_) + 1 ); break;
+			case ( 'h' ): examples.push_back( (*argv_) + 1 ); break;
+			case ( 'p' ): prompt = (*argv_) + 1; break;
+			case ( 'B' ): bracketedPaste = true; break;
+		}
+	}
 
 	// init the repl
 	Replxx rx;
-	Tick tick( rx, argc_ > 1 ? argv_[1] : "" );
+	Tick tick( rx, keys, tickMessages, promptFan );
 	rx.install_window_change_handler();
 
 	// the path to the history file
-	std::string history_file {"./replxx_history.txt"};
+	std::string history_file_path {"./replxx_history.txt"};
 
 	// load the history file if it exists
-	rx.history_load(history_file);
+	/* scope for ifstream object for auto-close */ {
+		std::ifstream history_file( history_file_path.c_str() );
+		rx.history_load( history_file );
+	}
 
 	// set the max history size
 	rx.set_max_history_size(128);
@@ -236,25 +418,36 @@ int main( int argc_, char** argv_ ) {
 
 	// set the callbacks
 	using namespace std::placeholders;
-	rx.set_completion_callback( std::bind( &hook_completion, _1, _2, cref( examples ) ) );
-	rx.set_highlighter_callback( std::bind( &hook_color, _1, _2, cref( regex_color ) ) );
-	rx.set_hint_callback( std::bind( &hook_hint, _1, _2, _3, cref( examples ) ) );
+	rx.set_completion_callback( std::bind( &hook_completion, _1, _2, cref( examples ), ignoreCase ) );
+	rx.set_highlighter_callback( std::bind( &hook_color, _1, _2, cref( regex_color ), cref( word_color ) ) );
+	rx.set_hint_callback( std::bind( &hook_hint, _1, _2, _3, cref( examples ), ignoreCase ) );
+	if ( promptInCallback ) {
+		rx.set_modify_callback( std::bind( &hook_modify, _1, _2, &rx ) );
+	}
 
 	// other api calls
-	rx.set_word_break_characters( " \t.,-%!;:=*~^'\"/?<>|[](){}" );
+	rx.set_word_break_characters( " \n\t.,-%!;:=*~^'\"/?<>|[](){}" );
 	rx.set_completion_count_cutoff( 128 );
+	rx.set_hint_delay( hintDelay );
 	rx.set_double_tab_completion( false );
 	rx.set_complete_on_empty( true );
 	rx.set_beep_on_ambiguous_completion( false );
 	rx.set_no_color( false );
+	rx.set_indent_multiline( indentMultiline );
+	if ( bracketedPaste ) {
+		rx.enable_bracketed_paste();
+	}
+	rx.set_ignore_case( ignoreCase );
 
 	// showcase key bindings
 	rx.bind_key_internal( Replxx::KEY::BACKSPACE,                      "delete_character_left_of_cursor" );
 	rx.bind_key_internal( Replxx::KEY::DELETE,                         "delete_character_under_cursor" );
 	rx.bind_key_internal( Replxx::KEY::LEFT,                           "move_cursor_left" );
 	rx.bind_key_internal( Replxx::KEY::RIGHT,                          "move_cursor_right" );
-	rx.bind_key_internal( Replxx::KEY::UP,                             "history_previous" );
-	rx.bind_key_internal( Replxx::KEY::DOWN,                           "history_next" );
+	rx.bind_key_internal( Replxx::KEY::UP,                             "line_previous" );
+	rx.bind_key_internal( Replxx::KEY::DOWN,                           "line_next" );
+	rx.bind_key_internal( Replxx::KEY::meta( Replxx::KEY::UP ),        "history_previous" );
+	rx.bind_key_internal( Replxx::KEY::meta( Replxx::KEY::DOWN ),      "history_next" );
 	rx.bind_key_internal( Replxx::KEY::PAGE_UP,                        "history_first" );
 	rx.bind_key_internal( Replxx::KEY::PAGE_DOWN,                      "history_last" );
 	rx.bind_key_internal( Replxx::KEY::HOME,                           "move_cursor_to_begining_of_line" );
@@ -335,6 +528,7 @@ int main( int argc_, char** argv_ ) {
 	rx.bind_key( Replxx::KEY::shift( Replxx::KEY::RIGHT ), std::bind( &message, std::ref( rx ), "<S-Right>", _1 ) );
 	rx.bind_key( Replxx::KEY::shift( Replxx::KEY::UP ), std::bind( &message, std::ref( rx ), "<S-Up>", _1 ) );
 	rx.bind_key( Replxx::KEY::shift( Replxx::KEY::DOWN ), std::bind( &message, std::ref( rx ), "<S-Down>", _1 ) );
+	rx.bind_key( Replxx::KEY::meta( '\r' ), std::bind( &message, std::ref( rx ), "<M-Enter>", _1 ) );
 
 	// display initial welcome message
 	std::cout
@@ -344,10 +538,12 @@ int main( int argc_, char** argv_ ) {
 		<< "Type '.quit' or '.exit' to exit\n\n";
 
 	// set the repl prompt
-	std::string prompt {"\x1b[1;32mreplxx\x1b[0m> "};
+	if ( prompt.empty() ) {
+		prompt = "\x1b[1;32mreplxx\x1b[0m> ";
+	}
 
 	// main repl loop
-	if ( argc_ > 1 ) {
+	if ( ! keys.empty() || tickMessages || promptFan ) {
 		tick.start();
 	}
 	for (;;) {
@@ -413,14 +609,15 @@ int main( int argc_, char** argv_ ) {
 			continue;
 
 		} else if (input.compare(0, 6, ".merge") == 0) {
-			history_file = "replxx_history_alt.txt";
+			history_file_path = "replxx_history_alt.txt";
 
 			rx.history_add(input);
 			continue;
 
 		} else if (input.compare(0, 5, ".save") == 0) {
-			history_file = "replxx_history_alt.txt";
-			rx.history_save(history_file);
+			history_file_path = "replxx_history_alt.txt";
+			std::ofstream history_file( history_file_path.c_str() );
+			rx.history_save( history_file );
 			continue;
 
 		} else if (input.compare(0, 6, ".clear") == 0) {
@@ -440,12 +637,18 @@ int main( int argc_, char** argv_ ) {
 			continue;
 		}
 	}
-	if ( argc_ > 1 ) {
+	if ( ! keys.empty() || tickMessages || promptFan ) {
 		tick.stop();
 	}
 
 	// save the history
-	rx.history_sync(history_file);
+	rx.history_sync( history_file_path );
+	if ( bracketedPaste ) {
+		rx.disable_bracketed_paste();
+	}
+	if ( bracketedPaste || promptInCallback || promptFan ) {
+		std::cout << "\n" << prompt;
+	}
 
 	std::cout << "\nExiting Replxx\n";
 

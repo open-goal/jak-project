@@ -178,11 +178,11 @@
               (cond
                 ((< f0-14 f28-0)
                  (if (>= f0-14 f30-0)
-                     (quaternion-slerp! (-> self root-override2 quat) (-> gp-0 src-quat) s5-2 (/ (- f0-14 f30-0) (- f28-0 f30-0)))
+                     (quaternion-slerp! (-> self root quat) (-> gp-0 src-quat) s5-2 (/ (- f0-14 f30-0) (- f28-0 f30-0)))
                      )
                  )
                 (else
-                  (quaternion-copy! (-> self root-override2 quat) s5-2)
+                  (quaternion-copy! (-> self root quat) s5-2)
                   )
                 )
               )
@@ -366,11 +366,11 @@
               (cond
                 ((< f0-14 f28-0)
                  (if (>= f0-14 f30-0)
-                     (quaternion-slerp! (-> self root-override2 quat) (-> gp-0 src-quat) s5-2 (/ (- f0-14 f30-0) (- f28-0 f30-0)))
+                     (quaternion-slerp! (-> self root quat) (-> gp-0 src-quat) s5-2 (/ (- f0-14 f30-0) (- f28-0 f30-0)))
                      )
                  )
                 (else
-                  (quaternion-copy! (-> self root-override2 quat) s5-2)
+                  (quaternion-copy! (-> self root quat) s5-2)
                   )
                 )
               )
@@ -515,12 +515,7 @@
           0
           )
         (until (ja-done? 0)
-          (seek-toward-heading-vec!
-            (-> self root-override2)
-            (-> self focus-info bullseye-xz-dir)
-            131072.0
-            (seconds 0.05)
-            )
+          (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 131072.0 (seconds 0.05))
           (bot-method-223 self #t)
           (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.1))
                    (or (not (bot-method-214 self)) (not (ruffian-method-237 self)))
@@ -587,7 +582,7 @@
       )
     (set! (-> self enemy-flags) v1-7)
     (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
-        (set! (-> self mask) (logior (process-mask collectable) (-> self mask)))
+        (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-14 (-> self enemy-flags)))
@@ -642,7 +637,7 @@
   :virtual #t
   :exit (behavior ()
     (if (logtest? (bot-flags bf21) (-> self bot-flags))
-        (set! (-> self bot-flags) (logior (bot-flags bf22) (-> self bot-flags)))
+        (logior! (-> self bot-flags) (bot-flags bf22))
         )
     (none)
     )
@@ -658,7 +653,7 @@
           (s5-0 (new 'stack-no-clear 'quaternion))
           )
       (vector<-matrix! gp-2 a1-5)
-      (set! (-> gp-2 y) (+ -122.88 (-> self root-override2 gspot-pos y)))
+      (set! (-> gp-2 y) (+ -122.88 (-> self root gspot-pos y)))
       (quaternion-identity! s5-0)
       (set! (-> self bomb-handle)
             (ppointer->handle
@@ -676,7 +671,7 @@
             )
       )
     (send-event (handle->process (-> self master-handle)) 'notify 'jinx-bomb)
-    (set! (-> self bot-flags) (logior (bot-flags bf21) (-> self bot-flags)))
+    (logior! (-> self bot-flags) (bot-flags bf21))
     (setup-masks (-> self draw) 0 4096)
     (ja-no-eval :group! (-> self draw art-group data 62)
                 :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 62)) frames num-frames) -1)))

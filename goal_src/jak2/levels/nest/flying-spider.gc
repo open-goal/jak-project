@@ -191,13 +191,13 @@
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
-            (script-eval (the-as pair gp-0) :vector (-> self root-override2 trans))
+            (script-eval (the-as pair gp-0) :vector (-> self root trans))
             )
         )
       )
     (logclear! (-> self enemy-flags) (enemy-flag lock-focus death-start))
     (set! (-> self path-du) (get-rand-float-range self 0.2 0.5))
-    (set-vector! (-> self root-override2 scale) 0.0 0.0 0.0 0.0)
+    (set-vector! (-> self root scale) 0.0 0.0 0.0 0.0)
     (none)
     )
   :trans (behavior ()
@@ -222,7 +222,7 @@
     (none)
     )
   :post (behavior ()
-    (get-point-at-percent-along-path! (-> self path) (-> self root-override2 trans) (-> self path-u) 'interp)
+    (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
     (set! (-> self path-u) (seek-ease
                              (-> self path-u)
                              1.0
@@ -232,7 +232,7 @@
                              )
           )
     (let ((f0-7 (-> self path-u)))
-      (set-vector! (-> self root-override2 scale) f0-7 f0-7 f0-7 0.0)
+      (set-vector! (-> self root scale) f0-7 f0-7 f0-7 0.0)
       )
     (let ((a1-3 (displacement-between-points-at-percent-normalized!
                   (-> self path)
@@ -241,7 +241,7 @@
                   )
                 )
           )
-      (forward-up-nopitch->quaternion (-> self root-override2 quat) a1-3 *y-vector*)
+      (forward-up-nopitch->quaternion (-> self root quat) a1-3 *y-vector*)
       )
     (nav-enemy-simple-post)
     (none)
@@ -260,10 +260,10 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (until (logtest? (-> self root-override2 status) (collide-status on-ground))
+    (until (logtest? (-> self root status) (collide-status on-ground))
       (suspend)
       )
-    (let ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat)))
+    (let ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
           (gp-0 (new 'stack-no-clear 'quaternion))
           )
       (set! (-> s5-0 y) 0.0)
@@ -274,12 +274,7 @@
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (quaternion-slerp!
-          (-> self root-override2 quat)
-          (-> self root-override2 quat)
-          gp-0
-          (* 2.0 (-> self clock seconds-per-frame))
-          )
+        (quaternion-slerp! (-> self root quat) (-> self root quat) gp-0 (* 2.0 (-> self clock seconds-per-frame)))
         (suspend)
         (ja :num! (seek!))
         )
@@ -290,12 +285,9 @@
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-      (enemy-method-125 self a1-0 (-> self root-override2 root-prim prim-core collide-with) 8192.0 81920.0 1024.0)
+      (enemy-method-125 self a1-0 (-> self root root-prim prim-core collide-with) 8192.0 81920.0 1024.0)
       )
-    (flying-spider-method-182
-      self
-      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat))
-      )
+    (flying-spider-method-182 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
     (nav-enemy-falling-post)
     (none)
     )
@@ -312,9 +304,7 @@
       )
     (let ((a0-1 (handle->process (-> self focus handle))))
       (when (and a0-1
-                 (< (vector-vector-distance (get-trans (the-as process-focusable a0-1) 0) (-> self root-override2 trans))
-                    81920.0
-                    )
+                 (< (vector-vector-distance (get-trans (the-as process-focusable a0-1) 0) (-> self root trans)) 81920.0)
                  )
         (if (not (enemy-method-96 self 5461.3335 #t))
             (go-virtual turn-to-focus)
@@ -348,14 +338,11 @@
     (let ((s3-0 (handle->process (-> self focus handle))))
       (cond
         (s3-0
-          (let ((gp-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat)))
-                (s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat)))
-                (s5-1 (vector-!
-                        (new 'stack-no-clear 'vector)
-                        (get-trans (the-as process-focusable s3-0) 0)
-                        (-> self root-override2 trans)
-                        )
-                      )
+          (let ((gp-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                (s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                (s5-1
+                  (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s3-0) 0) (-> self root trans))
+                  )
                 )
             (set! (-> gp-0 y) 0.0)
             (set! (-> s4-0 y) 0.0)
@@ -418,10 +405,7 @@
     (none)
     )
   :post (behavior ()
-    (flying-spider-method-182
-      self
-      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-override2 quat))
-      )
+    (flying-spider-method-182 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
     (nav-enemy-face-focus-post)
     (none)
     )
@@ -459,7 +443,7 @@
         ((or (not a0-1) (>= 2 (the-as int (-> self focus aware))))
          (go-stare self)
          )
-        ((< 98304.0 (vector-vector-distance (get-trans a0-1 0) (-> self root-override2 trans)))
+        ((< 98304.0 (vector-vector-distance (get-trans a0-1 0) (-> self root trans)))
          (go-hostile self)
          )
         ((not (enemy-method-96 self 5461.3335 #t))
@@ -583,13 +567,10 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override die-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
                   :num! (seek!
                     (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override die-anim)))
-                                frames
-                                num-frames
-                                )
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info die-anim))) frames num-frames)
                             -1
                             )
                          )
@@ -603,7 +584,7 @@
         )
       )
     (send-event self 'death-end)
-    (let ((v1-34 (-> self root-override2 root-prim)))
+    (let ((v1-34 (-> self root root-prim)))
       (set! (-> v1-34 prim-core collide-as) (collide-spec))
       (set! (-> v1-34 prim-core collide-with) (collide-spec))
       )
@@ -632,7 +613,7 @@
          )
      (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (enemy-method-62 obj)
-     (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (cond
@@ -646,7 +627,7 @@
                             )
                        )
                   (zero? (get-rand-int obj 3))
-                  (let ((f0-0 (vector-vector-distance-squared (-> obj root-override2 trans) (target-pos 0)))
+                  (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
                     (>= f0-0 (* f1-0 f1-0))
@@ -671,7 +652,7 @@
      #t
      )
     (('death-start)
-     (let ((v1-52 (-> obj root-override2 root-prim)))
+     (let ((v1-52 (-> obj root root-prim)))
        (set! (-> v1-52 prim-core collide-as) (collide-spec))
        (set! (-> v1-52 prim-core collide-with) (collide-spec))
        )
@@ -697,19 +678,19 @@
 (defmethod enemy-method-125 flying-spider ((obj flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
-    (when (find-ground (-> obj root-override2) arg0 arg1 arg2 arg3 arg4)
-      (set! (-> obj root-override2 ground-pat) (-> arg0 best-other-tri pat))
+    (when (find-ground (-> obj root) arg0 arg1 arg2 arg3 arg4)
+      (set! (-> obj root ground-pat) (-> arg0 best-other-tri pat))
       (when (>= (- (current-time) (-> obj gspot-timer)) (seconds 0.2))
         (let ((a1-2 (new 'stack-no-clear 'collide-query)))
-          (set! (-> a1-2 start-pos quad) (-> obj root-override2 gspot-pos quad))
-          (set! (-> a1-2 start-pos y) (+ 2048.0 (-> a1-2 start-pos y)))
+          (set! (-> a1-2 start-pos quad) (-> obj root gspot-pos quad))
+          (+! (-> a1-2 start-pos y) 2048.0)
           (set-vector! (-> a1-2 move-dist) 0.0 -6144.0 0.0 0.0)
           (let ((v1-10 a1-2))
             (set! (-> v1-10 radius) 4915.2)
             (set! (-> v1-10 collide-with) arg1)
             (set! (-> v1-10 ignore-process0) obj)
             (set! (-> v1-10 ignore-process1) #f)
-            (set! (-> v1-10 ignore-pat) (-> obj root-override2 pat-ignore-mask))
+            (set! (-> v1-10 ignore-pat) (-> obj root pat-ignore-mask))
             (set! (-> v1-10 action-mask) (collide-action solid))
             )
           (fill-using-line-sphere *collide-cache* a1-2)
@@ -742,11 +723,11 @@
 (defmethod flying-spider-method-182 flying-spider ((obj flying-spider) (arg0 vector))
   (with-pp
     (cond
-      ((= (-> obj root-override2 gspot-pos y) -40959590.0)
+      ((= (-> obj root gspot-pos y) -40959590.0)
        (set! (-> arg0 y) 0.0)
        (vector-normalize! arg0 1.0)
-       (quaternion-set! (-> obj root-override2 quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
-       (quaternion-normalize! (-> obj root-override2 quat))
+       (quaternion-set! (-> obj root quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
+       (quaternion-normalize! (-> obj root quat))
        )
       (else
         (let ((s4-0 (new 'stack-no-clear 'vector)))
@@ -761,7 +742,7 @@
             (vector-normalize! s3-1 1.0)
             (set! (-> arg0 y) 0.0)
             (vector-normalize! arg0 1.0)
-            (forward-up->quaternion (-> obj root-override2 quat) arg0 s3-1)
+            (forward-up->quaternion (-> obj root quat) arg0 s3-1)
             )
           )
         )
@@ -798,7 +779,7 @@
   )
 
 (defmethod enemy-method-51 flying-spider ((obj flying-spider))
-  (quaternion-y-angle (-> obj root-override2 quat))
+  (quaternion-y-angle (-> obj root quat))
   )
 
 (defmethod coin-flip? flying-spider ((obj flying-spider))
@@ -865,7 +846,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
       )
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (none)
   )
@@ -885,9 +866,9 @@
     (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
     (set! (-> v1-5 ignore-angle) 30947.555)
     )
-  (set! (-> obj root-override2 dynam gravity y) 327680.0)
-  (set! (-> obj root-override2 dynam gravity-length) 327680.0)
-  (set! (-> obj root-override2 dynam gravity-max) 327680.0)
+  (set! (-> obj root dynam gravity y) 327680.0)
+  (set! (-> obj root dynam gravity-length) 327680.0)
+  (set! (-> obj root dynam gravity-max) 327680.0)
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (set! (-> obj path-u) 0.0)
   (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))

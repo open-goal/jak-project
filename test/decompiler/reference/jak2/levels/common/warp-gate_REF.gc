@@ -472,17 +472,17 @@
 
 ;; definition of type warp-gate
 (deftype warp-gate (process-drawable)
-  ((root-override collide-shape          :offset        128)
-   (level-name    uint32                 :offset-assert 200)
-   (on-notice     pair                   :offset-assert 204)
-   (on-activate   pair                   :offset-assert 208)
-   (on-close      pair                   :offset-assert 212)
-   (wait-for      pair                   :offset-assert 216)
-   (continue      continue-point         :offset-assert 220)
-   (distance      meters                 :offset-assert 224)
-   (anim-speed    float                  :offset-assert 228)
-   (test-time     time-frame             :offset-assert 232)
-   (center        vector         :inline :offset-assert 240)
+  ((root        collide-shape          :override)
+   (level-name  uint32                 :offset-assert 200)
+   (on-notice   pair                   :offset-assert 204)
+   (on-activate pair                   :offset-assert 208)
+   (on-close    pair                   :offset-assert 212)
+   (wait-for    pair                   :offset-assert 216)
+   (continue    continue-point         :offset-assert 220)
+   (distance    meters                 :offset-assert 224)
+   (anim-speed  float                  :offset-assert 228)
+   (test-time   time-frame             :offset-assert 232)
+   (center      vector         :inline :offset-assert 240)
    )
   :heap-base #x80
   :method-count-assert 26
@@ -576,11 +576,11 @@
   :code (behavior ()
     (remove-setting! 'allow-progress)
     (set! (-> self state-time) (current-time))
-    (update-transforms (-> self root-override))
+    (update-transforms (-> self root))
     (until #f
       (handle-notice self)
       (when (and (and *target*
-                      (and (>= (-> self distance) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                      (and (>= (-> self distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                            (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                            )
                       )
@@ -747,10 +747,9 @@
         (suspend)
         )
       )
-    (while (and *target*
-                (and (>= 81920.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-                     (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
-                     )
+    (while (and *target* (and (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                              (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                              )
                 )
       (suspend)
       (ja :num! (loop!))
@@ -780,7 +779,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (initialize-skeleton
     obj
@@ -801,10 +800,10 @@
   (set! (-> obj continue) #f)
   (set! (-> obj on-close) #f)
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 130) obj))
-  (set! (-> obj center quad) (-> obj root-override trans quad))
-  (set! (-> obj center y) (+ 13516.8 (-> obj center y)))
+  (set! (-> obj center quad) (-> obj root trans quad))
+  (+! (-> obj center y) 13516.8)
   (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "warpgate" :fo-max 30) (-> obj root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "warpgate" :fo-max 30) (-> obj root trans))
         )
   (set! (-> obj distance) (res-lump-float (-> obj entity) 'distance :default 20480.0))
   (none)
@@ -820,7 +819,7 @@
       (process-drawable-from-entity! self arg0)
       )
   (if arg1
-      (set! (-> self root-override trans quad) (-> arg1 quad))
+      (set! (-> self root trans quad) (-> arg1 quad))
       )
   (logior! (-> self mask) (process-mask actor-pause))
   (setup-fields self)
@@ -895,7 +894,7 @@ This commonly includes things such as:
     (set! (-> self control mod-surface) *warp-jump-mods*)
     (set! (-> self control unknown-vector37 quad) (-> arg0 quad))
     (set! (-> self control unknown-vector38 quad) (-> arg1 quad))
-    (set! (-> self control unknown-vector37 y) (+ -4096.0 (-> self control unknown-vector37 y)))
+    (+! (-> self control unknown-vector37 y) -4096.0)
     (set! (-> self control unknown-word04) (the-as uint #f))
     (set! (-> self control unknown-handle02) (the-as handle arg2))
     (vector-reset! (-> self control transv))
@@ -1259,7 +1258,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
       )
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (initialize-skeleton
     obj
@@ -1276,7 +1275,7 @@ This commonly includes things such as:
   (let ((t9-0 (method-of-type warp-gate setup-fields)))
     (t9-0 obj)
     )
-  (set! (-> obj base-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj base-pos quad) (-> obj root trans quad))
   (let ((v1-2 (-> obj level-name)))
     (set! (-> obj dust-y) (cond
                             ((= v1-2 'nest)
@@ -1294,7 +1293,7 @@ This commonly includes things such as:
   (set! (-> obj part-exhaust-left) (create-launch-control (-> *part-group-id-table* 134) obj))
   (set! (-> obj part-exhaust-right) (create-launch-control (-> *part-group-id-table* 134) obj))
   (set! (-> obj part-dust) (create-launch-control (-> *part-group-id-table* 132) obj))
-  (set! (-> obj root-override pause-adjust-distance) 368640.0)
+  (set! (-> obj root pause-adjust-distance) 368640.0)
   (set! (-> obj hover-sound) (sound-play "air-train"))
   (none)
   )
@@ -1308,23 +1307,23 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (set! (-> self root-override trans y) (+ (-> self base-pos y)
-                                             (* 696.32 (cos (* 66.19798 (the float (mod (current-time) 990)))))
-                                             (* 450.56 (cos (* 42.25403 (the float (mod (current-time) 1551)))))
-                                             )
+    (set! (-> self root trans y) (+ (-> self base-pos y)
+                                    (* 696.32 (cos (* 66.19798 (the float (mod (current-time) 990)))))
+                                    (* 450.56 (cos (* 42.25403 (the float (mod (current-time) 1551)))))
+                                    )
           )
     (spawn-with-cspace (-> self part-exhaust-left) (-> self node-list data 5))
     (spawn-with-cspace (-> self part-exhaust-right) (-> self node-list data 6))
     (let ((f0-9 (-> self dust-y)))
       (when (!= f0-9 (the-as float #x7f800000))
         (let ((a1-2 (new 'stack-no-clear 'vector)))
-          (set! (-> a1-2 quad) (-> self root-override trans quad))
+          (set! (-> a1-2 quad) (-> self root trans quad))
           (set! (-> a1-2 y) f0-9)
           (spawn (-> self part-dust) a1-2)
           )
         )
       )
-    (sound-play "air-train" :id (-> self hover-sound) :position (-> self root-override trans))
+    (sound-play "air-train" :id (-> self hover-sound) :position (-> self root trans))
     (none)
     )
   )
@@ -2044,153 +2043,167 @@ This commonly includes things such as:
                  )
 
 ;; failed to figure out what this is:
-(scene-method-16 (new 'static 'scene
-                   :name "caspad-air-train-out"
-                   :extra #f
-                   :info #f
-                   :mask-to-clear (process-mask movie enemy platform projectile)
-                   :entity "air-train-3"
-                   :art-group "scenecamera"
-                   :anim "caspad-air-train-out"
-                   :parts 3
-                   :command-list '((0
-                       (kill "air-train-3")
-                       (fadein (frame-time-30 (new 'static 'bfloat :data 10.0)))
-                       (part-tracker
-                         "group-airtrain-thruster"
-                         entity
-                         "air-train"
-                         joint
-                         "thruster_l"
-                         track
-                         #t
-                         duration
-                         (frame-range 0 195)
-                         )
-                       (part-tracker
-                         "group-airtrain-thruster"
-                         entity
-                         "air-train"
-                         joint
-                         "thruster_r"
-                         track
-                         #t
-                         duration
-                         (frame-range 0 195)
-                         )
-                       )
-                     (80 (part-tracker
-                           "group-airtrain-dust-plume"
-                           entity
-                           "particleman"
-                           joint
-                           "particleA"
-                           track
-                           #t
-                           duration
-                           (frame-range 80 190)
-                           )
-                         )
-                     (180
-                       (part-tracker
-                         "group-airtrain-thruster-off"
-                         entity
-                         "air-train"
-                         joint
-                         "thruster_l"
-                         track
-                         #t
-                         duration
-                         (frame-range 180 295)
-                         )
-                       (part-tracker
-                         "group-airtrain-thruster-off"
-                         entity
-                         "air-train"
-                         joint
-                         "thruster_r"
-                         track
-                         #t
-                         duration
-                         (frame-range 180 295)
-                         )
-                       )
-                     (285 (fadeout (frame-time-30 (new 'static 'bfloat :data 10.0))))
-                     (10000 (apply <lambda at L1>))
-                     )
-                   :cut-list '(180)
-                   :wait-ground-time (seconds 1)
-                   :draw-target #f
-                   :abort #t
-                   :actor (new 'static 'boxed-array :type scene-actor
-                     (new 'static 'scene-actor
-                       :name "scenecamera"
-                       :level #f
-                       :art-group "skel-scenecamera"
-                       :prefix ""
-                       :draw-frames '((min max))
-                       :scissor-frames '()
-                       :camera 4
-                       :shadow-flags -1
-                       :shadow-volume-joint #f
-                       )
-                     (new 'static 'scene-actor
-                       :name "sidekick-highres"
-                       :level 'caspad
-                       :art-group "skel-sidekick-highres"
-                       :prefix ""
-                       :draw-frames '((min max))
-                       :scissor-frames '()
-                       :flags #x1
-                       :shadow-flags -1
-                       :shadow-volume-joint #f
-                       )
-                     (new 'static 'scene-actor
-                       :name "jak-highres"
-                       :level 'caspad
-                       :art-group "skel-jak-highres"
-                       :prefix ""
-                       :draw-frames '((min max))
-                       :scissor-frames '()
-                       :flags #x1
-                       :shadow-flags -1
-                       :shadow-volume-joint #f
-                       )
-                     (new 'static 'scene-actor
-                       :name "air-train"
-                       :level 'caspad
-                       :art-group "skel-air-train"
-                       :prefix ""
-                       :draw-frames '((min max))
-                       :scissor-frames '()
-                       :flags #x1
-                       :shadow-flags -1
-                       :shadow-volume-joint #f
-                       )
-                     (new 'static 'scene-actor
-                       :name "particleman"
-                       :level 'caspad
-                       :art-group "skel-particleman"
-                       :prefix ""
-                       :draw-frames '((min max))
-                       :scissor-frames '()
-                       :flags #x1
-                       :shadow-flags -1
-                       :shadow-volume-joint #f
-                       )
-                     )
-                   :load-point-obj "caspad-warp"
-                   :end-point-obj "caspad-warp"
-                   :borrow '()
-                   :sfx-volume -1.0
-                   :ambient-volume -1.0
-                   :music-volume -1.0
-                   :blackout-end #t
-                   :peaceful #t
-                   :music-delay 1500.0
-                   :save #t
+(scene-method-16
+  (new 'static 'scene
+    :name "caspad-air-train-out"
+    :extra #f
+    :info #f
+    :mask-to-clear (process-mask movie enemy platform projectile)
+    :entity "air-train-3"
+    :art-group "scenecamera"
+    :anim "caspad-air-train-out"
+    :parts 3
+    :command-list '((0
+        (kill "air-train-3")
+        (fadein (frame-time-30 (new 'static 'bfloat :data 10.0)))
+        (part-tracker
+          "group-airtrain-thruster"
+          entity
+          "air-train"
+          joint
+          "thruster_l"
+          track
+          #t
+          duration
+          (frame-range 0 195)
+          )
+        (part-tracker
+          "group-airtrain-thruster"
+          entity
+          "air-train"
+          joint
+          "thruster_r"
+          track
+          #t
+          duration
+          (frame-range 0 195)
+          )
+        )
+      (80
+        (part-tracker
+          "group-airtrain-dust-plume"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 80 190)
+          )
+        )
+      (180
+        (part-tracker
+          "group-airtrain-thruster-off"
+          entity
+          "air-train"
+          joint
+          "thruster_l"
+          track
+          #t
+          duration
+          (frame-range 180 295)
+          )
+        (part-tracker
+          "group-airtrain-thruster-off"
+          entity
+          "air-train"
+          joint
+          "thruster_r"
+          track
+          #t
+          duration
+          (frame-range 180 295)
+          )
+        )
+      (285 (fadeout (frame-time-30 (new 'static 'bfloat :data 10.0))))
+      (10000
+        (apply
+          ,(lambda :behavior scene-player
+             ()
+             (set! (-> self scene end-point-obj) (if (task-node-closed? (game-task-node castle-break-in-introduction))
+                                                     "caspad-face-castle"
+                                                     "caspad-warp"
+                                                     )
                    )
-                 )
+             (none)
+             )
+          )
+        )
+      )
+    :cut-list '(180)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'caspad
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'caspad
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "air-train"
+        :level 'caspad
+        :art-group "skel-air-train"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'caspad
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "caspad-warp"
+    :end-point-obj "caspad-warp"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
 
 ;; failed to figure out what this is:
 (scene-method-16 (new 'static 'scene

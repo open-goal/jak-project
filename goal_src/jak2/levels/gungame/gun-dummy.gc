@@ -1969,8 +1969,8 @@
           (case (-> curr-path-command 0 command)
             (((tpath-command arise))
              (set! (-> obj path-pos) (* 0.007843138 (the float (-> curr-path-command 0 path-pos))))
-             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root-override trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
+             (+! (-> obj root trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> curr-path-command 0 time)))
              (let* ((s3-0 (get-point-in-path! path (new 'stack-no-clear 'vector) (-> obj path-pos) 'interp))
                     (v1-26 (get-point-in-path!
                              path
@@ -2005,8 +2005,8 @@
              ret
              )
             (((tpath-command lower))
-             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
-             (+! (-> obj root-override trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> curr-path-command 0 time)))
+             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
+             (+! (-> obj root trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> curr-path-command 0 time)))
              (if (-> obj first-time-command)
                  (sound-play "target-dwn-slow")
                  )
@@ -2041,7 +2041,7 @@
                  (forward-up-nopitch->quaternion (-> obj quat-ground) s4-6 *up-vector*)
                  )
                (quaternion-normalize! (-> obj quat-ground))
-               (set! (-> obj root-override trans quad) (-> s3-3 quad))
+               (set! (-> obj root trans quad) (-> s3-3 quad))
                )
              (set! (-> obj inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> curr-path-command 0 time)))
              (set! (-> obj first-time-command) #f)
@@ -2079,10 +2079,10 @@
                (get-point-in-path! path s2-4 (-> obj path-pos) 'interp)
                (get-point-in-path! path s3-4 (* 0.007843138 (the float (-> curr-path-command 0 path-pos))) 'interp)
                (let ((v1-102 (new 'stack-no-clear 'vector)))
-                 (set! (-> v1-102 quad) (-> obj root-override trans quad))
-                 (vector-float*! (-> obj root-override trans) s2-4 (- 1.0 f28-2))
-                 (let ((a0-63 (-> obj root-override trans)))
-                   (let ((a1-23 (-> obj root-override trans)))
+                 (set! (-> v1-102 quad) (-> obj root trans quad))
+                 (vector-float*! (-> obj root trans) s2-4 (- 1.0 f28-2))
+                 (let ((a0-63 (-> obj root trans)))
+                   (let ((a1-23 (-> obj root trans)))
                      (let ((a2-17 f28-2))
                        (.mov vf7 a2-17)
                        )
@@ -2094,8 +2094,8 @@
                    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
                    (.svf (&-> a0-63 quad) vf6)
                    )
-                 (let ((a0-65 (-> obj root-override transv)))
-                   (.lvf vf1 (&-> (vector-! (new 'stack-no-clear 'vector) (-> obj root-override trans) v1-102) quad))
+                 (let ((a0-65 (-> obj root transv)))
+                   (.lvf vf1 (&-> (vector-! (new 'stack-no-clear 'vector) (-> obj root trans) v1-102) quad))
                    (let ((f0-50 (-> pp clock frames-per-second)))
                      (.mov at-0 f0-50)
                      )
@@ -2110,14 +2110,12 @@
                  (set! (-> obj move-sound) (new-sound-id))
                  )
              (let ((s4-7 (static-sound-spec "target-mov-slow" :volume 100.0 :fo-max 60 :mask (pitch))))
-               (set! (-> s4-7 pitch-mod)
-                     (the int (lerp-scale -1.0 1.0 (vector-length (-> obj root-override transv)) 0.0 81920.0))
-                     )
-               (sound-play-by-spec s4-7 (-> obj move-sound) (-> obj root-override trans))
+               (set! (-> s4-7 pitch-mod) (the int (lerp-scale -1.0 1.0 (vector-length (-> obj root transv)) 0.0 81920.0)))
+               (sound-play-by-spec s4-7 (-> obj move-sound) (-> obj root trans))
                )
              (when (< (-> obj next-spark) (current-time))
                (set! (-> obj next-spark) (the-as int (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.0 0.3))))))
-               (spawn (-> obj part) (-> obj root-override trans))
+               (spawn (-> obj part) (-> obj root trans))
                )
              (set! (-> obj first-time-command) #f)
              (when (>= f30-0 (-> curr-path-command 0 time))
@@ -2138,7 +2136,7 @@
             (((tpath-command wait))
              (set! (-> obj score) (- (-> obj score) (* (-> obj score-speed) (-> pp clock seconds-per-frame))))
              (set! (-> obj inout-percent) (fmax 0.0 (- (-> obj inout-percent) (* 4.0 (-> pp clock seconds-per-frame)))))
-             (get-point-in-path! path (-> obj root-override trans) (-> obj path-pos) 'interp)
+             (get-point-in-path! path (-> obj root trans) (-> obj path-pos) 'interp)
              (set! (-> obj first-time-command) #f)
              (when (or (and (= (-> curr-path-command 0 time) -1.0) (< (-> obj hit-points) 0))
                        (and (!= (-> curr-path-command 0 time) -1.0) (>= f30-0 (-> curr-path-command 0 time)))
@@ -2163,12 +2161,12 @@
 
 (defmethod get-trans gun-dummy ((obj gun-dummy) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((root (-> obj root-override)))
+  (let ((root (-> obj root)))
     (case arg0
       ((3 2)
        (let ((vec (new 'static 'vector :w 1.0)))
          (set! (-> vec quad) (-> root trans quad))
-         (set! (-> vec y) (+ 8192.0 (-> vec y)))
+         (+! (-> vec y) 8192.0)
          vec
          )
        )
@@ -2222,14 +2220,11 @@
                      (when (if (type? cshape collide-shape)
                                cshape
                                )
-                       (vector+float*! (-> self impact) (-> self root-override trans) *up-vector* 8192.0)
+                       (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
                        (vector+!
                          (-> self impact)
                          (-> self impact)
-                         (vector-normalize!
-                           (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans))
-                           4096.0
-                           )
+                         (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
                          )
                        )
                      )
@@ -2305,7 +2300,7 @@
       (break-dummy self)
       (set! (-> self hit-points) -1)
       )
-    (+! (-> self root-override trans y) (-> self y-offset))
+    (+! (-> self root trans y) (-> self y-offset))
     (set! (-> self rot-y-offset)
           (- (-> self rot-y-offset) (* 8.0 (-> self clock seconds-per-frame) (-> self rot-y-offset)))
           )
@@ -2316,17 +2311,12 @@
         0
         )
       )
-    (let ((vec-to-target (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root-override trans))))
+    (let ((vec-to-target (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))))
       (vector-normalize! vec-to-target 1.0)
-      (seek-toward-heading-vec! (-> self root-override) vec-to-target 65536.0 (seconds 0.5))
+      (seek-toward-heading-vec! (-> self root) vec-to-target 65536.0 (seconds 0.5))
       )
-    (quaternion-rotate-local-y! (-> self root-override quat) (-> self root-override quat) (-> self rot-y-offset))
-    (quaternion-slerp!
-      (-> self root-override quat)
-      (-> self root-override quat)
-      (-> self quat-ground)
-      (-> self inout-percent)
-      )
+    (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> self rot-y-offset))
+    (quaternion-slerp! (-> self root quat) (-> self root quat) (-> self quat-ground) (-> self inout-percent))
     (transform-post)
     (none)
     )
@@ -2354,7 +2344,7 @@
       (set! (-> cshape-moving backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape-moving backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) cshape-moving)
+    (set! (-> obj root) cshape-moving)
     )
   0
   (none)
@@ -2388,11 +2378,11 @@ This commonly includes things such as:
 
 (defmethod init-tpath-info! gun-dummy ((obj gun-dummy) (arg0 tpath-info))
   "Given a [[tpath-info]] use it to initialize the dummy with any relevant data or flags"
-  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
-  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
-  (vector-identity! (-> obj root-override scale))
-  (quaternion-copy! (-> obj quat) (-> obj root-override quat))
-  (set! (-> obj root-override trans y) (+ -16384.0 (-> obj root-override trans y)))
+  (logior! (-> obj mask) (process-mask enemy))
+  (logior! (-> obj mask) (process-mask collectable))
+  (vector-identity! (-> obj root scale))
+  (quaternion-copy! (-> obj quat) (-> obj root quat))
+  (+! (-> obj root trans y) -16384.0)
   (if (not (logtest? (-> arg0 flags) (tpath-flags tpath-rand)))
       (set! *tpath-rand* (the-as uint (rand-vu-int-count 16)))
       )
@@ -2517,7 +2507,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-a ((obj gun-dummy-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2555,7 +2545,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-b ((obj gun-dummy-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2591,7 +2581,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-c ((obj gun-dummy-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2627,7 +2617,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-big ((obj gun-dummy-big))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2663,7 +2653,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-gold ((obj gun-dummy-gold))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2699,7 +2689,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-dummy-peace ((obj gun-dummy-peace))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2735,7 +2725,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-cit-a ((obj gun-cit-a))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2773,7 +2763,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-cit-b ((obj gun-cit-b))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2811,7 +2801,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-cit-c ((obj gun-cit-c))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )
@@ -2849,7 +2839,7 @@ This commonly includes things such as:
 
 (defmethod break-dummy gun-cit-d ((obj gun-cit-d))
   "Does what you'd expect, sets up the [[joint-exploder-tuning]] to break the dummy into pieces, plays sounds, etc"
-  (let ((root-prim (-> obj root-override root-prim)))
+  (let ((root-prim (-> obj root root-prim)))
     (set! (-> root-prim prim-core collide-as) (collide-spec))
     (set! (-> root-prim prim-core collide-with) (collide-spec))
     )

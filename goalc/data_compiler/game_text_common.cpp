@@ -24,10 +24,13 @@
 #include "common/util/FontUtils.h"
 #include "common/util/json_util.h"
 
+#include "game/runtime.h"
+
 #include "third-party/fmt/core.h"
 
 namespace {
 
+// TODO - replace with str_util::to_upper?
 std::string uppercase(const std::string& in) {
   std::string result;
   result.reserve(in.size());
@@ -94,43 +97,40 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
  * Write game subtitle data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL.
  */
-void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
-  for (const auto& [lang, bank] : db.banks()) {
+void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) {
+  for (const auto& [lang, bank] : db.m_banks) {
+    auto font = get_font_bank(bank->m_text_version);
     DataObjectGenerator gen;
     gen.add_type_tag("subtitle-text-info");  // type
-    gen.add_word(bank->scenes().size());     // length
+    gen.add_word(bank->m_scenes.size());     // length
     gen.add_word(lang);                      // lang
     gen.add_word(0);                         // dummy
 
     // fifo queue for scene data arrays
     std::queue<int> array_link_sources;
     // now add all the scene infos
-    for (auto& [name, scene] : bank->scenes()) {
-      gen.add_word((u16)scene.kind() |
-                   (scene.lines().size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
+    for (auto& [name, scene] : bank->m_scenes) {
+      gen.add_word((u16)(scene.is_cutscene ? 0 : 2) |
+                   (scene.m_lines.size() << 16));  // kind (lower 16 bits), length (upper 16 bits)
 
       array_link_sources.push(gen.words());
       gen.add_word(0);  // keyframes (linked later)
 
-      if (scene.kind() == SubtitleSceneKind::Movie ||
-          scene.kind() == SubtitleSceneKind::HintNamed) {
-        gen.add_ref_to_string_in_pool(scene.name());  // name
-      } else if (scene.kind() == SubtitleSceneKind::Hint) {
-        gen.add_word(0);  // nothing
-      }
-      gen.add_word(scene.id());
+      gen.add_ref_to_string_in_pool(name);
+      gen.add_word(scene.m_hint_id);
     }
     // now add all the scene *data!* (keyframes)
-    for (auto& [name, scene] : bank->scenes()) {
+    for (auto& [name, scene] : bank->m_scenes) {
       // link inline-array with reference from earlier
       gen.link_word_to_word(array_link_sources.front(), gen.words());
       array_link_sources.pop();
 
-      for (auto& subtitle : scene.lines()) {
-        gen.add_word(subtitle.frame);                     // frame
-        gen.add_ref_to_string_in_pool(subtitle.line);     // line
-        gen.add_ref_to_string_in_pool(subtitle.speaker);  // speaker
-        gen.add_word(subtitle.offscreen);                 // offscreen
+      for (auto& subtitle : scene.m_lines) {
+        gen.add_word(subtitle.metadata.frame_start);                               // frame
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(subtitle.text));  // line
+        gen.add_ref_to_string_in_pool(
+            font->convert_utf8_to_game(subtitle.metadata.speaker));  // speaker
+        gen.add_word(subtitle.metadata.offscreen);                   // offscreen
       }
     }
 
@@ -148,67 +148,54 @@ void compile_subtitle(GameSubtitleDB& db, const std::string& output_prefix) {
  * Write game subtitle2 data to a file. Uses the V2 object format which is identical between GOAL
  * and OpenGOAL.
  */
-void compile_subtitle2(GameSubtitle2DB& db, const std::string& output_prefix) {
-  auto& speaker_names = get_speaker_names(db.version());
-  for (const auto& [lang, bank] : db.banks()) {
-    auto font = get_font_bank(bank->text_version);
+void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) {
+  for (const auto& [lang, bank] : db.m_banks) {
+    auto font = get_font_bank(bank->m_text_version);
     DataObjectGenerator gen;
-    gen.add_type_tag("subtitle2-text-info");                   // type
-    gen.add_word((bank->scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
+    gen.add_type_tag("subtitle2-text-info");                     // type
+    gen.add_word((bank->m_scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
     // note: we add 1 because "none" isn't included
-    gen.add_word((lang & 0xffff) | ((speaker_names.size() + 1) << 16));  // lang + speaker-length
+    gen.add_word((lang & 0xffff) | ((bank->m_speakers.size() + 1) << 16));  // lang + speaker-length
     int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
-
-    auto speaker_index_by_name = [&speaker_names](const std::string& name) {
-      for (int i = 0; i < (int)speaker_names.size(); ++i) {
-        if (speaker_names.at(i) == name) {
-          return i + 1;
-        }
-      }
-      return 0;
-    };
 
     // fifo queue for scene data arrays
     std::queue<int> array_link_sources;
     // now add all the scenes inline
-    for (auto& [name, scene] : bank->scenes) {
+    for (auto& [name, scene] : bank->m_scenes) {
       gen.add_ref_to_string_in_pool(name);  // scene name
-      gen.add_word(scene.lines.size());     // line amount
+      gen.add_word(scene.m_lines.size());   // line amount
       array_link_sources.push(gen.words());
       gen.add_word(0);  // line array (linked later)
     }
     // now add all the line arrays and link them to their scene
-    for (auto& [name, scene] : bank->scenes) {
+    for (auto& [name, scene] : bank->m_scenes) {
       // link inline-array with reference from earlier
       gen.link_word_to_word(array_link_sources.front(), gen.words());
       array_link_sources.pop();
 
-      for (auto& line : scene.lines) {
-        gen.add_word_float(line.start);  // start frame
-        gen.add_word_float(line.end);    // end frame
-        if (!line.merge) {
-          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
-        } else {
+      for (auto& line : scene.m_lines) {
+        gen.add_word_float(static_cast<float>(line.metadata.frame_start));  // start frame
+        gen.add_word_float(static_cast<float>(line.metadata.frame_end));    // end frame
+        if (line.metadata.merge) {
           gen.add_symbol_link("#f");
+        } else {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
         }
-        u16 speaker = speaker_index_by_name(line.speaker);
+        u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
         u16 flags = 0;
-        flags |= line.offscreen << 0;
-        flags |= line.merge << 1;
+        flags |= line.metadata.offscreen << 0;
+        flags |= line.metadata.merge << 1;
         gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
       }
     }
     // now write the array of strings for the speakers
+    // key word array -- it has to be in the right order.
     gen.link_word_to_word(speaker_array_link, gen.words());
-    // we write #f for invalid entries, including the "none" at the start
-    gen.add_symbol_link("#f");
-    for (auto& speaker_name : speaker_names) {
-      if (bank->speakers.count(speaker_name) == 0) {
-        // no speaker for this
-        gen.add_symbol_link("#f");
-      } else {
-        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(bank->speakers.at(speaker_name)));
-      }
+    const auto localized_speakers = bank->speaker_names_ordered_by_enum_value();
+    for (auto& speaker_localized : localized_speakers) {
+      // No need to check for invalid speakers here, they are checked at the scene line level above
+      // and throw an error
+      gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
     }
 
     auto data = gen.generate_v2();
@@ -233,7 +220,7 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
     if (file.format == GameTextDefinitionFile::Format::GOAL) {
       lg::print("[Build Game Text] GOAL {}\n", file.file_path);
       auto code = reader.read_from_file({file.file_path});
-      parse_text(code, db, file);
+      parse_text_goal(code, db, file);
     } else if (file.format == GameTextDefinitionFile::Format::JSON) {
       lg::print("[Build Game Text] JSON {}\n", file.file_path);
       auto file_path = file_util::get_jak_project_dir() / file.file_path;
@@ -244,30 +231,21 @@ void compile_game_text(const std::vector<GameTextDefinitionFile>& files,
   compile_text(db, output_prefix);
 }
 
-void compile_game_subtitle(const std::vector<GameSubtitleDefinitionFile>& files,
-                           GameSubtitleDB& db,
-                           const std::string& output_prefix) {
-  goos::Reader reader;
-  for (auto& file : files) {
-    if (file.format == GameSubtitleDefinitionFile::Format::GOAL) {
-      lg::print("[Build Game Subtitle] GOAL {}\n", file.lines_path);
-      auto code = reader.read_from_file({file.lines_path});
-      parse_subtitle(code, db, file.lines_path);
-    } else if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
-      lg::print("[Build Game Subtitle] JSON {}:{}\n", file.lines_path, file.meta_path);
-      parse_subtitle_json(db, file);
-    }
-  }
-  compile_subtitle(db, output_prefix);
-}
-
-void compile_game_subtitle2(const std::vector<GameSubtitle2DefinitionFile>& files,
-                            GameSubtitle2DB& db,
+void compile_game_subtitles(const std::vector<GameSubtitleDefinitionFile>& files,
+                            GameSubtitleDB& db,
                             const std::string& output_prefix) {
   goos::Reader reader;
-  for (auto& file : files) {
-    lg::print("[Build Game Subtitle] JSON {}\n", file.file_path);
-    parse_subtitle2_json(db, file);
+  if (db.m_subtitle_version == GameSubtitleDB::SubtitleFormat::V1) {
+    for (auto& file : files) {
+      lg::print("[Build Game Subtitle V1] {}:{}\n", file.lines_path, file.meta_path);
+      db.init_banks_from_file(file);
+    }
+    compile_subtitles_v1(db, output_prefix);
+  } else {
+    for (auto& file : files) {
+      lg::print("[Build Game Subtitle V2] {}:{}\n", file.lines_path, file.meta_path);
+      db.init_banks_from_file(file);
+    }
+    compile_subtitles_v2(db, output_prefix);
   }
-  compile_subtitle2(db, output_prefix);
 }

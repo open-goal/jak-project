@@ -184,6 +184,9 @@ include_directories(third-party/tree-sitter/tree-sitter/lib/include)
 include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
 add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
 
+# native OS dialogs for error messages
+add_subdirectory(third-party/libtinyfiledialogs)
+
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build common library

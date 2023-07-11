@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec4 position_in;
 layout (location = 1) in vec4 rgba_in;
@@ -9,7 +9,7 @@ out vec4 fragment_color;
 out vec2 uv_texture;
 out float discard_flag;
 
-layout (binding = 1) uniform sampler2D probe_tex;
+uniform sampler2D tex_T1;
 
 
 void main() {
@@ -25,5 +25,5 @@ void main() {
   gl_Position = transformed;
   fragment_color = rgba_in;
   uv_texture = uv_texture_in;
-  discard_flag = texture(probe_tex, uv_probe_in).a;
+  discard_flag = texture(tex_T1, uv_probe_in).a;
 }

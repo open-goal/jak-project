@@ -29,6 +29,9 @@ I just updated the daxter mod and made my own repository for misc modding that i
   - [Windows](#windows)
     - [Required Software](#required-software)
     - [Using Visual Studio](#using-visual-studio)
+  - [MacOS](#macos)
+    - [Intel Based](#intel-based)
+    - [Apple Silicon](#apple-silicon)
   - [Building and Running the Game](#building-and-running-the-game)
     - [Extract Assets](#extract-assets)
     - [Build the Game](#build-the-game)
@@ -131,7 +134,7 @@ Unfortunately you'll still need task runner on your local machine to run the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python libgl1-mesa-dev
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
@@ -236,6 +239,29 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
+
+### MacOS
+
+> NOTE: At this time you can only run the game on macOS if you have an Intel processor.
+
+Ensure that you have Xcode command line tools installed (this installs things like Apple Clang).  If you don't, you can run the following command:
+
+```bash
+xcode-select –install
+```
+
+#### Intel Based
+
+```bash
+brew install go-task/tap/go-task
+brew install cmake nasm ninja go-task
+cmake -B build --preset=Release-macos-clang
+cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+```
+
+#### Apple Silicon
+
+**Not Supported at This Time**
 
 ### Building and Running the Game
 

@@ -358,7 +358,7 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((gp-0 (-> obj root-override trans))
+    (let* ((gp-0 (-> obj root trans))
            (a1-0 (-> obj tail-pos))
            (s5-1 (vector-! (new 'stack-no-clear 'vector) gp-0 a1-0))
            (f30-0 (vector-length s5-1))
@@ -428,7 +428,7 @@
 
 (defmethod spawn-shell-particles guard-shot ((obj guard-shot))
   "TODO - confirm"
-  (let* ((s4-0 (-> obj root-override))
+  (let* ((s4-0 (-> obj root))
          (v1-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
@@ -540,9 +540,9 @@
       )
     (when *traffic-manager*
       (let ((v1-5 (new 'stack-no-clear 'traffic-danger-info)))
-        (set! (-> v1-5 sphere quad) (-> self root-override trans quad))
+        (set! (-> v1-5 sphere quad) (-> self root trans quad))
         (set! (-> v1-5 sphere r) 40960.0)
-        (set! (-> v1-5 velocity quad) (-> self root-override transv quad))
+        (set! (-> v1-5 velocity quad) (-> self root transv quad))
         (set! (-> v1-5 notify-radius) 122880.0)
         (set! (-> v1-5 danger-level) 1.0)
         (set! (-> v1-5 decay-rate) 0.0)
@@ -558,7 +558,7 @@
 
 (defun guard-shot-move ((arg0 guard-shot))
   (projectile-move-fill-line-sphere arg0)
-  (let ((s5-0 (-> arg0 root-override)))
+  (let ((s5-0 (-> arg0 root)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (vector-! s4-0 (-> arg0 tail-pos) (-> s5-0 trans))
       (let ((f0-0 (vector-length s4-0)))
@@ -569,7 +569,7 @@
         )
       )
     (when (logtest? (-> s5-0 status) (collide-status touch-surface))
-      (if (logtest? (-> arg0 root-override status) (collide-status touch-actor))
+      (if (logtest? (-> arg0 root status) (collide-status touch-actor))
           (set! (-> arg0 hit-actor?) #t)
           )
       (go (method-of-object arg0 impact))
@@ -581,7 +581,7 @@
 
 (defmethod made-impact? guard-shot ((obj guard-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((v1-0 (-> obj root-override))
+  (let ((v1-0 (-> obj root))
         (t1-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((a0-1 t1-0))
@@ -593,7 +593,7 @@
       (set! (-> a0-1 action-mask) (collide-action solid))
       )
     (when (fill-and-try-snap-to-surface v1-0 (-> v1-0 transv) -6144.0 0.0 -2048.0 t1-0)
-      (if (logtest? (-> obj root-override status) (collide-status touch-actor))
+      (if (logtest? (-> obj root status) (collide-status touch-actor))
           (set! (-> obj hit-actor?) #t)
           )
       #t
@@ -645,9 +645,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -657,14 +657,14 @@
 (defmethod init-proj-settings! guard-shot ((obj guard-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> obj hit-actor?) #f)
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'guard-shot)
   (set! (-> obj max-speed) 819200.0)
   (set! (-> obj move) guard-shot-move)
   (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
   (set! (-> obj timeout) (seconds 0.5))
   (logior! (-> obj options) (projectile-options account-for-target-velocity))
-  (set-gravity-length (-> obj root-override dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (none)
   )
 
@@ -721,14 +721,14 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (set-collide-with!
-    (-> obj root-override)
+    (-> obj root)
     (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
     )
-  (set-collide-as! (-> obj root-override) (collide-spec enemy))
-  (set! (-> obj root-override pat-ignore-mask)
+  (set-collide-as! (-> obj root) (collide-spec enemy))
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -755,7 +755,7 @@
 
 (defmethod spawn-impact-particles vehicle-grenade ((obj vehicle-grenade))
   "Spawns associated particles with the projectile if applicable"
-  (spawn (-> obj part) (-> obj root-override trans))
+  (spawn (-> obj part) (-> obj root trans))
   (ja-post)
   0
   (none)
@@ -763,7 +763,7 @@
 
 (defmethod noop vehicle-grenade ((obj vehicle-grenade))
   "Does nothing"
-  (spawn (-> obj part) (-> obj root-override trans))
+  (spawn (-> obj part) (-> obj root trans))
   0
   (none)
   )
@@ -771,7 +771,7 @@
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-impact-sound! vehicle-grenade ((obj vehicle-grenade))
   "Plays impact sound"
-  (let* ((a2-0 (-> obj root-override))
+  (let* ((a2-0 (-> obj root))
          (v1-0 (-> a2-0 status))
          )
     (if (logtest? v1-0 (collide-status touch-surface))
@@ -812,8 +812,8 @@
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-0 spawn-point quad) (-> self root-override trans quad))
-      (quaternion-copy! (-> gp-0 spawn-quat) (-> self root-override quat))
+      (set! (-> gp-0 spawn-point quad) (-> self root trans quad))
+      (quaternion-copy! (-> gp-0 spawn-quat) (-> self root quat))
       (set! (-> gp-0 radius) (-> self blast-radius))
       (set! (-> gp-0 group) (-> *part-group-id-table* 76))
       (set! (-> gp-0 collide-with)
@@ -823,7 +823,7 @@
       (explosion-spawn self explosion gp-0)
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (let ((v1-11 (-> self root-override root-prim)))
+    (let ((v1-11 (-> self root root-prim)))
       (set! (-> v1-11 prim-core collide-as) (collide-spec))
       (set! (-> v1-11 prim-core collide-with) (collide-spec))
       )
@@ -938,7 +938,7 @@
 
 (defmethod made-impact? guard-lazer-shot ((obj guard-lazer-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((gp-0 (-> obj root-override))
+  (let ((gp-0 (-> obj root))
         (s5-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((v1-0 s5-0))
@@ -963,7 +963,7 @@
 
 (defun guard-lazer-shot-move ((arg0 guard-lazer-shot))
   (projectile-move-fill-line-sphere arg0)
-  (if (logtest? (-> arg0 root-override status) (collide-status touch-surface))
+  (if (logtest? (-> arg0 root status) (collide-status touch-surface))
       (go (method-of-object arg0 impact))
       )
   0
@@ -1008,9 +1008,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -1023,9 +1023,9 @@
   (set! (-> obj max-speed) 131072.0)
   (set! (-> obj timeout) (seconds 0.125))
   (set! (-> obj move) guard-lazer-shot-move)
-  (set! (-> obj root-override dynam gravity y) 0.0)
-  (set! (-> obj root-override dynam gravity-length) 0.0)
-  (set! (-> obj root-override dynam gravity-max) 0.0)
+  (set! (-> obj root dynam gravity y) 0.0)
+  (set! (-> obj root dynam gravity-length) 0.0)
+  (set! (-> obj root dynam gravity-max) 0.0)
   0
   (none)
   )

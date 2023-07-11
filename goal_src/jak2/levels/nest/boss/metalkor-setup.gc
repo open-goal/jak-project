@@ -83,8 +83,8 @@
               )
 
 (deftype metalkor-bomb (process-drawable)
-  ((root-override collide-shape-moving    :offset        128)
-   (joint-mods    joint-mod            49 :offset-assert 200)
+  ((root       collide-shape-moving    :override)
+   (joint-mods joint-mod            49 :offset-assert 200)
    )
   :heap-base #x110
   :method-count-assert 21
@@ -213,7 +213,7 @@
 
 
 (deftype metalkor-distort (process-drawable)
-  ((root-override collide-shape-moving  :offset 128)
+  ((root collide-shape-moving  :override)
    )
   :heap-base #x50
   :method-count-assert 21
@@ -382,7 +382,7 @@
     :walk-travel-speed (meters 3)
     :walk-acceleration (meters 1)
     :walk-turning-acceleration (meters 1)
-    :maximum-rotation-rate (degrees 720.0)
+    :maximum-rotation-rate (degrees 720)
     :notice-nav-radius (meters 1)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -631,35 +631,35 @@
 (define *metalkor-bomb-probe-joints* (new 'static 'boxed-array :type int8
                                        3
                                        4
-                                       #x7
-                                       #xa
-                                       #xd
-                                       #x10
-                                       #x13
-                                       #x16
-                                       #x19
-                                       #x1c
-                                       #x1f
-                                       #x22
-                                       #x25
-                                       #x28
-                                       #x2b
-                                       #x2e
-                                       #x31
-                                       #x34
-                                       #x37
-                                       #x3a
-                                       #x3d
-                                       #x40
-                                       #x43
-                                       #x46
-                                       #x49
-                                       #x4c
-                                       #x4f
-                                       #x52
-                                       #x55
-                                       #x58
-                                       #x5b
+                                       7
+                                       10
+                                       13
+                                       16
+                                       19
+                                       22
+                                       25
+                                       28
+                                       31
+                                       34
+                                       37
+                                       40
+                                       43
+                                       46
+                                       49
+                                       52
+                                       55
+                                       58
+                                       61
+                                       64
+                                       67
+                                       70
+                                       73
+                                       76
+                                       79
+                                       82
+                                       85
+                                       88
+                                       91
                                        )
         )
 
@@ -688,10 +688,10 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-identity! (-> self root-override quat))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-bomb" (the-as (pointer uint32) #f)))
@@ -735,7 +735,7 @@ This commonly includes things such as:
     (set! (-> obj root) s4-0)
     )
   (process-drawable-from-entity! obj arg0)
-  (set! (-> obj root trans y) (+ -36864.0 (-> obj root trans y)))
+  (+! (-> obj root trans y) -36864.0)
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nestb-tail-bound" (the-as (pointer uint32) #f)))
@@ -789,9 +789,9 @@ This commonly includes things such as:
 
 ;; WARN: Return type mismatch object vs none.
 (defbehavior metalkor-distort-init-by-other metalkor-distort ((arg0 vector) (arg1 quaternion))
-  (set! (-> self root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (quaternion-copy! (-> self root-override quat) arg1)
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-distort" (the-as (pointer uint32) #f)))
@@ -832,7 +832,7 @@ This commonly includes things such as:
 (defbehavior metalkor-kid-init-by-other metalkor-kid ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self root trans y) (+ 61440.0 (-> self root trans y)))
+  (+! (-> self root trans y) 61440.0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-kid" (the-as (pointer uint32) #f)))
@@ -1035,10 +1035,10 @@ This commonly includes things such as:
       )
     (set! (-> s3-0 event-self) 'touched)
     (set! (-> s3-0 max-iteration-count) (the-as uint 3))
-    (set! (-> self root-override) s3-0)
+    (set! (-> self root) s3-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (set! (-> self root-override transv quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-egg" (the-as (pointer uint32) #f)))
@@ -1056,7 +1056,7 @@ This commonly includes things such as:
           )
     )
   (logclear! (-> self mask) (process-mask actor-pause))
-  (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
+  (logior! (-> self mask) (process-mask enemy))
   (set-vector! (-> self last-hit-normal) 0.0 1.0 0.0 1.0)
   (set! (-> self sticky-time) 0)
   (set! (-> self flitter-slot) arg2)
@@ -1259,10 +1259,10 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-50 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> self root-override) s4-0)
+    (set! (-> self root) s4-0)
     )
-  (set! (-> self root-override pause-adjust-distance) 409600.0)
-  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self root pause-adjust-distance) 409600.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
   (set! (-> self prefix) arg0)
   (initialize-skeleton
     self
@@ -1280,7 +1280,7 @@ This commonly includes things such as:
               )
           )
     )
-  (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
+  (logior! (-> self mask) (process-mask enemy))
   (set! (-> self trackable) #f)
   (set! (-> self event-hook) (-> (method-of-object self idle) event))
   (dotimes (gp-2 6)
@@ -1502,10 +1502,10 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-56 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> self root-override) s4-0)
+    (set! (-> self root) s4-0)
     )
-  (set! (-> self root-override pause-adjust-distance) 409600.0)
-  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self root pause-adjust-distance) 409600.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
   (set! (-> self prefix) (the-as string arg0))
   (initialize-skeleton
     self
@@ -1538,9 +1538,9 @@ This commonly includes things such as:
   (dotimes (v1-91 3)
     (set! (-> (the-as metalkor-lowtorso (+ (the-as uint self) (* v1-91 16))) ja-float-info 0 float-anim) #f)
     )
-  (let ((v1-95 (-> self root-override root-prim)))
-    (set! (-> self root-override backup-collide-as) (-> v1-95 prim-core collide-as))
-    (set! (-> self root-override backup-collide-with) (-> v1-95 prim-core collide-with))
+  (let ((v1-95 (-> self root root-prim)))
+    (set! (-> self root backup-collide-as) (-> v1-95 prim-core collide-as))
+    (set! (-> self root backup-collide-with) (-> v1-95 prim-core collide-with))
     )
   (set! (-> self no-collision-timer) 0)
   (set! (-> self egg-toss-joint-1) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 5))
@@ -1608,16 +1608,16 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root) s4-0)
     )
-  (set! (-> obj root-override pause-adjust-distance) 409600.0)
+  (set! (-> obj root pause-adjust-distance) 409600.0)
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
     obj
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (logior! (-> obj mask) (process-mask enemy))
   (set! (-> obj draw light-index) (the-as uint 10))
   (set! (-> obj lowtorso) (the-as handle #f))
   (set! (-> obj trackable) #f)
@@ -1627,7 +1627,7 @@ This commonly includes things such as:
   (dotimes (v1-36 3)
     (set! (-> obj wasps v1-36) (the-as handle #f))
     )
-  (set! (-> obj initial-y) (-> obj root-override trans y))
+  (set! (-> obj initial-y) (-> obj root trans y))
   (set! (-> obj hud) (the-as handle #f))
   (set! (-> obj legs) (the-as handle #f))
   (set! (-> obj kid) (the-as handle #f))
@@ -1708,9 +1708,9 @@ This commonly includes things such as:
   (set! (-> obj previous-flat-travel-timer) 0)
   (set! (-> obj previous-flat-travel-long-timer) 0)
   (set! (-> obj countdown-to-roar) 3)
-  (let ((v1-88 (-> obj root-override root-prim)))
-    (set! (-> obj root-override backup-collide-as) (-> v1-88 prim-core collide-as))
-    (set! (-> obj root-override backup-collide-with) (-> v1-88 prim-core collide-with))
+  (let ((v1-88 (-> obj root root-prim)))
+    (set! (-> obj root backup-collide-as) (-> v1-88 prim-core collide-as))
+    (set! (-> obj root backup-collide-with) (-> v1-88 prim-core collide-with))
     )
   (set! (-> obj no-collision-timer) 0)
   (set! (-> obj wing-sound) (new-sound-id))

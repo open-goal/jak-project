@@ -143,6 +143,7 @@ int main( int argc, char** argv ) {
 	int installCompletionCallback = 1;
 	int installHighlighterCallback = 1;
 	int installHintsCallback = 1;
+	int indentMultiline = 0;
 	while ( argc > 1 ) {
 		-- argc;
 		++ argv;
@@ -160,11 +161,13 @@ int main( int argc, char** argv ) {
 			case 'h': replxx_set_max_hint_rows( replxx, atoi( (*argv) + 1 ) );             break;
 			case 'H': replxx_set_hint_delay( replxx, atoi( (*argv) + 1 ) );                break;
 			case 's': replxx_set_max_history_size( replxx, atoi( (*argv) + 1 ) );          break;
-			case 'i': replxx_set_preload_buffer( replxx, recode( (*argv) + 1 ) );          break;
+			case 'P': replxx_set_preload_buffer( replxx, recode( (*argv) + 1 ) );          break;
 			case 'I': replxx_set_immediate_completion( replxx, (*argv)[1] - '0' );         break;
 			case 'u': replxx_set_unique_history( replxx, (*argv)[1] - '0' );               break;
 			case 'w': replxx_set_word_break_characters( replxx, (*argv) + 1 );             break;
 			case 'm': replxx_set_no_color( replxx, (*argv)[1] - '0' );                     break;
+			case 'i': replxx_set_ignore_case( replxx, (*argv)[1] - '0' );                  break;
+			case 'n': indentMultiline = (*argv)[1] - '0';                                  break;
 			case 'B': replxx_enable_bracketed_paste( replxx );                             break;
 			case 'p': prompt = recode( (*argv) + 1 );                                      break;
 			case 'q': quiet = atoi( (*argv) + 1 );                                         break;
@@ -177,6 +180,7 @@ int main( int argc, char** argv ) {
 
 	}
 
+	replxx_set_indent_multiline( replxx, indentMultiline );
 	const char* file = "./replxx_history.txt";
 
 	replxx_history_load( replxx, file );

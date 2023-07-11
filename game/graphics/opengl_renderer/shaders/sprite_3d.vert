@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec4 xyz_sx;
 layout (location = 1) in vec4 quat_sy;
@@ -26,9 +26,9 @@ uniform vec4 xy_array[8];
 uniform vec4 xyz_array[4];
 uniform vec4 st_array[4];
 
-out flat vec4 fragment_color;
+flat out vec4 fragment_color;
 out vec3 tex_coord;
-out flat uvec2 tex_info;
+flat out uvec2 tex_info;
 
 vec4 matrix_transform(mat4 mtx, vec3 pt) {
   return mtx[3]

@@ -9,6 +9,11 @@ void log_error(const std::string& msg) {
   std::string sdl_cause = SDL_GetError();
   lg::error("SDL Error: {} - Cause: {}", msg, sdl_cause.empty() ? "n/a" : sdl_cause);
 }
+std::string log_and_return_error(const std::string& msg) {
+  std::string sdl_cause = SDL_GetError();
+  lg::error("SDL Error: {} - Cause: {}", msg, sdl_cause.empty() ? "n/a" : sdl_cause);
+  return sdl_cause;
+}
 bool is_any_event_type(uint32_t event_type, const std::vector<uint32_t>& allowed_types) {
   for (const auto& allowed_type : allowed_types) {
     if (allowed_type == event_type) {

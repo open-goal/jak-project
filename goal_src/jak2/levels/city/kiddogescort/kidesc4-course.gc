@@ -1,0 +1,399 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: kidesc4-course.gc
+;; name in dgo: kidesc4-course
+;; dgos: LKIDDOGE
+
+;; DECOMP BEGINS
+
+;; WARN: Return type mismatch float vs none.
+(defun kid4-update-spot-to-track-crocadog ((arg0 kid-escort))
+  (let* ((s5-0 (handle->process (-> arg0 crocadog-handle)))
+         (a0-5 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (when a0-5
+      (let ((v1-4 (get-trans (the-as process-focusable a0-5) 0))
+            (a0-6 (-> arg0 spot))
+            )
+        (set! (-> a0-6 center x) (-> v1-4 x))
+        (set! (-> a0-6 center y) (-> v1-4 y))
+        (set! (-> a0-6 center z) (-> v1-4 z))
+        )
+      )
+    )
+  (none)
+  )
+
+(define *kid4-course*
+  (new 'static 'bot-course
+    :course-id #xb
+    :spot-count #x8
+    :default-check-too-far #f
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (process-entity-status! arg0 (entity-perm-status no-kill) #t)
+          (clear-speech-flags! arg0)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 0.0)
+          (let ((v1-5 (-> arg0 root root-prim)))
+            (set! (-> v1-5 prim-core collide-as) (collide-spec))
+            (set! (-> v1-5 prim-core collide-with) (collide-spec))
+            )
+          0
+          (move-to-point! (-> arg0 root) (the-as vector (-> arg0 course spots 0)))
+          (logclear! (-> arg0 mask) (process-mask actor-pause))
+          (logclear! (-> arg0 enemy-flags) (enemy-flag notice))
+          (let ((v1-16 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-16 bytes 5) 1)
+            (set! (-> v1-16 bytes 6) 0)
+            (set! (-> v1-16 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-16) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (when (< 1 (-> arg1 waypoint-request))
+                        (let* ((a0-2 (-> arg1 actor-group 0 data 0 actor))
+                               (v1-4 (if a0-2
+                                         (-> a0-2 extra process)
+                                         )
+                                     )
+                               )
+                          (when v1-4
+                            (set! (-> arg1 master-handle) (process->handle v1-4))
+                            (set! (-> arg1 crocadog-handle) (-> (the-as hal-escort v1-4) slave-handle 1))
+                            (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                            (go-to-waypoint! arg1 2 #f)
+                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                            #t
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :nav-mesh-index -1
+        :skip-to 14
+        :on-set (lambda ((arg0 kid-escort))
+          (add-icon! *minimap* arg0 (the-as uint 24) (the-as int #f) (the-as vector #t) 0)
+          (let ((v1-3 (-> arg0 root root-prim)))
+            (set! (-> v1-3 prim-core collide-as) (-> arg0 root backup-collide-as))
+            (set! (-> v1-3 prim-core collide-with) (-> arg0 root backup-collide-with))
+            )
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (logior! (-> arg0 focus-status) (focus-status arrestable))
+          (let ((v1-9 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-9 bytes 5) 1)
+            (set! (-> v1-9 bytes 6) 1)
+            (set! (-> v1-9 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-9) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (let* ((s5-0 (handle->process (-> arg1 crocadog-handle)))
+                             (a0-5 (if (type? s5-0 process-focusable)
+                                       s5-0
+                                       )
+                                   )
+                             )
+                        (when (and a0-5 (>= (the-as int (send-event a0-5 'query 'waypoint)) 17))
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 17 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kid-escort)) (kid4-update-spot-to-track-crocadog arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 14
+        :nav-mesh-index -1
+        :skip-to 19
+        :on-set (lambda ((arg0 kid-escort))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 3)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-1) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (let* ((s5-0 (handle->process (-> arg1 crocadog-handle)))
+                             (a0-5 (if (type? s5-0 process-focusable)
+                                       s5-0
+                                       )
+                                   )
+                             )
+                        (when (and a0-5 (>= (the-as int (send-event a0-5 'query 'waypoint)) 17))
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 17 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kid-escort)) (kid4-update-spot-to-track-crocadog arg0) (none))
+        :on-skipping-here (lambda ((arg0 kid-escort))
+          (let ((v1-1 (-> arg0 root root-prim)))
+            (set! (-> v1-1 prim-core collide-as) (-> arg0 root backup-collide-as))
+            (set! (-> v1-1 prim-core collide-with) (-> arg0 root backup-collide-with))
+            )
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (send-event arg0 'move-trans (-> arg0 course spots 2))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 17
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 4)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-1) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort)) (when (focus-test? arg1 pilot)
+                                                                (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                (go-to-waypoint! arg1 18 #f)
+                                                                (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                #t
+                                                                )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 18
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (clear-poi-and-focus! arg0)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 4)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-3) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (when (and (not (focus-test? arg1 pilot)) (not (logtest? (bot-flags bf17) (-> arg1 bot-flags))))
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 19 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 19
+        :nav-mesh-index 1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (logior! (-> arg0 focus-status) (focus-status arrestable))
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 1)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-5) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (let* ((s5-0 (handle->process (-> arg1 crocadog-handle)))
+                             (a0-5 (if (type? s5-0 process-focusable)
+                                       s5-0
+                                       )
+                                   )
+                             )
+                        (when (and a0-5 (>= (the-as int (send-event a0-5 'query 'waypoint)) 21))
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 21 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 object) (arg1 kid-escort))
+          (the-as symbol (kid4-update-spot-to-track-crocadog (the-as kid-escort arg0)))
+          )
+        :on-skipping-here (lambda ((arg0 kid-escort))
+          (let ((v1-1 (-> arg0 root root-prim)))
+            (set! (-> v1-1 prim-core collide-as) (-> arg0 root backup-collide-as))
+            (set! (-> v1-1 prim-core collide-with) (-> arg0 root backup-collide-with))
+            )
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (send-event arg0 'move-trans (-> arg0 course spots 5))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 21
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (logior! (-> arg0 focus-status) (focus-status arrestable))
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 1)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-5) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (let* ((s4-0 (handle->process (-> arg1 crocadog-handle)))
+                             (s5-0 (if (type? s4-0 process-focusable)
+                                       s4-0
+                                       )
+                                   )
+                             )
+                        (when (and (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                   s5-0
+                                   (>= (the-as int (send-event s5-0 'query 'waypoint)) 25)
+                                   )
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 25 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kid-escort)) (kid4-update-spot-to-track-crocadog arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 25
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 1)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-1) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort)) (when (>= (-> arg1 waypoint-request) 26)
+                                                                (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                (go-to-waypoint! arg1 26 #f)
+                                                                (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                #t
+                                                                )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 kid-escort)) (kid4-update-spot-to-track-crocadog arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 26
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 kid-escort))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (send-event (ppointer->process (-> arg0 my-simple-focus)) 'move-trans (-> arg0 course spots 7))
+          (set! (-> arg0 poi-handle) (ppointer->handle (-> arg0 my-simple-focus)))
+          (set! (-> arg0 focus-mode) 1)
+          (let ((v1-16 (get-task-by-type (-> arg0 ai-ctrl) kidesct-wait-spot arg0)))
+            (set! (-> v1-16 bytes 5) 1)
+            (set! (-> v1-16 bytes 6) 6)
+            (set! (-> v1-16 bytes 4) -1)
+            (set! (-> (the-as kidesct-wait-spot v1-16) check-done)
+                  (the-as
+                    (function kidesct-wait-spot kid-escort symbol)
+                    (lambda ((arg0 object) (arg1 kid-escort))
+                      (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2))
+                        (let ((v1-4 (-> arg1 spot)))
+                          (set! (-> v1-4 center quad) (-> arg1 root trans quad))
+                          (set! (-> v1-4 center w) 20480.0)
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      )
+    :spots (new 'static 'inline-array bot-spot 8
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4704133.0 :y 33341.44 :z 194764.8 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4707041.5 :y 33341.44 :z 711761.94 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4454113.5 :y 33341.44 :z 694026.25 :w 20480.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4488438.0 :y 33341.44 :z 751697.94 :w 20480.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4746608.5 :y 33341.44 :z 715816.94 :w 61440.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4086620.2 :y 32768.0 :z 4637122.5 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4494663.5 :y 102891.52 :z 4493230.0 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4588544.0 :y 112640.0 :z 4589322.0 :w 4096.0))
+      )
+    )
+  )
+
+(set! (-> *bot-course-table* course 11) *kid4-course*)
