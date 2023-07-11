@@ -40,7 +40,7 @@ void ReplServer::post_init() {
   fmt::print("[nREPL:{}:{}] awaiting connections\n", tcp_port, listening_socket);
 }
 
-void ReplServer::respond(int socket, std::string response) {
+void ReplServer::respond(int socket, const std::string& response) {
   // Send response over socket
   auto resp = write_to_socket(socket, response.c_str(), response.size());
   if (resp == -1) {
@@ -53,14 +53,14 @@ void ReplServer::respond(int socket, std::string response) {
 
 void ReplServer::ping_response(int socket) {
   // Send a ping
-  std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
+  std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!\n",
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-  respond(socket, ping)
+  respond(socket, ping);
 }
 
-void ReplServer::eval_response(int socket, std::string request) {
+void ReplServer::eval_response(int socket, const std::string& request) {
   // Pass request to REPL to evaluate
-  auto response = m_compiler->print_to_repl(request);
+  m_compiler->print_to_repl(request);
 
   // Read result from REPL
   std::string result = m_compiler->get_repl_input();
@@ -68,7 +68,16 @@ void ReplServer::eval_response(int socket, std::string request) {
   // Send it back to requester in a string
   // may not be necessary
   std::string eval = fmt::format("{}", result);
-  respond(socket, eval)
+  respond(socket, eval);
+}
+
+void ReplServer::shutdown_response(int socket) {
+  // Send a farewell message
+  std::string ping = fmt::format("Disconnecting from OpenGOAL nREPL. Goodbye.\n");
+  respond(socket, ping);
+
+  // shut down the socket
+  close_socket(socket);
 }
 
 std::optional<std::string> ReplServer::get_msg() {
@@ -165,14 +174,22 @@ std::optional<std::string> ReplServer::get_msg() {
         // Messaging logic
 
         switch (header->type) {
+
           // message is just a ping, ping back
           case ReplServerMessageType::PING:
             ping_response(sock);
             return std::nullopt;
+            
           // message is making a specific request, return the value
           case ReplServerMessageType::EVAL:
             std::string msg(buffer.data(), header->length);
             eval_response(sock, msg);
+            return std::make_optional(msg);
+            
+          // message is asking us to shutdown the socket
+          case ReplServerMessageType::SHUTDOWN:
+            std::string msg(buffer.data(), header->length);
+            shutdown_response(sock);
             return std::make_optional(msg);
         }
       }

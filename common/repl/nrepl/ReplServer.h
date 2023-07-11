@@ -4,6 +4,7 @@
 #include <set>
 
 #include "common/cross_sockets/XSocketServer.h"
+#include "goalc/compiler/Compiler.h"
 
 enum ReplServerMessageType { PING = 0, EVAL = 10, SHUTDOWN = 20 };
 
@@ -33,4 +34,5 @@ class ReplServer : public XSocketServer {
   void respond(int socket, std::string request);
   void ping_response(int socket);
   void eval_response(int socket, std::string request);
+  void shutdown_response(int socket);
 };
