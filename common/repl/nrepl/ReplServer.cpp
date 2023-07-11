@@ -5,6 +5,7 @@
 #include "common/versions/versions.h"
 
 #include "third-party/fmt/core.h"
+#include "goalc/compiler/Compiler.h"
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -21,6 +22,12 @@
 //
 // TODO - The server also needs to eventually return the result of the evaluation
 
+// Constructor
+ReplServer::ReplServer() {
+  m_compiler = new Compiler();
+}
+
+// Destructor
 ReplServer::~ReplServer() {
   // Close all our client sockets!
   for (const int& sock : client_sockets) {
@@ -33,16 +40,35 @@ void ReplServer::post_init() {
   fmt::print("[nREPL:{}:{}] awaiting connections\n", tcp_port, listening_socket);
 }
 
-void ReplServer::ping_response(int socket) {
-  std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
-                                 versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-  auto resp = write_to_socket(socket, ping.c_str(), ping.size());
+void ReplServer::respond(int socket, std::string response) {
+  // Send response over socket
+  auto resp = write_to_socket(socket, response.c_str(), response.size());
   if (resp == -1) {
     fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
                ntohs(addr.sin_port), socket);
     close_socket(socket);
     client_sockets.erase(socket);
   }
+}
+
+void ReplServer::ping_response(int socket) {
+  // Send a ping
+  std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
+                                 versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
+  respond(socket, ping)
+}
+
+void ReplServer::eval_response(int socket, std::string request) {
+  // Pass request to REPL to evaluate
+  auto response = m_compiler->print_to_repl(request);
+
+  // Read result from REPL
+  std::string result = m_compiler->get_repl_input();
+
+  // Send it back to requester in a string
+  // may not be necessary
+  std::string eval = fmt::format("{}", result);
+  respond(socket, eval)
 }
 
 std::optional<std::string> ReplServer::get_msg() {
@@ -136,12 +162,17 @@ std::optional<std::string> ReplServer::get_msg() {
           got += x > 0 ? x : 0;
         }
 
+        // Messaging logic
+
         switch (header->type) {
+          // message is just a ping, ping back
           case ReplServerMessageType::PING:
             ping_response(sock);
             return std::nullopt;
+          // message is making a specific request, return the value
           case ReplServerMessageType::EVAL:
             std::string msg(buffer.data(), header->length);
+            eval_response(sock, msg);
             return std::make_optional(msg);
         }
       }

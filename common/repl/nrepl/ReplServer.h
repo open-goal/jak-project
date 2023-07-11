@@ -21,11 +21,16 @@ class ReplServer : public XSocketServer {
 
   std::optional<std::string> get_msg();
 
+  // reference to compiler to access the repl
+  Compiler* m_compiler;
+
  private:
   int max_clients = 50;
   std::vector<char> header_buffer = std::vector<char>((int)sizeof(ReplServerHeader));
   fd_set read_sockets;
   std::set<int> client_sockets = {};
 
+  void respond(int socket, std::string request);
   void ping_response(int socket);
+  void eval_response(int socket, std::string request);
 };
