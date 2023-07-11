@@ -32,7 +32,6 @@ class ReplServer : public XSocketServer {
   std::set<int> client_sockets = {};
 
   void respond(int socket, std::string request);
-  
   void ping_response(int socket);
   void eval_response(int socket, std::string request);
   void shutdown_response(int socket);
