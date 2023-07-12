@@ -64,34 +64,34 @@ enum X86_REG : s8 {
 // mapping between x86 and arm, btu just using this enum as a place to prototype
 // the registers to use.
 enum ARM64_REG : s8 {
-  X0, // arg 0, caller-saved RDI
-  X1, // arg 1, caller-saved RSI
-  X2, // arg 2, caller-saved RDX
-  X3, // arg 3, caller-saved RCX
-  X4, // arg 4, caller-saved R8
-  X5, // arg 5, caller-saved R9
-  X6, // arg 6, caller-saved R10
-  X7, // arg 7, caller-saved R11
+  X0,  // arg 0, caller-saved RDI
+  X1,  // arg 1, caller-saved RSI
+  X2,  // arg 2, caller-saved RDX
+  X3,  // arg 3, caller-saved RCX
+  X4,  // arg 4, caller-saved R8
+  X5,  // arg 5, caller-saved R9
+  X6,  // arg 6, caller-saved R10
+  X7,  // arg 7, caller-saved R11
 
-  X8, // return, temp (RAX)
+  X8,  // return, temp (RAX)
 
-  X9, // temp, not-saved
-  X10, // temp, not-saved
-  X11, // temp, not-saved
-  X12, // temp, not-saved
-  X13, // temp, not-saved
-  X14, // temp, not-saved
-  X15, // temp, not-saved
-  X16, // temp, not-saved
-  X17, // temp, not-saved
-  X18, // temp, not-saved
+  X9,   // temp, not-saved
+  X10,  // temp, not-saved
+  X11,  // temp, not-saved
+  X12,  // temp, not-saved
+  X13,  // temp, not-saved
+  X14,  // temp, not-saved
+  X15,  // temp, not-saved
+  X16,  // temp, not-saved
+  X17,  // temp, not-saved
+  X18,  // temp, not-saved
 
-  SP, // stack pointer
+  SP,  // stack pointer
 
-  x19, // saved TODO purpose?, R12
-  x20, // pp, R13
-  x21, // st, R14
-  x22, // offset, TODO purpose?, R15
+  x19,  // saved TODO purpose?, R12
+  x20,  // pp, R13
+  x21,  // st, R14
+  x22,  // offset, TODO purpose?, R15
 
   // quadword registers, equivalent to XMMs
   // the convention in arm64 is the callee preserves all Q values

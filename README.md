@@ -251,7 +251,7 @@ xcode-select --install
 
 ```bash
 brew install go-task/tap/go-task
-brew install cmake nasm ninja go-task
+brew install cmake nasm ninja go-task clang-format
 cmake -B build --preset=Release-macos-clang
 cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ```
@@ -259,6 +259,13 @@ cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 #### Apple Silicon
 
 **Not Supported at This Time**
+
+```bash
+brew install go-task/tap/go-task
+brew install cmake ninja go-task clang-format
+cmake -B build --preset=Release-macos-clang
+cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+```
 
 You may have to add the MacOS SDK to your `LIBRARY_PATH`:
 - `export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"`

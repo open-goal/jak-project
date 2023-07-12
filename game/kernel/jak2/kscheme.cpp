@@ -300,11 +300,11 @@ Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  #ifndef __aarch64__
+#ifndef __aarch64__
   auto trampoline_function_addr = _arg_call_systemv;
-  #else
+#else
   auto trampoline_function_addr = _arg_call_arm64;
-  #endif
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
   // TODO - x86 code still being emitted below
 
@@ -431,11 +431,11 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  #ifndef __aarch64__
+#ifndef __aarch64__
   auto trampoline_function_addr = _stack_call_systemv;
-  #else
+#else
   auto trampoline_function_addr = _stack_call_arm64;
-  #endif
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
 
   // movabs rax, target_function
