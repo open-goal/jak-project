@@ -260,6 +260,9 @@ cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 
 **Not Supported at This Time**
 
+You may have to add the MacOS SDK to your `LIBRARY_PATH`:
+- `export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"`
+
 ### Building and Running the Game
 
 Getting a running game involves 4 steps:
