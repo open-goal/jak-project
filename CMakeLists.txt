@@ -112,7 +112,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo \
-        -O3 \
         -fdiagnostics-color=always"
         )
 
