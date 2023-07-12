@@ -6,12 +6,11 @@ SECTION .text
 global _arg_call_systemv
 _arg_call_systemv:
   pop rax
-  push r10
-  push r11
-  sub rsp, 8
+  push r10 ; arg 6 (arg in GOAL only so must be preserved)
+  push r11 ; arg 7 (arg in GOAL only so must be preserved)
 
   ; xmm stuff
-  sub rsp, 128
+  sub rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   movaps [rsp], xmm8
   movaps [rsp + 16], xmm9
   movaps [rsp + 32], xmm10
@@ -31,25 +30,24 @@ _arg_call_systemv:
   movaps xmm13, [rsp + 80]
   movaps xmm14, [rsp + 96]
   movaps xmm15, [rsp + 112]
-  add rsp, 128
+  add rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
 
-  add rsp, 8
   pop r11
   pop r10
   ret
 
 
-;; Call C++ code on unix systems, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
+;; Call C++ code on unix systems, from GOAL. 
+;; 
+;; Put arguments on the stack and put a pointer to this array in the first arg.
 ;; this function pushes all 8 OpenGOAL registers into a stack array.
 ;; then it calls the function pointed to by rax with a pointer to this array.
 ;; it returns the return value of the called function.
 global _stack_call_systemv
 _stack_call_systemv:
   pop rax
-  ; align stack
-  sub rsp, 8
 
-  sub rsp, 128
+  sub rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   movaps [rsp], xmm8
   movaps [rsp + 16], xmm9
   movaps [rsp + 32], xmm10
@@ -91,10 +89,8 @@ _stack_call_systemv:
   movaps xmm13, [rsp + 80]
   movaps xmm14, [rsp + 96]
   movaps xmm15, [rsp + 112]
-  add rsp, 128
 
-  ; restore stack
-  add rsp, 8
+  add rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   ; return!
   ret
 
@@ -343,7 +339,7 @@ _call_goal_asm_systemv:
   ;; call GOAL by function pointer
   call rcx
 
-  ;; retore x86 registers.
+  ;; restore x86 registers.
   pop r15
   pop r14
   pop r13
