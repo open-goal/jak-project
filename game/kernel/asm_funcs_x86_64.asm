@@ -141,14 +141,14 @@ _mips2c_call_systemv:
 
   sub rsp, rax ;; allocate space on the stack for GOAL fake stack
   push rax     ;; and remember this so we can find our way back
-  push rax
+  sub rsp, 8
 
   movq rax, xmm0
 
   call rax ;; call!
 
   ;; unallocate
-  pop rax
+  add rsp, 8
   pop rax
   add rsp, rax
 

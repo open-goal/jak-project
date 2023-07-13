@@ -434,15 +434,15 @@ void Tie3::setup_tree(int idx,
     m_color_result.resize(tree.colors->size());
   }
 
-  #ifndef __aarch64__
+#ifndef __aarch64__
   if (m_use_fast_time_of_day) {
     interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
     interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
-  #else
+#else
   interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-  #endif
+#endif
 
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);

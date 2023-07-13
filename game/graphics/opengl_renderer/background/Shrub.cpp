@@ -243,15 +243,15 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  #ifndef __aarch64__
+#ifndef __aarch64__
   if (m_use_fast_time_of_day) {
     interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
   } else {
     interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
   }
-  #else
+#else
   interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-  #endif
+#endif
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;

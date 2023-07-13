@@ -14,6 +14,8 @@
 .global _arg_call_arm64
 .align 4
 _arg_call_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ldr x8, [sp], #16
 
   ; Putting an exclamation point after the close-bracket 
@@ -25,11 +27,12 @@ _arg_call_arm64:
 
   blr x8
 
-  ldp x8, x9, [sp], #32
-  ldp x10, x11, [sp], #32
-  ldp x12, x13, [sp], #32
-  ldp x14, x15, [sp], #32
+  ldp q9, q8, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
 
+  ldp	x29, x30, [sp], #16
   ret
 
 
@@ -42,6 +45,8 @@ _arg_call_arm64:
 .global _stack_call_arm64
 .align 4
 _stack_call_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ldr x8, [sp], #16
 
   stp q15, q14, [sp, #-32]!
@@ -68,16 +73,17 @@ _stack_call_arm64:
   ; call function
   blr x8
   ; restore arguments
-  ldp x0, x1, [sp], #16
-  ldp x2, x3, [sp], #16
-  ldp x4, x5, [sp], #16
-  ldp x6, x7, [sp], #16
+  ldp x1, x0, [sp], #16
+  ldp x3, x2, [sp], #16
+  ldp x5, x4, [sp], #16
+  ldp x7, x6, [sp], #16
 
-  ldp x8, x9, [sp], #32
-  ldp x10, x11, [sp], #32
-  ldp x12, x13, [sp], #32
-  ldp x14, x15, [sp], #32
+  ldp q9, q8, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
 
+  ldp	x29, x30, [sp], #16
   ; return!
   ret
 
@@ -87,6 +93,8 @@ _stack_call_arm64:
 .global _mips2c_call_arm64
 .align 4
 _mips2c_call_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ;; TODO - this is really weird using half an XMM, this makes the arm assembly
   ;; more difficult - this probably isn't required for arm?
   ;; grab the address to call and put it in xmm0
@@ -140,12 +148,13 @@ _mips2c_call_arm64:
 
   add sp, sp, 1280 ; reset the stackpointer back
 
-  ldp x8, x9, [sp], #32
-  ldp x10, x11, [sp], #32
-  ldp x12, x13, [sp], #32
-  ldp x14, x15, [sp], #32
+  ldp q9, q8, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
 
   add sp, sp, 24 ;; 16 for the stuff pushed by trampoline
+  ldp	x29, x30, [sp], #16
   ret
 
 ;; The _call_goal_asm function is used to call a GOAL function from C.
@@ -161,6 +170,8 @@ _mips2c_call_arm64:
 .global _call_goal_asm_arm64
 .align 4
 _call_goal_asm_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ;; saved registers we need to modify for GOAL should be preserved
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
@@ -185,11 +196,14 @@ _call_goal_asm_arm64:
   ;; restore saved registers.
   ldr x22, [sp], #16
   ldp x20, x21, [sp], #16
+  ldp	x29, x30, [sp], #16
   ret
 
 .global _call_goal8_asm_arm64
 .align 4
 _call_goal8_asm_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ;; saved registers we need to modify for GOAL should be preserved
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
@@ -225,12 +239,15 @@ _call_goal8_asm_arm64:
   ;; retore registers.
   ldr x22, [sp], #16
   ldp x20, x21, [sp], #16
+  ldp	x29, x30, [sp], #16
   ret
 
 ;; Call goal, but switch stacks.
 .global _call_goal_on_stack_asm_arm64
 .align 4
 _call_goal_on_stack_asm_arm64:
+  stp	x29, x30, [sp, #-16]!
+  mov	x29, sp
   ;; x0 - stack pointer
   ;; x1 - unused
   ;; x2 - unused
@@ -259,4 +276,5 @@ _call_goal_on_stack_asm_arm64:
   ldp x22, x9, [sp], #16
   mov sp, x9
   ldp x20, x21, [sp], #16
+  ldp	x29, x30, [sp], #16
   ret

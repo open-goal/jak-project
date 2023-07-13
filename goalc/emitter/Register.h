@@ -61,7 +61,7 @@ enum X86_REG : s8 {
 };
 
 // TODO - i think it'll be better to make some sort of abstraction
-// mapping between x86 and arm, btu just using this enum as a place to prototype
+// mapping between x86 and arm, but just using this enum as a place to prototype
 // the registers to use.
 enum ARM64_REG : s8 {
   X0,  // arg 0, caller-saved RDI
@@ -92,12 +92,18 @@ enum ARM64_REG : s8 {
   x20,  // pp, R13
   x21,  // st, R14
   x22,  // offset, TODO purpose?, R15
+  X23,  // unused, callee saved
+  X24,  // unused, callee saved
+  X25,  // unused, callee saved
+  X26,  // unused, callee saved
+  X27,  // unused, callee saved
+  X28,  // unused, callee saved
+  X29,  // callee saved, FP - don't use it
+  X30,  // LR - don't use it
 
   // quadword registers, equivalent to XMMs
   // the convention in arm64 is the callee preserves all Q values
   // at the same time though, the caller should not depend on this convention!
-  // TODO - ARM has double the amount available to us
-  // likely some optimizations can be done with that in mind
   Q0,
   Q1,
   Q2,
