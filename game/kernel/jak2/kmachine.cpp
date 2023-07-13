@@ -836,6 +836,7 @@ void initialize_sql_db() {
 
   // Attempt to open the database
   const auto opened = sql_db.open_db(db_path.string());
+  (void)opened;
 
   fs::path schema_file =
       file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" / "editable-schema.sql";

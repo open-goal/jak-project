@@ -91,7 +91,7 @@ void KeyboardDevice::clear_actions(std::shared_ptr<PadData> data) {
 
 void KeyboardDevice::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
-                                   std::shared_ptr<PadData> data,
+                                   std::shared_ptr<PadData> /*data*/,
                                    std::optional<InputBindAssignmentMeta>& bind_assignment) {
   if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
     const auto key_event = event.key;
