@@ -207,4 +207,7 @@ std::string to_lower(const std::string& str) {
   std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
   return new_str;
 }
+bool hex_char(char c) {
+  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
+}
 }  // namespace str_util

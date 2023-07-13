@@ -385,7 +385,6 @@ void render_game_frame(int game_width,
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
-    options.draw_subtitle2_editor_window = g_gfx_data->debug_gui.should_draw_subtitle2_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.quick_screenshot = false;
@@ -541,6 +540,9 @@ void GLDisplay::render() {
       game_res_w = 640;
       game_res_h = 480;
     }
+    // set the size of the visible/playable portion of the game in the window
+    get_display_manager()->set_game_size(Gfx::g_global_settings.lbox_w,
+                                         Gfx::g_global_settings.lbox_h);
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,

@@ -468,10 +468,16 @@ u32 MouseGetData(u32 _mouse) {
   // TODO - probably factor in scaling as well
   auto win_width = 0;
   auto win_height = 0;
+  auto game_width = 0;
+  auto game_height = 0;
   if (Display::GetMainDisplay()) {
     win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
     win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+    game_width = Display::GetMainDisplay()->get_display_manager()->get_window_game_width();
+    game_height = Display::GetMainDisplay()->get_display_manager()->get_window_game_height();
   }
+  xpos -= (win_width - game_width) / 2;
+  ypos -= (win_height - game_height) / 2;
 
   // These are used to calculate the speed at which to move the mouse to it's new coordinates
   // zero'd out so they are ignored and don't impact the position we are about to set
@@ -482,8 +488,8 @@ u32 MouseGetData(u32 _mouse) {
   // - [-208.0, 208.0] for height
   // (then 208 or 256 is always added to them to get the final screen coordinate)
   // So just normalize the actual window's values to this range
-  double width_per = xpos / double(win_width);
-  double height_per = ypos / double(win_height);
+  double width_per = xpos / double(game_width);
+  double height_per = ypos / double(game_height);
   mouse->posx = (512.0 * width_per) - 256.0;
   mouse->posy = (416.0 * height_per) - 208.0;
   // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);

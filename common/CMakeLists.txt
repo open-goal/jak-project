@@ -32,10 +32,10 @@ add_library(common
         dma/dma_copy.cpp
         dma/dma.cpp
         dma/gs.cpp
+        formatter/config/rule_config.cpp
+        formatter/formatter_tree.cpp
         formatter/formatter.cpp
         formatter/formatting_rules.cpp
-        formatter/formatter_tree.cpp
-        formatter/config/rule_config.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
@@ -51,10 +51,10 @@ add_library(common
         repl/nrepl/ReplClient.cpp
         repl/nrepl/ReplServer.cpp
         repl/util.cpp
-        serialization/subtitles/subtitles_deser.cpp
-        serialization/subtitles/subtitles_ser.cpp
-        serialization/subtitles2/subtitles2_deser.cpp
-        serialization/subtitles2/subtitles2_ser.cpp
+        serialization/subtitles/subtitles_v1.cpp
+        serialization/subtitles/subtitles_v2.cpp
+        serialization/subtitles/subtitles.cpp
+        serialization/text/text_ser.cpp
         sqlite/sqlite.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
@@ -84,7 +84,8 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp)
+        versions/versions.cpp
+        )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 
