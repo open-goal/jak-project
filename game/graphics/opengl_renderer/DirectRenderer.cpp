@@ -144,6 +144,7 @@ void DirectRenderer::init_shaders(ShaderLibrary& sl) {
   auto id = sl[ShaderId::DIRECT_BASIC_TEXTURED].id();
   m_uniforms.alpha_min = glGetUniformLocation(id, "alpha_min");
   m_uniforms.alpha_max = glGetUniformLocation(id, "alpha_max");
+  m_uniforms.normal_shader_id = id;
 }
 
 void DirectRenderer::draw_debug_window() {
@@ -260,7 +261,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   int draw_count = 0;
   int num_tris = 0;
 
-  if (m_test_state_needs_double_draw) {
+  if (m_test_state_needs_double_draw && current_shader == m_uniforms.normal_shader_id) {
     // this batch thing is a hack to make the sky in jak 2 draw correctly.
     // This is the usual atest with FB_ONLY issue.
     // we should check what pcsx2 does

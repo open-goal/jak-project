@@ -292,6 +292,7 @@ class DirectRenderer : public BucketRenderer {
 
   struct {
     GLint alpha_min, alpha_max;
+    GLint normal_shader_id = -1;
   } m_uniforms;
 
   struct {

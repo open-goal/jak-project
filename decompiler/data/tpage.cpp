@@ -541,8 +541,9 @@ TPageResultStats process_tpage(ObjectFileData& data,
               memcpy(&unscrambled_clut[i], vram.data() + clut_addr, 4);
             }
 
+            // lg::warn("Adding index texture {} from {}\n", texture_page.name, tex.name);
             texture_db.add_index_texture(texture_page.id, tex_id, index_out, unscrambled_clut,
-                                         tex.w, tex.h, tex.name, texture_page.name);
+                                         tex.w, tex.h, tex.name, texture_page.name, level_names);
             stats.successful_textures++;
           }
           break;

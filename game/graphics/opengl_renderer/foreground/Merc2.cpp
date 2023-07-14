@@ -1246,7 +1246,7 @@ void Merc2::do_draws(const Draw* draw_array,
       } else if (draw.texture < 0) {
         int slot = -(draw.texture + 1);
         glBindTexture(GL_TEXTURE_2D, m_anim_slot_array->at(slot));
-      }  else {
+      } else {
         fmt::print("Invalid draw.texture is {}, would have crashed.\n", draw.texture);
       }
       last_tex = draw.texture;

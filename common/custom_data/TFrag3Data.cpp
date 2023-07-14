@@ -441,6 +441,7 @@ void IndexTexture::serialize(Serializer& ser) {
   ser.from_ptr(&color_table);
   ser.from_str(&name);
   ser.from_str(&tpage_name);
+  ser.from_string_vector(&level_names);
 }
 
 void CollisionMesh::serialize(Serializer& ser) {

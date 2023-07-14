@@ -58,7 +58,8 @@ void TextureDB::add_index_texture(u32 tpage,
                                   u16 w,
                                   u16 h,
                                   const std::string& tex_name,
-                                  const std::string& tpage_name) {
+                                  const std::string& tpage_name,
+                                  const std::vector<std::string>& level_names) {
   auto existing_tpage_name = tpage_names.find(tpage);
   if (existing_tpage_name == tpage_names.end()) {
     tpage_names[tpage] = tpage_name;
@@ -76,6 +77,9 @@ void TextureDB::add_index_texture(u32 tpage,
     ASSERT(existing_tex->second.combo_id == combo_id);
     ASSERT(existing_tex->second.color_table == clut);
     ASSERT(existing_tex->second.tpage_name == tpage_name);
+    for (auto& ln : level_names) {
+      existing_tex->second.level_names.push_back(ln);
+    }
   } else {
     auto& new_tex = index_textures_by_combo_id[combo_id];
     new_tex.index_data = index_data;
@@ -85,6 +89,7 @@ void TextureDB::add_index_texture(u32 tpage,
     new_tex.h = h;
     new_tex.tpage_name = tpage_name;
     new_tex.combo_id = combo_id;
+    new_tex.level_names = level_names;
   }
 }
 

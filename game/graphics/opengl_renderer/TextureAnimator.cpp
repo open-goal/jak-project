@@ -38,9 +38,11 @@ OpenGLTexturePool::OpenGLTexturePool() {
                                           {.w = 32, .h = 16, .n = 1},
                                           {.w = 32, .h = 32, .n = 5},
                                           {.w = 32, .h = 64, .n = 1},
-                                          {.w = 64, .h = 64, .n = 5},
+                                          {.w = 64, .h = 64, .n = 8},
+                                          {.w = 64, .h = 128, .n = 4},
                                           {.w = 128, .h = 128, .n = 5},
-                                          {.w = 256, .h = 1, .n = 2}}) {
+                                          {.w = 256, .h = 1, .n = 2},
+                                          {.w = 256, .h = 256, .n = 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
     l.resize(a.n);
     glGenTextures(a.n, l.data());
@@ -77,10 +79,24 @@ void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
   textures[(w << 32) | h].push_back(texture);
 }
 
-const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level, const std::string& name) {
+const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level,
+                                         const std::string& name,
+                                         const std::optional<std::string>& level_name) {
   const tfrag3::IndexTexture* ret = nullptr;
   for (const auto& t : level->index_textures) {
-    if (t.name == name) {
+    bool match = t.name == name;
+    if (level_name && match) {
+      match =
+          std::find(t.level_names.begin(), t.level_names.end(), *level_name) != t.level_names.end();
+      if (!match && false) {
+        lg::warn("rejecting {} because it wasn't in desired level {}, but was in:", t.name,
+                 *level_name);
+        for (auto& l : t.level_names) {
+          lg::warn("  {}", l);
+        }
+      }
+    }
+    if (match) {
       if (ret) {
         lg::error("Multiple index textures named {}", name);
         ASSERT(ret->color_table == t.color_table);
@@ -91,6 +107,8 @@ const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level, const std::
   }
   if (!ret) {
     lg::die("no index texture named {}", name);
+  } else {
+    // lg::info("got idx: {}", name);
   }
   return ret;
 }
@@ -116,15 +134,20 @@ int output_slot_by_idx(GameVersion version, const std::string& name) {
 
 ClutBlender::ClutBlender(const std::string& dest,
                          const std::vector<std::string>& sources,
+                         const std::optional<std::string>& level_name,
                          const tfrag3::Level* level,
                          OpenGLTexturePool* tpool) {
-  m_dest = itex_by_name(level, dest);
+  m_dest = itex_by_name(level, dest, level_name);
   for (const auto& sname : sources) {
-    m_cluts.push_back(&itex_by_name(level, sname)->color_table);
+    m_cluts.push_back(&itex_by_name(level, sname, level_name)->color_table);
     m_current_weights.push_back(0);
   }
   m_texture = tpool->allocate(m_dest->w, m_dest->h);
   m_temp_rgba.resize(m_dest->w * m_dest->h);
+
+  std::vector<float> init_weights(m_current_weights.size(), 0);
+  init_weights.at(0) = 1.f;
+  run(init_weights.data());
 }
 
 GLuint ClutBlender::run(const float* weights) {
@@ -214,6 +237,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
                data.data());
   glBindTexture(GL_TEXTURE_2D, 0);
 
+  shader.activate();
+
   // generate CLUT table.
   for (int i = 0; i < 256; i++) {
     u32 clut_chunk = i / 16;
@@ -233,18 +258,67 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
 
   m_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
 
-  setup_darkjak_blender("jakbsmall-eyebrow", "jakbsmall-eyebrow-dark", "jakbsmall-eyebrow-norm");
-  setup_darkjak_blender("jakbsmall-face", "jakbsmall-face-dark", "jakbsmall-face-norm");
-  setup_darkjak_blender("jakbsmall-finger", "jakbsmall-finger-dark", "jakbsmall-finger-norm");
-  setup_darkjak_blender("jakbsmall-hair", "jakbsmall-hair-dark", "jakbsmall-hair-norm");
+  // DARKJAK
+  m_darkjak_clut_blender_idx = create_clut_blender_group(
+      {"jakbsmall-eyebrow", "jakbsmall-face", "jakbsmall-finger", "jakbsmall-hair"}, "-norm",
+      "-dark", {});
+
+  // PRISON
+  // MISSING EYELID
+  m_jakb_prison_clut_blender_idx = create_clut_blender_group(
+      {"jak-orig-arm-formorph", "jak-orig-eyebrow-formorph", "jak-orig-finger-formorph"}, "-start",
+      "-end", "LDJAKBRN.DGO");
+  add_to_clut_blender_group(m_jakb_prison_clut_blender_idx,
+                            {"jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm", "-dark",
+                            "LDJAKBRN.DGO");
+
+  // ORACLE
+  // MISSING FINGER
+  m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "ORACLE.DGO");
+
+  // NEST
+  // MISSING FINGER
+  m_jakb_nest_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "NEB.DGO");
+
+  // KOR (doesn't work??)
+  m_kor_transform_clut_blender_idx = create_clut_blender_group(
+      {
+          // "kor-eyeeffect-formorph",
+          // "kor-hair-formorph",
+          // "kor-head-formorph",
+          // "kor-head-formorph-noreflect",
+          // "kor-lowercaps-formorph",
+          // "kor-uppercaps-formorph",
+      },
+      "-start", "-end", {});
 }
 
-void TextureAnimator::setup_darkjak_blender(const std::string& dest,
-                                            const std::string& src_normal,
-                                            const std::string& src_dark) {
-  m_darkjak_blenders.emplace_back(dest, std::vector<std::string>{src_normal, src_dark},
-                                  m_common_level, &m_opengl_texture_pool);
-  m_darkjak_output_slots.push_back(output_slot_by_idx(GameVersion::Jak2, dest));
+int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
+                                               const std::string& suffix0,
+                                               const std::string& suffix1,
+                                               const std::optional<std::string>& dgo) {
+  int ret = m_clut_blender_groups.size();
+  m_clut_blender_groups.emplace_back();
+  add_to_clut_blender_group(ret, textures, suffix0, suffix1, dgo);
+  return ret;
+}
+
+void TextureAnimator::add_to_clut_blender_group(int idx,
+                                                const std::vector<std::string>& textures,
+                                                const std::string& suffix0,
+                                                const std::string& suffix1,
+                                                const std::optional<std::string>& dgo) {
+  auto& grp = m_clut_blender_groups.at(idx);
+  for (auto& prefix : textures) {
+    grp.blenders.emplace_back(prefix, std::vector<std::string>{prefix + suffix0, prefix + suffix1},
+                              dgo, m_common_level, &m_opengl_texture_pool);
+    grp.outputs.push_back(output_slot_by_idx(GameVersion::Jak2, prefix));
+    m_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
+  }
 }
 
 TextureAnimator::~TextureAnimator() {
@@ -270,6 +344,10 @@ enum PcTextureAnimCodes {
   SET_CLUT_ALPHA = 20,
   COPY_CLUT_ALPHA = 21,
   DARKJAK = 22,
+  PRISON_JAK = 23,
+  ORACLE_JAK = 24,
+  NEST_JAK = 25,
+  KOR_TRANSFORM = 26
 };
 
 // metadata for an upload from GOAL memory
@@ -360,7 +438,23 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case DARKJAK: {
           auto p = scoped_prof("darkjak");
-          handle_darkjak(tf);
+          run_clut_blender_group(tf, m_darkjak_clut_blender_idx);
+        } break;
+        case PRISON_JAK: {
+          auto p = scoped_prof("prisonjak");
+          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx);
+        } break;
+        case ORACLE_JAK: {
+          auto p = scoped_prof("oraclejak");
+          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx);
+        } break;
+        case NEST_JAK: {
+          auto p = scoped_prof("nestjak");
+          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx);
+        } break;
+        case KOR_TRANSFORM: {
+          auto p = scoped_prof("kor");
+          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -638,13 +732,14 @@ void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
   glColorMask(true, true, true, true);
 }
 
-void TextureAnimator::handle_darkjak(const DmaTransfer& tf) {
+void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx) {
   float f;
   ASSERT(tf.size_bytes == 16);
   memcpy(&f, tf.data, sizeof(float));
-  float weights[2] = {f, 1.f - f};
-  for (size_t i = 0; i < m_darkjak_blenders.size(); i++) {
-    m_output_slots[m_darkjak_output_slots[i]] = m_darkjak_blenders[i].run(weights);
+  float weights[2] = {1.f - f, f};
+  auto& blender = m_clut_blender_groups.at(idx);
+  for (size_t i = 0; i < blender.blenders.size(); i++) {
+    m_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
   }
 }
 

@@ -48,7 +48,8 @@ struct TextureDB {
                          u16 w,
                          u16 h,
                          const std::string& tex_name,
-                         const std::string& tpage_name);
+                         const std::string& tpage_name,
+                         const std::vector<std::string>& level_names);
 
   void replace_textures(const fs::path& path);
 

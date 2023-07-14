@@ -40,8 +40,7 @@ struct MercDebugStats {
 
 class Merc2 {
  public:
-  Merc2(ShaderLibrary& shaders,
-        const std::vector<GLuint>* anim_slot_array);
+  Merc2(ShaderLibrary& shaders, const std::vector<GLuint>* anim_slot_array);
   ~Merc2();
   void draw_debug_window(MercDebugStats* stats);
   void render(DmaFollower& dma,

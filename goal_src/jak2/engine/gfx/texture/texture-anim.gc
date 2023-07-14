@@ -178,6 +178,10 @@
   (set-clut-alpha 20)
   (copy-clut-alpha 21)
   (darkjak 22)
+  (prison-jak 23)
+  (oracle-jak 24)
+  (nest-jak 25)
+  (kor-transform 26)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -568,6 +572,10 @@
 
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *jakb-prison-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-hires-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-hires-nest-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *kor-transform-texture-anim-array* (texture-anim-array texture-anim))
 
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
@@ -581,7 +589,7 @@
     ((= anim-array *darkjak-texture-anim-array*)
      ;; darkjak is simple, and we reimplemented it in C++.
      ;; so we just have to send the frame-time value.
-     (format *stdcon* "doing darkjak")
+     (format *stdcon* "doing darkjak~%")
      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                   bucket
                                   )
@@ -597,10 +605,89 @@
        )
      (return #f)
      )
+
+    ((= anim-array *jakb-prison-texture-anim-array*)
+     ;; prison is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     (format *stdcon* "doing prison-jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag prison-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+
+    ((= anim-array *darkjak-hires-texture-anim-array*)
+     ;; oracle is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     (format *stdcon* "doing oracle jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag oracle-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+    ((= anim-array *darkjak-hires-nest-texture-anim-array*)
+     ;; oracle is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     (format *stdcon* "doing nest jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag nest-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+    ((= anim-array *kor-transform-texture-anim-array*)
+     ;; kor is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     (format *stdcon* "doing kor~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag kor-transform dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
     (else
       (return #f) ;; HACK!!!
       )
     )
+
   ;;
   ;; (return #f)
   ;;

@@ -65,9 +65,11 @@ class ClutBlender {
  public:
   ClutBlender(const std::string& dest,
               const std::vector<std::string>& sources,
+              const std::optional<std::string>& level_name,
               const tfrag3::Level* level,
               OpenGLTexturePool* tpool);
   GLuint run(const float* weights);
+  GLuint texture() const { return m_texture; }
 
  private:
   const tfrag3::IndexTexture* m_dest;
@@ -97,10 +99,7 @@ class TextureAnimator {
   void handle_rg_to_ba(const DmaTransfer& tf);
   void handle_set_clut_alpha(const DmaTransfer& tf);
   void handle_copy_clut_alpha(const DmaTransfer& tf);
-  void handle_darkjak(const DmaTransfer& tf);
-  void setup_darkjak_blender(const std::string& dest,
-                             const std::string& src_normal,
-                             const std::string& src_dark);
+
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
   void set_up_opengl_for_shader(const ShaderContext& shader,
@@ -179,6 +178,38 @@ class TextureAnimator {
 
   std::vector<GLuint> m_output_slots;
 
-  std::vector<ClutBlender> m_darkjak_blenders;
-  std::vector<int> m_darkjak_output_slots;
+  struct ClutBlenderGroup {
+    std::vector<ClutBlender> blenders;
+    std::vector<int> outputs;
+  };
+  std::vector<ClutBlenderGroup> m_clut_blender_groups;
+
+  int m_darkjak_clut_blender_idx = -1;
+  int m_jakb_prison_clut_blender_idx = -1;
+  int m_jakb_oracle_clut_blender_idx = -1;
+  int m_jakb_nest_clut_blender_idx = -1;
+  int m_kor_transform_clut_blender_idx = -1;
+
+  int create_clut_blender_group(const std::vector<std::string>& textures,
+                                const std::string& suffix0,
+                                const std::string& suffix1,
+                                const std::optional<std::string>& dgo);
+  void add_to_clut_blender_group(int idx,
+                                 const std::vector<std::string>& textures,
+                                 const std::string& suffix0,
+                                 const std::string& suffix1,
+                                 const std::optional<std::string>& dgo);
+  void run_clut_blender_group(DmaTransfer& tf, int idx);
+
+  //  std::vector<ClutBlender> m_darkjak_blenders;
+  //  std::vector<int> m_darkjak_output_slots;
+  //
+  //  std::vector<ClutBlender> m_jakb_prison_blenders;
+  //  std::vector<int> m_jakb_prison_output_slots;
+  //
+  //  std::vector<ClutBlender> m_jakb_oracle_blenders;
+  //  std::vector<int> m_jakb_oracle_slots;
+  //
+  //  std::vector<ClutBlender> m_jakb_nest_blenders;
+  //  std::vector<int> m_jakb_nest_slots;
 };

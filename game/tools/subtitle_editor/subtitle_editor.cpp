@@ -335,9 +335,10 @@ void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
   }
 }
 
-std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
-                                                  const SubtitleLineMetadata& line_meta,
-                                                  const std::shared_ptr<GameSubtitleBank> /*bank*/) {
+std::string SubtitleEditor::subtitle_line_summary(
+    const SubtitleLine& line,
+    const SubtitleLineMetadata& line_meta,
+    const std::shared_ptr<GameSubtitleBank> /*bank*/) {
   // Truncate the text if it's too long, it's supposed to just be a summary at a glance
   std::string line_text = "";
   if (!line.text.empty()) {

@@ -298,6 +298,7 @@ struct IndexTexture {
   u16 w, h;
   u32 combo_id = 0;
   std::vector<u8> index_data;
+  std::vector<std::string> level_names;
   std::string name;
   std::string tpage_name;
   std::array<math::Vector4<u8>, 256> color_table;
