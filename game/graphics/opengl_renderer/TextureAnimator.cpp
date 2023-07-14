@@ -949,7 +949,6 @@ VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int t
       entry->tex->update_texture_size(w, h);
       entry->tex->update_texture_unsafe(m_opengl_texture_pool.allocate(w, h));
     } else {
-      printf("emplace case\n");
       entry->tex.emplace(w, h, GL_UNSIGNED_INT_8_8_8_8_REV);
     }
   }
@@ -1091,10 +1090,9 @@ void TextureAnimator::load_clut_to_converter() {
   }
 }
 
-// TODO: use the size pool.
 GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 height) {
   GLuint gl_tex = m_opengl_texture_pool.allocate(width, height);
-  m_in_use_temp_textures.push_back(TempTexture{.tex = gl_tex, .w = width, .h = height});
+  m_in_use_temp_textures.push_back(TempTexture{gl_tex, width, height});
   glBindTexture(GL_TEXTURE_2D, gl_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data);
