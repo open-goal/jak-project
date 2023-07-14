@@ -34,15 +34,15 @@ OpenGLTexturePool::OpenGLTexturePool() {
     u64 w, h, n;
   };
   // list of sizes to preallocate.
-  for (const auto& a : std::vector<Alloc>{{.w = 16, .h = 16, .n = 5},  //
-                                          {.w = 32, .h = 16, .n = 1},
-                                          {.w = 32, .h = 32, .n = 5},
-                                          {.w = 32, .h = 64, .n = 1},
-                                          {.w = 64, .h = 64, .n = 8},
-                                          {.w = 64, .h = 128, .n = 4},
-                                          {.w = 128, .h = 128, .n = 5},
-                                          {.w = 256, .h = 1, .n = 2},
-                                          {.w = 256, .h = 256, .n = 7}}) {
+  for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
+                                          {32, 16, 1},
+                                          {32, 32, 5},
+                                          {32, 64, 1},
+                                          {64, 64, 8},
+                                          {64, 128, 4},
+                                          {128, 128, 5},
+                                          {256, 1, 2},
+                                          {256, 256, 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
     l.resize(a.n);
     glGenTextures(a.n, l.data());
