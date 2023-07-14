@@ -420,6 +420,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
     return nullptr;
   }
   Form* message_name = set_message_mr.maps.forms.at(1);
+  auto msg_str = message_name->to_string(env);
 
   ////////////////////////////////////////////////////////
   // (set! (-> a1-14 param X) the-param-value)
@@ -453,22 +454,99 @@ FormElement* rewrite_as_send_event(LetElement* in,
 
     // fancy casting if necessary
     if (param_val->to_form(env).is_int()) {
-      auto msg_str = message_name->to_string(env);
       auto val = param_val->to_form(env).as_int();
-      if (val &&
-          ((param_idx == 1 && (msg_str == "'change-state" || msg_str == "'change-state-no-go" ||
-                               msg_str == "'art-joint-anim")) ||
-           (param_idx == 0 && (msg_str == "'no-look-around" || msg_str == "'no-load-wait" ||
-                               msg_str == "'force-blend")))) {
-        param_val = pool.form<GenericElement>(
-            GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds")),
-            pool.form<ConstantTokenElement>(seconds_to_string(param_val->to_form(env).as_int())));
-      } else if (param_idx == 1) {
-        auto parm0_str = param_values.at(0)->to_string(env);
-        if (parm0_str == "'powerup" || parm0_str == "'pickup") {
+
+      auto old_param = param_val;
+
+      if (env.version >= GameVersion::Jak2) {
+        auto find_int_in_vector = [](const std::vector<int>& vec, int val) {
+          for (auto v : vec) {
+            if (v == val) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        static const std::map<std::string, std::vector<int>> jak2_float_args = {
+            {"'set-fov", {0}},          {"'joystick", {0, 1}},
+            {"'get-pickup", {1}},       {"'dest-clock-ratio-set", {0}},
+            {"'ease-in", {0}},          {"'speed", {0}},
+            {"'set-target-level", {0}}, {"'set-stretch-vel", {0}},
+        };
+        static const std::map<std::string, std::vector<int>> jak2_time_frame_args = {
+            {"'push", {0}},
+            {"'drop", {0}},
+            {"'target-mech-get-off", {0}},
+            {"'push-trans", {1}},
+            {"'push-transv", {1}},
+            {"'dest-clock-ratio-set", {1}},
+            {"'color-effect", {1}},
+            {"'set-alert-duration", {0}},
+        };
+        auto float_arg_settings = jak2_float_args.find(msg_str);
+        auto time_frame_arg_settings = jak2_time_frame_args.find(msg_str);
+        if ((float_arg_settings != jak2_float_args.end() &&
+             find_int_in_vector(float_arg_settings->second, param_idx))
+            // other hardcoded cases...
+            || (param_idx == 1 && param_values.at(0)->to_string(env) == "'ratio" &&
+                msg_str == "'change")) {
+          param_val = try_cast_simplify(param_val, TypeSpec("float"), pool, env);
+        } else if (time_frame_arg_settings != jak2_time_frame_args.end() &&
+                   find_int_in_vector(time_frame_arg_settings->second, param_idx)) {
+          if (val) {
+            param_val = pool.form<GenericElement>(
+                GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds")),
+                pool.form<ConstantTokenElement>(seconds_to_string(val)));
+          }
+        } else if (param_idx == 0 && (msg_str == "'get-pickup" || msg_str == "'test-pickup")) {
           auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
           if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, param_val->to_form(env).as_int());
+            param_val = cast_to_int_enum(enum_ts, pool, env, val);
+          }
+        } else if (param_idx == 1 &&
+                   (param_values.at(0)->to_string(env) == "'error" ||
+                    param_values.at(0)->to_string(env) == "'done") &&
+                   msg_str == "'notify") {
+          auto enum_ts = env.dts->ts.try_enum_lookup("mc-status-code");
+          if (enum_ts) {
+            param_val = cast_to_int_enum(enum_ts, pool, env, val);
+          }
+        } else if (param_idx == 0 &&
+                   (msg_str == "'deactivate-by-type" || msg_str == "'set-object-reserve-count" ||
+                    msg_str == "'set-object-target-count" ||
+                    msg_str == "'set-object-auto-activate" || msg_str == "'end-pursuit-by-type" ||
+                    msg_str == "'get-object-remaining-count")) {
+          auto enum_ts = env.dts->ts.try_enum_lookup("traffic-type");
+          if (enum_ts) {
+            param_val = cast_to_int_enum(enum_ts, pool, env, val);
+          }
+        } else if (param_idx == 0 &&
+                   (msg_str == "'clear-slave-option" || msg_str == "'set-slave-option" ||
+                    msg_str == "'toggle-slave-option")) {
+          auto enum_ts = env.dts->ts.try_enum_lookup("cam-slave-options");
+          if (enum_ts) {
+            param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
+          }
+        }
+      }
+      // if we didn't cast
+      if (param_val == old_param) {
+        if (val &&
+            ((param_idx == 1 && (msg_str == "'change-state" || msg_str == "'change-state-no-go" ||
+                                 msg_str == "'art-joint-anim")) ||
+             (param_idx == 0 && (msg_str == "'no-look-around" || msg_str == "'no-load-wait" ||
+                                 msg_str == "'force-blend")))) {
+          param_val = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds")),
+              pool.form<ConstantTokenElement>(seconds_to_string(val)));
+        } else if (param_idx == 1) {
+          auto parm0_str = param_values.at(0)->to_string(env);
+          if (parm0_str == "'powerup" || parm0_str == "'pickup") {
+            auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
+            if (enum_ts) {
+              param_val = cast_to_int_enum(enum_ts, pool, env, val);
+            }
           }
         }
       }
