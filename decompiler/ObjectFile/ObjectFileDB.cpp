@@ -16,6 +16,7 @@
 
 #include "common/link_types.h"
 #include "common/log/log.h"
+#include "common/texture/texture_slots.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
@@ -707,6 +708,21 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
   int tpage_dir_count = 0;
   u64 total_px = 0;
   Timer timer;
+
+  std::vector<std::string> animated_slots;
+  switch (m_version) {
+    case GameVersion::Jak1:  // no animated
+      break;
+    case GameVersion::Jak2:
+      animated_slots = jak2_animated_texture_slots();
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  for (size_t i = 0; i < animated_slots.size(); i++) {
+    tex_db.animated_tex_output_to_anim_slot[animated_slots[i]] = i;
+  }
 
   std::string result;
   for_each_obj([&](ObjectFileData& data) {

@@ -91,8 +91,19 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
     common_level = &m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
   }
 
+  // initialize all renderers
+  switch (m_version) {
+    case GameVersion::Jak1:
+      break;
+    case GameVersion::Jak2:
+      m_texture_animator = std::make_shared<TextureAnimator>(m_render_state.shaders, common_level);
+      break;
+    default:
+      ASSERT(false);
+  }
 
-  m_merc2 = std::make_shared<Merc2>(m_render_state.shaders);
+  m_merc2 = std::make_shared<Merc2>(m_render_state.shaders,
+                                    m_texture_animator ? m_texture_animator->slots() : nullptr);
   m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
 
   // initialize all renderers
@@ -102,7 +113,6 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       init_bucket_renderers_jak1();
       break;
     case GameVersion::Jak2:
-      m_texture_animator = std::make_shared<TextureAnimator>(m_render_state.shaders, common_level);
       init_bucket_renderers_jak2();
       break;
     default:

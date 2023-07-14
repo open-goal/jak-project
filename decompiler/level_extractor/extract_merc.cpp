@@ -726,22 +726,22 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
   return result;
 }
 
-int find_or_add_texture_to_level(tfrag3::Level& out,
+s32 find_or_add_texture_to_level(tfrag3::Level& out,
                                  const TextureDB& tex_db,
                                  const std::string& debug_name,
                                  u32 pc_combo_tex_id,
                                  const MercCtrlHeader& hdr,
                                  u8* eye_out,
                                  GameVersion version) {
-  u32 idx_in_level_texture = UINT32_MAX;
-  for (u32 i = 0; i < out.textures.size(); i++) {
+  s32 idx_in_level_texture = INT32_MAX;
+  for (s32 i = 0; i < (int)out.textures.size(); i++) {
     if (out.textures[i].combo_id == pc_combo_tex_id) {
       idx_in_level_texture = i;
       break;
     }
   }
 
-  if (idx_in_level_texture == UINT32_MAX) {
+  if (idx_in_level_texture == INT32_MAX) {
     // not added to level, add it
     auto tex_it = tex_db.textures.find(pc_combo_tex_id);
     if (tex_it == tex_db.textures.end()) {
@@ -790,6 +790,16 @@ int find_or_add_texture_to_level(tfrag3::Level& out,
     } else {
       // fmt::print("got unknown tex id in eye page: {}\n", idx);
     }
+  }
+
+  // check anim output
+  const auto& level_tex = out.textures.at(idx_in_level_texture);
+  const auto& it = tex_db.animated_tex_output_to_anim_slot.find(level_tex.debug_name);
+  if (it != tex_db.animated_tex_output_to_anim_slot.end()) {
+    lg::error("Animated slot {} -> {}", level_tex.debug_name, it->second);
+    return -int(it->second) - 1;
+  } else {
+    // lg::warn("no anim: {}", level_tex.debug_name);
   }
 
   return idx_in_level_texture;

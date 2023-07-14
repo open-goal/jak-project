@@ -85,7 +85,7 @@ void add_all_textures_from_level(tfrag3::Level& lev,
       new_tex.w = tex.w;
       new_tex.h = tex.h;
       new_tex.debug_tpage_name = tex_db.tpage_names.at(tex.page);
-      new_tex.debug_name = new_tex.debug_tpage_name + tex.name;
+      new_tex.debug_name = tex.name;
       new_tex.data = tex.rgba_bytes;
       new_tex.combo_id = id;
       new_tex.load_to_pool = true;

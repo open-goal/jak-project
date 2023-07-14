@@ -471,7 +471,7 @@ static_assert(sizeof(MercVertex) == 64);
 
 struct MercDraw {
   DrawMode mode;
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw (negative for anim slot)
   u8 eye_id = 0xff;     // 0xff if not eyes, (slot << 1) | (is_r)
   u32 first_index;
   u32 index_count;

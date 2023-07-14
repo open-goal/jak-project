@@ -28,6 +28,8 @@ struct TextureDB {
   // special textures for animation.
   std::map<u32, tfrag3::IndexTexture> index_textures_by_combo_id;
 
+  std::unordered_map<std::string, u32> animated_tex_output_to_anim_slot;
+
   void add_texture(u32 tpage,
                    u32 texid,
                    const std::vector<u32>& data,

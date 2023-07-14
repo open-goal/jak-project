@@ -61,19 +61,21 @@ struct OpenGLTexturePool {
   std::unordered_map<u64, std::vector<GLuint>> textures;
 };
 
-/*!
- *
- */
 class ClutBlender {
  public:
   ClutBlender(const std::string& dest,
               const std::vector<std::string>& sources,
-              const tfrag3::Level* level);
-  GLuint run(const float* weights, OpenGLTexturePool* tpool);
+              const tfrag3::Level* level,
+              OpenGLTexturePool* tpool);
+  GLuint run(const float* weights);
 
  private:
+  const tfrag3::IndexTexture* m_dest;
+  std::vector<const std::array<math::Vector4<u8>, 256>*> m_cluts;
   std::vector<float> m_current_weights;
   GLuint m_texture;
+  std::array<math::Vector4<u8>, 256> m_temp_clut;
+  std::vector<u32> m_temp_rgba;
 };
 
 class TexturePool;
@@ -83,6 +85,8 @@ class TextureAnimator {
   TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
+  GLuint get_by_slot(int idx);
+  const std::vector<GLuint>* slots() { return &m_output_slots; }
 
  private:
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
@@ -94,6 +98,9 @@ class TextureAnimator {
   void handle_set_clut_alpha(const DmaTransfer& tf);
   void handle_copy_clut_alpha(const DmaTransfer& tf);
   void handle_darkjak(const DmaTransfer& tf);
+  void setup_darkjak_blender(const std::string& dest,
+                             const std::string& src_normal,
+                             const std::string& src_dark);
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
   void set_up_opengl_for_shader(const ShaderContext& shader,
@@ -130,6 +137,7 @@ class TextureAnimator {
   PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
 
   VramEntry* m_tex_looking_for_clut = nullptr;
+  const tfrag3::Level* m_common_level = nullptr;
   std::unordered_map<u32, VramEntry> m_textures;
   std::unordered_map<u32, PcTextureId> m_ids_by_vram;
 
@@ -168,4 +176,9 @@ class TextureAnimator {
 
   u8 m_index_to_clut_addr[256];
   OpenGLTexturePool m_opengl_texture_pool;
+
+  std::vector<GLuint> m_output_slots;
+
+  std::vector<ClutBlender> m_darkjak_blenders;
+  std::vector<int> m_darkjak_output_slots;
 };

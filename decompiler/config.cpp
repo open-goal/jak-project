@@ -268,7 +268,8 @@ Config make_config_via_json(nlohmann::json& json) {
   config.levels_extract = json.at("levels_extract").get<bool>();
 
   if (inputs_json.contains("animated_textures")) {
-    config.animated_textures = inputs_json.at("animated_textures").get<std::unordered_set<std::string>>();
+    config.animated_textures =
+        inputs_json.at("animated_textures").get<std::unordered_set<std::string>>();
   }
 
   auto art_info_json = read_json_file_from_config(json, "art_info_file");

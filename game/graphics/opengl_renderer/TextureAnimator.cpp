@@ -1,6 +1,7 @@
 #include "TextureAnimator.h"
 
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/texture/texture_slots.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 
@@ -34,7 +35,9 @@ OpenGLTexturePool::OpenGLTexturePool() {
   };
   // list of sizes to preallocate.
   for (const auto& a : std::vector<Alloc>{{.w = 16, .h = 16, .n = 5},  //
+                                          {.w = 32, .h = 16, .n = 1},
                                           {.w = 32, .h = 32, .n = 5},
+                                          {.w = 32, .h = 64, .n = 1},
                                           {.w = 64, .h = 64, .n = 5},
                                           {.w = 128, .h = 128, .n = 5},
                                           {.w = 256, .h = 1, .n = 2}}) {
@@ -74,7 +77,100 @@ void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
   textures[(w << 32) | h].push_back(texture);
 }
 
-TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level) {
+const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level, const std::string& name) {
+  const tfrag3::IndexTexture* ret = nullptr;
+  for (const auto& t : level->index_textures) {
+    if (t.name == name) {
+      if (ret) {
+        lg::error("Multiple index textures named {}", name);
+        ASSERT(ret->color_table == t.color_table);
+        ASSERT(ret->index_data == t.index_data);
+      }
+      ret = &t;
+    }
+  }
+  if (!ret) {
+    lg::die("no index texture named {}", name);
+  }
+  return ret;
+}
+
+int output_slot_by_idx(GameVersion version, const std::string& name) {
+  const std::vector<std::string>* v = nullptr;
+  switch (version) {
+    case GameVersion::Jak2:
+      v = &jak2_animated_texture_slots();
+      break;
+    default:
+    case GameVersion::Jak1:
+      ASSERT_NOT_REACHED();
+  }
+
+  for (size_t i = 0; i < v->size(); i++) {
+    if ((*v)[i] == name) {
+      return i;
+    }
+  }
+  ASSERT_NOT_REACHED();
+}
+
+ClutBlender::ClutBlender(const std::string& dest,
+                         const std::vector<std::string>& sources,
+                         const tfrag3::Level* level,
+                         OpenGLTexturePool* tpool) {
+  m_dest = itex_by_name(level, dest);
+  for (const auto& sname : sources) {
+    m_cluts.push_back(&itex_by_name(level, sname)->color_table);
+    m_current_weights.push_back(0);
+  }
+  m_texture = tpool->allocate(m_dest->w, m_dest->h);
+  m_temp_rgba.resize(m_dest->w * m_dest->h);
+}
+
+GLuint ClutBlender::run(const float* weights) {
+  bool needs_run = false;
+
+  for (size_t i = 0; i < m_current_weights.size(); i++) {
+    if (weights[i] != m_current_weights[i]) {
+      needs_run = true;
+      break;
+    }
+  }
+
+  if (!needs_run) {
+    return m_texture;
+  }
+
+  for (size_t i = 0; i < m_current_weights.size(); i++) {
+    m_current_weights[i] = weights[i];
+  }
+
+  for (int i = 0; i < 256; i++) {
+    math::Vector4f v = math::Vector4f::zero();
+    for (size_t j = 0; j < m_current_weights.size(); j++) {
+      v += (*m_cluts[j])[i].cast<float>() * m_current_weights[j];
+    }
+    m_temp_clut[i] = v.cast<u8>();
+  }
+
+  for (int i = 0; i < m_temp_rgba.size(); i++) {
+    memcpy(&m_temp_rgba[i], m_temp_clut[m_dest->index_data[i]].data(), 4);
+  }
+
+  glBindTexture(GL_TEXTURE_2D, m_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_dest->w, m_dest->h, 0, GL_RGBA,
+               GL_UNSIGNED_INT_8_8_8_8_REV, m_temp_rgba.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
+  float aniso = 0.0f;
+  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  return m_texture;
+}
+
+TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level)
+    : m_common_level(common_level) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -135,16 +231,31 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
     m_index_to_clut_addr[i] = clx + cly * 16;
   }
 
-  for (auto& t : common_level->index_textures) {
-    lg::warn("index texture: {}", t.name);
-  }
-  ASSERT_NOT_REACHED();
+  m_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
+
+  setup_darkjak_blender("jakbsmall-eyebrow", "jakbsmall-eyebrow-dark", "jakbsmall-eyebrow-norm");
+  setup_darkjak_blender("jakbsmall-face", "jakbsmall-face-dark", "jakbsmall-face-norm");
+  setup_darkjak_blender("jakbsmall-finger", "jakbsmall-finger-dark", "jakbsmall-finger-norm");
+  setup_darkjak_blender("jakbsmall-hair", "jakbsmall-hair-dark", "jakbsmall-hair-norm");
+}
+
+void TextureAnimator::setup_darkjak_blender(const std::string& dest,
+                                            const std::string& src_normal,
+                                            const std::string& src_dark) {
+  m_darkjak_blenders.emplace_back(dest, std::vector<std::string>{src_normal, src_dark},
+                                  m_common_level, &m_opengl_texture_pool);
+  m_darkjak_output_slots.push_back(output_slot_by_idx(GameVersion::Jak2, dest));
 }
 
 TextureAnimator::~TextureAnimator() {
   glDeleteVertexArrays(1, &m_vao);
   glDeleteBuffers(1, &m_vertex_buffer);
   glDeleteTextures(1, &m_dummy_texture);
+}
+
+GLuint TextureAnimator::get_by_slot(int idx) {
+  ASSERT(idx >= 0 && idx < (int)m_output_slots.size());
+  return m_output_slots[idx];
 }
 
 // IDs sent from GOAL telling us what texture operation to perform.
@@ -531,7 +642,10 @@ void TextureAnimator::handle_darkjak(const DmaTransfer& tf) {
   float f;
   ASSERT(tf.size_bytes == 16);
   memcpy(&f, tf.data, sizeof(float));
-  lg::error("Darkjak interp: {}\n", f);
+  float weights[2] = {f, 1.f - f};
+  for (size_t i = 0; i < m_darkjak_blenders.size(); i++) {
+    m_output_slots[m_darkjak_output_slots[i]] = m_darkjak_blenders[i].run(weights);
+  }
 }
 
 /*!

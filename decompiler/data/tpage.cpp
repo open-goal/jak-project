@@ -453,6 +453,12 @@ TPageResultStats process_tpage(ObjectFileData& data,
 
   // Read the texture_page struct
   TexturePage texture_page = read_texture_page(data, words, 0, end_of_texture_page);
+  bool ignore_animated = texture_page.name == "sewesc-vis-pris";
+  if (ignore_animated) {
+    lg::warn(
+        "Ignoring animated textures from this tpage ({}) because of weird jakbsmall-finger issue",
+        texture_page.name);
+  }
   auto texture_dump_dir = output_path / texture_page.name;
   file_util::create_dir_if_needed(texture_dump_dir);
 
@@ -496,7 +502,7 @@ TPageResultStats process_tpage(ObjectFileData& data,
     stats.total_textures++;
     stats.num_px += tex.w * tex.h;
 
-    if (animated_textures.count(tex.name)) {
+    if (animated_textures.count(tex.name) && !ignore_animated) {
       switch (tex.psm) {
         case int(PSM::PSMT8):
           ASSERT(tex.clutpsm == int(CPSM::PSMCT32));
