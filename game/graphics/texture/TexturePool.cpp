@@ -110,6 +110,21 @@ void TexturePool::move_existing_to_vram(GpuTexture* tex, u32 slot_addr) {
   }
 }
 
+void TexturePool::update_gl_texture(GpuTexture* gpu_texture,
+                                    u32 new_w,
+                                    u32 new_h,
+                                    GLuint new_gl_texture) {
+  ASSERT(gpu_texture->gpu_textures.size() == 1);
+  gpu_texture->gpu_textures[0].gl = new_gl_texture;
+  gpu_texture->w = new_w;
+  gpu_texture->h = new_h;
+  for (int si : gpu_texture->slots) {
+    auto& slot = m_textures[si];
+    ASSERT(slot.source == gpu_texture);
+    slot.gpu_texture = new_gl_texture;
+  }
+}
+
 void TexturePool::refresh_links(GpuTexture& texture) {
   u64 tex_to_use =
       texture.is_placeholder ? m_placeholder_texture_id : texture.gpu_textures.front().gl;
@@ -174,7 +189,11 @@ void GpuTexture::add_slot(u32 slot) {
  * We could store textures in the right format to begin with, or spread the conversion out over
  * multiple frames.
  */
-void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr) {
+void TexturePool::handle_upload_now(const u8* tpage,
+                                    int mode,
+                                    const u8* memory_base,
+                                    u32 s7_ptr,
+                                    bool debug) {
   std::unique_lock<std::mutex> lk(m_mutex);
   // extract the texture-page object. This is just a description of the page data.
   GoalTexturePage texture_page;
@@ -201,6 +220,12 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
   for (int tex_idx = 0; tex_idx < texture_page.length; tex_idx++) {
     GoalTexture tex;
     if (texture_page.try_copy_texture_description(&tex, tex_idx, memory_base, tpage, s7_ptr)) {
+      if (debug) {
+        fmt::print("Pool upload {} to {}\n",
+                   std::string(goal_string(texture_page.name_ptr, memory_base)) +
+                       goal_string(tex.name_ptr, memory_base),
+                   tex.dest[0]);
+      }
       // each texture may have multiple mip levels.
       for (int mip_idx = 0; mip_idx < tex.num_mips; mip_idx++) {
         if (has_segment[tex.segment_of_mip(mip_idx)]) {

@@ -58,6 +58,7 @@ enum class ShaderId {
   ETIE = 31,
   SHADOW2 = 32,
   DIRECT_BASIC_TEXTURED_MULTI_UNIT = 33,
+  TEX_ANIM = 34,
   MAX_SHADERS
 };
 

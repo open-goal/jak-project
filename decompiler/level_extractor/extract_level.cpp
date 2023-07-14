@@ -85,7 +85,7 @@ void add_all_textures_from_level(tfrag3::Level& lev,
       new_tex.w = tex.w;
       new_tex.h = tex.h;
       new_tex.debug_tpage_name = tex_db.tpage_names.at(tex.page);
-      new_tex.debug_name = new_tex.debug_tpage_name + tex.name;
+      new_tex.debug_name = tex.name;
       new_tex.data = tex.rgba_bytes;
       new_tex.combo_id = id;
       new_tex.load_to_pool = true;
@@ -240,6 +240,11 @@ void extract_common(const ObjectFileDB& db,
   tfrag3::Level tfrag_level;
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level);
+
+  // put _all_ index textures in common.
+  for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
+    tfrag_level.index_textures.push_back(tex);
+  }
 
   Serializer ser;
   tfrag_level.serialize(ser);

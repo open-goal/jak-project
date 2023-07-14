@@ -697,7 +697,7 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
     // just pass it to the texture pool.
     // the texture pool will take care of locking.
     // we don't want to lock here for the entire duration of the conversion.
-    g_gfx_data->texture_pool->handle_upload_now(tpage, mode, g_ee_main_mem, s7_ptr);
+    g_gfx_data->texture_pool->handle_upload_now(tpage, mode, g_ee_main_mem, s7_ptr, false);
   }
 }
 

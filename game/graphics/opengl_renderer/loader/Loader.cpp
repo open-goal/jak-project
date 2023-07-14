@@ -249,7 +249,7 @@ void Loader::loader_thread() {
  * Load a "common" FR3 file that has non-level textures.
  * This should be called during initialization, before any threaded loading goes on.
  */
-void Loader::load_common(TexturePool& tex_pool, const std::string& name) {
+const tfrag3::Level& Loader::load_common(TexturePool& tex_pool, const std::string& name) {
   auto data = file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", name));
 
   auto decomp_data = compression::decompress_zstd(data.data(), data.size());
@@ -270,6 +270,7 @@ void Loader::load_common(TexturePool& tex_pool, const std::string& name) {
   while (!done) {
     done = mls.run(tim, input);
   }
+  return *m_common_level.level;
 }
 
 bool Loader::upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool) {

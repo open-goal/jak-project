@@ -16,6 +16,7 @@
 
 #include "tpage.h"
 
+#include "common/log/log.h"
 #include "common/texture/texture_conversion.h"
 #include "common/util/FileUtil.h"
 #include "common/versions/versions.h"
@@ -431,7 +432,8 @@ TexturePage read_texture_page(ObjectFileData& data,
  */
 TPageResultStats process_tpage(ObjectFileData& data,
                                TextureDB& texture_db,
-                               const fs::path& output_path) {
+                               const fs::path& output_path,
+                               const std::unordered_set<std::string>& animated_textures) {
   TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
   const auto& level_names = data.dgo_names;
@@ -451,6 +453,12 @@ TPageResultStats process_tpage(ObjectFileData& data,
 
   // Read the texture_page struct
   TexturePage texture_page = read_texture_page(data, words, 0, end_of_texture_page);
+  bool ignore_animated = texture_page.name == "sewesc-vis-pris";
+  if (ignore_animated) {
+    lg::warn(
+        "Ignoring animated textures from this tpage ({}) because of weird jakbsmall-finger issue",
+        texture_page.name);
+  }
   auto texture_dump_dir = output_path / texture_page.name;
   file_util::create_dir_if_needed(texture_dump_dir);
 
@@ -494,9 +502,57 @@ TPageResultStats process_tpage(ObjectFileData& data,
     stats.total_textures++;
     stats.num_px += tex.w * tex.h;
 
-    if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT32)) {
-      // this is the only supported texture format for now.
+    if (animated_textures.count(tex.name) && !ignore_animated) {
+      switch (tex.psm) {
+        case int(PSM::PSMT8):
+          ASSERT(tex.clutpsm == int(CPSM::PSMCT32));
+          {
+            // will store output pixels, index (u8)
+            std::vector<u8> index_out;
 
+            // width is like the TEX0 register, in 64 texel units.
+            // not sure what the other widths are yet.
+            int read_width = 64 * tex.width[0];
+
+            // loop over pixels in output texture image
+            for (int y = 0; y < tex.h; y++) {
+              for (int x = 0; x < tex.w; x++) {
+                // read as the PSMT8 type. The dest field tells us a block offset.
+                auto addr8 = psmt8_addr(x, y, read_width) + tex.dest[0] * 256;
+                u8 value = vram[addr8];
+                index_out.push_back(value);
+              }
+            }
+            std::array<math::Vector4<u8>, 256> unscrambled_clut;
+            for (int i = 0; i < 256; i++) {
+              u32 clut_chunk = i / 16;
+              u32 off_in_chunk = i % 16;
+              u8 clx = 0, cly = 0;
+              if (clut_chunk & 1) {
+                clx = 8;
+              }
+              cly = (clut_chunk >> 1) * 2;
+              if (off_in_chunk >= 8) {
+                off_in_chunk -= 8;
+                cly++;
+              }
+              clx += off_in_chunk;
+              u32 clut_addr = psmct32_addr(clx, cly, 64) + tex.clutdest * 256;
+              memcpy(&unscrambled_clut[i], vram.data() + clut_addr, 4);
+            }
+
+            // lg::warn("Adding index texture {} from {}\n", texture_page.name, tex.name);
+            texture_db.add_index_texture(texture_page.id, tex_id, index_out, unscrambled_clut,
+                                         tex.w, tex.h, tex.name, texture_page.name, level_names);
+            stats.successful_textures++;
+          }
+          break;
+        default:
+          lg::die("Animated texture {} format {}\n", tex.name, tex.psm);
+      }
+    }
+
+    if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // will store output pixels, rgba (8888)
       std::vector<u32> out;
 

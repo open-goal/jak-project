@@ -166,10 +166,57 @@
     )
   )
 
+(defenum texture-anim-pc
+  (start-anim-array 12)
+  (finish-anim-array 13)
+  (erase-and-init 14)
+  (upload-clut-16-16 15)
+  (upload-generic-vram 16)
+  (set-shader 17)
+  (draw 18)
+  (move-rg-to-ba 19)
+  (set-clut-alpha 20)
+  (copy-clut-alpha 21)
+  (darkjak 22)
+  (prison-jak 23)
+  (oracle-jak 24)
+  (nest-jak 25)
+  (kor-transform 26)
+  )
+
+(deftype texture-anim-pc-upload (structure)
+  ((data pointer)
+   (width uint16)
+   (height uint16)
+   (dest uint32)
+   (format gs-psm)
+   (pad uint8 3)
+   )
+  :size-assert 16
+  )
+
+(deftype texture-anim-pc-texture-transform (structure)
+  ((src-tbp uint32)
+   (dest-tbp uint32)
+   (pad0 uint32)
+   (pad1 uint32)
+   )
+  )
+
+(defmacro pc-texture-anim-flag (kind buf &key (qwc 0))
+  `(dma-buffer-add-cnt-vif2
+     ,buf
+     ,qwc
+     (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm (texture-anim-pc ,kind))
+     (new 'static 'vif-tag)
+     )
+  )
+
 (defun texture-anim-layer-add-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
   "Add DMA to set the GS to use the given shader. This can be used to read from the texture."
   (let ((s5-0 (-> arg1 tex)))
-    (if s5-0
+    (when s5-0
+        (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
                                          :cld #x1
@@ -196,7 +243,8 @@
 (defun texture-anim-layer-add-clut-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
   "Add DMA to set the GS to use the clut as a ct32 texture. This is used to abuse the GS to blend cluts by pretending they are ct32's."
   (let ((a1-1 (-> arg1 tex)))
-    (if a1-1
+    (when a1-1
+        (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0 :tbw #x1 :tw #x4 :th #x4 :tcc arg2 :tbp0 (-> a1-1 clutdest)))
                                (tex1-1 (new 'static 'gs-tex1))
@@ -215,6 +263,8 @@
    Always draws a tristrip with two triangles.
    "
   (local-vars (v1-27 float) (sv-224 matrix) (sv-228 matrix) (sv-232 matrix) (sv-236 matrix))
+  (pc-texture-anim-flag draw dma-buf) ;; added
+
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -346,6 +396,8 @@
 (defun blend-clut-texture-anim-layer-func ((dma-buf dma-buffer) (arg1 uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Apply texture animation layer to the clut. This interpolates the layer, sets up the GS to _read_ from the given texture's
    clut as a 16x16 psm32, then does the draw."
+
+   (format 0 "before blend-clut-texture-anim-layer-func ~X~%" (-> dma-buf base))
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (when (!= (-> layer interpolated-color w) 0.0)
@@ -353,11 +405,26 @@
       (texture-anim-layer-draw dma-buf 16 16 layer)
       )
     )
+   (format 0 "after blend-clut-texture-anim-layer-func ~X~%" (-> dma-buf base))
+
   0
   )
 
 (defun move-rg-to-ba-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Some cursed texture drawing."
+
+  ;; HACK added:
+  (pc-texture-anim-flag move-rg-to-ba dma-buf :qwc 1)
+  (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (-> layer tex dest 0))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+  ;; end added
+
   (-> layer tex)
   (let ((tw (log2 (* width 2)))
         (th (log2 height))
@@ -503,8 +570,123 @@
     )
   )
 
+(define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *jakb-prison-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-hires-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-hires-nest-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *kor-transform-texture-anim-array* (texture-anim-array texture-anim))
+
+
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
+  (cond
+    ((or (= anim-array *sky-texture-anim-array*)
+         )
+     ;; for sky, we basically emulate the full thing
+     ;; (format *stdcon* "doing sky to bucket ~d~%" bucket)
+     )
+    ((= anim-array *darkjak-texture-anim-array*)
+     ;; darkjak is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     ;; (format *stdcon* "doing darkjak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag darkjak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+
+    ((= anim-array *jakb-prison-texture-anim-array*)
+     ;; prison is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     ;; (format *stdcon* "doing prison-jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag prison-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+
+    ((= anim-array *darkjak-hires-texture-anim-array*)
+     ;; oracle is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     ;; (format *stdcon* "doing oracle jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag oracle-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+    ((= anim-array *darkjak-hires-nest-texture-anim-array*)
+     ;; oracle is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     ;; (format *stdcon* "doing nest jak~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag nest-jak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+    ((= anim-array *kor-transform-texture-anim-array*)
+     ;; kor is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     ;; (format *stdcon* "doing kor~%")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag kor-transform dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
+     )
+    (else
+      (return #f) ;; HACK!!!
+      )
+    )
 
   ;;
   ;; (return #f)
@@ -521,17 +703,14 @@
                                  bucket
                                  )
       ;; added: flag for the PC port to indicate start of texture anim data:
-      (dma-buffer-add-cnt-vif2
-        dma-buf
-        0
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm 12)
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port))
-        )
+      (pc-texture-anim-flag start-anim-array dma-buf)
+
       ;; loop over animated textures. Each will produce a single texture.
       (dotimes (anim-idx (-> anim-array length))
         (let* ((anim (-> anim-array array-data anim-idx))
                (dest-tex (-> anim tex))
                )
+          ; (format 0 "texture anim dest tex: ~A~%" dest-tex)
           (when dest-tex
             0
             (let ((tex-width (-> dest-tex w)))
@@ -543,7 +722,7 @@
                  fbp-for-tex
                  )
                 (else
-                  ;; animating the clut.
+                  ;; not really sure why, but for non-mt8h and non-ct32's we clear the clut here...
                   (set! fbp-for-tex (shr (-> dest-tex clutdest) 5))
                   (set! tex-width 16)
                   (set! tex-height 16)
@@ -551,7 +730,9 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
+                ; (format 0 " clearing~%")
                 ;; configure for drawing to this texture.
+                (pc-texture-anim-flag erase-and-init dma-buf)
                 (dma-buffer-add-gs-set-flusha dma-buf
                                               (scissor-1 (new 'static 'gs-scissor :scax1 (+ tex-width -1) :scay1 (+ tex-height -1)))
                                               (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x8000 :ofy #x8000))
@@ -605,6 +786,7 @@
               (set! layer-idx 0)
               (while (< layer-idx (the-as int (-> anim num-layers)))
                 (let ((layer (-> anim data layer-idx)))
+                  ; (format 0 " running layer ~D, dma at #x~X~%" layer-idx (-> dma-buf base))
                   ;; generate DMA for this layer's effect
                   ((-> layer func) dma-buf fbp-for-tex tex-width tex-height layer (-> anim frame-time))
                   )
@@ -612,7 +794,9 @@
                 )
               )
             ;; some sort of final function (TODO args here)
-            (if (-> anim func)
+            (when (-> anim func)
+                  ; (format 0 " running final, dma at #x~X~%" layer-idx (-> dma-buf base))
+
                 ((-> anim func) dma-buf anim)
                 )
 
@@ -632,13 +816,13 @@
         )
 
       ;; reset GS registers - we messed with frame/scissor.
-      (reset-display-gs-state *display* dma-buf)
+      ;(reset-display-gs-state *display* dma-buf)
 
       ;; added: flag for the PC port to indicate end of texture anim data:
       (dma-buffer-add-cnt-vif2
         dma-buf
         0
-        (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm 13)
+        (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm (texture-anim-pc finish-anim-array))
         (new 'static 'vif-tag :cmd (vif-cmd pc-port))
         )
       )
@@ -725,6 +909,17 @@
 
 (defun copy-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Copy only alpha from the layer source clut."
+
+  (pc-texture-anim-flag copy-clut-alpha dma-buf :qwc 1)
+  (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (-> layer tex dest 0))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (let ((s4-0 1))
@@ -831,6 +1026,19 @@
 
 (defun set-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Set clut alpha to 128."
+
+  ;; PC version
+  (pc-texture-anim-flag set-clut-alpha dma-buf :qwc 1)
+    (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+
+
   (let ((v1-0 1))
     (dma-buffer-add-gs-set dma-buf
                            (test-1 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always)))
@@ -1060,7 +1268,18 @@
   "Upload the clut for the clouds."
   (when (-> arg1 tex)
     (make-cloud-clut (the-as (pointer uint32) (-> arg1 tex pad 0)) (-> arg1 extra y) (-> arg1 extra z))
-    (upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+
+    ;(upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+    (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 1)
+    (let ((upload-record (the texture-anim-pc-upload (-> arg0 base))))
+      (set! (-> upload-record data) (the-as pointer (-> arg1 tex pad 0))) ;; the clut16x16 object
+      (set! (-> upload-record width) 16)
+      (set! (-> upload-record height) 16)
+      (set! (-> upload-record dest) (-> arg1 tex clutdest))
+      (set! (-> upload-record format) (gs-psm ct32))
+      )
+    (&+! (-> arg0 base) 16)
+
     (set! (-> *texture-pool* ids (shr (-> arg1 tex clutdest) 6)) (the-as uint 0))
     0
     )
@@ -1202,7 +1421,18 @@
 
 (defun texture-anim-alpha-ramp-clut-upload ((arg0 dma-buffer) (arg1 texture-anim))
   (when (-> arg1 tex)
-    (upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+    ;(upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
+
+    (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 1)
+    (let ((upload-record (the texture-anim-pc-upload (-> arg0 base))))
+      (set! (-> upload-record data) (the-as pointer (-> arg1 tex pad 0))) ;; the clut16x16 object
+      (set! (-> upload-record width) 16)
+      (set! (-> upload-record height) 16)
+      (set! (-> upload-record dest) (-> arg1 tex clutdest))
+      (set! (-> upload-record format) (gs-psm ct32))
+      )
+    (&+! (-> arg0 base) 16)
+
     (set! (-> *texture-pool* ids (shr (-> arg1 tex clutdest) 6)) (the-as uint 0))
     0
     )

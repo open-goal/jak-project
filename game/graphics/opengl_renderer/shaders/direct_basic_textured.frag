@@ -6,7 +6,8 @@ in vec4 fragment_color;
 in vec3 tex_coord;
 flat in uint use_uv;
 in vec4 gs_scissor;
-uniform float alpha_reject;
+uniform float alpha_min;
+uniform float alpha_max;
 uniform float color_mult;
 uniform float alpha_mult;
 uniform float alpha_sub;
@@ -82,7 +83,7 @@ void main() {
   color *= 2;
   color.xyz *= color_mult;
   color.w *= alpha_mult;
-  if (color.a < alpha_reject) {
+  if (color.a < alpha_min || color.a > alpha_max) {
     discard;
   }
   if (tex_info.w == 1) {

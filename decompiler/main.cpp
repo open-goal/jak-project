@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
   if (config.process_tpages || config.levels_extract) {
     auto textures_out = out_folder / "textures";
     file_util::create_dir_if_needed(textures_out);
-    auto result = db.process_tpages(tex_db, textures_out);
+    auto result = db.process_tpages(tex_db, textures_out, config);
     if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(textures_out / "tpage-dir.txt", result);
       file_util::write_text_file(textures_out / "tex-remap.txt",

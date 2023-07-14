@@ -51,6 +51,48 @@ void TextureDB::add_texture(u32 tpage,
   }
 }
 
+void TextureDB::add_index_texture(u32 tpage,
+                                  u32 texid,
+                                  const std::vector<u8>& index_data,
+                                  const std::array<math::Vector4<u8>, 256>& clut,
+                                  u16 w,
+                                  u16 h,
+                                  const std::string& tex_name,
+                                  const std::string& tpage_name,
+                                  const std::vector<std::string>& level_names) {
+  auto existing_tpage_name = tpage_names.find(tpage);
+  if (existing_tpage_name == tpage_names.end()) {
+    tpage_names[tpage] = tpage_name;
+  } else {
+    ASSERT(existing_tpage_name->second == tpage_name);
+  }
+
+  u32 combo_id = (tpage << 16) | texid;
+  auto existing_tex = index_textures_by_combo_id.find(combo_id);
+  if (existing_tex != index_textures_by_combo_id.end()) {
+    ASSERT(existing_tex->second.name == tex_name);
+    ASSERT(existing_tex->second.w == w);
+    ASSERT(existing_tex->second.h == h);
+    ASSERT(existing_tex->second.index_data == index_data);
+    ASSERT(existing_tex->second.combo_id == combo_id);
+    ASSERT(existing_tex->second.color_table == clut);
+    ASSERT(existing_tex->second.tpage_name == tpage_name);
+    for (auto& ln : level_names) {
+      existing_tex->second.level_names.push_back(ln);
+    }
+  } else {
+    auto& new_tex = index_textures_by_combo_id[combo_id];
+    new_tex.index_data = index_data;
+    new_tex.color_table = clut;
+    new_tex.name = tex_name;
+    new_tex.w = w;
+    new_tex.h = h;
+    new_tex.tpage_name = tpage_name;
+    new_tex.combo_id = combo_id;
+    new_tex.level_names = level_names;
+  }
+}
+
 void TextureDB::replace_textures(const fs::path& path) {
   fs::path base_path(path);
   for (auto& tex : textures) {

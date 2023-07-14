@@ -16,6 +16,7 @@
 
 #include "common/link_types.h"
 #include "common/log/log.h"
+#include "common/texture/texture_slots.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
@@ -698,7 +699,9 @@ void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
   lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& output_path) {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
+                                         const fs::path& output_path,
+                                         const Config& cfg) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -706,10 +709,25 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
   u64 total_px = 0;
   Timer timer;
 
+  std::vector<std::string> animated_slots;
+  switch (m_version) {
+    case GameVersion::Jak1:  // no animated
+      break;
+    case GameVersion::Jak2:
+      animated_slots = jak2_animated_texture_slots();
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  for (size_t i = 0; i < animated_slots.size(); i++) {
+    tex_db.animated_tex_output_to_anim_slot[animated_slots[i]] = i;
+  }
+
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data, tex_db, output_path);
+      auto statistics = process_tpage(data, tex_db, output_path, cfg.animated_textures);
       total += statistics.total_textures;
       success += statistics.successful_textures;
       total_px += statistics.num_px;

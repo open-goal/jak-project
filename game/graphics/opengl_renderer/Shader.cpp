@@ -125,6 +125,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::ETIE_BASE) = {"etie_base", version};
   at(ShaderId::ETIE) = {"etie", version};
   at(ShaderId::SHADOW2) = {"shadow2", version};
+  at(ShaderId::TEX_ANIM) = {"tex_anim", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

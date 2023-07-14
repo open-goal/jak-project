@@ -196,13 +196,13 @@ GameSubtitleSceneInfo GameSubtitleBank::new_scene_from_meta(
     // In either case, we acknowledge that there is a line, but there is no text to retrieve at that
     // index.
     if (line_meta.merge || (relevant_lines.find(scene_name) != relevant_lines.end() &&
-                            relevant_lines.at(scene_name).size() > line_idx &&
+                            (int)relevant_lines.at(scene_name).size() > line_idx &&
                             relevant_lines.at(scene_name).at(line_idx).empty())) {
       new_scene.m_lines.push_back({"", line_meta});
       lines_added++;
     } else if (m_speakers.find(line_meta.speaker) == m_speakers.end() ||
                relevant_lines.find(scene_name) == relevant_lines.end() ||
-               line_idx >= relevant_lines.at(scene_name).size()) {
+               line_idx >= (int)relevant_lines.at(scene_name).size()) {
       lg::warn(
           "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
           "be resolved {}!",
@@ -290,6 +290,7 @@ SubtitleMetadataFile dump_bank_meta_v2(const GameVersion game_version,
                                        std::shared_ptr<GameSubtitleBank> bank) {
   const auto dump_with_duplicates =
       dump_language_with_duplicates_from_base(game_version, bank->m_lang_id);
+  (void)dump_with_duplicates;
   auto meta_file = SubtitleMetadataFile();
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {
     // Avoid dumping duplicates

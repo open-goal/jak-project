@@ -25,6 +25,16 @@ void TextureConverter::upload(const u8* data, u32 dest, u32 size_vram_words) {
   }
 }
 
+void TextureConverter::upload_width(const u8* data, u32 dest, u32 width, u32 height) {
+  for (u32 y = 0; y < height; y++) {
+    for (u32 x = 0; x < width; x++) {
+      // VRAM address (bytes)
+      auto addr32 = psmct32_addr(x, y, width) + dest * 256;
+      *(u32*)(m_vram.data() + addr32) = *((const u32*)(data) + (x + y * width));
+    }
+  }
+}
+
 void TextureConverter::download_rgba8888(u8* result,
                                          u32 vram_addr,
                                          u32 goal_tex_width,
@@ -198,8 +208,4 @@ void TextureConverter::download_rgba8888(u8* result,
   }
 
   ASSERT(out_offset == expected_size_bytes);
-}
-
-void TextureConverter::serialize(Serializer& ser) {
-  ser.from_pod_vector(&m_vram);
 }

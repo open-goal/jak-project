@@ -433,6 +433,17 @@ void Texture::serialize(Serializer& ser) {
   ser.from_ptr(&load_to_pool);
 }
 
+void IndexTexture::serialize(Serializer& ser) {
+  ser.from_ptr(&w);
+  ser.from_ptr(&h);
+  ser.from_ptr(&combo_id);
+  ser.from_pod_vector(&index_data);
+  ser.from_ptr(&color_table);
+  ser.from_str(&name);
+  ser.from_str(&tpage_name);
+  ser.from_string_vector(&level_names);
+}
+
 void CollisionMesh::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
@@ -542,6 +553,15 @@ void Level::serialize(Serializer& ser) {
     textures.resize(ser.load<size_t>());
   }
   for (auto& tex : textures) {
+    tex.serialize(ser);
+  }
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(index_textures.size());
+  } else {
+    index_textures.resize(ser.load<size_t>());
+  }
+  for (auto& tex : index_textures) {
     tex.serialize(ser);
   }
 
@@ -687,6 +707,11 @@ void Texture::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::TEXTURE, data.size() * sizeof(u32));
 }
 
+void IndexTexture::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::SPECIAL_TEXTURE, index_data.size());
+  tracker->add(MemoryUsageCategory::SPECIAL_TEXTURE, 256 * 4);  // clut
+}
+
 void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& texture : textures) {
     texture.memory_usage(tracker);
@@ -715,6 +740,7 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 
   std::vector<std::pair<std::string, int>> known_categories = {
       {"texture", mem_use.data[tfrag3::MemoryUsageCategory::TEXTURE]},
+      {"special-texture", mem_use.data[tfrag3::MemoryUsageCategory::SPECIAL_TEXTURE]},
       {"tie-deinst-vis", mem_use.data[tfrag3::MemoryUsageCategory::TIE_DEINST_VIS]},
       {"tie-deinst-idx", mem_use.data[tfrag3::MemoryUsageCategory::TIE_DEINST_INDEX]},
       {"tie-inst-vis", mem_use.data[tfrag3::MemoryUsageCategory::TIE_INST_VIS]},

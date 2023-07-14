@@ -163,7 +163,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   auto textures_out = out_folder / "textures";
   file_util::create_dir_if_needed(textures_out);
   file_util::write_text_file(textures_out / "tpage-dir.txt",
-                             db.process_tpages(tex_db, textures_out));
+                             db.process_tpages(tex_db, textures_out, config));
   // texture replacements
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
