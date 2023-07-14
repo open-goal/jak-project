@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/custom_data/Tfrag3Data.h"
 #include "common/dma/dma_chain_read.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
@@ -60,11 +61,26 @@ struct OpenGLTexturePool {
   std::unordered_map<u64, std::vector<GLuint>> textures;
 };
 
+/*!
+ *
+ */
+class ClutBlender {
+ public:
+  ClutBlender(const std::string& dest,
+              const std::vector<std::string>& sources,
+              const tfrag3::Level* level);
+  GLuint run(const float* weights, OpenGLTexturePool* tpool);
+
+ private:
+  std::vector<float> m_current_weights;
+  GLuint m_texture;
+};
+
 class TexturePool;
 
 class TextureAnimator {
  public:
-  TextureAnimator(ShaderLibrary& shaders);
+  TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
 
@@ -73,8 +89,11 @@ class TextureAnimator {
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
   void handle_erase_dest(DmaFollower& dma);
   void handle_set_shader(DmaFollower& dma);
-  void handle_draw(DmaFollower& dma);
+  void handle_draw(DmaFollower& dma, TexturePool& texture_pool);
   void handle_rg_to_ba(const DmaTransfer& tf);
+  void handle_set_clut_alpha(const DmaTransfer& tf);
+  void handle_copy_clut_alpha(const DmaTransfer& tf);
+  void handle_darkjak(const DmaTransfer& tf);
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
   void set_up_opengl_for_shader(const ShaderContext& shader,
@@ -86,7 +105,7 @@ class TextureAnimator {
 
   GLuint make_temp_gpu_texture(const u32* data, u32 width, u32 height);
 
-  GLuint make_or_get_gpu_texture_for_current_shader();
+  GLuint make_or_get_gpu_texture_for_current_shader(TexturePool& texture_pool);
   void force_to_gpu(int tbp);
 
   struct DrawData {
@@ -141,6 +160,7 @@ class TextureAnimator {
     GLuint uvs;
     GLuint enable_tex;
     GLuint channel_scramble;
+    GLuint tcc;
   } m_uniforms;
 
   GLuint m_shader_id;

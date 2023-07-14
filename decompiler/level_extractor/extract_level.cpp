@@ -241,6 +241,11 @@ void extract_common(const ObjectFileDB& db,
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level);
 
+  // put _all_ index textures in common.
+  for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
+    tfrag_level.index_textures.push_back(tex);
+  }
+
   Serializer ser;
   tfrag_level.serialize(ser);
   auto compressed =

@@ -18,6 +18,12 @@
 // - deleting a texture that's in use
 // - glTexImage2D to modify a texture with a different sized texture.
 
+// TODO:
+//  clouds aren't really working right. The final operation of move rb to ba is a guess.
+//  then it's actually treated as a palette texture, but we don't really do this.
+//  This breaks the fade-out/thresholding, and likely the colors. But it still looks vaguely like
+//  clouds.
+
 /*!
  * A simple list of preallocated textures by size. If a texture needs to be resized, it's faster
  * to swap to a different OpenGL texture from this pool than glTexImage2D with a different size.
@@ -68,7 +74,7 @@ void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
   textures[(w << 32) | h].push_back(texture);
 }
 
-TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
+TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -100,6 +106,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
   m_uniforms.positions = glGetUniformLocation(shader.id(), "positions");
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
+  m_uniforms.tcc = glGetUniformLocation(shader.id(), "tcc");
 
   // create a single "dummy texture" with all 0 data.
   // this is faster and easier than switching shaders to one without texturing, and is used
@@ -127,6 +134,11 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders) {
     clx += off_in_chunk;
     m_index_to_clut_addr[i] = clx + cly * 16;
   }
+
+  for (auto& t : common_level->index_textures) {
+    lg::warn("index texture: {}", t.name);
+  }
+  ASSERT_NOT_REACHED();
 }
 
 TextureAnimator::~TextureAnimator() {
@@ -144,6 +156,9 @@ enum PcTextureAnimCodes {
   SET_SHADER = 17,
   DRAW = 18,
   MOVE_RG_TO_BA = 19,
+  SET_CLUT_ALPHA = 20,
+  COPY_CLUT_ALPHA = 21,
+  DARKJAK = 22,
 };
 
 // metadata for an upload from GOAL memory
@@ -192,6 +207,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   // this will also record which tbp's have been "erased", for the next step.
   bool done = false;
   while (!done) {
+    u32 offset = dma.current_tag_offset();
     auto tf = dma.read_and_advance();
     auto vif0 = tf.vifcode0();
     if (vif0.kind == VifCode::Kind::PC_PORT) {
@@ -214,7 +230,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case DRAW: {
           auto p = scoped_prof("draw");
-          handle_draw(dma);
+          handle_draw(dma, *texture_pool);
         } break;
         case FINISH_ARRAY:
           done = true;
@@ -223,13 +239,26 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("rg-to-ba");
           handle_rg_to_ba(tf);
         } break;
+        case SET_CLUT_ALPHA: {
+          auto p = scoped_prof("set-clut-alpha");
+          handle_set_clut_alpha(tf);
+        } break;
+        case COPY_CLUT_ALPHA: {
+          auto p = scoped_prof("copy-clut-alpha");
+          handle_copy_clut_alpha(tf);
+        } break;
+        case DARKJAK: {
+          auto p = scoped_prof("darkjak");
+          handle_darkjak(tf);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
       }
     } else {
-      dprintf("[tex anim] unhandled VIF in main loop\n");
+      printf("[tex anim] unhandled VIF in main loop\n");
       fmt::print("{} {}\n", vif0.print(), tf.vifcode1().print());
+      fmt::print("dma address 0x{:x}\n", offset);
       ASSERT_NOT_REACHED();
     }
   }
@@ -432,6 +461,77 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
   //  } else {
   //    ASSERT_NOT_REACHED();
   //  }
+}
+
+void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
+  ASSERT_NOT_REACHED();
+  dprintf("[tex anim] set clut alpha\n");
+  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
+  auto* data = (const TextureAnimPcTransform*)(tf.data);
+  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
+  const auto& tex = m_textures.find(data->dst_tbp);
+  ASSERT(tex != m_textures.end());
+
+  ASSERT(tex->second.kind == VramEntry::Kind::GPU);
+  FramebufferTexturePairContext ctxt(tex->second.tex.value());
+  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+  float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+  glUniform3fv(m_uniforms.positions, 4, positions);
+  glUniform2fv(m_uniforms.uvs, 4, uvs);
+  glUniform1i(m_uniforms.enable_tex, 0);  // NO TEXTURE!
+  glUniform4f(m_uniforms.rgba, 128, 128, 128, 128);
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+  glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glColorMask(false, false, false, true);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+  glColorMask(true, true, true, true);
+}
+
+void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
+  ASSERT_NOT_REACHED();
+  dprintf("[tex anim] __copy__ clut alpha\n");
+  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
+  auto* data = (const TextureAnimPcTransform*)(tf.data);
+  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
+  const auto& dst_tex = m_textures.find(data->dst_tbp);
+  const auto& src_tex = m_textures.find(data->src_tbp);
+  ASSERT(dst_tex != m_textures.end());
+  if (src_tex == m_textures.end()) {
+    lg::error("Skipping copy clut alpha because source texture at {} wasn't found", data->src_tbp);
+    return;
+  }
+  ASSERT(src_tex != m_textures.end());
+
+  ASSERT(dst_tex->second.kind == VramEntry::Kind::GPU);
+  ASSERT(src_tex->second.kind == VramEntry::Kind::GPU);
+
+  FramebufferTexturePairContext ctxt(dst_tex->second.tex.value());
+  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+  float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+  glUniform3fv(m_uniforms.positions, 4, positions);
+  glUniform2fv(m_uniforms.uvs, 4, uvs);
+  glUniform1i(m_uniforms.enable_tex, 1);
+  glUniform4f(m_uniforms.rgba, 128, 128, 128, 128);  // TODO - seems wrong.
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+  glBindTexture(GL_TEXTURE_2D, src_tex->second.tex.value().texture());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glColorMask(false, false, false, true);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+  glColorMask(true, true, true, true);
+}
+
+void TextureAnimator::handle_darkjak(const DmaTransfer& tf) {
+  float f;
+  ASSERT(tf.size_bytes == 16);
+  memcpy(&f, tf.data, sizeof(float));
+  lg::error("Darkjak interp: {}\n", f);
 }
 
 /*!
@@ -702,7 +802,7 @@ void TextureAnimator::handle_set_shader(DmaFollower& dma) {
 /*!
  * Do a draw to a destination texture.
  */
-void TextureAnimator::handle_draw(DmaFollower& dma) {
+void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
   // NOTE: assuming ABE set from the template here. If this function is used for other templates,
   // we'll need to actually check.
   dprintf("[tex anim] Draw\n");
@@ -721,7 +821,11 @@ void TextureAnimator::handle_draw(DmaFollower& dma) {
     FramebufferTexturePairContext ctxt(*dest_te.tex);
 
     // get the source texture
-    GLuint gpu_texture = make_or_get_gpu_texture_for_current_shader();
+    GLuint gpu_texture;
+    {
+      auto p = scoped_prof("make-tex");
+      gpu_texture = make_or_get_gpu_texture_for_current_shader(texture_pool);
+    }
 
     // use ADGIF shader data to set OpenGL state
     set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
@@ -792,11 +896,19 @@ GLuint TextureAnimator::make_temp_gpu_texture(const u32* data, u32 width, u32 he
 /*!
  * Read the current shader settings, and get/create/setup a GPU texture for the source texture.
  */
-GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader() {
+GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& texture_pool) {
+  u32 tbp = m_current_shader.tex0.tbp0();
   const auto& lookup = m_textures.find(m_current_shader.tex0.tbp0());
   if (lookup == m_textures.end()) {
-    printf("referenced an unknown texture in %d\n", m_current_shader.tex0.tbp0());
-    ASSERT_NOT_REACHED();
+    auto tpool = texture_pool.lookup(tbp);
+    if (tpool.has_value()) {
+      return *tpool;
+    }
+    // printf("referenced an unknown texture in %d\n", tbp);
+    lg::error("unknown texture in {} (0x{:x})", tbp, tbp);
+    return texture_pool.get_placeholder_texture();
+
+    // ASSERT_NOT_REACHED();
   }
 
   auto* vram_entry = &lookup->second;
@@ -885,7 +997,10 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
   // tex0
-  ASSERT(shader.tex0.tcc() == 1);
+  u32 tcc = shader.tex0.tcc();
+  ASSERT(tcc == 1 || tcc == 0);
+  glUniform1i(m_uniforms.tcc, tcc);
+
   ASSERT(shader.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
   // tex1
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
@@ -902,7 +1017,8 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
   }
 
   bool do_alpha_test = false;
-  bool alpha_test_used_as_mask = false;
+  bool alpha_test_mask_alpha_trick = false;
+  bool alpha_test_mask_depth_trick = false;
 
   // test
   if (shader.test.alpha_test_enable()) {
@@ -911,12 +1027,15 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
       do_alpha_test = false;
       // atest effectively disabled - everybody passes.
     } else if (atst == GsTest::AlphaTest::NEVER) {
+      // everybody fails. They use alpha test to mask out some channel
       do_alpha_test = false;
 
       switch (shader.test.afail()) {
         case GsTest::AlphaFail::RGB_ONLY:
-          alpha_test_used_as_mask = true;
-          glColorMask(true, true, true, false);
+          alpha_test_mask_alpha_trick = true;
+          break;
+        case GsTest::AlphaFail::FB_ONLY:
+          alpha_test_mask_depth_trick = true;
           break;
         default:
           ASSERT_NOT_REACHED();
@@ -929,8 +1048,16 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     do_alpha_test = false;
   }
 
-  if (!alpha_test_used_as_mask) {
+  if (alpha_test_mask_alpha_trick) {
+    glColorMask(true, true, true, false);
+  } else {
     glColorMask(true, true, true, true);
+  }
+
+  if (alpha_test_mask_depth_trick) {
+    glDepthMask(GL_FALSE);
+  } else {
+    glDepthMask(GL_TRUE);
   }
 
   ASSERT(shader.test.date() == false);
@@ -968,6 +1095,10 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
         blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
       glBlendEquation(GL_FUNC_ADD);
       glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::DEST &&
+               blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     } else {
       fmt::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
                  (int)blend_d);

@@ -79,7 +79,7 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
     const u8* ee_mem = (const u8*)render_state->ee_main_memory;
     for (auto& upload : uploads) {
       render_state->texture_pool->handle_upload_now(ee_mem + upload.page, upload.mode, ee_mem,
-                                                    render_state->offset_of_s7);
+                                                    render_state->offset_of_s7, m_my_id == 999);
     }
   }
 }

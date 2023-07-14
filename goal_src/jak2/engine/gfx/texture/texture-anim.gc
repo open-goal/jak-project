@@ -175,6 +175,9 @@
   (set-shader 17)
   (draw 18)
   (move-rg-to-ba 19)
+  (set-clut-alpha 20)
+  (copy-clut-alpha 21)
+  (darkjak 22)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -236,7 +239,8 @@
 (defun texture-anim-layer-add-clut-shader ((arg0 dma-buffer) (arg1 texture-anim-layer) (arg2 int))
   "Add DMA to set the GS to use the clut as a ct32 texture. This is used to abuse the GS to blend cluts by pretending they are ct32's."
   (let ((a1-1 (-> arg1 tex)))
-    (if a1-1
+    (when a1-1
+        (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0 :tbw #x1 :tw #x4 :th #x4 :tcc arg2 :tbp0 (-> a1-1 clutdest)))
                                (tex1-1 (new 'static 'gs-tex1))
@@ -388,6 +392,8 @@
 (defun blend-clut-texture-anim-layer-func ((dma-buf dma-buffer) (arg1 uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Apply texture animation layer to the clut. This interpolates the layer, sets up the GS to _read_ from the given texture's
    clut as a 16x16 psm32, then does the draw."
+
+   (format 0 "before blend-clut-texture-anim-layer-func ~X~%" (-> dma-buf base))
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (when (!= (-> layer interpolated-color w) 0.0)
@@ -395,6 +401,8 @@
       (texture-anim-layer-draw dma-buf 16 16 layer)
       )
     )
+   (format 0 "after blend-clut-texture-anim-layer-func ~X~%" (-> dma-buf base))
+
   0
   )
 
@@ -559,13 +567,35 @@
   )
 
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
   (cond
-    ((= anim-array *sky-texture-anim-array*)
+    ((or (= anim-array *sky-texture-anim-array*)
+         )
+     ;; for sky, we basically emulate the full thing
      (format *stdcon* "doing sky to bucket ~d~%" bucket)
+     )
+    ((= anim-array *darkjak-texture-anim-array*)
+     ;; darkjak is simple, and we reimplemented it in C++.
+     ;; so we just have to send the frame-time value.
+     (format *stdcon* "doing darkjak")
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag darkjak dma-buf :qwc 1)
+       (let ((morph (-> anim-array array-data 0 frame-time))
+             (vec (the vector (-> dma-buf base)))
+             )
+         (set! (-> vec x) morph)
+         )
+       (&+! (-> dma-buf base) 16)
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       )
+     (return #f)
      )
     (else
       (return #f) ;; HACK!!!
@@ -669,7 +699,7 @@
               (set! layer-idx 0)
               (while (< layer-idx (the-as int (-> anim num-layers)))
                 (let ((layer (-> anim data layer-idx)))
-                  ; (format 0 " running layer ~D~%" layer-idx)
+                  ; (format 0 " running layer ~D, dma at #x~X~%" layer-idx (-> dma-buf base))
                   ;; generate DMA for this layer's effect
                   ((-> layer func) dma-buf fbp-for-tex tex-width tex-height layer (-> anim frame-time))
                   )
@@ -677,7 +707,9 @@
                 )
               )
             ;; some sort of final function (TODO args here)
-            (if (-> anim func)
+            (when (-> anim func)
+                  ; (format 0 " running final, dma at #x~X~%" layer-idx (-> dma-buf base))
+
                 ((-> anim func) dma-buf anim)
                 )
 
@@ -790,6 +822,17 @@
 
 (defun copy-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Copy only alpha from the layer source clut."
+
+  (pc-texture-anim-flag copy-clut-alpha dma-buf :qwc 1)
+  (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (-> layer tex dest 0))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+
   (when (and (>= time (-> layer start-time)) (>= (-> layer end-time) time))
     (texture-anim-layer-interp layer time)
     (let ((s4-0 1))
@@ -896,6 +939,19 @@
 
 (defun set-clut-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Set clut alpha to 128."
+
+  ;; PC version
+  (pc-texture-anim-flag set-clut-alpha dma-buf :qwc 1)
+    (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
+    (set! (-> transform src-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform dest-tbp) (* 32 fbp-to-draw))
+    (set! (-> transform pad0) 0)
+    (set! (-> transform pad1) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+  (return 0)
+
+
   (let ((v1-0 1))
     (dma-buffer-add-gs-set dma-buf
                            (test-1 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always)))

@@ -4,6 +4,7 @@ out vec4 color;
 
 uniform vec4 rgba;
 uniform int enable_tex;
+uniform int tcc;
 uniform ivec4 channel_scramble;
 
 in vec2 uv;
@@ -18,7 +19,12 @@ void main() {
     tex_color[channel_scramble[1]],
     tex_color[channel_scramble[2]],
     tex_color[channel_scramble[3]]);
-    color = (rgba / 128.) * unscambled_tex;
+    color = rgba / 128.;
+    if (tcc == 1) {
+      color *= unscambled_tex;
+    } else {
+      color.xyz *= unscambled_tex.xyz;
+    }
   } else {
     color = (rgba / 128.);
   }

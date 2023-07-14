@@ -247,7 +247,7 @@ class ObjectFileDB {
                             const std::vector<std::string>& imports,
                             const std::unordered_set<std::string>& skip_functions);
 
-  std::string process_tpages(TextureDB& tex_db, const fs::path& output_path);
+  std::string process_tpages(TextureDB& tex_db, const fs::path& output_path, const Config& cfg);
   std::string process_game_count_file();
   std::string process_game_text_files(const Config& cfg);
   std::string process_all_spool_subtitles(const Config& cfg, const fs::path& image_out);

@@ -18,10 +18,12 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 37;
+constexpr int TFRAG3_VERSION = 38;
 
 enum MemoryUsageCategory {
   TEXTURE,
+
+  SPECIAL_TEXTURE,
 
   TIE_DEINST_VIS,
   TIE_DEINST_INDEX,
@@ -292,6 +294,17 @@ struct Texture {
   void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
+struct IndexTexture {
+  u16 w, h;
+  u32 combo_id = 0;
+  std::vector<u8> index_data;
+  std::string name;
+  std::string tpage_name;
+  std::array<math::Vector4<u8>, 256> color_table;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
 // Tfrag trees have several kinds:
 enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, WATER, INVALID };
 
@@ -542,6 +555,7 @@ struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
+  std::vector<IndexTexture> index_textures;
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;

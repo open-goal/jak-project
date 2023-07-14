@@ -189,7 +189,11 @@ void GpuTexture::add_slot(u32 slot) {
  * We could store textures in the right format to begin with, or spread the conversion out over
  * multiple frames.
  */
-void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr) {
+void TexturePool::handle_upload_now(const u8* tpage,
+                                    int mode,
+                                    const u8* memory_base,
+                                    u32 s7_ptr,
+                                    bool debug) {
   std::unique_lock<std::mutex> lk(m_mutex);
   // extract the texture-page object. This is just a description of the page data.
   GoalTexturePage texture_page;
@@ -216,6 +220,12 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
   for (int tex_idx = 0; tex_idx < texture_page.length; tex_idx++) {
     GoalTexture tex;
     if (texture_page.try_copy_texture_description(&tex, tex_idx, memory_base, tpage, s7_ptr)) {
+      if (debug) {
+        fmt::print("Pool upload {} to {}\n",
+                   std::string(goal_string(texture_page.name_ptr, memory_base)) +
+                       goal_string(tex.name_ptr, memory_base),
+                   tex.dest[0]);
+      }
       // each texture may have multiple mip levels.
       for (int mip_idx = 0; mip_idx < tex.num_mips; mip_idx++) {
         if (has_segment[tex.segment_of_mip(mip_idx)]) {

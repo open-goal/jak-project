@@ -292,7 +292,7 @@ struct GoalTexturePage {
 class TexturePool {
  public:
   TexturePool(GameVersion version);
-  void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
+  void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr, bool debug);
   GpuTexture* give_texture(const TextureInput& in);
   GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
   void unload_texture(PcTextureId tex_id, u64 gpu_id);

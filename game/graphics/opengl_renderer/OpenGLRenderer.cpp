@@ -85,6 +85,13 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
 
   lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
+  const tfrag3::Level* common_level = nullptr;
+  {
+    auto p = scoped_prof("load-common");
+    common_level = &m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
+  }
+
+
   m_merc2 = std::make_shared<Merc2>(m_render_state.shaders);
   m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
 
@@ -95,7 +102,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       init_bucket_renderers_jak1();
       break;
     case GameVersion::Jak2:
-      m_texture_animator = std::make_shared<TextureAnimator>(m_render_state.shaders);
+      m_texture_animator = std::make_shared<TextureAnimator>(m_render_state.shaders, common_level);
       init_bucket_renderers_jak2();
       break;
     default:
@@ -301,10 +308,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
     m_jak2_eye_renderer->init_shaders(m_render_state.shaders);
     m_jak2_eye_renderer->init_textures(*m_render_state.texture_pool, GameVersion::Jak2);
   }
-
-  auto p = scoped_prof("load-common");
-  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
+
 /*!
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
@@ -538,7 +543,6 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   }
   sky_cpu_blender->init_textures(*m_render_state.texture_pool, m_version);
   sky_gpu_blender->init_textures(*m_render_state.texture_pool, m_version);
-  m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
 }
 
 namespace {
