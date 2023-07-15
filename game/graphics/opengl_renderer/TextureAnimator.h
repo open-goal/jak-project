@@ -132,6 +132,10 @@ struct FixedLayerDef {
   std::string tex_name;
   bool z_writes = false;
   bool z_test = false;
+  bool clamp_u = false;
+  bool clamp_v = false;
+  bool blend_enable = true;
+  bool channel_masks[4] = {true, true, true, true};
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
   LayerVals start_vals, end_vals;
@@ -197,6 +201,7 @@ class TextureAnimator {
   void set_up_opengl_for_shader(const ShaderContext& shader,
                                 std::optional<GLuint> texture,
                                 bool prim_abe);
+  void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
 
   void load_clut_to_converter();
   const u32* get_clut_16_16_psm32(int cbp);
@@ -228,6 +233,7 @@ class TextureAnimator {
   };
 
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
+  void set_draw_data_from_interpolated(DrawData* result, const LayerVals& vals, int w, int h);
 
   PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
 
@@ -301,11 +307,11 @@ class TextureAnimator {
                                  const std::optional<std::string>& dgo);
   void run_clut_blender_group(DmaTransfer& tf, int idx);
 
-
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
   ClutReader m_clut_table;
 
   int m_skull_gem_fixed_anim_array_idx = -1;
+  int m_bomb_fixed_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

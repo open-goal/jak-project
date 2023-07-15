@@ -420,6 +420,7 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     auto* dtex = tex_by_name(m_common_level, anim.def.tex_name);
     anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
     opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
+    m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
 
     // set up the source textures
     for (const auto& layer : def.layers) {
@@ -435,6 +436,17 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
 
 void TextureAnimator::draw_debug_window() {
   ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
+
+  auto& slots = jak2_animated_texture_slots();
+  for (size_t i = 0; i < slots.size(); i++) {
+    ImGui::Text("Slot %d", (int)i);
+    glBindTexture(GL_TEXTURE_2D, m_output_slots[i]);
+    int w, h;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    ImGui::Image((void*)m_output_slots[i], ImVec2(w, h));
+  }
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 /*!
@@ -495,6 +507,7 @@ enum PcTextureAnimCodes {
   NEST_JAK = 25,
   KOR_TRANSFORM = 26,
   SKULL_GEM = 27,
+  BOMB = 28,
 };
 
 // metadata for an upload from GOAL memory
@@ -608,6 +621,12 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           ASSERT(tf.size_bytes == 16);
           const float* floats = (const float*)tf.data;
           run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, floats);
+        } break;
+        case BOMB: {
+          auto p = scoped_prof("bomb");
+          ASSERT(tf.size_bytes == 16);
+          const float* floats = (const float*)tf.data;
+          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, floats);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1369,6 +1388,74 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
   }
 }
 
+void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
+                                              std::optional<GLint> texture) {
+  if (texture) {
+    glBindTexture(GL_TEXTURE_2D, *texture);
+    glUniform1i(m_uniforms.enable_tex, 1);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+    glUniform1i(m_uniforms.enable_tex, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+  // tex0
+  // assuming default-texture-anim-layer-func, which sets 1.
+  glUniform1i(m_uniforms.tcc, 1);
+
+  // ASSERT(shader.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  // tex1
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glColorMask(def.channel_masks[0], def.channel_masks[1], def.channel_masks[2],
+              def.channel_masks[3]);
+  if (def.z_test) {
+    ASSERT_NOT_REACHED();
+  } else {
+    glDisable(GL_DEPTH_TEST);
+  }
+
+  if (def.clamp_u) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (def.clamp_v) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
+  if (def.blend_enable) {
+    auto blend_a = def.blend_modes[0];
+    auto blend_b = def.blend_modes[1];
+    auto blend_c = def.blend_modes[2];
+    auto blend_d = def.blend_modes[3];
+    glEnable(GL_BLEND);
+
+    // 0 2 0 1
+    if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+        blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::DEST &&
+               blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    } else {
+      fmt::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
+                 (int)blend_d);
+      ASSERT_NOT_REACHED();
+    }
+
+  } else {
+    glDisable(GL_BLEND);
+  }
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+}
+
 void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
                                                std::optional<GLuint> texture,
                                                bool prim_abe) {
@@ -1546,8 +1633,111 @@ void TextureAnimator::run_fixed_animation_array(int idx, const float* times) {
   }
 }
 
+template <typename T>
+void interpolate_1(float interp, T* out, const T& in_start, const T& in_end) {
+  *out = in_start + (in_end - in_start) * interp;
+}
+
+void interpolate_layer_values(float interp,
+                              LayerVals* out,
+                              const LayerVals& start,
+                              const LayerVals& end) {
+  interpolate_1(interp, &out->color, start.color, end.color);
+  interpolate_1(interp, &out->scale, start.scale, end.scale);
+  interpolate_1(interp, &out->offset, start.offset, end.offset);
+  interpolate_1(interp, &out->st_scale, start.st_scale, end.st_scale);
+  interpolate_1(interp, &out->st_offset, start.st_offset, end.st_offset);
+  interpolate_1(interp, &out->qs, start.qs, end.qs);
+}
+
+void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
+                                                      const LayerVals& vals,
+                                                      int w,
+                                                      int h) {
+  result->color = (vals.color * 128.f).cast<u32>();
+  math::Vector2f pos_scale(vals.scale.x() * w, vals.scale.y() * h);
+  math::Vector2f pos_offset(2048.f + (vals.offset.x() * w), 2048.f + (vals.offset.y() * h));
+  math::Vector2f st_scale = vals.st_scale;
+  math::Vector2f st_offset = vals.st_offset;
+  const math::Vector2f corners[4] = {math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5},
+                                     math::Vector2f{-0.5, 0.5}, math::Vector2f{0.5, 0.5}};
+  math::Vector2f sts[4];
+  math::Vector2<u32> poss[4];
+
+  for (int i = 0; i < 4; i++) {
+    sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
+    poss[i] = ((corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
+  }
+
+  result->st0.x() = sts[0].x();
+  result->st0.y() = sts[0].y();
+  result->st1.x() = sts[1].x();
+  result->st1.y() = sts[1].y();
+  result->st2.x() = sts[2].x();
+  result->st2.y() = sts[2].y();
+  result->st3.x() = sts[3].x();
+  result->st3.y() = sts[3].y();
+
+  result->pos0.x() = poss[0].x();
+  result->pos0.y() = poss[0].y();
+  result->pos1.x() = poss[1].x();
+  result->pos1.y() = poss[1].y();
+  result->pos2.x() = poss[2].x();
+  result->pos2.y() = poss[2].y();
+  result->pos3.x() = poss[3].x();
+  result->pos3.y() = poss[3].y();
+}
+
 void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
- fmt::print("run_fixed_animation {}\n", time);
+  fmt::print("run_fixed_animation {}\n", time);
+  FramebufferTexturePairContext ctxt(anim.fbt.value());
+
+  // Clear
+  {
+    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+    glUniform3fv(m_uniforms.positions, 4, positions);
+    glUniform1i(m_uniforms.enable_tex, 0);
+    glUniform4f(m_uniforms.rgba, anim.def.color[0], anim.def.color[1], anim.def.color[2],
+                anim.def.color[3]);
+    glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glColorMask(true, true, true, true);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+  }
+
+  LayerVals interpolated_values;
+  DrawData draw_data;
+
+  // Loop over layers
+  for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
+    auto& layer_def = anim.def.layers[layer_idx];
+    // skip layer if out the range when it is active
+    if (time < layer_def.start_time || time > layer_def.end_time) {
+      continue;
+    }
+
+    // interpolate
+    interpolate_layer_values(
+        (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
+        &interpolated_values, layer_def.start_vals, layer_def.end_vals);
+
+    // shader setup
+    set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+
+    set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
+                                    anim.fbt->height());
+    set_uniforms_from_draw_data(draw_data, anim.fbt->width(), anim.fbt->height());
+
+    // draw!
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
+
+  // Finish
+  m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
 }
 
 void TextureAnimator::setup_texture_anims() {
@@ -1644,5 +1834,50 @@ void TextureAnimator::setup_texture_anims() {
     skull_gem_2.end_vals.st_offset = math::Vector2f{2, 2};
 
     m_skull_gem_fixed_anim_array_idx = create_fixed_anim_array({skull_gem});
+  }
+
+  // Bomb
+  {
+    FixedAnimDef bomb;
+    bomb.tex_name = "bomb-gradient";
+    bomb.color = math::Vector4<u8>{0, 0, 0, 0x80};
+
+    auto& bomb_0 = bomb.layers.emplace_back();
+    bomb_0.end_time = 300.;
+    bomb_0.tex_name = "bomb-gradient-rim";
+    bomb_0.set_blend_b2_d1();
+    bomb_0.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    bomb_0.channel_masks[3] = false;  // no alpha writes.
+    bomb_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_0.start_vals.scale = math::Vector2f{1, 1};
+    bomb_0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_0.start_vals.st_scale = math::Vector2f{1, 1};
+    bomb_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    bomb_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_0.end_vals.scale = math::Vector2f{1, 1};
+    bomb_0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_0.end_vals.st_scale = math::Vector2f{1, 1};
+    bomb_0.end_vals.st_offset = math::Vector2f{0.5, 4.0};
+
+    auto& bomb_1 = bomb.layers.emplace_back();
+    bomb_1.end_time = 300.;
+    bomb_1.tex_name = "bomb-gradient-flames";
+    bomb_1.set_blend_b2_d1();
+    bomb_1.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    bomb_1.channel_masks[3] = false;  // no alpha writes.
+    bomb_1.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_1.start_vals.scale = math::Vector2f{1, 1};
+    bomb_1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_1.start_vals.st_scale = math::Vector2f{1, 1};
+    bomb_1.start_vals.st_offset = math::Vector2f{0.0, 0.5};
+    bomb_1.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_1.end_vals.scale = math::Vector2f{1, 1};
+    bomb_1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_1.end_vals.st_scale = math::Vector2f{1, 1};
+    bomb_1.end_vals.st_offset = math::Vector2f{-6.0, 0.5};
+
+    m_bomb_fixed_anim_array_idx = create_fixed_anim_array({bomb});
   }
 }

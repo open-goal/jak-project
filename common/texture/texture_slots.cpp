@@ -23,6 +23,7 @@ std::vector<std::string> jak2_slots = {
     //"kor-lowercaps-formorph",
     //"kor-uppercaps-formorph",
     "skull-gem-dest",
+    "bomb-gradient",
 };
 
 }
