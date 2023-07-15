@@ -73,7 +73,7 @@ enum ARM64_REG : s8 {
   X6,  // arg 6, caller-saved R10
   X7,  // arg 7, caller-saved R11
 
-  X8,  // return, temp (RAX)
+  X8,  // return, temp, not saved (RAX)
 
   X9,   // temp, not-saved
   X10,  // temp, not-saved
@@ -85,8 +85,6 @@ enum ARM64_REG : s8 {
   X16,  // temp, not-saved
   X17,  // temp, not-saved
   X18,  // temp, not-saved
-
-  SP,  // stack pointer
 
   x19,  // saved TODO purpose?, R12
   x20,  // pp, R13
@@ -100,6 +98,8 @@ enum ARM64_REG : s8 {
   X28,  // unused, callee saved
   X29,  // callee saved, FP - don't use it
   X30,  // LR - don't use it
+
+  SP,  // stack pointer
 
   // quadword registers, equivalent to XMMs
   // the convention in arm64 is the callee preserves all Q values

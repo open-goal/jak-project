@@ -279,14 +279,20 @@ extern "C" {
 #ifndef __aarch64__
 #ifdef __APPLE__
 void _arg_call_systemv() asm("_arg_call_systemv");
+void _stack_call_systemv() asm("_stack_call_systemv");
+void _stack_call_win32() asm("_stack_call_win32");
 #else
 void _arg_call_systemv();
+void _stack_call_systemv();
+void _stack_call_win32();
 #endif
 #else
-#ifdef __APPLE__
+#if defined(__APPLE__)
 void _arg_call_arm64() asm("_arg_call_arm64");
+void _stack_call_arm64() asm("_stack_call_arm64");
 #else
 void _arg_call_arm64();
+void _stack_call_arm64();
 #endif
 #endif
 }
@@ -406,25 +412,6 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
   return mem.cast<Function>();
 }
 
-extern "C" {
-#ifndef __aarch64__
-#if defined(__APPLE__)
-void _stack_call_systemv() asm("_stack_call_systemv");
-#elif defined(WIN32)
-void _stack_call_win32();
-#else
-void _stack_call_systemv();
-#endif
-#else
-#if defined(__APPLE__)
-void _stack_call_arm64() asm("_stack_call_arm64");
-#elif defined(WIN32)
-#else
-void _stack_call_arm64();
-#endif
-#endif
-}
-
 Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
@@ -465,7 +452,7 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   return mem.cast<Function>();
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 /*!
  * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
  * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.

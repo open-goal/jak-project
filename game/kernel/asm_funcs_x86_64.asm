@@ -6,8 +6,8 @@ SECTION .text
 global _arg_call_systemv
 _arg_call_systemv:
   pop rax
-  push r10 ; arg 6 (arg in GOAL only so must be preserved)
-  push r11 ; arg 7 (arg in GOAL only so must be preserved)
+  push r10 ; arg 6 (OpenGOAL compiler expects this register to be saved but systemv doesn't save it)
+  push r11 ; arg 7 (OpenGOAL compiler expects this register to be saved but systemv doesn't save it)
 
   ; xmm stuff
   sub rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
