@@ -9,6 +9,7 @@
 #include "common/dma/dma_chain_read.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+#include "common/texture/texture_conversion.h"
 
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
@@ -80,6 +81,79 @@ class ClutBlender {
   std::vector<u32> m_temp_rgba;
 };
 
+struct Psm32ToPsm8Scrambler {
+  Psm32ToPsm8Scrambler(int w, int h, int write_tex_width, int read_tex_width) {
+    struct InAddr {
+      int x = -1, y = -1, c = -1;
+    };
+    struct OutAddr {
+      int x = -1, y = -1;
+    };
+
+    std::vector<InAddr> vram_from_in(w * h * 4);
+    std::vector<OutAddr> vram_from_out(w * h * 4);
+
+    // loop over pixels in input
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        int byte_addr = psmct32_addr(x, y, write_tex_width);
+        for (int c = 0; c < 4; c++) {
+          auto& s = vram_from_in.at(byte_addr + c);
+          s.x = x;
+          s.y = y;
+          s.c = c;
+        }
+      }
+    }
+
+    // output
+    for (int y = 0; y < h * 2; y++) {
+      for (int x = 0; x < w * 2; x++) {
+        int byte_addr = psmt8_addr(x, y, read_tex_width);
+        auto& s = vram_from_out.at(byte_addr);
+        s.x = x;
+        s.y = y;
+      }
+    }
+
+    destinations_per_byte.resize(4 * w * h);
+    for (size_t i = 0; i < vram_from_out.size(); i++) {
+      auto& in = vram_from_in.at(i);
+      auto& out = vram_from_out.at(i);
+      if (in.c >= 0) {
+        destinations_per_byte.at(in.c + in.x * 4 + in.y * 4 * w) = out.x + out.y * w * 2;
+      }
+    }
+  }
+
+  std::vector<int> destinations_per_byte;
+};
+
+struct ClutReader {
+  std::array<int, 256> addrs;
+  ClutReader() {
+    for (int i = 0; i < 256; i++) {
+      u32 clut_chunk = i / 16;
+      u32 off_in_chunk = i % 16;
+      u8 clx = 0, cly = 0;
+      if (clut_chunk & 1) {
+        clx = 8;
+      }
+      cly = (clut_chunk >> 1) * 2;
+      if (off_in_chunk >= 8) {
+        off_in_chunk -= 8;
+        cly++;
+      }
+      clx += off_in_chunk;
+
+      // the x, y CLUT value is looked up in PSMCT32 mode
+      u32 clut_addr = clx + cly * 16;
+      ASSERT(clut_addr < 256);
+      addrs[i] = clut_addr;
+    }
+  }
+};
+
 class TexturePool;
 
 class TextureAnimator {
@@ -88,6 +162,7 @@ class TextureAnimator {
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
   GLuint get_by_slot(int idx);
+  void draw_debug_window();
   const std::vector<GLuint>* slots() { return &m_output_slots; }
 
  private:
@@ -170,6 +245,10 @@ class TextureAnimator {
     GLuint tcc;
   } m_uniforms;
 
+  struct {
+    bool use_fast_scrambler = true;
+  } m_debug;
+
   GLuint m_shader_id;
   GLuint m_dummy_texture;
 
@@ -201,15 +280,7 @@ class TextureAnimator {
                                  const std::optional<std::string>& dgo);
   void run_clut_blender_group(DmaTransfer& tf, int idx);
 
-  //  std::vector<ClutBlender> m_darkjak_blenders;
-  //  std::vector<int> m_darkjak_output_slots;
-  //
-  //  std::vector<ClutBlender> m_jakb_prison_blenders;
-  //  std::vector<int> m_jakb_prison_output_slots;
-  //
-  //  std::vector<ClutBlender> m_jakb_oracle_blenders;
-  //  std::vector<int> m_jakb_oracle_slots;
-  //
-  //  std::vector<ClutBlender> m_jakb_nest_blenders;
-  //  std::vector<int> m_jakb_nest_slots;
+  Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
+      m_psm32_to_psm8_64_64;
+  ClutReader m_clut_table;
 };

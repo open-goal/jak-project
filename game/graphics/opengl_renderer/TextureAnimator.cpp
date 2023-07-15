@@ -7,6 +7,8 @@
 
 #include "game/graphics/texture/TexturePool.h"
 
+#include "third-party/imgui/imgui.h"
+
 //#define dprintf(...) printf(__VA_ARGS__)
 //#define dfmt(...) fmt::print(__VA_ARGS__)
 #define dprintf(...)
@@ -193,7 +195,11 @@ GLuint ClutBlender::run(const float* weights) {
 }
 
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level)
-    : m_common_level(common_level) {
+    : m_common_level(common_level),
+      m_psm32_to_psm8_8_8(8, 8, 8, 64),
+      m_psm32_to_psm8_16_16(16, 16, 16, 64),
+      m_psm32_to_psm8_32_32(32, 32, 16, 64),
+      m_psm32_to_psm8_64_64(64, 64, 64, 64) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -295,6 +301,10 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
           // "kor-uppercaps-formorph",
       },
       "-start", "-end", {});
+}
+
+void TextureAnimator::draw_debug_window() {
+  ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
 }
 
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
@@ -1131,29 +1141,74 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
       switch (m_current_shader.tex0.psm()) {
         // reading as a different format, needs scrambler.
         case GsTex0::PSM::PSMT8: {
+          auto p = scoped_prof("scrambler");
           int w = 1 << m_current_shader.tex0.tw();
           int h = 1 << m_current_shader.tex0.th();
           ASSERT(w == vram_entry->tex_width * 2);
           ASSERT(h == vram_entry->tex_height * 2);
+          ASSERT(m_current_shader.tex0.tbw() == 1);
+          std::vector<u32> rgba_data(w * h);
 
-          Timer timer;
-          m_converter.upload_width(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
-                                   vram_entry->tex_width, vram_entry->tex_height);
-
-          // also needs clut lookup
-          load_clut_to_converter();
-          {
-            std::vector<u32> rgba_data(w * h);
-            m_converter.download_rgba8888(
-                (u8*)rgba_data.data(), m_current_shader.tex0.tbp0(), m_current_shader.tex0.tbw(), w,
-                h, (int)m_current_shader.tex0.psm(), (int)m_current_shader.tex0.cpsm(),
-                m_current_shader.tex0.cbp(), rgba_data.size() * 4);
-            //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
-            //              m_current_shader.tex0.tw(),
-            //                                        1 << m_current_shader.tex0.th());
-            dprintf("processing %d x %d took %.3f ms\n", w, h, timer.getMs());
-            return make_temp_gpu_texture(rgba_data.data(), w, h);
+          const auto& clut_lookup = m_textures.find(m_current_shader.tex0.cbp());
+          if (clut_lookup == m_textures.end()) {
+            printf("set shader referenced an unknown clut texture in %d\n",
+                   m_current_shader.tex0.cbp());
+            ASSERT_NOT_REACHED();
           }
+
+          switch (clut_lookup->second.kind) {
+            case VramEntry::Kind::CLUT16_16_IN_PSM32:
+              break;
+            default:
+              printf("unhandled clut source kind: %d\n", (int)clut_lookup->second.kind);
+              ASSERT_NOT_REACHED();
+          }
+
+          const u32* clut_u32s = (const u32*)clut_lookup->second.data.data();
+
+          if (w == 8 && h == 8 && m_debug.use_fast_scrambler) {
+            ASSERT_NOT_REACHED();
+          } else if (w == 16 && h == 16) {
+            for (int i = 0; i < 16 * 16; i++) {
+              memcpy(&rgba_data[m_psm32_to_psm8_8_8.destinations_per_byte[i]],
+                     &clut_u32s[m_clut_table.addrs[vram_entry->data[i]]], 4);
+            }
+          } else if (w == 32 && h == 32 && m_debug.use_fast_scrambler) {
+            for (int i = 0; i < 32 * 32; i++) {
+              rgba_data[m_psm32_to_psm8_16_16.destinations_per_byte[i]] =
+                  clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
+            }
+          } else if (w == 64 && h == 64 && m_debug.use_fast_scrambler) {
+            for (int i = 0; i < 64 * 64; i++) {
+              rgba_data[m_psm32_to_psm8_32_32.destinations_per_byte[i]] =
+                  clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
+            }
+          } else if (w == 128 && h == 128 && m_debug.use_fast_scrambler) {
+            for (int i = 0; i < 128 * 128; i++) {
+              rgba_data[m_psm32_to_psm8_64_64.destinations_per_byte[i]] =
+                  clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
+            }
+          } else {
+            Timer timer;
+            m_converter.upload_width(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
+                                     vram_entry->tex_width, vram_entry->tex_height);
+
+            // also needs clut lookup
+            load_clut_to_converter();
+            {
+              m_converter.download_rgba8888(
+                  (u8*)rgba_data.data(), m_current_shader.tex0.tbp0(), m_current_shader.tex0.tbw(),
+                  w, h, (int)m_current_shader.tex0.psm(), (int)m_current_shader.tex0.cpsm(),
+                  m_current_shader.tex0.cbp(), rgba_data.size() * 4);
+              //              file_util::write_rgba_png("out.png", rgba_data.data(), 1 <<
+              //              m_current_shader.tex0.tw(),
+              //                                        1 << m_current_shader.tex0.th());
+              printf("Scrambler took the slow path %d x %d took %.3f ms\n", w, h, timer.getMs());
+            }
+          }
+          auto ret = make_temp_gpu_texture(rgba_data.data(), w, h);
+          // debug_save_opengl_texture(fmt::format("tex_{}.png", w), ret);
+          return ret;
 
           ASSERT_NOT_REACHED();
         } break;
@@ -1164,26 +1219,6 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
       break;
     case VramEntry::Kind::CLUT16_16_IN_PSM32:
       ASSERT_NOT_REACHED();
-
-      /*
-    case VramEntry::Kind::GENERIC_PSMT8: {
-      fmt::print("drawing: {}\n", (int)m_current_shader.tex0.psm());
-      ASSERT(m_current_shader.tex0.psm() == GsTex0::PSM::PSMT8);
-      ASSERT(m_current_shader.tex0.cpsm() == 0);  // psm32.
-      int tw = 1 << m_current_shader.tex0.tw();
-      int th = 1 << m_current_shader.tex0.th();
-      ASSERT(tw == vram_entry->tex_width);
-      ASSERT(th == vram_entry->tex_height);
-      std::vector<u32> rgba_data(tw * th);
-      const u32* clut = get_current_clut_16_16_psm32();
-      for (int r = 0; r < th; r++) {
-        for (int c = 0; c < tw; c++) {
-          rgba_data[c + r * tw] = clut[vram_entry->data[c + r * tw]];
-        }
-      }
-      return make_temp_gpu_texture(rgba_data.data(), tw, th);
-    }
-       */
 
       break;
     default:

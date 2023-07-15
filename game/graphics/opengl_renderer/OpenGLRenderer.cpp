@@ -818,6 +818,11 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
 
+  if (m_texture_animator && ImGui::TreeNode("Texture Animator")) {
+    m_texture_animator->draw_debug_window();
+    ImGui::TreePop();
+  }
+
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
     if (renderer && !renderer->empty()) {
