@@ -7,6 +7,8 @@
 
 #include "game/graphics/texture/TexturePool.h"
 
+#include "third-party/imgui/imgui.h"
+
 //#define dprintf(...) printf(__VA_ARGS__)
 //#define dfmt(...) fmt::print(__VA_ARGS__)
 #define dprintf(...)
@@ -299,6 +301,10 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
           // "kor-uppercaps-formorph",
       },
       "-start", "-end", {});
+}
+
+void TextureAnimator::draw_debug_window() {
+  ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
 }
 
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
@@ -1160,24 +1166,24 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
 
           const u32* clut_u32s = (const u32*)clut_lookup->second.data.data();
 
-          if (w == 8 && h == 8) {
+          if (w == 8 && h == 8 && m_debug.use_fast_scrambler) {
             ASSERT_NOT_REACHED();
           } else if (w == 16 && h == 16) {
             for (int i = 0; i < 16 * 16; i++) {
               memcpy(&rgba_data[m_psm32_to_psm8_8_8.destinations_per_byte[i]],
                      &clut_u32s[m_clut_table.addrs[vram_entry->data[i]]], 4);
             }
-          } else if (w == 32 && h == 32) {
+          } else if (w == 32 && h == 32 && m_debug.use_fast_scrambler) {
             for (int i = 0; i < 32 * 32; i++) {
               rgba_data[m_psm32_to_psm8_16_16.destinations_per_byte[i]] =
                   clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
             }
-          } else if (w == 64 && h == 64) {
+          } else if (w == 64 && h == 64 && m_debug.use_fast_scrambler) {
             for (int i = 0; i < 64 * 64; i++) {
               rgba_data[m_psm32_to_psm8_32_32.destinations_per_byte[i]] =
                   clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
             }
-          } else if (w == 128 && h == 128) {
+          } else if (w == 128 && h == 128 && m_debug.use_fast_scrambler) {
             for (int i = 0; i < 128 * 128; i++) {
               rgba_data[m_psm32_to_psm8_64_64.destinations_per_byte[i]] =
                   clut_u32s[m_clut_table.addrs[vram_entry->data[i]]];
@@ -1200,7 +1206,9 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
               printf("Scrambler took the slow path %d x %d took %.3f ms\n", w, h, timer.getMs());
             }
           }
-          return make_temp_gpu_texture(rgba_data.data(), w, h);
+          auto ret = make_temp_gpu_texture(rgba_data.data(), w, h);
+          // debug_save_opengl_texture(fmt::format("tex_{}.png", w), ret);
+          return ret;
 
           ASSERT_NOT_REACHED();
         } break;

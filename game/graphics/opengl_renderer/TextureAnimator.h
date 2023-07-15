@@ -162,6 +162,7 @@ class TextureAnimator {
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
   GLuint get_by_slot(int idx);
+  void draw_debug_window();
   const std::vector<GLuint>* slots() { return &m_output_slots; }
 
  private:
@@ -243,6 +244,10 @@ class TextureAnimator {
     GLuint channel_scramble;
     GLuint tcc;
   } m_uniforms;
+
+  struct {
+    bool use_fast_scrambler = true;
+  } m_debug;
 
   GLuint m_shader_id;
   GLuint m_dummy_texture;
