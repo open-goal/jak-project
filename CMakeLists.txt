@@ -22,6 +22,13 @@ else()
     set(BUILD_SHARED_LIBS ON)
 endif()
 
+# For clangd
+if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    configure_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" 
+        "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
+endif()
+
 # Setup compiler flags
 # TODO - consider moving most of the configuration into presets
 # - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
