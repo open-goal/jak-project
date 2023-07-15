@@ -125,6 +125,8 @@ int main(int argc, char** argv) {
           if (resp) {
             std::lock_guard<std::mutex> lock(compiler_mutex);
             status = compiler->handle_repl_string(resp.value());
+            //test
+            repl_server.send_msg(resp.value());
             // Print out the prompt, just for better UX
             compiler->print_to_repl(compiler->get_prompt());
           }

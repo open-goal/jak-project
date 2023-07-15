@@ -22,11 +22,6 @@
 //
 // TODO - The server also needs to eventually return the result of the evaluation
 
-// Constructor
-ReplServer::ReplServer() {
-  m_compiler = new Compiler();
-}
-
 // Destructor
 ReplServer::~ReplServer() {
   // Close all our client sockets!
@@ -44,8 +39,7 @@ void ReplServer::respond(int socket, std::string response) {
   // Send response over socket
   auto resp = write_to_socket(socket, response.c_str(), response.size());
   if (resp == -1) {
-    fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr),
-               ntohs(addr.sin_port), socket);
+    fmt::print("[nREPL:{}] Client Disconnected: {}\n", tcp_port, inet_ntoa(addr.sin_addr));
     close_socket(socket);
     client_sockets.erase(socket);
   }
@@ -55,20 +49,22 @@ void ReplServer::ping_response(int socket) {
   // Send a ping
   std::string ping = fmt::format("Connected to OpenGOAL v{}.{} nREPL!",
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
-  respond(socket, ping)
+  respond(socket, ping);
 }
 
 void ReplServer::eval_response(int socket, std::string request) {
-  // Pass request to REPL to evaluate
-  auto response = m_compiler->print_to_repl(request);
-
-  // Read result from REPL
-  std::string result = m_compiler->get_repl_input();
 
   // Send it back to requester in a string
   // may not be necessary
-  std::string eval = fmt::format("{}", result);
-  respond(socket, eval)
+  std::string eval = fmt::format("{}", request); // parroting for now
+  respond(socket, eval);
+}
+
+void ReplServer::send_msg(std::string message) {
+  //std::string message = "hello";
+  for (const int& sock : client_sockets) {
+    eval_response(sock, message);
+  }
 }
 
 std::optional<std::string> ReplServer::get_msg() {
@@ -172,7 +168,6 @@ std::optional<std::string> ReplServer::get_msg() {
           // message is making a specific request, return the value
           case ReplServerMessageType::EVAL:
             std::string msg(buffer.data(), header->length);
-            eval_response(sock, msg);
             return std::make_optional(msg);
         }
       }

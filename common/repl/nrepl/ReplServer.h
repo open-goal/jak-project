@@ -20,9 +20,7 @@ class ReplServer : public XSocketServer {
   void post_init() override;
 
   std::optional<std::string> get_msg();
-
-  // reference to compiler to access the repl
-  Compiler* m_compiler;
+  void send_msg(std::string message);
 
  private:
   int max_clients = 50;
