@@ -14,12 +14,39 @@
 #define dprintf(...)
 #define dfmt(...)
 
+// -- Texture Animations
+// The game has a number of "texture animation arrays".
+// On the original PS2, there wasn't enough VRAM to hold all textures for a frame, so they would
+// upload a single "tpage" at a time. Along with this, they would dynamically generate some animated
+// textures. Each tpage has an associated texture animation array.
+
+// -- Our approach
+// This part of the code has turned out to be pretty bad in terms of performance.
+// We also have the challenge of actually getting all the renderers to look at the right animated
+// textures, which is tricky because we rewrote them for jak 1, which doesn't have this.
+//
+// So there's a lot of tricks here to try to speed things up. We modified the GOAL code to work
+// better with this code. We have three different approaches to handling a texture animation array:
+// - Emulation (slowest). This basically pretends to be the PS2, and is the most flexible. It reads
+//   the DMA and maps it to OpenGL operations right now it's used for the clouds (though slightly
+//   wrong).
+// - Clut-blending. This special cases animations which are just blends between CLUTs.
+//   We optimize this by only doing work if the blend weights change (they didn't on PS2 because
+//   they don't have the vram to store the texture). We also avoid the use of render-to-texture.
+//   Jak's hair/skin/fingers always use this texture.
+// - "Fixed Animation". For animations that use only basic features, we have a way to run them
+//   entirely in C++. This avoids repeated switches between framebuffers, and lets us precompute
+//   more stuff.
+
+// -- OpenGL performance.
 // So there's a lot of stupid-looking OpenGL stuff going on here.
 // The motivation for this is to avoid an issue where some operations take about 5-10ms.
 // As far as I can tell, this slow operation is actually the driver forcing this thread to sync
 // with some internal stuff. It seems to be triggered on:
-// - deleting a texture that's in use
-// - glTexImage2D to modify a texture with a different sized texture.
+// - deleting a texture that was used on the previous frame (so in use by the driver thread).
+//   this is a "safe" operation, but I suspect it forces the driver thread to synchronize).
+// - glTexImage2D to modify a texture with a different sized texture. (likely hits same case as
+//   above)
 
 // TODO:
 //  clouds aren't really working right. The final operation of move rb to ba is a guess.
@@ -35,10 +62,10 @@ OpenGLTexturePool::OpenGLTexturePool() {
   struct Alloc {
     u64 w, h, n;
   };
-  // list of sizes to preallocate.
+  // list of sizes to preallocate: {width, height, count}.
   for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
                                           {32, 16, 1},
-                                          {32, 32, 5},
+                                          {32, 32, 7},
                                           {32, 64, 1},
                                           {64, 64, 8},
                                           {64, 128, 4},
@@ -62,6 +89,9 @@ OpenGLTexturePool::~OpenGLTexturePool() {
   }
 }
 
+/*!
+ * Get a preallocated texture with the given size, or fatal error if we are out.
+ */
 GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
   const auto& it = textures.find((w << 32) | h);
   if (it == textures.end()) {
@@ -77,10 +107,19 @@ GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
   return ret;
 }
 
+/*!
+ * Return a texture to the pool. The size must be provided.
+ */
 void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
   textures[(w << 32) | h].push_back(texture);
 }
 
+/*!
+ * Get an index-format texture from the given tfrag3 level.
+ * In cases where multiple original-game-levels both provide a texture, but the data is different,
+ * prefer the one from the given level.
+ * This is slow and intended to be used an init time.
+ */
 const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level,
                                          const std::string& name,
                                          const std::optional<std::string>& level_name) {
@@ -115,6 +154,32 @@ const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level,
   return ret;
 }
 
+/*!
+ * Get a RGBA format texture by name from the given tfrag3 level. Slow, and intended for init time.
+ */
+const tfrag3::Texture* tex_by_name(const tfrag3::Level* level, const std::string& name) {
+  const tfrag3::Texture* ret = nullptr;
+  for (const auto& t : level->textures) {
+    if (t.debug_name == name) {
+      if (ret) {
+        lg::error("Multiple textures named {}", name);
+        ASSERT(ret->data == t.data);
+      }
+      ret = &t;
+    }
+  }
+  if (!ret) {
+    lg::die("no texture named {}", name);
+  } else {
+    // lg::info("got idx: {}", name);
+  }
+  return ret;
+}
+
+/*!
+ * Get a texture animation slot index for the given name. Fatal error if there is no animated
+ * texture slot with this name. Slow, and intended for init time.
+ */
 int output_slot_by_idx(GameVersion version, const std::string& name) {
   const std::vector<std::string>* v = nullptr;
   switch (version) {
@@ -134,27 +199,52 @@ int output_slot_by_idx(GameVersion version, const std::string& name) {
   ASSERT_NOT_REACHED();
 }
 
+/*!
+ * Upload a texture and generate mipmaps. Assumes the usual RGBA format.
+ */
+void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
+  glBindTexture(GL_TEXTURE_2D, dest);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  float aniso = 0.0f;
+  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+/*!
+ * Utility class to grab CLUTs from the source textures, blend them, and produce a destination RGBA
+ * texture using the index data in dest.
+ */
 ClutBlender::ClutBlender(const std::string& dest,
                          const std::vector<std::string>& sources,
                          const std::optional<std::string>& level_name,
                          const tfrag3::Level* level,
                          OpenGLTexturePool* tpool) {
+  // find the destination texture
   m_dest = itex_by_name(level, dest, level_name);
+  // find the clut source textures
   for (const auto& sname : sources) {
     m_cluts.push_back(&itex_by_name(level, sname, level_name)->color_table);
     m_current_weights.push_back(0);
   }
+  // opengl texture that we'll write to
   m_texture = tpool->allocate(m_dest->w, m_dest->h);
   m_temp_rgba.resize(m_dest->w * m_dest->h);
 
+  // default to the first one.
   std::vector<float> init_weights(m_current_weights.size(), 0);
   init_weights.at(0) = 1.f;
   run(init_weights.data());
 }
 
+/*!
+ * Blend cluts and create an output texture.
+ */
 GLuint ClutBlender::run(const float* weights) {
   bool needs_run = false;
 
+  // check if weights changed or not.
   for (size_t i = 0; i < m_current_weights.size(); i++) {
     if (weights[i] != m_current_weights[i]) {
       needs_run = true;
@@ -166,10 +256,12 @@ GLuint ClutBlender::run(const float* weights) {
     return m_texture;
   }
 
+  // update weights
   for (size_t i = 0; i < m_current_weights.size(); i++) {
     m_current_weights[i] = weights[i];
   }
 
+  // blend cluts
   for (int i = 0; i < 256; i++) {
     math::Vector4f v = math::Vector4f::zero();
     for (size_t j = 0; j < m_current_weights.size(); j++) {
@@ -178,20 +270,63 @@ GLuint ClutBlender::run(const float* weights) {
     m_temp_clut[i] = v.cast<u8>();
   }
 
+  // do texture lookups
   for (int i = 0; i < m_temp_rgba.size(); i++) {
     memcpy(&m_temp_rgba[i], m_temp_clut[m_dest->index_data[i]].data(), 4);
   }
 
-  glBindTexture(GL_TEXTURE_2D, m_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_dest->w, m_dest->h, 0, GL_RGBA,
-               GL_UNSIGNED_INT_8_8_8_8_REV, m_temp_rgba.data());
-  glGenerateMipmap(GL_TEXTURE_2D);
-  float aniso = 0.0f;
-  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  // send to GPU.
+  opengl_upload_texture(m_texture, m_temp_rgba.data(), m_dest->w, m_dest->h);
 
   return m_texture;
+}
+
+/*!
+ * Utility class to show what happens if you take a PSM32 texture, upload it as PSM32, then read it
+ * back as PSM8. Byte i from the input data ends up in destinations_per_byte[i].
+ */
+Psm32ToPsm8Scrambler::Psm32ToPsm8Scrambler(int w, int h, int write_tex_width, int read_tex_width) {
+  struct InAddr {
+    int x = -1, y = -1, c = -1;
+  };
+  struct OutAddr {
+    int x = -1, y = -1;
+  };
+
+  std::vector<InAddr> vram_from_in(w * h * 4);
+  std::vector<OutAddr> vram_from_out(w * h * 4);
+
+  // loop over pixels in input
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int byte_addr = psmct32_addr(x, y, write_tex_width);
+      for (int c = 0; c < 4; c++) {
+        auto& s = vram_from_in.at(byte_addr + c);
+        s.x = x;
+        s.y = y;
+        s.c = c;
+      }
+    }
+  }
+
+  // output
+  for (int y = 0; y < h * 2; y++) {
+    for (int x = 0; x < w * 2; x++) {
+      int byte_addr = psmt8_addr(x, y, read_tex_width);
+      auto& s = vram_from_out.at(byte_addr);
+      s.x = x;
+      s.y = y;
+    }
+  }
+
+  destinations_per_byte.resize(4 * w * h);
+  for (size_t i = 0; i < vram_from_out.size(); i++) {
+    auto& in = vram_from_in.at(i);
+    auto& out = vram_from_out.at(i);
+    if (in.c >= 0) {
+      destinations_per_byte.at(in.c + in.x * 4 + in.y * 4 * w) = out.x + out.y * w * 2;
+    }
+  }
 }
 
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level)
@@ -264,49 +399,47 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
 
   m_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
 
-  // DARKJAK
-  m_darkjak_clut_blender_idx = create_clut_blender_group(
-      {"jakbsmall-eyebrow", "jakbsmall-face", "jakbsmall-finger", "jakbsmall-hair"}, "-norm",
-      "-dark", {});
+  // animation-specific stuff
+  setup_texture_anims();
+}
 
-  // PRISON
-  // MISSING EYELID
-  m_jakb_prison_clut_blender_idx = create_clut_blender_group(
-      {"jak-orig-arm-formorph", "jak-orig-eyebrow-formorph", "jak-orig-finger-formorph"}, "-start",
-      "-end", "LDJAKBRN.DGO");
-  add_to_clut_blender_group(m_jakb_prison_clut_blender_idx,
-                            {"jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm", "-dark",
-                            "LDJAKBRN.DGO");
+/*!
+ * Add a fixed texture animator for the given definition. Returns an index that can later be used to
+ * run it.
+ */
+int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& defs) {
+  int ret = m_fixed_anim_arrays.size();
+  auto& anim_array = m_fixed_anim_arrays.emplace_back();
 
-  // ORACLE
-  // MISSING FINGER
-  m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
-      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "ORACLE.DGO");
+  for (const auto& def : defs) {
+    auto& anim = anim_array.anims.emplace_back();
+    anim.def = def;
 
-  // NEST
-  // MISSING FINGER
-  m_jakb_nest_clut_blender_idx = create_clut_blender_group(
-      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "NEB.DGO");
+    // set up the destination texture.
+    anim.dest_slot = output_slot_by_idx(GameVersion::Jak2, anim.def.tex_name);
+    auto* dtex = tex_by_name(m_common_level, anim.def.tex_name);
+    anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
+    opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
 
-  // KOR (doesn't work??)
-  m_kor_transform_clut_blender_idx = create_clut_blender_group(
-      {
-          // "kor-eyeeffect-formorph",
-          // "kor-hair-formorph",
-          // "kor-head-formorph",
-          // "kor-head-formorph-noreflect",
-          // "kor-lowercaps-formorph",
-          // "kor-uppercaps-formorph",
-      },
-      "-start", "-end", {});
+    // set up the source textures
+    for (const auto& layer : def.layers) {
+      auto* stex = tex_by_name(m_common_level, layer.tex_name);
+      GLint gl_texture = m_opengl_texture_pool.allocate(stex->w, stex->h);
+      anim.src_textures.push_back(gl_texture);
+      opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
+    }
+  }
+
+  return ret;
 }
 
 void TextureAnimator::draw_debug_window() {
   ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
 }
 
+/*!
+ * Create a clut-blending animator. Returns an index that can later be used to run it.
+ */
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
                                                const std::string& suffix0,
                                                const std::string& suffix1,
@@ -317,6 +450,9 @@ int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& t
   return ret;
 }
 
+/*!
+ * Add a texture to an existing blender group created with create_clut_blender_group.
+ */
 void TextureAnimator::add_to_clut_blender_group(int idx,
                                                 const std::vector<std::string>& textures,
                                                 const std::string& suffix0,
@@ -357,7 +493,8 @@ enum PcTextureAnimCodes {
   PRISON_JAK = 23,
   ORACLE_JAK = 24,
   NEST_JAK = 25,
-  KOR_TRANSFORM = 26
+  KOR_TRANSFORM = 26,
+  SKULL_GEM = 27,
 };
 
 // metadata for an upload from GOAL memory
@@ -465,6 +602,12 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         case KOR_TRANSFORM: {
           auto p = scoped_prof("kor");
           run_clut_blender_group(tf, m_kor_transform_clut_blender_idx);
+        } break;
+        case SKULL_GEM: {
+          auto p = scoped_prof("skull-gem");
+          ASSERT(tf.size_bytes == 16);
+          const float* floats = (const float*)tf.data;
+          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, floats);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1393,4 +1536,113 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   //  for (int i = 0; i < 4; i++) {
   //    fmt::print("fan vt {}: {:.3f} {:.3f} \n", i, uv[i * 2], uv[1 + i * 2]);
   //  }
+}
+
+void TextureAnimator::run_fixed_animation_array(int idx, const float* times) {
+  auto& array = m_fixed_anim_arrays.at(idx);
+  for (size_t i = 0; i < array.anims.size(); i++) {
+    auto& anim = array.anims[i];
+    run_fixed_animation(anim, times[i]);
+  }
+}
+
+void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
+ fmt::print("run_fixed_animation {}\n", time);
+}
+
+void TextureAnimator::setup_texture_anims() {
+  // DARKJAK
+  m_darkjak_clut_blender_idx = create_clut_blender_group(
+      {"jakbsmall-eyebrow", "jakbsmall-face", "jakbsmall-finger", "jakbsmall-hair"}, "-norm",
+      "-dark", {});
+
+  // PRISON
+  // MISSING EYELID
+  m_jakb_prison_clut_blender_idx = create_clut_blender_group(
+      {"jak-orig-arm-formorph", "jak-orig-eyebrow-formorph", "jak-orig-finger-formorph"}, "-start",
+      "-end", "LDJAKBRN.DGO");
+  add_to_clut_blender_group(m_jakb_prison_clut_blender_idx,
+                            {"jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm", "-dark",
+                            "LDJAKBRN.DGO");
+
+  // ORACLE
+  // MISSING FINGER
+  m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "ORACLE.DGO");
+
+  // NEST
+  // MISSING FINGER
+  m_jakb_nest_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "NEB.DGO");
+
+  // KOR (doesn't work??)
+  m_kor_transform_clut_blender_idx = create_clut_blender_group(
+      {
+          // "kor-eyeeffect-formorph",
+          // "kor-hair-formorph",
+          // "kor-head-formorph",
+          // "kor-head-formorph-noreflect",
+          // "kor-lowercaps-formorph",
+          // "kor-uppercaps-formorph",
+      },
+      "-start", "-end", {});
+
+  // Skull Gem
+  {
+    FixedAnimDef skull_gem;
+    skull_gem.tex_name = "skull-gem-dest";
+    skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
+
+    auto& skull_gem_0 = skull_gem.layers.emplace_back();
+    skull_gem_0.end_time = 300.;
+    skull_gem_0.tex_name = "skull-gem-alpha-00";
+    skull_gem_0.set_blend_b2_d1();
+    skull_gem_0.set_no_z_write_no_z_test();
+    skull_gem_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    skull_gem_0.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_0.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    skull_gem_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    skull_gem_0.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_0.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    auto& skull_gem_1 = skull_gem.layers.emplace_back();
+    skull_gem_1.end_time = 300.;
+    skull_gem_1.tex_name = "skull-gem-alpha-01";
+    skull_gem_1.set_blend_b2_d1();
+    skull_gem_1.set_no_z_write_no_z_test();
+    skull_gem_1.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_1.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_1.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_1.start_vals.st_offset = math::Vector2f{2.0, 1.0};
+    skull_gem_1.end_vals.color = math::Vector4f{0.6, 0.5, 0.6, 1};
+    skull_gem_1.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_1.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_1.end_vals.st_offset = math::Vector2f{0, 0};
+
+    auto& skull_gem_2 = skull_gem.layers.emplace_back();
+    skull_gem_2.end_time = 300.;
+    skull_gem_2.tex_name = "skull-gem-alpha-02";
+    skull_gem_2.set_blend_b2_d1();
+    skull_gem_2.set_no_z_write_no_z_test();
+    skull_gem_2.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_2.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_2.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_2.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_2.start_vals.st_offset = math::Vector2f{0, 0};
+    skull_gem_2.end_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_2.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_2.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_2.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_2.end_vals.st_offset = math::Vector2f{2, 2};
+
+    m_skull_gem_fixed_anim_array_idx = create_fixed_anim_array({skull_gem});
+  }
 }
