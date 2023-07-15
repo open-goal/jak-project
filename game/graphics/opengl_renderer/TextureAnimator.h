@@ -157,6 +157,7 @@ struct FixedLayerDef {
 struct FixedAnimDef {
   math::Vector4<u8> color;  // clear color
   std::string tex_name;
+  std::optional<math::Vector2<int>> override_size;
   // assuming (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
   // alpha blend off, so alpha doesn't matter i think.
   std::vector<FixedLayerDef> layers;
@@ -313,5 +314,6 @@ class TextureAnimator {
 
   int m_skull_gem_fixed_anim_array_idx = -1;
   int m_bomb_fixed_anim_array_idx = -1;
+  int m_cas_conveyor_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

@@ -255,7 +255,6 @@ void extract_common(const ObjectFileDB& db,
   // put _all_ index textures in common.
   for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
     tfrag_level.index_textures.push_back(tex);
-    textures_we_have.insert(tex.name);
   }
 
   for (const auto& t : tfrag_level.textures) {
@@ -267,6 +266,7 @@ void extract_common(const ObjectFileDB& db,
     if (config.animated_textures.count(normal_texture.name) &&
         !textures_we_have.count(normal_texture.name)) {
       lg::warn("adding anim normal texture {} ", normal_texture.name);
+      textures_we_have.insert(normal_texture.name);
       tfrag_level.textures.push_back(
           make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), false));
     }

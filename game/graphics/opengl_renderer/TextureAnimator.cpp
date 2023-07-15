@@ -65,9 +65,10 @@ OpenGLTexturePool::OpenGLTexturePool() {
   // list of sizes to preallocate: {width, height, count}.
   for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
                                           {32, 16, 1},
-                                          {32, 32, 7},
+                                          {32, 32, 8},
                                           {32, 64, 1},
-                                          {64, 64, 8},
+                                          {64, 32, 4},
+                                          {64, 64, 9},
                                           {64, 128, 4},
                                           {128, 128, 5},
                                           {256, 1, 2},
@@ -169,6 +170,10 @@ const tfrag3::Texture* tex_by_name(const tfrag3::Level* level, const std::string
     }
   }
   if (!ret) {
+    lg::error("no texture named {}", name);
+    for (const auto& t : level->textures) {
+      fmt::print("texture: {}\n", t.debug_name);
+    }
     lg::die("no texture named {}", name);
   } else {
     // lg::info("got idx: {}", name);
@@ -418,8 +423,14 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     // set up the destination texture.
     anim.dest_slot = output_slot_by_idx(GameVersion::Jak2, anim.def.tex_name);
     auto* dtex = tex_by_name(m_common_level, anim.def.tex_name);
-    anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
-    opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
+    if (anim.def.override_size) {
+      anim.fbt.emplace(anim.def.override_size->x(), anim.def.override_size->y(),
+                       GL_UNSIGNED_INT_8_8_8_8_REV);
+    } else {
+      anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
+      opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
+    }
+
     m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
 
     // set up the source textures
@@ -508,6 +519,7 @@ enum PcTextureAnimCodes {
   KOR_TRANSFORM = 26,
   SKULL_GEM = 27,
   BOMB = 28,
+  CAS_CONVEYOR = 29,
 };
 
 // metadata for an upload from GOAL memory
@@ -627,6 +639,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           ASSERT(tf.size_bytes == 16);
           const float* floats = (const float*)tf.data;
           run_fixed_animation_array(m_bomb_fixed_anim_array_idx, floats);
+        } break;
+        case CAS_CONVEYOR: {
+          auto p = scoped_prof("cas-conveyor");
+          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, (const float*)tf.data);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1689,55 +1705,57 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
 }
 
 void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
-  fmt::print("run_fixed_animation {}\n", time);
-  FramebufferTexturePairContext ctxt(anim.fbt.value());
-
-  // Clear
   {
-    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-    glUniform3fv(m_uniforms.positions, 4, positions);
-    glUniform1i(m_uniforms.enable_tex, 0);
-    glUniform4f(m_uniforms.rgba, anim.def.color[0], anim.def.color[1], anim.def.color[2],
-                anim.def.color[3]);
-    glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
-    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glColorMask(true, true, true, true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-  }
-
-  LayerVals interpolated_values;
-  DrawData draw_data;
-
-  // Loop over layers
-  for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
-    auto& layer_def = anim.def.layers[layer_idx];
-    // skip layer if out the range when it is active
-    if (time < layer_def.start_time || time > layer_def.end_time) {
-      continue;
+    FramebufferTexturePairContext ctxt(anim.fbt.value());
+    // Clear
+    {
+      float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+      glUniform3fv(m_uniforms.positions, 4, positions);
+      glUniform1i(m_uniforms.enable_tex, 0);
+      glUniform4f(m_uniforms.rgba, anim.def.color[0], anim.def.color[1], anim.def.color[2],
+                  anim.def.color[3]);
+      glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+      glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glDisable(GL_BLEND);
+      glDisable(GL_DEPTH_TEST);
+      glColorMask(true, true, true, true);
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
-    // interpolate
-    interpolate_layer_values(
-        (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
-        &interpolated_values, layer_def.start_vals, layer_def.end_vals);
+    LayerVals interpolated_values;
+    DrawData draw_data;
 
-    // shader setup
-    set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+    // Loop over layers
+    for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
+      auto& layer_def = anim.def.layers[layer_idx];
+      // skip layer if out the range when it is active
+      if (time < layer_def.start_time || time > layer_def.end_time) {
+        continue;
+      }
 
-    set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
-                                    anim.fbt->height());
-    set_uniforms_from_draw_data(draw_data, anim.fbt->width(), anim.fbt->height());
+      // interpolate
+      interpolate_layer_values(
+          (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
+          &interpolated_values, layer_def.start_vals, layer_def.end_vals);
 
-    // draw!
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      // shader setup
+      set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+
+      set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
+                                      anim.fbt->height());
+      set_uniforms_from_draw_data(draw_data, anim.fbt->width(), anim.fbt->height());
+
+      // draw!
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
   }
-
   // Finish
   m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
+  glBindTexture(GL_TEXTURE_2D, anim.fbt->texture());
+  glGenerateMipmap(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void TextureAnimator::setup_texture_anims() {
@@ -1879,5 +1897,99 @@ void TextureAnimator::setup_texture_anims() {
     bomb_1.end_vals.st_offset = math::Vector2f{-6.0, 0.5};
 
     m_bomb_fixed_anim_array_idx = create_fixed_anim_array({bomb});
+  }
+
+  // CAS conveyor
+  {
+    FixedAnimDef conveyor_0;
+    conveyor_0.tex_name = "cas-conveyor-dest";
+    conveyor_0.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_0.override_size = math::Vector2<int>(64, 32);
+    auto& c0 = conveyor_0.layers.emplace_back();
+    c0.set_blend_b2_d1();
+    c0.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c0.channel_masks[3] = false;  // no alpha writes.
+    c0.end_time = 300.;
+    c0.tex_name = "cas-conveyor";
+    c0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c0.start_vals.scale = math::Vector2f{1, 1};
+    c0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c0.start_vals.st_scale = math::Vector2f{1, 1};
+    c0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c0.end_vals.scale = math::Vector2f{1, 1};
+    c0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c0.end_vals.st_scale = math::Vector2f{1, 1};
+    c0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_1;
+    conveyor_1.tex_name = "cas-conveyor-dest-01";
+    conveyor_1.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_1.override_size = math::Vector2<int>(64, 32);
+    auto& c1 = conveyor_1.layers.emplace_back();
+    c1.set_blend_b2_d1();
+    c1.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c1.channel_masks[3] = false;  // no alpha writes.
+    c1.end_time = 300.;
+    c1.tex_name = "cas-conveyor";
+    c1.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c1.start_vals.scale = math::Vector2f{1, 1};
+    c1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c1.start_vals.st_scale = math::Vector2f{1, 1};
+    c1.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c1.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c1.end_vals.scale = math::Vector2f{1, 1};
+    c1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c1.end_vals.st_scale = math::Vector2f{1, 1};
+    c1.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_2;
+    conveyor_2.tex_name = "cas-conveyor-dest-02";
+    conveyor_2.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_2.override_size = math::Vector2<int>(64, 32);
+    auto& c2 = conveyor_2.layers.emplace_back();
+    c2.set_blend_b2_d1();
+    c2.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c2.channel_masks[3] = false;  // no alpha writes.
+    c2.end_time = 300.;
+    c2.tex_name = "cas-conveyor";
+    c2.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c2.start_vals.scale = math::Vector2f{1, 1};
+    c2.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c2.start_vals.st_scale = math::Vector2f{1, 1};
+    c2.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c2.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c2.end_vals.scale = math::Vector2f{1, 1};
+    c2.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c2.end_vals.st_scale = math::Vector2f{1, 1};
+    c2.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_3;
+    conveyor_3.tex_name = "cas-conveyor-dest-03";
+    conveyor_3.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_3.override_size = math::Vector2<int>(64, 32);
+    auto& c3 = conveyor_3.layers.emplace_back();
+    c3.set_blend_b2_d1();
+    c3.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c3.channel_masks[3] = false;  // no alpha writes.
+    c3.end_time = 300.;
+    c3.tex_name = "cas-conveyor";
+    c3.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c3.start_vals.scale = math::Vector2f{1, 1};
+    c3.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c3.start_vals.st_scale = math::Vector2f{1, 1};
+    c3.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c3.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c3.end_vals.scale = math::Vector2f{1, 1};
+    c3.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c3.end_vals.st_scale = math::Vector2f{1, 1};
+    c3.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    m_cas_conveyor_anim_array_idx =
+        create_fixed_anim_array({conveyor_0, conveyor_1, conveyor_2, conveyor_3});
   }
 }
