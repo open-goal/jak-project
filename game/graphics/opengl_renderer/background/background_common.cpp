@@ -2,7 +2,11 @@
 
 #include "background_common.h"
 
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
 #include <immintrin.h>
+#endif
 
 #include "common/util/os.h"
 
@@ -274,6 +278,7 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
+#ifndef __aarch64__
 void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
                              const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out) {
@@ -429,6 +434,7 @@ void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
     }
   }
 }
+#endif
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
   math::Vector4f acc =

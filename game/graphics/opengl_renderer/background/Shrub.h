@@ -68,6 +68,7 @@ class Shrub : public BucketRenderer {
 
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
   bool m_has_level = false;
+  bool m_use_fast_time_of_day = true;
 
   struct Cache {
     std::vector<std::pair<int, int>> draw_idx_temp;

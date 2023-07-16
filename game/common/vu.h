@@ -1,7 +1,11 @@
 #pragma once
 #include <cfloat>
 
-#include "immintrin.h"
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
+#include <immintrin.h>
+#endif
 
 #include "common/common_types.h"
 #include "common/math/Vector.h"
