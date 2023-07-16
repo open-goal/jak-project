@@ -720,6 +720,9 @@ void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& texture : textures) {
     texture.memory_usage(tracker);
   }
+  for (const auto& texture : index_textures) {
+    texture.memory_usage(tracker);
+  }
   for (const auto& tftk : tfrag_trees) {
     for (const auto& tree : tftk) {
       tree.memory_usage(tracker);

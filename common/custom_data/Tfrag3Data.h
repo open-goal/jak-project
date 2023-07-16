@@ -180,7 +180,7 @@ struct PackedShrubVertices {
 // check visibility.
 struct StripDraw {
   DrawMode mode;        // the OpenGL draw settings.
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw (negative for anim slot)
 
   struct {
     u32 idx_of_first_idx_in_full_buffer = 0;

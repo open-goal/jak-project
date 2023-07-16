@@ -6,6 +6,7 @@ uniform vec4 rgba;
 uniform int enable_tex;
 uniform int tcc;
 uniform ivec4 channel_scramble;
+uniform float alpha_multiply;
 
 in vec2 uv;
 
@@ -28,4 +29,6 @@ void main() {
   } else {
     color = (rgba / 128.);
   }
+
+  color.a *= alpha_multiply;
 }

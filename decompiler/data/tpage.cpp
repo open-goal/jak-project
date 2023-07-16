@@ -504,6 +504,12 @@ TPageResultStats process_tpage(ObjectFileData& data,
 
     if (animated_textures.count(tex.name) && !ignore_animated) {
       switch (tex.psm) {
+        case int(PSM::PSMCT32):
+          // no need.
+          break;
+        case int(PSM::PSMT4):
+          // currently not needed.
+          break;
         case int(PSM::PSMT8):
           ASSERT(tex.clutpsm == int(CPSM::PSMCT32));
           {

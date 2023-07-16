@@ -82,50 +82,7 @@ class ClutBlender {
 };
 
 struct Psm32ToPsm8Scrambler {
-  Psm32ToPsm8Scrambler(int w, int h, int write_tex_width, int read_tex_width) {
-    struct InAddr {
-      int x = -1, y = -1, c = -1;
-    };
-    struct OutAddr {
-      int x = -1, y = -1;
-    };
-
-    std::vector<InAddr> vram_from_in(w * h * 4);
-    std::vector<OutAddr> vram_from_out(w * h * 4);
-
-    // loop over pixels in input
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int byte_addr = psmct32_addr(x, y, write_tex_width);
-        for (int c = 0; c < 4; c++) {
-          auto& s = vram_from_in.at(byte_addr + c);
-          s.x = x;
-          s.y = y;
-          s.c = c;
-        }
-      }
-    }
-
-    // output
-    for (int y = 0; y < h * 2; y++) {
-      for (int x = 0; x < w * 2; x++) {
-        int byte_addr = psmt8_addr(x, y, read_tex_width);
-        auto& s = vram_from_out.at(byte_addr);
-        s.x = x;
-        s.y = y;
-      }
-    }
-
-    destinations_per_byte.resize(4 * w * h);
-    for (size_t i = 0; i < vram_from_out.size(); i++) {
-      auto& in = vram_from_in.at(i);
-      auto& out = vram_from_out.at(i);
-      if (in.c >= 0) {
-        destinations_per_byte.at(in.c + in.x * 4 + in.y * 4 * w) = out.x + out.y * w * 2;
-      }
-    }
-  }
-
+  Psm32ToPsm8Scrambler(int w, int h, int write_tex_width, int read_tex_width);
   std::vector<int> destinations_per_byte;
 };
 
@@ -154,6 +111,70 @@ struct ClutReader {
   }
 };
 
+struct LayerVals {
+  math::Vector4f color = math::Vector4f::zero();
+  math::Vector2f scale = math::Vector2f::zero();
+  math::Vector2f offset = math::Vector2f::zero();
+  math::Vector2f st_scale = math::Vector2f::zero();
+  math::Vector2f st_offset = math::Vector2f::zero();
+  math::Vector4f qs = math::Vector4f(1, 1, 1, 1);
+};
+
+/*!
+ * A single layer in a FixedAnimationDef.
+ */
+struct FixedLayerDef {
+  enum class Kind {
+    DEFAULT_ANIM_LAYER,
+  } kind = Kind::DEFAULT_ANIM_LAYER;
+  float start_time = 0;
+  float end_time = 0;
+  std::string tex_name;
+  bool z_writes = false;
+  bool z_test = false;
+  bool clamp_u = false;
+  bool clamp_v = false;
+  bool blend_enable = true;
+  bool channel_masks[4] = {true, true, true, true};
+  GsAlpha::BlendMode blend_modes[4];  // abcd
+  u8 blend_fix = 0;
+  LayerVals start_vals, end_vals;
+
+  void set_blend_b2_d1() {
+    blend_modes[0] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[1] = GsAlpha::BlendMode::ZERO_OR_FIXED;
+    blend_modes[2] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[3] = GsAlpha::BlendMode::DEST;
+    blend_fix = 0;
+  }
+
+  void set_no_z_write_no_z_test() {
+    z_writes = false;
+    z_test = false;
+  }
+};
+
+struct FixedAnimDef {
+  math::Vector4<u8> color;  // clear color
+  std::string tex_name;
+  std::optional<math::Vector2<int>> override_size;
+  // assuming (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+  // alpha blend off, so alpha doesn't matter i think.
+  std::vector<FixedLayerDef> layers;
+};
+
+struct FixedAnim {
+  FixedAnimDef def;
+  // GLint dest_texture;
+  std::optional<FramebufferTexturePair> fbt;
+  int dest_slot;
+  std::vector<GLint> src_textures;
+};
+
+struct FixedAnimArray {
+  std::vector<FixedAnim> anims;
+};
+
 class TexturePool;
 
 class TextureAnimator {
@@ -163,9 +184,11 @@ class TextureAnimator {
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
   GLuint get_by_slot(int idx);
   void draw_debug_window();
-  const std::vector<GLuint>* slots() { return &m_output_slots; }
+  const std::vector<GLuint>* slots() { return &m_public_output_slots; }
 
  private:
+  void copy_private_to_public();
+  void setup_texture_anims();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
   void handle_erase_dest(DmaFollower& dma);
@@ -177,9 +200,10 @@ class TextureAnimator {
 
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
-  void set_up_opengl_for_shader(const ShaderContext& shader,
+  bool set_up_opengl_for_shader(const ShaderContext& shader,
                                 std::optional<GLuint> texture,
                                 bool prim_abe);
+  void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
 
   void load_clut_to_converter();
   const u32* get_clut_16_16_psm32(int cbp);
@@ -188,6 +212,10 @@ class TextureAnimator {
 
   GLuint make_or_get_gpu_texture_for_current_shader(TexturePool& texture_pool);
   void force_to_gpu(int tbp);
+
+  int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
+  void run_fixed_animation_array(int idx, const float* times);
+  void run_fixed_animation(FixedAnim& anim, float time);
 
   struct DrawData {
     u8 tmpl1[16];
@@ -207,6 +235,7 @@ class TextureAnimator {
   };
 
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
+  void set_draw_data_from_interpolated(DrawData* result, const LayerVals& vals, int w, int h);
 
   PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
 
@@ -243,6 +272,7 @@ class TextureAnimator {
     GLuint enable_tex;
     GLuint channel_scramble;
     GLuint tcc;
+    GLuint alpha_multiply;
   } m_uniforms;
 
   struct {
@@ -255,7 +285,13 @@ class TextureAnimator {
   u8 m_index_to_clut_addr[256];
   OpenGLTexturePool m_opengl_texture_pool;
 
-  std::vector<GLuint> m_output_slots;
+  std::vector<GLuint> m_private_output_slots;
+  std::vector<GLuint> m_public_output_slots;
+
+  struct Bool {
+    bool b = false;
+  };
+  std::vector<Bool> m_output_debug_flags;
 
   struct ClutBlenderGroup {
     std::vector<ClutBlender> blenders;
@@ -283,4 +319,9 @@ class TextureAnimator {
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
   ClutReader m_clut_table;
+
+  int m_skull_gem_fixed_anim_array_idx = -1;
+  int m_bomb_fixed_anim_array_idx = -1;
+  int m_cas_conveyor_anim_array_idx = -1;
+  std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

@@ -22,6 +22,12 @@ std::vector<std::string> jak2_slots = {
     //"kor-head-formorph-noreflect",
     //"kor-lowercaps-formorph",
     //"kor-uppercaps-formorph",
+    "skull-gem-dest",
+    "bomb-gradient",
+    "cas-conveyor-dest",
+    "cas-conveyor-dest-01",
+    "cas-conveyor-dest-02",
+    "cas-conveyor-dest-03",
 };
 
 }

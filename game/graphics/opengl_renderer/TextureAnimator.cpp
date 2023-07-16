@@ -14,12 +14,39 @@
 #define dprintf(...)
 #define dfmt(...)
 
+// -- Texture Animations
+// The game has a number of "texture animation arrays".
+// On the original PS2, there wasn't enough VRAM to hold all textures for a frame, so they would
+// upload a single "tpage" at a time. Along with this, they would dynamically generate some animated
+// textures. Each tpage has an associated texture animation array.
+
+// -- Our approach
+// This part of the code has turned out to be pretty bad in terms of performance.
+// We also have the challenge of actually getting all the renderers to look at the right animated
+// textures, which is tricky because we rewrote them for jak 1, which doesn't have this.
+//
+// So there's a lot of tricks here to try to speed things up. We modified the GOAL code to work
+// better with this code. We have three different approaches to handling a texture animation array:
+// - Emulation (slowest). This basically pretends to be the PS2, and is the most flexible. It reads
+//   the DMA and maps it to OpenGL operations right now it's used for the clouds (though slightly
+//   wrong).
+// - Clut-blending. This special cases animations which are just blends between CLUTs.
+//   We optimize this by only doing work if the blend weights change (they didn't on PS2 because
+//   they don't have the vram to store the texture). We also avoid the use of render-to-texture.
+//   Jak's hair/skin/fingers always use this texture.
+// - "Fixed Animation". For animations that use only basic features, we have a way to run them
+//   entirely in C++. This avoids repeated switches between framebuffers, and lets us precompute
+//   more stuff.
+
+// -- OpenGL performance.
 // So there's a lot of stupid-looking OpenGL stuff going on here.
 // The motivation for this is to avoid an issue where some operations take about 5-10ms.
 // As far as I can tell, this slow operation is actually the driver forcing this thread to sync
 // with some internal stuff. It seems to be triggered on:
-// - deleting a texture that's in use
-// - glTexImage2D to modify a texture with a different sized texture.
+// - deleting a texture that was used on the previous frame (so in use by the driver thread).
+//   this is a "safe" operation, but I suspect it forces the driver thread to synchronize).
+// - glTexImage2D to modify a texture with a different sized texture. (likely hits same case as
+//   above)
 
 // TODO:
 //  clouds aren't really working right. The final operation of move rb to ba is a guess.
@@ -35,12 +62,13 @@ OpenGLTexturePool::OpenGLTexturePool() {
   struct Alloc {
     u64 w, h, n;
   };
-  // list of sizes to preallocate.
+  // list of sizes to preallocate: {width, height, count}.
   for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
                                           {32, 16, 1},
-                                          {32, 32, 5},
+                                          {32, 32, 8},
                                           {32, 64, 1},
-                                          {64, 64, 8},
+                                          {64, 32, 4},
+                                          {64, 64, 9},
                                           {64, 128, 4},
                                           {128, 128, 5},
                                           {256, 1, 2},
@@ -62,6 +90,9 @@ OpenGLTexturePool::~OpenGLTexturePool() {
   }
 }
 
+/*!
+ * Get a preallocated texture with the given size, or fatal error if we are out.
+ */
 GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
   const auto& it = textures.find((w << 32) | h);
   if (it == textures.end()) {
@@ -77,10 +108,19 @@ GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
   return ret;
 }
 
+/*!
+ * Return a texture to the pool. The size must be provided.
+ */
 void OpenGLTexturePool::free(GLuint texture, u64 w, u64 h) {
   textures[(w << 32) | h].push_back(texture);
 }
 
+/*!
+ * Get an index-format texture from the given tfrag3 level.
+ * In cases where multiple original-game-levels both provide a texture, but the data is different,
+ * prefer the one from the given level.
+ * This is slow and intended to be used an init time.
+ */
 const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level,
                                          const std::string& name,
                                          const std::optional<std::string>& level_name) {
@@ -115,6 +155,36 @@ const tfrag3::IndexTexture* itex_by_name(const tfrag3::Level* level,
   return ret;
 }
 
+/*!
+ * Get a RGBA format texture by name from the given tfrag3 level. Slow, and intended for init time.
+ */
+const tfrag3::Texture* tex_by_name(const tfrag3::Level* level, const std::string& name) {
+  const tfrag3::Texture* ret = nullptr;
+  for (const auto& t : level->textures) {
+    if (t.debug_name == name) {
+      if (ret) {
+        lg::error("Multiple textures named {}", name);
+        ASSERT(ret->data == t.data);
+      }
+      ret = &t;
+    }
+  }
+  if (!ret) {
+    lg::error("no texture named {}", name);
+    for (const auto& t : level->textures) {
+      fmt::print("texture: {}\n", t.debug_name);
+    }
+    lg::die("no texture named {}", name);
+  } else {
+    // lg::info("got idx: {}", name);
+  }
+  return ret;
+}
+
+/*!
+ * Get a texture animation slot index for the given name. Fatal error if there is no animated
+ * texture slot with this name. Slow, and intended for init time.
+ */
 int output_slot_by_idx(GameVersion version, const std::string& name) {
   const std::vector<std::string>* v = nullptr;
   switch (version) {
@@ -134,27 +204,52 @@ int output_slot_by_idx(GameVersion version, const std::string& name) {
   ASSERT_NOT_REACHED();
 }
 
+/*!
+ * Upload a texture and generate mipmaps. Assumes the usual RGBA format.
+ */
+void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
+  glBindTexture(GL_TEXTURE_2D, dest);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  float aniso = 0.0f;
+  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+/*!
+ * Utility class to grab CLUTs from the source textures, blend them, and produce a destination RGBA
+ * texture using the index data in dest.
+ */
 ClutBlender::ClutBlender(const std::string& dest,
                          const std::vector<std::string>& sources,
                          const std::optional<std::string>& level_name,
                          const tfrag3::Level* level,
                          OpenGLTexturePool* tpool) {
+  // find the destination texture
   m_dest = itex_by_name(level, dest, level_name);
+  // find the clut source textures
   for (const auto& sname : sources) {
     m_cluts.push_back(&itex_by_name(level, sname, level_name)->color_table);
     m_current_weights.push_back(0);
   }
+  // opengl texture that we'll write to
   m_texture = tpool->allocate(m_dest->w, m_dest->h);
   m_temp_rgba.resize(m_dest->w * m_dest->h);
 
+  // default to the first one.
   std::vector<float> init_weights(m_current_weights.size(), 0);
   init_weights.at(0) = 1.f;
   run(init_weights.data());
 }
 
+/*!
+ * Blend cluts and create an output texture.
+ */
 GLuint ClutBlender::run(const float* weights) {
   bool needs_run = false;
 
+  // check if weights changed or not.
   for (size_t i = 0; i < m_current_weights.size(); i++) {
     if (weights[i] != m_current_weights[i]) {
       needs_run = true;
@@ -166,10 +261,12 @@ GLuint ClutBlender::run(const float* weights) {
     return m_texture;
   }
 
+  // update weights
   for (size_t i = 0; i < m_current_weights.size(); i++) {
     m_current_weights[i] = weights[i];
   }
 
+  // blend cluts
   for (int i = 0; i < 256; i++) {
     math::Vector4f v = math::Vector4f::zero();
     for (size_t j = 0; j < m_current_weights.size(); j++) {
@@ -178,20 +275,63 @@ GLuint ClutBlender::run(const float* weights) {
     m_temp_clut[i] = v.cast<u8>();
   }
 
+  // do texture lookups
   for (int i = 0; i < m_temp_rgba.size(); i++) {
     memcpy(&m_temp_rgba[i], m_temp_clut[m_dest->index_data[i]].data(), 4);
   }
 
-  glBindTexture(GL_TEXTURE_2D, m_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_dest->w, m_dest->h, 0, GL_RGBA,
-               GL_UNSIGNED_INT_8_8_8_8_REV, m_temp_rgba.data());
-  glGenerateMipmap(GL_TEXTURE_2D);
-  float aniso = 0.0f;
-  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  // send to GPU.
+  opengl_upload_texture(m_texture, m_temp_rgba.data(), m_dest->w, m_dest->h);
 
   return m_texture;
+}
+
+/*!
+ * Utility class to show what happens if you take a PSM32 texture, upload it as PSM32, then read it
+ * back as PSM8. Byte i from the input data ends up in destinations_per_byte[i].
+ */
+Psm32ToPsm8Scrambler::Psm32ToPsm8Scrambler(int w, int h, int write_tex_width, int read_tex_width) {
+  struct InAddr {
+    int x = -1, y = -1, c = -1;
+  };
+  struct OutAddr {
+    int x = -1, y = -1;
+  };
+
+  std::vector<InAddr> vram_from_in(w * h * 4);
+  std::vector<OutAddr> vram_from_out(w * h * 4);
+
+  // loop over pixels in input
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int byte_addr = psmct32_addr(x, y, write_tex_width);
+      for (int c = 0; c < 4; c++) {
+        auto& s = vram_from_in.at(byte_addr + c);
+        s.x = x;
+        s.y = y;
+        s.c = c;
+      }
+    }
+  }
+
+  // output
+  for (int y = 0; y < h * 2; y++) {
+    for (int x = 0; x < w * 2; x++) {
+      int byte_addr = psmt8_addr(x, y, read_tex_width);
+      auto& s = vram_from_out.at(byte_addr);
+      s.x = x;
+      s.y = y;
+    }
+  }
+
+  destinations_per_byte.resize(4 * w * h);
+  for (size_t i = 0; i < vram_from_out.size(); i++) {
+    auto& in = vram_from_in.at(i);
+    auto& out = vram_from_out.at(i);
+    if (in.c >= 0) {
+      destinations_per_byte.at(in.c + in.x * 4 + in.y * 4 * w) = out.x + out.y * w * 2;
+    }
+  }
 }
 
 TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level)
@@ -232,15 +372,24 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
   m_uniforms.tcc = glGetUniformLocation(shader.id(), "tcc");
+  m_uniforms.alpha_multiply = glGetUniformLocation(shader.id(), "alpha_multiply");
 
   // create a single "dummy texture" with all 0 data.
   // this is faster and easier than switching shaders to one without texturing, and is used
   // only rarely
   glGenTextures(1, &m_dummy_texture);
   glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-  std::vector<u8> data(16 * 16 * 4);
+  std::vector<u32> data(16 * 16);
+  u32 c0 = 0xa0303030;
+  u32 c1 = 0xa0e0e0e0;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      data[i * 16 + j] = (((i / 4) & 1) ^ ((j / 4) & 1)) ? c1 : c0;
+    }
+  }
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
 
   shader.activate();
@@ -262,51 +411,81 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
     m_index_to_clut_addr[i] = clx + cly * 16;
   }
 
-  m_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
+  m_public_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
+  m_private_output_slots = m_public_output_slots;
+  m_output_debug_flags.resize(jak2_animated_texture_slots().size());
 
-  // DARKJAK
-  m_darkjak_clut_blender_idx = create_clut_blender_group(
-      {"jakbsmall-eyebrow", "jakbsmall-face", "jakbsmall-finger", "jakbsmall-hair"}, "-norm",
-      "-dark", {});
+  // animation-specific stuff
+  setup_texture_anims();
+}
 
-  // PRISON
-  // MISSING EYELID
-  m_jakb_prison_clut_blender_idx = create_clut_blender_group(
-      {"jak-orig-arm-formorph", "jak-orig-eyebrow-formorph", "jak-orig-finger-formorph"}, "-start",
-      "-end", "LDJAKBRN.DGO");
-  add_to_clut_blender_group(m_jakb_prison_clut_blender_idx,
-                            {"jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm", "-dark",
-                            "LDJAKBRN.DGO");
+/*!
+ * Add a fixed texture animator for the given definition. Returns an index that can later be used to
+ * run it.
+ */
+int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& defs) {
+  int ret = m_fixed_anim_arrays.size();
+  auto& anim_array = m_fixed_anim_arrays.emplace_back();
 
-  // ORACLE
-  // MISSING FINGER
-  m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
-      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "ORACLE.DGO");
+  for (const auto& def : defs) {
+    auto& anim = anim_array.anims.emplace_back();
+    anim.def = def;
 
-  // NEST
-  // MISSING FINGER
-  m_jakb_nest_clut_blender_idx = create_clut_blender_group(
-      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "NEB.DGO");
+    // set up the destination texture.
+    anim.dest_slot = output_slot_by_idx(GameVersion::Jak2, anim.def.tex_name);
+    auto* dtex = tex_by_name(m_common_level, anim.def.tex_name);
+    if (anim.def.override_size) {
+      anim.fbt.emplace(anim.def.override_size->x(), anim.def.override_size->y(),
+                       GL_UNSIGNED_INT_8_8_8_8_REV);
+    } else {
+      anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
+      opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
+    }
 
-  // KOR (doesn't work??)
-  m_kor_transform_clut_blender_idx = create_clut_blender_group(
-      {
-          // "kor-eyeeffect-formorph",
-          // "kor-hair-formorph",
-          // "kor-head-formorph",
-          // "kor-head-formorph-noreflect",
-          // "kor-lowercaps-formorph",
-          // "kor-uppercaps-formorph",
-      },
-      "-start", "-end", {});
+    m_private_output_slots.at(anim.dest_slot) = anim.fbt->texture();
+
+    // set up the source textures
+    for (const auto& layer : def.layers) {
+      auto* stex = tex_by_name(m_common_level, layer.tex_name);
+      GLint gl_texture = m_opengl_texture_pool.allocate(stex->w, stex->h);
+      anim.src_textures.push_back(gl_texture);
+      opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
+    }
+  }
+
+  return ret;
 }
 
 void TextureAnimator::draw_debug_window() {
   ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
+
+  auto& slots = jak2_animated_texture_slots();
+  for (size_t i = 0; i < slots.size(); i++) {
+    ImGui::Text("Slot %d %s", (int)i, slots[i].c_str());
+    glBindTexture(GL_TEXTURE_2D, m_private_output_slots[i]);
+    int w, h;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+    ImGui::Image((void*)m_private_output_slots[i], ImVec2(w, h));
+    ImGui::Checkbox(fmt::format("mark {}", i).c_str(), &m_output_debug_flags.at(i).b);
+  }
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void TextureAnimator::copy_private_to_public() {
+  auto& slots = jak2_animated_texture_slots();
+  for (size_t i = 0; i < slots.size(); i++) {
+    if (m_output_debug_flags[i].b) {
+      m_public_output_slots[i] = m_dummy_texture;
+    } else {
+      m_public_output_slots[i] = m_private_output_slots[i];
+    }
+  }
+}
+
+/*!
+ * Create a clut-blending animator. Returns an index that can later be used to run it.
+ */
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
                                                const std::string& suffix0,
                                                const std::string& suffix1,
@@ -317,6 +496,9 @@ int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& t
   return ret;
 }
 
+/*!
+ * Add a texture to an existing blender group created with create_clut_blender_group.
+ */
 void TextureAnimator::add_to_clut_blender_group(int idx,
                                                 const std::vector<std::string>& textures,
                                                 const std::string& suffix0,
@@ -327,7 +509,7 @@ void TextureAnimator::add_to_clut_blender_group(int idx,
     grp.blenders.emplace_back(prefix, std::vector<std::string>{prefix + suffix0, prefix + suffix1},
                               dgo, m_common_level, &m_opengl_texture_pool);
     grp.outputs.push_back(output_slot_by_idx(GameVersion::Jak2, prefix));
-    m_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
+    m_private_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
   }
 }
 
@@ -338,8 +520,8 @@ TextureAnimator::~TextureAnimator() {
 }
 
 GLuint TextureAnimator::get_by_slot(int idx) {
-  ASSERT(idx >= 0 && idx < (int)m_output_slots.size());
-  return m_output_slots[idx];
+  ASSERT(idx >= 0 && idx < (int)m_public_output_slots.size());
+  return m_public_output_slots[idx];
 }
 
 // IDs sent from GOAL telling us what texture operation to perform.
@@ -357,7 +539,10 @@ enum PcTextureAnimCodes {
   PRISON_JAK = 23,
   ORACLE_JAK = 24,
   NEST_JAK = 25,
-  KOR_TRANSFORM = 26
+  KOR_TRANSFORM = 26,
+  SKULL_GEM = 27,
+  BOMB = 28,
+  CAS_CONVEYOR = 29,
 };
 
 // metadata for an upload from GOAL memory
@@ -466,6 +651,22 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("kor");
           run_clut_blender_group(tf, m_kor_transform_clut_blender_idx);
         } break;
+        case SKULL_GEM: {
+          auto p = scoped_prof("skull-gem");
+          ASSERT(tf.size_bytes == 16);
+          const float* floats = (const float*)tf.data;
+          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, floats);
+        } break;
+        case BOMB: {
+          auto p = scoped_prof("bomb");
+          ASSERT(tf.size_bytes == 16);
+          const float* floats = (const float*)tf.data;
+          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, floats);
+        } break;
+        case CAS_CONVEYOR: {
+          auto p = scoped_prof("cas-conveyor");
+          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, (const float*)tf.data);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -541,6 +742,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glDepthMask(GL_TRUE);
   glEnable(GL_DEPTH_TEST);
   glColorMask(true, true, true, true);
+  copy_private_to_public();
 }
 
 /*!
@@ -644,6 +846,8 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
     glUniform1i(m_uniforms.enable_tex, 1);
     glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
     glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
+    // not sure if this is right or not: the entire cloud stuff is kinda broken.
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
     glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -679,7 +883,9 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
 }
 
 void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();
+  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
+  glUniform1f(m_uniforms.alpha_multiply, 1.f);
+
   dprintf("[tex anim] set clut alpha\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
@@ -707,7 +913,9 @@ void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
 }
 
 void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();
+  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
+  glUniform1f(m_uniforms.alpha_multiply, 1.f);
+
   dprintf("[tex anim] __copy__ clut alpha\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
@@ -749,7 +957,7 @@ void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx) {
   float weights[2] = {1.f - f, f};
   auto& blender = m_clut_blender_groups.at(idx);
   for (size_t i = 0; i < blender.blenders.size(); i++) {
-    m_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+    m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
   }
 }
 
@@ -899,6 +1107,8 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glColorMask(true, true, true, true);
+    // write the exact specified alpha (texture holds game-style alphas)
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
     {
       auto p = scoped_prof("erase-draw");
       glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -1046,14 +1256,27 @@ void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
     }
 
     // use ADGIF shader data to set OpenGL state
-    set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
+    bool writes_alpha =
+        set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
 
     // set up uniform buffers for the coordinates for this draw.
     set_uniforms_from_draw_data(draw_data, dest_te.tex_width, dest_te.tex_height);
 
     ASSERT(dest_te.tex);
-    // draw!
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    if (writes_alpha) {
+      glColorMask(true, true, true, false);
+      glUniform1f(m_uniforms.alpha_multiply, 2.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glColorMask(false, false, false, true);
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    } else {
+      // we don't write alpha out. So apply alpha multiplier for blending.
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+
     // debug_save_opengl_texture("opengl_draw_result.png", dest_te.tex->texture());
     // debug_save_opengl_texture("opengl_test.png", gpu_texture);
   } else {
@@ -1226,7 +1449,75 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
   }
 }
 
-void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
+void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
+                                              std::optional<GLint> texture) {
+  if (texture) {
+    glBindTexture(GL_TEXTURE_2D, *texture);
+    glUniform1i(m_uniforms.enable_tex, 1);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+    glUniform1i(m_uniforms.enable_tex, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+  // tex0
+  // assuming default-texture-anim-layer-func, which sets 1.
+  glUniform1i(m_uniforms.tcc, 1);
+
+  // ASSERT(shader.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  // tex1
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glColorMask(def.channel_masks[0], def.channel_masks[1], def.channel_masks[2],
+              def.channel_masks[3]);
+  if (def.z_test) {
+    ASSERT_NOT_REACHED();
+  } else {
+    glDisable(GL_DEPTH_TEST);
+  }
+
+  if (def.clamp_u) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (def.clamp_v) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
+  if (def.blend_enable) {
+    auto blend_a = def.blend_modes[0];
+    auto blend_b = def.blend_modes[1];
+    auto blend_c = def.blend_modes[2];
+    auto blend_d = def.blend_modes[3];
+    glEnable(GL_BLEND);
+
+    // 0 2 0 1
+    if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+        blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::DEST &&
+               blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    } else {
+      fmt::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
+                 (int)blend_d);
+      ASSERT_NOT_REACHED();
+    }
+
+  } else {
+    glDisable(GL_BLEND);
+  }
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+}
+
+bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
                                                std::optional<GLuint> texture,
                                                bool prim_abe) {
   if (texture) {
@@ -1290,7 +1581,9 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     do_alpha_test = false;
   }
 
+  bool writes_alpha = true;
   if (alpha_test_mask_alpha_trick) {
+    writes_alpha = false;
     glColorMask(true, true, true, false);
   } else {
     glColorMask(true, true, true, true);
@@ -1351,6 +1644,7 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     glDisable(GL_BLEND);
   }
   glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+  return writes_alpha;
 }
 
 namespace {
@@ -1393,4 +1687,368 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   //  for (int i = 0; i < 4; i++) {
   //    fmt::print("fan vt {}: {:.3f} {:.3f} \n", i, uv[i * 2], uv[1 + i * 2]);
   //  }
+}
+
+void TextureAnimator::run_fixed_animation_array(int idx, const float* times) {
+  auto& array = m_fixed_anim_arrays.at(idx);
+  for (size_t i = 0; i < array.anims.size(); i++) {
+    auto& anim = array.anims[i];
+    run_fixed_animation(anim, times[i]);
+  }
+}
+
+template <typename T>
+void interpolate_1(float interp, T* out, const T& in_start, const T& in_end) {
+  *out = in_start + (in_end - in_start) * interp;
+}
+
+void interpolate_layer_values(float interp,
+                              LayerVals* out,
+                              const LayerVals& start,
+                              const LayerVals& end) {
+  interpolate_1(interp, &out->color, start.color, end.color);
+  interpolate_1(interp, &out->scale, start.scale, end.scale);
+  interpolate_1(interp, &out->offset, start.offset, end.offset);
+  interpolate_1(interp, &out->st_scale, start.st_scale, end.st_scale);
+  interpolate_1(interp, &out->st_offset, start.st_offset, end.st_offset);
+  interpolate_1(interp, &out->qs, start.qs, end.qs);
+}
+
+void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
+                                                      const LayerVals& vals,
+                                                      int w,
+                                                      int h) {
+  result->color = (vals.color * 128.f).cast<u32>();
+  math::Vector2f pos_scale(vals.scale.x() * w, vals.scale.y() * h);
+  math::Vector2f pos_offset(2048.f + (vals.offset.x() * w), 2048.f + (vals.offset.y() * h));
+  math::Vector2f st_scale = vals.st_scale;
+  math::Vector2f st_offset = vals.st_offset;
+  const math::Vector2f corners[4] = {math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5},
+                                     math::Vector2f{-0.5, 0.5}, math::Vector2f{0.5, 0.5}};
+  math::Vector2f sts[4];
+  math::Vector2<u32> poss[4];
+
+  for (int i = 0; i < 4; i++) {
+    sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
+    poss[i] = ((corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
+  }
+
+  result->st0.x() = sts[0].x();
+  result->st0.y() = sts[0].y();
+  result->st1.x() = sts[1].x();
+  result->st1.y() = sts[1].y();
+  result->st2.x() = sts[2].x();
+  result->st2.y() = sts[2].y();
+  result->st3.x() = sts[3].x();
+  result->st3.y() = sts[3].y();
+
+  result->pos0.x() = poss[0].x();
+  result->pos0.y() = poss[0].y();
+  result->pos1.x() = poss[1].x();
+  result->pos1.y() = poss[1].y();
+  result->pos2.x() = poss[2].x();
+  result->pos2.y() = poss[2].y();
+  result->pos3.x() = poss[3].x();
+  result->pos3.y() = poss[3].y();
+}
+
+void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
+  {
+    FramebufferTexturePairContext ctxt(anim.fbt.value());
+    // Clear
+    {
+      float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+      glUniform3fv(m_uniforms.positions, 4, positions);
+      glUniform1i(m_uniforms.enable_tex, 0);
+      glUniform4f(m_uniforms.rgba, anim.def.color[0], anim.def.color[1], anim.def.color[2],
+                  anim.def.color[3]);
+      glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+      glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glDisable(GL_BLEND);
+      glDisable(GL_DEPTH_TEST);
+      glColorMask(true, true, true, true);
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+    LayerVals interpolated_values;
+    DrawData draw_data;
+
+    // Loop over layers
+    for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
+      auto& layer_def = anim.def.layers[layer_idx];
+      // skip layer if out the range when it is active
+      if (time < layer_def.start_time || time > layer_def.end_time) {
+        continue;
+      }
+
+      // interpolate
+      interpolate_layer_values(
+          (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
+          &interpolated_values, layer_def.start_vals, layer_def.end_vals);
+
+      // shader setup
+      set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+
+      set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
+                                      anim.fbt->height());
+      set_uniforms_from_draw_data(draw_data, anim.fbt->width(), anim.fbt->height());
+
+      if (true) {  // todo
+        glColorMask(true, true, true, false);
+        glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glColorMask(false, false, false, true);
+        glUniform1f(m_uniforms.alpha_multiply, 1.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      } else {
+        // we don't write alpha out. So apply alpha multiplier for blending.
+        glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      }
+    }
+  }
+  // Finish
+  m_private_output_slots.at(anim.dest_slot) = anim.fbt->texture();
+  glBindTexture(GL_TEXTURE_2D, anim.fbt->texture());
+  glGenerateMipmap(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void TextureAnimator::setup_texture_anims() {
+  // DARKJAK
+  m_darkjak_clut_blender_idx = create_clut_blender_group(
+      {"jakbsmall-eyebrow", "jakbsmall-face", "jakbsmall-finger", "jakbsmall-hair"}, "-norm",
+      "-dark", {});
+
+  // PRISON
+  // MISSING EYELID
+  m_jakb_prison_clut_blender_idx = create_clut_blender_group(
+      {"jak-orig-arm-formorph", "jak-orig-eyebrow-formorph", "jak-orig-finger-formorph"}, "-start",
+      "-end", "LDJAKBRN.DGO");
+  add_to_clut_blender_group(m_jakb_prison_clut_blender_idx,
+                            {"jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm", "-dark",
+                            "LDJAKBRN.DGO");
+
+  // ORACLE
+  // MISSING FINGER
+  m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "ORACLE.DGO");
+
+  // NEST
+  // MISSING FINGER
+  m_jakb_nest_clut_blender_idx = create_clut_blender_group(
+      {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
+      "-dark", "NEB.DGO");
+
+  // KOR (doesn't work??)
+  m_kor_transform_clut_blender_idx = create_clut_blender_group(
+      {
+          // "kor-eyeeffect-formorph",
+          // "kor-hair-formorph",
+          // "kor-head-formorph",
+          // "kor-head-formorph-noreflect",
+          // "kor-lowercaps-formorph",
+          // "kor-uppercaps-formorph",
+      },
+      "-start", "-end", {});
+
+  // Skull Gem
+  {
+    FixedAnimDef skull_gem;
+    skull_gem.tex_name = "skull-gem-dest";
+    skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
+
+    auto& skull_gem_0 = skull_gem.layers.emplace_back();
+    skull_gem_0.end_time = 300.;
+    skull_gem_0.tex_name = "skull-gem-alpha-00";
+    skull_gem_0.set_blend_b2_d1();
+    skull_gem_0.set_no_z_write_no_z_test();
+    skull_gem_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    skull_gem_0.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_0.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    skull_gem_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    skull_gem_0.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_0.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    auto& skull_gem_1 = skull_gem.layers.emplace_back();
+    skull_gem_1.end_time = 300.;
+    skull_gem_1.tex_name = "skull-gem-alpha-01";
+    skull_gem_1.set_blend_b2_d1();
+    skull_gem_1.set_no_z_write_no_z_test();
+    skull_gem_1.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_1.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_1.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_1.start_vals.st_offset = math::Vector2f{2.0, 1.0};
+    skull_gem_1.end_vals.color = math::Vector4f{0.6, 0.5, 0.6, 1};
+    skull_gem_1.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_1.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_1.end_vals.st_offset = math::Vector2f{0, 0};
+
+    auto& skull_gem_2 = skull_gem.layers.emplace_back();
+    skull_gem_2.end_time = 300.;
+    skull_gem_2.tex_name = "skull-gem-alpha-02";
+    skull_gem_2.set_blend_b2_d1();
+    skull_gem_2.set_no_z_write_no_z_test();
+    skull_gem_2.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_2.start_vals.scale = math::Vector2f{1, 1};
+    skull_gem_2.start_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_2.start_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_2.start_vals.st_offset = math::Vector2f{0, 0};
+    skull_gem_2.end_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
+    skull_gem_2.end_vals.scale = math::Vector2f{1, 1};
+    skull_gem_2.end_vals.offset = math::Vector2f{0.5, 0.5};
+    skull_gem_2.end_vals.st_scale = math::Vector2f{1, 1};
+    skull_gem_2.end_vals.st_offset = math::Vector2f{2, 2};
+
+    m_skull_gem_fixed_anim_array_idx = create_fixed_anim_array({skull_gem});
+  }
+
+  // Bomb
+  {
+    FixedAnimDef bomb;
+    bomb.tex_name = "bomb-gradient";
+    bomb.color = math::Vector4<u8>{0, 0, 0, 0x80};
+
+    auto& bomb_0 = bomb.layers.emplace_back();
+    bomb_0.end_time = 300.;
+    bomb_0.tex_name = "bomb-gradient-rim";
+    bomb_0.set_blend_b2_d1();
+    bomb_0.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    bomb_0.channel_masks[3] = false;  // no alpha writes.
+    bomb_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_0.start_vals.scale = math::Vector2f{1, 1};
+    bomb_0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_0.start_vals.st_scale = math::Vector2f{1, 1};
+    bomb_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    bomb_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_0.end_vals.scale = math::Vector2f{1, 1};
+    bomb_0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_0.end_vals.st_scale = math::Vector2f{1, 1};
+    bomb_0.end_vals.st_offset = math::Vector2f{0.5, 4.0};
+
+    auto& bomb_1 = bomb.layers.emplace_back();
+    bomb_1.end_time = 300.;
+    bomb_1.tex_name = "bomb-gradient-flames";
+    bomb_1.set_blend_b2_d1();
+    bomb_1.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    bomb_1.channel_masks[3] = false;  // no alpha writes.
+    bomb_1.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_1.start_vals.scale = math::Vector2f{1, 1};
+    bomb_1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_1.start_vals.st_scale = math::Vector2f{1, 1};
+    bomb_1.start_vals.st_offset = math::Vector2f{0.0, 0.5};
+    bomb_1.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    bomb_1.end_vals.scale = math::Vector2f{1, 1};
+    bomb_1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    bomb_1.end_vals.st_scale = math::Vector2f{1, 1};
+    bomb_1.end_vals.st_offset = math::Vector2f{-6.0, 0.5};
+
+    m_bomb_fixed_anim_array_idx = create_fixed_anim_array({bomb});
+  }
+
+  // CAS conveyor
+  {
+    FixedAnimDef conveyor_0;
+    conveyor_0.tex_name = "cas-conveyor-dest";
+    conveyor_0.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_0.override_size = math::Vector2<int>(64, 32);
+    auto& c0 = conveyor_0.layers.emplace_back();
+    c0.set_blend_b2_d1();
+    c0.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c0.channel_masks[3] = false;  // no alpha writes.
+    c0.end_time = 300.;
+    c0.tex_name = "cas-conveyor";
+    c0.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c0.start_vals.scale = math::Vector2f{1, 1};
+    c0.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c0.start_vals.st_scale = math::Vector2f{1, 1};
+    c0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c0.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c0.end_vals.scale = math::Vector2f{1, 1};
+    c0.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c0.end_vals.st_scale = math::Vector2f{1, 1};
+    c0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_1;
+    conveyor_1.tex_name = "cas-conveyor-dest-01";
+    conveyor_1.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_1.override_size = math::Vector2<int>(64, 32);
+    auto& c1 = conveyor_1.layers.emplace_back();
+    c1.set_blend_b2_d1();
+    c1.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c1.channel_masks[3] = false;  // no alpha writes.
+    c1.end_time = 300.;
+    c1.tex_name = "cas-conveyor";
+    c1.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c1.start_vals.scale = math::Vector2f{1, 1};
+    c1.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c1.start_vals.st_scale = math::Vector2f{1, 1};
+    c1.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c1.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c1.end_vals.scale = math::Vector2f{1, 1};
+    c1.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c1.end_vals.st_scale = math::Vector2f{1, 1};
+    c1.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_2;
+    conveyor_2.tex_name = "cas-conveyor-dest-02";
+    conveyor_2.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_2.override_size = math::Vector2<int>(64, 32);
+    auto& c2 = conveyor_2.layers.emplace_back();
+    c2.set_blend_b2_d1();
+    c2.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c2.channel_masks[3] = false;  // no alpha writes.
+    c2.end_time = 300.;
+    c2.tex_name = "cas-conveyor";
+    c2.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c2.start_vals.scale = math::Vector2f{1, 1};
+    c2.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c2.start_vals.st_scale = math::Vector2f{1, 1};
+    c2.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c2.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c2.end_vals.scale = math::Vector2f{1, 1};
+    c2.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c2.end_vals.st_scale = math::Vector2f{1, 1};
+    c2.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    FixedAnimDef conveyor_3;
+    conveyor_3.tex_name = "cas-conveyor-dest-03";
+    conveyor_3.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    conveyor_3.override_size = math::Vector2<int>(64, 32);
+    auto& c3 = conveyor_3.layers.emplace_back();
+    c3.set_blend_b2_d1();
+    c3.set_no_z_write_no_z_test();
+    // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+    c3.channel_masks[3] = false;  // no alpha writes.
+    c3.end_time = 300.;
+    c3.tex_name = "cas-conveyor";
+    c3.start_vals.color = math::Vector4f{1, 1, 1, 1};
+    c3.start_vals.scale = math::Vector2f{1, 1};
+    c3.start_vals.offset = math::Vector2f{0.5, 0.5};
+    c3.start_vals.st_scale = math::Vector2f{1, 1};
+    c3.start_vals.st_offset = math::Vector2f{0.5, 0.0};
+    c3.end_vals.color = math::Vector4f{1, 1, 1, 1};
+    c3.end_vals.scale = math::Vector2f{1, 1};
+    c3.end_vals.offset = math::Vector2f{0.5, 0.5};
+    c3.end_vals.st_scale = math::Vector2f{1, 1};
+    c3.end_vals.st_offset = math::Vector2f{0.5, 1.0};
+
+    m_cas_conveyor_anim_array_idx =
+        create_fixed_anim_array({conveyor_0, conveyor_1, conveyor_2, conveyor_3});
+  }
 }

@@ -182,6 +182,9 @@
   (oracle-jak 24)
   (nest-jak 25)
   (kor-transform 26)
+  (skull-gem 27)
+  (bomb 28)
+  (cas-conveyor 29)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -208,6 +211,15 @@
      ,buf
      ,qwc
      (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm (texture-anim-pc ,kind))
+     (new 'static 'vif-tag)
+     )
+  )
+
+(defmacro pc-texture-anim-flag-id (kind buf &key (qwc 0))
+  `(dma-buffer-add-cnt-vif2
+     ,buf
+     ,qwc
+     (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm ,kind)
      (new 'static 'vif-tag)
      )
   )
@@ -576,6 +588,58 @@
 (define-extern *darkjak-hires-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *darkjak-hires-nest-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *kor-transform-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *bomb-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *cas-conveyor-texture-anim-array* (texture-anim-array texture-anim))
+
+(defun pc-update-fixed-anim ((bucket bucket-id) (anim-id texture-anim-pc) (anim-array texture-anim-array))
+  "Run a 'fixed' texture-anim, which should run entirely in C++."
+  (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               bucket
+                               )
+    ;; determine how many texture we have:
+    (let ((num 0))
+      (dotimes (i (-> anim-array length))
+        (when (-> anim-array array-data i tex)
+          (+! num 1)
+          )
+        )
+
+      ;; (format 0 "pc-update-fixed-anim: ~d layers~%" num)
+      (let ((num-qw (/ (+ num 3) 4)))
+        (pc-texture-anim-flag start-anim-array dma-buf)
+        (pc-texture-anim-flag-id anim-id dma-buf :qwc num-qw)
+
+        (dotimes (i num)
+          (let ((anim (-> anim-array array-data i))
+                (out-slot (the (pointer float) (&+ (-> dma-buf base) (* 4 i))))
+                )
+
+            (set! (-> out-slot) (-> anim frame-time))
+
+            (when (not (paused?))
+              (with-pp
+                (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (-> pp clock seconds-per-frame))))
+                      (f1-2 (-> anim frame-mod))
+                      )
+                  (set! (-> anim frame-time) (- f0-2 (* (the float (the int (/ f0-2 f1-2))) f1-2)))
+                  )
+                (if (< (-> anim frame-time) 0.0)
+                    (+! (-> anim frame-time) (-> anim frame-mod))
+                    )
+                )
+              )
+            )
+          )
+
+        (&+! (-> dma-buf base) (* 16 num-qw))
+        (pc-texture-anim-flag finish-anim-array dma-buf)
+        )
+      )
+    )
+
+  (none)
+  )
 
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
@@ -592,6 +656,18 @@
        )
      ;; for sky, we basically emulate the full thing
      ;; (format *stdcon* "doing sky to bucket ~d~%" bucket)
+     )
+    ((= anim-array *skull-gem-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc skull-gem) anim-array)
+     (return #f)
+     )
+    ((= anim-array *bomb-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc bomb) anim-array)
+     (return #f)
+     )
+    ((= anim-array *cas-conveyor-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc cas-conveyor) anim-array)
+     (return #f)
      )
     ((= anim-array *darkjak-texture-anim-array*)
      ;; darkjak is simple, and we reimplemented it in C++.

@@ -71,6 +71,22 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   return true;
 }
 
+tfrag3::Texture make_texture(u32 id,
+                             const TextureDB::TextureData& tex,
+                             const std::string& tpage_name,
+                             bool pool_load) {
+  tfrag3::Texture new_tex;
+  new_tex.combo_id = id;
+  new_tex.w = tex.w;
+  new_tex.h = tex.h;
+  new_tex.debug_tpage_name = tpage_name;
+  new_tex.debug_name = tex.name;
+  new_tex.data = tex.rgba_bytes;
+  new_tex.combo_id = id;
+  new_tex.load_to_pool = pool_load;
+  return new_tex;
+}
+
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {
@@ -79,16 +95,7 @@ void add_all_textures_from_level(tfrag3::Level& lev,
   if (level_it != tex_db.texture_ids_per_level.end()) {
     for (auto id : level_it->second) {
       const auto& tex = tex_db.textures.at(id);
-      lev.textures.emplace_back();
-      auto& new_tex = lev.textures.back();
-      new_tex.combo_id = id;
-      new_tex.w = tex.w;
-      new_tex.h = tex.h;
-      new_tex.debug_tpage_name = tex_db.tpage_names.at(tex.page);
-      new_tex.debug_name = tex.name;
-      new_tex.data = tex.rgba_bytes;
-      new_tex.combo_id = id;
-      new_tex.load_to_pool = true;
+      lev.textures.push_back(make_texture(id, tex, tex_db.tpage_names.at(tex.page), true));
     }
   }
 }
@@ -224,7 +231,8 @@ void extract_common(const ObjectFileDB& db,
                     const TextureDB& tex_db,
                     const std::string& dgo_name,
                     bool dump_levels,
-                    const fs::path& output_folder) {
+                    const fs::path& output_folder,
+                    const Config& config) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -241,9 +249,26 @@ void extract_common(const ObjectFileDB& db,
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level);
 
+  std::set<std::string> textures_we_have;
+
   // put _all_ index textures in common.
   for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
     tfrag_level.index_textures.push_back(tex);
+  }
+
+  for (const auto& t : tfrag_level.textures) {
+    textures_we_have.insert(t.debug_name);
+  }
+
+  // add animated textures that are missing.
+  for (const auto& [id, normal_texture] : tex_db.textures) {
+    if (config.animated_textures.count(normal_texture.name) &&
+        !textures_we_have.count(normal_texture.name)) {
+      lg::warn("adding anim normal texture {} ", normal_texture.name);
+      textures_we_have.insert(normal_texture.name);
+      tfrag_level.textures.push_back(
+          make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), false));
+    }
   }
 
   Serializer ser;
@@ -269,7 +294,7 @@ void extract_common(const ObjectFileDB& db,
 void extract_from_level(const ObjectFileDB& db,
                         const TextureDB& tex_db,
                         const std::string& dgo_name,
-                        const DecompileHacks& hacks,
+                        const Config& config,
                         bool dump_level,
                         bool extract_collision,
                         const fs::path& output_folder) {
@@ -282,7 +307,7 @@ void extract_from_level(const ObjectFileDB& db,
 
   // the bsp header file data
   auto tex_remap =
-      extract_bsp_from_level(db, tex_db, dgo_name, hacks, extract_collision, level_data);
+      extract_bsp_from_level(db, tex_db, dgo_name, config.hacks, extract_collision, level_data);
   extract_art_groups_from_level(db, tex_db, tex_remap, dgo_name, level_data);
 
   Serializer ser;
@@ -313,15 +338,15 @@ void extract_all_levels(const ObjectFileDB& db,
                         const TextureDB& tex_db,
                         const std::vector<std::string>& dgo_names,
                         const std::string& common_name,
-                        const DecompileHacks& hacks,
+                        const Config& config,
                         bool debug_dump_level,
                         bool extract_collision,
                         const fs::path& output_path) {
-  extract_common(db, tex_db, common_name, debug_dump_level, output_path);
+  extract_common(db, tex_db, common_name, debug_dump_level, output_path, config);
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
-        extract_from_level(db, tex_db, dgo_names[idx], hacks, debug_dump_level, extract_collision,
+        extract_from_level(db, tex_db, dgo_names[idx], config, debug_dump_level, extract_collision,
                            output_path);
       },
       dgo_names.size());
