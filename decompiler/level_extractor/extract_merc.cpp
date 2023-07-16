@@ -1083,7 +1083,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
     size_t original_size = result.blerc_vertices_i.size();
     result.blerc_vertices_i.resize(original_size + bc.blend_vtx_count);
-    auto* out_vertices = &result.blerc_vertices_i[original_size];
+    BlercVtxInt* out_vertices = nullptr;
+    if (bc.blend_vtx_count) {
+      out_vertices = &result.blerc_vertices_i[original_size];
+    }
 
     // the base position of this vertex.
     for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
