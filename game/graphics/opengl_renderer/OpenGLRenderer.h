@@ -98,6 +98,10 @@ class OpenGLRenderer {
     return ret;
   }
 
+  const std::vector<GLuint>* anim_slot_array() {
+    return m_texture_animator ? m_texture_animator->slots() : nullptr;
+  }
+
   SharedRenderState m_render_state;
   Profiler m_profiler;
   SmallProfiler m_small_profiler;

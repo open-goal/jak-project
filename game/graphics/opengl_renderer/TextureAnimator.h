@@ -184,9 +184,10 @@ class TextureAnimator {
   void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
   GLuint get_by_slot(int idx);
   void draw_debug_window();
-  const std::vector<GLuint>* slots() { return &m_output_slots; }
+  const std::vector<GLuint>* slots() { return &m_public_output_slots; }
 
  private:
+  void copy_private_to_public();
   void setup_texture_anims();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
@@ -199,7 +200,7 @@ class TextureAnimator {
 
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
 
-  void set_up_opengl_for_shader(const ShaderContext& shader,
+  bool set_up_opengl_for_shader(const ShaderContext& shader,
                                 std::optional<GLuint> texture,
                                 bool prim_abe);
   void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
@@ -271,6 +272,7 @@ class TextureAnimator {
     GLuint enable_tex;
     GLuint channel_scramble;
     GLuint tcc;
+    GLuint alpha_multiply;
   } m_uniforms;
 
   struct {
@@ -283,7 +285,13 @@ class TextureAnimator {
   u8 m_index_to_clut_addr[256];
   OpenGLTexturePool m_opengl_texture_pool;
 
-  std::vector<GLuint> m_output_slots;
+  std::vector<GLuint> m_private_output_slots;
+  std::vector<GLuint> m_public_output_slots;
+
+  struct Bool {
+    bool b = false;
+  };
+  std::vector<Bool> m_output_debug_flags;
 
   struct ClutBlenderGroup {
     std::vector<ClutBlender> blenders;

@@ -251,7 +251,6 @@ void extract_common(const ObjectFileDB& db,
 
   std::set<std::string> textures_we_have;
 
-
   // put _all_ index textures in common.
   for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
     tfrag_level.index_textures.push_back(tex);

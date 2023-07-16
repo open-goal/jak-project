@@ -372,15 +372,24 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
   m_uniforms.tcc = glGetUniformLocation(shader.id(), "tcc");
+  m_uniforms.alpha_multiply = glGetUniformLocation(shader.id(), "alpha_multiply");
 
   // create a single "dummy texture" with all 0 data.
   // this is faster and easier than switching shaders to one without texturing, and is used
   // only rarely
   glGenTextures(1, &m_dummy_texture);
   glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-  std::vector<u8> data(16 * 16 * 4);
+  std::vector<u32> data(16 * 16);
+  u32 c0 = 0xa0303030;
+  u32 c1 = 0xa0e0e0e0;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      data[i * 16 + j] = (((i / 4) & 1) ^ ((j / 4) & 1)) ? c1 : c0;
+    }
+  }
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                data.data());
+  glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
 
   shader.activate();
@@ -402,7 +411,9 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
     m_index_to_clut_addr[i] = clx + cly * 16;
   }
 
-  m_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
+  m_public_output_slots.resize(jak2_animated_texture_slots().size(), m_dummy_texture);
+  m_private_output_slots = m_public_output_slots;
+  m_output_debug_flags.resize(jak2_animated_texture_slots().size());
 
   // animation-specific stuff
   setup_texture_anims();
@@ -431,7 +442,7 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
       opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
     }
 
-    m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
+    m_private_output_slots.at(anim.dest_slot) = anim.fbt->texture();
 
     // set up the source textures
     for (const auto& layer : def.layers) {
@@ -450,14 +461,26 @@ void TextureAnimator::draw_debug_window() {
 
   auto& slots = jak2_animated_texture_slots();
   for (size_t i = 0; i < slots.size(); i++) {
-    ImGui::Text("Slot %d", (int)i);
-    glBindTexture(GL_TEXTURE_2D, m_output_slots[i]);
+    ImGui::Text("Slot %d %s", (int)i, slots[i].c_str());
+    glBindTexture(GL_TEXTURE_2D, m_private_output_slots[i]);
     int w, h;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    ImGui::Image((void*)m_output_slots[i], ImVec2(w, h));
+    ImGui::Image((void*)m_private_output_slots[i], ImVec2(w, h));
+    ImGui::Checkbox(fmt::format("mark {}", i).c_str(), &m_output_debug_flags.at(i).b);
   }
   glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void TextureAnimator::copy_private_to_public() {
+  auto& slots = jak2_animated_texture_slots();
+  for (size_t i = 0; i < slots.size(); i++) {
+    if (m_output_debug_flags[i].b) {
+      m_public_output_slots[i] = m_dummy_texture;
+    } else {
+      m_public_output_slots[i] = m_private_output_slots[i];
+    }
+  }
 }
 
 /*!
@@ -486,7 +509,7 @@ void TextureAnimator::add_to_clut_blender_group(int idx,
     grp.blenders.emplace_back(prefix, std::vector<std::string>{prefix + suffix0, prefix + suffix1},
                               dgo, m_common_level, &m_opengl_texture_pool);
     grp.outputs.push_back(output_slot_by_idx(GameVersion::Jak2, prefix));
-    m_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
+    m_private_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
   }
 }
 
@@ -497,8 +520,8 @@ TextureAnimator::~TextureAnimator() {
 }
 
 GLuint TextureAnimator::get_by_slot(int idx) {
-  ASSERT(idx >= 0 && idx < (int)m_output_slots.size());
-  return m_output_slots[idx];
+  ASSERT(idx >= 0 && idx < (int)m_public_output_slots.size());
+  return m_public_output_slots[idx];
 }
 
 // IDs sent from GOAL telling us what texture operation to perform.
@@ -719,6 +742,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   glDepthMask(GL_TRUE);
   glEnable(GL_DEPTH_TEST);
   glColorMask(true, true, true, true);
+  copy_private_to_public();
 }
 
 /*!
@@ -822,6 +846,8 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
     glUniform1i(m_uniforms.enable_tex, 1);
     glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
     glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
+    // not sure if this is right or not: the entire cloud stuff is kinda broken.
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
     glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -857,7 +883,9 @@ void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
 }
 
 void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();
+  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
+  glUniform1f(m_uniforms.alpha_multiply, 1.f);
+
   dprintf("[tex anim] set clut alpha\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
@@ -885,7 +913,9 @@ void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
 }
 
 void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();
+  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
+  glUniform1f(m_uniforms.alpha_multiply, 1.f);
+
   dprintf("[tex anim] __copy__ clut alpha\n");
   ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
   auto* data = (const TextureAnimPcTransform*)(tf.data);
@@ -927,7 +957,7 @@ void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx) {
   float weights[2] = {1.f - f, f};
   auto& blender = m_clut_blender_groups.at(idx);
   for (size_t i = 0; i < blender.blenders.size(); i++) {
-    m_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+    m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
   }
 }
 
@@ -1077,6 +1107,8 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glColorMask(true, true, true, true);
+    // write the exact specified alpha (texture holds game-style alphas)
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
     {
       auto p = scoped_prof("erase-draw");
       glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -1224,14 +1256,27 @@ void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
     }
 
     // use ADGIF shader data to set OpenGL state
-    set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
+    bool writes_alpha =
+        set_up_opengl_for_shader(m_current_shader, gpu_texture, true);  // ABE forced on here.
 
     // set up uniform buffers for the coordinates for this draw.
     set_uniforms_from_draw_data(draw_data, dest_te.tex_width, dest_te.tex_height);
 
     ASSERT(dest_te.tex);
-    // draw!
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    if (writes_alpha) {
+      glColorMask(true, true, true, false);
+      glUniform1f(m_uniforms.alpha_multiply, 2.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glColorMask(false, false, false, true);
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    } else {
+      // we don't write alpha out. So apply alpha multiplier for blending.
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    }
+
     // debug_save_opengl_texture("opengl_draw_result.png", dest_te.tex->texture());
     // debug_save_opengl_texture("opengl_test.png", gpu_texture);
   } else {
@@ -1472,7 +1517,7 @@ void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
   glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
 }
 
-void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
+bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
                                                std::optional<GLuint> texture,
                                                bool prim_abe) {
   if (texture) {
@@ -1536,7 +1581,9 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     do_alpha_test = false;
   }
 
+  bool writes_alpha = true;
   if (alpha_test_mask_alpha_trick) {
+    writes_alpha = false;
     glColorMask(true, true, true, false);
   } else {
     glColorMask(true, true, true, true);
@@ -1597,6 +1644,7 @@ void TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
     glDisable(GL_BLEND);
   }
   glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
+  return writes_alpha;
 }
 
 namespace {
@@ -1721,6 +1769,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
       glDisable(GL_BLEND);
       glDisable(GL_DEPTH_TEST);
       glColorMask(true, true, true, true);
+      glUniform1f(m_uniforms.alpha_multiply, 1.f);
       glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
@@ -1747,12 +1796,22 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
                                       anim.fbt->height());
       set_uniforms_from_draw_data(draw_data, anim.fbt->width(), anim.fbt->height());
 
-      // draw!
-      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      if (true) {  // todo
+        glColorMask(true, true, true, false);
+        glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glColorMask(false, false, false, true);
+        glUniform1f(m_uniforms.alpha_multiply, 1.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      } else {
+        // we don't write alpha out. So apply alpha multiplier for blending.
+        glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      }
     }
   }
   // Finish
-  m_output_slots.at(anim.dest_slot) = anim.fbt->texture();
+  m_private_output_slots.at(anim.dest_slot) = anim.fbt->texture();
   glBindTexture(GL_TEXTURE_2D, anim.fbt->texture());
   glGenerateMipmap(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
