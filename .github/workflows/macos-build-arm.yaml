@@ -1,4 +1,4 @@
-name: MacOS Build Clang
+name: MacOS Build
 
 on:
   workflow_call:
@@ -12,8 +12,8 @@ on:
 
 jobs:
   build:
-    name: Clang
-    runs-on: macos-12
+    name: ARM
+    runs-on: macos-latest
     timeout-minutes: 120
 
     env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
@@ -27,8 +27,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Set up ARM64 environment
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
       - name: Install Package Dependencies
-        run: brew install cmake nasm ninja
+        run: arch -arm64 brew install cmake ninja
 
       - name: Setup Buildcache
         uses: mikehardy/buildcache-action@v2.1.0
@@ -49,9 +52,6 @@ jobs:
         run: cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 
       - name: Run Tests
-        continue-on-error: true # until macOS is stable
-        env:
-          GTEST_OUTPUT: "xml:opengoal-test-report.xml"
         run: ./test.sh
 
       - name: Upload artifact

@@ -1,6 +1,10 @@
 #include "Merc2.h"
 
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
 #include <xmmintrin.h>
+#endif
 
 #include "common/global_profiler/GlobalProfiler.h"
 

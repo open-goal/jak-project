@@ -60,6 +60,84 @@ enum X86_REG : s8 {
   XMM15,  // saved
 };
 
+// TODO - i think it'll be better to make some sort of abstraction
+// mapping between x86 and arm, but just using this enum as a place to prototype
+// the registers to use.
+enum ARM64_REG : s8 {
+  X0,  // arg 0, caller-saved RDI
+  X1,  // arg 1, caller-saved RSI
+  X2,  // arg 2, caller-saved RDX
+  X3,  // arg 3, caller-saved RCX
+  X4,  // arg 4, caller-saved R8
+  X5,  // arg 5, caller-saved R9
+  X6,  // arg 6, caller-saved R10
+  X7,  // arg 7, caller-saved R11
+
+  X8,  // return, temp, not saved (RAX)
+
+  X9,   // temp, not-saved
+  X10,  // temp, not-saved
+  X11,  // temp, not-saved
+  X12,  // temp, not-saved
+  X13,  // temp, not-saved
+  X14,  // temp, not-saved
+  X15,  // temp, not-saved
+  X16,  // temp, not-saved
+  X17,  // temp, not-saved
+  X18,  // temp, not-saved
+
+  x19,  // saved TODO purpose?, R12
+  x20,  // pp, R13
+  x21,  // st, R14
+  x22,  // offset, TODO purpose?, R15
+  X23,  // unused, callee saved
+  X24,  // unused, callee saved
+  X25,  // unused, callee saved
+  X26,  // unused, callee saved
+  X27,  // unused, callee saved
+  X28,  // unused, callee saved
+  X29,  // callee saved, FP - don't use it
+  X30,  // LR - don't use it
+
+  SP,  // stack pointer
+
+  // quadword registers, equivalent to XMMs
+  // the convention in arm64 is the callee preserves all Q values
+  // at the same time though, the caller should not depend on this convention!
+  Q0,
+  Q1,
+  Q2,
+  Q3,
+  Q4,
+  Q5,
+  Q6,
+  Q7,
+  Q8,
+  Q9,
+  Q10,
+  Q11,
+  Q12,
+  Q13,
+  Q14,
+  Q15,
+  Q16,
+  Q17,
+  Q18,
+  Q19,
+  Q20,
+  Q21,
+  Q22,
+  Q23,
+  Q24,
+  Q25,
+  Q26,
+  Q27,
+  Q28,
+  Q29,
+  Q30,
+  Q31
+};
+
 class Register {
  public:
   Register() = default;
