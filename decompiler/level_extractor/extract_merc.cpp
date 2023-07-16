@@ -796,12 +796,8 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
   const auto& level_tex = out.textures.at(idx_in_level_texture);
   const auto& it = tex_db.animated_tex_output_to_anim_slot.find(level_tex.debug_name);
   if (it != tex_db.animated_tex_output_to_anim_slot.end()) {
-    lg::error("Animated slot {} -> {}", level_tex.debug_name, it->second);
     return -int(it->second) - 1;
-  } else {
-    // lg::warn("no anim: {}", level_tex.debug_name);
   }
-
   return idx_in_level_texture;
 }
 
