@@ -1617,12 +1617,12 @@
 
 (defmethod get-trans atoll-tank ((obj atoll-tank) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
-  (let ((v1-0 (-> obj root-override)))
+  (let ((v1-0 (-> obj root)))
     (case arg0
       ((3 2)
        (let ((v0-0 (new 'static 'vector :w 1.0)))
          (set! (-> v0-0 quad) (-> v1-0 trans quad))
-         (set! (-> v0-0 y) (+ 12288.0 (-> v0-0 y)))
+         (+! (-> v0-0 y) 12288.0)
          v0-0
          )
        )
@@ -1636,8 +1636,8 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior atoll-tank-init-by-other atoll-tank ((arg0 process-drawable) (arg1 int))
   (set! (-> self is-master?) #f)
-  (set! (-> self root-override) (the-as collide-shape (new 'process 'trsqv)))
-  (let ((s4-0 (-> self root-override)))
+  (set! (-> self root) (the-as collide-shape (new 'process 'trsqv)))
+  (let ((s4-0 (-> self root)))
     (set! (-> s4-0 trans quad) (-> arg0 root trans quad))
     (quaternion-copy! (-> s4-0 quat) (-> arg0 root quat))
     (vector-identity! (-> s4-0 scale))
@@ -1685,7 +1685,7 @@
   :virtual #t
   :trans (behavior ()
     (if (-> self is-master?)
-        (spawn (-> self aftermath-part) (-> self root-override trans))
+        (spawn (-> self aftermath-part) (-> self root trans))
         )
     (none)
     )
@@ -1776,7 +1776,7 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-28 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-28 prim-core collide-with))
       )
-    (set! (-> obj root-override) s4-0)
+    (set! (-> obj root) s4-0)
     )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton
@@ -1807,12 +1807,12 @@ This commonly includes things such as:
      )
     (else
       (logior! (-> obj draw status) (draw-control-status no-draw))
-      (let ((v1-54 (-> obj root-override root-prim)))
+      (let ((v1-54 (-> obj root root-prim)))
         (set! (-> v1-54 prim-core collide-as) (collide-spec))
         (set! (-> v1-54 prim-core collide-with) (collide-spec))
         )
-      (set! (-> obj root-override backup-collide-as) (collide-spec))
-      (set! (-> obj root-override backup-collide-with) (collide-spec))
+      (set! (-> obj root backup-collide-as) (collide-spec))
+      (set! (-> obj root backup-collide-with) (collide-spec))
       0
       (go (method-of-object obj dormant))
       )

@@ -167,13 +167,13 @@
 (defmethod adjust-depth! gator ((obj gator))
   "Changes the height based on the ocean depth
 @see [[get-height]]"
-  (set! (-> obj ocean-y) (get-height *ocean* (-> obj root-override2 trans) #t))
-  (set! (-> obj root-override2 trans y) (+ -10240.0 (-> obj ocean-y)))
+  (set! (-> obj ocean-y) (get-height *ocean* (-> obj root trans) #t))
+  (set! (-> obj root trans y) (+ -10240.0 (-> obj ocean-y)))
   )
 
 (defmethod update-facing! gator ((obj gator) (arg0 vector))
   "Updates the `new-facing` vector"
-  (let ((matrix (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root-override2 quat))))
+  (let ((matrix (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat))))
     (set! (-> arg0 quad) (-> matrix vector 2 quad))
     )
   arg0
@@ -339,9 +339,7 @@
       )
     (let ((enemy-target (get-enemy-target self)))
       (when enemy-target
-        (let ((dir-to-target
-                (vector-! (new 'stack-no-clear 'vector) (get-trans enemy-target 0) (-> self root-override2 trans))
-                )
+        (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (get-trans enemy-target 0) (-> self root trans)))
               (nav-state (-> self nav state))
               (s5-0 (new 'stack-no-clear 'vector))
               )
@@ -374,13 +372,13 @@
   :virtual #t
   :event (the-as (function process int symbol event-message-block object :behavior gator) enemy-event-handler)
   :enter (behavior ()
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((_self self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> _self enemy-flags)))
           (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> _self enemy-flags))))
           )
       (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> _self enemy-flags))))
-      (set! (-> _self nav callback-info) (-> _self enemy-info-override callback-info))
+      (set! (-> _self nav callback-info) (-> _self enemy-info callback-info))
       )
     0
     (let ((__self self))
@@ -388,7 +386,7 @@
       )
     0
     (let ((nav-state (-> self nav state)))
-      (set! (-> nav-state speed) (* 1.25 (-> self enemy-info-override run-travel-speed)))
+      (set! (-> nav-state speed) (* 1.25 (-> self enemy-info run-travel-speed)))
       )
     0
     (set! (-> self lock-nav-target) #f)
@@ -424,7 +422,7 @@
            )
        (set! (-> self lock-nav-target) #t)
        (let ((nav (-> self nav)))
-         (set! (-> nav target-speed) (-> self enemy-info-override walk-travel-speed))
+         (set! (-> nav target-speed) (-> self enemy-info walk-travel-speed))
          )
        0
        (let ((_nav (-> self nav)))
@@ -436,7 +434,7 @@
            (set! (-> velocity quad) (-> nav-state velocity quad))
            )
          (vector-normalize! velocity 32768.0)
-         (vector+! velocity velocity (-> self root-override2 trans))
+         (vector+! velocity velocity (-> self root trans))
          (let ((_nav-state (-> self nav state)))
            (logclear! (-> _nav-state flags) (nav-state-flag directional-mode))
            (logior! (-> _nav-state flags) (nav-state-flag target-poly-dirty))
@@ -473,7 +471,7 @@
         (let ((nav-state (-> self nav state)))
           (set! (-> target-pos quad) (-> nav-state target-post quad))
           )
-        (if (and (-> self lock-nav-target) (< (vector-vector-distance (-> self root-override2 trans) target-pos) 8192.0))
+        (if (and (-> self lock-nav-target) (< (vector-vector-distance (-> self root trans) target-pos) 8192.0))
             (react-to-focus self)
             )
         )
@@ -603,7 +601,7 @@
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
     (set! (-> cshape max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) cshape)
+    (set! (-> obj root) cshape)
     )
   0
   (none)
@@ -621,7 +619,7 @@
     (set! (-> nav speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
   (adjust-depth! obj)
   (set! (-> obj turn-time) 0)

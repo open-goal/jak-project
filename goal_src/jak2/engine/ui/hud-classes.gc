@@ -7,8 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(defglobalconstant SKIP_MINIMAP_DRAW #f)
-
 (defmethod draw hud-map ((obj hud-map))
   (set-hud-piece-position!
     (-> obj sprites 1)
@@ -36,9 +34,6 @@
   (let ((t9-5 (method-of-type hud draw)))
     (t9-5 obj)
     )
-  (#when SKIP_MINIMAP_DRAW
-      (return #f)
-      )
   (cond
     ((< (-> *setting-control* user-current race-minimap) 0)
      (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -258,10 +253,10 @@
   )
 
 (defmethod update-values hud-health ((obj hud-health))
-  (set! (-> obj values 0 target) (the int (* 10.0 (-> *target* fact-override health))))
-  (set! (-> obj values 1 target) (the-as int (-> *target* fact-override health-pickup-time)))
+  (set! (-> obj values 0 target) (the int (* 10.0 (-> *target* fact health))))
+  (set! (-> obj values 1 target) (the-as int (-> *target* fact health-pickup-time)))
   (set! (-> obj values 2 target) (mod (the int (+ 0.5 (-> *target* game eco-pill-dark))) 100))
-  (set! (-> obj values 3 target) (the-as int (-> *target* fact-override eco-pill-dark-pickup-time)))
+  (set! (-> obj values 3 target) (the-as int (-> *target* fact eco-pill-dark-pickup-time)))
   (if (and (zero? (-> obj values 2 target)) (!= (-> *target* game eco-pill-dark) 0.0))
       (set! (-> obj values 2 target) 100)
       )
@@ -402,10 +397,10 @@
   )
 
 (defmethod update-values hud-dark-eco-symbol ((obj hud-dark-eco-symbol))
-  (set! (-> obj values 0 target) (the int (* 10.0 (-> *target* fact-override health))))
-  (set! (-> obj values 1 target) (the-as int (-> *target* fact-override health-pickup-time)))
+  (set! (-> obj values 0 target) (the int (* 10.0 (-> *target* fact health))))
+  (set! (-> obj values 1 target) (the-as int (-> *target* fact health-pickup-time)))
   (set! (-> obj values 2 target) (mod (the int (+ 0.5 (-> *target* game eco-pill-dark))) 100))
-  (set! (-> obj values 3 target) (the-as int (-> *target* fact-override eco-pill-dark-pickup-time)))
+  (set! (-> obj values 3 target) (the-as int (-> *target* fact eco-pill-dark-pickup-time)))
   (if (and (or (and (zero? (-> obj values 2 target)) (!= (-> *target* game eco-pill-dark) 0.0))
                (focus-test? *target* dark)
                )
@@ -511,7 +506,7 @@
   (when (not (paused?))
     (let ((s5-1 (new 'stack-no-clear 'quaternion)))
       (quaternion-axis-angle! s5-1 0.0 1.0 0.0 364.0889)
-      (quaternion*! (-> obj icons 0 icon 0 root-override quat) s5-1 (-> obj icons 0 icon 0 root-override quat))
+      (quaternion*! (-> obj icons 0 icon 0 root quat) s5-1 (-> obj icons 0 icon 0 root quat))
       )
     )
   ((method-of-type hud draw) obj)
@@ -1040,7 +1035,7 @@
   (cond
     ((focus-test? *target* gun)
      (set! (-> obj values 0 target) (the-as int (-> *target* gun gun-type)))
-     (set! (-> obj values 1 target) (the int (get-gun-ammo (-> *target* fact-override))))
+     (set! (-> obj values 1 target) (the int (get-gun-ammo (-> *target* fact))))
      (logclear! (-> obj flags) (hud-flags disable))
      (logior! (-> obj flags) (hud-flags show))
      )

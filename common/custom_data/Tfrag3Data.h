@@ -18,10 +18,12 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 37;
+constexpr int TFRAG3_VERSION = 38;
 
 enum MemoryUsageCategory {
   TEXTURE,
+
+  SPECIAL_TEXTURE,
 
   TIE_DEINST_VIS,
   TIE_DEINST_INDEX,
@@ -178,7 +180,7 @@ struct PackedShrubVertices {
 // check visibility.
 struct StripDraw {
   DrawMode mode;        // the OpenGL draw settings.
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw (negative for anim slot)
 
   struct {
     u32 idx_of_first_idx_in_full_buffer = 0;
@@ -288,6 +290,18 @@ struct Texture {
   std::string debug_name;
   std::string debug_tpage_name;
   bool load_to_pool = false;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
+struct IndexTexture {
+  u16 w, h;
+  u32 combo_id = 0;
+  std::vector<u8> index_data;
+  std::vector<std::string> level_names;
+  std::string name;
+  std::string tpage_name;
+  std::array<math::Vector4<u8>, 256> color_table;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
 };
@@ -458,7 +472,7 @@ static_assert(sizeof(MercVertex) == 64);
 
 struct MercDraw {
   DrawMode mode;
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw (negative for anim slot)
   u8 eye_id = 0xff;     // 0xff if not eyes, (slot << 1) | (is_r)
   u32 first_index;
   u32 index_count;
@@ -542,6 +556,7 @@ struct Level {
   u16 version = TFRAG3_VERSION;
   std::string level_name;
   std::vector<Texture> textures;
+  std::vector<IndexTexture> index_textures;
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;

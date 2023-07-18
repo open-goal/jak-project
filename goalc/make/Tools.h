@@ -65,9 +65,9 @@ class SubtitleTool : public Tool {
   bool needs_run(const ToolInput& task, const PathMap& path_map) override;
 };
 
-class Subtitle2Tool : public Tool {
+class SubtitleV2Tool : public Tool {
  public:
-  Subtitle2Tool();
+  SubtitleV2Tool();
   bool run(const ToolInput& task, const PathMap& path_map) override;
   bool needs_run(const ToolInput& task, const PathMap& path_map) override;
 };

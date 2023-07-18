@@ -30,4 +30,6 @@ std::string current_local_timestamp_no_colons();
 std::string current_isotimestamp();
 std::string to_upper(const std::string& str);
 std::string to_lower(const std::string& str);
+/// Is this a valid character for a hex number?
+bool hex_char(char c);
 }  // namespace str_util

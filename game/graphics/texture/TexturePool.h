@@ -14,6 +14,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TextureConverter.h"
+#include "game/graphics/texture/TextureID.h"
 
 // verify all texture lookups.
 // will make texture lookups slower and likely caused dropped frames when loading
@@ -71,18 +72,6 @@ constexpr int SKY_TEXTURE_VRAM_ADDRS[2] = {8064, 8096};
  * The loader will inform us when things are added/removed.
  * The game will inform us when it uploads to VRAM
  */
-
-struct PcTextureId {
-  u16 page = -1;
-  u16 tex = -1;
-
-  PcTextureId(u16 p, u16 t) : page(p), tex(t) {}
-  PcTextureId() = default;
-
-  static PcTextureId from_combo_id(u32 val) { return PcTextureId(val >> 16, val & 0xffff); }
-
-  bool operator==(const PcTextureId& other) const { return page == other.page && tex == other.tex; }
-};
 
 template <typename T>
 class TextureMap {
@@ -303,10 +292,11 @@ struct GoalTexturePage {
 class TexturePool {
  public:
   TexturePool(GameVersion version);
-  void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
+  void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr, bool debug);
   GpuTexture* give_texture(const TextureInput& in);
   GpuTexture* give_texture_and_load_to_vram(const TextureInput& in, u32 vram_slot);
   void unload_texture(PcTextureId tex_id, u64 gpu_id);
+  void update_gl_texture(GpuTexture* texture, u32 new_w, u32 new_h, GLuint new_gl_texture);
 
   /*!
    * Look up an OpenGL texture by vram address. Return std::nullopt if the game hasn't loaded

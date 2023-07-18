@@ -745,7 +745,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
   // allow shifting stuff for setting bitfields
   if (m_kind == Kind::LEFT_SHIFT) {
-    return TP_Type::make_from_ts("int");
+    return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",

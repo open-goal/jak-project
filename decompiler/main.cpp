@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
   if (config.process_tpages || config.levels_extract) {
     auto textures_out = out_folder / "textures";
     file_util::create_dir_if_needed(textures_out);
-    auto result = db.process_tpages(tex_db, textures_out);
+    auto result = db.process_tpages(tex_db, textures_out, config);
     if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(textures_out / "tpage-dir.txt", result);
       file_util::write_text_file(textures_out / "tex-remap.txt",
@@ -294,8 +294,8 @@ int main(int argc, char** argv) {
     auto level_out_path =
         file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
     file_util::create_dir_if_needed(level_out_path);
-    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels, config.extract_collision, level_out_path);
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config, config.rip_levels,
+                       config.extract_collision, level_out_path);
   }
 
   mem_log("After extraction: {} MB", get_peak_rss() / (1024 * 1024));

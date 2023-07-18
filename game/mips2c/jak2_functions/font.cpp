@@ -665,8 +665,14 @@ u64 execute(void* ctxt) {
   c->load_symbol2(v1, cache.math_camera);            // lw v1, *math-camera*(s7)
   c->lqc2(vf26, 812, v1);                           // lqc2 vf26, 812(v1)
   c->lqc2(vf27, 812, v1);                           // lqc2 vf27, 812(v1)
-  c->vadd_bc(DEST::xy, BC::w, vf26, vf26, vf0);     // vaddw.xy vf26, vf26, vf0
-  c->vadd_bc(DEST::x, BC::w, vf26, vf26, vf0);      // vaddw.x vf26, vf26, vf0
+  // shadow hack begin
+  c->load_symbol2(v1, cache.video_params);
+  c->lw(t0, 16, v1);
+  c->vfs[vf26].f[0] += c->gprs[t0].f[0] * 2;
+  c->vfs[vf26].f[1] += 1;
+  // c->vadd_bc(DEST::xy, BC::w, vf26, vf26, vf0);     // vaddw.xy vf26, vf26, vf0
+  // c->vadd_bc(DEST::x, BC::w, vf26, vf26, vf0);      // vaddw.x vf26, vf26, vf0
+  // shadow hack end
   c->lw(v1, 68, a2);                                // lw v1, 68(a2)
   c->lqc2(vf25, 44, a2);                            // lqc2 vf25, 44(a2)
   c->lqc2(vf23, 12, a2);                            // lqc2 vf23, 12(a2)

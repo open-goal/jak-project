@@ -883,7 +883,7 @@
   (set! (-> self board ride-rot-old) -1.0)
   (set! (-> self control reaction) target-collision-reaction)
   (set! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :noboard #x1 :probe #x1))
-  (set! (-> self focus-status) (logior (focus-status board) (-> self focus-status)))
+  (logior! (-> self focus-status) (focus-status board))
   (logclear! (-> self control root-prim prim-core action) (collide-action can-ride))
   (set! (-> self control bend-target) 1.0)
   (let ((v1-82 (-> self node-list data)))
@@ -892,7 +892,7 @@
     (set! (-> v1-82 0 param2) (the-as basic (-> self control cspace-offset)))
     )
   (target-collide-set! 'board 0.0)
-  (set! (-> self state-flags) (logior (state-flags lleg-no-ik rleg-no-ik) (-> self state-flags)))
+  (logior! (-> self state-flags) (state-flags lleg-no-ik rleg-no-ik))
   (set! (-> self board thrust-scale) 1.0)
   (set! (-> self board turn-anim-targ) 0.0)
   (set! (-> self board turn-anim-frame) 0.0)
@@ -2250,11 +2250,11 @@
         (let ((v1-69 (logtest? (-> s4-0 status) 2)))
           (if (logtest? (-> s4-0 status) 1)
               (logior! (-> s4-0 status) 2)
-              (set! (-> s4-0 status) (logand -3 (-> s4-0 status)))
+              (logand! (-> s4-0 status) -3)
               )
           (if v1-69
               (logior! (-> s4-0 status) 1)
-              (set! (-> s4-0 status) (logand -2 (-> s4-0 status)))
+              (logand! (-> s4-0 status) -2)
               )
           )
         )
@@ -2336,7 +2336,7 @@
                     )
                 )
               (if (probe-test (-> self control) s3-5 (new 'static 'pat-surface :noentity #x1 :noboard #x1 :probe #x1))
-                  (set! (-> self control status) (logior (collide-status probe-hit) (-> self control status)))
+                  (logior! (-> self control status) (collide-status probe-hit))
                   (move-by-vector! (-> self control) s3-5)
                   )
               )
@@ -2769,7 +2769,7 @@
                       (vector-! (new 'stack-no-clear 'vector) s3-2 (-> self control trans))
                       (new 'static 'pat-surface :noentity #x1 :noboard #x1 :probe #x1)
                       )
-                    (set! (-> self control status) (logior (collide-status probe-hit) (-> self control status)))
+                    (logior! (-> self control status) (collide-status probe-hit))
                     )
                 (if (and (-> self board ride-lock-on) (not (logtest? (collide-status probe-hit) (-> self control status))))
                     (move-to-point! (-> self control) s3-2)
@@ -2965,13 +2965,11 @@
   "Add specified trick and point amount to trick list."
   (send-event (handle->process (-> obj process 0 notify)) 'notify 'trick-point arg0)
   (when (and (< (-> obj trick-count) 16)
-             (and (< 0.0 arg1)
-                  (nonzero? (-> (the-as fact-info-target (-> obj process 0 fact-override)) trick-point-duration))
-                  )
+             (and (< 0.0 arg1) (nonzero? (-> (the-as fact-info-target (-> obj process 0 fact)) trick-point-duration)))
              )
     (let ((s4-0 0))
       (when (>= (- (-> *display* game-clock frame-counter)
-                   (-> (the-as fact-info-target (-> obj process 0 fact-override)) trick-point-pickup-time)
+                   (-> (the-as fact-info-target (-> obj process 0 fact)) trick-point-pickup-time)
                    )
                 (seconds 30)
                 )
@@ -3025,44 +3023,27 @@
 
 (defmethod flush-trick-list board-info ((obj board-info))
   "Flush trick list and give out points."
-  (with-pp
-    (let ((f30-0 0.0))
-      (dotimes (v1-0 (-> obj trick-count))
-        (+! f30-0 (-> obj trick-points-array v1-0))
-        )
-      (when (< 0.0 f30-0)
-        (send-event
-          (handle->process (-> obj process 0 notify))
-          'notify
-          'trick-flush
-          f30-0
-          (-> obj trick-list)
-          (-> obj trick-count)
-          )
-        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-1 from) (process->ppointer pp))
-          (set! (-> a1-1 num-params) 2)
-          (set! (-> a1-1 message) 'get-pickup)
-          (set! (-> a1-1 param 0) (the-as uint 19))
-          (set! (-> a1-1 param 1) (the-as uint f30-0))
-          (let ((t9-1 send-event-function)
-                (v1-22 (-> obj process))
-                )
-            (t9-1
-              (if v1-22
-                  (-> v1-22 0 self-override)
-                  )
-              a1-1
-              )
-            )
-          )
-        (sound-play "trick-score")
-        (#when PC_PORT
-          (end-combo! *board-trick-tracker*)))
+  (let ((f30-0 0.0))
+    (dotimes (v1-0 (-> obj trick-count))
+      (+! f30-0 (-> obj trick-points-array v1-0))
       )
-    (set! (-> obj trick-count) 0)
-    0
-    0
-    (none)
+    (when (< 0.0 f30-0)
+      (send-event
+        (handle->process (-> obj process 0 notify))
+        'notify
+        'trick-flush
+        f30-0
+        (-> obj trick-list)
+        (-> obj trick-count)
+        )
+      (send-event (ppointer->process (-> obj process)) 'get-pickup (pickup-type trick-point) f30-0)
+      (sound-play "trick-score")
+      (#when PC_PORT
+        (end-combo! *board-trick-tracker*))
+      )
     )
+  (set! (-> obj trick-count) 0)
+  0
+  0
+  (none)
   )

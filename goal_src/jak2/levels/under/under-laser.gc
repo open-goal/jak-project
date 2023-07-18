@@ -1,0 +1,523 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: under-laser.gc
+;; name in dgo: under-laser
+;; dgos: UNB
+
+;; DECOMP BEGINS
+
+(deftype under-laser-info (basic)
+  ((options              uint8  :offset-assert   4)
+   (laser-radius         float  :offset-assert   8)
+   (laser-move-dist      float  :offset-assert  12)
+   (shadow-top-y         float  :offset-assert  16)
+   (shadow-height        float  :offset-assert  20)
+   (shadow-radius-adjust float  :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+
+(define *under-laser-infos* (new 'static 'boxed-array :type under-laser-info
+                              (new 'static 'under-laser-info
+                                :laser-radius 28508.16
+                                :laser-move-dist 35840.0
+                                :shadow-top-y -271360.0
+                                :shadow-height 3072.0
+                                :shadow-radius-adjust 4096.0
+                                )
+                              (new 'static 'under-laser-info
+                                :options #x1
+                                :laser-radius 27443.2
+                                :laser-move-dist 35512.32
+                                :shadow-top-y -288768.0
+                                :shadow-height 3276.8
+                                :shadow-radius-adjust 1024.0
+                                )
+                              (new 'static 'under-laser-info
+                                :options #x1
+                                :laser-radius 27443.2
+                                :laser-move-dist 35512.32
+                                :shadow-top-y -288768.0
+                                :shadow-height 3276.8
+                                :shadow-radius-adjust 1024.0
+                                )
+                              (new 'static 'under-laser-info
+                                :laser-radius 29573.12
+                                :laser-move-dist 35430.4
+                                :shadow-top-y -288153.6
+                                :shadow-height 3276.8
+                                :shadow-radius-adjust 1638.4
+                                )
+                              (new 'static 'under-laser-info
+                                :laser-radius 33423.36
+                                :laser-move-dist 35225.6
+                                :shadow-top-y -289382.4
+                                :shadow-height 2048.0
+                                :shadow-radius-adjust 2048.0
+                                )
+                              (new 'static 'under-laser-info
+                                :laser-radius 44933.12
+                                :laser-move-dist 35430.4
+                                :shadow-top-y -290406.4
+                                :shadow-height 4587.52
+                                :shadow-radius-adjust -4096.0
+                                )
+                              )
+        )
+
+(deftype under-laser-shadow (process-drawable)
+  ((root            collide-shape-moving         :override)
+   (info            under-laser-info             :offset-assert 200)
+   (trans-xz-offset vector               :inline :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 21
+  :size-assert         #xe0
+  :flag-assert         #x15006000e0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(deftype under-laser-slave (process-drawable)
+  ((root collide-shape-moving  :override)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(deftype under-laser (process-drawable)
+  ((root               collide-shape-moving         :override)
+   (info               under-laser-info             :offset-assert 200)
+   (id                 int8                         :offset-assert 204)
+   (lightning          lightning-control            :offset-assert 208)
+   (draw-test-script   script-context               :offset-assert 212)
+   (sync               sync-eased           :inline :offset-assert 216)
+   (laser-dir          vector               :inline :offset-assert 272)
+   (slave-trans-offset vector               :inline :offset-assert 288)
+   (zero-pos           vector               :inline :offset-assert 304)
+   (one-pos            vector               :inline :offset-assert 320)
+   )
+  :heap-base #xd0
+  :method-count-assert 23
+  :size-assert         #x150
+  :flag-assert         #x1700d00150
+  (:methods
+    (dormant () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (under-laser-method-22 (_type_) none 22)
+    )
+  )
+
+
+(defskelgroup skel-under-laser under-laser under-laser-lod0-jg under-laser-idle-ja
+              ((under-laser-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              )
+
+(defskelgroup skel-under-laser-shadow under-laser-shadow under-laser-shadow-lod0-jg under-laser-shadow-idle-ja
+              ((under-laser-shadow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 14)
+              :shadow under-laser-shadow-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(defstate idle (under-laser-shadow)
+  :virtual #t
+  :trans (behavior ()
+    (let ((a1-0 (ppointer->process (-> self parent)))
+          (v1-2 (-> self root))
+          )
+      (let ((f0-0 (-> v1-2 trans y)))
+        (set! (-> v1-2 trans quad) (-> (the-as process-drawable a1-0) root trans quad))
+        (vector+! (-> v1-2 trans) (-> v1-2 trans) (-> self trans-xz-offset))
+        (set! (-> v1-2 trans y) f0-0)
+        )
+      (let ((a0-3 (-> self draw shadow-ctrl)))
+        (let ((a1-5 (-> a0-3 settings)))
+          (logclear! (-> a1-5 flags) (shadow-flags disable-draw))
+          (set! (-> a1-5 center quad) (-> v1-2 trans quad))
+          )
+        (shadow-control-method-14
+          a0-3
+          (-> v1-2 trans)
+          (new 'static 'vector :y -1.0 :w 1.0)
+          409600.0
+          819.2
+          (+ 819.2 (-> self info shadow-height))
+          )
+        )
+      )
+    (let ((f0-3 (vector-vector-distance (math-camera-pos) (-> self root trans))))
+      (set! (-> self root scale x) (lerp-scale 0.5 3.5 f0-3 32768.0 245760.0))
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-laser-shadow) sleep-code)
+  :post (the-as (function none :behavior under-laser-shadow) ja-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior under-laser-shadow-init-by-other under-laser-shadow ((arg0 under-laser-info) (arg1 vector) (arg2 vector))
+  (set! (-> self info) arg0)
+  (set! (-> self trans-xz-offset quad) (-> arg1 quad))
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (let ((s3-0 (-> self root)))
+    (let ((v1-4 (ppointer->process (-> self parent))))
+      (set! (-> s3-0 scale quad) (-> arg2 quad))
+      (set! (-> s3-0 trans quad) (-> (the-as under-laser v1-4) root trans quad))
+      )
+    (vector+! (-> s3-0 trans) (-> s3-0 trans) arg1)
+    (set! (-> s3-0 trans y) (+ 819.2 (-> arg0 shadow-top-y)))
+    (let ((s4-1 (new 'stack-no-clear 'vector)))
+      (set! (-> s4-1 quad) (-> arg1 quad))
+      (vector-normalize! s4-1 1.0)
+      (quaternion-look-at! (-> s3-0 quat) s4-1 *up-vector*)
+      )
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-laser-shadow" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self draw bounds w) (+ 12288.0 (* 20480.0 (-> arg2 z))))
+  (set! (-> self draw shadow-ctrl)
+        (new 'process 'shadow-control -2048.0 -61440.0 69632.0 (shadow-flags shdf03 disable-draw) 245760.0)
+        )
+  (set! (-> self draw shadow-ctrl settings shadow-type) 1)
+  (go-virtual idle)
+  (none)
+  )
+
+(defstate idle (under-laser-slave)
+  :virtual #t
+  :trans (behavior ()
+    (let ((v1-0 (ppointer->process (-> self parent)))
+          (a0-1 (-> self root))
+          )
+      (set! (-> a0-1 trans quad) (-> (the-as under-laser v1-0) root trans quad))
+      (vector+! (-> a0-1 trans) (-> a0-1 trans) (-> (the-as under-laser v1-0) slave-trans-offset))
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-laser-slave) sleep-code)
+  :post (the-as (function none :behavior under-laser-slave) ja-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior under-laser-slave-init-by-other under-laser-slave ()
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (let ((gp-0 (-> self root))
+        (s5-0 (ppointer->process (-> self parent)))
+        )
+    (set! (-> gp-0 trans quad) (-> (the-as under-laser s5-0) root trans quad))
+    (vector+! (-> gp-0 trans) (-> gp-0 trans) (-> (the-as under-laser s5-0) slave-trans-offset))
+    (quaternion-copy! (-> gp-0 quat) (-> (the-as under-laser s5-0) root quat))
+    (quaternion-rotate-y! (-> gp-0 quat) (-> gp-0 quat) 32768.0)
+    (set! (-> gp-0 scale quad) (-> (the-as under-laser s5-0) root scale quad))
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-laser" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod under-laser-method-22 under-laser ((obj under-laser))
+  (with-pp
+    (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+      (set! (-> s5-0 start-pos quad) (-> obj root trans quad))
+      (set! (-> s5-0 move-dist quad) (-> obj slave-trans-offset quad))
+      (let ((v1-2 s5-0))
+        (set! (-> v1-2 radius) 409.6)
+        (set! (-> v1-2 collide-with) (collide-spec jak bot player-list))
+        (set! (-> v1-2 ignore-process0) obj)
+        (set! (-> v1-2 ignore-process1) #f)
+        (set! (-> v1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+        (set! (-> v1-2 action-mask) (collide-action solid))
+        )
+      (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
+        (let* ((s4-0 (-> s5-0 best-other-tri collide-ptr))
+               (s5-1 (if (type? s4-0 collide-shape-prim-sphere)
+                         s4-0
+                         )
+                     )
+               )
+          (when s5-1
+            (let ((s4-1 (new 'stack-no-clear 'vector)))
+              (vector-rotate-around-y! s4-1 (-> obj slave-trans-offset) (if (logtest? (-> obj info options) 1)
+                                                                            16384.0
+                                                                            -16384.0
+                                                                            )
+                                       )
+              (vector-normalize! s4-1 1.0)
+              (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-4 from) (process->ppointer pp))
+                (set! (-> a1-4 num-params) 2)
+                (set! (-> a1-4 message) 'attack)
+                (set! (-> a1-4 param 0) (the-as uint #f))
+                (let ((v1-11 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id damage))))
+                  (let* ((a0-15 *game-info*)
+                         (a2-2 (+ (-> a0-15 attack-id) 1))
+                         )
+                    (set! (-> a0-15 attack-id) a2-2)
+                    (set! (-> v1-11 id) a2-2)
+                    )
+                  (set! (-> v1-11 vector quad) (-> s4-1 quad))
+                  (set! (-> v1-11 shove-back) 12288.0)
+                  (set! (-> v1-11 shove-up) 8192.0)
+                  (set! (-> v1-11 damage) 1.0)
+                  (set! (-> a1-4 param 1) (the-as uint v1-11))
+                  )
+                (if (send-event-function (-> (the-as collide-shape-prim-sphere s5-1) cshape process) a1-4)
+                    (sound-play "und-laser-hit")
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defstate dormant (under-laser)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :trans (behavior ()
+    (if (not (script-eval (the-as pair (-> self draw-test-script))))
+        (go-virtual idle)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior under-laser) sleep-code)
+  )
+
+(defstate idle (under-laser)
+  :virtual #t
+  :enter (behavior ()
+    (process-spawn under-laser-slave :to self)
+    (let ((gp-1 (new 'stack-no-clear 'vector))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-float*! gp-1 (-> self slave-trans-offset) 0.5)
+      (set! (-> gp-1 y) 0.0)
+      (let* ((f0-2 0.000048828126)
+             (v1-9 gp-1)
+             (f0-3
+               (* f0-2
+                  (+ (sqrtf (+ (* (-> v1-9 x) (-> v1-9 x)) (* (-> v1-9 z) (-> v1-9 z)))) (-> self info shadow-radius-adjust))
+                  )
+               )
+             )
+        (set-vector! s5-0 3.5 1.0 f0-3 1.0)
+        )
+      (process-spawn under-laser-shadow (-> self info) gp-1 s5-0 :to self)
+      )
+    (update-vol! (-> self sound) 1.0)
+    (none)
+    )
+  :code (the-as (function none :behavior under-laser) sleep-code)
+  :post (behavior ()
+    (let ((f30-0 (get-norm! (-> self sync) 0)))
+      (vector-lerp! (-> self root trans) (-> self zero-pos) (-> self one-pos) f30-0)
+      (if (!= (-> self sync offset) 0.0)
+          (set! f30-0 (- 1.0 f30-0))
+          )
+      (set-under-laser! f30-0)
+      )
+    (let ((s5-0 (new 'stack-no-clear 'vector))
+          (s4-0 (new 'stack-no-clear 'vector))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-lerp!
+        s5-0
+        (-> self zero-pos)
+        (-> self one-pos)
+        (get-norm! (-> self sync) (the-as int (+ (current-time) (seconds 0.15))))
+        )
+      (vector-normalize-copy! s4-0 (-> self laser-dir) 1228.8)
+      (vector+! s4-0 s4-0 s5-0)
+      (set! (-> self lightning state meet data 0 quad) (-> s4-0 quad))
+      (vector-normalize-copy! gp-0 (-> self laser-dir) -1228.8)
+      (vector+! gp-0 gp-0 (-> self slave-trans-offset))
+      (vector+! gp-0 gp-0 s5-0)
+      (let ((v1-16 (-> self lightning)))
+        (set! (-> v1-16 state meet data (+ (-> v1-16 state points-to-draw) -1) quad) (-> gp-0 quad))
+        )
+      )
+    (let ((a1-10 (new 'stack-no-clear 'vector)))
+      (vector-float*! a1-10 (-> self slave-trans-offset) 0.5)
+      (vector+! a1-10 a1-10 (-> self root trans))
+      (update-trans! (-> self sound) a1-10)
+      )
+    (update! (-> self sound))
+    (under-laser-method-22 self)
+    (ja-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch process-drawable vs under-laser.
+(defmethod relocate under-laser ((obj under-laser) (arg0 int))
+  (if (nonzero? (-> obj lightning))
+      (&+! (-> obj lightning) arg0)
+      )
+  (the-as under-laser ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-laser ((obj under-laser) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-64 res-tag))
+  (set! (-> obj root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-laser" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-7 (res-lump-value (-> obj entity) 'extra-id uint128 :time -1000000000.0)))
+    (set! (-> obj id) (the-as int v1-7))
+    (set! (-> obj info) (-> *under-laser-infos* v1-7))
+    )
+  (let ((a1-6 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-11 0))
+      (if #t
+          (set! v1-11 (logior v1-11 1))
+          )
+      (set! (-> a1-6 sync-type) 'sync-eased)
+      (set! (-> a1-6 sync-flags) (the-as sync-flags v1-11))
+      )
+    (set! (-> a1-6 period) (the-as uint 1800))
+    (set! (-> a1-6 entity) arg0)
+    (set! (-> a1-6 percent) 0.0)
+    (set! (-> a1-6 ease-in) 0.15)
+    (set! (-> a1-6 ease-out) 0.15)
+    (set! (-> a1-6 pause-in) 0.0)
+    (set! (-> a1-6 pause-out) 0.0)
+    (initialize! (-> obj sync) a1-6)
+    )
+  (set! (-> obj clock) (-> *display* user0-clock))
+  (let ((s5-1 (-> obj root)))
+    (set-vector! (-> s5-1 scale) 1.25 1.25 1.25 1.0)
+    (set! sv-64 (new 'static 'res-tag))
+    (let ((v1-22 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-64))))
+      (when v1-22
+        (+! (-> s5-1 trans x) (-> v1-22 0))
+        (+! (-> s5-1 trans y) (-> v1-22 1))
+        (+! (-> s5-1 trans z) (-> v1-22 2))
+        )
+      )
+    (let ((f0-15 (res-lump-float arg0 'rotoffset)))
+      (if (!= f0-15 0.0)
+          (quaternion-rotate-y! (-> s5-1 quat) (-> s5-1 quat) f0-15)
+          )
+      )
+    (vector-z-quaternion! (-> obj laser-dir) (-> s5-1 quat))
+    (vector-normalize! (-> obj laser-dir) 1.0)
+    (quaternion-rotate-y! (-> s5-1 quat) (-> s5-1 quat) -16384.0)
+    (when (logtest? (-> obj info options) 1)
+      (let ((s4-1 (new 'stack-no-clear 'quaternion)))
+        (quaternion-vector-angle! s4-1 (-> obj laser-dir) 16384.0)
+        (quaternion*! (-> s5-1 quat) s4-1 (-> s5-1 quat))
+        )
+      )
+    (let ((f30-0 (-> obj info laser-radius)))
+      (let ((s4-2 (new 'stack-no-clear 'vector)))
+        (vector-normalize-copy! s4-2 (-> obj laser-dir) (- f30-0))
+        (vector+! (-> s5-1 trans) (-> s5-1 trans) s4-2)
+        )
+      (vector-normalize-copy! (-> obj slave-trans-offset) (-> obj laser-dir) (* 2.0 f30-0))
+      )
+    (set! (-> obj zero-pos quad) (-> s5-1 trans quad))
+    (let ((f30-1 (-> obj info laser-move-dist)))
+      (cond
+        ((logtest? (-> obj info options) 1)
+         (set! (-> obj one-pos quad) (-> obj zero-pos quad))
+         (+! (-> obj one-pos y) f30-1)
+         )
+        (else
+          (let ((s4-3 (new 'stack-no-clear 'vector)))
+            (vector-rotate-around-y! s4-3 (-> obj laser-dir) 16384.0)
+            (vector-normalize! s4-3 f30-1)
+            (vector+! (-> obj one-pos) (-> obj zero-pos) s4-3)
+            )
+          )
+        )
+      )
+    (vector-lerp! (-> s5-1 trans) (-> obj zero-pos) (-> obj one-pos) (get-norm! (-> obj sync) 0))
+    )
+  (let ((a2-13 (new 'static 'lightning-spec
+                 :name #f
+                 :flags (lightning-spec-flags lsf2)
+                 :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                 :end-color (new 'static 'rgba :a #x80)
+                 :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                 :fade-start-factor 0.2
+                 :fade-time 120.0
+                 :texture (new 'static 'texture-id :index #x83 :page #xc)
+                 :reduction 0.42
+                 :num-points 16
+                 :box-size 8192.0
+                 :merge-factor 0.1
+                 :merge-count 4
+                 :radius 2048.0
+                 :duration -1.0
+                 :sound #f
+                 )
+               )
+        )
+    (set! (-> obj lightning) (new 'process 'lightning-control a2-13 obj 0.0))
+    )
+  (let ((a3-5 (new 'stack-no-clear 'vector)))
+    (vector-float*! a3-5 (-> obj slave-trans-offset) 0.5)
+    (vector+! a3-5 a3-5 (-> obj root trans))
+    (if (zero? (-> obj id))
+        (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-near" :fo-max 40) a3-5))
+        (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-beam" :fo-max 40) a3-5))
+        )
+    )
+  (set! (-> obj draw-test-script) (res-lump-struct (-> obj entity) 'on-activate script-context))
+  (cond
+    ((and (script-eval (the-as pair (-> obj draw-test-script))) (= *bot-record-path* -1))
+     (update-vol! (-> obj sound) 0.0)
+     (go (method-of-object obj dormant))
+     )
+    (else
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )

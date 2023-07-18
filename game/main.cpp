@@ -12,11 +12,13 @@
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/dialogs.h"
 #include "common/util/os.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
+#include "graphics/gfx_test.h"
 
 #include "third-party/CLI11.hpp"
 
@@ -90,6 +92,8 @@ int main(int argc, char** argv) {
   bool disable_display = false;
   bool enable_debug_vm = false;
   bool enable_profiling = false;
+  std::string gpu_test = "";
+  std::string gpu_test_out_path = "";
   int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
@@ -104,6 +108,10 @@ int main(int argc, char** argv) {
   app.add_flag("--no-display", disable_display, "Disable video display");
   app.add_flag("--vm", enable_debug_vm, "Enable debug PS2 VM (defaulted to off)");
   app.add_flag("--profile", enable_profiling, "Enables profiling immediately from startup");
+  app.add_option("--gpu-test", gpu_test,
+                 "Tests for minimum graphics requirements.  Valid Options are: [opengl]");
+  app.add_option("--gpu-test-out-path", gpu_test_out_path,
+                 "Where to store the gpu test result file");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.footer(game_arg_documentation());
@@ -114,6 +122,17 @@ int main(int argc, char** argv) {
 
   if (show_version) {
     lg::print(build_revision());
+    return 0;
+  }
+
+  if (!gpu_test.empty() && !gpu_test_out_path.empty()) {
+    const auto output = tests::run_gpu_test(gpu_test);
+    json data = output;
+    try {
+      file_util::write_text_file(gpu_test_out_path, data.dump(2));
+    } catch (std::exception& e) {
+      return 1;
+    }
     return 0;
   }
 
@@ -132,6 +151,8 @@ int main(int argc, char** argv) {
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
     lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
+    dialogs::create_error_message_dialog(
+        "Unmet Requirements", "Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
   }
 

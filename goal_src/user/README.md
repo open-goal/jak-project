@@ -39,7 +39,8 @@ Additionally, you can provide a `repl-config.json` to set various REPL settings,
       "description": "Test Bind",
       "command": "(format 0 \"hello world\")"
     }
-  ]
+  ],
+  "perGameHistory": false // do not use separate history files for each game version
 }
 ```
 

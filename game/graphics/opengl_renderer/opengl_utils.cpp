@@ -71,6 +71,9 @@ FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format,
 }
 
 FramebufferTexturePair::~FramebufferTexturePair() {
+  if (m_moved_from) {
+    return;
+  }
   glDeleteFramebuffers(m_framebuffers.size(), m_framebuffers.data());
   glDeleteTextures(1, &m_texture);
 }

@@ -167,77 +167,80 @@ bool GroupTool::run(const ToolInput&, const PathMap& /*path_map*/) {
   return true;
 }
 
+void enumerate_subtitle_project_files(const std::string& tool_name,
+                                      const std::string& file_path,
+                                      const PathMap& path_map,
+                                      std::vector<GameSubtitleDefinitionFile>& files,
+                                      std::vector<std::string>& deps) {
+  open_subtitle_project(tool_name, file_path, files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.lines_path));
+    deps.push_back(path_map.apply_remaps(file.meta_path));
+    if (file.lines_base_path) {
+      deps.push_back(path_map.apply_remaps(file.lines_base_path.value()));
+    }
+    if (file.meta_base_path) {
+      deps.push_back(path_map.apply_remaps(file.meta_base_path.value()));
+    }
+  }
+}
+
+void run_subtitle_project_files(const std::string& tool_name,
+                                const std::string& file_path,
+                                const PathMap& path_map,
+                                std::vector<GameSubtitleDefinitionFile>& files) {
+  open_subtitle_project(tool_name, file_path, files);
+  for (auto& file : files) {
+    file.lines_path = path_map.apply_remaps(file.lines_path);
+    file.meta_path = path_map.apply_remaps(file.meta_path);
+    if (file.lines_base_path) {
+      file.lines_base_path = path_map.apply_remaps(file.lines_base_path.value());
+    }
+    if (file.meta_base_path) {
+      file.meta_base_path = path_map.apply_remaps(file.meta_base_path.value());
+    }
+  }
+}
+
 SubtitleTool::SubtitleTool() : Tool("subtitle") {}
 
 bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-
-  std::vector<std::string> deps;
   std::vector<GameSubtitleDefinitionFile> files;
-  open_subtitle_project("subtitle", task.input.at(0), files);
-  for (auto& file : files) {
-    deps.push_back(path_map.apply_remaps(file.lines_path));
-    if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
-      deps.push_back(path_map.apply_remaps(file.meta_path));
-      if (file.lines_base_path) {
-        deps.push_back(path_map.apply_remaps(file.lines_base_path.value()));
-      }
-      if (file.meta_base_path) {
-        deps.push_back(path_map.apply_remaps(file.meta_base_path.value()));
-      }
-    }
-  }
+  std::vector<std::string> deps;
+  enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
 bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
-  db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
-  db.m_subtitle_groups->hydrate_from_asset_file();
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
   std::vector<GameSubtitleDefinitionFile> files;
-  open_subtitle_project("subtitle", task.input.at(0), files);
-  for (auto& file : files) {
-    file.lines_path = path_map.apply_remaps(file.lines_path);
-    if (file.format == GameSubtitleDefinitionFile::Format::JSON) {
-      file.meta_path = path_map.apply_remaps(file.meta_path);
-      if (file.lines_base_path) {
-        file.lines_base_path = path_map.apply_remaps(file.lines_base_path.value());
-      }
-      if (file.meta_base_path) {
-        file.meta_base_path = path_map.apply_remaps(file.meta_base_path.value());
-      }
-    }
-  }
-  compile_game_subtitle(files, db, path_map.output_prefix);
+  run_subtitle_project_files(name(), task.input.at(0), path_map, files);
+  compile_game_subtitles(files, db, path_map.output_prefix);
   return true;
 }
 
-Subtitle2Tool::Subtitle2Tool() : Tool("subtitle2") {}
+SubtitleV2Tool::SubtitleV2Tool() : Tool("subtitle-v2") {}
 
-bool Subtitle2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+bool SubtitleV2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-
+  std::vector<GameSubtitleDefinitionFile> files;
   std::vector<std::string> deps;
-  std::vector<GameSubtitle2DefinitionFile> files;
-  open_subtitle2_project("subtitle2", task.input.at(0), files);
-  for (auto& file : files) {
-    deps.push_back(path_map.apply_remaps(file.file_path));
-  }
+  enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-bool Subtitle2Tool::run(const ToolInput& task, const PathMap& path_map) {
-  GameSubtitle2DB db(GameVersion::Jak2);  // TODO game version param
-  std::vector<GameSubtitle2DefinitionFile> files;
-  open_subtitle2_project("subtitle2", task.input.at(0), files);
-  for (auto& file : files) {
-    file.file_path = path_map.apply_remaps(file.file_path);
-  }
-  compile_game_subtitle2(files, db, path_map.output_prefix);
+bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
+  GameSubtitleDB db;
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
+  std::vector<GameSubtitleDefinitionFile> files;
+  run_subtitle_project_files(name(), task.input.at(0), path_map, files);
+  compile_game_subtitles(files, db, path_map.output_prefix);
   return true;
 }
 

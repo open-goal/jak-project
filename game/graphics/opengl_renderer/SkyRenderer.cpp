@@ -24,7 +24,8 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
                                  int my_id,
                                  int level_id,
                                  std::shared_ptr<SkyBlendGPU> shared_blender,
-                                 std::shared_ptr<SkyBlendCPU> shared_blender_cpu)
+                                 std::shared_ptr<SkyBlendCPU> shared_blender_cpu,
+                                 const std::vector<GLuint>* anim_slots)
     : BucketRenderer(name, my_id),
       m_shared_gpu_blender(shared_blender),
       m_shared_cpu_blender(shared_blender_cpu),
@@ -32,7 +33,8 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
                        my_id,
                        {tfrag3::TFragmentTreeKind::TRANS, tfrag3::TFragmentTreeKind::LOWRES_TRANS},
                        true,
-                       level_id) {}
+                       level_id,
+                       anim_slots) {}
 
 void SkyBlendHandler::init_shaders(ShaderLibrary& shaders) {
   m_tfrag_renderer.init_shaders(shaders);

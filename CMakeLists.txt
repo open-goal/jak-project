@@ -22,6 +22,13 @@ else()
     set(BUILD_SHARED_LIBS ON)
 endif()
 
+# For clangd
+if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    configure_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" 
+        "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
+endif()
+
 # Setup compiler flags
 # TODO - consider moving most of the configuration into presets
 # - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
@@ -112,7 +119,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo \
-        -O3 \
         -fdiagnostics-color=always"
         )
 
@@ -183,6 +189,9 @@ add_subdirectory(third-party/sqlite3)
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
 include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
 add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
+
+# native OS dialogs for error messages
+add_subdirectory(third-party/libtinyfiledialogs)
 
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 

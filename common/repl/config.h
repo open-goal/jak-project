@@ -44,6 +44,7 @@ struct Config {
       {KeyBind::Modifier::CTRL, "G", "Attach the debugger to the process", "(dbgc)"},
       {KeyBind::Modifier::CTRL, "B", "Displays the most recently caught backtrace", "(:di)"},
       {KeyBind::Modifier::CTRL, "N", "Full build of the game", "(mi)"}};
+  bool per_game_history = true;
 };
 void to_json(json& j, const Config& obj);
 void from_json(const json& j, Config& obj);

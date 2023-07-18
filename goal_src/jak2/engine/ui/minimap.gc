@@ -834,7 +834,8 @@
         )
 
 (let ((gp-0 *minimap*))
-  (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* 64 connection-minimap))
+  ;; note : minimap engine connections raised for pc port
+  (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* (#if PC_PORT 256 64) connection-minimap))
   (countdown (v1-7 6)
     (set! (-> gp-0 trail v1-7 used-by) #f)
     )
@@ -1134,8 +1135,8 @@
 
 (defmethod run-pending-updates! engine-minimap ((obj engine-minimap) (arg0 time-frame))
   (with-pp
-    (let ((s2-0 (the-as (pointer connection-pers) (&-> obj alive-list-override)))
-          (s3-0 (-> obj alive-list-override))
+    (let ((s2-0 (the-as (pointer connection-pers) (&-> obj alive-list)))
+          (s3-0 (-> obj alive-list))
           )
       (while s3-0
         (let ((s4-0 (-> s3-0 next)))
@@ -1172,8 +1173,8 @@
             ((and (logtest? (-> s3-0 flags) (minimap-flag fade-out)) (= (-> s3-0 alpha) 0.0))
              (kill-callback obj s3-0)
              (set! (-> s2-0 0) (-> s3-0 next))
-             (set! (-> s3-0 next) (-> obj dead-list-override))
-             (set! (-> obj dead-list-override) s3-0)
+             (set! (-> s3-0 next) (-> obj dead-list))
+             (set! (-> obj dead-list) s3-0)
              (+! (-> obj length) -1)
              )
             ((and (handle->process (-> s3-0 handle))
@@ -1974,7 +1975,7 @@
         )
       (dma-buffer-add-gs-set s5-0 (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x640 :ofy #x640)))
       (when (!= (-> obj frustum-alpha) 0.0)
-        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list))))
           (while s3-2
             (let ((a2-6 s3-2))
               (if (logtest? (-> (the-as connection-minimap a2-6) class flags) (minimap-flag frustum))
@@ -1998,7 +1999,7 @@
             (format *stdcon* "minimap: mini-map-icons texture is #f~%")
             )
         )
-      (let ((s3-4 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+      (let ((s3-4 (the-as connection-pers (-> *minimap* engine alive-list))))
         (while s3-4
           (let ((a2-7 s3-4))
             (if (logtest? (-> (the-as connection-minimap a2-7) class flags) (minimap-flag frustum))
@@ -2018,7 +2019,7 @@
           (&+! (-> arg0 buf base) 112)
           )
         )
-      (let ((s3-6 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+      (let ((s3-6 (the-as connection-pers (-> *minimap* engine alive-list))))
         (while s3-6
           (let ((a2-8 s3-6))
             (if (logtest? (-> (the-as connection-minimap a2-8) class flags) (minimap-flag racer))
@@ -2313,7 +2314,7 @@
                        ((not a2-2)
                         (when (!= (-> arg1 alpha) 0.0)
                           (when (not (get-trail-for-connection obj arg1 #t))
-                            (let ((s2-1 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+                            (let ((s2-1 (the-as connection-pers (-> *minimap* engine alive-list))))
                               (while s2-1
                                 (let ((a1-12 s2-1))
                                   (if (and (= (the-as float (-> a1-12 param 1)) 0.0) (logtest? (-> arg1 class flags) (minimap-flag trail)))
@@ -2530,7 +2531,7 @@
               (format *stdcon* "minimap: mini-map-icons texture is #f~%")
               )
           )
-        (let ((s4-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+        (let ((s4-2 (the-as connection-pers (-> *minimap* engine alive-list))))
           (while s4-2
             (let ((a2-1 s4-2))
               (draw-connection obj s5-1 (the-as connection-minimap a2-1))
@@ -2638,7 +2639,7 @@
             (f28-0 (the float (/ (-> s5-0 draw-pos y) 16)))
             (s4-2 (the-as connection-pers #f))
             )
-        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list-override))))
+        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list))))
           (while s3-2
             (let ((s2-2 s3-2))
               (when (logtest? (-> (the-as connection-minimap s2-2) class flags) (minimap-flag racer))

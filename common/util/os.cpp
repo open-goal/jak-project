@@ -1,6 +1,7 @@
 #include "os.h"
 
 #include "common/common_types.h"
+#include "common/log/log.h"
 
 #ifdef __linux__
 
@@ -21,19 +22,20 @@ size_t get_peak_rss() {
 #ifdef _WIN32
 // windows has a __cpuid
 #include <intrin.h>
-#elif __APPLE__
-// for now, just return 0's.
-void __cpuidex(int result[4], int eax, int ecx) {
-  for (int i = 0; i < 4; i++) {
-    result[i] = 0;
-  }
-}
-#else
+#elif __x86_64__
 // using int to be compatible with msvc's intrinsic
 void __cpuidex(int result[4], int eax, int ecx) {
   asm("cpuid\n\t"
       : "=a"(result[0]), "=b"(result[1]), "=c"(result[2]), "=d"(result[3])
       : "0"(eax), "2"(ecx));
+}
+#else
+// for now, just return 0's.
+void __cpuidex(int result[4], int eax, int ecx) {
+  lg::warn("cpuid not implemented on this platform");
+  for (int i = 0; i < 4; i++) {
+    result[i] = 0;
+  }
 }
 #endif
 

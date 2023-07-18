@@ -66,7 +66,7 @@
 ;; INFO: Return type mismatch collectable vs none.
 (defmethod initialize-params collectable ((obj collectable) (arg0 time-frame) (arg1 float))
   (logclear! (-> obj mask) (process-mask crate enemy platform ambient))
-  (set! (-> obj mask) (logior (process-mask collectable) (-> obj mask)))
+  (logior! (-> obj mask) (process-mask collectable))
   (set! (-> obj flags) (collectable-flags can-collect ignore-blue))
   (set! (-> obj bob-amount) arg1)
   (set! (-> obj bob-offset) (+ (the-as int (-> obj root-override trans x))
@@ -2163,7 +2163,7 @@
     (cond
       ((and *debug-segment* (< (-> *fuel-cell-tune-pos* w) 1000000000.0))
        (set! (-> self jump-pos quad) (-> *fuel-cell-tune-pos* quad))
-       (set! (-> self jump-pos y) (+ 4096.0 (-> self jump-pos y)))
+       (+! (-> self jump-pos y) 4096.0)
        (go-virtual jump)
        )
       ((and gp-1
@@ -2174,7 +2174,7 @@
             (not (logtest? (-> self fact options) (fact-options skip-jump-anim)))
             )
        (set! (-> self jump-pos quad) (-> (the-as vector gp-1) quad))
-       (set! (-> self jump-pos y) (+ 4096.0 (-> self jump-pos y)))
+       (+! (-> self jump-pos y) 4096.0)
        (go-virtual jump)
        )
       )
@@ -2799,7 +2799,7 @@
       )
     (let ((s2-1 (new 'stack-no-clear 'vector)))
       (set! (-> s2-1 quad) (-> obj process root trans quad))
-      (set! (-> s2-1 y) (+ 12288.0 (-> s2-1 y)))
+      (+! (-> s2-1 y) 12288.0)
       (let ((s1-1 (new 'stack-no-clear 'collide-tri-result)))
         (if (>= (fill-and-probe-using-y-probe
                   *collide-cache*
@@ -2817,7 +2817,7 @@
             )
         )
       (if (= (the-as int s3-0) 6)
-          (set! (-> s2-1 y) (+ 6144.0 (-> s2-1 y)))
+          (+! (-> s2-1 y) 6144.0)
           )
       (birth-pickup-at-point s2-1 (the-as pickup-type s3-0) f30-0 arg0 arg1 obj)
       )
