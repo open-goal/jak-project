@@ -19,7 +19,6 @@ struct FormFormattingConfig {
   std::optional<int> skip_newlines_until_index = {};
   std::vector<int> force_newline_at_indices = {};
   bool bindings_force_newlines = false;
-  // TODO - implement recursive configs
   std::unordered_map<int, FormFormattingConfig> index_configs = {};
 };
 

@@ -16,11 +16,15 @@ FormFormattingConfig new_flow_rule(int start_index) {
 
 FormFormattingConfig new_binding_rule() {
   FormFormattingConfig cfg;
+  cfg.start_flow_at_index = 2;
   cfg.bindings_at_index = 1;
   cfg.bindings_force_newlines = true;
   cfg.force_flow = true;
   cfg.skip_newlines_until_index = 2;
   cfg.force_newline_at_indices = {2};
+  FormFormattingConfig binding_list_config;
+  binding_list_config.force_flow = true;
+  cfg.index_configs.emplace(1, binding_list_config);
   return cfg;
 }
 

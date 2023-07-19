@@ -198,9 +198,7 @@ bool form_contains_comment(const FormatterTreeNode& node) {
   return false;
 }
 
-bool form_can_be_inlined(const std::string& curr_text,
-                         const FormatterTreeNode& list_node,
-                         const FormatterTreeNode& containing_form) {
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& list_node) {
   // is the form too long to fit on a line TODO - increase accuracy here
   if (form_exceed_line_width(curr_text, list_node, 0)) {
     return false;
@@ -212,8 +210,7 @@ bool form_can_be_inlined(const std::string& curr_text,
   return true;
 }
 
-bool should_form_flow(const FormatterTreeNode& list_node,
-                      const FormatterTreeNode& containing_form) {
+bool should_form_flow(const FormatterTreeNode& list_node) {
   // TODO - make a function to make grabbing this metadata easier...
   // TODO - honestly should just have an is_list metadata
   if (!list_node.refs.empty() && !list_node.refs.at(0).token) {
@@ -231,7 +228,7 @@ bool should_form_flow(const FormatterTreeNode& list_node,
   }
 
   // TODO - cleanup, might be inside a let
-  if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
+  /*if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
     const auto& form_head = containing_form.refs.at(0).token;
     if (form_head && config::opengoal_form_config.find(form_head.value()) !=
                          config::opengoal_form_config.end()) {
@@ -240,7 +237,7 @@ bool should_form_flow(const FormatterTreeNode& list_node,
         return true;
       }
     }
-  }
+  }*/
 
   return false;
 }
@@ -265,10 +262,14 @@ std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, cons
 void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
-                    const int depth,
                     const int index,
+                    const bool flowing,
                     const bool constant_pair_form,
-                    const bool flowing) {
+                    const bool force_newline) {
+  if (force_newline && index >= 1 || (node.metadata.is_comment && !node.metadata.is_inline)) {
+    curr_text = str_util::rtrim(curr_text) + "\n";
+    return;
+  }
   if (index <= 0 || containing_node.metadata.is_top_level ||
       (node.metadata.is_comment && node.metadata.is_inline) || (!flowing && index <= 1)) {
     return;
@@ -310,12 +311,16 @@ void align_lines(std::string& text,
                  const FormatterTreeNode& node,
                  const FormatterTreeNode& containing_node,
                  const bool constant_pair_form,
-                 const bool flowing) {
+                 const bool flowing,
+                 const bool force_flow) {
   const auto lines = str_util::split(text);
   int start_index = 1;
   int alignment_width = 2;
-  if (constant_pair_form &&
-      constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+  if (force_flow) {
+    start_index = 0;
+  } else if (constant_pair_form &&
+             constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
+                 constant_types.end()) {
     alignment_width = 3;
   } else if (!flowing) {
     // If the form has a token (it's a normal list)
