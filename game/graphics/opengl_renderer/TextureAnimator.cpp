@@ -71,7 +71,7 @@ OpenGLTexturePool::OpenGLTexturePool() {
                                           {64, 32, 6},
                                           {64, 64, 20},
                                           {64, 128, 4},
-                                          {128, 128, 6},
+                                          {128, 128, 8},
                                           {256, 1, 2},
                                           {256, 256, 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
@@ -552,6 +552,7 @@ enum PcTextureAnimCodes {
   WATERFALL_B = 32,
   LAVA = 33,
   LAVA_B = 34,
+  STADIUMB = 35,
 };
 
 // metadata for an upload from GOAL memory
@@ -692,6 +693,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("lava-b");
           run_fixed_animation_array(m_lava_b_anim_array_idx, tf, texture_pool);
         } break;
+        case STADIUMB: {
+          auto p = scoped_prof("stadiumb");
+          run_fixed_animation_array(m_stadiumb_anim_array_idx, tf, texture_pool);
+        }break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -2078,7 +2083,7 @@ void TextureAnimator::setup_texture_anims() {
     waterfall.tex_name = "waterfall-dest";
     for (int i = 0; i < 4; i++) {
       auto& src = waterfall.layers.emplace_back();
-      src.set_blend_b2_d1();
+      src.set_blend_b1_d1();
       src.set_no_z_write_no_z_test();
       src.end_time = 450.f;
       src.tex_name = "waterfall";
@@ -2092,7 +2097,7 @@ void TextureAnimator::setup_texture_anims() {
     waterfall.tex_name = "waterfall-dest";
     for (int i = 0; i < 4; i++) {
       auto& src = waterfall.layers.emplace_back();
-      src.set_blend_b2_d1();
+      src.set_blend_b1_d1();
       src.set_no_z_write_no_z_test();
       src.end_time = 450.f;
       src.tex_name = "waterfall";
@@ -2107,7 +2112,7 @@ void TextureAnimator::setup_texture_anims() {
     lava.tex_name = "dig-lava-01-dest";
     for (int i = 0; i < 2; i++) {
       auto& src = lava.layers.emplace_back();
-      src.set_blend_b2_d1();
+      src.set_blend_b1_d1();
       src.set_no_z_write_no_z_test();
       src.end_time = 3600.f;
       src.tex_name = "dig-lava-01";
@@ -2121,11 +2126,26 @@ void TextureAnimator::setup_texture_anims() {
     lava.tex_name = "dig-lava-01-dest";
     for (int i = 0; i < 2; i++) {
       auto& src = lava.layers.emplace_back();
-      src.set_blend_b2_d1();
+      src.set_blend_b1_d1();
       src.set_no_z_write_no_z_test();
       src.end_time = 3600.f;
       src.tex_name = "dig-lava-01";
     }
     m_lava_b_anim_array_idx = create_fixed_anim_array({lava});
+  }
+
+  // Stadiumb
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.tex_name = "stdmb-energy-wall-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 300.f;
+      src.tex_name = "stdmb-energy-wall-01";
+    }
+    m_stadiumb_anim_array_idx = create_fixed_anim_array({def});
   }
 }

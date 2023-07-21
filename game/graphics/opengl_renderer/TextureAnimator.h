@@ -151,6 +151,13 @@ struct FixedLayerDef {
     blend_fix = 0;
   }
 
+  void set_blend_b1_d1() {
+    blend_modes[0] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[1] = GsAlpha::BlendMode::DEST;
+    blend_modes[2] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[3] = GsAlpha::BlendMode::DEST;
+    blend_fix = 0;
+  }
   void set_no_z_write_no_z_test() {
     z_writes = false;
     z_test = false;
@@ -339,5 +346,6 @@ class TextureAnimator {
   int m_waterfall_b_anim_array_idx = -1;
   int m_lava_anim_array_idx = -1;
   int m_lava_b_anim_array_idx = -1;
+  int m_stadiumb_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };
