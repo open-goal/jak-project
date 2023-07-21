@@ -451,6 +451,9 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
       anim.src_textures.push_back(gl_texture);
       opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
     }
+
+    // set up dynamic data
+    anim.dynamic_data.resize(def.layers.size());
   }
 
   return ret;
@@ -653,19 +656,15 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case SKULL_GEM: {
           auto p = scoped_prof("skull-gem");
-          ASSERT(tf.size_bytes == 16);
-          const float* floats = (const float*)tf.data;
-          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, floats);
+          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, tf);
         } break;
         case BOMB: {
           auto p = scoped_prof("bomb");
-          ASSERT(tf.size_bytes == 16);
-          const float* floats = (const float*)tf.data;
-          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, floats);
+          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, tf);
         } break;
         case CAS_CONVEYOR: {
           auto p = scoped_prof("cas-conveyor");
-          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, (const float*)tf.data);
+          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1689,11 +1688,34 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   //  }
 }
 
-void TextureAnimator::run_fixed_animation_array(int idx, const float* times) {
+void TextureAnimator::run_fixed_animation_array(int idx, const DmaTransfer& transfer) {
   auto& array = m_fixed_anim_arrays.at(idx);
+
+  // sanity check size:
+  size_t expected_size_bytes = 0;
+  for (auto& a : array.anims) {
+    expected_size_bytes += 16;
+    expected_size_bytes += 16 * 10 * a.dynamic_data.size();
+  }
+  ASSERT(transfer.size_bytes == expected_size_bytes);
+
+  const u8* data_in = transfer.data;
+
   for (size_t i = 0; i < array.anims.size(); i++) {
     auto& anim = array.anims[i];
-    run_fixed_animation(anim, times[i]);
+    float time = 0;
+    memcpy(&time, data_in, sizeof(float));
+    data_in += 16;
+
+    // update layers:
+    for (auto& layer : anim.dynamic_data) {
+      memcpy(&layer.start_vals, data_in, sizeof(LayerVals));
+      data_in += sizeof(LayerVals);
+      memcpy(&layer.end_vals, data_in, sizeof(LayerVals));
+      data_in += sizeof(LayerVals);
+    }
+
+    run_fixed_animation(anim, time);
   }
 }
 
@@ -1779,6 +1801,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
     // Loop over layers
     for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
       auto& layer_def = anim.def.layers[layer_idx];
+      auto& layer_dyn = anim.dynamic_data[layer_idx];
       // skip layer if out the range when it is active
       if (time < layer_def.start_time || time > layer_def.end_time) {
         continue;
@@ -1787,7 +1810,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
       // interpolate
       interpolate_layer_values(
           (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
-          &interpolated_values, layer_def.start_vals, layer_def.end_vals);
+          &interpolated_values, layer_dyn.start_vals, layer_dyn.end_vals);
 
       // shader setup
       set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
@@ -1867,48 +1890,18 @@ void TextureAnimator::setup_texture_anims() {
     skull_gem_0.tex_name = "skull-gem-alpha-00";
     skull_gem_0.set_blend_b2_d1();
     skull_gem_0.set_no_z_write_no_z_test();
-    skull_gem_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    skull_gem_0.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_0.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    skull_gem_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    skull_gem_0.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_0.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     auto& skull_gem_1 = skull_gem.layers.emplace_back();
     skull_gem_1.end_time = 300.;
     skull_gem_1.tex_name = "skull-gem-alpha-01";
     skull_gem_1.set_blend_b2_d1();
     skull_gem_1.set_no_z_write_no_z_test();
-    skull_gem_1.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_1.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_1.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_1.start_vals.st_offset = math::Vector2f{2.0, 1.0};
-    skull_gem_1.end_vals.color = math::Vector4f{0.6, 0.5, 0.6, 1};
-    skull_gem_1.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_1.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_1.end_vals.st_offset = math::Vector2f{0, 0};
 
     auto& skull_gem_2 = skull_gem.layers.emplace_back();
     skull_gem_2.end_time = 300.;
     skull_gem_2.tex_name = "skull-gem-alpha-02";
     skull_gem_2.set_blend_b2_d1();
     skull_gem_2.set_no_z_write_no_z_test();
-    skull_gem_2.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_2.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_2.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_2.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_2.start_vals.st_offset = math::Vector2f{0, 0};
-    skull_gem_2.end_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_2.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_2.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_2.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_2.end_vals.st_offset = math::Vector2f{2, 2};
 
     m_skull_gem_fixed_anim_array_idx = create_fixed_anim_array({skull_gem});
   }
@@ -1926,16 +1919,6 @@ void TextureAnimator::setup_texture_anims() {
     bomb_0.set_no_z_write_no_z_test();
     // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
     bomb_0.channel_masks[3] = false;  // no alpha writes.
-    bomb_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_0.start_vals.scale = math::Vector2f{1, 1};
-    bomb_0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_0.start_vals.st_scale = math::Vector2f{1, 1};
-    bomb_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    bomb_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_0.end_vals.scale = math::Vector2f{1, 1};
-    bomb_0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_0.end_vals.st_scale = math::Vector2f{1, 1};
-    bomb_0.end_vals.st_offset = math::Vector2f{0.5, 4.0};
 
     auto& bomb_1 = bomb.layers.emplace_back();
     bomb_1.end_time = 300.;
@@ -1944,16 +1927,6 @@ void TextureAnimator::setup_texture_anims() {
     bomb_1.set_no_z_write_no_z_test();
     // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
     bomb_1.channel_masks[3] = false;  // no alpha writes.
-    bomb_1.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_1.start_vals.scale = math::Vector2f{1, 1};
-    bomb_1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_1.start_vals.st_scale = math::Vector2f{1, 1};
-    bomb_1.start_vals.st_offset = math::Vector2f{0.0, 0.5};
-    bomb_1.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_1.end_vals.scale = math::Vector2f{1, 1};
-    bomb_1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_1.end_vals.st_scale = math::Vector2f{1, 1};
-    bomb_1.end_vals.st_offset = math::Vector2f{-6.0, 0.5};
 
     m_bomb_fixed_anim_array_idx = create_fixed_anim_array({bomb});
   }
@@ -1971,16 +1944,6 @@ void TextureAnimator::setup_texture_anims() {
     c0.channel_masks[3] = false;  // no alpha writes.
     c0.end_time = 300.;
     c0.tex_name = "cas-conveyor";
-    c0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c0.start_vals.scale = math::Vector2f{1, 1};
-    c0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c0.start_vals.st_scale = math::Vector2f{1, 1};
-    c0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c0.end_vals.scale = math::Vector2f{1, 1};
-    c0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c0.end_vals.st_scale = math::Vector2f{1, 1};
-    c0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_1;
     conveyor_1.tex_name = "cas-conveyor-dest-01";
@@ -1993,16 +1956,6 @@ void TextureAnimator::setup_texture_anims() {
     c1.channel_masks[3] = false;  // no alpha writes.
     c1.end_time = 300.;
     c1.tex_name = "cas-conveyor";
-    c1.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c1.start_vals.scale = math::Vector2f{1, 1};
-    c1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c1.start_vals.st_scale = math::Vector2f{1, 1};
-    c1.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c1.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c1.end_vals.scale = math::Vector2f{1, 1};
-    c1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c1.end_vals.st_scale = math::Vector2f{1, 1};
-    c1.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_2;
     conveyor_2.tex_name = "cas-conveyor-dest-02";
@@ -2015,16 +1968,6 @@ void TextureAnimator::setup_texture_anims() {
     c2.channel_masks[3] = false;  // no alpha writes.
     c2.end_time = 300.;
     c2.tex_name = "cas-conveyor";
-    c2.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c2.start_vals.scale = math::Vector2f{1, 1};
-    c2.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c2.start_vals.st_scale = math::Vector2f{1, 1};
-    c2.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c2.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c2.end_vals.scale = math::Vector2f{1, 1};
-    c2.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c2.end_vals.st_scale = math::Vector2f{1, 1};
-    c2.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_3;
     conveyor_3.tex_name = "cas-conveyor-dest-03";
@@ -2037,16 +1980,6 @@ void TextureAnimator::setup_texture_anims() {
     c3.channel_masks[3] = false;  // no alpha writes.
     c3.end_time = 300.;
     c3.tex_name = "cas-conveyor";
-    c3.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c3.start_vals.scale = math::Vector2f{1, 1};
-    c3.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c3.start_vals.st_scale = math::Vector2f{1, 1};
-    c3.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c3.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c3.end_vals.scale = math::Vector2f{1, 1};
-    c3.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c3.end_vals.st_scale = math::Vector2f{1, 1};
-    c3.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     m_cas_conveyor_anim_array_idx =
         create_fixed_anim_array({conveyor_0, conveyor_1, conveyor_2, conveyor_3});

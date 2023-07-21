@@ -598,24 +598,36 @@
                                bucket
                                )
     ;; determine how many texture we have:
-    (let ((num 0))
+    (let ((num-anims 0)
+          (num-qwc-floats 0))
       (dotimes (i (-> anim-array length))
         (when (-> anim-array array-data i tex)
-          (+! num 1)
+          (+! num-anims 1)
+          (+! num-qwc-floats 1) ;; for times
+          (+! num-qwc-floats (* 10 (-> anim-array array-data i num-layers)))
           )
         )
 
       ;; (format 0 "pc-update-fixed-anim: ~d layers~%" num)
-      (let ((num-qw (/ (+ num 3) 4)))
-        (pc-texture-anim-flag start-anim-array dma-buf)
-        (pc-texture-anim-flag-id anim-id dma-buf :qwc num-qw)
+      (pc-texture-anim-flag start-anim-array dma-buf)
+      (pc-texture-anim-flag-id anim-id dma-buf :qwc num-qwc-floats)
 
-        (dotimes (i num)
+      (let ((out-ptr (the (inline-array vector) (-> dma-buf base)))
+            )
+        (dotimes (i num-anims)
           (let ((anim (-> anim-array array-data i))
-                (out-slot (the (pointer float) (&+ (-> dma-buf base) (* 4 i))))
+                (out-slot (the (pointer float) (&+ (-> dma-buf base) (* 11 16 i))))
                 )
 
-            (set! (-> out-slot) (-> anim frame-time))
+            (set! (-> out-ptr 0 x) (-> anim frame-time))
+            (&+! out-ptr 16)
+
+            (dotimes (j (-> anim num-layers))
+              (quad-copy! (the pointer out-ptr) (the pointer (-> anim data j start-vectors)) 5)
+              (&+! out-ptr 80)
+              (quad-copy! (the pointer out-ptr) (the pointer (-> anim data j end-vectors)) 5)
+              (&+! out-ptr 80)
+              )
 
             (when (not (paused?))
               (with-pp
@@ -631,10 +643,10 @@
               )
             )
           )
-
-        (&+! (-> dma-buf base) (* 16 num-qw))
-        (pc-texture-anim-flag finish-anim-array dma-buf)
         )
+
+      (&+! (-> dma-buf base) (* 16 num-qwc-floats))
+      (pc-texture-anim-flag finish-anim-array dma-buf)
       )
     )
 

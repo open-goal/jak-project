@@ -118,7 +118,11 @@ struct LayerVals {
   math::Vector2f st_scale = math::Vector2f::zero();
   math::Vector2f st_offset = math::Vector2f::zero();
   math::Vector4f qs = math::Vector4f(1, 1, 1, 1);
+  float rot = 0;
+  float st_rot = 0;
+  u8 pad[8];
 };
+static_assert(sizeof(LayerVals) == 80);
 
 /*!
  * A single layer in a FixedAnimationDef.
@@ -138,7 +142,6 @@ struct FixedLayerDef {
   bool channel_masks[4] = {true, true, true, true};
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
-  LayerVals start_vals, end_vals;
 
   void set_blend_b2_d1() {
     blend_modes[0] = GsAlpha::BlendMode::SOURCE;
@@ -163,8 +166,13 @@ struct FixedAnimDef {
   std::vector<FixedLayerDef> layers;
 };
 
+struct DynamicLayerData {
+  LayerVals start_vals, end_vals;
+};
+
 struct FixedAnim {
   FixedAnimDef def;
+  std::vector<DynamicLayerData> dynamic_data;
   // GLint dest_texture;
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
@@ -214,7 +222,7 @@ class TextureAnimator {
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
-  void run_fixed_animation_array(int idx, const float* times);
+  void run_fixed_animation_array(int idx, const DmaTransfer& transfer);
   void run_fixed_animation(FixedAnim& anim, float time);
 
   struct DrawData {
