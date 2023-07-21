@@ -332,5 +332,7 @@ class TextureAnimator {
   int m_bomb_fixed_anim_array_idx = -1;
   int m_cas_conveyor_anim_array_idx = -1;
   int m_security_anim_array_idx = -1;
+  int m_waterfall_anim_array_idx = -1;
+  int m_waterfall_b_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

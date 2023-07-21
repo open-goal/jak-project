@@ -69,7 +69,7 @@ OpenGLTexturePool::OpenGLTexturePool() {
                                           {32, 32, 8},
                                           {32, 64, 1},
                                           {64, 32, 6},
-                                          {64, 64, 15},
+                                          {64, 64, 20},
                                           {64, 128, 4},
                                           {128, 128, 5},
                                           {256, 1, 2},
@@ -548,6 +548,8 @@ enum PcTextureAnimCodes {
   BOMB = 28,
   CAS_CONVEYOR = 29,
   SECURITY = 30,
+  WATERFALL = 31,
+  WATERFALL_B = 32,
 };
 
 // metadata for an upload from GOAL memory
@@ -671,8 +673,17 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         case SECURITY: {
           auto p = scoped_prof("security");
           run_fixed_animation_array(m_security_anim_array_idx, tf);
-          break;
-        }
+        } break;
+        case WATERFALL: {
+          printf("run waterfall A\n");
+          auto p = scoped_prof("waterfall");
+          run_fixed_animation_array(m_waterfall_anim_array_idx, tf);
+        } break;
+        case WATERFALL_B: {
+          printf("run waterfall B\n");
+          auto p = scoped_prof("waterfall-b");
+          run_fixed_animation_array(m_waterfall_b_anim_array_idx, tf);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -2027,5 +2038,34 @@ void TextureAnimator::setup_texture_anims() {
     }
 
     m_security_anim_array_idx = create_fixed_anim_array({env, dot});
+  }
+
+  // WATERFALL
+  {
+    FixedAnimDef waterfall;
+    waterfall.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    waterfall.tex_name = "waterfall-dest";
+    for (int i = 0; i < 4; i++) {
+      auto& src = waterfall.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 450.f;
+      src.tex_name = "waterfall";
+    }
+    m_waterfall_anim_array_idx = create_fixed_anim_array({waterfall});
+  }
+
+  {
+    FixedAnimDef waterfall;
+    waterfall.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    waterfall.tex_name = "waterfall-dest";
+    for (int i = 0; i < 4; i++) {
+      auto& src = waterfall.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 450.f;
+      src.tex_name = "waterfall";
+    }
+    m_waterfall_b_anim_array_idx = create_fixed_anim_array({waterfall});
   }
 }

@@ -30,6 +30,7 @@ std::vector<std::string> jak2_slots = {
     "cas-conveyor-dest-03",
     "security-env-dest",
     "security-dot-dest",
+    "waterfall-dest",
 };
 
 }
