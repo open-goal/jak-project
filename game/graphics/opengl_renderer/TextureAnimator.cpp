@@ -63,12 +63,13 @@ OpenGLTexturePool::OpenGLTexturePool() {
     u64 w, h, n;
   };
   // list of sizes to preallocate: {width, height, count}.
-  for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
+  for (const auto& a : std::vector<Alloc>{{4, 4, 1},
+                                          {16, 16, 5},
                                           {32, 16, 1},
                                           {32, 32, 8},
                                           {32, 64, 1},
-                                          {64, 32, 4},
-                                          {64, 64, 9},
+                                          {64, 32, 6},
+                                          {64, 64, 15},
                                           {64, 128, 4},
                                           {128, 128, 5},
                                           {256, 1, 2},
@@ -546,6 +547,7 @@ enum PcTextureAnimCodes {
   SKULL_GEM = 27,
   BOMB = 28,
   CAS_CONVEYOR = 29,
+  SECURITY = 30,
 };
 
 // metadata for an upload from GOAL memory
@@ -666,6 +668,11 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("cas-conveyor");
           run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf);
         } break;
+        case SECURITY: {
+          auto p = scoped_prof("security");
+          run_fixed_animation_array(m_security_anim_array_idx, tf);
+          break;
+        }
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -1983,5 +1990,42 @@ void TextureAnimator::setup_texture_anims() {
 
     m_cas_conveyor_anim_array_idx =
         create_fixed_anim_array({conveyor_0, conveyor_1, conveyor_2, conveyor_3});
+  }
+
+  // SECURITY
+  {
+    FixedAnimDef env;
+    env.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    env.tex_name = "security-env-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& env1 = env.layers.emplace_back();
+      env1.tex_name = "security-env-uscroll";
+      //    :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+      env1.set_no_z_write_no_z_test();
+      env1.channel_masks[3] = false;  // no alpha writes.
+      //    :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+      env1.set_blend_b2_d1();
+      env1.end_time = 4800.f;
+    }
+
+    FixedAnimDef dot;
+    dot.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    dot.tex_name = "security-dot-dest";
+
+    auto& cwhite = dot.layers.emplace_back();
+    cwhite.set_blend_b2_d1();
+    cwhite.set_no_z_write_no_z_test();
+    cwhite.tex_name = "common-white";
+    cwhite.end_time = 4800.f;
+
+    for (int i = 0; i < 2; i++) {
+      auto& dsrc = dot.layers.emplace_back();
+      dsrc.set_blend_b2_d1();
+      dsrc.set_no_z_write_no_z_test();
+      dsrc.end_time = 600.f;
+      dsrc.tex_name = "security-dot-src";
+    }
+
+    m_security_anim_array_idx = create_fixed_anim_array({env, dot});
   }
 }
