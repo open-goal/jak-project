@@ -347,5 +347,7 @@ class TextureAnimator {
   int m_lava_anim_array_idx = -1;
   int m_lava_b_anim_array_idx = -1;
   int m_stadiumb_anim_array_idx = -1;
+  int m_fortress_pris_anim_array_idx = -1;
+  int m_fortress_warp_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

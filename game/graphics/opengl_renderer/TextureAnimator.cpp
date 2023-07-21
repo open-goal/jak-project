@@ -71,7 +71,7 @@ OpenGLTexturePool::OpenGLTexturePool() {
                                           {64, 32, 6},
                                           {64, 64, 20},
                                           {64, 128, 4},
-                                          {128, 128, 8},
+                                          {128, 128, 10},
                                           {256, 1, 2},
                                           {256, 256, 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
@@ -553,6 +553,8 @@ enum PcTextureAnimCodes {
   LAVA = 33,
   LAVA_B = 34,
   STADIUMB = 35,
+  FORTRESS_PRIS = 36,
+  FORTRESS_WARP = 37,
 };
 
 // metadata for an upload from GOAL memory
@@ -696,7 +698,15 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         case STADIUMB: {
           auto p = scoped_prof("stadiumb");
           run_fixed_animation_array(m_stadiumb_anim_array_idx, tf, texture_pool);
-        }break;
+        } break;
+        case FORTRESS_PRIS: {
+          auto p = scoped_prof("fort-pris");
+          run_fixed_animation_array(m_fortress_pris_anim_array_idx, tf, texture_pool);
+        } break;
+        case FORTRESS_WARP: {
+          auto p = scoped_prof("fort-warp");
+          run_fixed_animation_array(m_fortress_warp_anim_array_idx, tf, texture_pool);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -2147,5 +2157,45 @@ void TextureAnimator::setup_texture_anims() {
       src.tex_name = "stdmb-energy-wall-01";
     }
     m_stadiumb_anim_array_idx = create_fixed_anim_array({def});
+  }
+
+  // Fortress pris
+  {
+    FixedAnimDef l_tread;
+    l_tread.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    l_tread.tex_name = "robotank-tread-l-dest";
+    auto& l_src = l_tread.layers.emplace_back();
+    l_src.set_blend_b1_d1();
+    l_src.set_no_z_write_no_z_test();
+    l_src.channel_masks[3] = false;  // no alpha writes.
+    l_src.end_time = 1.f;
+    l_src.tex_name = "robotank-tread";
+
+    FixedAnimDef r_tread;
+    r_tread.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    r_tread.tex_name = "robotank-tread-r-dest";
+    auto& r_src = r_tread.layers.emplace_back();
+    r_src.set_blend_b1_d1();
+    r_src.set_no_z_write_no_z_test();
+    r_src.channel_masks[3] = false;  // no alpha writes.
+    r_src.end_time = 1.f;
+    r_src.tex_name = "robotank-tread";
+
+    m_fortress_pris_anim_array_idx = create_fixed_anim_array({l_tread, r_tread});
+  }
+
+  // Fortress Warp
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.move_to_pool = true;
+    def.tex_name = "fort-roboscreen-dest";
+    auto& src = def.layers.emplace_back();
+    src.set_blend_b2_d1();
+    src.channel_masks[3] = false;  // no alpha writes.
+    src.set_no_z_write_no_z_test();
+    src.end_time = 300.f;
+    src.tex_name = "fort-roboscreen-env";
+    m_fortress_warp_anim_array_idx = create_fixed_anim_array({def});
   }
 }

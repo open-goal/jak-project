@@ -33,6 +33,9 @@ std::vector<std::string> jak2_slots = {
     "waterfall-dest",
     "dig-lava-01-dest",
     "stdmb-energy-wall-01-dest",
+    "robotank-tread-l-dest",
+    "robotank-tread-r-dest",
+    "fort-roboscreen-dest",
 };
 
 }
