@@ -225,8 +225,7 @@ class TextureAnimator {
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
-  void run_fixed_animation_array(int idx, const DmaTransfer& transfer,
-                                 TexturePool* texture_pool);
+  void run_fixed_animation_array(int idx, const DmaTransfer& transfer, TexturePool* texture_pool);
   void run_fixed_animation(FixedAnim& anim, float time);
 
   struct DrawData {
