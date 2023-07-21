@@ -71,7 +71,7 @@ OpenGLTexturePool::OpenGLTexturePool() {
                                           {64, 32, 6},
                                           {64, 64, 20},
                                           {64, 128, 4},
-                                          {128, 128, 5},
+                                          {128, 128, 6},
                                           {256, 1, 2},
                                           {256, 256, 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
@@ -550,6 +550,8 @@ enum PcTextureAnimCodes {
   SECURITY = 30,
   WATERFALL = 31,
   WATERFALL_B = 32,
+  LAVA = 33,
+  LAVA_B = 34,
 };
 
 // metadata for an upload from GOAL memory
@@ -660,29 +662,35 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case SKULL_GEM: {
           auto p = scoped_prof("skull-gem");
-          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, tf);
+          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, tf, texture_pool);
         } break;
         case BOMB: {
           auto p = scoped_prof("bomb");
-          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, tf);
+          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, tf, texture_pool);
         } break;
         case CAS_CONVEYOR: {
           auto p = scoped_prof("cas-conveyor");
-          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf);
+          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf, texture_pool);
         } break;
         case SECURITY: {
           auto p = scoped_prof("security");
-          run_fixed_animation_array(m_security_anim_array_idx, tf);
+          run_fixed_animation_array(m_security_anim_array_idx, tf, texture_pool);
         } break;
         case WATERFALL: {
-          printf("run waterfall A\n");
           auto p = scoped_prof("waterfall");
-          run_fixed_animation_array(m_waterfall_anim_array_idx, tf);
+          run_fixed_animation_array(m_waterfall_anim_array_idx, tf, texture_pool);
         } break;
         case WATERFALL_B: {
-          printf("run waterfall B\n");
           auto p = scoped_prof("waterfall-b");
-          run_fixed_animation_array(m_waterfall_b_anim_array_idx, tf);
+          run_fixed_animation_array(m_waterfall_b_anim_array_idx, tf, texture_pool);
+        } break;
+        case LAVA: {
+          auto p = scoped_prof("lava");
+          run_fixed_animation_array(m_lava_anim_array_idx, tf, texture_pool);
+        } break;
+        case LAVA_B: {
+          auto p = scoped_prof("lava-b");
+          run_fixed_animation_array(m_lava_b_anim_array_idx, tf, texture_pool);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1706,7 +1714,9 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   //  }
 }
 
-void TextureAnimator::run_fixed_animation_array(int idx, const DmaTransfer& transfer) {
+void TextureAnimator::run_fixed_animation_array(int idx,
+                                                const DmaTransfer& transfer,
+                                                TexturePool* texture_pool) {
   auto& array = m_fixed_anim_arrays.at(idx);
 
   // sanity check size:
@@ -1722,10 +1732,12 @@ void TextureAnimator::run_fixed_animation_array(int idx, const DmaTransfer& tran
   for (size_t i = 0; i < array.anims.size(); i++) {
     auto& anim = array.anims[i];
     float time = 0;
+    u32 tbp = UINT32_MAX;
     memcpy(&time, data_in, sizeof(float));
+    memcpy(&tbp, data_in + 4, sizeof(u32));
     data_in += 16;
 
-    // update layers:
+    // update parameters for layers:
     for (auto& layer : anim.dynamic_data) {
       memcpy(&layer.start_vals, data_in, sizeof(LayerVals));
       data_in += sizeof(LayerVals);
@@ -1733,7 +1745,25 @@ void TextureAnimator::run_fixed_animation_array(int idx, const DmaTransfer& tran
       data_in += sizeof(LayerVals);
     }
 
+    // run layers
     run_fixed_animation(anim, time);
+
+    // give to the pool for renderers that don't know how to access this directly
+    if (anim.def.move_to_pool) {
+      ASSERT(tbp < 0x40000);
+      if (anim.pool_gpu_tex) {
+        texture_pool->move_existing_to_vram(anim.pool_gpu_tex, tbp);
+      } else {
+        TextureInput in;
+        in.gpu_texture = anim.fbt->texture();
+        in.w = anim.fbt->width();
+        in.h = anim.fbt->height();
+        in.debug_page_name = "PC-ANIM";
+        in.debug_name = std::to_string(tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp);
+        anim.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+      }
+    }
   }
 }
 
@@ -1900,6 +1930,7 @@ void TextureAnimator::setup_texture_anims() {
   // Skull Gem
   {
     FixedAnimDef skull_gem;
+    skull_gem.move_to_pool = true;
     skull_gem.tex_name = "skull-gem-dest";
     skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
 
@@ -2067,5 +2098,34 @@ void TextureAnimator::setup_texture_anims() {
       src.tex_name = "waterfall";
     }
     m_waterfall_b_anim_array_idx = create_fixed_anim_array({waterfall});
+  }
+
+  // LAVA
+  {
+    FixedAnimDef lava;
+    lava.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    lava.tex_name = "dig-lava-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = lava.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 3600.f;
+      src.tex_name = "dig-lava-01";
+    }
+    m_lava_anim_array_idx = create_fixed_anim_array({lava});
+  }
+
+  {
+    FixedAnimDef lava;
+    lava.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    lava.tex_name = "dig-lava-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = lava.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 3600.f;
+      src.tex_name = "dig-lava-01";
+    }
+    m_lava_b_anim_array_idx = create_fixed_anim_array({lava});
   }
 }

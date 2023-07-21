@@ -31,6 +31,7 @@ std::vector<std::string> jak2_slots = {
     "security-env-dest",
     "security-dot-dest",
     "waterfall-dest",
+    "dig-lava-01-dest",
 };
 
 }

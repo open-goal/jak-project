@@ -164,6 +164,7 @@ struct FixedAnimDef {
   // assuming (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
   // alpha blend off, so alpha doesn't matter i think.
   std::vector<FixedLayerDef> layers;
+  bool move_to_pool = false;
 };
 
 struct DynamicLayerData {
@@ -177,6 +178,8 @@ struct FixedAnim {
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
   std::vector<GLint> src_textures;
+
+  GpuTexture* pool_gpu_tex = nullptr;
 };
 
 struct FixedAnimArray {
@@ -222,7 +225,8 @@ class TextureAnimator {
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
-  void run_fixed_animation_array(int idx, const DmaTransfer& transfer);
+  void run_fixed_animation_array(int idx, const DmaTransfer& transfer,
+                                 TexturePool* texture_pool);
   void run_fixed_animation(FixedAnim& anim, float time);
 
   struct DrawData {
@@ -334,5 +338,7 @@ class TextureAnimator {
   int m_security_anim_array_idx = -1;
   int m_waterfall_anim_array_idx = -1;
   int m_waterfall_b_anim_array_idx = -1;
+  int m_lava_anim_array_idx = -1;
+  int m_lava_b_anim_array_idx = -1;
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };
