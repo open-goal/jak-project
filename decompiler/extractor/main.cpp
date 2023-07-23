@@ -109,7 +109,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
                                        fmt::format("{}_config.jsonc", version_info.game_name),
                                    version_info.decomp_config_version);
 
-  std::vector<fs::path> dgos, objs;
+  std::vector<fs::path> dgos, objs, tex_strs;
 
   // grab all DGOS we need (level + common)
   // TODO - Jak 2 - jak 1 specific code?
@@ -133,8 +133,12 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
     }
   }
 
+  for (const auto& str_name : config.str_texture_file_names) {
+    tex_strs.push_back(iso_data_path / str_name);
+  }
+
   // set up objects
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, tex_strs, config);
 
   // save object files
   auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / data_subfolder;
