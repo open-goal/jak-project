@@ -63,14 +63,15 @@ OpenGLTexturePool::OpenGLTexturePool() {
     u64 w, h, n;
   };
   // list of sizes to preallocate: {width, height, count}.
-  for (const auto& a : std::vector<Alloc>{{16, 16, 5},  //
+  for (const auto& a : std::vector<Alloc>{{4, 4, 1},
+                                          {16, 16, 5},
                                           {32, 16, 1},
                                           {32, 32, 8},
                                           {32, 64, 1},
-                                          {64, 32, 4},
-                                          {64, 64, 9},
+                                          {64, 32, 6},
+                                          {64, 64, 20},
                                           {64, 128, 4},
-                                          {128, 128, 5},
+                                          {128, 128, 10},
                                           {256, 1, 2},
                                           {256, 256, 7}}) {
     auto& l = textures[(a.w << 32) | a.h];
@@ -451,6 +452,9 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
       anim.src_textures.push_back(gl_texture);
       opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
     }
+
+    // set up dynamic data
+    anim.dynamic_data.resize(def.layers.size());
   }
 
   return ret;
@@ -543,6 +547,14 @@ enum PcTextureAnimCodes {
   SKULL_GEM = 27,
   BOMB = 28,
   CAS_CONVEYOR = 29,
+  SECURITY = 30,
+  WATERFALL = 31,
+  WATERFALL_B = 32,
+  LAVA = 33,
+  LAVA_B = 34,
+  STADIUMB = 35,
+  FORTRESS_PRIS = 36,
+  FORTRESS_WARP = 37,
 };
 
 // metadata for an upload from GOAL memory
@@ -653,19 +665,47 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case SKULL_GEM: {
           auto p = scoped_prof("skull-gem");
-          ASSERT(tf.size_bytes == 16);
-          const float* floats = (const float*)tf.data;
-          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, floats);
+          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, tf, texture_pool);
         } break;
         case BOMB: {
           auto p = scoped_prof("bomb");
-          ASSERT(tf.size_bytes == 16);
-          const float* floats = (const float*)tf.data;
-          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, floats);
+          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, tf, texture_pool);
         } break;
         case CAS_CONVEYOR: {
           auto p = scoped_prof("cas-conveyor");
-          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, (const float*)tf.data);
+          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf, texture_pool);
+        } break;
+        case SECURITY: {
+          auto p = scoped_prof("security");
+          run_fixed_animation_array(m_security_anim_array_idx, tf, texture_pool);
+        } break;
+        case WATERFALL: {
+          auto p = scoped_prof("waterfall");
+          run_fixed_animation_array(m_waterfall_anim_array_idx, tf, texture_pool);
+        } break;
+        case WATERFALL_B: {
+          auto p = scoped_prof("waterfall-b");
+          run_fixed_animation_array(m_waterfall_b_anim_array_idx, tf, texture_pool);
+        } break;
+        case LAVA: {
+          auto p = scoped_prof("lava");
+          run_fixed_animation_array(m_lava_anim_array_idx, tf, texture_pool);
+        } break;
+        case LAVA_B: {
+          auto p = scoped_prof("lava-b");
+          run_fixed_animation_array(m_lava_b_anim_array_idx, tf, texture_pool);
+        } break;
+        case STADIUMB: {
+          auto p = scoped_prof("stadiumb");
+          run_fixed_animation_array(m_stadiumb_anim_array_idx, tf, texture_pool);
+        } break;
+        case FORTRESS_PRIS: {
+          auto p = scoped_prof("fort-pris");
+          run_fixed_animation_array(m_fortress_pris_anim_array_idx, tf, texture_pool);
+        } break;
+        case FORTRESS_WARP: {
+          auto p = scoped_prof("fort-warp");
+          run_fixed_animation_array(m_fortress_warp_anim_array_idx, tf, texture_pool);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -1689,11 +1729,56 @@ void TextureAnimator::set_uniforms_from_draw_data(const DrawData& dd, int dest_w
   //  }
 }
 
-void TextureAnimator::run_fixed_animation_array(int idx, const float* times) {
+void TextureAnimator::run_fixed_animation_array(int idx,
+                                                const DmaTransfer& transfer,
+                                                TexturePool* texture_pool) {
   auto& array = m_fixed_anim_arrays.at(idx);
+
+  // sanity check size:
+  size_t expected_size_bytes = 0;
+  for (auto& a : array.anims) {
+    expected_size_bytes += 16;
+    expected_size_bytes += 16 * 10 * a.dynamic_data.size();
+  }
+  ASSERT(transfer.size_bytes == expected_size_bytes);
+
+  const u8* data_in = transfer.data;
+
   for (size_t i = 0; i < array.anims.size(); i++) {
     auto& anim = array.anims[i];
-    run_fixed_animation(anim, times[i]);
+    float time = 0;
+    u32 tbp = UINT32_MAX;
+    memcpy(&time, data_in, sizeof(float));
+    memcpy(&tbp, data_in + 4, sizeof(u32));
+    data_in += 16;
+
+    // update parameters for layers:
+    for (auto& layer : anim.dynamic_data) {
+      memcpy(&layer.start_vals, data_in, sizeof(LayerVals));
+      data_in += sizeof(LayerVals);
+      memcpy(&layer.end_vals, data_in, sizeof(LayerVals));
+      data_in += sizeof(LayerVals);
+    }
+
+    // run layers
+    run_fixed_animation(anim, time);
+
+    // give to the pool for renderers that don't know how to access this directly
+    if (anim.def.move_to_pool) {
+      ASSERT(tbp < 0x40000);
+      if (anim.pool_gpu_tex) {
+        texture_pool->move_existing_to_vram(anim.pool_gpu_tex, tbp);
+      } else {
+        TextureInput in;
+        in.gpu_texture = anim.fbt->texture();
+        in.w = anim.fbt->width();
+        in.h = anim.fbt->height();
+        in.debug_page_name = "PC-ANIM";
+        in.debug_name = std::to_string(tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp);
+        anim.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+      }
+    }
   }
 }
 
@@ -1779,6 +1864,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
     // Loop over layers
     for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
       auto& layer_def = anim.def.layers[layer_idx];
+      auto& layer_dyn = anim.dynamic_data[layer_idx];
       // skip layer if out the range when it is active
       if (time < layer_def.start_time || time > layer_def.end_time) {
         continue;
@@ -1787,7 +1873,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
       // interpolate
       interpolate_layer_values(
           (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
-          &interpolated_values, layer_def.start_vals, layer_def.end_vals);
+          &interpolated_values, layer_dyn.start_vals, layer_dyn.end_vals);
 
       // shader setup
       set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
@@ -1859,6 +1945,7 @@ void TextureAnimator::setup_texture_anims() {
   // Skull Gem
   {
     FixedAnimDef skull_gem;
+    skull_gem.move_to_pool = true;
     skull_gem.tex_name = "skull-gem-dest";
     skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
 
@@ -1867,48 +1954,18 @@ void TextureAnimator::setup_texture_anims() {
     skull_gem_0.tex_name = "skull-gem-alpha-00";
     skull_gem_0.set_blend_b2_d1();
     skull_gem_0.set_no_z_write_no_z_test();
-    skull_gem_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    skull_gem_0.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_0.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    skull_gem_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    skull_gem_0.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_0.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     auto& skull_gem_1 = skull_gem.layers.emplace_back();
     skull_gem_1.end_time = 300.;
     skull_gem_1.tex_name = "skull-gem-alpha-01";
     skull_gem_1.set_blend_b2_d1();
     skull_gem_1.set_no_z_write_no_z_test();
-    skull_gem_1.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_1.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_1.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_1.start_vals.st_offset = math::Vector2f{2.0, 1.0};
-    skull_gem_1.end_vals.color = math::Vector4f{0.6, 0.5, 0.6, 1};
-    skull_gem_1.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_1.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_1.end_vals.st_offset = math::Vector2f{0, 0};
 
     auto& skull_gem_2 = skull_gem.layers.emplace_back();
     skull_gem_2.end_time = 300.;
     skull_gem_2.tex_name = "skull-gem-alpha-02";
     skull_gem_2.set_blend_b2_d1();
     skull_gem_2.set_no_z_write_no_z_test();
-    skull_gem_2.start_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_2.start_vals.scale = math::Vector2f{1, 1};
-    skull_gem_2.start_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_2.start_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_2.start_vals.st_offset = math::Vector2f{0, 0};
-    skull_gem_2.end_vals.color = math::Vector4f{0.6, 0.6, 0.6, 1};
-    skull_gem_2.end_vals.scale = math::Vector2f{1, 1};
-    skull_gem_2.end_vals.offset = math::Vector2f{0.5, 0.5};
-    skull_gem_2.end_vals.st_scale = math::Vector2f{1, 1};
-    skull_gem_2.end_vals.st_offset = math::Vector2f{2, 2};
 
     m_skull_gem_fixed_anim_array_idx = create_fixed_anim_array({skull_gem});
   }
@@ -1926,16 +1983,6 @@ void TextureAnimator::setup_texture_anims() {
     bomb_0.set_no_z_write_no_z_test();
     // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
     bomb_0.channel_masks[3] = false;  // no alpha writes.
-    bomb_0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_0.start_vals.scale = math::Vector2f{1, 1};
-    bomb_0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_0.start_vals.st_scale = math::Vector2f{1, 1};
-    bomb_0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    bomb_0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_0.end_vals.scale = math::Vector2f{1, 1};
-    bomb_0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_0.end_vals.st_scale = math::Vector2f{1, 1};
-    bomb_0.end_vals.st_offset = math::Vector2f{0.5, 4.0};
 
     auto& bomb_1 = bomb.layers.emplace_back();
     bomb_1.end_time = 300.;
@@ -1944,16 +1991,6 @@ void TextureAnimator::setup_texture_anims() {
     bomb_1.set_no_z_write_no_z_test();
     // :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
     bomb_1.channel_masks[3] = false;  // no alpha writes.
-    bomb_1.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_1.start_vals.scale = math::Vector2f{1, 1};
-    bomb_1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_1.start_vals.st_scale = math::Vector2f{1, 1};
-    bomb_1.start_vals.st_offset = math::Vector2f{0.0, 0.5};
-    bomb_1.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    bomb_1.end_vals.scale = math::Vector2f{1, 1};
-    bomb_1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    bomb_1.end_vals.st_scale = math::Vector2f{1, 1};
-    bomb_1.end_vals.st_offset = math::Vector2f{-6.0, 0.5};
 
     m_bomb_fixed_anim_array_idx = create_fixed_anim_array({bomb});
   }
@@ -1971,16 +2008,6 @@ void TextureAnimator::setup_texture_anims() {
     c0.channel_masks[3] = false;  // no alpha writes.
     c0.end_time = 300.;
     c0.tex_name = "cas-conveyor";
-    c0.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c0.start_vals.scale = math::Vector2f{1, 1};
-    c0.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c0.start_vals.st_scale = math::Vector2f{1, 1};
-    c0.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c0.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c0.end_vals.scale = math::Vector2f{1, 1};
-    c0.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c0.end_vals.st_scale = math::Vector2f{1, 1};
-    c0.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_1;
     conveyor_1.tex_name = "cas-conveyor-dest-01";
@@ -1993,16 +2020,6 @@ void TextureAnimator::setup_texture_anims() {
     c1.channel_masks[3] = false;  // no alpha writes.
     c1.end_time = 300.;
     c1.tex_name = "cas-conveyor";
-    c1.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c1.start_vals.scale = math::Vector2f{1, 1};
-    c1.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c1.start_vals.st_scale = math::Vector2f{1, 1};
-    c1.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c1.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c1.end_vals.scale = math::Vector2f{1, 1};
-    c1.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c1.end_vals.st_scale = math::Vector2f{1, 1};
-    c1.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_2;
     conveyor_2.tex_name = "cas-conveyor-dest-02";
@@ -2015,16 +2032,6 @@ void TextureAnimator::setup_texture_anims() {
     c2.channel_masks[3] = false;  // no alpha writes.
     c2.end_time = 300.;
     c2.tex_name = "cas-conveyor";
-    c2.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c2.start_vals.scale = math::Vector2f{1, 1};
-    c2.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c2.start_vals.st_scale = math::Vector2f{1, 1};
-    c2.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c2.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c2.end_vals.scale = math::Vector2f{1, 1};
-    c2.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c2.end_vals.st_scale = math::Vector2f{1, 1};
-    c2.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     FixedAnimDef conveyor_3;
     conveyor_3.tex_name = "cas-conveyor-dest-03";
@@ -2037,18 +2044,158 @@ void TextureAnimator::setup_texture_anims() {
     c3.channel_masks[3] = false;  // no alpha writes.
     c3.end_time = 300.;
     c3.tex_name = "cas-conveyor";
-    c3.start_vals.color = math::Vector4f{1, 1, 1, 1};
-    c3.start_vals.scale = math::Vector2f{1, 1};
-    c3.start_vals.offset = math::Vector2f{0.5, 0.5};
-    c3.start_vals.st_scale = math::Vector2f{1, 1};
-    c3.start_vals.st_offset = math::Vector2f{0.5, 0.0};
-    c3.end_vals.color = math::Vector4f{1, 1, 1, 1};
-    c3.end_vals.scale = math::Vector2f{1, 1};
-    c3.end_vals.offset = math::Vector2f{0.5, 0.5};
-    c3.end_vals.st_scale = math::Vector2f{1, 1};
-    c3.end_vals.st_offset = math::Vector2f{0.5, 1.0};
 
     m_cas_conveyor_anim_array_idx =
         create_fixed_anim_array({conveyor_0, conveyor_1, conveyor_2, conveyor_3});
+  }
+
+  // SECURITY
+  {
+    FixedAnimDef env;
+    env.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    env.tex_name = "security-env-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& env1 = env.layers.emplace_back();
+      env1.tex_name = "security-env-uscroll";
+      //    :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+      env1.set_no_z_write_no_z_test();
+      env1.channel_masks[3] = false;  // no alpha writes.
+      //    :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+      env1.set_blend_b2_d1();
+      env1.end_time = 4800.f;
+    }
+
+    FixedAnimDef dot;
+    dot.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    dot.tex_name = "security-dot-dest";
+
+    auto& cwhite = dot.layers.emplace_back();
+    cwhite.set_blend_b2_d1();
+    cwhite.set_no_z_write_no_z_test();
+    cwhite.tex_name = "common-white";
+    cwhite.end_time = 4800.f;
+
+    for (int i = 0; i < 2; i++) {
+      auto& dsrc = dot.layers.emplace_back();
+      dsrc.set_blend_b2_d1();
+      dsrc.set_no_z_write_no_z_test();
+      dsrc.end_time = 600.f;
+      dsrc.tex_name = "security-dot-src";
+    }
+
+    m_security_anim_array_idx = create_fixed_anim_array({env, dot});
+  }
+
+  // WATERFALL
+  {
+    FixedAnimDef waterfall;
+    waterfall.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    waterfall.tex_name = "waterfall-dest";
+    for (int i = 0; i < 4; i++) {
+      auto& src = waterfall.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 450.f;
+      src.tex_name = "waterfall";
+    }
+    m_waterfall_anim_array_idx = create_fixed_anim_array({waterfall});
+  }
+
+  {
+    FixedAnimDef waterfall;
+    waterfall.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    waterfall.tex_name = "waterfall-dest";
+    for (int i = 0; i < 4; i++) {
+      auto& src = waterfall.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 450.f;
+      src.tex_name = "waterfall";
+    }
+    m_waterfall_b_anim_array_idx = create_fixed_anim_array({waterfall});
+  }
+
+  // LAVA
+  {
+    FixedAnimDef lava;
+    lava.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    lava.tex_name = "dig-lava-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = lava.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 3600.f;
+      src.tex_name = "dig-lava-01";
+    }
+    m_lava_anim_array_idx = create_fixed_anim_array({lava});
+  }
+
+  {
+    FixedAnimDef lava;
+    lava.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    lava.tex_name = "dig-lava-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = lava.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 3600.f;
+      src.tex_name = "dig-lava-01";
+    }
+    m_lava_b_anim_array_idx = create_fixed_anim_array({lava});
+  }
+
+  // Stadiumb
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.tex_name = "stdmb-energy-wall-01-dest";
+    for (int i = 0; i < 2; i++) {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b1_d1();
+      src.set_no_z_write_no_z_test();
+      src.end_time = 300.f;
+      src.tex_name = "stdmb-energy-wall-01";
+    }
+    m_stadiumb_anim_array_idx = create_fixed_anim_array({def});
+  }
+
+  // Fortress pris
+  {
+    FixedAnimDef l_tread;
+    l_tread.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    l_tread.tex_name = "robotank-tread-l-dest";
+    auto& l_src = l_tread.layers.emplace_back();
+    l_src.set_blend_b1_d1();
+    l_src.set_no_z_write_no_z_test();
+    l_src.channel_masks[3] = false;  // no alpha writes.
+    l_src.end_time = 1.f;
+    l_src.tex_name = "robotank-tread";
+
+    FixedAnimDef r_tread;
+    r_tread.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    r_tread.tex_name = "robotank-tread-r-dest";
+    auto& r_src = r_tread.layers.emplace_back();
+    r_src.set_blend_b1_d1();
+    r_src.set_no_z_write_no_z_test();
+    r_src.channel_masks[3] = false;  // no alpha writes.
+    r_src.end_time = 1.f;
+    r_src.tex_name = "robotank-tread";
+
+    m_fortress_pris_anim_array_idx = create_fixed_anim_array({l_tread, r_tread});
+  }
+
+  // Fortress Warp
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.move_to_pool = true;
+    def.tex_name = "fort-roboscreen-dest";
+    auto& src = def.layers.emplace_back();
+    src.set_blend_b2_d1();
+    src.channel_masks[3] = false;  // no alpha writes.
+    src.set_no_z_write_no_z_test();
+    src.end_time = 300.f;
+    src.tex_name = "fort-roboscreen-env";
+    m_fortress_warp_anim_array_idx = create_fixed_anim_array({def});
   }
 }

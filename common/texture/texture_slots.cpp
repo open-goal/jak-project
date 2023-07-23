@@ -28,6 +28,14 @@ std::vector<std::string> jak2_slots = {
     "cas-conveyor-dest-01",
     "cas-conveyor-dest-02",
     "cas-conveyor-dest-03",
+    "security-env-dest",
+    "security-dot-dest",
+    "waterfall-dest",
+    "dig-lava-01-dest",
+    "stdmb-energy-wall-01-dest",
+    "robotank-tread-l-dest",
+    "robotank-tread-r-dest",
+    "fort-roboscreen-dest",
 };
 
 }

@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
   mem_log("After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
-  std::vector<fs::path> dgos, objs, strs;
+  std::vector<fs::path> dgos, objs, strs, tex_strs;
   for (const auto& dgo_name : config.dgo_names) {
     dgos.push_back(in_folder / dgo_name);
   }
@@ -141,11 +141,15 @@ int main(int argc, char** argv) {
     strs.push_back(in_folder / str_name);
   }
 
+  for (const auto& str_name : config.str_texture_file_names) {
+    tex_strs.push_back(in_folder / str_name);
+  }
+
   mem_log("After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, tex_strs, config);
 
   // Explicitly fail if a file in the 'allowed_objects' list wasn't found in the DB
   // as this is another silent error that can be confusing

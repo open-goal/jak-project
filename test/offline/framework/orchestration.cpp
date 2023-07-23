@@ -48,9 +48,9 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
     dgo_paths.push_back(iso_data_path / x);
   }
 
-  dc.db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, dc.config->obj_file_name_map_file,
-                                                     std::vector<fs::path>{},
-                                                     std::vector<fs::path>{}, *dc.config);
+  dc.db = std::make_unique<decompiler::ObjectFileDB>(
+      dgo_paths, dc.config->obj_file_name_map_file, std::vector<fs::path>{},
+      std::vector<fs::path>{}, std::vector<fs::path>{}, *dc.config);
   dc.db->dts.art_group_info = dc.config->art_group_info_dump;
 
   std::unordered_set<std::string> db_files;
