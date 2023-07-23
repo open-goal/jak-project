@@ -11,8 +11,13 @@
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name,
                                            int my_id,
-                                           std::shared_ptr<TextureAnimator> texture_animator)
-    : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {}
+                                           std::shared_ptr<TextureAnimator> texture_animator,
+                                           bool add_direct)
+    : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {
+  if (add_direct) {
+    m_direct = std::make_unique<DirectRenderer>(name, my_id, 1024 * 6);
+  }
+}
 
 void TextureUploadHandler::render(DmaFollower& dma,
                                   SharedRenderState* render_state,
@@ -50,7 +55,6 @@ void TextureUploadHandler::render(DmaFollower& dma,
       TextureUpload upload_data;
       memcpy(&upload_data, data.data, sizeof(upload_data));
       uploads.push_back(upload_data);
-
       continue;
     }
 
@@ -60,6 +64,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
       dma.read_and_advance();  // ret
       // on next
       ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    } else if (m_direct) {
+      m_direct->render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state,
+                           prof);
     }
   }
 
