@@ -257,7 +257,6 @@ std::string StrFileReader::get_texture_name() const {
     if (chunk[offset + i] == '.') {
       std::string result;
       result.assign((const char*)&chunk[offset], i);
-      printf("name is %s\n", result.c_str());
       return result;
     }
   }
