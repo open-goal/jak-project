@@ -162,6 +162,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::EndMenu();
     }
+    ImGui::Text("Press F12 to hide this menu");
   }
   ImGui::EndMainMenuBar();
 
