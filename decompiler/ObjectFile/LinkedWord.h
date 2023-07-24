@@ -1,4 +1,7 @@
 #pragma once
+// clang-format off
+// TODO - clang formatting is off in this file due to 
+// differences in newer versions of clang-format which we have not updates to yet
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -168,3 +171,4 @@ class LinkedWord {
 #elif defined(__clang__)
 #pragma clang diagnostic pop
 #endif
+// clang-format on

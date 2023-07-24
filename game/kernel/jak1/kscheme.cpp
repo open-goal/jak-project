@@ -264,10 +264,18 @@ u64 make_string_from_c(const char* c_str) {
 }
 
 extern "C" {
+#ifndef __aarch64__
 #ifdef __APPLE__
 void _arg_call_systemv() asm("_arg_call_systemv");
 #else
 void _arg_call_systemv();
+#endif
+#else
+#ifdef __APPLE__
+void _arg_call_arm64() asm("_arg_call_arm64");
+#else
+void _arg_call_arm64();
+#endif
 #endif
 }
 
@@ -280,8 +288,13 @@ Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
                                        *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
+#ifndef __aarch64__
   auto trampoline_function_addr = _arg_call_systemv;
+#else
+  auto trampoline_function_addr = _arg_call_arm64;
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
+  // TODO - x86 code still being emitted below
 
   // movabs rax, target_function
   int offset = 0;
@@ -382,12 +395,24 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
 }
 
 extern "C" {
+#ifndef __aarch64__
 #ifdef __APPLE__
+void _arg_call_systemv() asm("_arg_call_systemv");
 void _stack_call_systemv() asm("_stack_call_systemv");
 void _stack_call_win32() asm("_stack_call_win32");
 #else
+void _arg_call_systemv();
 void _stack_call_systemv();
 void _stack_call_win32();
+#endif
+#else
+#if defined(__APPLE__)
+void _arg_call_arm64() asm("_arg_call_arm64");
+void _stack_call_arm64() asm("_stack_call_arm64");
+#else
+void _arg_call_arm64();
+void _stack_call_arm64();
+#endif
 #endif
 }
 
@@ -397,7 +422,11 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
                                        *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
+#ifndef __aarch64__
   auto trampoline_function_addr = _stack_call_systemv;
+#else
+  auto trampoline_function_addr = _stack_call_arm64;
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
 
   // movabs rax, target_function
@@ -427,6 +456,7 @@ Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   return mem.cast<Function>();
 }
 
+#ifdef _WIN32
 /*!
  * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
  * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.
@@ -467,6 +497,7 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
 
   return mem.cast<Function>();
 }
+#endif
 
 /*!
  * Create a GOAL function from a C function. This doesn't export it as a global function, it just

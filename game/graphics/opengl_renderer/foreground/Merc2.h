@@ -40,7 +40,7 @@ struct MercDebugStats {
 
 class Merc2 {
  public:
-  Merc2(ShaderLibrary& shaders);
+  Merc2(ShaderLibrary& shaders, const std::vector<GLuint>* anim_slot_array);
   ~Merc2();
   void draw_debug_window(MercDebugStats* stats);
   void render(DmaFollower& dma,
@@ -50,6 +50,7 @@ class Merc2 {
   static constexpr int kMaxBlerc = 40;
 
  private:
+  const std::vector<GLuint>* m_anim_slot_array;
   enum MercDataMemory {
     LOW_MEMORY = 0,
     BUFFER_BASE = 442,
@@ -182,7 +183,7 @@ class Merc2 {
     u32 first_index;
     u32 index_count;
     DrawMode mode;
-    u32 texture;
+    s32 texture;
     u32 num_triangles;
     u16 first_bone;
     u16 light_idx;

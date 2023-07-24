@@ -132,7 +132,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
       } else {
         if (v1_lines_file.speakers.find(line_meta.speaker) == v1_lines_file.speakers.end() ||
             v1_lines_file.hints.find(hint_name) == v1_lines_file.hints.end() ||
-            line_idx >= v1_lines_file.hints.at(hint_name).size()) {
+            line_idx >= (int)v1_lines_file.hints.at(hint_name).size()) {
           lg::warn(
               "{} Couldn't find {} in line file, or line list is too small, or speaker could not "
               "be resolved {}!",
@@ -145,7 +145,7 @@ std::pair<SubtitleMetadataFile, SubtitleFile> convert_v1_to_v2(
       }
     }
     // Verify we added the amount of lines we expected to
-    if (lines_added != hint_info.lines.size()) {
+    if (lines_added != (int)hint_info.lines.size()) {
       throw std::runtime_error(
           fmt::format("Hint: '{}' has a mismatch in metadata lines vs text lines. Expected {} "
                       "only added {} lines",
@@ -222,7 +222,7 @@ GameSubtitlePackage read_json_files_v1(const GameSubtitleDefinitionFile& file_in
   }
 }
 
-SubtitleMetadataFileV1 dump_bank_meta_v1(const GameVersion game_version,
+SubtitleMetadataFileV1 dump_bank_meta_v1(const GameVersion /*game_version*/,
                                          std::shared_ptr<GameSubtitleBank> bank) {
   auto meta_file = SubtitleMetadataFileV1();
   for (const auto& [scene_name, scene_info] : bank->m_scenes) {

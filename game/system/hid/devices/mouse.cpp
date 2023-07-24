@@ -61,7 +61,7 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
     data->update_analog_sim_tracker(false);
     ActiveMouseAction action;
     action.player_movement = true;
-    action.revert_action = [](std::shared_ptr<PadData> data, InputBinding bind) {
+    action.revert_action = [](std::shared_ptr<PadData> data, InputBinding /*bind*/) {
       data->analog_data.at(1) += 127;  // stop moving forward
       data->update_analog_sim_tracker(true);
     };

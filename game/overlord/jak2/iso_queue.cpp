@@ -33,8 +33,12 @@ u32 NextBuffer = 0;
 u32 AllocdStrBuffersCount = 0;
 u32 NextStrBuffer = 0;
 int sSema = 0;
+
+// note that these are different vag commands from the VagCmds array.
+// These are used for the return values of GetVagCommand, and are used for queued commands.
+// The VagCmds array is used for commands that are actually running.
 u32 vag_cmd_cnt = 0;
-VagCmd vag_cmds[N_VAG_CMDS];
+VagCmd vag_cmds[32];
 u32 vag_cmd_used = 0;
 u32 max_vag_cmd_cnt = 0;
 

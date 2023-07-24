@@ -1,6 +1,8 @@
 #include "SkyBlendCPU.h"
 
+#ifndef __aarch64__
 #include <immintrin.h>
+#endif
 
 #include "common/util/os.h"
 
@@ -23,6 +25,7 @@ SkyBlendCPU::~SkyBlendCPU() {
 }
 
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
+#ifndef __arm64__
   if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
@@ -49,9 +52,11 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
     }
   }
+#endif
 }
 
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
+#ifndef __arm64__
   if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
@@ -86,9 +91,7 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
     }
   }
-  /*
-
-   */
+#endif
 }
 
 SkyBlendStats SkyBlendCPU::do_sky_blends(DmaFollower& dma,

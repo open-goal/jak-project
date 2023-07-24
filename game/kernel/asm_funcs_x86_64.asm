@@ -1,7 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;
-;; asm_funcs.nasm ;;
-;;;;;;;;;;;;;;;;;;;;
-
 ;; GOAL Runtime assembly functions. These exist only in the x86 version of GOAL.
 
 SECTION .text
@@ -10,12 +6,11 @@ SECTION .text
 global _arg_call_systemv
 _arg_call_systemv:
   pop rax
-  push r10
-  push r11
-  sub rsp, 8
+  push r10 ; arg 6 (OpenGOAL compiler expects this register to be saved but systemv doesn't save it)
+  push r11 ; arg 7 (OpenGOAL compiler expects this register to be saved but systemv doesn't save it)
 
   ; xmm stuff
-  sub rsp, 128
+  sub rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   movaps [rsp], xmm8
   movaps [rsp + 16], xmm9
   movaps [rsp + 32], xmm10
@@ -35,25 +30,24 @@ _arg_call_systemv:
   movaps xmm13, [rsp + 80]
   movaps xmm14, [rsp + 96]
   movaps xmm15, [rsp + 112]
-  add rsp, 128
+  add rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
 
-  add rsp, 8
   pop r11
   pop r10
   ret
 
 
-;; Call C++ code on unix systems, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
+;; Call C++ code on unix systems, from GOAL. 
+;; 
+;; Put arguments on the stack and put a pointer to this array in the first arg.
 ;; this function pushes all 8 OpenGOAL registers into a stack array.
 ;; then it calls the function pointed to by rax with a pointer to this array.
 ;; it returns the return value of the called function.
 global _stack_call_systemv
 _stack_call_systemv:
   pop rax
-  ; align stack
-  sub rsp, 8
 
-  sub rsp, 128
+  sub rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   movaps [rsp], xmm8
   movaps [rsp + 16], xmm9
   movaps [rsp + 32], xmm10
@@ -95,10 +89,8 @@ _stack_call_systemv:
   movaps xmm13, [rsp + 80]
   movaps xmm14, [rsp + 96]
   movaps xmm15, [rsp + 112]
-  add rsp, 128
 
-  ; restore stack
-  add rsp, 8
+  add rsp, 136 ; 128 (size for xmms) + 8 (stack alignment)
   ; return!
   ret
 
@@ -149,14 +141,14 @@ _mips2c_call_systemv:
 
   sub rsp, rax ;; allocate space on the stack for GOAL fake stack
   push rax     ;; and remember this so we can find our way back
-  push rax
+  sub rsp, 8
 
   movq rax, xmm0
 
   call rax ;; call!
 
   ;; unallocate
-  pop rax
+  add rsp, 8
   pop rax
   add rsp, rax
 
@@ -347,7 +339,7 @@ _call_goal_asm_systemv:
   ;; call GOAL by function pointer
   call rcx
 
-  ;; retore x86 registers.
+  ;; restore x86 registers.
   pop r15
   pop r14
   pop r13

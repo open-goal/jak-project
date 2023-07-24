@@ -795,9 +795,12 @@ void InitMachineScheme() {
     *EnableMethodSet = *EnableMethodSet + 1;
     {
       auto p = scoped_prof("load-game-dgo");
-      load_and_link_dgo_from_c("game", kglobalheap,
-                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                               0x400000, true);
+      //      load_and_link_dgo_from_c("game", kglobalheap,
+      //                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE |
+      //                               LINK_FLAG_PRINT_LOGIN, 0x400000, true);
+      load_and_link_dgo_from_c_fast(
+          "game", kglobalheap, LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+          0x400000);
     }
 
     *EnableMethodSet = *EnableMethodSet + -1;
@@ -833,6 +836,7 @@ void initialize_sql_db() {
 
   // Attempt to open the database
   const auto opened = sql_db.open_db(db_path.string());
+  (void)opened;
 
   fs::path schema_file =
       file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" / "editable-schema.sql";

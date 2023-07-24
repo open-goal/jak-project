@@ -65,7 +65,7 @@ const std::unordered_map<GameVersion, std::vector<std::string>> locale_lookup = 
 
 std::string lookup_locale_code(const GameVersion game_version, const int language_id) {
   if (locale_lookup.find(game_version) == locale_lookup.end() ||
-      locale_lookup.at(game_version).size() < language_id) {
+      (int)locale_lookup.at(game_version).size() < language_id) {
     return "";
   }
   return locale_lookup.at(game_version).at(language_id);

@@ -13,7 +13,7 @@ void extract_all_levels(const ObjectFileDB& db,
                         const TextureDB& tex_db,
                         const std::vector<std::string>& dgo_names,
                         const std::string& common_name,
-                        const DecompileHacks& hacks,
+                        const Config& config,
                         bool debug_dump_level,
                         bool extract_collision,
                         const fs::path& path);

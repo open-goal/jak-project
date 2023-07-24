@@ -56,6 +56,7 @@ add_library(common
         serialization/subtitles/subtitles.cpp
         serialization/text/text_ser.cpp
         sqlite/sqlite.cpp
+        texture/texture_slots.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp

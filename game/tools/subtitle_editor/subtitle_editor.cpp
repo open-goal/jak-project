@@ -48,7 +48,8 @@ void SubtitleEditor::draw_window() {
     }
   } else if (m_db_failed_to_load) {
     ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);
-    ImGui::Text(fmt::format("Error Loading - {}!", m_subtitle_db.m_load_error.value()).c_str());
+    ImGui::Text("%s",
+                fmt::format("Error Loading - {}!", m_subtitle_db.m_load_error.value()).c_str());
     ImGui::PopStyleColor();
     if (ImGui::Button("Try Again")) {
       if (g_game_version == GameVersion::Jak1) {
@@ -334,9 +335,10 @@ void SubtitleEditor::draw_all_non_cutscenes(bool base_cutscenes) {
   }
 }
 
-std::string SubtitleEditor::subtitle_line_summary(const SubtitleLine& line,
-                                                  const SubtitleLineMetadata& line_meta,
-                                                  const std::shared_ptr<GameSubtitleBank> bank) {
+std::string SubtitleEditor::subtitle_line_summary(
+    const SubtitleLine& line,
+    const SubtitleLineMetadata& line_meta,
+    const std::shared_ptr<GameSubtitleBank> /*bank*/) {
   // Truncate the text if it's too long, it's supposed to just be a summary at a glance
   std::string line_text = "";
   if (!line.text.empty()) {

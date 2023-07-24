@@ -89,7 +89,7 @@ struct GameSubtitleSceneInfo {
       return false;
     }
     // Check each line
-    for (int i = 0; i < m_lines.size(); i++) {
+    for (size_t i = 0; i < m_lines.size(); i++) {
       if (m_lines.at(i).text != other.m_lines.at(i).text) {
         return false;
       }
@@ -102,7 +102,7 @@ struct GameSubtitleSceneInfo {
       return false;
     }
     // Check each line's metadata
-    for (int i = 0; i < m_lines.size(); i++) {
+    for (size_t i = 0; i < m_lines.size(); i++) {
       if (m_lines.at(i).metadata != other.m_lines.at(i).metadata) {
         return false;
       }
