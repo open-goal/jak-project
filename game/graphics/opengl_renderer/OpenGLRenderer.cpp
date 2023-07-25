@@ -707,6 +707,11 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     auto prof = m_profiler.root()->make_scoped_child("buckets");
     dispatch_buckets(dma, prof, settings.gpu_sync);
+    if (m_texture_animator) {
+      // if animation requests weren't made, assume the level is unloaded and the textures should
+      // reset.
+      m_texture_animator->clear_stale_textures(m_render_state.frame_idx);
+    }
   }
 
   // apply effects done with PCRTC registers
