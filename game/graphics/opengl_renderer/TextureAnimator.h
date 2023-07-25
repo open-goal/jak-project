@@ -65,17 +65,18 @@ struct OpenGLTexturePool {
 class ClutBlender {
  public:
   ClutBlender(const std::string& dest,
-              const std::vector<std::string>& sources,
+              const std::array<std::string, 2>& sources,
               const std::optional<std::string>& level_name,
               const tfrag3::Level* level,
               OpenGLTexturePool* tpool);
   GLuint run(const float* weights);
   GLuint texture() const { return m_texture; }
+  bool at_default() const { return m_current_weights[0] == 1.f && m_current_weights[1] == 0.f; }
 
  private:
   const tfrag3::IndexTexture* m_dest;
-  std::vector<const std::array<math::Vector4<u8>, 256>*> m_cluts;
-  std::vector<float> m_current_weights;
+  std::array<const std::array<math::Vector4<u8>, 256>*, 2> m_cluts;
+  std::array<float, 2> m_current_weights;
   GLuint m_texture;
   std::array<math::Vector4<u8>, 256> m_temp_clut;
   std::vector<u32> m_temp_rgba;
@@ -199,10 +200,14 @@ class TextureAnimator {
  public:
   TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
   ~TextureAnimator();
-  void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
+  void handle_texture_anim_data(DmaFollower& dma,
+                                const u8* ee_mem,
+                                TexturePool* texture_pool,
+                                u64 frame_idx);
   GLuint get_by_slot(int idx);
   void draw_debug_window();
   const std::vector<GLuint>* slots() { return &m_public_output_slots; }
+  void clear_stale_textures(u64 frame_idx);
 
  private:
   void copy_private_to_public();
@@ -314,6 +319,7 @@ class TextureAnimator {
   struct ClutBlenderGroup {
     std::vector<ClutBlender> blenders;
     std::vector<int> outputs;
+    u64 last_updated_frame = 0;
   };
   std::vector<ClutBlenderGroup> m_clut_blender_groups;
 
@@ -332,7 +338,7 @@ class TextureAnimator {
                                  const std::string& suffix0,
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
-  void run_clut_blender_group(DmaTransfer& tf, int idx);
+  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;

@@ -223,17 +223,18 @@ void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
  * texture using the index data in dest.
  */
 ClutBlender::ClutBlender(const std::string& dest,
-                         const std::vector<std::string>& sources,
+                         const std::array<std::string, 2>& sources,
                          const std::optional<std::string>& level_name,
                          const tfrag3::Level* level,
                          OpenGLTexturePool* tpool) {
   // find the destination texture
   m_dest = itex_by_name(level, dest, level_name);
   // find the clut source textures
-  for (const auto& sname : sources) {
-    m_cluts.push_back(&itex_by_name(level, sname, level_name)->color_table);
-    m_current_weights.push_back(0);
+  for (int i = 0; i < 2; i++) {
+    m_cluts[i] = &itex_by_name(level, sources[i], level_name)->color_table;
+    m_current_weights[i] = 0;
   }
+
   // opengl texture that we'll write to
   m_texture = tpool->allocate(m_dest->w, m_dest->h);
   m_temp_rgba.resize(m_dest->w * m_dest->h);
@@ -510,8 +511,9 @@ void TextureAnimator::add_to_clut_blender_group(int idx,
                                                 const std::optional<std::string>& dgo) {
   auto& grp = m_clut_blender_groups.at(idx);
   for (auto& prefix : textures) {
-    grp.blenders.emplace_back(prefix, std::vector<std::string>{prefix + suffix0, prefix + suffix1},
-                              dgo, m_common_level, &m_opengl_texture_pool);
+    grp.blenders.emplace_back(prefix,
+                              std::array<std::string, 2>{prefix + suffix0, prefix + suffix1}, dgo,
+                              m_common_level, &m_opengl_texture_pool);
     grp.outputs.push_back(output_slot_by_idx(GameVersion::Jak2, prefix));
     m_private_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
   }
@@ -584,7 +586,8 @@ struct TextureAnimPcTransform {
  */
 void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
                                                const u8* ee_mem,
-                                               TexturePool* texture_pool) {
+                                               TexturePool* texture_pool,
+                                               u64 frame_idx) {
   dprintf("animator\n");
   m_current_shader = {};
   glBindVertexArray(m_vao);
@@ -645,23 +648,23 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case DARKJAK: {
           auto p = scoped_prof("darkjak");
-          run_clut_blender_group(tf, m_darkjak_clut_blender_idx);
+          run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
         } break;
         case PRISON_JAK: {
           auto p = scoped_prof("prisonjak");
-          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx);
         } break;
         case ORACLE_JAK: {
           auto p = scoped_prof("oraclejak");
-          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx);
         } break;
         case NEST_JAK: {
           auto p = scoped_prof("nestjak");
-          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx);
         } break;
         case KOR_TRANSFORM: {
           auto p = scoped_prof("kor");
-          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx);
+          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx);
         } break;
         case SKULL_GEM: {
           auto p = scoped_prof("skull-gem");
@@ -990,14 +993,28 @@ void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
   glColorMask(true, true, true, true);
 }
 
-void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx) {
+void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
   float f;
   ASSERT(tf.size_bytes == 16);
   memcpy(&f, tf.data, sizeof(float));
   float weights[2] = {1.f - f, f};
   auto& blender = m_clut_blender_groups.at(idx);
+  blender.last_updated_frame = frame_idx;
   for (size_t i = 0; i < blender.blenders.size(); i++) {
     m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  }
+}
+
+void TextureAnimator::clear_stale_textures(u64 frame_idx) {
+  for (auto& group : m_clut_blender_groups) {
+    if (frame_idx > group.last_updated_frame) {
+      for (auto& blender : group.blenders) {
+        if (!blender.at_default()) {
+          float weights[2] = {1, 0};
+          blender.run(weights);
+        }
+      }
+    }
   }
 }
 
@@ -1948,6 +1965,8 @@ void TextureAnimator::setup_texture_anims() {
     skull_gem.move_to_pool = true;
     skull_gem.tex_name = "skull-gem-dest";
     skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
+    // overriden in texture-finish.gc
+    skull_gem.override_size = math::Vector2<int>(32, 32);
 
     auto& skull_gem_0 = skull_gem.layers.emplace_back();
     skull_gem_0.end_time = 300.;

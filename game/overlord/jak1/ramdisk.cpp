@@ -126,7 +126,7 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
     // locate file to load into ramdisk
     auto file_record = FindISOFile(cmd->name);
     if (!file_record) {
-      printf("[OVERLORD RAMDISK] Failed to find ISO file for load.\n");  // added
+      printf("[OVERLORD RAMDISK] Failed to find ISO file for load (%s).\n", cmd->name);  // added
       return nullptr;
     }
 
@@ -150,6 +150,9 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
       gMemUsed += gFiles[gNumFiles].size;
     } else {
       printf("[OVERLORD RAMDISK] Failed to load file because RAMDISK is out of memory or files!\n");
+      printf("num files %d, mem used %d\n", gNumFiles, gMemUsed);
+      printf("file size: %d\n", file_length);
+      printf("file name: %s\n", cmd->name);
     }
   } else if (fno == RAMDISK_GET_DATA_FNO) {
     // Copy data into a local IOP buffer
