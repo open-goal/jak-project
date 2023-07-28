@@ -30,7 +30,8 @@ void TextureUploadHandler::render(DmaFollower& dma,
       dma.read_and_advance();
       auto p = scoped_prof("texture-animator");
       m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
-                                                   render_state->texture_pool.get());
+                                                   render_state->texture_pool.get(),
+                                                   render_state->frame_idx);
     }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {

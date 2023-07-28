@@ -359,6 +359,7 @@
   "progress-static.o"
   "progress.o"
   "progress-draw.o"
+  "progress-draw-pc.o" ;; added
   "ocean.o"
   "ocean-vu0.o"
   "ocean-texture.o"
