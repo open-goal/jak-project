@@ -660,9 +660,9 @@
          (set! (-> self gun track-tilt-range) 327680.0)
          (set! (-> self gun track-angle-mult) 1.75)
          (set! (-> self gun track-require) (the-as uint 3))
-         (set! (-> self gun fire-delay) (the-as uint 15))
-         (set! (-> self gun combo-fire-delay) (the-as uint 30))
-         (set! (-> self gun track-beam-size) 2457.6)
+         (set! (-> self gun fire-delay) (the-as uint 1))
+         (set! (-> self gun combo-fire-delay) (the-as uint 1))
+         (set! (-> self gun track-beam-size) 245700.6)
          (remove-setting! 'gun-min-height)
          (remove-setting! 'gun-max-height)
          )
@@ -703,8 +703,8 @@
          (set! (-> self gun track-turn-range) 1638400.0)
          (set! (-> self gun track-find-range) 1638400.0)
          (set! (-> self gun track-angle-mult) 1.75)
-         (set! (-> self gun fire-delay) (the-as uint 255))
-         (set! (-> self gun combo-fire-delay) (the-as uint 150))
+         (set! (-> self gun fire-delay) (the-as uint 1))
+         (set! (-> self gun combo-fire-delay) (the-as uint 1))
          (set! (-> self gun track-beam-size) 1228.8)
          (set! (-> self gun track-require) (the-as uint 2))
          (remove-setting! 'gun-min-height)
@@ -1170,7 +1170,33 @@
   (none)
   )
 
+(deftype best-track (structure)
+  ((dist float)
+   (obj process-drawable)
+   )
+  )
+
+(declare-type enemy basic)
+
+(deftype enemy-hack (basic)
+  ((hit-points int32 :offset 220))
+  )
+
+(defun is-dead-enemy? ((proc process))
+  (and (type-type? (-> proc type) enemy) (<= (-> (the enemy-hack proc) hit-points) 0))
+  )
+
+(defun get-trans-for-aim ((vec vector) (proc process-drawable))
+  ;(if (type-type? (-> proc type) process-focusable)
+   ;   (vector-copy! vec (get-trans (the process-focusable proc) 3))
+      (vector+! vec (get-trans (the process-focusable proc) 3) (new 'static 'vector :y (meters 0.15)))
+    ;  )
+  vec
+  )
+
+
 (defbehavior target-gun-find-track target ()
+  
   (if (logtest? (-> self gun upper-body track-mode) (track-mode lock-on))
       (logior! (-> self gun track?) 8)
       (logand! (-> self gun track?) -9)
@@ -1777,21 +1803,23 @@
        )
      (cond
        ((and (logtest? (-> self gun track?) 1)
-             (logtest? (process-mask enemy guard) (-> (handle->process (-> self gun track-target 0 handle)) mask))
+             ;(logtest? (process-mask enemy guard crate) (-> (handle->process (-> self gun track-target 0 handle)) mask))
              )
-        (if (and (< (- (current-time) (-> self gun track-press-start-time)) (seconds 0.5))
+        #|(if #t (and (< (- (-> self clock frame-counter) (-> self gun track-press-start-time)) (seconds 0.5))
                  (< (-> self control time-between-zero-inputs) (seconds 0.5))
                  (and (= (-> self control turn-to-magnitude) 0.0)
                       (not (logtest? (-> self control current-surface flags) (surface-flag air attack)))
                       (-> self gun active?)
                       )
-                 )
+                )|#
             (forward-up-nopitch->quaternion
               (-> self control dir-targ)
               (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
               (vector-y-quaternion! (new-stack-vector0) (-> self control dir-targ))
               )
-            )
+
+
+           ; )
         (cond
           ((or (and (nonzero? (-> self gun track-target-hold-time)) (< (current-time) (-> self gun track-target-hold-time)))
                (and (nonzero? (-> self gun turn-fast-hold-time)) (< (current-time) (-> self gun turn-fast-hold-time)))
@@ -2606,6 +2634,8 @@
       (if (cpad-pressed? (-> self control cpad number) r1)
           (set! (-> gp-0 fire-start-time) (current-time))
           )
+           (format *stdcon* "gc: ~D~%" (-> gp-0 gun-control))
+      (set! (-> gp-0 gun-control) 4)
       (case (-> gp-0 gun-control)
         ((1)
          (when (and (cpad-pressed? (-> self control cpad number) r1)
@@ -2686,7 +2716,7 @@
                     (sar (shl (the int (+ (-> gp-0 fire-spin) (* (-> gp-0 fire-spinv) (-> self clock seconds-per-frame)))) 48) 48)
                     )
                )
-         (set! (-> gp-0 fire-delay) (the-as uint (the int (lerp-scale 120.0 30.0 (-> gp-0 fire-spinv) 0.0 218453.33))))
+         (set! (-> gp-0 fire-delay) 0);(the-as uint (the int (lerp-scale 120.0 30.0 (-> gp-0 fire-spinv) 0.0 218453.33))))
          (when (and (>= (-> gp-0 fire-spinv) 218453.33)
                     (and (or (< 0.0 (-> self game gun-ammo 2))
                              (logtest? (state-flags sf16) (-> self state-flags))
