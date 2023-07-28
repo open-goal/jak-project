@@ -163,6 +163,10 @@ struct FixedLayerDef {
     z_writes = false;
     z_test = false;
   }
+  void set_clamp() {
+    clamp_v = true;
+    clamp_u = true;
+  }
 };
 
 struct FixedAnimDef {
@@ -260,12 +264,12 @@ class TextureAnimator {
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
   void set_draw_data_from_interpolated(DrawData* result, const LayerVals& vals, int w, int h);
 
-  PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
+  PcTextureId get_id_for_tbp(TexturePool* pool, u64 tbp, u64 other_id);
 
   VramEntry* m_tex_looking_for_clut = nullptr;
   const tfrag3::Level* m_common_level = nullptr;
   std::unordered_map<u32, VramEntry> m_textures;
-  std::unordered_map<u32, PcTextureId> m_ids_by_vram;
+  std::unordered_map<u64, PcTextureId> m_ids_by_vram;
 
   std::set<u32> m_erased_on_this_frame;
 
@@ -310,6 +314,7 @@ class TextureAnimator {
 
   std::vector<GLuint> m_private_output_slots;
   std::vector<GLuint> m_public_output_slots;
+  std::vector<int> m_skip_tbps;
 
   struct Bool {
     bool b = false;
@@ -355,5 +360,9 @@ class TextureAnimator {
   int m_stadiumb_anim_array_idx = -1;
   int m_fortress_pris_anim_array_idx = -1;
   int m_fortress_warp_anim_array_idx = -1;
+  int m_metkor_anim_array_idx = -1;
+  int m_shield_anim_array_idx = -1;
+  int m_krew_holo_anim_array_idx = -1;
+
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };
