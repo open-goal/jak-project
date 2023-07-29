@@ -20,7 +20,6 @@ void TextureUploadHandler::render(DmaFollower& dma,
   // this is the data we get from the PC Port modification.
   m_upload_count = 0;
   std::vector<TextureUpload> uploads;
-
   // loop through all data, grabbing buckets
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto dma_tag = dma.current_tag();
@@ -29,6 +28,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
     if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
       dma.read_and_advance();
       auto p = scoped_prof("texture-animator");
+      // note: if both uploads and animator write to the pool, do uploads before the animator.
+      flush_uploads(uploads, render_state);
+      uploads.clear();
       m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
                                                    render_state->texture_pool.get(),
                                                    render_state->frame_idx);

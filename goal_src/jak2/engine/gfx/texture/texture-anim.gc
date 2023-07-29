@@ -193,6 +193,9 @@
   (stadiumb 35)
   (fortress-pris 36)
   (fortress-warp 37)
+  (metkor 38)
+  (shield 39)
+  (krew-holo 40)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -607,7 +610,9 @@
 (define-extern *stadiumb-energy-wall-anim-array* (texture-anim-array texture-anim))
 (define-extern *fortress-pris-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *fortress-warp-texture-anim-array* (texture-anim-array texture-anim))
-
+(define-extern *metkor-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *shield-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *krew-holo-texture-anim-array* (texture-anim-array texture-anim))
 
 (defun pc-update-fixed-anim ((bucket bucket-id) (anim-id texture-anim-pc) (anim-array texture-anim-array))
   "Run a 'fixed' texture-anim, which should run entirely in C++."
@@ -652,6 +657,9 @@
               (&+! out-ptr 80)
               )
 
+            (when (-> anim func)
+              ((-> anim func) dma-buf anim)
+              )
             (when (not (paused?))
               (with-pp
                 (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (-> pp clock seconds-per-frame))))
@@ -734,6 +742,18 @@
      )
     ((= anim-array *fortress-warp-texture-anim-array*)
      (pc-update-fixed-anim bucket (texture-anim-pc fortress-warp) anim-array)
+     (return #f)
+     )
+    ((= anim-array *metkor-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc metkor) anim-array)
+     (return #f)
+     )
+    ((= anim-array *shield-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc shield) anim-array)
+     (return #f)
+     )
+    ((= anim-array *krew-holo-texture-anim-array*)
+     (pc-update-fixed-anim bucket (texture-anim-pc krew-holo) anim-array)
      (return #f)
      )
     ((= anim-array *darkjak-texture-anim-array*)
