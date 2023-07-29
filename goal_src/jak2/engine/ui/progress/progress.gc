@@ -40,8 +40,8 @@
    (game-options-language-index          int32          :offset-assert 152)
    (game-options-subtitle-language-index int32          :offset-assert 156)
    (graphic-options-item-selected        int32          :offset-assert 160)
-   (graphic-options-item-picked          basic          :offset-assert 164)
-   (graphic-options-last-move            uint64         :offset-assert 168)
+   (graphic-options-item-picked          symbol         :offset-assert 164)
+   (graphic-options-last-move            time-frame     :offset-assert 168)
    (graphic-options-aspect-ratio         symbol         :offset-assert 176)
    (graphic-options-progressive-scan     symbol         :offset-assert 180)
    (qr-options-item-selected             int32          :offset-assert 184)
@@ -3407,7 +3407,7 @@
   0
   )
 
-(defun update-center-screen ()
+(defun update-center-screen ((arg0 menu-graphic-option) (arg1 progress) (arg2 symbol))
   (let ((v1-0 #f))
     (cond
       (#t
@@ -3469,10 +3469,10 @@
      (cond
        ((or (cpad-pressed? 0 down l-analog-down)
             (and (cpad-hold? 0 down l-analog-down)
-                 (>= (- (current-time) (the-as int (-> *progress-state* graphic-options-last-move))) (seconds 0.5))
+                 (>= (- (current-time) (-> *progress-state* graphic-options-last-move)) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* graphic-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* graphic-options-last-move) (current-time))
         (set! (-> arg0 selected-option) #f)
         (cond
           ((< (-> *progress-state* graphic-options-item-selected) (if (= (scf-get-territory) 1)
@@ -3491,10 +3491,10 @@
         )
        ((or (cpad-pressed? 0 up l-analog-up)
             (and (cpad-hold? 0 up l-analog-up)
-                 (>= (- (current-time) (the-as int (-> *progress-state* graphic-options-last-move))) (seconds 0.5))
+                 (>= (- (current-time) (-> *progress-state* graphic-options-last-move)) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* graphic-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* graphic-options-last-move) (current-time))
         (set! (-> arg0 selected-option) #f)
         (cond
           ((> (-> *progress-state* graphic-options-item-selected) 0)
@@ -3514,8 +3514,8 @@
        ((cpad-pressed? 0 confirm)
         (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
         (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-        (set! (-> *progress-state* graphic-options-last-move) (the-as uint (current-time)))
-        (set! (-> *progress-state* graphic-options-item-picked) (the-as basic #t))
+        (set! (-> *progress-state* graphic-options-last-move) (current-time))
+        (set! (-> *progress-state* graphic-options-item-picked) #t)
         (set! (-> arg0 selected-option) #f)
         (sound-play "generic-beep")
         )
@@ -3552,10 +3552,7 @@
        ((and (zero? (-> *progress-state* graphic-options-item-selected))
              (cpad-pressed? 0 up right down left l-analog-up l-analog-right l-analog-down l-analog-left)
              )
-        (let ((t9-13 update-center-screen))
-          #t
-          (t9-13)
-          )
+        (update-center-screen obj arg0 #t)
         )
        ((and (= (-> *progress-state* graphic-options-item-selected) 1) (cpad-pressed? 0 left l-analog-left))
         (sound-play "generic-beep")
@@ -3594,11 +3591,8 @@
         (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
         (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
         (sound-play "generic-beep")
-        (when (zero? (-> *progress-state* graphic-options-item-selected))
-          (let ((t9-28 update-center-screen))
-            #t
-            (t9-28)
-            )
+        (if (zero? (-> *progress-state* graphic-options-item-selected))
+          (update-center-screen obj arg0 #t)
           )
         (when (= (-> *progress-state* graphic-options-item-selected) 1)
           (if (!= (-> *progress-state* graphic-options-aspect-ratio) (-> *setting-control* user-default aspect-ratio))
