@@ -69,7 +69,6 @@ void main() {
   vec4 tod_color = texelFetch(tex_T10, time_of_day_index, 0);
   // combine
   fragment_color *= tod_color * 4;
-  fragment_color.a *= 2;
 
   if (decal == 1) {
     fragment_color.xyz = vec3(1.0, 1.0, 1.0);
