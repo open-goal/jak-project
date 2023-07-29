@@ -164,7 +164,6 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::EndMenu();
     }
-    ImGui::Text("Press F11 to toggle this toolbar");
     ImGui::Text("%s", fmt::format("Press {} to toggle this toolbar",
                                   sdl_util::get_keyboard_button_name(
                                       Gfx::g_debug_settings.hide_imgui_key, InputModifiers()))
