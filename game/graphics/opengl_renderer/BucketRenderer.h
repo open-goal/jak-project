@@ -87,9 +87,6 @@ struct SharedRenderState {
   int draw_offset_x = 0;
   int draw_offset_y = 0;
 
-  // the FBO for blit buffer
-  const Fbo* back_fbo = nullptr;
-
   int bucket_for_vis_copy = 0;
   int num_vis_to_copy = 0;
   GameVersion version;
