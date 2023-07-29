@@ -279,7 +279,7 @@ GLuint ClutBlender::run(const float* weights) {
   }
 
   // do texture lookups
-  for (int i = 0; i < m_temp_rgba.size(); i++) {
+  for (size_t i = 0; i < m_temp_rgba.size(); i++) {
     memcpy(&m_temp_rgba[i], m_temp_clut[m_dest->index_data[i]].data(), 4);
   }
 
@@ -472,7 +472,7 @@ void TextureAnimator::draw_debug_window() {
     int w, h;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    ImGui::Image((void*)m_private_output_slots[i], ImVec2(w, h));
+    ImGui::Image((void*)(u64)m_private_output_slots[i], ImVec2(w, h));
     ImGui::Checkbox(fmt::format("mark {}", i).c_str(), &m_output_debug_flags.at(i).b);
   }
   glBindTexture(GL_TEXTURE_2D, 0);
