@@ -6,7 +6,9 @@
 #include "common/global_profiler/GlobalProfiler.h"
 
 #include "game/graphics/gfx.h"
+#include "game/system/hid/sdl_util.h"
 
+#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_style.h"
 
@@ -162,7 +164,11 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::EndMenu();
     }
-    ImGui::Text("Press F12 to hide this menu");
+    ImGui::Text("Press F11 to toggle this toolbar");
+    ImGui::Text(fmt::format("Press {} to toggle this toolbar",
+                            sdl_util::get_keyboard_button_name(Gfx::g_debug_settings.hide_imgui_key,
+                                                               InputModifiers()))
+                    .c_str());
   }
   ImGui::EndMainMenuBar();
 
