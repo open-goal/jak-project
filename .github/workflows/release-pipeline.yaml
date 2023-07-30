@@ -13,6 +13,7 @@ jobs:
     with:
       cmakePreset: "Release-windows-clang-static"
       cachePrefix: "static"
+      uploadArtifacts: true
     secrets: inherit
 
   # Linux
@@ -22,15 +23,17 @@ jobs:
     with:
       cmakePreset: "Release-linux-clang-static"
       cachePrefix: "static"
+      uploadArtifacts: true
     secrets: inherit
 
   # macOS
-  build_macos_clang:
+  build_macos_intel:
     name: "🍎 MacOS"
     uses: ./.github/workflows/macos-build.yaml
     with:
       cmakePreset: "Release-macos-clang-static"
       cachePrefix: "static"
+      uploadArtifacts: true
     secrets: inherit
 
   # Upload the Artifacts
@@ -39,7 +42,7 @@ jobs:
     needs:
       - build_windows_clang
       - build_linux_clang
-      - build_macos_clang
+      - build_macos_intel
     name: "Upload Artifacts"
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +67,6 @@ jobs:
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           tar czf ../final/opengoal-linux-${TAG_VAL}.tar.gz .
           popd
-          strip ./ci-artifacts/opengoal-linux-static/lsp/lsp
           chmod +x ./ci-artifacts/opengoal-linux-static/lsp/lsp
           cp ./ci-artifacts/opengoal-linux-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-linux-${TAG_VAL}.bin
 
@@ -84,9 +86,8 @@ jobs:
           TAG_VAL=$(echo ${{ github.REF }} | awk -F'refs/tags/' '{print $2}')
           tar czf ../final/opengoal-macos-intel-${TAG_VAL}.tar.gz .
           popd
-          strip ./ci-artifacts/opengoal-macos-static/lsp/lsp
           chmod +x ./ci-artifacts/opengoal-macos-static/lsp/lsp
-          cp ./ci-artifacts/opengoal-macos-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-macos-intel${TAG_VAL}.bin
+          cp ./ci-artifacts/opengoal-macos-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-macos-intel-${TAG_VAL}.bin
 
       - name: Upload Assets
         env:
