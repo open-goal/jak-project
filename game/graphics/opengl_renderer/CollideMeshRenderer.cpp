@@ -106,27 +106,20 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
   render_state->shaders[ShaderId::COLLISION].activate();
 
   glBindVertexArray(m_vao);
-  TfragRenderSettings settings;
-  memcpy(settings.math_camera.data(), render_state->camera_matrix[0].data(), 64);
-  settings.hvdf_offset = render_state->camera_hvdf_off;
-  settings.fog = render_state->camera_fog;
-  settings.tree_idx = 0;
-  for (int i = 0; i < 4; i++) {
-    settings.planes[i] = render_state->camera_planes[i];
-  }
   auto shader = render_state->shaders[ShaderId::COLLISION].id();
   glUniformBlockBinding(shader, glGetUniformBlockIndex(shader, "PatColors"), 0);
   glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_ubo);
   glUniformMatrix4fv(glGetUniformLocation(shader, "camera"), 1, GL_FALSE,
-                     settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(shader, "hvdf_offset"), settings.hvdf_offset[0],
-              settings.hvdf_offset[1], settings.hvdf_offset[2], settings.hvdf_offset[3]);
+                     render_state->camera_matrix[0].data());
+  glUniform4f(glGetUniformLocation(shader, "hvdf_offset"), render_state->camera_hvdf_off[0],
+              render_state->camera_hvdf_off[1], render_state->camera_hvdf_off[2],
+              render_state->camera_hvdf_off[3]);
   const auto& trans = render_state->camera_pos;
   glUniform4f(glGetUniformLocation(shader, "camera_position"), trans[0], trans[1], trans[2],
               trans[3]);
-  glUniform1f(glGetUniformLocation(shader, "fog_constant"), settings.fog.x());
-  glUniform1f(glGetUniformLocation(shader, "fog_min"), settings.fog.y());
-  glUniform1f(glGetUniformLocation(shader, "fog_max"), settings.fog.z());
+  glUniform1f(glGetUniformLocation(shader, "fog_constant"), render_state->camera_fog.x());
+  glUniform1f(glGetUniformLocation(shader, "fog_min"), render_state->camera_fog.y());
+  glUniform1f(glGetUniformLocation(shader, "fog_max"), render_state->camera_fog.z());
   glUniform1i(glGetUniformLocation(shader, "version"), (GLint)render_state->version);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
