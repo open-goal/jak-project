@@ -9,6 +9,10 @@ on:
       cachePrefix:
         required: true
         type: string
+      uploadArtifacts:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -51,8 +55,17 @@ jobs:
       - name: Run Tests
         run: ./test.sh
 
+      - name: Prepare artifacts
+        if: ${{ inputs.uploadArtifacts }}
+        run: |
+          strip ./build/goalc/goalc
+          strip ./build/decompiler/extractor
+          strip ./build/game/gk
+          strip ./build/lsp/lsp
+
       - name: Upload artifact
         uses: actions/upload-artifact@v3
+        if: ${{ inputs.uploadArtifacts }}
         with:
           name: opengoal-macos-${{ inputs.cachePrefix }}
           if-no-files-found: error
