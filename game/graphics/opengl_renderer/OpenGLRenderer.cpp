@@ -126,7 +126,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
 
   // 0
   init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::BUCKET_2);
-  init_bucket_renderer<BlitDisplays>("blit", BucketCategory::OTHER, BucketId::BUCKET_3);
+  m_blit_displays =
+      init_bucket_renderer<BlitDisplays>("blit", BucketCategory::OTHER, BucketId::BUCKET_3);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_SKY_PRE, m_texture_animator);
   init_bucket_renderer<DirectRenderer>("sky-draw", BucketCategory::OTHER, BucketId::SKY_DRAW, 1024);
@@ -645,34 +646,9 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 }  // namespace
 
 void OpenGLRenderer::blit_display() {
-  auto& back = m_fbo_state.resources.back_buffer;
-  if (!back.valid || !back.matches(*m_fbo_state.render_fbo)) {
-    back.clear();
-    back = make_fbo(m_fbo_state.render_fbo->width, m_fbo_state.render_fbo->height, 1, false);
+  if (m_blit_displays) {
+    m_blit_displays->do_copy_back(&m_render_state);
   }
-
-  Fbo* window_blit_src = nullptr;
-  if (m_fbo_state.resources.resolve_buffer.valid) {
-    // since this is called after do_pcrtc_effects, the resolve buffer is already made
-    window_blit_src = &m_fbo_state.resources.resolve_buffer;
-  } else {
-    window_blit_src = m_fbo_state.render_fbo;
-  }
-
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, back.fbo_id);
-  glBlitFramebuffer(0,                        // srcX0
-                    0,                        // srcY0
-                    window_blit_src->width,   // srcX1
-                    window_blit_src->height,  // srcY1
-                    0,                        // dstX0
-                    0,                        // dstY0
-                    back.width,               // dstX1
-                    back.height,              // dstY1
-                    GL_COLOR_BUFFER_BIT,      // mask
-                    GL_LINEAR                 // filter
-  );
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 /*!
@@ -714,6 +690,12 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     }
   }
 
+  // blit framebuffer so that it can be used as a texture by the game later
+  {
+    auto prof = m_profiler.root()->make_scoped_child("blit-display");
+    blit_display();
+  }
+
   // apply effects done with PCRTC registers
   {
     auto prof = m_profiler.root()->make_scoped_child("pcrtc");
@@ -721,12 +703,6 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
     if (settings.gpu_sync) {
       glFinish();
     }
-  }
-
-  // blit framebuffer so that it can be used as a texture by the game later
-  {
-    auto prof = m_profiler.root()->make_scoped_child("blit-display");
-    blit_display();
   }
 
   m_last_pmode_alp = settings.pmode_alp_register;
@@ -910,24 +886,27 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
 
   ASSERT_MSG(!m_fbo_state.render_fbo->is_window, "window fbo");
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
-  glDepthMask(GL_TRUE);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-  glDisable(GL_BLEND);
+  if (m_version == GameVersion::Jak1) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearDepth(0.0);
+    glDepthMask(GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glDisable(GL_BLEND);
 
-  glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
-  glClearStencil(0);
-  glDepthMask(GL_TRUE);
-  // Note: could rely on sky renderer to clear depth and color, but this causes problems with
-  // letterboxing
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-  glDisable(GL_BLEND);
-  m_render_state.stencil_dirty = false;
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearDepth(0.0);
+    glClearStencil(0);
+    glDepthMask(GL_TRUE);
+    // Note: could rely on sky renderer to clear depth and color, but this causes problems with
+    // letterboxing
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glDisable(GL_BLEND);
+    m_render_state.stencil_dirty = false;
+  }
+  // jak 2 does the clear in BlitDisplays.cpp
 
   // setup the draw region to letterbox later
   m_render_state.draw_region_w = settings.draw_region_width;
@@ -940,7 +919,6 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
       (settings.window_framebuffer_height - m_render_state.draw_region_h) / 2;
 
   m_render_state.render_fb = m_fbo_state.render_fbo->fbo_id;
-  m_render_state.back_fbo = &m_fbo_state.resources.back_buffer;
 
   if (m_render_state.draw_region_w <= 0 || m_render_state.draw_region_h <= 0) {
     // trying to draw to 0 size region... opengl doesn't like this.

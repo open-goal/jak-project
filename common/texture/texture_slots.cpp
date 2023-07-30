@@ -36,6 +36,8 @@ std::vector<std::string> jak2_slots = {
     "robotank-tread-l-dest",
     "robotank-tread-r-dest",
     "fort-roboscreen-dest",
+    "squid-env-rim-dest",
+    "krew-holo-dest",
 };
 
 }

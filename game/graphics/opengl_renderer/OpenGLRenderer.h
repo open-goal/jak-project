@@ -113,6 +113,7 @@ class OpenGLRenderer {
   std::shared_ptr<TextureAnimator> m_texture_animator;
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;
   std::vector<BucketCategory> m_bucket_categories;
+  class BlitDisplays* m_blit_displays = nullptr;
 
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
   FullScreenDraw m_blackout_renderer;
@@ -126,7 +127,6 @@ class OpenGLRenderer {
       Fbo window;          // provided by glfw
       Fbo render_buffer;   // temporary buffer to render to
       Fbo resolve_buffer;  // temporary buffer to resolve to
-      Fbo back_buffer;     // the previous buffer we rendered
     } resources;
 
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
