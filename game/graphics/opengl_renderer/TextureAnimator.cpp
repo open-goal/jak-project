@@ -1806,6 +1806,14 @@ void TextureAnimator::run_fixed_animation_array(int idx,
       ASSERT(tbp < 0x40000);
       m_skip_tbps.push_back(tbp);  // known to be an output texture.
       if (anim.pool_gpu_tex) {
+        // if the debug checkbox is checked, replace the texture with red.
+        if (m_output_debug_flags.at(anim.dest_slot).b) {
+          FramebufferTexturePairContext ctxt(*anim.fbt);
+          glColorMask(true, true, true, true);
+          glClearColor(1.0, 0.0, 0.0, 0.5);
+          glClear(GL_COLOR_BUFFER_BIT);
+        }
+
         texture_pool->move_existing_to_vram(anim.pool_gpu_tex, tbp);
         ASSERT(texture_pool->lookup(tbp).value() == anim.fbt->texture());
       } else {

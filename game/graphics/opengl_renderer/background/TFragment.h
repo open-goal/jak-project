@@ -88,8 +88,6 @@ class TFragment : public BucketRenderer {
   u8 m_test_setup[32];
 
   // VU data
-  TFragData m_tfrag_data;
-
   TfragPcPortData m_pc_port_data;
 
   // buffers
