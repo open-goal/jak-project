@@ -9,7 +9,7 @@
 SubtitleEditorReplClient::SubtitleEditorReplClient() {
   int port = 8181;
   if (g_game_version == GameVersion::Jak2) {
-    port = 8182;
+    port = 8181;
   }
   m_repl = std::make_unique<ReplClient>(port);
 }
