@@ -765,7 +765,7 @@ void pc_renderer_tree_set_lod(Gfx::RendererTreeType tree, int lod) {
 }
 
 void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
-  if (!symbol_to_bool(symptr)) {
+  if (symbol_to_bool(symptr)) {
     Gfx::CollisionRendererSetMask(mode, mask);
   } else {
     Gfx::CollisionRendererClearMask(mode, mask);
