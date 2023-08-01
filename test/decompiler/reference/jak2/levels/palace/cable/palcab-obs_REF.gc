@@ -1,0 +1,1359 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type pal-fan-ring
+(deftype pal-fan-ring (structure)
+  ((lightning      lightning-control  :offset-assert   0)
+   (radius         float              :offset-assert   4)
+   (dist           float              :offset-assert   8)
+   (local-z-rotate float              :offset-assert  12)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type pal-fan-ring
+(defmethod inspect pal-fan-ring ((obj pal-fan-ring))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'pal-fan-ring)
+  (format #t "~1Tlightning: ~A~%" (-> obj lightning))
+  (format #t "~1Tradius: ~f~%" (-> obj radius))
+  (format #t "~1Tdist: ~f~%" (-> obj dist))
+  (format #t "~1Tlocal-z-rotate: ~f~%" (-> obj local-z-rotate))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type pal-fan-pole
+(deftype pal-fan-pole (structure)
+  ((rings    pal-fan-ring 6 :inline :offset-assert   0)
+   (z-rotate float                  :offset         96)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x64
+  :flag-assert         #x900000064
+  )
+
+;; definition for method 3 of type pal-fan-pole
+(defmethod inspect pal-fan-pole ((obj pal-fan-pole))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'pal-fan-pole)
+  (format #t "~1Trings[6] @ #x~X~%" (-> obj rings))
+  (format #t "~1Tz-rotate: ~f~%" (-> obj z-rotate))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type pal-electric-fan
+(deftype pal-electric-fan (process-drawable)
+  ((root               collide-shape-moving           :override)
+   (poles              pal-fan-pole         3 :inline :offset-assert 200)
+   (no-collision-timer time-frame                     :offset        536)
+   (sound-timer        time-frame                     :offset-assert 544)
+   (rotate-speed       float                          :offset-assert 552)
+   (attack-id          uint32                         :offset-assert 556)
+   (sound-id           sound-id                       :offset-assert 560)
+   )
+  :heap-base #x1c0
+  :method-count-assert 21
+  :size-assert         #x234
+  :flag-assert         #x1501c00234
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type pal-electric-fan
+(defmethod inspect pal-electric-fan ((obj pal-electric-fan))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpoles[3] @ #x~X~%" (-> obj poles))
+  (format #t "~2Tno-collision-timer: ~D~%" (-> obj no-collision-timer))
+  (format #t "~2Tsound-timer: ~D~%" (-> obj sound-timer))
+  (format #t "~2Trotate-speed: ~f~%" (-> obj rotate-speed))
+  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-pal-electric-fan pal-electric-fan pal-electric-fan-lod0-jg pal-electric-fan-idle-ja
+              ((pal-electric-fan-lod0-mg (meters 20)) (pal-electric-fan-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 16)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (pal-electric-fan)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('touch)
+         (let* ((s4-0 proc)
+                (gp-0 (if (type? s4-0 process-focusable)
+                          s4-0
+                          )
+                      )
+                )
+           (when (and gp-0 ((method-of-type touching-shapes-entry prims-touching?)
+                            (the-as touching-shapes-entry (-> event param 0))
+                            (-> self root)
+                            (the-as uint 1)
+                            )
+                      )
+             (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+               (let ((v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat))))
+                 (if (< 0.0 (vector-dot s4-1 v1-5))
+                     (vector-float*! s4-1 s4-1 -1.0)
+                     )
+                 )
+               (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-7 from) (process->ppointer self))
+                 (set! (-> a1-7 num-params) 2)
+                 (set! (-> a1-7 message) 'attack)
+                 (set! (-> a1-7 param 0) (-> event param 0))
+                 (let ((v1-14 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
+                   (set! (-> v1-14 id) (-> self attack-id))
+                   (set! (-> v1-14 vector quad) (-> s4-1 quad))
+                   (set! (-> v1-14 shove-back) 12288.0)
+                   (set! (-> v1-14 shove-up) 36864.0)
+                   (set! (-> v1-14 control) (if (focus-test? (the-as process-focusable gp-0) board)
+                                                1.0
+                                                0.0
+                                                )
+                         )
+                   (set! (-> a1-7 param 1) (the-as uint v1-14))
+                   )
+                 (when (send-event-function gp-0 a1-7)
+                   (set! (-> self no-collision-timer) (current-time))
+                   (let ((v1-19 (-> self root root-prim)))
+                     (set! (-> v1-19 prim-core collide-as) (collide-spec))
+                     (set! (-> v1-19 prim-core collide-with) (collide-spec))
+                     )
+                   0
+                   )
+                 )
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (when (and (nonzero? (-> self no-collision-timer))
+               (>= (- (current-time) (-> self no-collision-timer))
+                   (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
+                   )
+               )
+      (let ((v1-7 (-> self root root-prim)))
+        (set! (-> v1-7 prim-core collide-as) (-> self root backup-collide-as))
+        (set! (-> v1-7 prim-core collide-with) (-> self root backup-collide-with))
+        )
+      (set! (-> self no-collision-timer) 0)
+      0
+      )
+    (rider-trans)
+    (none)
+    )
+  :code (the-as (function none :behavior pal-electric-fan) sleep-code)
+  :post (behavior ()
+    (local-vars (sv-112 vector) (sv-128 vector) (sv-144 lightning-control))
+    (rlet ((vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((v1-0 (-> self root))
+            (f30-0 4369.067)
+            (f28-0 (* (-> self rotate-speed) (-> self clock seconds-per-frame)))
+            (gp-0 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> gp-0 x) 1.0)
+        (set! (-> gp-0 y) 1.0)
+        (set! (-> gp-0 z) 0.4)
+        (set! (-> gp-0 w) 1.0)
+        (quaternion-rotate-local-z! (-> v1-0 quat) (-> v1-0 quat) f28-0)
+        (dotimes (s5-0 3)
+          (let ((s4-0 (-> self poles s5-0)))
+            (dotimes (s3-0 6)
+              (let ((s2-0 (new 'stack-no-clear 'vector))
+                    (s0-0 (-> s4-0 rings s3-0))
+                    (s1-0 (quaternion-rotate-local-z!
+                            (new 'stack-no-clear 'quaternion)
+                            (-> self root quat)
+                            (+ (-> s4-0 z-rotate) (* 0.2 f28-0))
+                            )
+                          )
+                    )
+                (set-vector! s2-0 0.0 (-> s0-0 dist) 0.0 1.0)
+                (vector-orient-by-quat! s2-0 s2-0 s1-0)
+                (vector+! s2-0 s2-0 (-> self root trans))
+                (set! sv-112 (new 'stack-no-clear 'vector))
+                (set! sv-128 (new 'stack-no-clear 'vector))
+                (set! sv-144 (-> s0-0 lightning))
+                (set-vector! sv-112 (-> s0-0 radius) 0.0 0.0 0.0)
+                (quaternion-rotate-local-z! s1-0 s1-0 (-> s0-0 local-z-rotate))
+                (dotimes (s0-1 16)
+                  (vector-orient-by-quat! sv-128 sv-112 s1-0)
+                  (let ((a1-7 sv-128))
+                    (let ((v1-14 sv-128)
+                          (a0-14 gp-0)
+                          )
+                      (.lvf vf4 (&-> v1-14 quad))
+                      (.lvf vf5 (&-> a0-14 quad))
+                      )
+                    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                    (.mul.vf vf6 vf4 vf5 :mask #b111)
+                    (.svf (&-> a1-7 quad) vf6)
+                    )
+                  (set-point! sv-144 s0-1 (vector+! (new 'stack-no-clear 'vector) s2-0 sv-128))
+                  (quaternion-rotate-local-y! s1-0 s1-0 f30-0)
+                  )
+                )
+              )
+            )
+          )
+        )
+      (when (>= (- (current-time) (-> self state-time)) (-> self sound-timer))
+        (sound-play "cab-fan-blade")
+        (sound-stop (-> self sound-id))
+        (sound-play "pal-fan-buzz" :id (-> self sound-id))
+        (set! (-> self sound-timer)
+              (the-as time-frame (the int (* 300.0 (/ 21845.334 (fabs (-> self rotate-speed))))))
+              )
+        (set! (-> self state-time) (current-time))
+        )
+      (update! (-> self sound))
+      (rider-post)
+      (none)
+      )
+    )
+  )
+
+;; definition for method 7 of type pal-electric-fan
+;; WARN: Return type mismatch process-drawable vs pal-electric-fan.
+(defmethod relocate pal-electric-fan ((obj pal-electric-fan) (arg0 int))
+  (dotimes (v1-0 3)
+    (dotimes (a2-0 6)
+      (if (nonzero? (-> (the-as pal-electric-fan (&+ obj (* 112 v1-0))) poles 0 rings a2-0 lightning))
+          (&+! (-> (the-as pal-electric-fan (&+ obj (* 112 v1-0))) poles 0 rings a2-0 lightning) arg0)
+          )
+      )
+    )
+  (the-as pal-electric-fan ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+;; definition for method 11 of type pal-electric-fan
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pal-electric-fan ((obj pal-electric-fan) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 10) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 11))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 65536.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 36864.0)
+      )
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-36 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-36 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-36 prim-core collide-with))
+      )
+    (let ((s3-1 (new 'stack-no-clear 'vector))
+          (s2-0 (-> (the-as collide-shape-prim-group (-> s4-0 root-prim)) child))
+          )
+      (dotimes (s1-0 3)
+        (vector-rotate-z! s3-1 *y-vector* (* 21845.334 (the float s1-0)))
+        (vector-normalize! s3-1 1.0)
+        (dotimes (v1-40 3)
+          (let* ((a1-21 (-> s2-0 (+ (* 3 s1-0) 1 v1-40)))
+                 (a0-26 (-> a1-21 local-sphere))
+                 )
+            (set! (-> a1-21 prim-id) (the-as uint 1))
+            (set! (-> a1-21 prim-core collide-as) (collide-spec obstacle pusher))
+            (set! (-> a1-21 prim-core collide-with) (collide-spec jak bot player-list))
+            (set! (-> a1-21 transform-index) 3)
+            (vector-float*! a0-26 s3-1 (+ 40960.0 (* 8192.0 (the float v1-40))))
+            (set! (-> a0-26 w) (+ 4096.0 (* 2048.0 (the float v1-40))))
+            )
+          )
+        )
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-electric-fan" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((a0-32 (-> obj entity)))
+    (set! (-> obj rotate-speed)
+          ((method-of-object a0-32 get-property-value-float)
+           a0-32
+           'rotspeed
+           'interp
+           -1000000000.0
+           14563.556
+           (the-as (pointer res-tag) #f)
+           *res-static-buf*
+           )
+          )
+    )
+  (let* ((v1-52 *game-info*)
+         (a0-34 (+ (-> v1-52 attack-id) 1))
+         )
+    (set! (-> v1-52 attack-id) a0-34)
+    (set! (-> obj attack-id) a0-34)
+    )
+  (set! (-> obj no-collision-timer) 0)
+  (let ((f1-7 (lerp-scale 55.0 35.0 (fabs (-> obj rotate-speed)) 10922.667 18204.445)))
+    (set! (-> obj sound-timer)
+          (the-as time-frame (the int (* 300.0 (/ (* 182.04445 f1-7) (fabs (-> obj rotate-speed))))))
+          )
+    )
+  (let ((s5-2
+          (new 'static 'lightning-spec
+            :name #f
+            :flags (lightning-spec-flags lsf2)
+            :rand-func #x3
+            :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+            :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+            :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+            :fade-start-factor 0.2
+            :fade-time 120.0
+            :texture (new 'static 'texture-id :index #x83 :page #xc)
+            :reduction 0.42
+            :num-points 16
+            :box-size 8192.0
+            :merge-factor 0.5
+            :merge-count 2
+            :radius 3276.8
+            :duration -1.0
+            :sound #f
+            )
+          )
+        (f30-0 2730.6667)
+        (f28-0 216.0)
+        )
+    (dotimes (s4-2 3)
+      (let ((s3-2 (-> obj poles s4-2)))
+        (if (< 0.0 (-> obj rotate-speed))
+            (set! (-> s3-2 z-rotate) (* 21954.56 (the float s4-2)))
+            (set! (-> s3-2 z-rotate) (* 21736.107 (the float s4-2)))
+            )
+        (dotimes (s2-1 6)
+          (let ((s1-1 (-> s3-2 rings s2-1)))
+            (let ((s0-0 (+ s2-1 1)))
+              (set! (-> s1-1 lightning) (new 'process 'lightning-control s5-2 obj 0.0))
+              (set! (-> s1-1 dist) (+ 40960.0 (* f30-0 (the float s0-0))))
+              (set! (-> s1-1 radius) (+ 3276.8 (* 4505.6 (/ (the float (* (* s0-0 s0-0) s0-0)) f28-0))))
+              )
+            (set! (-> s1-1 local-z-rotate) (* 182.04445 (rand-vu-float-range 6.0 10.0)))
+            (if (= (logand s2-1 1) 1)
+                (set! (-> s1-1 local-z-rotate) (* -1.0 (-> s1-1 local-z-rotate)))
+                )
+            )
+          )
+        )
+      )
+    )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "fan-blade-motor" :fo-max 70) (-> obj root trans))
+        )
+  (set! (-> obj sound-id) (new-sound-id))
+  (let ((a0-40 (-> obj skel root-channel 0)))
+    (set! (-> a0-40 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+    (set! (-> a0-40 frame-num) 0.0)
+    (joint-control-channel-group! a0-40 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type pal-cable-nut
+(deftype pal-cable-nut (process-drawable)
+  ((root              collide-shape-moving         :override)
+   (sync              sync-linear          :inline :offset-assert 200)
+   (init-quat         quaternion           :inline :offset-assert 224)
+   (sound-played?     symbol               2       :offset-assert 240)
+   (hold-percentage   float                        :offset-assert 248)
+   (wiggle-percentage float                        :offset-assert 252)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #x100
+  :flag-assert         #x1500800100
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type pal-cable-nut
+(defmethod inspect pal-cable-nut ((obj pal-cable-nut))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
+  (format #t "~2Tsound-played?[2] @ #x~X~%" (-> obj sound-played?))
+  (format #t "~2Thold-percentage: ~f~%" (-> obj hold-percentage))
+  (format #t "~2Twiggle-percentage: ~f~%" (-> obj wiggle-percentage))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-pal-cable-nut pal-cable-nut pal-cable-nut-lod0-jg pal-cable-nut-idle-ja
+              ((pal-cable-nut-lod0-mg (meters 20)) (pal-cable-nut-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 13)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (pal-cable-nut)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self sound-played? 0) #f)
+    (set! (-> self sound-played? 1) #f)
+    (none)
+    )
+  :trans (the-as (function none :behavior pal-cable-nut) rider-trans)
+  :code (behavior ()
+    (until #f
+      (let* ((f1-0 (* 6.0 (get-current-phase-no-mod (-> self sync))))
+             (f0-4 (the float (the int f1-0)))
+             (f30-1 (- f1-0 f0-4))
+             (f26-0 (the float (sar (shl (the int (* 10922.667 (+ f0-4 (/ f30-1 (-> self hold-percentage))))) 48) 48)))
+             (f28-0 (the float (sar (shl (the int (* 10922.667 f0-4)) 48) 48)))
+             )
+        (cond
+          ((< (-> self hold-percentage) f30-1)
+           (when (< (-> self wiggle-percentage) f30-1)
+             (when (not (or (-> self sound-played? 0) (< 327680.0 (vector-vector-distance (ear-trans 0) (-> self root trans)))))
+               (sound-play "cab-nut-wiggle")
+               (set! (-> self sound-played? 0) #t)
+               (set! (-> self sound-played? 1) #f)
+               )
+             (let ((f0-17 (* 182.04445 (sin (the float (sar (shl (the int (* 524288.0 f30-1)) 48) 48))))))
+               (* f0-17 (/ (- f30-1 (-> self wiggle-percentage)) (- 1.0 (-> self wiggle-percentage))))
+               (quaternion-rotate-local-z!
+                 (-> self root quat)
+                 (-> self init-quat)
+                 (the float (sar (shl (the int (+ 10922.667 f0-17 f28-0)) 48) 48))
+                 )
+               )
+             )
+           )
+          (else
+            (when (not (or (-> self sound-played? 1) (< 327680.0 (vector-vector-distance (ear-trans 0) (-> self root trans)))))
+              (sound-play "cab-nut-turn")
+              (set! (-> self sound-played? 1) #t)
+              (set! (-> self sound-played? 0) #f)
+              )
+            (quaternion-rotate-local-z! (-> self root quat) (-> self init-quat) f26-0)
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior pal-cable-nut) rider-post)
+  )
+
+;; definition for method 11 of type pal-cable-nut
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pal-cable-nut ((obj pal-cable-nut) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 53248.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 53248.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (set! (-> obj root rider-max-momentum) 8192.0)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-cable-nut" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((a1-9 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-27 0))
+      (if #t
+          (set! v1-27 (logior v1-27 1))
+          )
+      (set! (-> a1-9 sync-type) 'sync-linear)
+      (set! (-> a1-9 sync-flags) (the-as sync-flags v1-27))
+      )
+    (set! (-> a1-9 entity) (-> obj entity))
+    (set! (-> a1-9 period) (the-as uint 3600))
+    (set! (-> a1-9 percent) 0.0)
+    (initialize! (-> obj sync) a1-9)
+    )
+  (set! (-> obj hold-percentage) 0.3)
+  (set! (-> obj wiggle-percentage) 0.8)
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (let* ((f0-15 (* 6.0 (get-current-phase-no-mod (-> obj sync))))
+         (f1-4 (the float (the int f0-15)))
+         (f0-16 (- f0-15 f1-4))
+         (f2-4 (the float (sar (shl (the int (* 10922.667 (+ f1-4 (/ f0-16 (-> obj hold-percentage))))) 48) 48)))
+         (f1-8 (the float (sar (shl (the int (* 10922.667 f1-4)) 48) 48)))
+         )
+    (if (< (-> obj hold-percentage) f0-16)
+        (quaternion-rotate-local-z!
+          (-> obj root quat)
+          (-> obj init-quat)
+          (the float (sar (shl (the int (+ 10922.667 f1-8)) 48) 48))
+          )
+        (quaternion-rotate-local-z! (-> obj root quat) (-> obj init-quat) f2-4)
+        )
+    )
+  (let ((a0-26 (-> obj skel root-channel 0)))
+    (set! (-> a0-26 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+    (set! (-> a0-26 frame-num) 0.0)
+    (joint-control-channel-group! a0-26 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    )
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type pal-rot-gun-shot
+(deftype pal-rot-gun-shot (guard-shot)
+  ()
+  :heap-base #x170
+  :method-count-assert 40
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
+  )
+
+;; definition for method 3 of type pal-rot-gun-shot
+(defmethod inspect pal-rot-gun-shot ((obj pal-rot-gun-shot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type guard-shot inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 25 of type pal-rot-gun-shot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-impact-particles pal-rot-gun-shot ((obj pal-rot-gun-shot))
+  "Spawns associated particles with the projectile if applicable"
+  (let* ((gp-0 (-> obj root trans))
+         (a1-0 (-> obj tail-pos))
+         (s5-1 (vector-! (new 'stack-no-clear 'vector) gp-0 a1-0))
+         (f30-0 (vector-length s5-1))
+         )
+    (let ((s4-1 (vector+float*! (new 'stack-no-clear 'vector) a1-0 s5-1 0.8)))
+      (let ((f28-0 (-> *part-id-table* 606 init-specs 4 initial-valuef))
+            (s3-0 (-> *part-id-table* 606 init-specs 11 initial-valuef))
+            (f26-0 (-> *part-id-table* 606 init-specs 10 initial-valuef))
+            )
+        (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) f30-0)
+        (set! (-> *part-id-table* 606 init-specs 11 initial-valuef) (the-as float #x5))
+        (set! (-> *part-id-table* 606 init-specs 10 initial-valuef) 0.0)
+        (draw-beam (-> *part-id-table* 606) a1-0 s5-1 #f #t)
+        (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) f28-0)
+        (set! (-> *part-id-table* 606 init-specs 11 initial-valuef) s3-0)
+        (set! (-> *part-id-table* 606 init-specs 10 initial-valuef) f26-0)
+        )
+      (vector-normalize! s5-1 1.0)
+      (let ((t9-2 sp-launch-particles-var)
+            (a0-8 *sp-particle-system-2d*)
+            (a1-2 (-> *part-id-table* 607))
+            (a2-2 *launch-matrix*)
+            )
+        (set! (-> a2-2 trans quad) (-> s4-1 quad))
+        (t9-2 a0-8 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (let ((t9-3 sp-launch-particles-var)
+            (a0-9 *sp-particle-system-2d*)
+            (a1-3 (-> *part-id-table* 608))
+            (a2-3 *launch-matrix*)
+            )
+        (set! (-> a2-3 trans quad) (-> s4-1 quad))
+        (t9-3 a0-9 a1-3 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      )
+    (let ((s4-2 (new 'stack-no-clear 'matrix))
+          (f22-0 (* 0.000027126736 f30-0))
+          (f30-1 (-> *part-id-table* 609 init-specs 3 initial-valuef))
+          (f28-1 (-> *part-id-table* 609 init-specs 4 initial-valuef))
+          (f26-1 (-> *part-id-table* 609 init-specs 1 initial-valuef))
+          (f24-0 (-> *part-id-table* 609 init-specs 1 random-rangef))
+          )
+      (forward-up->inv-matrix s4-2 s5-1 *up-vector*)
+      (set! (-> s4-2 trans quad) (-> gp-0 quad))
+      (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) (* f22-0 f30-1))
+      (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) (* f22-0 f28-1))
+      (set! (-> *part-id-table* 609 init-specs 1 initial-valuef) 1.0)
+      (set! (-> *part-id-table* 609 init-specs 1 random-rangef) 1.0)
+      (sp-launch-particles-var
+        *sp-particle-system-2d*
+        (-> *part-id-table* 609)
+        s4-2
+        (the-as sparticle-launch-state #f)
+        (the-as sparticle-launch-control #f)
+        1.0
+        )
+      (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) f30-1)
+      (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) f28-1)
+      (set! (-> *part-id-table* 609 init-specs 1 initial-valuef) f26-1)
+      (set! (-> *part-id-table* 609 init-specs 1 random-rangef) f24-0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type pal-rot-gun-shot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-shell-particles pal-rot-gun-shot ((obj pal-rot-gun-shot))
+  "TODO - confirm"
+  (let* ((s3-0 (-> obj root))
+         (s5-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> s3-0 trans)) 2048.0))
+         (gp-0 (new 'stack-no-clear 'vector))
+         )
+    (set! (-> gp-0 quad) (-> s3-0 trans quad))
+    (let ((a2-1 (vector-! (new 'stack-no-clear 'vector) (-> s3-0 trans) (-> obj tail-pos)))
+          (f30-0 (-> *part-id-table* 606 init-specs 4 initial-valuef))
+          (s3-1 (-> *part-id-table* 606 init-specs 11 initial-valuef))
+          (f28-0 (-> *part-id-table* 606 init-specs 10 initial-valuef))
+          )
+      (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) (vector-length a2-1))
+      (set! (-> *part-id-table* 606 init-specs 11 initial-valuef) (the-as float #x28))
+      (set! (-> *part-id-table* 606 init-specs 10 initial-valuef) -3.2)
+      (draw-beam (-> *part-id-table* 606) (-> obj tail-pos) a2-1 #f #t)
+      (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) f30-0)
+      (set! (-> *part-id-table* 606 init-specs 11 initial-valuef) s3-1)
+      (set! (-> *part-id-table* 606 init-specs 10 initial-valuef) f28-0)
+      )
+    (vector+! gp-0 gp-0 s5-0)
+    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when s5-1
+        (let ((t9-3 (method-of-type part-tracker activate)))
+          (t9-3
+            (the-as part-tracker s5-1)
+            *entity-pool*
+            (symbol->string (-> part-tracker symbol))
+            (the-as pointer #x70004000)
+            )
+          )
+        (let ((t9-4 run-function-in-process)
+              (a0-12 s5-1)
+              (a1-5 part-tracker-init)
+              (a2-6 (-> *part-group-id-table* 137))
+              (a3-2 0)
+              (t0-1 #f)
+              (t1-0 #f)
+              (t2-0 #f)
+              (t3-0 *launch-matrix*)
+              )
+          (set! (-> t3-0 trans quad) (-> gp-0 quad))
+          ((the-as (function object object object object object object object object none) t9-4)
+           a0-12
+           a1-5
+           a2-6
+           a3-2
+           t0-1
+           t1-0
+           t2-0
+           t3-0
+           )
+          )
+        (-> s5-1 ppointer)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 28 of type pal-rot-gun-shot
+;; WARN: Return type mismatch int vs none.
+(defmethod play-impact-sound pal-rot-gun-shot ((obj pal-rot-gun-shot) (arg0 projectile-options))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (sound-play "rot-gun-fire" :position (-> obj root trans))
+       )
+      ((= v1-0 (projectile-options lose-altitude))
+       (sound-play "pal-rot-gun-sho" :position (-> obj root trans))
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate dissipate (pal-rot-gun-shot)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual impact)
+    (none)
+    )
+  )
+
+;; definition for function pal-rot-gun-shot-move
+;; WARN: Return type mismatch int vs none.
+(defun pal-rot-gun-shot-move ((arg0 pal-rot-gun-shot))
+  (projectile-move-fill-line-sphere arg0)
+  (let ((s5-0 (-> arg0 root)))
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (f0-0 36864.0)
+          )
+      (vector-! s4-0 (-> arg0 tail-pos) (-> s5-0 trans))
+      (when (< f0-0 (vector-length s4-0))
+        (vector-normalize! s4-0 f0-0)
+        (vector+! (-> arg0 tail-pos) (-> s5-0 trans) s4-0)
+        )
+      )
+    (if (logtest? (-> s5-0 status) (collide-status touch-surface))
+        (go (method-of-object arg0 impact))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 30 of type pal-rot-gun-shot
+;; WARN: Return type mismatch int vs none.
+(defmethod init-proj-collision! pal-rot-gun-shot ((obj pal-rot-gun-shot))
+  "Init the [[projectile]]'s [[collide-shape]]"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction)
+          (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
+          )
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate enemy-yellow-shot))
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec projectile))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 1228.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> obj root) s5-0)
+    )
+  (set! (-> obj root pat-ignore-mask)
+        (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
+        )
+  0
+  (none)
+  )
+
+;; definition for method 31 of type pal-rot-gun-shot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-proj-settings! pal-rot-gun-shot ((obj pal-rot-gun-shot))
+  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
+  (set! (-> obj attack-mode) 'pal-rot-gun-shot)
+  (set! (-> obj move) pal-rot-gun-shot-move)
+  (set! (-> obj max-speed) 630784.0)
+  (set! (-> obj timeout) (seconds 1.427))
+  0
+  (none)
+  )
+
+;; definition of type pal-rot-gun
+(deftype pal-rot-gun (process-drawable)
+  ((init-quat       quaternion :inline :offset-assert 208)
+   (fire-timer      time-frame         :offset-assert 224)
+   (gun-index       int32              :offset-assert 232)
+   (spin-rate       float              :offset-assert 236)
+   (spin-rate-final float              :offset-assert 240)
+   (sound-id        sound-id           :offset-assert 244)
+   (shot-sound-id   sound-id           :offset-assert 248)
+   (prev-z-rot      float              :offset-assert 252)
+   )
+  :heap-base #x80
+  :method-count-assert 24
+  :size-assert         #x100
+  :flag-assert         #x1800800100
+  (:methods
+    (idle () _type_ :state 20)
+    (spin () _type_ :state 21)
+    (spin-down () _type_ :state 22)
+    (pal-rot-gun-method-23 (_type_ matrix) none 23)
+    )
+  )
+
+;; definition for method 3 of type pal-rot-gun
+(defmethod inspect pal-rot-gun ((obj pal-rot-gun))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
+  (format #t "~2Tfire-timer: ~D~%" (-> obj fire-timer))
+  (format #t "~2Tgun-index: ~D~%" (-> obj gun-index))
+  (format #t "~2Tspin-rate: ~f~%" (-> obj spin-rate))
+  (format #t "~2Tspin-rate-final: ~f~%" (-> obj spin-rate-final))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Tshot-sound-id: ~D~%" (-> obj shot-sound-id))
+  (format #t "~2Tprev-z-rot: ~f~%" (-> obj prev-z-rot))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-pal-rot-gun pal-rot-gun pal-rot-gun-lod0-jg pal-rot-gun-idle-ja
+              ((pal-rot-gun-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 12)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (pal-rot-gun)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual spin)
+       )
+      )
+    )
+  :code (the-as (function none :behavior pal-rot-gun) sleep-code)
+  )
+
+;; failed to figure out what this is:
+(defstate spin (pal-rot-gun)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('untrigger)
+       (sound-stop (-> self sound-id))
+       (sound-stop (-> self shot-sound-id))
+       (go-virtual spin-down)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self fire-timer) (current-time))
+    (set! (-> self gun-index) 0)
+    0
+    (none)
+    )
+  :code (the-as (function none :behavior pal-rot-gun) sleep-code)
+  :post (behavior ()
+    (seek! (-> self spin-rate) (-> self spin-rate-final) (* 3640.889 (-> self clock seconds-per-frame)))
+    (quaternion-rotate-z!
+      (-> self root quat)
+      (-> self root quat)
+      (* (-> self spin-rate) (-> self clock seconds-per-frame))
+      )
+    (let ((f30-0 1.0))
+      (when (>= (- (current-time) (-> self fire-timer)) (seconds 0.05))
+        (let ((gp-0 (new 'stack-no-clear 'matrix)))
+          (let ((s5-0 (-> self node-list data (+ (* (-> self gun-index) 2) 4))))
+            (vector<-cspace! (the-as vector (-> gp-0 vector)) s5-0)
+            (vector-normalize-copy! (-> gp-0 vector 1) (-> s5-0 bone transform vector 2) 1.0)
+            )
+          (vector-rotate-x! (-> gp-0 vector 1) (-> gp-0 vector 1) -455.1111)
+          (vector-normalize! (-> gp-0 vector 1) 573440.0)
+          (pal-rot-gun-method-23 self gp-0)
+          )
+        (set! (-> self gun-index) (- 1 (-> self gun-index)))
+        (set! (-> self fire-timer) (current-time))
+        (set! f30-0 1.2)
+        )
+      (let* ((f0-10 (the float (sar (shl (the int (quaternion-z-angle (-> self root quat))) 48) 48)))
+             (f0-12 (fabs (cos f0-10)))
+             )
+        (set-palcab-turret-flash! (* f30-0 (* f0-12 f0-12 f0-12)))
+        )
+      )
+    (let ((f30-2 (+ 32768.0 (the float (sar (shl (the int (quaternion-z-angle (-> self root quat))) 48) 48)))))
+      (let ((f0-19 (-> self prev-z-rot)))
+        (if (or (and (< f0-19 32768.0) (< 32768.0 f30-2)) (< f30-2 f0-19))
+            (sound-stop (-> self sound-id))
+            )
+        )
+      (set! (-> self prev-z-rot) f30-2)
+      )
+    (sound-play "rot-gun" :id (-> self sound-id))
+    (let* ((f30-4 (the float (sar (shl (the int (+ 2730.6667 (quaternion-z-angle (-> self root quat)))) 48) 48)))
+           (f0-26 (* 0.0000017438616 (vector-vector-distance (-> self root trans) (target-pos 0)) (-> self spin-rate)))
+           (f0-30 (- 1.0 (fabs (sin (- f30-4 f0-26)))))
+           )
+      (sound-play-by-name
+        (static-sound-name "rot-gun-shot")
+        (-> self shot-sound-id)
+        (the int (* 1024.0 f0-30))
+        0
+        0
+        (sound-group sfx)
+        (target-pos 0)
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate spin-down (pal-rot-gun)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual spin)
+       )
+      )
+    )
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= 0.0 (-> self spin-rate))
+        (go-virtual idle)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior pal-rot-gun) sleep-code)
+  :post (behavior ()
+    (seek! (-> self spin-rate) 0.0 (* 3640.889 (-> self clock seconds-per-frame)))
+    (quaternion-rotate-z!
+      (-> self root quat)
+      (-> self root quat)
+      (* (-> self spin-rate) (-> self clock seconds-per-frame))
+      )
+    (let ((f30-1 (+ 32768.0 (the float (sar (shl (the int (quaternion-z-angle (-> self root quat))) 48) 48)))))
+      (let ((f0-10 (-> self prev-z-rot)))
+        (if (or (and (< f0-10 32768.0) (< 32768.0 f30-1)) (< f30-1 f0-10))
+            (sound-stop (-> self sound-id))
+            )
+        )
+      (set! (-> self prev-z-rot) f30-1)
+      )
+    (sound-play-by-name
+      (static-sound-name "rot-gun")
+      (-> self sound-id)
+      (the int (* 1024.0 (* 0.00016479492 (-> self spin-rate))))
+      0
+      0
+      (sound-group sfx)
+      #t
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; definition for method 23 of type pal-rot-gun
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod pal-rot-gun-method-23 pal-rot-gun ((obj pal-rot-gun) (arg0 matrix))
+  (let ((v1-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (let ((a2-0 (-> arg0 vector))
+          (a1-1 (-> arg0 vector 1))
+          )
+      (set! (-> v1-0 ent) (-> obj entity))
+      (set! (-> v1-0 charge) 1.0)
+      (set! (-> v1-0 options) (projectile-options))
+      (set! (-> v1-0 pos quad) (-> a2-0 0 quad))
+      (set! (-> v1-0 vel quad) (-> a1-1 quad))
+      )
+    (set! (-> v1-0 notify-handle) (process->handle obj))
+    (set! (-> v1-0 owner-handle) (the-as handle #f))
+    (set! (-> v1-0 ignore-handle) (process->handle obj))
+    (let* ((a1-9 *game-info*)
+           (a2-12 (+ (-> a1-9 attack-id) 1))
+           )
+      (set! (-> a1-9 attack-id) a2-12)
+      (set! (-> v1-0 attack-id) a2-12)
+      )
+    (set! (-> v1-0 timeout) (seconds 4))
+    (ppointer->handle (spawn-projectile pal-rot-gun-shot v1-0 obj *default-dead-pool*))
+    )
+  (none)
+  )
+
+;; definition for method 10 of type pal-rot-gun
+(defmethod deactivate pal-rot-gun ((obj pal-rot-gun))
+  (sound-stop (-> obj sound-id))
+  (sound-stop (-> obj shot-sound-id))
+  ((the-as (function process-drawable none) (find-parent-method pal-rot-gun 10)) obj)
+  (none)
+  )
+
+;; definition for method 11 of type pal-rot-gun
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pal-rot-gun ((obj pal-rot-gun) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-rot-gun" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((s5-2 (-> obj root quat)))
+    (quaternion-rotate-local-x! s5-2 s5-2 364.0889)
+    (quaternion-rotate-local-z! s5-2 s5-2 16384.0)
+    (quaternion-copy! (-> obj init-quat) s5-2)
+    )
+  (set! (-> obj spin-rate) 0.0)
+  (set! (-> obj spin-rate-final) 16384.0)
+  (set! (-> obj prev-z-rot) 65353.957)
+  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> obj shot-sound-id) (new-sound-id))
+  (let ((a0-9 (-> obj skel root-channel 0)))
+    (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-9 frame-num) 0.0)
+    (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (ja-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type pal-windmill
+(deftype pal-windmill (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type pal-windmill
+(defmethod inspect pal-windmill ((obj pal-windmill))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-pal-windmill pal-windmill pal-windmill-lod0-jg pal-windmill-idle-ja
+              ((pal-windmill-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 62)
+              :longest-edge (meters 21.191)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (pal-windmill)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior pal-windmill) ja-post)
+  )
+
+;; definition for method 11 of type pal-windmill
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pal-windmill ((obj pal-windmill) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (logior! (-> obj mask) (process-mask ambient))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-windmill" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type pal-flip-step
+(deftype pal-flip-step (process-drawable)
+  ((task-node game-task-node-info  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 23
+  :size-assert         #xcc
+  :flag-assert         #x17005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    (fall () _type_ :state 21)
+    (fallen () _type_ :state 22)
+    )
+  )
+
+;; definition for method 3 of type pal-flip-step
+(defmethod inspect pal-flip-step ((obj pal-flip-step))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttask-node: ~A~%" (-> obj task-node))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-pal-flip-step pal-flip-step pal-flip-step-lod0-jg pal-flip-step-idle-ja
+              ((pal-flip-step-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (pal-flip-step)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual fall)
+       )
+      )
+    )
+  :trans (behavior ()
+    (if (and (-> self task-node)
+             (logtest? (-> self task-node flags) (game-task-node-flag closed))
+             (not (task-node-closed? (game-task-node nest-boss-resolution)))
+             )
+        (go-virtual fall)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior pal-flip-step) sleep-code)
+  )
+
+;; failed to figure out what this is:
+(defstate fall (pal-flip-step)
+  :virtual #t
+  :code (behavior ()
+    (ja-no-eval :group! (-> self draw art-group data 3)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (transform-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual fallen)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate fallen (pal-flip-step)
+  :virtual #t
+  :code (the-as (function none :behavior pal-flip-step) sleep-code)
+  )
+
+;; definition for method 11 of type pal-flip-step
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! pal-flip-step ((obj pal-flip-step) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pal-flip-step" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj task-node) (task-node-by-name (the-as string ((method-of-type res-lump get-property-struct)
+                                                              arg0
+                                                              'task-name
+                                                              'interp
+                                                              -1000000000.0
+                                                              "palace-cable-resolution"
+                                                              (the-as (pointer res-tag) #f)
+                                                              *res-static-buf*
+                                                              )
+                                                      )
+                                              )
+        )
+  (cond
+    ((and (-> obj task-node)
+          (logtest? (-> obj task-node flags) (game-task-node-flag closed))
+          (not (task-node-closed? (game-task-node nest-boss-resolution)))
+          )
+     (let ((a0-17 (-> obj skel root-channel 0)))
+       (set! (-> a0-17 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+       (set! (-> a0-17 frame-num)
+             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+             )
+       (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+       )
+     (transform-post)
+     (go (method-of-object obj fallen))
+     )
+    (else
+      (let ((a0-18 (-> obj skel root-channel 0)))
+        (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+        (set! (-> a0-18 frame-num) 0.0)
+        (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+        )
+      (transform-post)
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )

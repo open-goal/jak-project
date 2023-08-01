@@ -33,12 +33,12 @@
     (plat-button-move-upward () _type_ :state 24)
     (plat-button-teleport-to-other-end () _type_ :state 25)
     (can-activate? (_type_) symbol 26)
-    (TODO-RENAME-27 (_type_) none 27)
-    (TODO-RENAME-28 (_type_) collide-shape-moving 28)
+    (plat-button-method-27 (_type_) none 27)
+    (plat-button-method-28 (_type_) collide-shape-moving 28)
     (can-target-move? (_type_) none 29)
     (should-teleport? (_type_) symbol 30)
-    (TODO-RENAME-31 (_type_) none 31)
-    (TODO-RENAME-32 (_type_) none 32)
+    (plat-button-method-31 (_type_) none 31)
+    (plat-button-method-32 (_type_) none 32)
     )
   )
 
@@ -58,20 +58,16 @@
 
 (defstate plat-button-idle (plat-button)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (when (can-activate? self)
          (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                   (the-as touching-shapes-entry (-> arg3 param 0))
+                   (the-as touching-shapes-entry (-> event param 0))
                    (-> self root-override)
                    (the-as uint 1)
                    )
-                  (or (not (-> self should-grab-player?)) (let ((v0-3 (process-grab? *target*)))
-                                                            (set! (-> self grab-player?) v0-3)
-                                                            v0-3
-                                                            )
-                      )
+                  (or (not (-> self should-grab-player?)) (set! (-> self grab-player?) (process-grab? *target*)))
                   )
              (go-virtual plat-button-pressed)
              )
@@ -171,8 +167,8 @@
 
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
@@ -199,7 +195,7 @@
       (when (or (not *target*)
                 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
                      (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                               (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                )
                           )
                      )
@@ -245,8 +241,8 @@
 
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
                      (set! (-> self state-time) (-> *display* base-frame-counter))
                      #f
                      )
@@ -273,7 +269,7 @@
       (when (or (not *target*)
                 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
                      (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                               (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                               (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                )
                           )
                      )
@@ -337,7 +333,7 @@
     )
   )
 
-(defmethod TODO-RENAME-28 plat-button ((obj plat-button))
+(defmethod plat-button-method-28 plat-button ((obj plat-button))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -348,14 +344,14 @@
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27033.6)
       (set-root-prim! s5-0 s4-0)
       (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
         (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+        (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
         (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-0 transform-index) 4)
         (set-vector! (-> s3-0 local-sphere) 0.0 -3072.0 0.0 7372.8)
@@ -364,7 +360,7 @@
       (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 2))))
         (set! (-> s3-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid ca-1))
+        (set! (-> s3-1 prim-core action) (collide-action solid rider-plat-sticky))
         (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-1 transform-index) 3)
         (set-vector! (-> s3-1 local-sphere) 0.0 -4096.0 0.0 27033.6)
@@ -383,7 +379,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-27 plat-button ((obj plat-button))
+(defmethod plat-button-method-27 plat-button ((obj plat-button))
   (ja-channel-set! 1)
   (cond
     ((can-activate? obj)
@@ -414,13 +410,13 @@
   (none)
   )
 
-(defmethod TODO-RENAME-31 plat-button ((obj plat-button))
+(defmethod plat-button-method-31 plat-button ((obj plat-button))
   (initialize-skeleton obj *plat-button-sg* '())
   0
   (none)
   )
 
-(defmethod TODO-RENAME-32 plat-button ((obj plat-button))
+(defmethod plat-button-method-32 plat-button ((obj plat-button))
   (go (method-of-object obj plat-button-idle))
   0
   (none)
@@ -444,10 +440,10 @@
                                     )
         )
   (set! (-> obj bidirectional?) (nonzero? (res-lump-value arg0 'bidirectional uint128)))
-  (TODO-RENAME-28 obj)
+  (plat-button-method-28 obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
-  (TODO-RENAME-31 obj)
+  (plat-button-method-31 obj)
   (logior! (-> obj skel status) (janim-status inited))
   (set! (-> obj spawn-pos quad) (-> obj root-override trans quad))
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
@@ -460,11 +456,7 @@
   (set! (-> obj sound-id) (new-sound-id))
   (set! (-> obj allow-auto-kill) #t)
   (can-target-move? obj)
-  (TODO-RENAME-27 obj)
-  (TODO-RENAME-32 obj)
+  (plat-button-method-27 obj)
+  (plat-button-method-32 obj)
   (none)
   )
-
-
-
-

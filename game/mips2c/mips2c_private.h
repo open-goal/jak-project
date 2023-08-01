@@ -20,8 +20,14 @@
 extern u8* g_ee_main_mem;
 
 extern "C" {
-u64 _call_goal8_asm_linux(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
+#ifdef __linux__
+u64 _call_goal8_asm_systemv(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
+#elif defined __APPLE__ && defined __x86_64__
+u64 _call_goal8_asm_systemv(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off) asm(
+    "_call_goal8_asm_systemv");
+#elif _WIN32
 u64 _call_goal8_asm_win32(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
+#endif
 }
 
 namespace Mips2C {
@@ -268,6 +274,14 @@ struct ExecutionContext {
     gprs[gpr].ds64[0] = val;  // sign extend and set
   }
 
+  void load_symbol2(int gpr, void* sym_addr) {
+    s32 val;
+    memcpy(&val, (u8*)sym_addr - 1, 4);
+    gprs[gpr].ds64[0] = val;  // sign extend and set
+  }
+
+  void store_symbol2(int gpr, void* sym_addr) { memcpy((u8*)sym_addr - 1, &gprs[gpr].ds32[0], 4); }
+
   void load_symbol_addr(int gpr, void* sym_addr) {
     gprs[gpr].du64[0] = ((const u8*)sym_addr) - g_ee_main_mem;
   }
@@ -336,12 +350,15 @@ struct ExecutionContext {
   }
 
   void jalr(u32 addr) {
-    // u64 _call_goal8_asm_linux(u64 func, u64* arg_array, u64 zero, u64 pp, u64 st, u64 off);
     u64 args[8] = {gprs[a0].du64[0], gprs[a1].du64[0], gprs[a2].du64[0], gprs[a3].du64[0],
                    gprs[t0].du64[0], gprs[t1].du64[0], gprs[t2].du64[0], gprs[t3].du64[0]};
+    ASSERT(addr);
 #ifdef __linux__
-    gprs[v0].du64[0] = _call_goal8_asm_linux(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
-                                             gprs[s7].du64[0], g_ee_main_mem);
+    gprs[v0].du64[0] = _call_goal8_asm_systemv(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
+                                               gprs[s7].du64[0], g_ee_main_mem);
+#elif defined __APPLE__ && defined __x86_64__
+    gprs[v0].du64[0] = _call_goal8_asm_systemv(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
+                                               gprs[s7].du64[0], g_ee_main_mem);
 #elif _WIN32
     gprs[v0].du64[0] = _call_goal8_asm_win32(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                              gprs[s7].du64[0], g_ee_main_mem);
@@ -544,6 +561,14 @@ struct ExecutionContext {
     }
   }
 
+  void paddb(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 16; i++) {
+      gprs[rd].du8[i] = s.du8[i] + t.du8[i];
+    }
+  }
+
   void pextub(int rd, int rs, int rt) {
     auto s = gpr_src(rs);
     auto t = gpr_src(rt);
@@ -687,6 +712,14 @@ struct ExecutionContext {
     }
   }
 
+  void psubh(int dest, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 8; i++) {
+      gprs[dest].du16[i] = s.du16[i] - t.du16[i];
+    }
+  }
+
   void pminh(int dest, int rs, int rt) {
     auto s = gpr_src(rs);
     auto t = gpr_src(rt);
@@ -710,6 +743,14 @@ struct ExecutionContext {
     auto t = gpr_src(rt);
     for (int i = 0; i < 16; i++) {
       gprs[dst].du8[i] = (s.du8[i] == t.du8[i]) ? 0xff : 0;
+    }
+  }
+
+  void pceqw(int dst, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 4; i++) {
+      gprs[dst].du32[i] = (s.du32[i] == t.du32[i]) ? 0xffffffff : 0;
     }
   }
 
@@ -804,6 +845,25 @@ struct ExecutionContext {
     }
   }
 
+  void vmr32(DEST mask, int dest, int src) {
+    auto s = vf_src(src);
+    if ((u64)mask & 1) {
+      vfs[dest].f[0] = s.f[1];
+    }
+
+    if ((u64)mask & 2) {
+      vfs[dest].f[1] = s.f[2];
+    }
+
+    if ((u64)mask & 4) {
+      vfs[dest].f[2] = s.f[3];
+    }
+
+    if ((u64)mask & 8) {
+      vfs[dest].f[3] = s.f[0];
+    }
+  }
+
   void vsub(DEST mask, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -866,6 +926,17 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         acc.f[i] += s0.f[i] * s1.f[i];
+      }
+    }
+  }
+
+  void vmsuba(DEST mask, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] -= s0.f[i] * s1.f[i];
       }
     }
   }
@@ -945,7 +1016,7 @@ struct ExecutionContext {
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
 
-  void sqrts(int src, int dst) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
+  void sqrts(int dst, int src) { fprs[dst] = std::sqrt(std::abs(fprs[src])); }
 
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
@@ -1018,6 +1089,8 @@ struct ExecutionContext {
     gprs[dst].du64[0] = (gpr_src(src).du64[0] < imm) ? 1 : 0;
   }
 
+  void slti(int dst, int src, s64 imm) { gprs[dst].du64[0] = (gpr_src(src).ds64[0] < imm) ? 1 : 0; }
+
   void sll(int dst, int src, int sa) {
     u32 value = gpr_src(src).du32[0] << sa;
     s32 value_signed = value;
@@ -1037,6 +1110,9 @@ struct ExecutionContext {
   }
   void dsllv(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] << (gpr_src(sa).du32[0] & 0b111111);
+  }
+  void sllv(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds32[0] << (gpr_src(sa).du32[0] & 0b11111);
   }
   void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
   void dsrl32(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa); }
@@ -1067,6 +1143,7 @@ struct ExecutionContext {
   }
   void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
   void or_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1); }
+  void nor(int dst, int src0, int src1) { gprs[dst].du64[0] = ~(sgpr64(src0) | sgpr64(src1)); }
 
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
@@ -1247,11 +1324,39 @@ struct ExecutionContext {
     }
   }
 
+  s32 float_to_int_sat(float f) {
+    if (f >= (float)INT32_MAX) {
+      return INT32_MAX;
+    } else if (f <= (float)INT32_MIN) {
+      return INT32_MIN;
+    } else {
+      return f;
+    }
+  }
+
+  void vftoi4_sat(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = float_to_int_sat(s.f[i] * 16.f);
+      }
+    }
+  }
+
   void vftoi0(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dst].ds32[i] = s.f[i];
+      }
+    }
+  }
+
+  void vftoi0_sat(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = float_to_int_sat(s.f[i]);
       }
     }
   }
@@ -1281,10 +1386,15 @@ struct ExecutionContext {
       fprs[dst] = fprs[src0] / fprs[src1];
     }
   }
+
   void divs(int dst, int src0, int src1) {
     // ASSERT(fprs[src1] != 0);
     fprs[dst] = fprs[src0] / fprs[src1];
   }
+
+  void mins(int dst, int src0, int src1) { fprs[dst] = std::min(fprs[src0], fprs[src1]); }
+  void maxs(int dst, int src0, int src1) { fprs[dst] = std::max(fprs[src0], fprs[src1]); }
+
   void negs(int dst, int src) {
     u32 v;
     memcpy(&v, &fprs[src], 4);
@@ -1417,6 +1527,37 @@ struct ExecutionContext {
     gprs[dst].du64[0] = (gprs[dst].du64[0] & LDR_MASK[shift]) | (mem >> LDR_SHIFT[shift]);
   }
 
+  u32 clip(int xyz_idx, int w_idx, u32 old_clip) {
+    u32 result = (old_clip << 6);
+    auto xyz_vec = vf_src(xyz_idx);
+    float w = vf_src(w_idx).f[3];
+
+    float plus = std::abs(w);
+    float minus = -plus;
+
+    if (xyz_vec.f[0] > plus) {
+      result |= 0b1;
+    }
+    if (xyz_vec.f[0] < minus) {
+      result |= 0b10;
+    }
+
+    if (xyz_vec.f[1] > plus) {
+      result |= 0b100;
+    }
+    if (xyz_vec.f[1] < minus) {
+      result |= 0b1000;
+    }
+
+    if (xyz_vec.f[2] > plus) {
+      result |= 0b10000;
+    }
+    if (xyz_vec.f[2] < minus) {
+      result |= 0b100000;
+    }
+    return result & 0xffffff;  // only 24 bits
+  }
+
   std::string print_vf_float(int vf) {
     auto src = vf_src(vf);
     return fmt::format("{} {} {} {}", src.f[0], src.f[1], src.f[2], src.f[3]);
@@ -1431,9 +1572,19 @@ inline void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionCon
   c->gprs[dst].du64[0] = val + offset;
 }
 
+inline void get_fake_spad_addr2(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
+  u32 val;
+  memcpy(&val, (u8*)sym_addr - 1, 4);
+  c->gprs[dst].du64[0] = val + offset;
+}
+
+inline void* align4_ptr(void* spad_sym_addr) {
+  return (void*)align4(((uintptr_t)spad_sym_addr - 3));
+}
+
 inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   sadr -= spad_addr_goal;
 
   ASSERT((madr & 0xf) == 0);
@@ -1449,7 +1600,7 @@ inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
 
 inline void spad_to_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
 
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1467,7 +1618,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
                                                      u32 sadr,
                                                      u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
 
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1491,7 +1642,7 @@ inline void spad_to_dma_no_sadr_off_bones_interleave(void* spad_sym_addr,
 
 inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   sadr -= spad_addr_goal;
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
@@ -1506,7 +1657,7 @@ inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
 
 inline void spad_from_dma_no_sadr_off(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   ASSERT((madr & 0xf) == 0);
   ASSERT((sadr & 0xf) == 0);
   ASSERT(sadr < 0x4000);
@@ -1527,7 +1678,7 @@ inline void load_vfs_from_tf_regs(const void* tf_regs_sym, ExecutionContext* c) 
 
 inline void spad_to_dma_blerc_chain(void* spad_sym_addr, u32 sadr, u32 tadr) {
   u32 spad_addr_goal;
-  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  memcpy(&spad_addr_goal, align4_ptr(spad_sym_addr), 4);
   void* spad_addr_c = g_ee_main_mem + spad_addr_goal;
   ASSERT(sadr < 0x4000);
   emulate_dma(g_ee_main_mem, spad_addr_c, tadr, sadr);

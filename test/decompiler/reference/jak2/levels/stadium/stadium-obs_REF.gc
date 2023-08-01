@@ -1,0 +1,3667 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type water-anim-stadium
+(deftype water-anim-stadium (water-anim)
+  ()
+  :heap-base #x80
+  :method-count-assert 29
+  :size-assert         #x100
+  :flag-assert         #x1d00800100
+  )
+
+;; definition for method 3 of type water-anim-stadium
+(defmethod inspect water-anim-stadium ((obj water-anim-stadium))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type water-anim inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol ripple-for-water-anim-stadium, type ripple-wave-set
+(define ripple-for-water-anim-stadium (new 'static 'ripple-wave-set
+                                        :count 3
+                                        :converted #f
+                                        :normal-scale 1.0
+                                        :wave (new 'static 'inline-array ripple-wave 4
+                                          (new 'static 'ripple-wave :scale 20.0 :xdiv 1 :speed 1.5)
+                                          (new 'static 'ripple-wave :scale 20.0 :xdiv -1 :zdiv 1 :speed 1.5)
+                                          (new 'static 'ripple-wave :scale 10.0 :xdiv 5 :zdiv 3 :speed 0.75)
+                                          (new 'static 'ripple-wave)
+                                          )
+                                        )
+        )
+
+;; definition for method 24 of type water-anim-stadium
+;; WARN: Return type mismatch ripple-wave-set vs none.
+(defmethod init-water! water-anim-stadium ((obj water-anim-stadium))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((t9-0 (method-of-type water-anim init-water!)))
+    (t9-0 obj)
+    )
+  (let ((v1-2 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) v1-2)
+    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> v1-2 global-scale) 3072.0)
+    (set! (-> v1-2 close-fade-dist) 163840.0)
+    (set! (-> v1-2 far-fade-dist) 245760.0)
+    (set! (-> v1-2 waveform) ripple-for-water-anim-stadium)
+    )
+  (none)
+  )
+
+;; definition of type dummy-vehicle
+(deftype dummy-vehicle (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type dummy-vehicle
+(defmethod inspect dummy-vehicle ((obj dummy-vehicle))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defstate idle (dummy-vehicle)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior dummy-vehicle) ja-post)
+  )
+
+;; definition for method 11 of type dummy-vehicle
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! dummy-vehicle ((obj dummy-vehicle) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrate-using) (penetrate vehicle))
+    (let ((v1-7 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-7 transform-index) 3)
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 18432.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-7)
+      )
+    (set! (-> s4-0 nav-radius) 20480.0)
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (let ((s5-1 (res-lump-struct (-> obj entity) 'art-name structure)))
+    (when (not s5-1)
+      (format 0 "ERROR: dummy-vehicle::initialize: no art-name set for ~s~%" obj)
+      (go process-drawable-art-error "no art-name set")
+      )
+    (when (not (art-group-get-by-name *level* (the-as string s5-1) (the-as (pointer uint32) (&-> obj level))))
+      (format 0 "ERROR: dummy-vehicle::initialize: no art named ~s found in any currently loaded level~%" s5-1)
+      (go process-drawable-art-error "no named art found in any currently loaded level")
+      )
+    (format #t "dummy-vehicle::initialize: setup art ~s from level ~s~%" s5-1 (-> obj level name))
+    (initialize-skeleton-by-name obj (the-as string s5-1))
+    )
+  (when (name= (-> obj name) "dummy-vehicle-6")
+    (let ((v1-25 (new
+                   'process
+                   'shadow-control
+                   0.0
+                   0.0
+                   614400.0
+                   (shadow-flags disable-fade shdf02 shdf03 shdf04 shdf07)
+                   32768.0
+                   )
+                 )
+          )
+      (set-vector! (-> v1-25 settings shadow-dir) 0.9128 -0.1825 -0.3651 -98304.0)
+      (set-vector! (-> v1-25 settings top-plane) -0.9128 0.1825 0.3651 958464.0)
+      (set-vector! (-> v1-25 settings bot-plane) -0.9128 0.1825 0.3651 970752.0)
+      (set! (-> obj draw shadow-ctrl) v1-25)
+      )
+    )
+  (set! (-> obj draw light-index) (the-as uint 17))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gar-trophy-cc gar-trophy-cc gar-trophy-cc-lod0-jg gar-trophy-cc-idle-ja
+              ((gar-trophy-cc-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gar-trophy-cb gar-trophy-cb gar-trophy-cb-lod0-jg gar-trophy-cb-idle-ja
+              ((gar-trophy-cb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gar-curtain gar-curtain gar-curtain-lod0-jg gar-curtain-idle-ja
+              ((gar-curtain-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -3.5 0 9)
+              :origin-joint-index 3
+              )
+
+;; definition of type gar-curtain
+(deftype gar-curtain (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type gar-curtain
+(defmethod inspect gar-curtain ((obj gar-curtain))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defstate idle (gar-curtain)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 2)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 0.5)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.5))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior gar-curtain) transform-post)
+  )
+
+;; definition for method 11 of type gar-curtain
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! gar-curtain ((obj gar-curtain) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 8) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 9))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 -14336.0 0.0 36864.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      (let* ((s2-0
+               '((0 4 20480) (1 10 20480) (2 16 20480) (3 25 20480) (4 28 20480) (5 34 20480) (6 40 20480) (7 49 20480))
+               )
+             (s1-0 (car s2-0))
+             )
+        (while (not (null? s2-0))
+          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
+            (set! sv-32 'process)
+            (set! sv-48 collide-shape-prim-mesh)
+            (set! sv-64 s4-0)
+            (let ((a3-2 (command-get-int (car s1-0) 0))
+                  (t0-1 0)
+                  )
+              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+              )
+            )
+          (let ((s0-1 sv-16))
+            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
+            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
+            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
+            (set! (-> s0-1 transform-index) (command-get-int (car (cdr s1-0)) 0))
+            )
+          (set-vector! (-> sv-16 local-sphere) 0.0 0.0 0.0 (command-get-float (car (cdr (cdr s1-0))) 0.0))
+          (set! s2-0 (cdr s2-0))
+          (set! s1-0 (car s2-0))
+          )
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-22 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-22 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
+      )
+    (let ((v1-24 (-> s4-0 root-prim)))
+      (dotimes (a0-10 (the-as int (-> v1-24 specific 0)))
+        (+! (-> (the-as collide-shape-prim-group v1-24) child a0-10 local-sphere y) -14336.0)
+        )
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gar-curtain" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (quaternion-vector-angle! (-> obj root quat) *y-vector* 5461.3335)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type rift-rider
+(deftype rift-rider (rigid-body-object)
+  ((escort-actor            entity-actor 2         :offset-assert 272)
+   (escort-force            vector       2 :inline :offset-assert 288)
+   (brutter-balloon-actor   entity-actor           :offset-assert 320)
+   (path-pos                float                  :offset-assert 324)
+   (dest-pos                vector       :inline   :offset-assert 336)
+   (speed                   float                  :offset-assert 352)
+   (height                  float                  :offset-assert 356)
+   (init-height             float                  :offset-assert 360)
+   (battle-entity-triggered int32                  :offset-assert 364)
+   (battle-info-index       int32                  :offset-assert 368)
+   (sound-id                sound-id               :offset-assert 372)
+   (hover-volume            float                  :offset-assert 376)
+   )
+  :heap-base #x100
+  :method-count-assert 58
+  :size-assert         #x17c
+  :flag-assert         #x3a0100017c
+  (:methods
+    (defend-stadium-move () _type_ :state 53)
+    (defend-stadium-die () _type_ :state 54)
+    (defend-stadium-explode () _type_ :state 55)
+    (defend-stadium-land () _type_ :state 56)
+    (defend-stadium-complete () _type_ :state 57)
+    )
+  (:states
+    defend-stadium-wait
+    )
+  )
+
+;; definition for method 3 of type rift-rider
+(defmethod inspect rift-rider ((obj rift-rider))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rigid-body-object inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tescort-actor[2] @ #x~X~%" (-> obj escort-actor))
+  (format #t "~2Tescort-force[2] @ #x~X~%" (-> obj escort-force))
+  (format #t "~2Tbrutter-balloon-actor: ~A~%" (-> obj brutter-balloon-actor))
+  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
+  (format #t "~2Tdest-pos: #<vector @ #x~X>~%" (-> obj dest-pos))
+  (format #t "~2Tspeed: ~f~%" (-> obj speed))
+  (format #t "~2Theight: ~f~%" (-> obj height))
+  (format #t "~2Tinit-height: ~f~%" (-> obj init-height))
+  (format #t "~2Tbattle-entity-triggered: ~D~%" (-> obj battle-entity-triggered))
+  (format #t "~2Tbattle-info-index: ~D~%" (-> obj battle-info-index))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (format #t "~2Thover-volume: ~f~%" (-> obj hover-volume))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rift-rider-no-lift rift-rider rift-rider-lod0-jg rift-rider-idle-ja
+              ((rift-rider-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.5 0 5)
+              :shadow rift-rider-shadow-no-lift-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+;; definition for symbol *rift-rider-physics-constants*, type rigid-body-object-constants
+(define *rift-rider-physics-constants* (new 'static 'rigid-body-object-constants
+                                         :info (new 'static 'rigid-body-info
+                                           :mass 3.0
+                                           :inv-mass 0.33333334
+                                           :linear-damping 0.96
+                                           :angular-damping 0.92
+                                           :bounce-factor 0.5
+                                           :friction-factor 0.1
+                                           :cm-offset-joint (new 'static 'vector :w 1.0)
+                                           :inertial-tensor-box (new 'static 'array meters 3 (meters 3) (meters 3) (meters 6))
+                                           )
+                                         :extra (new 'static 'rigid-body-object-extra-info
+                                           :max-time-step 0.02
+                                           :gravity (meters 60)
+                                           :idle-distance (meters 200)
+                                           :attack-force-scale 2.0
+                                           )
+                                         :name '*rift-rider-physics-constants*
+                                         )
+        )
+
+;; definition for symbol *rift-rider-force-points*, type (array vector)
+(define *rift-rider-force-points* (new 'static 'boxed-array :type vector
+                                    (new 'static 'vector :y 819.2 :z 12288.0 :w 1.0)
+                                    (new 'static 'vector :x 3276.8 :y 819.2 :z 8192.0 :w 1.0)
+                                    (new 'static 'vector :x 3276.8 :y 819.2 :z -8192.0 :w 1.0)
+                                    (new 'static 'vector :x -3276.8 :y 819.2 :z 8192.0 :w 1.0)
+                                    (new 'static 'vector :x -3276.8 :y 819.2 :z -8192.0 :w 1.0)
+                                    )
+        )
+
+;; definition of type rift-rider-battle-info
+(deftype rift-rider-battle-info (structure)
+  ((path-pos     float  :offset-assert   0)
+   (entity-index int32  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type rift-rider-battle-info
+(defmethod inspect rift-rider-battle-info ((obj rift-rider-battle-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'rift-rider-battle-info)
+  (format #t "~1Tpath-pos: ~f~%" (-> obj path-pos))
+  (format #t "~1Tentity-index: ~D~%" (-> obj entity-index))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *rift-rider-battle-table*, type (array rift-rider-battle-info)
+(define *rift-rider-battle-table* (new 'static 'boxed-array :type rift-rider-battle-info
+                                    (new 'static 'rift-rider-battle-info :path-pos 0.4 :entity-index 3)
+                                    (new 'static 'rift-rider-battle-info :path-pos 3.1 :entity-index 4)
+                                    (new 'static 'rift-rider-battle-info :path-pos 5.5 :entity-index 5)
+                                    )
+        )
+
+;; definition for function defend-stadium-rift-rider-handler
+;; INFO: Used lq/sq
+(defbehavior defend-stadium-rift-rider-handler rift-rider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('get-position)
+     (let ((s5-1 (new 'stack-no-clear 'vector)))
+       (set! (-> s5-1 quad) (-> self root trans quad))
+       (let ((s4-0 (-> self root quat)))
+         (case (-> arg3 param 0)
+           (('left)
+            (vector+float*! s5-1 s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) s4-0) 24576.0)
+            (vector+float*!
+              (the-as vector (-> arg3 param 1))
+              s5-1
+              (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
+              12288.0
+              )
+            )
+           (('right)
+            (vector+float*!
+              (the-as vector (-> arg3 param 1))
+              s5-1
+              (vector-x-quaternion! (new 'stack-no-clear 'vector) s4-0)
+              -12288.0
+              )
+            )
+           )
+         )
+       )
+     (set! (-> (the-as vector (-> arg3 param 1)) y)
+           (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
+           )
+     (-> arg3 param 1)
+     )
+    (('die)
+     (go-virtual defend-stadium-die)
+     )
+    (('touch)
+     (let* ((gp-1 (-> arg3 param 0))
+            (s3-7 arg0)
+            (s4-1 (if (type? s3-7 process-focusable)
+                      s3-7
+                      )
+                  )
+            )
+       (if (and gp-1
+                s4-1
+                ((method-of-type touching-shapes-entry prims-touching-action?)
+                 (the-as touching-shapes-entry gp-1)
+                 (-> self root)
+                 (collide-action no-standon)
+                 (collide-action)
+                 )
+                (not (logtest? (-> self root penetrated-by)
+                               (-> (the-as collide-shape (-> (the-as process-drawable s4-1) root)) penetrate-using)
+                               )
+                     )
+                )
+           (send-shoves (-> self root) arg0 (the-as touching-shapes-entry gp-1) 0.7 6144.0 16384.0)
+           )
+       )
+     )
+    (('trans)
+     (-> self root trans)
+     )
+    (('quat)
+     (-> self root quat)
+     )
+    (('hold)
+     (set! (-> self escort-force (-> arg3 param 0) y)
+           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+           )
+     )
+    (else
+      (rigid-body-object-event-handler arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for function rift-rider-travel-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior rift-rider-travel-post rift-rider ()
+  (local-vars (sv-736 rift-rider) (sv-752 rift-rider) (sv-768 vector))
+  (if (not (-> self escort-actor 0))
+      (set! (-> self escort-actor 0) (entity-actor-lookup (-> self entity) 'alt-actor 0))
+      )
+  (if (not (-> self escort-actor 1))
+      (set! (-> self escort-actor 1) (entity-actor-lookup (-> self entity) 'alt-actor 1))
+      )
+  (let ((gp-0 (-> self root)))
+    (let ((v1-4 (new 'stack-no-clear 'vector)))
+      (set! (-> v1-4 quad) (-> self dest-pos quad))
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (+! (-> v1-4 y) 49152.0)
+        (vector-! s5-0 v1-4 (-> gp-0 trans))
+        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-4 from) (process->ppointer self))
+          (set! (-> a1-4 num-params) 0)
+          (set! (-> a1-4 message) 'trans)
+          (let* ((t9-2 send-event-function)
+                 (v1-7 (-> self escort-actor 0))
+                 (s1-0 (t9-2
+                         (if v1-7
+                             (-> v1-7 extra process)
+                             )
+                         a1-4
+                         )
+                       )
+                 (a1-5 (new 'stack-no-clear 'event-message-block))
+                 )
+            (set! (-> a1-5 from) (process->ppointer self))
+            (set! (-> a1-5 num-params) 0)
+            (set! (-> a1-5 message) 'trans)
+            (let* ((t9-3 send-event-function)
+                   (v1-11 (-> self escort-actor 1))
+                   (s2-0 (t9-3
+                           (if v1-11
+                               (-> v1-11 extra process)
+                               )
+                           a1-5
+                           )
+                         )
+                   )
+              (target-pos 0)
+              (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 quat)))
+                    (f30-0 0.0)
+                    (s3-0
+                      (lambda ((arg0 rift-rider) (arg1 vector) (arg2 vector) (arg3 vector))
+                        (let ((f0-1 (vector-dot (vector-! (new 'stack-no-clear 'vector) arg2 arg1) arg3)))
+                          (if (< f0-1 0.0)
+                              (- f0-1)
+                              0.0
+                              )
+                          )
+                        )
+                      )
+                    )
+                (let ((s0-0 (new 'stack-no-clear 'vector))
+                      (v1-13 0)
+                      )
+                  (vector-reset! s0-0)
+                  (when s1-0
+                    (vector+! s0-0 s0-0 (the-as vector s1-0))
+                    (+! v1-13 1)
+                    )
+                  (when s2-0
+                    (vector+! s0-0 s0-0 (the-as vector s2-0))
+                    (+! v1-13 1)
+                    )
+                  (when (> v1-13 0)
+                    (vector-float*! s0-0 s0-0 (/ 1.0 (the float v1-13)))
+                    (set! (-> self path-pos)
+                          (fmin (get-num-segments (-> self path)) (+ 0.1 (get-furthest-point-on-path (-> self path) s0-0)))
+                          )
+                    )
+                  )
+                (when s1-0
+                  (let ((s0-1 s3-0))
+                    (set! sv-736 self)
+                    (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+                      (set! (-> a1-11 from) (process->ppointer self))
+                      (set! (-> a1-11 num-params) 2)
+                      (set! (-> a1-11 message) 'get-position)
+                      (set! (-> a1-11 param 0) (the-as uint 'left))
+                      (set! (-> a1-11 param 1) (the-as uint (new 'stack-no-clear 'vector)))
+                      (let ((a1-12 (send-event-function self a1-11))
+                            (a3-0 s4-0)
+                            )
+                        (+! f30-0 (s0-1 sv-736 (the-as vector a1-12) (the-as vector s1-0) a3-0))
+                        )
+                      )
+                    )
+                  )
+                (when s2-0
+                  (let ((s1-1 s3-0)
+                        (s0-2 self)
+                        )
+                    (+! f30-0
+                        (s1-1
+                          s0-2
+                          (the-as vector (send-event self 'get-position 'right (new 'stack-no-clear 'vector)))
+                          (the-as vector s2-0)
+                          s4-0
+                          )
+                        )
+                    )
+                  )
+                (seek!
+                  (-> self speed)
+                  (fmin 12288.0 (+ 2048.0 (vector-length s5-0)))
+                  (* 4096.0 (-> self clock seconds-per-frame))
+                  )
+                (set! (-> self speed) (* (-> self speed) (lerp-scale 1.0 0.0 f30-0 24576.0 49152.0)))
+                (let ((f30-1 (-> self speed))
+                      (s2-1 lerp-scale)
+                      (s1-2 1.0)
+                      (s0-3 0.0)
+                      )
+                  (set! sv-752 self)
+                  (set! sv-768 (-> self root trans))
+                  (let ((a2-11 (target-pos 0)))
+                    (set! (-> self speed) (* f30-1 (s2-1 s1-2 s0-3 (s3-0 sv-752 sv-768 a2-11 s4-0) 143360.0 245760.0)))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (vector-normalize! s5-0 (-> self speed))
+        (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+        )
+      )
+    (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
+    )
+  0
+  (let ((v1-43 (-> self root))
+        (a2-14 (new 'stack-no-clear 'collide-query))
+        )
+    (set! (-> a2-14 collide-with) (collide-spec backgnd))
+    (set! (-> a2-14 ignore-process0) self)
+    (set! (-> a2-14 ignore-process1) #f)
+    (set! (-> a2-14 ignore-pat) (-> v1-43 pat-ignore-mask))
+    (set! (-> a2-14 action-mask) (collide-action solid))
+    (fill-cache-for-shape v1-43 (* (vector-length (-> v1-43 transv)) (-> self clock seconds-per-frame)) a2-14)
+    )
+  (rigid-body-object-method-37 self)
+  (pusher-post)
+  (none)
+  )
+
+;; definition for function rift-rider-bounce-reaction
+(defun rift-rider-bounce-reaction ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
+  (cshape-reaction-update-state arg0 arg1 arg3)
+  (let ((f30-0 (vector-dot arg3 (-> arg0 surface-normal)))
+        (s2-0 (new 'stack-no-clear 'vector))
+        )
+    (vector-float*! s2-0 (-> arg0 surface-normal) (* f30-0 (rand-vu-float-range 1.4 1.6)))
+    (vector-! arg2 arg3 s2-0)
+    )
+  (-> arg0 status)
+  )
+
+;; definition for method 29 of type rift-rider
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-29 rift-rider ((obj rift-rider) (arg0 float))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((f30-0 (* (-> obj rbody state info mass) (-> obj info extra gravity))))
+      (let ((a1-2 (quaternion-conjugate! (new 'stack-no-clear 'quaternion) (-> obj root quat))))
+        (vector-z-quaternion! (new 'stack-no-clear 'vector) a1-2)
+        )
+      (let ((f28-0 (fmax 0.0 (fmin 1.0 (* 0.000020345053 (- (-> obj dest-pos y) (-> obj root trans y)))))))
+        (vector-reset! s5-0)
+        (set! (-> s5-0 y) (* -1.0 f30-0))
+        (let ((v1-10 (-> obj rbody))
+              (a1-3 s5-0)
+              )
+          (rigid-body-method-20 (-> v1-10 state) a1-3)
+          )
+        (vector-normalize-copy!
+          s5-0
+          *y-vector*
+          (fmin 20480.0 (* 1.5 f30-0 f28-0 (fmax 0.2 (* (-> obj escort-force 0 y) (-> obj escort-force 1 y)))))
+          )
+        (set! (-> gp-0 quad) (-> obj root trans quad))
+        (let ((v1-17 (-> obj rbody))
+              (a1-5 gp-0)
+              (a2-1 s5-0)
+              )
+          (rigid-body-method-18 (-> v1-17 state) a1-5 a2-1)
+          )
+        (vector-reset! s5-0)
+        (vector-! s5-0 (-> obj dest-pos) (-> obj root trans))
+        (vector-float*! s5-0 s5-0 8.0)
+        (set! (-> s5-0 y) 0.0)
+        (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 0) (-> obj root quat))
+        (vector+! gp-0 gp-0 (-> obj root trans))
+        (let ((v1-27 (-> obj rbody))
+              (a1-12 gp-0)
+              (a2-3 s5-0)
+              )
+          (rigid-body-method-18 (-> v1-27 state) a1-12 a2-3)
+          )
+        (vector-normalize-copy! s5-0 *y-vector* (* 0.5 f30-0 f28-0 (-> obj escort-force 0 y)))
+        (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 1) (-> obj root quat))
+        (vector+! gp-0 gp-0 (-> obj root trans))
+        (let ((v1-34 (-> obj rbody))
+              (a1-17 gp-0)
+              (a2-6 s5-0)
+              )
+          (rigid-body-method-18 (-> v1-34 state) a1-17 a2-6)
+          )
+        (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 2) (-> obj root quat))
+        (vector+! gp-0 gp-0 (-> obj root trans))
+        (let ((v1-40 (-> obj rbody))
+              (a1-21 gp-0)
+              (a2-8 s5-0)
+              )
+          (rigid-body-method-18 (-> v1-40 state) a1-21 a2-8)
+          )
+        (vector-normalize-copy! s5-0 *y-vector* (* 0.5 f30-0 f28-0 (-> obj escort-force 1 y)))
+        )
+      )
+    (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 3) (-> obj root quat))
+    (vector+! gp-0 gp-0 (-> obj root trans))
+    (let ((v1-47 (-> obj rbody))
+          (a1-26 gp-0)
+          (a2-11 s5-0)
+          )
+      (rigid-body-method-18 (-> v1-47 state) a1-26 a2-11)
+      )
+    (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 4) (-> obj root quat))
+    (vector+! gp-0 gp-0 (-> obj root trans))
+    (rigid-body-method-18 (-> obj rbody state) gp-0 s5-0)
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rift-rider)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior rift-rider) #f)
+  :trans (the-as (function none :behavior rift-rider) #f)
+  :code (the-as (function none :behavior rift-rider) sleep-code)
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-wait (rift-rider)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (sound-play "rift-lift-off")
+       (go-virtual defend-stadium-move)
+       )
+      (else
+        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :post (the-as (function none :behavior rift-rider) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-move (rift-rider)
+  :virtual #t
+  :event defend-stadium-rift-rider-handler
+  :enter (behavior ()
+    (set! (-> self path-pos) 0.0)
+    (set! (-> self speed) 0.0)
+    (set! (-> self height) 49152.0)
+    (set! (-> self hover-volume) 0.0)
+    (set! (-> self dest-pos quad) (-> self root trans quad))
+    (none)
+    )
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    (none)
+    )
+  :trans (behavior ()
+    (dotimes (gp-0 2)
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 0.3 (-> self clock seconds-per-frame)))
+      )
+    (let ((f30-0 (get-furthest-point-on-path (-> self path) (-> self root trans))))
+      (if (< 8.0 f30-0)
+          (go-virtual defend-stadium-land)
+          )
+      (when (< (-> self battle-info-index) (-> *rift-rider-battle-table* length))
+        (let ((gp-1 (-> *rift-rider-battle-table* (-> self battle-info-index))))
+          (when (and (< (-> self battle-entity-triggered) (-> gp-1 entity-index)) (< (-> gp-1 path-pos) f30-0))
+            (format #t "rift-rider trigger battle entity ~D~%" (-> gp-1 entity-index))
+            (let ((s5-0 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> s5-0 from) (process->ppointer self))
+              (set! (-> s5-0 num-params) 0)
+              (set! (-> s5-0 message) 'trigger)
+              (let ((s4-0 send-event-function)
+                    (v1-24 (entity-actor-lookup (-> self entity) 'alt-actor (-> gp-1 entity-index)))
+                    )
+                (s4-0
+                  (if v1-24
+                      (-> v1-24 extra process)
+                      )
+                  s5-0
+                  )
+                )
+              )
+            (set! (-> self battle-entity-triggered) (-> gp-1 entity-index))
+            (+! (-> self battle-info-index) 1)
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :post (behavior ()
+    (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
+    (+! (-> self dest-pos y) (-> self height))
+    (sound-play-by-name
+      (static-sound-name "rift-hover")
+      (-> self sound-id)
+      (the int (* 1024.0 (-> self hover-volume)))
+      0
+      0
+      (sound-group sfx)
+      (-> self root trans)
+      )
+    (seek! (-> self hover-volume) 1.0 (-> self clock seconds-per-frame))
+    (spawn (-> self part) (-> self root trans))
+    (rift-rider-travel-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-land (rift-rider)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('get-position)
+       (set! (-> (the-as vector (-> event param 1)) quad) (-> self root trans quad))
+       (set! (-> (the-as vector (-> event param 1)) y)
+             (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
+             )
+       (-> event param 1)
+       )
+      (else
+        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :enter (behavior ()
+    (if (not (-> self brutter-balloon-actor))
+        (set! (-> self brutter-balloon-actor) (entity-actor-lookup (-> self entity) 'alt-actor 2))
+        )
+    (dotimes (gp-0 2)
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'enable-move)
+        (set! (-> a1-1 param 0) (the-as uint #f))
+        (let ((t9-1 send-event-function)
+              (v1-8 (-> self escort-actor gp-0))
+              )
+          (t9-1
+            (if v1-8
+                (-> v1-8 extra process)
+                )
+            a1-1
+            )
+          )
+        )
+      )
+    (let ((f0-0 (get-furthest-point-on-path (-> self path) (-> self root trans))))
+      (set! (-> self height)
+            (- (-> self root trans y)
+               (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) f0-0 'interp) y)
+               )
+            )
+      )
+    (rigid-body-object-method-39 self)
+    (rigid-body-object-method-41 self)
+    (logclear! (-> self rbody state flags) (rigid-body-flag enable-collision))
+    (none)
+    )
+  :exit (behavior ()
+    (rigid-body-object-method-38 self)
+    (rigid-body-object-method-40 self)
+    (logior! (-> self rbody state flags) (rigid-body-flag enable-collision))
+    (none)
+    )
+  :trans (behavior ()
+    (if (< (vector-vector-xz-distance
+             (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (get-num-segments (-> self path)) 'interp)
+             (-> self root trans)
+             )
+           12288.0
+           )
+        (go-virtual defend-stadium-complete)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :post (behavior ()
+    (seek! (-> self height) 4096.0 (* 6144.0 (-> self clock seconds-per-frame)))
+    (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
+    (+! (-> self dest-pos y) (-> self height))
+    (set! (-> self path-pos) (fmin
+                               (get-num-segments (-> self path))
+                               (+ 0.1 (get-furthest-point-on-path (-> self path) (-> self root trans)))
+                               )
+          )
+    (let ((gp-0 (-> self root)))
+      (let ((v1-10 (new 'stack-no-clear 'vector)))
+        (set! (-> v1-10 quad) (-> self dest-pos quad))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (+! (-> v1-10 y) (-> self height))
+          (vector-! s5-0 v1-10 (-> gp-0 trans))
+          (seek!
+            (-> self speed)
+            (fmin 12288.0 (+ -2048.0 (vector-length s5-0)))
+            (* 4096.0 (-> self clock seconds-per-frame))
+            )
+          (vector-normalize! s5-0 (-> self speed))
+          (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+          )
+        )
+      (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
+      (let* ((a0-11 (-> self brutter-balloon-actor))
+             (v1-19 (if a0-11
+                        (-> a0-11 extra process)
+                        )
+                    )
+             )
+        (if v1-19
+            (quaternion-slerp!
+              (-> gp-0 quat)
+              (-> gp-0 quat)
+              (-> (the-as process-drawable v1-19) root quat)
+              (* 0.5 (-> self clock seconds-per-frame))
+              )
+            )
+        )
+      )
+    (spawn (-> self part) (-> self root trans))
+    (pusher-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-complete (rift-rider)
+  :virtual #t
+  :code (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'complete)
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> *game-info* sub-task-list (game-task-node city-defend-stadium-resolution)))
+            )
+        (t9-0
+          (handle->process (if (-> v1-4 info)
+                               (-> v1-4 info manager)
+                               (the-as handle #f)
+                               )
+                           )
+          a1-0
+          )
+        )
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-die (rift-rider)
+  :virtual #t
+  :event defend-stadium-rift-rider-handler
+  :enter (behavior ()
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (if (< (-> self height) (-> self init-height))
+        (go-virtual defend-stadium-explode)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (let ((gp-0 (current-time)))
+      (until (>= (- (current-time) gp-0) (seconds 1.2))
+        (suspend)
+        )
+      )
+    (rigid-body-object-method-39 self)
+    (sleep-code)
+    (none)
+    )
+  :post (behavior ()
+    (dotimes (gp-0 2)
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 1.6 (-> self clock seconds-per-frame)))
+      )
+    (let ((v1-8 (-> self root))
+          (a2-1 (new 'stack-no-clear 'collide-query))
+          )
+      (set! (-> a2-1 collide-with) (collide-spec backgnd))
+      (set! (-> a2-1 ignore-process0) self)
+      (set! (-> a2-1 ignore-process1) #f)
+      (set! (-> a2-1 ignore-pat) (-> v1-8 pat-ignore-mask))
+      (set! (-> a2-1 action-mask) (collide-action solid))
+      (fill-cache-for-shape v1-8 (* (vector-length (-> v1-8 transv)) (-> self clock seconds-per-frame)) a2-1)
+      )
+    (rigid-body-object-method-37 self)
+    (pusher-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate defend-stadium-explode (rift-rider)
+  :virtual #t
+  :code (behavior ()
+    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-0
+        (let ((t9-1 (method-of-type part-tracker activate)))
+          (t9-1 (the-as part-tracker gp-0) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+          )
+        (let ((t9-2 run-function-in-process)
+              (a0-2 gp-0)
+              (a1-2 part-tracker-init)
+              (a2-4 (-> *part-group-id-table* 125))
+              (a3-1 0)
+              (t0-0 #f)
+              (t1-0 #f)
+              (t2-0 #f)
+              (t3-0 *launch-matrix*)
+              )
+          (set! (-> t3-0 trans quad) (-> self root trans quad))
+          ((the-as (function object object object object object object object object none) t9-2)
+           a0-2
+           a1-2
+           a2-4
+           a3-1
+           t0-0
+           t1-0
+           t2-0
+           t3-0
+           )
+          )
+        (-> gp-0 ppointer)
+        )
+      )
+    (suspend)
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; definition for method 45 of type rift-rider
+(defmethod rigid-body-object-method-45 rift-rider ((obj rift-rider) (arg0 rigid-body-impact))
+  (if (< 40960.0 (-> arg0 impulse))
+      (sound-play "rift-fall")
+      )
+  ((the-as (function rigid-body-object rigid-body-impact none) (find-parent-method rift-rider 45)) obj arg0)
+  (none)
+  )
+
+;; definition for method 34 of type rift-rider
+;; WARN: Return type mismatch object vs none.
+(defmethod rigid-body-object-method-34 rift-rider ((obj rift-rider))
+  (cond
+    ((nonzero? (-> obj path))
+     (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 902) obj))
+     (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+     (go defend-stadium-wait)
+     )
+    (else
+      (go (method-of-object obj idle))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 32 of type rift-rider
+;; WARN: Return type mismatch int vs none.
+(defmethod allocate-and-init-cshape rift-rider ((obj rift-rider))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec backgnd jak bot enemy player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 22528.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec backgnd jak bot enemy player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-14 transform-index) 3)
+      (set-vector! (-> v1-14 local-sphere) 0.0 6553.6 6144.0 8192.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec backgnd jak bot enemy player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-16 transform-index) 3)
+      (set-vector! (-> v1-16 local-sphere) 0.0 6144.0 -6144.0 9830.4)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec camera-blocker))
+      (set! (-> v1-18 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-18 local-sphere) 0.0 6144.0 0.0 20480.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type rift-rider
+(defmethod deactivate rift-rider ((obj rift-rider))
+  (sound-stop (-> obj sound-id))
+  ((the-as (function rigid-body-object none) (find-parent-method rift-rider 10)) obj)
+  (none)
+  )
+
+;; definition for method 33 of type rift-rider
+;; WARN: Return type mismatch int vs none.
+(defmethod init-skel-and-rigid-body rift-rider ((obj rift-rider))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-rift-rider-no-lift" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (alloc-and-init-rigid-body-control obj *rift-rider-physics-constants*)
+  (rigid-body-object-method-38 obj)
+  (rigid-body-object-method-40 obj)
+  (logior! (-> obj rbody state flags) (rigid-body-flag enable-collision))
+  (logior! (-> obj rbody state flags) (rigid-body-flag display-marks))
+  (set! (-> obj draw shadow-ctrl)
+        (new 'process 'shadow-control 0.0 0.0 614400.0 (shadow-flags shdf02 shdf03 shdf04 disable-draw) 245760.0)
+        )
+  (quad-copy! (the-as pointer (-> obj draw shadow-ctrl settings)) (the-as pointer *default-shadow-settings*) 5)
+  (set! (-> obj root dynam gravity y) 81920.0)
+  (set! (-> obj root dynam gravity-length) 81920.0)
+  (set! (-> obj root dynam gravity-max) 81920.0)
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #t))
+  (set! (-> obj height) 0.0)
+  (set! (-> obj init-height) (-> obj root trans y))
+  (set! (-> obj escort-actor 0) #f)
+  (set! (-> obj escort-actor 1) #f)
+  (set! (-> obj brutter-balloon-actor) #f)
+  (set! (-> obj battle-entity-triggered) 0)
+  (set! (-> obj battle-info-index) 0)
+  (set! (-> obj sound-id) (new-sound-id))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-entity-status! obj (entity-perm-status no-kill) #t)
+  (let ((a0-13 (-> obj skel root-channel 0)))
+    (set! (-> a0-13 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+    (set! (-> a0-13 frame-num) 0.0)
+    (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> obj draw art-group data 4)) num-func-identity)
+    )
+  (transform-post)
+  (none)
+  )
+
+;; definition of type spotlight
+(deftype spotlight (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type spotlight
+(defmethod inspect spotlight ((obj spotlight))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defstate idle (spotlight)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior spotlight) ja-post)
+  )
+
+;; definition for method 11 of type spotlight
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! spotlight ((obj spotlight) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-spotlight" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gar-door gar-door gar-door-lod0-jg gar-door-idle-ja
+              ((gar-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 16)
+              :origin-joint-index 3
+              )
+
+;; definition of type gar-door
+(deftype gar-door (com-airlock)
+  ()
+  :heap-base #x100
+  :method-count-assert 28
+  :size-assert         #x174
+  :flag-assert         #x1c01000174
+  )
+
+;; definition for method 3 of type gar-door
+(defmethod inspect gar-door ((obj gar-door))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type com-airlock inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type gar-door
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! gar-door ((obj gar-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 24576.0 0.0 65536.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 4)
+      (set-vector! (-> v1-8 local-sphere) 0.0 12288.0 0.0 40960.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 5)
+      (set-vector! (-> v1-10 local-sphere) 0.0 12288.0 0.0 40960.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gar-door" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! obj)
+  (set! (-> obj door-radius) 40960.0)
+  (go (method-of-object obj close) #t)
+  (none)
+  )
+
+;; definition for symbol *stad-nav-callback-info*, type nav-callback-info
+(define *stad-nav-callback-info*
+  (new 'static 'nav-callback-info
+    :callback-count 5
+    :callback-array (new 'static 'array (function object nav-control none) 10
+      (lambda ((arg0 object) (arg1 nav-control))
+        (rlet ((acc :class vf)
+               (Q :class vf)
+               (vf0 :class vf)
+               (vf1 :class vf)
+               (vf2 :class vf)
+               (vf3 :class vf)
+               )
+          (init-vf0-vector)
+          (let ((gp-0 (-> arg1 state)))
+            (set! (-> gp-0 rotation-rate) (-> gp-0 nav max-rotation-rate))
+            (if (< 0.0 (-> gp-0 speed))
+                (set! (-> gp-0 rotation-rate)
+                      (fmin
+                        (-> gp-0 rotation-rate)
+                        (* (/ (-> gp-0 nav turning-acceleration) (-> gp-0 speed)) (-> gp-0 mesh work rad-to-deg))
+                        )
+                      )
+                )
+            (when (logtest? (-> gp-0 nav flags) (nav-control-flag update-heading-from-facing))
+              (vector-z-quaternion! (-> gp-0 heading) (-> gp-0 nav shape quat))
+              (set! (-> gp-0 heading y) 0.0)
+              (let ((v1-12 (-> gp-0 heading)))
+                (let ((f0-5 1.0))
+                  (.lvf vf1 (&-> v1-12 quad))
+                  (.mul.vf vf2 vf1 vf1 :mask #b111)
+                  (let ((a0-3 f0-5))
+                    (.mov vf3 a0-3)
+                    )
+                  )
+                (.mul.x.vf acc vf0 vf2 :mask #b1000)
+                (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+                (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+                (.wait.vf)
+                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.nop.vf)
+                (.nop.vf)
+                (.nop.vf)
+                (.svf (&-> v1-12 quad) vf1)
+                )
+              )
+            (let ((a1-2 (new 'stack-no-clear 'vector)))
+              (set! (-> a1-2 quad) (-> gp-0 nav shape trans quad))
+              (if (or (not (-> gp-0 current-poly))
+                      (!= (-> gp-0 current-pos x) (-> a1-2 x))
+                      (!= (-> gp-0 current-pos z) (-> a1-2 z))
+                      )
+                  (do-navigation-to-destination gp-0 a1-2)
+                  )
+              )
+            (logclear!
+              (-> gp-0 flags)
+              (nav-state-flag blocked in-target-poly at-target avoiding-sphere touching-sphere at-gap)
+              )
+            )
+          0
+          0
+          (none)
+          )
+        )
+      (lambda ((arg0 object) (arg1 nav-control)) (navigate-using-route-portals (-> arg1 state)) 0 0 (none))
+      (lambda ((arg0 object) (arg1 nav-control))
+        (let* ((v1-0 arg1)
+               (a0-3 (-> v1-0 state mesh sphere-hash sphere-array))
+               (a2-0 (-> v1-0 sphere-id-array))
+               (a3-1 (-> v1-0 state mesh bounds))
+               (t0-0 (-> v1-0 root-nav-sphere))
+               (t1-0 (-> v1-0 sphere-count))
+               )
+          (dotimes (t2-0 t1-0)
+            (let ((t4-0 (-> a0-3 (-> a2-0 t2-0)))
+                  (t3-4 (-> v1-0 sphere-array t2-0))
+                  )
+              (vector-! (the-as vector t3-4) (the-as vector t4-0) a3-1)
+              (set! (-> t3-4 r) (+ (-> t4-0 r) (-> t0-0 w)))
+              )
+            )
+          )
+        0
+        (navigate-using-best-dir-recompute-avoid-spheres-1 (-> arg1 state))
+        0
+        (none)
+        )
+      (lambda ((arg0 object) (arg1 nav-control))
+        (let* ((v1-0 arg1)
+               (a0-3 (-> v1-0 state mesh sphere-hash sphere-array))
+               (a2-0 (-> v1-0 sphere-id-array))
+               (a3-1 (-> v1-0 state mesh bounds))
+               (t0-0 (-> v1-0 root-nav-sphere))
+               (t1-0 (-> v1-0 sphere-count))
+               )
+          (dotimes (t2-0 t1-0)
+            (let ((t4-0 (-> a0-3 (-> a2-0 t2-0)))
+                  (t3-4 (-> v1-0 sphere-array t2-0))
+                  )
+              (vector-! (the-as vector t3-4) (the-as vector t4-0) a3-1)
+              (set! (-> t3-4 r) (+ (-> t4-0 r) (-> t0-0 w)))
+              )
+            )
+          )
+        0
+        (navigate-within-poly (-> arg1 state))
+        0
+        0
+        (none)
+        )
+      (lambda ((arg0 object) (arg1 nav-control)) (compute-travel-speed (-> arg1 state)) 0 (none))
+      )
+    )
+  )
+
+;; definition for symbol *stad-samos-lightning-joint-tbl*, type (array int32)
+(define *stad-samos-lightning-joint-tbl* (new 'static 'boxed-array :type int32 14 15 16 18 19 20 22 23))
+
+;; definition of type stad-samos
+(deftype stad-samos (process-focusable)
+  ((root                      collide-shape-moving         :override)
+   (rift-rider-actor          entity-actor                 :offset-assert 204)
+   (lightning                 handle               4       :offset-assert 208)
+   (speed                     float                        :offset-assert 240)
+   (observed-speed            float                        :offset-assert 244)
+   (cquery-timer              time-frame                   :offset-assert 248)
+   (hit-dir                   vector               :inline :offset-assert 256)
+   (hit-points                float                        :offset-assert 272)
+   (max-hit-points            float                        :offset-assert 276)
+   (incoming-attack-id        uint32                       :offset-assert 280)
+   (falling?                  symbol                       :offset-assert 284)
+   (lightning-on?             symbol                       :offset-assert 288)
+   (enable-move?              symbol                       :offset-assert 292)
+   (focus-disable-timer       time-frame                   :offset-assert 296)
+   (stand-anim                int32                        :offset-assert 304)
+   (walk-anim                 int32                        :offset-assert 308)
+   (raise-ship-anim           int32                        :offset-assert 312)
+   (knocked-back-anim         int32                        :offset-assert 316)
+   (knocked-back-land-anim    int32                        :offset-assert 320)
+   (knocked-forward-anim      int32                        :offset-assert 324)
+   (knocked-forward-land-anim int32                        :offset-assert 328)
+   (death-anim                int32                        :offset-assert 332)
+   (death-end-anim            int32                        :offset-assert 336)
+   (knocked-anim              int32                        :offset-assert 340)
+   (knocked-land-anim         int32                        :offset-assert 344)
+   (hud                       handle                       :offset-assert 352)
+   (hud-bot-index             int32                        :offset-assert 360)
+   (rift-rider-joint-offset   int32                        :offset-assert 364)
+   (hand-joint                int32                        :offset-assert 368)
+   )
+  :heap-base #x100
+  :method-count-assert 36
+  :size-assert         #x174
+  :flag-assert         #x2401000174
+  (:methods
+    (idle () _type_ :state 27)
+    (raise-rift-rider () _type_ :state 28)
+    (move-rift-rider () _type_ :state 29)
+    (hit () _type_ :state 30)
+    (die () _type_ :state 31)
+    (init! (_type_) none 32)
+    (get-position (_type_) symbol 33)
+    (spawn-lightning (_type_) none 34)
+    (kill-lightning (_type_) none 35)
+    )
+  )
+
+;; definition for method 3 of type stad-samos
+(defmethod inspect stad-samos ((obj stad-samos))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Trift-rider-actor: ~A~%" (-> obj rift-rider-actor))
+  (format #t "~2Tlightning[4] @ #x~X~%" (-> obj lightning))
+  (format #t "~2Tspeed: ~f~%" (-> obj speed))
+  (format #t "~2Tobserved-speed: ~f~%" (-> obj observed-speed))
+  (format #t "~2Tcquery-timer: ~D~%" (-> obj cquery-timer))
+  (format #t "~2Thit-dir: #<vector @ #x~X>~%" (-> obj hit-dir))
+  (format #t "~2Thit-points: ~f~%" (-> obj hit-points))
+  (format #t "~2Tmax-hit-points: ~f~%" (-> obj max-hit-points))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
+  (format #t "~2Tfalling?: ~A~%" (-> obj falling?))
+  (format #t "~2Tlightning-on?: ~A~%" (-> obj lightning-on?))
+  (format #t "~2Tenable-move?: ~A~%" (-> obj enable-move?))
+  (format #t "~2Tfocus-disable-timer: ~D~%" (-> obj focus-disable-timer))
+  (format #t "~2Tstand-anim: ~D~%" (-> obj stand-anim))
+  (format #t "~2Twalk-anim: ~D~%" (-> obj walk-anim))
+  (format #t "~2Traise-ship-anim: ~D~%" (-> obj raise-ship-anim))
+  (format #t "~2Tknocked-back-anim: ~D~%" (-> obj knocked-back-anim))
+  (format #t "~2Tknocked-back-land-anim: ~D~%" (-> obj knocked-back-land-anim))
+  (format #t "~2Tknocked-forward-anim: ~D~%" (-> obj knocked-forward-anim))
+  (format #t "~2Tknocked-forward-land-anim: ~D~%" (-> obj knocked-forward-land-anim))
+  (format #t "~2Tdeath-anim: ~D~%" (-> obj death-anim))
+  (format #t "~2Tdeath-end-anim: ~D~%" (-> obj death-end-anim))
+  (format #t "~2Tknocked-anim: ~D~%" (-> obj knocked-anim))
+  (format #t "~2Tknocked-land-anim: ~D~%" (-> obj knocked-land-anim))
+  (format #t "~2Thud: ~D~%" (-> obj hud))
+  (format #t "~2Thud-bot-index: ~D~%" (-> obj hud-bot-index))
+  (format #t "~2Trift-rider-joint-offset: ~D~%" (-> obj rift-rider-joint-offset))
+  (format #t "~2Thand-joint: ~D~%" (-> obj hand-joint))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function stad-samos-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior stad-samos-post stad-samos ()
+  (when (>= (- (current-time) (-> self cquery-timer)) (seconds 0.32))
+    (move-to-ground (-> self root) 40960.0 40960.0 #t (collide-spec backgnd))
+    (set! (-> self cquery-timer) (current-time))
+    )
+  (when (and (nonzero? (-> self focus-disable-timer)) (< (-> self focus-disable-timer) (current-time)))
+    (logclear! (-> self focus-status) (focus-status ignore))
+    (set! (-> self focus-disable-timer) 0)
+    0
+    )
+  (let ((v1-15 (-> self rift-rider-actor)))
+    (if (not (if v1-15
+                 (-> v1-15 extra process)
+                 )
+             )
+        (kill-lightning self)
+        )
+    )
+  (set! (-> *game-info* bot-health (-> self hud-bot-index)) (/ (-> self hit-points) (-> self max-hit-points)))
+  (transform-post)
+  (none)
+  )
+
+;; definition for function spawn-energy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior spawn-energy stad-samos ()
+  (let ((gp-0 (new 'stack-no-clear 'matrix))
+        (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> self hand-joint))))
+        (a1-2 (new 'stack-no-clear 'event-message-block))
+        )
+    (set! (-> a1-2 from) (process->ppointer self))
+    (set! (-> a1-2 num-params) 0)
+    (set! (-> a1-2 message) 'trans)
+    (let* ((t9-1 send-event-function)
+           (v1-5 (-> self rift-rider-actor))
+           (v1-7 (t9-1
+                   (if v1-5
+                       (-> v1-5 extra process)
+                       )
+                   a1-2
+                   )
+                 )
+           (s4-0 (new 'stack-no-clear 'vector))
+           )
+      (when v1-7
+        (vector-! s4-0 (the-as vector v1-7) s5-0)
+        (vector-normalize! s4-0 1.0)
+        (forward-down->inv-matrix gp-0 s4-0 (vector-negate! (new 'stack-no-clear 'vector) *y-vector*))
+        (set! (-> gp-0 trans quad) (-> s5-0 quad))
+        (spawn (-> self part) s5-0)
+        (when (-> self lightning-on?)
+          (let* ((v1-12 (-> self rift-rider-actor))
+                 (gp-1 (if v1-12
+                           (-> v1-12 extra process)
+                           )
+                       )
+                 )
+            (when gp-1
+              (dotimes (s5-1 4)
+                (spawn (-> self part) (vector<-cspace!
+                                        (new 'stack-no-clear 'vector)
+                                        (-> (the-as process-drawable gp-1)
+                                            node-list
+                                            data
+                                            (-> *stad-samos-lightning-joint-tbl* (+ s5-1 (-> self rift-rider-joint-offset)))
+                                            )
+                                        )
+                       )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function stad-samos-handler
+(defbehavior stad-samos-handler stad-samos ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('track)
+     #f
+     )
+    (('trans)
+     (-> self root trans)
+     )
+    (('touched)
+     (send-event arg0 'touch (-> arg3 param 0))
+     )
+    (('attack)
+     (when (basic-type? arg0 enemy)
+       (let ((s5-1 (the-as object (-> arg3 param 1))))
+         (when (!= (-> (the-as attack-info s5-1) id) (-> self incoming-attack-id))
+           (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-1) id))
+           (let ((a0-14 (if (type? arg0 process-focusable)
+                            arg0
+                            )
+                        )
+                 )
+             (cond
+               (a0-14
+                 (vector-! (-> self hit-dir) (-> self root trans) (-> (the-as process-drawable a0-14) root trans))
+                 (vector-normalize! (-> self hit-dir) 1.0)
+                 )
+               ((logtest? (attack-info-mask attacker-velocity) (-> (the-as attack-info s5-1) mask))
+                (vector-normalize-copy! (-> self hit-dir) (-> (the-as attack-info s5-1) attacker-velocity) 1.0)
+                )
+               (else
+                 (vector-reset! (-> self hit-dir))
+                 )
+               )
+             )
+           (set! (-> self hit-points)
+                 (- (-> self hit-points) (if (logtest? (attack-info-mask damage) (-> (the-as attack-info s5-1) mask))
+                                             (-> (the-as attack-info s5-1) damage)
+                                             1.0
+                                             )
+                    )
+                 )
+           (if (>= 0.0 (-> self hit-points))
+               (go-virtual die)
+               (go-virtual hit)
+               )
+           )
+         )
+       )
+     )
+    (('enable-move)
+     (let ((v0-0 (the-as object (-> arg3 param 0))))
+       (set! (-> self enable-move?) (the-as symbol v0-0))
+       v0-0
+       )
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (stad-samos)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim)) :num! zero)
+    (while (not (and (-> self rift-rider-actor) (let ((a0-3 (-> self rift-rider-actor)))
+                                                  (if a0-3
+                                                      (-> a0-3 extra process)
+                                                      )
+                                                  )
+                     )
+                )
+      (set! (-> self rift-rider-actor) (entity-actor-lookup (-> self entity) 'alt-actor 0))
+      (let ((gp-0 (current-time)))
+        (until (>= (- (current-time) gp-0) (seconds 0.31))
+          (suspend)
+          )
+        )
+      )
+    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self stand-anim))) frames num-frames) -1)
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual raise-rift-rider)
+    (none)
+    )
+  :post stad-samos-post
+  )
+
+;; failed to figure out what this is:
+(set! (-> *lightning-spec-id-table* 25) (new 'static 'lightning-spec
+                                          :name "lightning-stad-shock"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :texture (new 'static 'texture-id :index #x6e :page #xc)
+                                          :reduction 0.42
+                                          :num-points 6
+                                          :box-size 6144.0
+                                          :merge-factor 0.5
+                                          :merge-count 2
+                                          :radius 3072.0
+                                          :sound (static-sound-spec "shock")
+                                          )
+      )
+
+;; failed to figure out what this is:
+(defstate raise-rift-rider (stad-samos)
+  :virtual #t
+  :event stad-samos-handler
+  :enter (behavior ()
+    (let ((v1-0 (-> self nav)))
+      (set! (-> v1-0 target-speed) 12288.0)
+      )
+    0
+    (let ((v1-2 (-> self nav)))
+      (set! (-> v1-2 acceleration) 12288.0)
+      )
+    0
+    (let ((v1-4 (-> self nav)))
+      (set! (-> v1-4 turning-acceleration) 245760.0)
+      )
+    0
+    (let ((v1-6 (-> self nav)))
+      (set! (-> v1-6 max-rotation-rate) 43690.668)
+      )
+    0
+    (set! (-> self enable-move?) #t)
+    (set! (-> self speed) 12288.0)
+    (set! (-> self observed-speed) 0.0)
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (when (and (nonzero? (-> self state-time)) (>= (- (current-time) (-> self state-time)) (seconds 1)))
+      (set! (-> self state-time) 0)
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'trigger)
+        (let ((t9-0 send-event-function)
+              (v1-8 (-> self rift-rider-actor))
+              )
+          (t9-0
+            (if v1-8
+                (-> v1-8 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      (spawn-lightning self)
+      )
+    (if (>= (- (current-time) (-> self state-time)) (seconds 2))
+        (go-virtual move-rift-rider)
+        )
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 1)
+      (set! (-> a1-1 message) 'hold)
+      (set! (-> a1-1 param 0) (the-as uint (-> self hud-bot-index)))
+      (let ((t9-3 send-event-function)
+            (v1-24 (-> self rift-rider-actor))
+            )
+        (t9-3
+          (if v1-24
+              (-> v1-24 extra process)
+              )
+          a1-1
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (send-event (handle->process (-> self hud)) 'force-show)
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! (-> self draw art-group data (-> self raise-ship-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self raise-ship-anim))) frames num-frames) -1)
+                       )
+                  0.75
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.75))
+      )
+    (sleep-code)
+    (none)
+    )
+  :post (behavior ()
+    (spawn-energy)
+    (stad-samos-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate move-rift-rider (stad-samos)
+  :virtual #t
+  :event stad-samos-handler
+  :trans (behavior ()
+    (let ((v1-0 (-> self rift-rider-actor)))
+      (if (not (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+          (go empty-state)
+          )
+      )
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'hold)
+      (set! (-> a1-0 param 0) (the-as uint (-> self hud-bot-index)))
+      (let ((t9-1 send-event-function)
+            (v1-9 (-> self rift-rider-actor))
+            )
+        (t9-1
+          (if v1-9
+              (-> v1-9 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data (-> self walk-anim)) :num! (loop!) :frame-num 0.0)
+    (until #f
+      (suspend)
+      (let ((f0-3 (fmax 0.2 (* 0.00008138021 (-> self observed-speed)))))
+        (ja :num! (loop! f0-3))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (when (not (-> self enable-move?))
+      (seek! (-> self speed) 2048.0 (* 12288.0 (-> self clock seconds-per-frame)))
+      (let ((v1-4 (-> self nav)))
+        (set! (-> v1-4 target-speed) (-> self speed))
+        )
+      0
+      )
+    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> gp-0 from) (process->ppointer self))
+      (set! (-> gp-0 num-params) 2)
+      (set! (-> gp-0 message) 'get-position)
+      (set! (-> gp-0 param 0) (the-as uint (get-position self)))
+      (set! (-> gp-0 param 1) (the-as uint (new 'stack-no-clear 'vector)))
+      (let* ((t9-2 send-event-function)
+             (v1-12 (-> self rift-rider-actor))
+             (v1-14 (the-as vector (t9-2
+                                     (if v1-12
+                                         (-> v1-12 extra process)
+                                         )
+                                     gp-0
+                                     )
+                            )
+                    )
+             )
+        (when v1-14
+          (let ((gp-1 (new 'stack-no-clear 'vector)))
+            (set! (-> gp-1 quad) (-> v1-14 quad))
+            (cloest-point-on-mesh (-> self nav) gp-1 gp-1 (the-as nav-poly #f))
+            (let ((v1-19 (-> self nav state)))
+              (logclear! (-> v1-19 flags) (nav-state-flag directional-mode))
+              (logior! (-> v1-19 flags) (nav-state-flag target-poly-dirty))
+              (set! (-> v1-19 target-post quad) (-> gp-1 quad))
+              )
+            )
+          0
+          (navigate-v1! (-> self nav state))
+          )
+        )
+      )
+    (let ((v1-25 (new 'stack-no-clear 'vector)))
+      (let ((a2-2 (-> self nav state)))
+        (set! (-> v1-25 quad) (-> a2-2 velocity quad))
+        )
+      (let ((a0-15 (-> self root transv)))
+        (set! (-> a0-15 x) (-> v1-25 x))
+        (set! (-> a0-15 y) 0.0)
+        (set! (-> a0-15 z) (-> v1-25 z))
+        )
+      )
+    0
+    (let ((gp-2 (-> self root)))
+      (let ((a2-5 (new 'stack-no-clear 'move-above-ground-params)))
+        (set! (-> a2-5 gnd-collide-with) (collide-spec backgnd))
+        (set! (-> a2-5 popup) 8192.0)
+        (set! (-> a2-5 dont-move-if-overlaps?) #t)
+        (set! (-> a2-5 hover-if-no-ground?) #f)
+        (set! (-> a2-5 overlaps-params options) (overlaps-others-options oo0 oo2))
+        (set! (-> a2-5 overlaps-params collide-with-filter) (collide-spec jak enemy hit-by-others-list player-list))
+        (set! (-> a2-5 overlaps-params tlist) *touching-list*)
+        (-> a2-5 overlaps-params)
+        (move-above-ground gp-2 (-> gp-2 transv) a2-5)
+        )
+      (let ((s4-0 (new 'stack-no-clear 'vector))
+            (s5-0 (new 'stack-no-clear 'quaternion))
+            )
+        (let ((a1-6 (-> self nav state)))
+          (set! (-> s4-0 quad) (-> a1-6 heading quad))
+          )
+        (set! (-> s4-0 y) 0.0)
+        (vector-normalize! s4-0 1.0)
+        (quaternion-set! s5-0 0.0 (-> s4-0 x) 0.0 (+ 1.0 (-> s4-0 z)))
+        (quaternion-normalize! s5-0)
+        (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (-> self clock seconds-per-frame)))
+        )
+      (seek!
+        (-> self observed-speed)
+        (vector-length (-> gp-2 transv))
+        (* 81920.0 (-> self clock seconds-per-frame))
+        )
+      )
+    (spawn-energy)
+    (stad-samos-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hit (stad-samos)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status ignore))
+    (set! (-> self focus-disable-timer) (+ (current-time) (seconds 5)))
+    (kill-lightning self)
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'off)
+      (let ((t9-1 send-event-function)
+            (v1-9 (-> self rift-rider-actor))
+            )
+        (t9-1
+          (if v1-9
+              (-> v1-9 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (set! (-> self root transv quad) (-> self hit-dir quad))
+    (let ((f30-0 (rand-vu-float-range 0.0 1.0))
+          (gp-0 (-> self root transv))
+          )
+      (vector-float*! gp-0 gp-0 (lerp 12288.0 49152.0 f30-0))
+      (set! (-> gp-0 y) (lerp 32768.0 65536.0 f30-0))
+      )
+    (cond
+      ((< (-> (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> self hit-dir) (-> self root quat)) z)
+          0.0
+          )
+       (set! (-> self knocked-anim) (-> self knocked-back-anim))
+       (set! (-> self knocked-land-anim) (-> self knocked-back-land-anim))
+       )
+      (else
+        (set! (-> self knocked-anim) (-> self knocked-forward-anim))
+        (set! (-> self knocked-land-anim) (-> self knocked-forward-land-anim))
+        )
+      )
+    (set! (-> self falling?) #t)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'on)
+      (let ((t9-0 send-event-function)
+            (v1-2 (-> self rift-rider-actor))
+            )
+        (t9-0
+          (if v1-2
+              (-> v1-2 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((v1-0 (-> self rift-rider-actor)))
+      (if (not (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+          (go empty-state)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-anim))) frames num-frames) -1)
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (while (not (logtest? (-> self root status) (collide-status on-surface)))
+      (suspend)
+      )
+    (vector-reset! (-> self root transv))
+    (set! (-> self falling?) #f)
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-land-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-land-anim))) frames num-frames)
+                          -1
+                          )
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (spawn-lightning self)
+    (go-virtual move-rift-rider)
+    (none)
+    )
+  :post (behavior ()
+    (if (-> self falling?)
+        (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 1.0))
+        )
+    (let ((gp-1 (-> self root)))
+      (let ((a2-1 (new 'stack-no-clear 'collide-query)))
+        (set! (-> a2-1 collide-with) (-> gp-1 root-prim prim-core collide-with))
+        (set! (-> a2-1 ignore-process0) self)
+        (set! (-> a2-1 ignore-process1) #f)
+        (set! (-> a2-1 ignore-pat) (-> gp-1 pat-ignore-mask))
+        (set! (-> a2-1 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide gp-1 (-> gp-1 transv) a2-1 (meters 0))
+        )
+      (when (logtest? (-> gp-1 status) (collide-status touch-surface))
+        (let ((f0-1 (fmax 0.0 (+ 1.0 (* -11.999999 (-> self clock seconds-per-frame))))))
+          (vector-float*! (-> gp-1 transv) (-> gp-1 transv) f0-1)
+          )
+        )
+      )
+    (stad-samos-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (stad-samos)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('death-end)
+                      (let ((v0-0 (logior (-> self draw status) (draw-control-status no-draw))))
+                        (set! (-> self draw status) v0-0)
+                        v0-0
+                        )
+                      )
+                     )
+            )
+    )
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status ignore))
+    (set! (-> self falling?) #t)
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'die)
+      (let ((t9-0 send-event-function)
+            (v1-5 (-> self rift-rider-actor))
+            )
+        (t9-0
+          (if v1-5
+              (-> v1-5 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (kill-lightning self)
+    (none)
+    )
+  :code (behavior ()
+    (send-event *camera* 'change-target self)
+    (set! (-> self root transv quad) (-> self hit-dir quad))
+    (let ((f30-0 (rand-vu-float-range 0.0 1.0))
+          (gp-0 (-> self root transv))
+          )
+      (vector-float*! gp-0 gp-0 (lerp 24576.0 65536.0 f30-0))
+      (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
+      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-anim))) frames num-frames) -1)
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (if (-> self skel effect)
+        (logior! (-> self skel effect flags) (effect-control-flag ecf1))
+        )
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-end-anim))
+                :num! (seek!
+                  (the float
+                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-end-anim))) frames num-frames) -1)
+                       )
+                  )
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a1-21 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-21 from) (process->ppointer self))
+      (set! (-> a1-21 num-params) 0)
+      (set! (-> a1-21 message) 'fail)
+      (let ((t9-11 send-event-function)
+            (v1-73 (-> *game-info* sub-task-list (game-task-node city-defend-stadium-resolution)))
+            )
+        (t9-11
+          (handle->process (if (-> v1-73 info)
+                               (-> v1-73 info manager)
+                               (the-as handle #f)
+                               )
+                           )
+          a1-21
+          )
+        )
+      )
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 2))
+        (suspend)
+        )
+      )
+    (send-event *camera* 'change-target #f)
+    (cleanup-for-death self)
+    (none)
+    )
+  :post stad-samos-post
+  )
+
+;; definition for method 33 of type stad-samos
+(defmethod get-position stad-samos ((obj stad-samos))
+  'right
+  )
+
+;; definition for method 34 of type stad-samos
+;; WARN: Return type mismatch symbol vs none.
+(defmethod spawn-lightning stad-samos ((obj stad-samos))
+  (let* ((v1-0 (-> obj rift-rider-actor))
+         (s5-0 (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+         )
+    (when s5-0
+      (dotimes (s4-0 4)
+        (set! (-> obj lightning s4-0)
+              (process->handle
+                (ppointer->process (process-spawn
+                                     lightning-tracker
+                                     :init lightning-tracker-init
+                                     (-> *lightning-spec-id-table* 25)
+                                     0
+                                     #f
+                                     s5-0
+                                     (-> *stad-samos-lightning-joint-tbl* (+ s4-0 (-> obj rift-rider-joint-offset)))
+                                     (-> obj hand-joint)
+                                     :to obj
+                                     )
+                                   )
+                )
+              )
+        )
+      (set! (-> obj lightning-on?) #t)
+      )
+    )
+  (none)
+  )
+
+;; definition for method 35 of type stad-samos
+;; WARN: Return type mismatch symbol vs none.
+(defmethod kill-lightning stad-samos ((obj stad-samos))
+  (dotimes (s5-0 4)
+    (send-event (handle->process (-> obj lightning s5-0)) 'die)
+    )
+  (set! (-> obj lightning-on?) #f)
+  (none)
+  )
+
+;; definition for method 10 of type stad-samos
+(defmethod deactivate stad-samos ((obj stad-samos))
+  (if (valid? (-> obj hud) (the-as type #f) "" #t 0)
+      (send-event (handle->process (-> obj hud)) 'hide-and-die)
+      )
+  (kill-lightning obj)
+  ((the-as (function process-focusable none) (find-parent-method stad-samos 10)) obj)
+  (none)
+  )
+
+;; definition for method 11 of type stad-samos
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! stad-samos ((obj stad-samos) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate jak-yellow-shot jak-red-shot jak-blue-shot))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec bot))
+      (set! (-> s3-0 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s3-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s3-0 local-sphere) 0.0 4505.6 0.0 5734.4)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec bot))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 2457.6 0.0 2457.6)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec bot))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-15 local-sphere) 0.0 4505.6 0.0 2457.6)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec bot))
+      (set! (-> v1-17 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-17 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-17 local-sphere) 0.0 6553.6 0.0 2457.6)
+      )
+    (set! (-> s4-0 nav-radius) 6144.0)
+    (let ((v1-19 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> obj root) s4-0)
+    )
+  (set! (-> obj hud) (the-as handle #f))
+  (set! (-> obj hud-bot-index) 0)
+  (set! (-> obj rift-rider-joint-offset) 0)
+  (process-drawable-from-entity! obj arg0)
+  (init! obj)
+  (get-nav-control obj (the-as nav-mesh #f))
+  (let ((v1-24 (-> obj nav)))
+    (set! (-> v1-24 sphere-mask) (the-as uint 1102))
+    )
+  0
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-entity-status! obj (entity-perm-status no-kill) #t)
+  (set! (-> obj rift-rider-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+  (set! (-> obj entity) arg0)
+  (dotimes (v1-28 4)
+    (set! (-> obj lightning v1-28) (the-as handle #f))
+    )
+  (set! (-> obj lightning-on?) #f)
+  (set! (-> obj rift-rider-actor) #f)
+  (set! (-> obj cquery-timer) (current-time))
+  (vector-reset! (-> obj hit-dir))
+  (set! (-> obj max-hit-points) (+ 5.0 (* 5.0 (you-suck-scale *game-info* #f))))
+  (set! (-> obj hit-points) (-> obj max-hit-points))
+  (set! (-> obj incoming-attack-id) (the-as uint -1))
+  (set! (-> obj focus-disable-timer) 0)
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 903) obj))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-samos samos samos-lod0-jg samos-idle-ja
+              ((samos-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.1 0 3)
+              :shadow samos-shadow-mg
+              )
+
+;; definition for method 32 of type stad-samos
+;; WARN: Return type mismatch int vs none.
+(defmethod init! stad-samos ((obj stad-samos))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-samos" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj stand-anim) 6)
+  (set! (-> obj walk-anim) 8)
+  (set! (-> obj raise-ship-anim) 7)
+  (set! (-> obj knocked-back-anim) 11)
+  (set! (-> obj knocked-back-land-anim) 12)
+  (set! (-> obj knocked-forward-anim) 9)
+  (set! (-> obj knocked-forward-land-anim) 10)
+  (set! (-> obj death-anim) 13)
+  (set! (-> obj death-end-anim) 14)
+  (set! (-> obj hud) (ppointer->handle (process-spawn hud-samos-old :init hud-init-by-other :to obj)))
+  (set! (-> obj hud-bot-index) 1)
+  (set! (-> obj rift-rider-joint-offset) 4)
+  (set! (-> obj hand-joint) 22)
+  0
+  (none)
+  )
+
+;; definition of type stad-youngsamos
+(deftype stad-youngsamos (stad-samos)
+  ()
+  :heap-base #x100
+  :method-count-assert 36
+  :size-assert         #x174
+  :flag-assert         #x2401000174
+  )
+
+;; definition for method 3 of type stad-youngsamos
+(defmethod inspect stad-youngsamos ((obj stad-youngsamos))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type stad-samos inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-youngsamos youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-idle-ja
+              ((youngsamos-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.1 0 2.5)
+              :shadow youngsamos-highres-shadow-mg
+              )
+
+;; failed to figure out what this is:
+(defstate move-rift-rider (stad-youngsamos)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 2 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 25) :num! (loop!) :frame-num 0.0)
+    (let ((a0-2 (-> self skel root-channel 1)))
+      (let ((f0-2 0.0))
+        (set! (-> a0-2 frame-interp 1) f0-2)
+        (set! (-> a0-2 frame-interp 0) f0-2)
+        )
+      (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> self draw art-group data 26)))
+      (set! (-> a0-2 param 0) 0.0)
+      (set! (-> a0-2 frame-num) (-> self skel root-channel 0 frame-num))
+      (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> self draw art-group data 26)) num-func-chan)
+      )
+    (until #f
+      (suspend)
+      (let ((f30-0 (fmax 0.2 (* 0.00008138021 (-> self observed-speed))))
+            (f28-0 0.0)
+            )
+        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-3 from) (process->ppointer self))
+          (set! (-> a1-3 num-params) 0)
+          (set! (-> a1-3 message) 'trans)
+          (let* ((t9-3 send-event-function)
+                 (v1-23 (-> self rift-rider-actor))
+                 (a0-3 (if v1-23
+                           (-> v1-23 extra process)
+                           )
+                       )
+                 (v1-25 (t9-3 a0-3 a1-3))
+                 )
+            (when v1-25
+              (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (the-as vector v1-25) (-> self root trans)))
+                    (s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                    )
+                (set! (-> gp-1 y) 0.0)
+                (vector-xz-normalize! gp-1 1.0)
+                (set! f28-0 (lerp-scale 0.0 1.0 (vector-dot gp-1 s5-0) 1.0 -1.0))
+                )
+              )
+            )
+          )
+        (let ((a0-10 (-> self skel root-channel 0)))
+          (set! (-> a0-10 frame-interp 1) f28-0)
+          (set! (-> a0-10 frame-interp 0) f28-0)
+          (set! (-> a0-10 param 0) f30-0)
+          (joint-control-channel-group-eval! a0-10 (the-as art-joint-anim #f) num-func-loop!)
+          )
+        (let ((a0-11 (-> self skel root-channel 1)))
+          (let ((f0-9 (- 1.0 f28-0)))
+            (set! (-> a0-11 frame-interp 1) f0-9)
+            (set! (-> a0-11 frame-interp 0) f0-9)
+            )
+          (set! (-> a0-11 param 0) 0.0)
+          (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-chan)
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+;; definition for method 32 of type stad-youngsamos
+;; WARN: Return type mismatch int vs none.
+(defmethod init! stad-youngsamos ((obj stad-youngsamos))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-youngsamos" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj stand-anim) 17)
+  (set! (-> obj walk-anim) 25)
+  (set! (-> obj raise-ship-anim) 18)
+  (set! (-> obj knocked-back-anim) 19)
+  (set! (-> obj knocked-back-land-anim) 20)
+  (set! (-> obj knocked-forward-anim) 21)
+  (set! (-> obj knocked-forward-land-anim) 22)
+  (set! (-> obj death-anim) 23)
+  (set! (-> obj death-end-anim) 24)
+  (set! (-> obj hud) (ppointer->handle (process-spawn hud-samos-young :init hud-init-by-other :to obj)))
+  (set! (-> obj hud-bot-index) 0)
+  (set! (-> obj hand-joint) 25)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type stad-youngsamos
+(defmethod get-position stad-youngsamos ((obj stad-youngsamos))
+  'left
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stadium-barrier stadium-barrier stadium-barrier-lod0-jg stadium-barrier-idle-ja
+              ((stadium-barrier-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+;; definition of type stadium-barrier
+(deftype stadium-barrier (process-drawable)
+  ((color  vector :inline :offset-assert 208)
+   (flash  vector :inline :offset-assert 224)
+   (flashf float          :offset-assert 240)
+   (colorf float          :offset-assert 244)
+   )
+  :heap-base #x80
+  :method-count-assert 24
+  :size-assert         #xf8
+  :flag-assert         #x18008000f8
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (stadium-barrier-method-22 (_type_) none 22)
+    (stadium-barrier-method-23 (_type_) none 23)
+    )
+  )
+
+;; definition for method 3 of type stadium-barrier
+(defmethod inspect stadium-barrier ((obj stadium-barrier))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcolor: #<vector @ #x~X>~%" (-> obj color))
+  (format #t "~2Tflash: #<vector @ #x~X>~%" (-> obj flash))
+  (format #t "~2Tflashf: ~f~%" (-> obj flashf))
+  (format #t "~2Tcolorf: ~f~%" (-> obj colorf))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 22 of type stadium-barrier
+;; WARN: Return type mismatch int vs none.
+(defmethod stadium-barrier-method-22 stadium-barrier ((obj stadium-barrier))
+  (set! (-> obj root) (new 'process 'trsqv))
+  0
+  (none)
+  )
+
+;; definition for method 23 of type stadium-barrier
+;; WARN: Return type mismatch int vs none.
+(defmethod stadium-barrier-method-23 stadium-barrier ((obj stadium-barrier))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stadium-barrier" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj draw lod-set lod 0 dist) 409600.0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (stadium-barrier)
+  :virtual #t
+  :enter (behavior ()
+    (sound-play "stadium-shield")
+    (none)
+    )
+  :code (the-as (function none :behavior stadium-barrier) sleep-code)
+  :post (behavior ()
+    (if (!= (-> self flashf) 0.0)
+        (seek! (-> self flashf) 0.0 (* 8.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self colorf) 0.0 (* 1.5 (-> self clock seconds-per-frame)))
+        )
+    (let ((a0-2 (new 'stack-no-clear 'vector))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-float*! a0-2 (-> self color) (-> self colorf))
+      (vector-float*! gp-0 (-> self flash) (-> self flashf))
+      (set-security-color! a0-2)
+      (set-security-flash! gp-0)
+      )
+    (if (and (= (-> self colorf) 0.0) (= (-> self flashf) 0.0))
+        (go-virtual die)
+        )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (stadium-barrier)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; definition for method 11 of type stadium-barrier
+;; WARN: Return type mismatch entity-perm-status vs none.
+(defmethod init-from-entity! stadium-barrier ((obj stadium-barrier) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (process-entity-status! obj (entity-perm-status dead) #t)
+  (none)
+  )
+
+;; definition for function stadium-barrier-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior stadium-barrier-init-by-other stadium-barrier ((arg0 vector) (arg1 quaternion) (arg2 vector))
+  (ctywide-entity-hack)
+  (stack-size-set! (-> self main-thread) 16)
+  (logclear! (-> self mask) (process-mask actor-pause movie))
+  (stadium-barrier-method-22 self)
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (set! (-> self root scale quad) (-> arg2 quad))
+  (stadium-barrier-method-23 self)
+  (logior! (-> self draw status) (draw-control-status disable-fog))
+  (set-security-texture-masks! (the-as vector (-> self draw mgeo header texture-usage-group data 4)))
+  (set-vector! (-> self color) 1.0 0.0 0.0 1.0)
+  (set-vector! (-> self flash) 0.5 0.0 0.0 1.0)
+  (set! (-> self flashf) 1.0)
+  (set! (-> self colorf) 1.0)
+  (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 0.0)
+  (set-vector! (-> self draw color-emissive) 1.0 1.0 1.0 1.0)
+  (ja-post)
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function stadium-barrier-spawn
+;; WARN: Return type mismatch (pointer process) vs (pointer stadium-barrier).
+(defun stadium-barrier-spawn ((arg0 stad-force-field) (arg1 vector) (arg2 quaternion) (arg3 vector))
+  (process-spawn stadium-barrier arg1 arg2 arg3 :to arg0)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-force-field stad-force-field stad-force-field-lod0-jg stad-force-field-idle-ja
+              ((stad-force-field-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 30 0 220)
+              )
+
+;; definition of type stad-force-field
+(deftype stad-force-field (process-focusable)
+  ((incoming-attack-id uint32             :offset-assert 204)
+   (plane              plane      :inline :offset-assert 208)
+   (field              handle             :offset-assert 224)
+   (ripple             handle             :offset-assert 232)
+   (next-message-time  time-frame         :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 30
+  :size-assert         #xf8
+  :flag-assert         #x1e008000f8
+  (:methods
+    (idle () _type_ :state 27)
+    (stad-force-field-method-28 (_type_) none 28)
+    (stad-force-field-method-29 (_type_ touching-shapes-entry) int 29)
+    )
+  )
+
+;; definition for method 3 of type stad-force-field
+(defmethod inspect stad-force-field ((obj stad-force-field))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
+  (format #t "~2Tplane: #<plane @ #x~X>~%" (-> obj plane))
+  (format #t "~2Tfield: ~D~%" (-> obj field))
+  (format #t "~2Tripple: ~D~%" (-> obj ripple))
+  (format #t "~2Tnext-message-time: ~D~%" (-> obj next-message-time))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 29 of type stad-force-field
+;; INFO: Used lq/sq
+(defmethod stad-force-field-method-29 stad-force-field ((obj stad-force-field) (arg0 touching-shapes-entry))
+  (local-vars
+    (sv-256 entity-actor)
+    (sv-272 collide-tri-result)
+    (sv-288 (function vector vector vector vector))
+    (sv-304 vector)
+    (sv-320 vector)
+    (sv-336 vector)
+    )
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (if (not arg0)
+        (return (the-as int #f))
+        )
+    (if (handle->process (-> obj field))
+        (deactivate (-> obj field process 0))
+        )
+    (if (handle->process (-> obj ripple))
+        (deactivate (-> obj ripple process 0))
+        )
+    (let* ((s3-0 (get-process *default-dead-pool* manipy #x4000))
+           (s4-0 (when s3-0
+                   (let ((t9-3 (method-of-type manipy activate)))
+                     (t9-3 (the-as manipy s3-0) obj (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
+                     )
+                   (let ((s4-1 run-function-in-process)
+                         (s2-0 s3-0)
+                         (s1-0 manipy-init)
+                         (s0-0 (-> obj root trans))
+                         )
+                     (set! sv-256 (-> obj entity))
+                     (let ((t0-0 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
+                           (t1-0 #f)
+                           (t2-0 0)
+                           )
+                       ((the-as (function object object object object object object object none) s4-1)
+                        s2-0
+                        s1-0
+                        s0-0
+                        sv-256
+                        t0-0
+                        t1-0
+                        t2-0
+                        )
+                       )
+                     )
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      0.0
+      0.0
+      0.0
+      (let ((s3-1 (new 'stack-no-clear 'vector)))
+        (when s4-0
+          (set! (-> obj ripple) (ppointer->handle s4-0))
+          (send-event (ppointer->process s4-0) 'anim-mode 'play1)
+          (send-event (ppointer->process s4-0) 'speed 1.5)
+          (send-event (ppointer->process s4-0) 'art-joint-anim "generic-ripples-idle" 0)
+          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root scale) 1.0 1.0 1.0 1.0)
+          (let ((s2-1 (-> arg0 head)))
+            (while s2-1
+              (get-touched-prim s2-1 (-> obj root) arg0)
+              (set! sv-272 (get-touched-tri s2-1 (-> obj root) arg0))
+              (when sv-272
+                (quaternion-look-at! (-> (the-as process-drawable (-> s4-0 0)) root quat) (-> sv-272 normal) *up-vector*)
+                (set! (-> obj plane quad) (-> sv-272 normal quad))
+                (set! (-> obj plane w) (- (vector-dot (-> sv-272 normal) (the-as vector (-> sv-272 vertex)))))
+                (let ((f30-0 (the-as float #x7f800000))
+                      (f28-0 (the-as float #xff800000))
+                      (s0-1 (new 'stack-no-clear 'vector))
+                      (s1-1 (new 'stack-no-clear 'vector))
+                      )
+                  (set! sv-336 (new 'stack-no-clear 'vector))
+                  (set! (-> s1-1 quad) (-> sv-272 vertex 0 quad))
+                  (vector+! s1-1 s1-1 (-> sv-272 vertex 1))
+                  (vector+! s1-1 s1-1 (-> sv-272 vertex 2))
+                  (vector-float*! s1-1 s1-1 0.33333334)
+                  (set! sv-288 vector-flatten!)
+                  (set! sv-304 sv-336)
+                  (set! sv-320 (new 'stack-no-clear 'vector))
+                  (let ((v0-14 (target-pos 0))
+                        (v1-75 s1-1)
+                        )
+                    (.lvf vf4 (&-> v0-14 quad))
+                    (.lvf vf5 (&-> v1-75 quad))
+                    )
+                  (.mov.vf vf6 vf0 :mask #b1000)
+                  (.sub.vf vf6 vf4 vf5 :mask #b111)
+                  (.svf (&-> sv-320 quad) vf6)
+                  (let ((a2-9 (-> sv-272 normal)))
+                    (sv-288 sv-304 sv-320 a2-9)
+                    )
+                  (vector+! sv-336 s1-1 sv-336)
+                  (vector-inv-orient-by-quat!
+                    s0-1
+                    (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> sv-272 vertex)) s1-1)
+                    (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                    )
+                  (if (< (-> s0-1 x) f30-0)
+                      (set! f30-0 (-> s0-1 x))
+                      )
+                  (if (< f28-0 (-> s0-1 x))
+                      (set! f28-0 (-> s0-1 x))
+                      )
+                  (vector-inv-orient-by-quat!
+                    s0-1
+                    (vector-! (new 'stack-no-clear 'vector) (-> sv-272 vertex 1) s1-1)
+                    (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                    )
+                  (if (< (-> s0-1 x) f30-0)
+                      (set! f30-0 (-> s0-1 x))
+                      )
+                  (if (< f28-0 (-> s0-1 x))
+                      (set! f28-0 (-> s0-1 x))
+                      )
+                  (vector-inv-orient-by-quat!
+                    s0-1
+                    (vector-! (new 'stack-no-clear 'vector) (-> sv-272 vertex 2) s1-1)
+                    (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                    )
+                  (if (< (-> s0-1 x) f30-0)
+                      (set! f30-0 (-> s0-1 x))
+                      )
+                  (if (< f28-0 (-> s0-1 x))
+                      (set! f28-0 (-> s0-1 x))
+                      )
+                  (let ((t9-17 vector-inv-orient-by-quat!)
+                        (a0-49 s0-1)
+                        (a1-27 (new 'stack-no-clear 'vector))
+                        (v1-103 s1-1)
+                        )
+                    (t9-17 a0-49 (vector-! a1-27 sv-336 v1-103) (-> (the-as process-drawable (-> s4-0 0)) root quat))
+                    )
+                  (let* ((f0-17 (-> s0-1 x))
+                         (f28-1 (fmin f28-0 (+ 16384.0 f0-17)))
+                         (f30-1 (fmax f30-0 (+ -16384.0 f0-17)))
+                         )
+                    (set! (-> s0-1 x) (* 0.5 (+ f30-1 f28-1)))
+                    (vector-orient-by-quat! s0-1 s0-1 (-> (the-as process-drawable (-> s4-0 0)) root quat))
+                    (vector+! s1-1 s1-1 s0-1)
+                    (set! (-> (the-as process-drawable (-> s4-0 0)) root trans quad) (-> s1-1 quad))
+                    (set! (-> (the-as process-drawable (-> s4-0 0)) root trans y) (-> (target-pos 0) y))
+                    (set-vector! s3-1 (* 0.000061035156 (- f28-1 f30-1)) 4.0 4.0 1.0)
+                    )
+                  )
+                (quaternion-rotate-local-x!
+                  (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                  (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                  -16384.0
+                  )
+                )
+              (set! s2-1 (-> s2-1 next))
+              )
+            )
+          (send-event (ppointer->process s4-0) 'trans-hook (lambda () (none)))
+          (set! (-> obj field) (ppointer->handle (stadium-barrier-spawn
+                                                   obj
+                                                   (-> (the-as process-drawable (-> s4-0 0)) root trans)
+                                                   (quaternion-rotate-local-x!
+                                                     (new 'stack-no-clear 'quaternion)
+                                                     (-> (the-as process-drawable (-> s4-0 0)) root quat)
+                                                     16384.0
+                                                     )
+                                                   s3-1
+                                                   )
+                                                 )
+                )
+          )
+        )
+      )
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (stad-force-field)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (let ((v1-1 (the-as object (-> event param 1)))
+               (a1-1 (-> event param 0))
+               )
+           (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
+             (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
+             (stad-force-field-method-29 self (the-as touching-shapes-entry a1-1))
+             (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-2 from) (process->ppointer self))
+               (set! (-> a1-2 num-params) 2)
+               (set! (-> a1-2 message) 'shove)
+               (set! (-> a1-2 param 0) (-> event param 0))
+               (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
+                 (let* ((a0-7 *game-info*)
+                        (a2-3 (+ (-> a0-7 attack-id) 1))
+                        )
+                   (set! (-> a0-7 attack-id) a2-3)
+                   (set! (-> v1-9 id) a2-3)
+                   )
+                 (set! (-> v1-9 vector quad) (-> self plane quad))
+                 (set! (-> v1-9 shove-back) 4096.0)
+                 (set! (-> v1-9 shove-up) 6144.0)
+                 (set! (-> a1-2 param 1) (the-as uint v1-9))
+                 )
+               (send-event-function proc a1-2)
+               )
+             (when (< (-> self next-message-time) (current-time))
+               (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+               (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+               )
+             )
+           )
+         )
+        (('touch)
+         (let ((a1-5 (-> event param 0)))
+           (stad-force-field-method-29 self (the-as touching-shapes-entry a1-5))
+           )
+         (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-6 from) (process->ppointer self))
+           (set! (-> a1-6 num-params) 2)
+           (set! (-> a1-6 message) 'shove)
+           (set! (-> a1-6 param 0) (-> event param 0))
+           (let ((v1-23 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
+             (let* ((a0-20 *game-info*)
+                    (a2-6 (+ (-> a0-20 attack-id) 1))
+                    )
+               (set! (-> a0-20 attack-id) a2-6)
+               (set! (-> v1-23 id) a2-6)
+               )
+             (set! (-> v1-23 vector quad) (-> self plane quad))
+             (set! (-> v1-23 shove-back) 4096.0)
+             (set! (-> v1-23 shove-up) 6144.0)
+             (set! (-> a1-6 param 1) (the-as uint v1-23))
+             )
+           (send-event-function proc a1-6)
+           )
+         (when (< (-> self next-message-time) (current-time))
+           (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+           (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+           )
+         )
+        )
+      )
+    )
+  :code (the-as (function none :behavior stad-force-field) sleep-code)
+  )
+
+;; definition for method 12 of type stad-force-field
+(defmethod run-logic? stad-force-field ((obj stad-force-field))
+  #t
+  )
+
+;; definition for method 28 of type stad-force-field
+;; WARN: Return type mismatch int vs none.
+(defmethod stad-force-field-method-28 stad-force-field ((obj stad-force-field))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 901120.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid))
+      (set! (-> v1-14 transform-index) 3)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 901120.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-16 prim-core action) (collide-action solid))
+      (set! (-> v1-16 transform-index) 3)
+      (set-vector! (-> v1-16 local-sphere) 0.0 0.0 0.0 901120.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-19 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type stad-force-field
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! stad-force-field ((obj stad-force-field) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stad-force-field-method-28 obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-force-field" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj mask) (process-mask crate))
+  (set! (-> obj field) (the-as handle #f))
+  (set! (-> obj ripple) (the-as handle #f))
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-c-force-field stad-c-force-field stad-c-force-field-lod0-jg stad-c-force-field-idle-ja
+              ((stad-c-force-field-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 30 0 220)
+              )
+
+;; definition of type stad-c-force-field
+(deftype stad-c-force-field (stad-force-field)
+  ()
+  :heap-base #x80
+  :method-count-assert 30
+  :size-assert         #xf8
+  :flag-assert         #x1e008000f8
+  )
+
+;; definition for method 3 of type stad-c-force-field
+(defmethod inspect stad-c-force-field ((obj stad-c-force-field))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type stad-force-field inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type stad-c-force-field
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! stad-c-force-field ((obj stad-c-force-field) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stad-force-field-method-28 obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-c-force-field" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj mask) (process-mask crate))
+  (set! (-> obj field) (the-as handle #f))
+  (set! (-> obj ripple) (the-as handle #f))
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-d-force-field stad-d-force-field stad-d-force-field-lod0-jg stad-d-force-field-idle-ja
+              ((stad-d-force-field-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 30 0 220)
+              )
+
+;; definition of type stad-d-force-field
+(deftype stad-d-force-field (stad-force-field)
+  ()
+  :heap-base #x80
+  :method-count-assert 30
+  :size-assert         #xf8
+  :flag-assert         #x1e008000f8
+  )
+
+;; definition for method 3 of type stad-d-force-field
+(defmethod inspect stad-d-force-field ((obj stad-d-force-field))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type stad-force-field inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type stad-d-force-field
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! stad-d-force-field ((obj stad-d-force-field) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stad-force-field-method-28 obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-d-force-field" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj mask) (process-mask crate))
+  (set! (-> obj field) (the-as handle #f))
+  (set! (-> obj ripple) (the-as handle #f))
+  (transform-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type stad-keira
+(deftype stad-keira (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type stad-keira
+(defmethod inspect stad-keira ((obj stad-keira))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-keira keira keira-lod0-jg keira-stad-sit-ja
+              ((keira-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (stad-keira)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('die)
+       (go empty-state)
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.25))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'trans)
+      (let* ((t9-0 send-event-function)
+             (v1-2 (-> self entity))
+             (gp-0 (the-as vector (t9-0
+                                    (if v1-2
+                                        (-> v1-2 extra process)
+                                        )
+                                    a1-0
+                                    )
+                           )
+                   )
+             (a1-1 (new 'stack-no-clear 'event-message-block))
+             )
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 0)
+        (set! (-> a1-1 message) 'quat)
+        (let* ((t9-1 send-event-function)
+               (v1-6 (-> self entity))
+               (a1-2 (t9-1
+                       (if v1-6
+                           (-> v1-6 extra process)
+                           )
+                       a1-1
+                       )
+                     )
+               )
+          (if gp-0
+              (set! (-> self root trans quad) (-> gp-0 quad))
+              )
+          (if a1-2
+              (quaternion-copy! (-> self root quat) (the-as quaternion a1-2))
+              )
+          )
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; definition for function stad-keira-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior stad-keira-init-by-other stad-keira ()
+  (set! (-> self entity) (the-as entity-actor (entity-by-name "rift-rider-5")))
+  (set! (-> self level) (level-get *level* 'stadblmp))
+  (set! (-> self root) (new 'process 'trsqv))
+  (if (-> self entity)
+      (set! (-> self root trans quad) (-> self entity extra trans quad))
+      )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-keira" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition of type stad-brutter
+(deftype stad-brutter (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type stad-brutter
+(defmethod inspect stad-brutter ((obj stad-brutter))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-stad-brutter brutter-low brutter-low-lod0-jg brutter-low-stad-sit-ja
+              ((brutter-low-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (stad-brutter)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('die)
+       (go empty-state)
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.25))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'trans)
+      (let* ((t9-0 send-event-function)
+             (v1-2 (-> self entity))
+             (gp-0 (the-as vector (t9-0
+                                    (if v1-2
+                                        (-> v1-2 extra process)
+                                        )
+                                    a1-0
+                                    )
+                           )
+                   )
+             (a1-1 (new 'stack-no-clear 'event-message-block))
+             )
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 0)
+        (set! (-> a1-1 message) 'quat)
+        (let* ((t9-1 send-event-function)
+               (v1-6 (-> self entity))
+               (a1-2 (t9-1
+                       (if v1-6
+                           (-> v1-6 extra process)
+                           )
+                       a1-1
+                       )
+                     )
+               )
+          (if gp-0
+              (set! (-> self root trans quad) (-> gp-0 quad))
+              )
+          (if a1-2
+              (quaternion-copy! (-> self root quat) (the-as quaternion a1-2))
+              )
+          )
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; definition for function stad-brutter-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior stad-brutter-init-by-other stad-keira ()
+  (set! (-> self entity) (the-as entity-actor (entity-by-name "rift-rider-5")))
+  (set! (-> self level) (level-get *level* 'stadblmp))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> self entity extra trans quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-stad-brutter" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition of type brutter-balloon
+(deftype brutter-balloon (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type brutter-balloon
+(defmethod inspect brutter-balloon ((obj brutter-balloon))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-brutter-balloon brutter-balloon brutter-balloon-lod0-jg brutter-balloon-idle-ja
+              ((brutter-balloon-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 14 0 26)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (brutter-balloon)
+  :virtual #t
+  :code (the-as (function none :behavior brutter-balloon) sleep-code)
+  )
+
+;; definition for method 11 of type brutter-balloon
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! brutter-balloon ((obj brutter-balloon) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 0.0 63488.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 20480.0 24576.0 32768.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 20480.0 0.0 32768.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 20480.0 -24576.0 32768.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-brutter-balloon" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((a0-27 (-> obj skel root-channel 0)))
+    (set! (-> a0-27 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+    (set! (-> a0-27 frame-num) 0.0)
+    (joint-control-channel-group! a0-27 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    )
+  (setup-masks (-> obj draw) -1 0)
+  (setup-masks (-> obj draw) 0 2)
+  (ja-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition for symbol *suppress-stadium*, type traffic-suppression-params
+(define *suppress-stadium* (new 'static 'traffic-suppression-params))
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'border-mode #f 0.0 0)
+    (while (!= (level-status *level* 'stadblmp) 'active)
+      (suspend)
+      )
+    (set-setting! 'minimap 'clear 0.0 (minimap-flag task-graph))
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set-setting! 'music 'danger6 0.0 0)
+    (want-force-vis *load-state* 'stadblmp #t)
+    (let ((gp-1 *traffic-manager*))
+      (send-event gp-1 'set-object-target-count (traffic-type bikea) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type bikeb) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type bikec) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type cara) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type carb) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type carc) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type citizen-norm-1) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type citizen-chick) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type citizen-fat) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type crimson-guard-1) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type crimson-guard-2) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type metalhead-grunt) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type metalhead-flitter) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type metalhead-predator) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type guard-bike) 0)
+      (send-event gp-1 'set-object-target-count (traffic-type hellcat) 0)
+      (send-event gp-1 'deactivate-by-type (traffic-type bikea))
+      (send-event gp-1 'deactivate-by-type (traffic-type bikeb))
+      (send-event gp-1 'deactivate-by-type (traffic-type bikec))
+      (send-event gp-1 'deactivate-by-type (traffic-type cara))
+      (send-event gp-1 'deactivate-by-type (traffic-type carb))
+      (send-event gp-1 'deactivate-by-type (traffic-type carc))
+      (send-event gp-1 'deactivate-by-type (traffic-type citizen-norm-1))
+      (send-event gp-1 'deactivate-by-type (traffic-type citizen-chick))
+      (send-event gp-1 'deactivate-by-type (traffic-type citizen-fat))
+      (send-event gp-1 'deactivate-by-type (traffic-type crimson-guard-1))
+      (send-event gp-1 'deactivate-by-type (traffic-type crimson-guard-2))
+      (send-event gp-1 'deactivate-by-type (traffic-type metalhead-grunt))
+      (send-event gp-1 'deactivate-by-type (traffic-type metalhead-flitter))
+      (send-event gp-1 'deactivate-by-type (traffic-type metalhead-predator))
+      (send-event gp-1 'deactivate-by-type (traffic-type guard-bike))
+      (send-event gp-1 'deactivate-by-type (traffic-type hellcat))
+      (send-event gp-1 'set-guard-target-level 0)
+      )
+    (let ((v1-177 (entity-by-name "parking-spot-48")))
+      (if v1-177
+          (logior! (-> v1-177 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-179 (entity-by-name "parking-spot-49")))
+      (if v1-179
+          (logior! (-> v1-179 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (set! (-> self slave 0) (process->handle (ppointer->process (process-spawn stad-keira :to self))))
+    (set! (-> self slave 1) (process->handle (ppointer->process (process-spawn stad-brutter :to self))))
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-0 *suppress-stadium*))
+      (let ((v1-0 (-> a0-0 bbox)))
+        (set! (-> v1-0 min x) 373227.53)
+        (set! (-> v1-0 min y) -204800.0)
+        (set! (-> v1-0 min z) -3276800.0)
+        (set! (-> v1-0 min w) 1.0)
+        )
+      (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
+      (set! (-> a0-0 duration) (seconds 604800))
+      (create-or-update-suppression-box a0-0)
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (dotimes (gp-0 2)
+      (send-event (handle->process (-> self slave gp-0)) 'die)
+      )
+    (let ((gp-1 (-> (process-by-name "battle-58" *active-pool*) child)))
+      (while gp-1
+        (send-event (ppointer->process gp-1) 'die-fast)
+        (set! gp-1 (-> gp-1 0 brother))
+        )
+      )
+    (let ((gp-2 (-> (process-by-name "battle-59" *active-pool*) child)))
+      (while gp-2
+        (send-event (ppointer->process gp-2) 'die-fast)
+        (set! gp-2 (-> gp-2 0 brother))
+        )
+      )
+    (let ((gp-3 (-> (process-by-name "battle-60" *active-pool*) child)))
+      (while gp-3
+        (send-event (ppointer->process gp-3) 'die-fast)
+        (set! gp-3 (-> gp-3 0 brother))
+        )
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (remove-setting! 'border-mode)
+    (send-event *traffic-manager* 'restore-default-settings)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-defend-stadium-introduction)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-0 *suppress-stadium*))
+      (let ((v1-0 (-> a0-0 bbox)))
+        (set! (-> v1-0 min x) 373227.53)
+        (set! (-> v1-0 min y) -204800.0)
+        (set! (-> v1-0 min z) -3276800.0)
+        (set! (-> v1-0 min w) 1.0)
+        )
+      (set-vector! (-> a0-0 bbox max) 1482301.5 204800.0 -1228800.0 1.0)
+      (set! (-> a0-0 duration) (seconds 604800))
+      (create-or-update-suppression-box a0-0)
+      )
+    (none)
+    )
+  )
+
+;; definition for method 15 of type hud-samos-old
+;; WARN: Return type mismatch int vs none.
+(defmethod draw hud-samos-old ((obj hud-samos-old))
+  (set-hud-piece-position!
+    (-> obj sprites 2)
+    (the int (+ 30.0 (* -130.0 (-> obj offset))))
+    (the int (+ 130.0 (* -100.0 (-> obj offset))))
+    )
+  (set! (-> obj sprites 0 angle) (* 182.04445 (the float (- 270 (/ (* 90 (-> obj values 0 current)) 100)))))
+  (set-as-offset-from! (the-as hud-sprite (-> obj sprites)) (the-as vector4w (-> obj sprites 2)) 40 16)
+  (set-as-offset-from! (-> obj sprites 1) (the-as vector4w (-> obj sprites 2)) 1 16)
+  (set-as-offset-from! (-> obj sprites 3) (the-as vector4w (-> obj sprites 2)) 5 2)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-samos-old
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values hud-samos-old ((obj hud-samos-old))
+  (set! (-> obj values 0 target) (the int (* 100.0 (-> *game-info* bot-health 1))))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-samos-old
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback hud-samos-old ((obj hud-samos-old))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-center-left) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x1e :page #x67a)))
+  (set! (-> obj sprites 0 scale-x) 12.0)
+  (set! (-> obj sprites 0 scale-y) 11.2)
+  (set! (-> obj sprites 0 pos z) #xfffff2)
+  (set! (-> obj sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x25 :page #x67a)))
+  (set! (-> obj sprites 1 pos z) #xfffff0)
+  (set! (-> obj sprites 2 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x12 :page #x67a)))
+  (set! (-> obj sprites 2 pos z) #xffffff)
+  (set! (-> obj sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd5a)))
+  (set! (-> obj sprites 3 scale-x) 1.0)
+  (set! (-> obj sprites 3 scale-y) 1.0)
+  (set! (-> obj sprites 3 pos z) #xffffff)
+  0
+  (none)
+  )

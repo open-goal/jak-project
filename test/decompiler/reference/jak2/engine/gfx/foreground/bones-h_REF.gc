@@ -1,0 +1,211 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bone-buffer
+(deftype bone-buffer (structure)
+  ((joint  matrix   16 :inline :offset-assert   0)
+   (bone   bone     16 :inline :offset-assert 1024)
+   (output pris-mtx 16 :inline :offset-assert 2304)
+   )
+  :method-count-assert 9
+  :size-assert         #x1100
+  :flag-assert         #x900001100
+  )
+
+;; definition for method 3 of type bone-buffer
+(defmethod inspect bone-buffer ((obj bone-buffer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-buffer)
+  (format #t "~1Tjoint[16] @ #x~X~%" (-> obj joint))
+  (format #t "~1Tbone[16] @ #x~X~%" (-> obj bone))
+  (format #t "~1Toutput[16] @ #x~X~%" (-> obj output))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-layout
+(deftype bone-layout (structure)
+  ((data   uint16                  8 :offset-assert   0)
+   (joint  (inline-array matrix)   2 :offset          0)
+   (bone   (inline-array bone)     2 :offset          8)
+   (output (inline-array pris-mtx) 2 :offset         16)
+   (unused uint32                  2 :offset         24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type bone-layout
+(defmethod inspect bone-layout ((obj bone-layout))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-layout)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> obj data))
+  (format #t "~1Tjoint[2] @ #x~X~%" (-> obj data))
+  (format #t "~1Tbone[2] @ #x~X~%" (-> obj bone))
+  (format #t "~1Toutput[2] @ #x~X~%" (-> obj output))
+  (format #t "~1Tunused[2] @ #x~X~%" (-> obj unused))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-regs
+(deftype bone-regs (structure)
+  ((dma-buf    basic                    :offset-assert   0)
+   (wait-count uint32                   :offset-assert   4)
+   (in-count   uint32                   :offset-assert   8)
+   (sp-size    uint32                   :offset-assert  12)
+   (sp-bufnum  uint32                   :offset-assert  16)
+   (joint-ptr  (inline-array joint)     :offset-assert  20)
+   (bone-ptr   (inline-array bone)      :offset-assert  24)
+   (num-bones  uint32                   :offset-assert  28)
+   (mtxs       (inline-array pris-mtx)  :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; definition for method 3 of type bone-regs
+(defmethod inspect bone-regs ((obj bone-regs))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-regs)
+  (format #t "~1Tdma-buf: ~A~%" (-> obj dma-buf))
+  (format #t "~1Twait-count: ~D~%" (-> obj wait-count))
+  (format #t "~1Tin-count: ~D~%" (-> obj in-count))
+  (format #t "~1Tsp-size: ~D~%" (-> obj sp-size))
+  (format #t "~1Tsp-bufnum: ~D~%" (-> obj sp-bufnum))
+  (format #t "~1Tjoint-ptr: #x~X~%" (-> obj joint-ptr))
+  (format #t "~1Tbone-ptr: #x~X~%" (-> obj bone-ptr))
+  (format #t "~1Tnum-bones: ~D~%" (-> obj num-bones))
+  (format #t "~1Tmtxs: #x~X~%" (-> obj mtxs))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-work
+(deftype bone-work (structure)
+  ((layout bone-layout :inline :offset-assert   0)
+   (regs   bone-regs   :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+;; definition for method 3 of type bone-work
+(defmethod inspect bone-work ((obj bone-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-work)
+  (format #t "~1Tlayout: #<bone-layout @ #x~X>~%" (-> obj layout))
+  (format #t "~1Tregs: #<bone-regs @ #x~X>~%" (-> obj regs))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-debug
+(deftype bone-debug (structure)
+  ((time-ctr uint32     :offset-assert   0)
+   (timing   uint32 360 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5a4
+  :flag-assert         #x9000005a4
+  )
+
+;; definition for method 3 of type bone-debug
+(defmethod inspect bone-debug ((obj bone-debug))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-debug)
+  (format #t "~1Ttime-ctr: ~D~%" (-> obj time-ctr))
+  (format #t "~1Ttiming[360] @ #x~X~%" (-> obj timing))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-memory
+(deftype bone-memory (structure)
+  ((work   bone-work   :inline   :offset-assert   0)
+   (buffer bone-buffer 2 :inline :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x2250
+  :flag-assert         #x900002250
+  )
+
+;; definition for method 3 of type bone-memory
+(defmethod inspect bone-memory ((obj bone-memory))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-memory)
+  (format #t "~1Twork: #<bone-work @ #x~X>~%" (-> obj work))
+  (format #t "~1Tbuffer[2] @ #x~X~%" (-> obj buffer))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type bone-calculation
+(deftype bone-calculation (structure)
+  ((flags               bone-calc-flags                 :offset-assert   0)
+   (num-bones           uint16                          :offset-assert   2)
+   (matrix-area         (inline-array pris-mtx)         :offset-assert   4)
+   (joints              (inline-array joint)            :offset-assert   8)
+   (bones               (inline-array bone)             :offset-assert  12)
+   (ripple-scale        float                           :offset-assert  16)
+   (ripple-y-scale      float                           :offset-assert  20)
+   (ripple-normal-scale float                           :offset-assert  24)
+   (ripple-area         (inline-array vector)           :offset-assert  28)
+   (ripple-vec          vector                  :inline :offset         16)
+   (next                bone-calculation                :offset-assert  32)
+   (dummy-1             uint32                          :offset-assert  36)
+   (dummy-2             uint32                          :offset-assert  40)
+   (dummy-3             uint32                          :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type bone-calculation
+(defmethod inspect bone-calculation ((obj bone-calculation))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'bone-calculation)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tnum-bones: ~D~%" (-> obj num-bones))
+  (format #t "~1Tmatrix-area: #x~X~%" (-> obj matrix-area))
+  (format #t "~1Tjoints: #x~X~%" (-> obj joints))
+  (format #t "~1Tbones: #x~X~%" (-> obj bones))
+  (format #t "~1Tripple-scale: ~f~%" (-> obj ripple-scale))
+  (format #t "~1Tripple-y-scale: ~f~%" (-> obj ripple-y-scale))
+  (format #t "~1Tripple-normal-scale: ~f~%" (-> obj ripple-normal-scale))
+  (format #t "~1Tripple-area: #x~X~%" (-> obj ripple-area))
+  (format #t "~1Tnext: #<bone-calculation @ #x~X>~%" (-> obj next))
+  (format #t "~1Tdummy-1: ~D~%" (-> obj dummy-1))
+  (format #t "~1Tdummy-2: ~D~%" (-> obj dummy-2))
+  (format #t "~1Tdummy-3: ~D~%" (-> obj dummy-3))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

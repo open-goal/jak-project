@@ -19,10 +19,11 @@ void klisten_init_globals() {
 
 /*!
  * Flush pending messages.  If debugging, will send to compiler, otherwise to stdout.
+ * Changed slightly, it will also print to stdout if there's no compiler connected.
  */
 void ClearPending() {
-  if (!MasterDebug) {
-    // if we aren't debugging print the print buffer to stdout.
+  if (!MasterDebug || !ListenerStatus) {
+    // if we aren't debugging or connected print the print buffer to stdout.
     if (PrintPending.offset != 0) {
       auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       if (size > 0) {
@@ -33,10 +34,19 @@ void ClearPending() {
   } else {
     if (ListenerStatus) {
       if (OutputPending.offset != 0) {
-        Ptr<char> msg = OutputBufArea.cast<char>() + sizeof(ListenerMessageHeader);
-        auto size = strlen(msg.c());
-        // note - if size is ever greater than 2^16 this will cause an issue.
-        SendFromBuffer(msg.c(), size);
+        // note - same 64 kB patch as prints done here
+        char* msg = OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
+        auto size = strlen(msg);
+        while (size > 0) {
+          // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
+          auto send_size = size;
+          if (send_size > 64000) {
+            send_size = 64000;
+          }
+          SendFromBuffer(msg, send_size);
+          size -= send_size;
+          msg += send_size;
+        }
         clear_output();
       }
 

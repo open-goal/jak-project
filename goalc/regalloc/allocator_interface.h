@@ -82,9 +82,9 @@ struct StackOp {
  * For a single IR Instruction.
  */
 struct Assignment {
-  enum class Kind { STACK, REGISTER, UNASSIGNED } kind = Kind::UNASSIGNED;
+  int stack_slot = -1;  //! index of the slot, if we are ever spilled
+  enum class Kind : u8 { STACK, REGISTER, UNASSIGNED } kind = Kind::UNASSIGNED;
   emitter::Register reg = -1;  //! where the IRegister is now
-  int stack_slot = -1;         //! index of the slot, if we are ever spilled
   bool spilled = false;        //! are we ever spilled
 
   std::string to_string() const;

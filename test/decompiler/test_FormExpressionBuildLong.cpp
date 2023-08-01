@@ -1886,7 +1886,7 @@ TEST_F(FormRegressionTestJak1, ExprValid) {
       "    )\n"
       "   ((= arg1 binteger)\n"
       "    (cond\n"
-      "     ((zero? (logand (the-as int arg0) 7))\n"
+      "     ((not (logtest? (the-as int arg0) 7))\n"
       "      #t\n"
       "      )\n"
       "     (else\n"

@@ -5,9 +5,17 @@
 
 #include "display.h"
 
+#include <optional>
+
 #include "gfx.h"
 
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
+
+#include "game/runtime.h"
+
+#include "third-party/json.hpp"
 
 /*
 ********************************
@@ -29,40 +37,6 @@ void set_main_display(std::shared_ptr<GfxDisplay> display) {
 
 /*
 ********************************
-* GfxDisplay
-********************************
-*/
-
-void GfxDisplay::set_title(const char* title) {
-  if (!is_active()) {
-    lg::error("No window to set title `{}`.", title);
-    return;
-  }
-
-  // TODO set title?
-  m_title = title;
-}
-
-int GfxDisplay::width() {
-  int w;
-  get_size(&w, NULL);
-  return w;
-}
-
-int GfxDisplay::height() {
-  int h;
-  get_size(NULL, &h);
-#ifdef _WIN32
-  if (last_fullscreen_mode() == GfxDisplayMode::Borderless) {
-    // windows borderless hack
-    h--;
-  }
-#endif
-  return h;
-}
-
-/*
-********************************
 * DISPLAY
 ********************************
 */
@@ -73,13 +47,13 @@ std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 std::shared_ptr<GfxDisplay> GetMainDisplay() {
   if (g_displays.size() == 0)
     return NULL;
-  return g_displays.front()->is_active() ? g_displays.front() : NULL;
+  return g_displays.front()->get_display_manager()->is_window_active() ? g_displays.front() : NULL;
 }
 
 int InitMainDisplay(int width,
                     int height,
                     const char* title,
-                    GfxSettings& settings,
+                    GfxGlobalSettings& settings,
                     GameVersion version) {
   if (GetMainDisplay() != NULL) {
     lg::warn("InitMainDisplay called when main display already exists.");
@@ -102,7 +76,7 @@ void KillMainDisplay() {
 
 void KillDisplay(std::shared_ptr<GfxDisplay> display) {
   // lg::debug("kill display #x{:x}", (uintptr_t)display);
-  if (!display->is_active()) {
+  if (!display->get_display_manager()->is_window_active()) {
     lg::warn("display #x{:x} cant be killed because it is not active");
     return;
   }

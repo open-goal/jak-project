@@ -1,0 +1,1985 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function nav-enemy-rnd-float
+(defun nav-enemy-rnd-float ()
+  (rand-vu)
+  )
+
+;; definition for function nav-enemy-rnd-percent?
+(defun nav-enemy-rnd-percent? ((arg0 float))
+  (>= arg0 (rand-vu))
+  )
+
+;; definition for function nav-enemy-rnd-float-range
+(defbehavior nav-enemy-rnd-float-range nav-enemy ((arg0 float) (arg1 float))
+  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  )
+
+;; definition for function nav-enemy-rnd-int-count
+(defun nav-enemy-rnd-int-count ((arg0 int))
+  (the int (* (rand-vu) (the float arg0)))
+  )
+
+;; definition for function nav-enemy-rnd-int-range
+(defun nav-enemy-rnd-int-range ((arg0 int) (arg1 int))
+  (+ arg0 (the int (* (rand-vu) (the float (+ (- 1 arg0) arg1)))))
+  )
+
+;; definition for function nav-enemy-rnd-go-idle?
+(defun nav-enemy-rnd-go-idle? ((arg0 float))
+  (let* ((v1-3 (-> *display* frames (-> *display* last-screen) frame run-time))
+         (f1-2 (fmax 0.0 (fmin 1.0 (* 0.001 (+ -7000.0 (the float v1-3))))))
+         )
+    (>= (+ arg0 (* f1-2 (- 1.0 arg0))) (rand-vu))
+    )
+  )
+
+;; definition for method 9 of type trajectory
+(defmethod eval-position! trajectory ((obj trajectory) (time float) (result vector))
+  (vector+float*! result (-> obj initial-position) (-> obj initial-velocity) time)
+  (+! (-> result y) (* 0.5 time time (-> obj gravity)))
+  result
+  )
+
+;; definition for method 7 of type nav-enemy
+;; INFO: Return type mismatch none vs nav-enemy.
+(defmethod relocate nav-enemy ((obj nav-enemy) (arg0 int))
+  (if (nonzero? (-> obj neck))
+      (set! (-> obj neck) (the-as joint-mod (+ (the-as int (-> obj neck)) arg0)))
+      )
+  (if (nonzero? (-> obj rand-gen))
+      (set! (-> obj rand-gen) (the-as random-generator (+ (the-as int (-> obj rand-gen)) arg0)))
+      )
+  (the-as nav-enemy ((the-as (function process-drawable int none) (find-parent-method nav-enemy 7)) obj arg0))
+  )
+
+;; definition for method 42 of type nav-enemy
+(defmethod new-patrol-point! nav-enemy ((obj nav-enemy))
+  (local-vars (v1-11 symbol))
+  (if (<= (-> obj path curve num-cverts) 0)
+      (go process-drawable-art-error "no path")
+      )
+  (let ((s5-0 3))
+    0
+    (let ((s4-0 (-> obj nav destination-pos)))
+      (until (or v1-11 (<= s5-0 0))
+        (let ((v1-8 (nav-enemy-rnd-int-count (-> obj path curve num-cverts))))
+          (eval-path-curve-div! (-> obj path) s4-0 (the float v1-8) 'interp)
+          )
+        (+! s5-0 -1)
+        (set! v1-11 (< 4096.0 (vector-vector-xz-distance s4-0 (-> obj collide-info trans))))
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 39 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod common-post nav-enemy ((obj nav-enemy))
+  (when (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf8))
+             (or (not *target*)
+                 (and (not (logtest? (-> *target* state-flags)
+                                     (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                                     )
+                           )
+                      (>= (- (-> *display* base-frame-counter) (-> obj touch-time)) (seconds 0.05))
+                      )
+                 )
+             )
+    (set-collide-offense (-> obj collide-info) 2 (collide-offense touch))
+    (logclear! (-> obj nav-enemy-flags) (nav-enemy-flags navenmf8))
+    )
+  (update-direction-from-time-of-day (-> obj draw shadow-ctrl))
+  (when *target*
+    (if *target*
+        (look-at-enemy!
+          (-> *target* neck)
+          (the-as vector (-> obj collide-info root-prim prim-core))
+          (if (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf2))
+              'attacking
+              )
+          obj
+          )
+        )
+    (if (and (nonzero? (-> obj neck)) (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf14)))
+        (set-target! (-> obj neck) (target-pos (-> obj nav-info player-look-at-joint)))
+        )
+    )
+  (when (-> obj nav-info debug-draw-neck)
+    (if (nonzero? (-> obj neck))
+        (joint-mod-debug-draw (-> obj neck))
+        )
+    )
+  (ja-post)
+  0
+  (none)
+  )
+
+;; definition for method 44 of type nav-enemy
+(defmethod touch-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+  (if (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+           ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg1 param 0))
+            (-> obj collide-info)
+            (the-as uint 1)
+            )
+           )
+      (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
+      )
+  )
+
+;; definition for method 72 of type nav-enemy
+(defmethod nav-enemy-touch-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+  (if (and (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf6))
+           ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg1 param 0))
+            (-> obj collide-info)
+            (the-as uint 1)
+            )
+           )
+      (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
+      )
+  )
+
+;; definition for method 73 of type nav-enemy
+;; INFO: Return type mismatch symbol vs object.
+(defmethod nav-enemy-attack-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+  (send-event arg0 'get-attack-count 1)
+  (logclear! (-> obj mask) (process-mask actor-pause attackable))
+  (go (method-of-object obj nav-enemy-die))
+  (the-as object 'die)
+  )
+
+;; definition for method 43 of type nav-enemy
+(defmethod attack-handler nav-enemy ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
+  (cond
+    ((logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf5))
+     (send-event arg0 'get-attack-count 1)
+     (logclear! (-> obj mask) (process-mask actor-pause attackable))
+     (go (method-of-object obj nav-enemy-die))
+     )
+    (else
+      (touch-handler obj arg0 arg1)
+      )
+    )
+  )
+
+;; definition for function nav-enemy-send-attack
+;; INFO: Return type mismatch symbol vs object.
+(defbehavior nav-enemy-send-attack nav-enemy ((arg0 process) (arg1 touching-shapes-entry) (arg2 symbol))
+  (the-as
+    object
+    (when (send-event
+            arg0
+            'attack
+            arg1
+            (static-attack-info
+              ((shove-back (-> self nav-info attack-shove-back)) (shove-up (-> self nav-info attack-shove-up)) (mode arg2))
+              )
+            )
+      (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+      #t
+      )
+    )
+  )
+
+;; definition for function nav-enemy-default-event-handler
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs none.
+(defbehavior nav-enemy-default-event-handler nav-enemy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('touch)
+     (set! (-> self touch-time) (-> *display* base-frame-counter))
+     (touch-handler self arg0 arg3)
+     )
+    (('attack)
+     (nav-enemy-set-hit-from-direction arg0)
+     (attack-handler self arg0 arg3)
+     )
+    (('instant-death)
+     (let ((gp-1 (-> self hit-from-dir)))
+       (vector-z-quaternion! gp-1 (-> self collide-info quat))
+       (vector-float*! gp-1 gp-1 -1.0)
+       (vector-normalize! gp-1 1.0)
+       )
+     (logclear! (-> self mask) (process-mask actor-pause attackable))
+     (go-virtual nav-enemy-die)
+     )
+    (('jump)
+     (when (!= (-> self next-state name) 'nav-enemy-jump-land)
+       (set! (-> self event-param-point quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (set! (-> self nav user-poly) (the-as nav-poly (-> arg3 param 1)))
+       (set! (-> self jump-return-state) (the-as (state process) (-> self state)))
+       (go-virtual nav-enemy-jump)
+       )
+     )
+    (('cue-jump-to-point)
+     (when (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
+       (set! (-> self event-param-point quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
+       )
+     )
+    (('cue-chase)
+     (go-virtual nav-enemy-chase)
+     )
+    (('cue-patrol)
+     (go-virtual nav-enemy-patrol)
+     )
+    (('go-wait-for-cue)
+     (go-virtual nav-enemy-wait-for-cue)
+     )
+    )
+  (none)
+  )
+
+;; definition for function nav-enemy-jump-event-handler
+(defbehavior nav-enemy-jump-event-handler nav-enemy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('touch)
+     (set! (-> self touch-time) (-> *display* base-frame-counter))
+     (nav-enemy-touch-handler self arg0 arg3)
+     )
+    (('attack)
+     (nav-enemy-set-hit-from-direction arg0)
+     (nav-enemy-attack-handler self arg0 arg3)
+     )
+    )
+  )
+
+;; definition for function process-drawable-death-event-handler
+;; INFO: Return type mismatch object vs none.
+(defbehavior process-drawable-death-event-handler process-drawable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('death-start)
+     (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)
+     )
+    (('death-end)
+     (logior! (-> self draw status) (draw-status hidden))
+     )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+nav-enemy-default-event-handler
+
+;; definition for function nav-enemy-common-post
+(defbehavior nav-enemy-common-post nav-enemy ()
+  (common-post self)
+  (none)
+  )
+
+;; definition for function nav-enemy-simple-post
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-simple-post nav-enemy ()
+  (compute-alignment! (-> self align))
+  (nav-enemy-common-post)
+  (update-transforms! (-> self collide-info))
+  0
+  (none)
+  )
+
+;; definition for method 40 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-40 nav-enemy ((obj nav-enemy))
+  (nav-control-method-11 (-> obj nav) (-> obj nav target-pos))
+  0
+  (none)
+  )
+
+;; definition for method 41 of type nav-enemy
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-41 nav-enemy ((obj nav-enemy))
+  (cond
+    ((-> obj nav-info use-align)
+     (align-vel-and-quat-only!
+       (-> obj align)
+       (align-opts adjust-xz-vel)
+       (-> obj nav travel)
+       (the-as int 1.0)
+       1.0
+       (* (-> obj enemy-info speed) (-> obj speed-scale))
+       )
+     )
+    (else
+      (cond
+        ((-> obj nav-info use-momentum)
+         (let* ((f0-3 (- (-> obj target-speed) (-> obj momentum-speed)))
+                (f1-4 (fmin (* (-> obj acceleration) (-> *display* seconds-per-frame)) (fabs f0-3)))
+                )
+           (if (< f0-3 0.0)
+               (set! (-> obj momentum-speed) (- (-> obj momentum-speed) f1-4))
+               (+! (-> obj momentum-speed) f1-4)
+               )
+           )
+         )
+        (else
+          (set! (-> obj momentum-speed) (-> obj target-speed))
+          )
+        )
+      (let* ((f0-12 (fmin
+                      (* (-> obj speed-scale) (-> obj momentum-speed))
+                      (* (vector-length (-> obj nav travel)) (-> *display* frames-per-second))
+                      )
+                    )
+             (v1-15 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> obj nav travel) f0-12))
+             )
+        (set! (-> obj collide-info transv x) (-> v1-15 x))
+        (set! (-> obj collide-info transv z) (-> v1-15 z))
+        )
+      )
+    )
+  (if (-> obj nav-info move-to-ground)
+      (vector-v++!
+        (-> obj collide-info transv)
+        (compute-acc-due-to-gravity (-> obj collide-info) (new-stack-vector0) 0.0)
+        )
+      )
+  0
+  (none)
+  )
+
+;; definition for method 37 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-37 nav-enemy ((obj nav-enemy))
+  (when (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags enable-travel))
+    (if (or (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf7))
+            (logtest? (nav-control-flags navcf19) (-> obj nav flags))
+            )
+        (seek-to-point-toward-point!
+          (-> obj collide-info)
+          (-> obj nav target-pos)
+          (-> obj rotate-speed)
+          (-> obj turn-time)
+          )
+        (seek-toward-heading-vec! (-> obj collide-info) (-> obj nav travel) (-> obj rotate-speed) (-> obj turn-time))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 38 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-38 nav-enemy ((obj nav-enemy))
+  (if (-> obj nav-info move-to-ground)
+      (integrate-for-enemy-with-move-to-ground!
+        (-> obj collide-info)
+        (-> obj collide-info transv)
+        (-> obj nav-info gnd-collide-with)
+        8192.0
+        #f
+        (-> obj nav-info hover-if-no-ground)
+        (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf15))
+        )
+      (collide-shape-moving-method-58 (-> obj collide-info) (-> obj collide-info transv))
+      )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-travel-post
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-travel-post nav-enemy ()
+  (cond
+    ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+     (compute-alignment! (-> self align))
+     (nav-enemy-method-40 self)
+     (nav-enemy-method-41 self)
+     (nav-enemy-method-37 self)
+     (nav-enemy-method-38 self)
+     (nav-enemy-common-post)
+     )
+    (else
+      (if *debug-segment*
+          (add-frame
+            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+            'draw
+            (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+            )
+          )
+      (nav-enemy-simple-post)
+      (if *debug-segment*
+          (add-frame
+            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+            'draw
+            (new 'static 'rgba :r #xff :b #xff :a #x80)
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-patrol-post
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-patrol-post nav-enemy ()
+  (when (or (logtest? (nav-control-flags navcf19) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
+    (set! (-> self nav block-count) 2.0)
+    (logior! (-> self nav flags) (nav-control-flags navcf10))
+    (nav-enemy-get-new-patrol-point)
+    )
+  (nav-control-method-19
+    (-> self nav)
+    (-> self nav target-pos)
+    (-> self collide-info)
+    (-> self nav destination-pos)
+    (-> self rotate-speed)
+    )
+  (if (logtest? (nav-control-flags navcf21) (-> self nav flags))
+      (logclear! (-> self nav flags) (nav-control-flags navcf10))
+      )
+  (nav-enemy-travel-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-chase-post
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-chase-post nav-enemy ()
+  (set! (-> self nav target-pos quad) (-> (target-pos 0) quad))
+  (nav-enemy-travel-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-flee-post
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-flee-post nav-enemy ()
+  (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self collide-info trans) (target-pos 0))))
+    (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self collide-info quat))
+    0.0
+    0.0
+    (set! (-> gp-1 y) 0.0)
+    (set! (-> self nav travel quad) (-> gp-1 quad))
+    )
+  (vector-normalize! (-> self nav travel) 409600.0)
+  (nav-control-method-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
+  (vector+! (-> self nav target-pos) (-> self collide-info trans) (-> self nav travel))
+  (nav-enemy-travel-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-face-player-post
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-face-player-post nav-enemy ()
+  (if (and *target* (logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
+      (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) (-> self turn-time))
+      )
+  (nav-enemy-simple-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-falling-post
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-falling-post nav-enemy ()
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (fill-cache-integrate-and-collide!
+    (-> self collide-info)
+    (-> self collide-info transv)
+    (-> self collide-info root-prim collide-with)
+    )
+  (nav-enemy-common-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-death-post
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-death-post nav-enemy ()
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (integrate-no-collide! (-> self collide-info) (-> self collide-info transv))
+  (nav-enemy-common-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-neck-control-look-at
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-neck-control-look-at nav-enemy ()
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf14))
+  (if (nonzero? (-> self neck))
+      (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
+      )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-neck-control-inactive
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-neck-control-inactive nav-enemy ()
+  (when (and (nonzero? (-> self neck)) (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf14)))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf14))
+    (shut-down! (-> self neck))
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-player-vulnerable?
+;; INFO: Return type mismatch basic vs symbol.
+(defun nav-enemy-player-vulnerable? ()
+  (the-as
+    symbol
+    (and *target*
+         (not (logtest? (-> *target* state-flags)
+                        (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                        )
+              )
+         )
+    )
+  )
+
+;; definition for method 46 of type nav-enemy
+(defmethod target-in-range? nav-enemy ((obj nav-enemy) (arg0 float))
+  (and *target*
+       (not (logtest? (-> *target* state-flags)
+                      (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
+                      )
+            )
+       (and (or (not (logtest? (-> obj nav-enemy-flags) (nav-enemy-flags navenmf12)))
+                (< (vector-vector-distance (target-pos 0) (-> obj collide-info trans)) arg0)
+                )
+            (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))
+            )
+       )
+  )
+
+;; definition for function nav-enemy-notice-player?
+(defbehavior nav-enemy-notice-player? nav-enemy ()
+  (let ((gp-0 #f))
+    (cond
+      ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
+       (when (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+         (set! gp-0 #t)
+         (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
+         )
+       )
+      (else
+        (when (or (target-in-range? self (-> self nav-info notice-distance))
+                  (and (-> self nav-info use-proximity-notice)
+                       *target*
+                       (>= (-> self nav-info proximity-notice-distance)
+                           (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                           )
+                       )
+                  )
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
+          (set! (-> self notice-time) (-> *display* base-frame-counter))
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function nav-enemy-facing-direction?
+;; INFO: Used lq/sq
+(defbehavior nav-enemy-facing-direction? nav-enemy ((arg0 vector) (arg1 float))
+  (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self collide-info quat)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> s5-0 quad) (-> arg0 quad))
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 1.0)
+    (>= (vector-dot s4-0 s5-0) (cos arg1))
+    )
+  )
+
+;; definition for function nav-enemy-facing-point?
+(defbehavior nav-enemy-facing-point? nav-enemy ((arg0 vector) (arg1 float))
+  (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self collide-info trans))))
+    (nav-enemy-facing-direction? v1-1 arg1)
+    )
+  )
+
+;; definition for function nav-enemy-facing-player?
+(defun nav-enemy-facing-player? ((arg0 float))
+  (nav-enemy-facing-point? (target-pos 0) arg0)
+  )
+
+;; definition for function nav-enemy-test-nav-mesh-intersection-xz?
+;; INFO: Return type mismatch nav-poly vs symbol.
+(defbehavior nav-enemy-test-nav-mesh-intersection-xz? nav-enemy ((arg0 vector))
+  (the-as symbol (nav-control-method-16 (-> self nav) arg0))
+  )
+
+;; definition for function nav-enemy-test-point-in-nav-mesh?
+;; INFO: Return type mismatch structure vs symbol.
+(defbehavior nav-enemy-test-point-in-nav-mesh? nav-enemy ((arg0 vector))
+  (the-as symbol (and (nav-control-method-16 (-> self nav) arg0)
+                      (< (-> arg0 y) (+ (-> self collide-info trans y) (-> self enemy-info notice-top)))
+                      )
+          )
+  )
+
+;; definition for function nav-enemy-test-point-near-nav-mesh?
+(defbehavior nav-enemy-test-point-near-nav-mesh? nav-enemy ((arg0 vector))
+  (and (is-in-mesh? (-> self nav) arg0 (-> self nav-info notice-nav-radius))
+       (< (-> arg0 y) (+ (-> self collide-info trans y) (-> self enemy-info notice-top)))
+       )
+  )
+
+;; definition for function nav-enemy-get-new-patrol-point
+(defbehavior nav-enemy-get-new-patrol-point nav-enemy ()
+  (new-patrol-point! self)
+  0
+  )
+
+;; definition for function nav-enemy-set-base-collide-sphere-collide-with
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-set-base-collide-sphere-collide-with nav-enemy ((arg0 uint))
+  (let ((s5-0 (-> self collide-info root-prim)))
+    (set! (-> s5-0 collide-with) (the-as collide-kind arg0))
+    (let ((s4-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) collide-shape-prim-group))
+                    s5-0
+                    )
+                )
+          (s5-1 (the-as collide-shape-prim #f))
+          )
+      (when s4-0
+        (dotimes (s3-0 (-> (the-as collide-shape-prim-group s4-0) num-prims))
+          (let* ((s2-0 (-> (the-as collide-shape-prim-group (+ (* s3-0 4) (the-as int s4-0))) prims 0))
+                 (v1-6 (if (and (nonzero? s2-0) (type-type? (-> s2-0 type) collide-shape-prim-sphere))
+                           s2-0
+                           )
+                       )
+                 )
+            (when v1-6
+              (if (or (not s5-1)
+                      (< (-> (the-as collide-shape-prim-sphere v1-6) transform-index)
+                         (-> (the-as collide-shape-prim-group s5-1) transform-index)
+                         )
+                      (and (= (-> (the-as collide-shape-prim-sphere v1-6) transform-index)
+                              (-> (the-as collide-shape-prim-group s5-1) transform-index)
+                              )
+                           (< (-> (the-as collide-shape-prim-sphere v1-6) local-sphere y)
+                              (-> (the-as collide-shape-prim-group s5-1) local-sphere y)
+                              )
+                           )
+                      )
+                  (set! s5-1 v1-6)
+                  )
+              )
+            )
+          )
+        (if s5-1
+            (set! (-> s5-1 collide-with) (the-as collide-kind arg0))
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-set-hit-from-direction
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-set-hit-from-direction nav-enemy ((arg0 process))
+  (let* ((gp-0 (-> self hit-from-dir))
+         (s5-0 arg0)
+         (v1-1 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
+                   s5-0
+                   )
+               )
+         )
+    (set! (-> gp-0 quad) (-> *null-vector* quad))
+    (when v1-1
+      (vector-! gp-0 (-> self collide-info trans) (-> (the-as process-drawable v1-1) root trans))
+      (set! (-> gp-0 y) 0.0)
+      (vector-xz-normalize! gp-0 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-fall-and-play-death-anim
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-fall-and-play-death-anim nav-enemy ((arg0 art-joint-anim) (arg1 float) (arg2 float) (arg3 float) (arg4 int))
+  (nav-enemy-neck-control-inactive)
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self skel root-channel 0 frame-group) arg0)
+  (let ((s4-1 #f)
+        (s3-0 (-> self collide-info))
+        )
+    (when (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) collide-shape-moving))
+              s3-0
+              )
+      (when (= (vector-xz-length-squared (-> self hit-from-dir)) 0.0)
+        (vector-z-quaternion! (-> self hit-from-dir) (-> self collide-info quat))
+        (vector-negate-in-place! (-> self hit-from-dir))
+        (set! (-> self hit-from-dir y) 0.0)
+        (vector-xz-normalize! (-> self hit-from-dir) 1.0)
+        )
+      (set! (-> self collide-info transv y) 65502.96)
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
+      (until (ja-done? 0)
+        (cond
+          ((nonzero? (-> self align))
+           (when (not s4-1)
+             (compute-alignment! (-> self align))
+             (align! (-> self align) (align-opts adjust-y-vel ignore-y-if-zero) 1.0 arg1 1.0)
+             (when (not (logtest? (-> self align flags) (align-flags disabled)))
+               (let ((f0-6 (* (- (-> self align delta trans z)) (-> *display* frames-per-second))))
+                 (set! (-> self collide-info transv x) (* (-> self hit-from-dir x) f0-6))
+                 (set! (-> self collide-info transv z) (* (-> self hit-from-dir z) f0-6))
+                 )
+               )
+             )
+           )
+          (else
+            (let ((f0-8 20480.0))
+              (set! (-> self collide-info transv x) (* (-> self hit-from-dir x) f0-8))
+              (set! (-> self collide-info transv z) (* (-> self hit-from-dir z) f0-8))
+              )
+            )
+          )
+        (suspend)
+        (ja :num! (seek! max arg2))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-turn-to-face-dir
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-turn-to-face-dir nav-enemy ((arg0 vector) (arg1 float))
+  (local-vars (v1-16 symbol))
+  (let ((s4-0 (-> *display* base-frame-counter)))
+    (ja :group! (-> self draw art-group data (-> self nav-info turn-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (until v1-16
+      (seek-toward-heading-vec! (-> self collide-info) arg0 (-> self rotate-speed) (-> self turn-time))
+      (suspend)
+      (ja :num! (loop! 0.75))
+      (set! v1-16
+            (or (>= (- (-> *display* base-frame-counter) s4-0) (seconds 10)) (nav-enemy-facing-direction? arg0 arg1))
+            )
+      )
+    )
+  (forward-up->quaternion (-> self collide-info quat) arg0 *y-vector*)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-turn-to-face-point
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-turn-to-face-point nav-enemy ((arg0 vector) (arg1 float))
+  (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self collide-info trans))))
+    (set! (-> gp-1 y) 0.0)
+    (when (< 0.0 (vector-length gp-1))
+      (vector-normalize! gp-1 1.0)
+      (nav-enemy-turn-to-face-dir gp-1 arg1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type nav-enemy
+(defmethod run-logic? nav-enemy ((obj nav-enemy))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
+      (or (and (nonzero? (-> obj draw))
+               (and (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj collide-info pause-adjust-distance))
+                        (vector-vector-distance (-> obj collide-info trans) (camera-pos))
+                        )
+                    (or (logtest? (-> obj draw status) (draw-status was-drawn)) (!= (-> obj next-state name) 'nav-enemy-idle))
+                    )
+               )
+          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
+          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status no-skeleton-update)))
+          )
+      )
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-idle (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (nav-enemy-neck-control-inactive)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (if (-> self nav-info move-to-ground)
+        (move-to-ground (-> self collide-info) 40960.0 40960.0 #t (-> self nav-info gnd-collide-with))
+        )
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1 navenmf2))
+    (set! (-> self state-timeout) (seconds 1))
+    (none)
+    )
+  :trans (behavior ()
+    (if (and (and *target* (>= (-> self enemy-info idle-distance)
+                               (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                               )
+                  )
+             (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+             (nonzero? (-> self draw))
+             (logtest? (-> self draw status) (draw-status was-drawn))
+             )
+        (go-virtual nav-enemy-patrol)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
+      (loop
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior nav-enemy) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-patrol (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self nav flags)
+          (the-as nav-control-flags (the-as int (logior (nav-control-flags navcf19) (-> self nav flags))))
+          )
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (set! (-> self state-timeout) (seconds 1))
+    (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
+    (set! (-> self acceleration) (-> self nav-info walk-acceleration))
+    (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
+    (set! (-> self turn-time) (-> self nav-info walk-turn-time))
+    (none)
+    )
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+      (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+        (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-status was-drawn)))
+            (set! (-> self free-time) (-> *display* base-frame-counter))
+            )
+        (if (or (or (not *target*) (< (-> self enemy-info idle-distance)
+                                      (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                      )
+                    )
+                (>= (- (-> *display* base-frame-counter) (-> self free-time)) (seconds 2))
+                )
+            (go-virtual nav-enemy-idle)
+            )
+        )
+      (if (and (-> self nav-info use-flee)
+               (and (and *target* (>= (-> self nav-info notice-distance)
+                                      (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                      )
+                         )
+                    (let ((gp-0 'racer))
+                      (= gp-0 (send-event *target* 'query 'mode))
+                      )
+                    )
+               )
+          (go-virtual nav-enemy-flee)
+          )
+      (if (nav-enemy-notice-player?)
+          (go-virtual nav-enemy-notice)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+      (loop
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
+                    :num! (seek! max f30-0)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        (when (nav-enemy-rnd-go-idle? 0.2)
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.6))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
+                      :num! (seek! max f30-0)
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (ja-blend-eval)
+            (suspend)
+            (ja :num! (seek! max f30-0))
+            )
+          (until (not (nav-enemy-rnd-go-idle? 0.2))
+            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
+                        :num! (seek! max f30-0)
+                        :frame-num 0.0
+                        )
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek! max f30-0))
+              )
+            )
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.6))
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
+                      :num! (seek! max f30-0)
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (ja-blend-eval)
+            (suspend)
+            (ja :num! (seek! max f30-0))
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :post nav-enemy-patrol-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-notice (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (nav-enemy-neck-control-look-at)
+    (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+        (go-virtual nav-enemy-chase)
+        )
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+    (let ((gp-0 (-> self nav))
+          (v1-10 (target-pos 0))
+          )
+      (set! (-> gp-0 target-pos quad) (-> v1-10 quad))
+      )
+    (nav-control-method-11 (-> self nav) (-> self nav target-pos))
+    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+    (set! (-> self turn-time) (-> self nav-info run-turn-time))
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info notice-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec!
+          (-> self collide-info)
+          (-> self nav travel)
+          (-> self rotate-speed)
+          (-> self turn-time)
+          )
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (go-virtual nav-enemy-chase)
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; definition for function ja-group-index?
+(defbehavior ja-group-index? nav-enemy ((arg0 int))
+  (ja-group? (-> self draw art-group data arg0))
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-flee (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-time))
+      (if (or (or (not *target*) (< (-> self nav-info stop-chase-distance)
+                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                    )
+                  )
+              (let ((gp-0 'racer))
+                (!= gp-0 (send-event *target* 'query 'mode))
+                )
+              )
+          (go-virtual nav-enemy-patrol)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info notice-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      (ja-channel-push! 1 (seconds 0.2))
+      (loop
+        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
+                    :num! (seek! max f30-0)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    (none)
+    )
+  :post nav-enemy-face-player-post
+  )
+
+;; definition for function nav-enemy-reset-frustration
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-reset-frustration nav-enemy ()
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
+  (if *target*
+      (set! (-> self frustration-point quad) (-> *target* control shadow-pos quad))
+      )
+  (set! (-> self frustration-time) (-> *display* base-frame-counter))
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-player-at-frustration-point?
+(defbehavior nav-enemy-player-at-frustration-point? nav-enemy ()
+  (if *target*
+      (< (vector-vector-distance (-> *target* control shadow-pos) (-> self frustration-point)) 6144.0)
+      )
+  )
+
+;; definition for function nav-enemy-frustrated?
+(defbehavior nav-enemy-frustrated? nav-enemy ()
+  (and (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
+       (nav-enemy-player-at-frustration-point?)
+       )
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-chase (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (nav-enemy-neck-control-look-at)
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set! (-> self free-time) (-> *display* base-frame-counter))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (set! (-> self target-speed) (-> self nav-info run-travel-speed))
+    (set! (-> self acceleration) (-> self nav-info run-acceleration))
+    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+    (set! (-> self turn-time) (-> self nav-info run-turn-time))
+    (nav-enemy-reset-frustration)
+    (none)
+    )
+  :trans (behavior ()
+    (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
+        (go-virtual nav-enemy-patrol)
+        )
+    (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+        (go-virtual nav-enemy-victory)
+        )
+    (if (or (not (nav-enemy-player-at-frustration-point?))
+            (< (-> self nav-info frustration-distance)
+               (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))
+               )
+            )
+        (nav-enemy-reset-frustration)
+        )
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self reaction-time))
+      (if (>= (- (-> *display* base-frame-counter) (-> self frustration-time))
+              (+ (-> self reaction-time) (-> self nav-info frustration-time))
+              )
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
+          )
+      (if (or (not (target-in-range? self (-> self nav-info stop-chase-distance)))
+              (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf13))
+              )
+          (go-virtual nav-enemy-stop-chase)
+          )
+      (cond
+        ((logtest? (nav-control-flags navcf17) (-> self nav flags))
+         (if (>= (- (-> *display* base-frame-counter) (-> self free-time)) (seconds 1))
+             (go-virtual nav-enemy-patrol)
+             )
+         )
+        (else
+          (set! (-> self free-time) (-> *display* base-frame-counter))
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+      (loop
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (none)
+    )
+  :post nav-enemy-chase-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-stop-chase (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (let* ((f30-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
+           (gp-1 (the int (+ (lerp-scale 600.0 1800.0 f30-0 32768.0 122880.0) (nav-enemy-rnd-float-range 0.0 30.0))))
+           )
+      (if (< f30-0 40960.0)
+          (go-virtual nav-enemy-stare)
+          )
+      (set! (-> self state-timeout) (the-as time-frame gp-1))
+      )
+    (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
+    (set! (-> self acceleration) (-> self nav-info walk-acceleration))
+    (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
+    (set! (-> self turn-time) (-> self nav-info walk-turn-time))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+      (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
+          (go-virtual nav-enemy-patrol)
+          )
+      (if (and (target-in-range? self (-> self nav-info notice-distance)) (not (nav-enemy-frustrated?)))
+          (go-virtual nav-enemy-chase)
+          )
+      (if (or (or (not *target*) (< (-> self enemy-info idle-distance)
+                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                    )
+                  )
+              (logtest? (nav-control-flags navcf17) (-> self nav flags))
+              (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+              )
+          (go-virtual nav-enemy-stare)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja :group! (-> self draw art-group data (-> self nav-info walk-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (loop
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (none)
+    )
+  :post nav-enemy-chase-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-stare (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+    (let ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0))))
+      (set! (-> self state-timeout)
+            (the-as
+              time-frame
+              (the int (+ (lerp-scale 3000.0 0.0 f0-0 12288.0 122880.0) (nav-enemy-rnd-float-range 0.0 900.0)))
+              )
+            )
+      )
+    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+    (set! (-> self turn-time) (-> self nav-info run-turn-time))
+    (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+    (none)
+    )
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+      (if (logtest? (-> *target* state-flags) (state-flags do-not-notice))
+          (go-virtual nav-enemy-patrol)
+          )
+      (cond
+        ((target-in-range? self (-> self nav-info notice-distance))
+         (if (and (>= (- (-> *display* base-frame-counter) (-> self notice-time)) (-> self reaction-time))
+                  (not (nav-enemy-frustrated?))
+                  )
+             (go-virtual nav-enemy-chase)
+             )
+         )
+        (else
+          (set! (-> self notice-time) (-> *display* base-frame-counter))
+          )
+        )
+      (when (not (or (and *target* (>= 40960.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
+                     (and (-> self nav-info use-proximity-notice)
+                          *target*
+                          (>= (-> self nav-info proximity-notice-distance)
+                              (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                              )
+                          )
+                     )
+                 )
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+        (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
+            (go-virtual nav-enemy-give-up)
+            )
+        )
+      (if (or (or (not *target*) (< (-> self enemy-info idle-distance)
+                                    (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
+                                    )
+                  )
+              (logtest? (nav-control-flags navcf17) (-> self nav flags))
+              )
+          (go-virtual nav-enemy-give-up)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (go-virtual nav-enemy-give-up)
+    (none)
+    )
+  :post nav-enemy-face-player-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-give-up (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (nav-enemy-neck-control-inactive)
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+    (none)
+    )
+  :trans (behavior ()
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+      (if (target-in-range? self (-> self nav-info notice-distance))
+          (go-virtual nav-enemy-chase)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (go-virtual nav-enemy-patrol)
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-attack (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :code (behavior ()
+    (go-virtual nav-enemy-victory)
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-victory (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info victory-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (go-virtual nav-enemy-stare)
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-die (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    process-drawable-death-event-handler
+    )
+  :enter (behavior ()
+    (send-event (ppointer->process (-> self parent)) 'child-die)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (clear-collide-with-as (-> self collide-info))
+    (nav-enemy-fall-and-play-death-anim
+      (the-as art-joint-anim (-> self draw art-group data (-> self nav-info die-anim)))
+      1.0
+      1.0
+      1000000000000000.0
+      600
+      )
+    (send-event self 'death-end)
+    (if (logtest? (-> self enemy-info options) (fact-options has-power-cell))
+        (go-virtual nav-enemy-fuel-cell)
+        )
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post nav-enemy-death-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-fuel-cell (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    process-drawable-fuel-cell-handler
+    )
+  :code (behavior ()
+    (ja-channel-set! 0)
+    (clear-collide-with-as (-> self collide-info))
+    (ja-post)
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (when (not (task-complete? *game-info* (-> self entity extra perm task)))
+      (label cfg-1)
+      (birth-pickup-at-point
+        (-> self collide-info trans)
+        (pickup-type fuel-cell)
+        (the float (the-as int (-> self entity extra perm task)))
+        #f
+        self
+        (the-as fact-info #f)
+        )
+      (when (not (-> self child))
+        (suspend)
+        (goto cfg-1)
+        )
+      (while (-> self child)
+        (suspend)
+        )
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; definition for function nav-enemy-jump-post
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-jump-post nav-enemy ()
+  (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+      (seek-to-point-toward-point!
+        (-> self collide-info)
+        (-> self jump-dest)
+        (-> self rotate-speed)
+        (-> self turn-time)
+        )
+      )
+  (when (logtest? (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (let ((f30-0 (the float (- (-> *display* base-frame-counter) (-> self jump-time)))))
+      (let ((v1-12 (eval-position! (-> self jump-trajectory) f30-0 (new 'stack-no-clear 'vector))))
+        (set! (-> self collide-info trans quad) (-> v1-12 quad))
+        )
+      (eval-velocity! (-> self jump-trajectory) f30-0 (-> self collide-info transv))
+      )
+    )
+  (nav-enemy-simple-post)
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-initialize-custom-jump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-initialize-custom-jump nav-enemy ((arg0 vector) (arg1 symbol) (arg2 float) (arg3 float) (arg4 float))
+  (set! (-> self jump-dest quad) (-> arg0 quad))
+  (let* ((s4-0 (-> self collide-info trans))
+         (f28-0 (vector-vector-xz-distance s4-0 arg0))
+         (f30-0 (fmax arg2 (* arg3 f28-0)))
+         )
+    (let ((f26-0 (- (-> arg0 y) (-> s4-0 y))))
+      (let ((f24-0 (vector-length (-> self collide-info transv)))
+            (s1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self collide-info quat)))
+            (s2-2 (vector-! (new 'stack-no-clear 'vector) arg0 s4-0))
+            )
+        (set! (-> s1-1 y) 0.0)
+        (set! (-> s2-2 y) 0.0)
+        (vector-xz-normalize! s1-1 1.0)
+        (vector-xz-normalize! s2-2 1.0)
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump drop-jump))
+        (if (or (>= (* 0.5 (-> self nav-info run-travel-speed)) f24-0) (>= (cos 3640.889) (vector-dot s1-1 s2-2)))
+            (logior! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
+            )
+        )
+      (if (or (and (< f26-0 0.0) (< f28-0 (fabs f26-0))) (and (< (fabs f26-0) 12288.0) (< f28-0 20480.0)))
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+          )
+      )
+    (when (and arg1 (logtest? (-> self nav-enemy-flags) (nav-enemy-flags drop-jump)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
+      (set! f30-0 2048.0)
+      )
+    (setup-from-to-height! (-> self jump-trajectory) s4-0 arg0 f30-0 (* 0.000011111111 arg4))
+    )
+  (set! (-> self nav extra-nav-sphere quad) (-> arg0 quad))
+  (set! (-> self nav extra-nav-sphere w) (-> self collide-info nav-radius))
+  (logior! (-> self collide-info nav-flags) (nav-flags navf1))
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-initialize-jump
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-initialize-jump nav-enemy ((arg0 vector))
+  (nav-enemy-initialize-custom-jump
+    arg0
+    #t
+    (-> self nav-info jump-height-min)
+    (-> self nav-info jump-height-factor)
+    -409600.0
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-execute-custom-jump
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-execute-custom-jump nav-enemy ((arg0 int) (arg1 float) (arg2 float))
+  (when (logtest? (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
+    (ja-no-eval :num! (loop!))
+    (ja-channel-push! 1 (seconds 0.1))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (ja-no-eval :group! (-> self draw art-group data arg0) :num! (seek! (ja-aframe arg1 0) arg2) :frame-num 0.0)
+    (until (ja-done? 0)
+      (ja-blend-eval)
+      (suspend)
+      (ja :num! (seek! (ja-aframe arg1 0) arg2))
+      )
+    )
+  (logclear! (-> self collide-info status) (cshape-moving-flags onsurf onground tsurf))
+  (set! (-> self jump-time) (-> *display* base-frame-counter))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+  (cond
+    ((logtest? (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
+     (cond
+       ((ja-group? (-> self draw art-group data (-> self nav-info run-anim)))
+        )
+       (else
+         (ja-no-eval :num! (loop!))
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
+         (ja :num-func num-func-identity :frame-num 0.0)
+         )
+       )
+     )
+    (else
+      (ja-no-eval :num! (loop!))
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja :group! (-> self draw art-group data arg0))
+      (ja :num-func num-func-identity :frame-num (ja-aframe arg1 0))
+      )
+    )
+  (while (< (the float (- (-> *display* base-frame-counter) (-> self jump-time))) (-> self jump-trajectory time))
+    (suspend)
+    (ja :num! (seek!))
+    (ja-blend-eval)
+    )
+  (set! (-> self collide-info trans quad) (-> self jump-dest quad))
+  (set! (-> self collide-info transv y) 0.0)
+  (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-execute-jump
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-execute-jump nav-enemy ()
+  (nav-enemy-execute-custom-jump
+    (-> self nav-info jump-anim)
+    (-> self nav-info jump-anim-start-frame)
+    (-> self nav-info jump-start-anim-speed)
+    )
+  0
+  (none)
+  )
+
+;; definition for function nav-enemy-jump-land-anim
+;; INFO: Return type mismatch int vs none.
+(defbehavior nav-enemy-jump-land-anim nav-enemy ()
+  (ja-no-eval :num! (seek!))
+  (ja-channel-push! 1 (seconds 0.075))
+  (ja-no-eval :group! (-> self draw art-group data (-> self nav-info jump-land-anim))
+              :num! (seek!)
+              :frame-num 0.0
+              )
+  (until (ja-done? 0)
+    (ja-blend-eval)
+    (suspend)
+    (ja :num! (seek!))
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-jump (nav-enemy)
+  :virtual #t
+  :event nav-enemy-jump-event-handler
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (if (and (-> self nav-info use-jump-blocked) (nav-enemy-method-50 self (-> self event-param-point)))
+        (go-virtual nav-enemy-jump-blocked)
+        )
+    (nav-enemy-initialize-jump (-> self event-param-point))
+    (none)
+    )
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (none)
+    )
+  :code (behavior ()
+    (nav-enemy-execute-jump)
+    (let ((a1-0 (-> self nav user-poly)))
+      (if (not a1-0)
+          (set! a1-0 (nav-control-method-16 (-> self nav) (-> self jump-dest)))
+          )
+      (if a1-0
+          (set-current-poly! (-> self nav) a1-0)
+          )
+      )
+    (go-virtual nav-enemy-jump-land)
+    (none)
+    )
+  :post nav-enemy-jump-post
+  )
+
+;; definition for function nav-enemy-jump-land-post
+;; INFO: Used lq/sq
+(defbehavior nav-enemy-jump-land-post nav-enemy ()
+  (compute-alignment! (-> self align))
+  (nav-control-method-11 (-> self nav) (-> self nav target-pos))
+  (seek! (-> self target-speed) (-> self nav-info run-travel-speed) 2048.0)
+  (set! (-> self momentum-speed) (-> self target-speed))
+  (let* ((f0-7
+           (fmin
+             (* (-> self speed-scale) (-> self momentum-speed))
+             (* (vector-length (-> self nav travel)) (-> *display* frames-per-second))
+             )
+           )
+         (v1-9 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> self nav travel) f0-7))
+         )
+    (set! (-> self collide-info transv x) (-> v1-9 x))
+    (set! (-> self collide-info transv z) (-> v1-9 z))
+    )
+  (if (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf7))
+          (logtest? (nav-control-flags navcf19) (-> self nav flags))
+          )
+      (seek-to-point-toward-point!
+        (-> self collide-info)
+        (-> self nav target-pos)
+        (-> self rotate-speed)
+        (-> self turn-time)
+        )
+      (seek-toward-heading-vec!
+        (-> self collide-info)
+        (-> self nav travel)
+        (-> self rotate-speed)
+        (-> self turn-time)
+        )
+      )
+  (vector-v++!
+    (-> self collide-info transv)
+    (compute-acc-due-to-gravity (-> self collide-info) (new-stack-vector0) 0.0)
+    )
+  (integrate-for-enemy-with-move-to-ground!
+    (-> self collide-info)
+    (-> self collide-info transv)
+    (-> self nav-info gnd-collide-with)
+    8192.0
+    #f
+    (-> self nav-info hover-if-no-ground)
+    #f
+    )
+  (nav-enemy-common-post)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-jump-land (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (logclear! (-> self nav flags) (nav-control-flags navcf19))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self collide-info transv quad))
+      (set! (-> gp-0 y) 0.0)
+      (set! (-> self target-speed) (vector-length gp-0))
+      (set! (-> self momentum-speed) (-> self target-speed))
+      (vector-xz-normalize! gp-0 16384.0)
+      (vector+! (-> self nav target-pos) (-> self collide-info trans) gp-0)
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (if (or (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+            (logtest? (nav-control-flags navcf19) (-> self nav flags))
+            )
+        (go-virtual nav-enemy-chase)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (nav-enemy-jump-land-anim)
+    (go (-> self jump-return-state))
+    (none)
+    )
+  :post nav-enemy-jump-land-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-jump-blocked (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :enter (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.5))
+        (go (-> self jump-return-state))
+        )
+    (none)
+    )
+  :code (behavior ()
+    (when (not (ja-group? (-> self draw art-group data (-> self nav-info idle-anim))))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja :group! (-> self draw art-group data (-> self nav-info idle-anim))
+          :num! (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1))))
+          )
+      )
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
+      (loop
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-wait-for-cue (nav-enemy)
+  :virtual #t
+  :event (the-as
+    (function process int symbol event-message-block object :behavior nav-enemy)
+    nav-enemy-default-event-handler
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+      (ja :group! (-> self draw art-group data (-> self nav-info idle-anim)))
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (while (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf11))
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      (ja-channel-push! 1 (seconds 0.1))
+      (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
+      (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
+            (s5-0 (-> *display* base-frame-counter))
+            )
+        (until (>= (- (-> *display* base-frame-counter) s5-0) gp-0)
+          (ja :num! (loop! f30-0))
+          (suspend)
+          )
+        )
+      )
+    (go-virtual nav-enemy-jump-to-point)
+    (none)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-jump-to-point (nav-enemy)
+  :virtual #t
+  :event nav-enemy-jump-event-handler
+  :exit (behavior ()
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+    (none)
+    )
+  :trans (behavior ()
+    0
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (nav-enemy-initialize-jump (-> self event-param-point))
+    (nav-enemy-neck-control-look-at)
+    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+      (ja-channel-push! 1 (seconds 0.2))
+      (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
+      )
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+    (nav-enemy-execute-jump)
+    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
+    (nav-enemy-jump-land-anim)
+    (go-virtual nav-enemy-wait-for-cue)
+    (none)
+    )
+  :post nav-enemy-jump-post
+  )
+
+;; definition for symbol *nav-enemy-dummy-shadow-control*, type shadow-control
+(define *nav-enemy-dummy-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :flags (shadow-flags shdf03 disable-draw)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 4096.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w -4096.0)
+                                           )
+                               )
+  )
+
+;; definition for method 45 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod init-defaults! nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
+  (set! (-> obj rand-gen) (new 'process 'random-generator))
+  (set! (-> obj rand-gen seed) (the-as uint #x666edd1e))
+  (set! (-> obj mask) (the-as process-mask (logior (process-mask enemy) (-> obj mask))))
+  (init-jm! obj arg0)
+  (if (-> obj draw shadow)
+      (set! (-> obj draw shadow-ctrl)
+            (new
+              'process
+              'shadow-control
+              (-> obj nav-info shadow-min-y)
+              (-> obj nav-info shadow-max-y)
+              (-> obj nav-info shadow-locus-dist)
+              (the-as float 17)
+              245760.0
+              )
+            )
+      (set! (-> obj draw shadow-ctrl) *nav-enemy-dummy-shadow-control*)
+      )
+  (set! (-> obj align) (new 'process 'align-control obj))
+  (set! (-> obj nav) (new 'process 'nav-control (-> obj collide-info) 16 (-> arg0 nav-nearest-y-threshold)))
+  (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (set! (-> obj nav gap-event) 'jump)
+  (nav-control-method-26 (-> obj nav))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj enemy-info)
+        (new 'process 'fact-info-enemy obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+        )
+  (set! (-> obj reaction-time) (nav-enemy-rnd-int-range (seconds 0.1) (seconds 0.8)))
+  (set! (-> obj speed-scale) 1.0)
+  (logior! (-> obj nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel navenmf5 navenmf6 navenmf12))
+  0
+  (none)
+  )
+
+;; definition for method 49 of type nav-enemy
+(defmethod init-jm! nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
+  (set! (-> obj nav-info) arg0)
+  (set! (-> obj rotate-speed) (-> obj nav-info walk-rotate-speed))
+  (set! (-> obj turn-time) (-> obj nav-info walk-turn-time))
+  (when (and (!= (-> obj nav-info neck-joint) -1) (zero? (-> obj neck)))
+    (set! (-> obj neck)
+          (new 'process 'joint-mod (joint-mod-handler-mode flex-blend) obj (-> obj nav-info neck-joint))
+          )
+    (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
+    (set! (-> obj neck up) (the-as uint 1))
+    (set! (-> obj neck nose) (the-as uint 2))
+    (set! (-> obj neck ear) (the-as uint 0))
+    (set! (-> obj neck max-dist) 102400.0)
+    (set! (-> obj neck ignore-angle) 16384.0)
+    )
+  )
+
+;; definition for function nav-enemy-init-by-other
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs none.
+(defbehavior nav-enemy-init-by-other nav-enemy ((arg0 battlecontroller) (arg1 vector) (arg2 vector))
+  (initialize-collision self)
+  (logior! (-> self mask) (process-mask actor-pause))
+  (set! (-> self collide-info trans quad) (-> arg1 quad))
+  (set! (-> self event-param-point quad) (-> arg2 quad))
+  (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) arg2 arg1)))
+    (set! (-> s3-1 y) 0.0)
+    (vector-normalize! s3-1 1.0)
+    (forward-up->quaternion (-> self collide-info quat) s3-1 *up-vector*)
+    )
+  (vector-identity! (-> self collide-info scale))
+  (set! (-> self entity) (-> arg0 entity))
+  (nav-enemy-method-48 self)
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf12))
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+  (go-virtual nav-enemy-wait-for-cue)
+  (none)
+  )
+
+;; definition for method 47 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod initialize-collision nav-enemy ((obj nav-enemy))
+  0
+  (none)
+  )
+
+;; definition for method 48 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-48 nav-enemy ((obj nav-enemy))
+  0
+  (none)
+  )
+
+;; definition for method 59 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod nav-enemy-method-59 nav-enemy ((obj nav-enemy))
+  (go (method-of-object obj nav-enemy-idle))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type nav-enemy
+;; INFO: Return type mismatch int vs none.
+(defmethod init-from-entity! nav-enemy ((obj nav-enemy) (arg0 entity-actor))
+  (initialize-collision obj)
+  (process-drawable-from-entity! obj arg0)
+  (nav-enemy-method-48 obj)
+  (nav-enemy-method-59 obj)
+  0
+  (none)
+  )
+
+;; definition for method 50 of type nav-enemy
+;; INFO: Used lq/sq
+(defmethod nav-enemy-method-50 nav-enemy ((obj nav-enemy) (arg0 vector))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s4-0 quad) (-> obj collide-info trans quad))
+    (set! (-> obj collide-info trans quad) (-> arg0 quad))
+    (let ((gp-0 (-> obj nav)))
+      (nav-control-method-28 gp-0 (the-as collide-kind -1))
+      (set! (-> obj collide-info trans quad) (-> s4-0 quad))
+      (let* ((v1-8 (-> gp-0 mesh origin))
+             (f0-1 (- (-> arg0 x) (-> v1-8 x)))
+             (f1-2 (- (-> arg0 z) (-> v1-8 z)))
+             )
+        (countdown (v1-9 (-> gp-0 num-spheres))
+          (let* ((a0-10 (-> gp-0 sphere v1-9))
+                 (f2-2 (- (-> a0-10 x) f0-1))
+                 (f3-1 (- (-> a0-10 z) f1-2))
+                 (f4-0 (-> a0-10 w))
+                 )
+            (if (>= (* f4-0 f4-0) (+ (* f2-2 f2-2) (* f3-1 f3-1)))
+                (return #t)
+                )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )

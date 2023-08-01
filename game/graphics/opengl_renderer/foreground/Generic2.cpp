@@ -4,20 +4,18 @@
 
 #include "third-party/imgui/imgui.h"
 
-Generic2::Generic2(const std::string& name,
-                   BucketId my_id,
+Generic2::Generic2(ShaderLibrary& shaders,
                    u32 num_verts,
                    u32 num_frags,
                    u32 num_adgif,
-                   u32 num_buckets)
-    : BucketRenderer(name, my_id) {
+                   u32 num_buckets) {
   m_verts.resize(num_verts);
   m_fragments.resize(num_frags);
   m_adgifs.resize(num_adgif);
   m_buckets.resize(num_buckets);
   m_indices.resize(num_verts * 3);
 
-  opengl_setup();
+  opengl_setup(shaders);
 }
 
 Generic2::~Generic2() {
@@ -31,6 +29,7 @@ void Generic2::draw_debug_window() {
   ImGui::Checkbox("Alpha 4", &m_alpha_draw_enable[3]);
   ImGui::Checkbox("Alpha 5", &m_alpha_draw_enable[4]);
   ImGui::Checkbox("Alpha 6", &m_alpha_draw_enable[5]);
+  ImGui::Checkbox("Alpha 7", &m_alpha_draw_enable[6]);
 
   ImGui::Text("Max Seen:");
   ImGui::Text(" frag: %d/%d %.1f%%", m_max_frags_seen, (int)m_fragments.size(),
@@ -51,33 +50,48 @@ void Generic2::draw_debug_window() {
  * generic renderer. This renderer is expected to follow the chain until it reaches "next_bucket"
  * and then return.
  */
-void Generic2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  // completely clear out state. These will get populated by the rendering functions, then displayed
-  // by draw_debug_window() if the user opens that window
-  m_debug.clear();
-  m_stats = Stats();
-
-  // if the user has asked to disable the renderer, just advance the dma follower to the next
-  // bucket and return immediately.
-  if (!m_enabled) {
-    while (dma.current_tag_offset() != render_state->next_bucket) {
-      dma.read_and_advance();
-    }
-    return;
-  }
-
+void Generic2::render_in_mode(DmaFollower& dma,
+                              SharedRenderState* render_state,
+                              ScopedProfilerNode& prof,
+                              Mode mode) {
   // Generic2 has 3 passes.
   {
     // our first pass is to go over the DMA chain from the game and extract the data into buffers
     auto p = prof.make_scoped_child("dma");
-    process_dma(dma, render_state->next_bucket);
+    switch (mode) {
+      case Mode::NORMAL:
+      case Mode::WARP:
+        if (render_state->version == GameVersion::Jak1) {
+          process_dma_jak1(dma, render_state->next_bucket);
+        } else {
+          process_dma_jak2(dma, render_state->next_bucket);
+        }
+        break;
+      case Mode::LIGHTNING:
+        process_dma_lightning(dma, render_state->next_bucket);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
     auto p = prof.make_scoped_child("setup");
-    setup_draws();
+    switch (mode) {
+      case Mode::NORMAL:
+        setup_draws(true, true);
+        break;
+      case Mode::LIGHTNING:
+        setup_draws(false, true);
+        break;
+      case Mode::WARP:
+        setup_draws(true, false);
+        break;
+      default:
+        ASSERT_NOT_REACHED();
+    }
   }
 
   {

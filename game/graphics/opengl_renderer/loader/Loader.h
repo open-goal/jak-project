@@ -16,19 +16,22 @@ class Loader {
  public:
   static constexpr float TIE_LOAD_BUDGET = 1.5f;
   static constexpr float SHARED_TEXTURE_LOAD_BUDGET = 3.f;
-  Loader(const fs::path& base_path);
+  Loader(const fs::path& base_path, int max_levels);
   ~Loader();
   void update(TexturePool& tex_pool);
   void update_blocking(TexturePool& tex_pool);
   const LevelData* get_tfrag3_level(const std::string& level_name);
   std::optional<MercRef> get_merc_model(const char* model_name);
-  void load_common(TexturePool& tex_pool, const std::string& name);
+  const tfrag3::Level& load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
+  void draw_debug_window();
 
  private:
   void loader_thread();
   bool upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool);
+
+  const std::string* get_most_unloadable_level();
 
   // used by game and loader thread
   std::unordered_map<std::string, std::unique_ptr<LevelData>> m_initializing_tfrag3_levels;
@@ -53,4 +56,5 @@ class Loader {
   std::vector<std::unique_ptr<LoaderStage>> m_loader_stages;
 
   fs::path m_base_path;
+  int m_max_levels = 0;
 };

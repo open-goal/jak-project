@@ -424,7 +424,7 @@ class DrawMode {
     SRC_DST_FIX_DST = 4,  // fix = 64
     ZERO_SRC_SRC_DST = 5,
     SRC_SRC_SRC_SRC = 6,
-    SRC_0_DST_DST = 7
+    SRC_0_DST_DST = 7  // Note: requires color_mult tricks
   };
 
   enum class AlphaTest {

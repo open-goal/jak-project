@@ -1,53 +1,52 @@
-
 ("BEA.DGO"
-  ("mistycannon.o" "mistycannon")
-  ("babak-with-cannon.o" "babak-with-cannon")
-  ("air-h.o" "air-h")
-  ("air.o" "air")
-  ("wobbler.o" "wobbler")
-  ("twister.o" "twister")
-  ("beach-obs.o" "beach-obs")
-  ("bird-lady.o" "bird-lady")
-  ("bird-lady-beach.o" "bird-lady-beach")
-  ("mayor.o" "mayor")
-  ("sculptor.o" "sculptor")
-  ("pelican.o" "pelican")
-  ("lurkerworm.o" "lurkerworm")
-  ("lurkercrab.o" "lurkercrab")
-  ("lurkerpuppy.o" "lurkerpuppy")
-  ("beach-rocks.o" "beach-rocks")
-  ("seagull.o" "seagull")
-  ("beach-part.o" "beach-part")
-  ("tpage-212.go" "tpage-212")
-  ("tpage-214.go" "tpage-214")
-  ("tpage-213.go" "tpage-213")
-  ("tpage-215.go" "tpage-215")
-  ("babak-ag.go" "babak")
-  ("barrel-ag.go" "barrel")
-  ("beachcam-ag.go" "beachcam")
-  ("bird-lady-ag.go" "bird-lady")
-  ("bird-lady-beach-ag.go" "bird-lady-beach")
-  ("bladeassm-ag.go" "bladeassm")
-  ("ecovalve-ag.go" "ecovalve")
-  ("ecoventrock-ag.go" "ecoventrock")
-  ("flutflut-ag.go" "flutflut")
-  ("flutflutegg-ag.go" "flutflutegg")
-  ("grottopole-ag.go" "grottopole")
-  ("harvester-ag.go" "harvester")
-  ("kickrock-ag.go" "kickrock")
-  ("lrocklrg-ag.go" "lrocklrg")
-  ("lurkercrab-ag.go" "lurkercrab")
-  ("lurkerpuppy-ag.go" "lurkerpuppy")
-  ("lurkerworm-ag.go" "lurkerworm")
-  ("mayor-ag.go" "mayor")
-  ("mistycannon-ag.go" "mistycannon")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("pelican-ag.go" "pelican")
-  ("sack-ag.go" "sack")
-  ("sculptor-ag.go" "sculptor")
-  ("sculptor-muse-ag.go" "sculptor-muse")
-  ("seagull-ag.go" "seagull")
-  ("sharkey-ag.go" "sharkey")
-  ("windmill-one-ag.go" "windmill-one")
-  ("beach-vis.go" "beach-vis")
-  )
+ ("mistycannon.o"
+  "babak-with-cannon.o"
+  "air-h.o"
+  "air.o"
+  "wobbler.o"
+  "twister.o"
+  "beach-obs.o"
+  "bird-lady.o"
+  "bird-lady-beach.o"
+  "mayor.o"
+  "sculptor.o"
+  "pelican.o"
+  "lurkerworm.o"
+  "lurkercrab.o"
+  "lurkerpuppy.o"
+  "beach-rocks.o"
+  "seagull.o"
+  "beach-part.o"
+  "tpage-212.go"
+  "tpage-214.go"
+  "tpage-213.go"
+  "tpage-215.go"
+  "babak-ag.go"
+  "barrel-ag.go"
+  "beachcam-ag.go"
+  "bird-lady-ag.go"
+  "bird-lady-beach-ag.go"
+  "bladeassm-ag.go"
+  "ecovalve-ag.go"
+  "ecoventrock-ag.go"
+  "flutflut-ag.go"
+  "flutflutegg-ag.go"
+  "grottopole-ag.go"
+  "harvester-ag.go"
+  "kickrock-ag.go"
+  "lrocklrg-ag.go"
+  "lurkercrab-ag.go"
+  "lurkerpuppy-ag.go"
+  "lurkerworm-ag.go"
+  "mayor-ag.go"
+  "mistycannon-ag.go"
+  "orb-cache-top-ag.go"
+  "pelican-ag.go"
+  "sack-ag.go"
+  "sculptor-ag.go"
+  "sculptor-muse-ag.go"
+  "seagull-ag.go"
+  "sharkey-ag.go"
+  "windmill-one-ag.go"
+  "beach-vis.go"
+ ))

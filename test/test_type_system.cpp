@@ -231,28 +231,32 @@ TEST(TypeSystem, AddMethodAndLookupMethod) {
   TypeSystem ts;
   ts.add_builtin_types(GameVersion::Jak1);
 
-  auto parent_info = ts.declare_method(ts.lookup_type("structure"), "test-method-1", false,
-                                       ts.make_function_typespec({"integer"}, "string"), false);
+  auto parent_info =
+      ts.declare_method(ts.lookup_type("structure"), "test-method-1", "test docstring", false,
+                        ts.make_function_typespec({"integer"}, "string"), false);
 
   // when trying to add the same method to a child, should return the parent's method
-  auto child_info_same = ts.declare_method(ts.lookup_type("basic"), "test-method-1", false,
-                                           ts.make_function_typespec({"integer"}, "string"), false);
+  auto child_info_same =
+      ts.declare_method(ts.lookup_type("basic"), "test-method-1", "test docstring", false,
+                        ts.make_function_typespec({"integer"}, "string"), false);
 
   EXPECT_EQ(parent_info.id, child_info_same.id);
   EXPECT_EQ(parent_info.id, GOAL_MEMUSAGE_METHOD + 1);
 
   // any amount of fiddling with method types should cause an error
-  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", false,
-                                     ts.make_function_typespec({"integer"}, "integer"), false));
-  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", false,
-                                     ts.make_function_typespec({}, "string"), false));
-  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", false,
-                                     ts.make_function_typespec({"integer", "string"}, "string"),
+  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", "test docstring",
+                                     false, ts.make_function_typespec({"integer"}, "integer"),
                                      false));
-  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", false,
-                                     ts.make_function_typespec({"string"}, "string"), false));
+  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", "test docstring",
+                                     false, ts.make_function_typespec({}, "string"), false));
+  EXPECT_ANY_THROW(
+      ts.declare_method(ts.lookup_type("basic"), "test-method-1", "test docstring", false,
+                        ts.make_function_typespec({"integer", "string"}, "string"), false));
+  EXPECT_ANY_THROW(ts.declare_method(ts.lookup_type("basic"), "test-method-1", "test docstring",
+                                     false, ts.make_function_typespec({"string"}, "string"),
+                                     false));
 
-  ts.declare_method(ts.lookup_type("basic"), "test-method-2", false,
+  ts.declare_method(ts.lookup_type("basic"), "test-method-2", "test docstring", false,
                     ts.make_function_typespec({"integer"}, "string"), false);
 
   EXPECT_EQ(parent_info.id, ts.lookup_method("basic", "test-method-1").id);
@@ -275,10 +279,10 @@ TEST(TypeSystem, NewMethod) {
   TypeSystem ts;
   ts.add_builtin_types(GameVersion::Jak1);
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
-  ts.declare_method(ts.lookup_type("test-1"), "new", false,
+  ts.declare_method(ts.lookup_type("test-1"), "new", "test docstring", false,
                     ts.make_function_typespec({"symbol", "string"}, "test-1"), false);
   ts.add_type("test-2", std::make_unique<BasicType>("test-1", "test-2", false, 0));
-  ts.declare_method(ts.lookup_type("test-2"), "new", false,
+  ts.declare_method(ts.lookup_type("test-2"), "new", "test docstring", false,
                     ts.make_function_typespec({"symbol", "string", "symbol"}, "test-2"), false);
 
   EXPECT_EQ(ts.lookup_method("test-1", "new").type.print(), "(function symbol string test-1)");
@@ -297,7 +301,7 @@ TEST(TypeSystem, MethodSubstitute) {
   TypeSystem ts;
   ts.add_builtin_types(GameVersion::Jak1);
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
-  ts.declare_method(ts.lookup_type("test-1"), "new", false,
+  ts.declare_method(ts.lookup_type("test-1"), "new", "test docstring", false,
                     ts.make_function_typespec({"symbol", "string", "_type_"}, "_type_"), false);
 
   auto final_type = ts.lookup_method("test-1", "new").type.substitute_for_method_call("test-1");

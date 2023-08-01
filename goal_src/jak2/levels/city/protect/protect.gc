@@ -1,0 +1,606 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: protect.gc
+;; name in dgo: protect
+;; dgos: LPROTECT
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-seal-of-mar-game seal-of-mar-top seal-of-mar-top-lod0-jg seal-of-mar-top-idle-ja
+              ((seal-of-mar-top-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+(deftype seal-of-mar (process-drawable)
+  ((attach-object uint64  :offset-assert 200)
+   (scale         float   :offset-assert 208)
+   (trans-y       float   :offset-assert 212)
+   )
+  :heap-base #x60
+  :method-count-assert 24
+  :size-assert         #xd8
+  :flag-assert         #x18006000d8
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (seal-of-mar-method-22 (_type_) none 22)
+    (seal-of-mar-method-23 (_type_) none 23)
+    )
+  )
+
+
+(defmethod seal-of-mar-method-22 seal-of-mar ((obj seal-of-mar))
+  (set! (-> obj root) (new 'process 'trsqv))
+  0
+  (none)
+  )
+
+(defmethod seal-of-mar-method-23 seal-of-mar ((obj seal-of-mar))
+  (with-pp
+    (set! (-> pp level) (level-get *level* 'lprotect))
+    (initialize-skeleton
+      obj
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-seal-of-mar-game" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (set! (-> obj draw force-lod) 0)
+    (set! (-> obj scale) 1.0)
+    (set! (-> obj draw lod-set lod 0 dist) 409600.0)
+    0
+    (none)
+    )
+  )
+
+(defstate idle (seal-of-mar)
+  :virtual #t
+  :code (the-as (function none :behavior seal-of-mar) sleep-code)
+  :post (behavior ()
+    (spawn (-> self part) (-> self node-list data 3 bone transform trans))
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate die (seal-of-mar)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch entity-perm-status vs none.
+(defmethod init-from-entity! seal-of-mar ((obj seal-of-mar) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (process-entity-status! obj (entity-perm-status dead) #t)
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior seal-of-mar-init-by-other seal-of-mar ((arg0 vector) (arg1 vector) (arg2 vector))
+  (stack-size-set! (-> self main-thread) 16)
+  (logior! (-> self mask) (process-mask crate))
+  (logclear! (-> self mask) (process-mask actor-pause movie))
+  (seal-of-mar-method-22 self)
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) (the-as quaternion arg1))
+  (set! (-> self root scale quad) (-> arg2 quad))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 182) self))
+  (set! (-> self trans-y) (-> arg0 y))
+  (seal-of-mar-method-23 self)
+  (go-virtual idle)
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs (pointer seal-of-mar).
+(defun seal-of-mar-spawn ((arg0 task-manager) (arg1 vector) (arg2 vector) (arg3 vector))
+  (process-spawn seal-of-mar arg1 arg2 arg3 :to arg0)
+  )
+
+(deftype city-slums-transport-info (structure)
+  ((id         uint32             :offset-assert   0)
+   (spawned    basic              :offset-assert   4)
+   (plane-pos  vector     :inline :offset-assert  16)
+   (plane-quat quaternion :inline :offset-assert  32)
+   (t-pos      vector     :inline :offset-assert  48)
+   (t-quat     quaternion :inline :offset-assert  64)
+   (num-guard  uint32             :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+
+(define *city-slums-transport-info* (new 'static 'boxed-array :type city-slums-transport-info
+                                      (new 'static 'city-slums-transport-info
+                                        :plane-pos (new 'static 'vector :x 3095165.2 :y 37526.324 :z -2934498.0 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y 0.0178 :w 0.9998)
+                                        :t-pos (new 'static 'vector :x 2939573.8 :y 61440.0 :z -2691468.5 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :y 0.3598 :w -0.933)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x1
+                                        :plane-pos (new 'static 'vector :x 2892557.0 :y 29433.447 :z -2661706.2 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0007 :y -0.4948 :z 0.0013 :w 0.869)
+                                        :t-pos (new 'static 'vector :x 2679873.2 :y 77824.0 :z -2581594.0 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.001 :y -0.5269 :z 0.0011 :w 0.8498)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x2
+                                        :plane-pos (new 'static 'vector :x 2990101.2 :y 38305.793 :z -2735072.0 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y 0.4134 :z -0.0015 :w -0.9105)
+                                        :t-pos (new 'static 'vector :x 3044893.0 :y 65536.0 :z -2410427.2 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.0014 :y -0.3754 :z 0.0005 :w 0.9268)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x3
+                                        :plane-pos (new 'static 'vector :x 3058367.2 :y 27387.084 :z -2246145.2 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0011 :y -0.0362 :z 0.0009 :w 0.9993)
+                                        :t-pos (new 'static 'vector :x 2994847.0 :y 57344.0 :z -2093633.5 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :y 0.7931 :w -0.609)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x4
+                                        :plane-pos (new 'static 'vector :x 3053228.5 :y 26790.297 :z -2491042.2 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x -0.0006 :y -0.2174 :z -0.0012 :w -0.976)
+                                        :t-pos (new 'static 'vector :x 2986468.5 :y 65536.0 :z -2262228.2 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.001 :y -0.0806 :z 0.0008 :w 0.9967)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x5
+                                        :plane-pos (new 'static 'vector :x 3006777.0 :y 17257.678 :z -2312612.8 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y -0.3316 :z -0.0013 :w 0.9434)
+                                        :t-pos (new 'static 'vector :x 2676877.8 :y 69632.0 :z -2161058.2 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.0001 :y 0.4182 :z -0.0013 :w -0.9083)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x6
+                                        :plane-pos (new 'static 'vector :x 2715756.5 :y 30702.387 :z -2200581.8 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y -0.4639 :z 0.0013 :w 0.8858)
+                                        :t-pos (new 'static 'vector :x 2460337.0 :y 77824.0 :z -2301717.8 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0002 :y 0.6653 :z -0.0013 :w -0.7465)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x7
+                                        :plane-pos (new 'static 'vector :x 2520547.8 :y 37126.965 :z -2310556.0 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0014 :y 0.6249 :z -0.0006 :w -0.7806)
+                                        :t-pos (new 'static 'vector :x 2274454.2 :y 73728.0 :z -2308863.2 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0008 :y -0.9106 :z -0.0011 :w 0.413)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x8
+                                        :plane-pos (new 'static 'vector :x 2477350.0 :y 30634.395 :z -2239698.5 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0012 :y 0.1168 :z -0.0008 :w 0.9931)
+                                        :t-pos (new 'static 'vector :x 2533168.2 :y 77824.0 :z -2036614.4 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0008 :y -0.1427 :z 0.0011 :w -0.9897)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x9
+                                        :plane-pos (new 'static 'vector :x 2285256.0 :y 33538.457 :z -2189906.8 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y -0.6014 :w 0.7989)
+                                        :t-pos (new 'static 'vector :x 2091575.2 :y 73728.0 :z -2066113.8 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :y -0.7502 :w 0.6611)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xa
+                                        :plane-pos (new 'static 'vector :x 2153970.0 :y 34320.383 :z -2080023.4 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y -0.1532 :w 0.9881)
+                                        :t-pos (new 'static 'vector :x 2116023.5 :y 90112.0 :z -1830102.6 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.0013 :y 0.0828 :z 0.0003 :w -0.9965)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xb
+                                        :plane-pos (new 'static 'vector :x 2169575.5 :y 47590.605 :z -1779327.0 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0015 :y 0.1973 :z 0.0003 :w -0.9803)
+                                        :t-pos (new 'static 'vector :x 2094825.9 :y 77824.0 :z -1617763.5 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0012 :y 0.172 :z -0.0008 :w 0.985)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xc
+                                        :plane-pos (new 'static 'vector :x 1921790.8 :y 30183.014 :z -1487026.6 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0015 :y 0.1582 :z 0.0004 :w -0.9874)
+                                        :t-pos (new 'static 'vector :x 1823168.1 :y 69632.0 :z -1394735.1 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.001 :y -0.9566 :z 0.0011 :w 0.2913)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xd
+                                        :plane-pos (new 'static 'vector :x 1703265.9 :y 20098.252 :z -1322308.9 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x -0.0014 :y -0.1073 :z -0.0005 :w 0.9942)
+                                        :t-pos (new 'static 'vector :x 1664688.5 :y 90112.0 :z -1180704.4 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0014 :y -0.0343 :z -0.0006 :w 0.9994)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xe
+                                        :plane-pos (new 'static 'vector :x 1749161.1 :y 22818.816 :z -1555168.9 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0014 :y 0.0245 :z 0.0006 :w -0.9996)
+                                        :t-pos (new 'static 'vector :x 1678245.1 :y 77824.0 :z -1422948.4 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x -0.0013 :y -0.7978 :z 0.0007 :w 0.6028)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #xf
+                                        :plane-pos (new 'static 'vector :x 1852649.5 :y 17886.822 :z -1740609.1 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.001 :y 0.3503 :z -0.0009 :w -0.9366)
+                                        :t-pos (new 'static 'vector :x 1762047.1 :y 69632.0 :z -1603024.1 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.0007 :y 0.1395 :z 0.0011 :w -0.9902)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x10
+                                        :plane-pos (new 'static 'vector :x 2073022.5 :y 30489.395 :z -1919885.8 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :x 0.0013 :y -0.7611 :z 0.0008 :w 0.6486)
+                                        :t-pos (new 'static 'vector :x 1964806.5 :y 61440.0 :z -1930829.9 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :y -0.6727 :w 0.7398)
+                                        :num-guard #x14
+                                        )
+                                      (new 'static 'city-slums-transport-info
+                                        :id #x11
+                                        :plane-pos (new 'static 'vector :x 1850323.0 :y 29569.844 :z -1880109.0 :w 1.0)
+                                        :plane-quat (new 'static 'quaternion :y 0.1031 :z 0.0015 :w 0.9946)
+                                        :t-pos (new 'static 'vector :x 1879482.4 :y 61440.0 :z -1762779.1 :w 1.0)
+                                        :t-quat (new 'static 'quaternion :x 0.0001 :y 0.0476 :z 0.0015 :w 0.9988)
+                                        :num-guard #x14
+                                        )
+                                      )
+        )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set-setting! 'airlock #f 0.0 0)
+    (let ((v1-5 (entity-by-name "parking-spot-1")))
+      (if v1-5
+          (logior! (-> v1-5 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-7 (entity-by-name "parking-spot-2")))
+      (if v1-7
+          (logior! (-> v1-7 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-9 (entity-by-name "parking-spot-12")))
+      (if v1-9
+          (logior! (-> v1-9 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-11 (entity-by-name "parking-spot-59")))
+      (if v1-11
+          (logior! (-> v1-11 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-13 (entity-by-name "parking-spot-60")))
+      (if v1-13
+          (logior! (-> v1-13 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-15 (entity-by-name "parking-spot-61")))
+      (if v1-15
+          (logior! (-> v1-15 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((v1-17 (entity-by-name "parking-spot-62")))
+      (if v1-17
+          (logior! (-> v1-17 extra perm status) (entity-perm-status bit-9))
+          )
+      )
+    (let ((gp-0 *traffic-manager*))
+      (send-event gp-0 'set-alert-level 2)
+      (send-event gp-0 'set-alert-duration (seconds 36000))
+      (send-event gp-0 'deactivate-by-type (traffic-type crimson-guard-1))
+      (send-event gp-0 'deactivate-by-type (traffic-type guard-bike))
+      (send-event gp-0 'deactivate-by-type (traffic-type hellcat))
+      (send-event gp-0 'deactivate-by-type (traffic-type traffic-type-20))
+      (send-event gp-0 'deactivate-by-type (traffic-type bikea))
+      (send-event gp-0 'deactivate-by-type (traffic-type bikeb))
+      (send-event gp-0 'deactivate-by-type (traffic-type bikec))
+      (send-event gp-0 'deactivate-by-type (traffic-type cara))
+      (send-event gp-0 'deactivate-by-type (traffic-type carb))
+      (send-event gp-0 'deactivate-by-type (traffic-type carc))
+      (send-event gp-0 'set-object-target-count (traffic-type crimson-guard-1) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type guard-bike) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type hellcat) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type bikea) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type bikeb) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type bikec) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type cara) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type carb) 0)
+      (send-event gp-0 'set-object-target-count (traffic-type carc) 0)
+      (send-event gp-0 'set-object-auto-activate (traffic-type crimson-guard-1) #f)
+      (send-event gp-0 'set-guard-target-count-range 0 4 4)
+      (send-event gp-0 'set-guard-target-count-range 1 5 5)
+      (send-event gp-0 'set-guard-target-count-range 4 0 0)
+      (send-event gp-0 'set-guard-target-count-range 5 0 0)
+      )
+    (speech-table-set! *speech-control* (speech-type speech-type-6) (new 'static 'speech-type-info
+                                                                      :channel #x1
+                                                                      :priority -2
+                                                                      :min-delay (seconds 2)
+                                                                      :max-delay (seconds 4)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg320a"
+                                                                        "kg321a"
+                                                                        "kg322a"
+                                                                        "kg323a"
+                                                                        "kg324a"
+                                                                        "kg325a"
+                                                                        "kg326a"
+                                                                        "kg327a"
+                                                                        "kg328a"
+                                                                        "kg329a"
+                                                                        "kg330a"
+                                                                        "kg331a"
+                                                                        "kg332a"
+                                                                        "kg333a"
+                                                                        "kg334a"
+                                                                        "kg335a"
+                                                                        "kg336a"
+                                                                        "kg337a"
+                                                                        "kg338a"
+                                                                        "kg339a"
+                                                                        "kg340a"
+                                                                        "kg341a"
+                                                                        "kg342a"
+                                                                        "kg343a"
+                                                                        "kg344a"
+                                                                        "kg345a"
+                                                                        "kg347a"
+                                                                        )
+                                                                      )
+                       )
+    (dotimes (gp-1 (length *city-slums-transport-info*))
+      (set! (-> *city-slums-transport-info* gp-1 spawned) #f)
+      )
+    (let ((gp-2 (new 'stack-no-clear 'task-arrow-params)))
+      (set! (-> gp-2 pos quad) (-> (new 'static 'vector :x 1666621.9 :y 32766.771 :z -1103984.6 :w 1.0) quad))
+      (quaternion-identity! (-> gp-2 quat))
+      (set! (-> gp-2 flags) (task-arrow-flags))
+      (set! (-> gp-2 map-icon) (the-as uint 15))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-2 (the-as task-arrow self))))
+      )
+    (set! (-> self data-int32 0) 0)
+    0
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-0 *traffic-manager*))
+      (send-event a0-0 'restore-default-settings)
+      )
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (local-vars (s5-4 object))
+    (let ((s4-0 (new 'static 'vector :x 1666621.9 :y 32766.771 :z -1103984.6 :w 1.0))
+          (gp-0 (vector-z-quaternion!
+                  (new 'stack-no-clear 'vector)
+                  (new 'static 'quaternion :x -0.0015 :y -0.199 :z 0.0002 :w -0.9799)
+                  )
+                )
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-! s5-0 (target-pos 0) s4-0)
+      (let ((v1-1 s5-0))
+        (if (and (< (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))) 122880.0)
+                 (< 0.0 (vector-dot s5-0 gp-0))
+                 )
+            (set! (-> self data-int32 0) 1)
+            )
+        )
+      )
+    (cond
+      ((zero? (-> self data-int32 0))
+       (dotimes (gp-1 (length *city-slums-transport-info*))
+         (let ((s5-1 (-> *city-slums-transport-info* gp-1)))
+           (new 'stack-no-clear 'vector)
+           (new 'stack-no-clear 'vector)
+           (new 'stack-no-clear 'vector)
+           (new 'stack-no-clear 'vector)
+           0.0
+           (let ((f0-7 (vector-vector-xz-distance (target-pos 0) (-> s5-1 t-pos))))
+             (cond
+               ((and (< f0-7 327680.0) (< 204800.0 f0-7))
+                (when (and (not (handle->process (-> self slave gp-1))) (< (the int (-> self data-float gp-1)) (current-time)))
+                  (let ((s4-2 (new 'stack-no-clear 'transport-params)))
+                    (let ((s3-2 (new 'stack-no-clear 'vector)))
+                      (set! (-> s3-2 quad) (-> s5-1 t-pos quad))
+                      (set! (-> s4-2 spawn-pos quad) (-> s5-1 t-pos quad))
+                      (quaternion-copy! (-> s4-2 quat) (-> s5-1 t-quat))
+                      (set! (-> s4-2 max-guard) (-> s5-1 num-guard))
+                      (set! (-> s4-2 max-guard) (the-as uint 8))
+                      (set! (-> s4-2 turret?) #t)
+                      (set! (-> s4-2 speeches?) #t)
+                      (set! (-> s3-2 y) 0.0)
+                      )
+                    (let* ((s5-2 (entity-nav-mesh-by-aid (the-as actor-id 9070)))
+                           (a0-16 (if (type? s5-2 entity-nav-mesh)
+                                      s5-2
+                                      )
+                                  )
+                           )
+                      (when a0-16
+                        (set! (-> s4-2 nav-mesh) (-> a0-16 nav-mesh))
+                        (set! (-> self slave gp-1) (ppointer->handle (process-spawn transport s4-2 :to self)))
+                        )
+                      )
+                    )
+                  )
+                )
+               ((< 368640.0 f0-7)
+                (if (handle->process (-> self slave gp-1))
+                    (send-event (handle->process (-> self slave gp-1)) 'leave)
+                    )
+                )
+               )
+             )
+           )
+         (if (and (handle->process (-> self slave gp-1))
+                  (begin
+                    (let ((s5-5 #t)
+                          (a1-11 (new 'stack-no-clear 'event-message-block))
+                          )
+                      (set! (-> a1-11 from) (process->ppointer self))
+                      (set! (-> a1-11 num-params) 0)
+                      (set! (-> a1-11 message) 'guards-left)
+                      (let ((v1-75 (the-as object (send-event-function (handle->process (-> self slave gp-1)) a1-11))))
+                        (cmove-#f-nonzero s5-4 v1-75 s5-5)
+                        )
+                      )
+                    s5-4
+                    )
+                  )
+             (set! (-> self data-float gp-1) (the float (+ (current-time) (seconds 20))))
+             )
+         )
+       )
+      (else
+        (let ((gp-2 0))
+          (dotimes (s5-6 (length *city-slums-transport-info*))
+            (when (handle->process (-> self slave s5-6))
+              (send-event (handle->process (-> self slave s5-6)) 'leave)
+              (+! gp-2 1)
+              )
+            )
+          (if (zero? gp-2)
+              (go-virtual complete)
+              )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (until #f
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_COMPLETE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (send-event (handle->process (-> self arrow)) 'leave)
+    (set! (-> self state-time) (current-time))
+    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+      (suspend)
+      )
+    (talker-spawn-func (-> *talker-speech* 185) *entity-pool* (target-pos 0) (the-as region #f))
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_FAIL_HOOK
+  (lambda :behavior task-manager () (none))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager () (send-event *traffic-manager* 'restore-default-settings) (none))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-fight)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self slave 0)
+          (ppointer->handle (seal-of-mar-spawn
+                              self
+                              (new 'static 'vector :x 3150154.5 :y 41696.617 :z -2989634.8 :w 1.0)
+                              (new 'static 'vector :x -0.0086 :y -0.0227 :z -0.691 :w 0.7223)
+                              (new 'static 'vector :x 0.06 :y 0.06 :z 0.06 :w 1.0)
+                              )
+                            )
+          )
+    (set! (-> self slave 1) (the-as handle #f))
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-protect-water-slums-fight)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (when (handle->process (-> self slave 0))
+      (let ((f0-0
+              (vector-vector-xz-distance (new 'static 'vector :x 3132661.8 :y 33669.12 :z -2965708.8 :w 1.0) (target-pos 0))
+              )
+            )
+        (cond
+          ((< f0-0 20480.0)
+           (when (!= (-> self slave 0) #f)
+             (deactivate (handle->process (-> self slave 0)))
+             (set! (-> self slave 0) (the-as handle #f))
+             )
+           (if (= (-> self slave 1) #f)
+               (set! (-> self slave 1)
+                     (ppointer->handle (process-spawn scene-player :init scene-player-init "city-protect-slums-intro" #t #f))
+                     )
+               )
+           )
+          ((< f0-0 163840.0)
+           (script-eval '(want-anim "city-protect-slums-intro"))
+           )
+          )
+        )
+      )
+    (none)
+    )
+  )

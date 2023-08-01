@@ -33,8 +33,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
  * when used in a function call. This only works for immediaate function calls, you can't "save"
  * an (inline my-func) into a function pointer.
  *
- * If inlining is not possible (function disallows inlining or didn't save its code), throw an
- * error.
+ * If inlining is not possible (function didn't save its code), throw an error.
  */
 Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
@@ -47,12 +46,8 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
                          args.unnamed.at(0).print());
   }
 
-  if (kv->second->func && !kv->second->func->settings.allow_inline) {
-    throw_compiler_error(form,
-                         "Cannot inline {} because inlining of this function was disallowed.");
-  }
   auto fe = env->function_env();
-  return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
+  return fe->alloc_val<InlinedLambdaVal>(kv->second.type, kv->second);
 }
 
 Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -106,15 +101,18 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   auto obj_env = env->file_env();
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
-      !args.only_contains_named({"name", "inline-only", "segment", "behavior"})) {
+      !args.only_contains_named({"name", "segment", "behavior", "immediate"})) {
     throw_compiler_error(form, "Invalid lambda form");
   }
+
+  bool immediate =
+      args.has_named("immediate") && symbol_string(args.get_named("immediate")) != "#f";
 
   // allocate this lambda from the object file environment. This makes it safe for this to hold
   // on to references to this as an inlineable function even if the enclosing function fails.
   // for example, the top-level may (define some-func (lambda...)) and even if top-level fails,
   // we keep around a reference to some-func to be possibly inlined.
-  auto place = obj_env->alloc_val<LambdaVal>(get_none()->type());
+  auto place = obj_env->alloc_val<LambdaVal>(get_none()->type(), immediate);
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 
@@ -146,9 +144,6 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   lambda.body = get_lambda_body(rest);  // first is the argument list, rest is body
   place->func = nullptr;
 
-  bool inline_only =
-      args.has_named("inline-only") && symbol_string(args.get_named("inline-only")) != "#f";
-
   // pick default segment to store function in.
   int segment = fe->segment_for_static_data();
 
@@ -164,7 +159,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  if (!inline_only) {
+  if (!immediate) {
     // compile a function! First create a unique name...
     std::string function_name = lambda.debug_name;
     if (function_name.empty()) {
@@ -204,6 +199,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (args.has_named("behavior")) {
       const std::string behavior_type = symbol_string(args.get_named("behavior"));
       auto self_var = new_func_env->make_gpr(m_ts.make_typespec(behavior_type));
+      self_var->mark_as_settable();
       IRegConstraint constr;
       constr.contrain_everywhere = true;
       constr.desired_register = emitter::gRegInfo.get_process_reg();
@@ -332,13 +328,11 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     auto kv = m_inlineable_functions.find(uneval_head.as_symbol());
     if (kv != m_inlineable_functions.end()) {
       // it's inlinable.  However, we do not always inline an inlinable function by default
-      if (kv->second->func ==
-              nullptr ||  // only-inline, we must inline it as there is no code generated for it
-          kv->second->func->settings
-              .inline_by_default) {  // inline when possible, so we should inline
-
+      if (kv->second.inline_by_default) {  // inline when possible, so we should inline
         auto_inline = true;
-        head = kv->second;
+        auto* lv = env->function_env()->alloc_val<LambdaVal>(kv->second.type, false);
+        lv->lambda = kv->second.lambda;
+        head = lv;
       }
     }
   }
@@ -393,8 +387,15 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       auto head_as_inlined_lambda = dynamic_cast<InlinedLambdaVal*>(head);
       if (head_as_inlined_lambda) {
         // yes, remember the lambda that contains and flag that we're inlining.
-        head_as_lambda = head_as_inlined_lambda->lv;
+        head_as_lambda =
+            env->function_env()->alloc_val<LambdaVal>(head_as_inlined_lambda->lv.type, false);
+        head_as_lambda->lambda = head_as_inlined_lambda->lv.lambda;
         got_inlined_lambda = true;
+      }
+    } else {
+      // we got a lambda: but we don't want to use immediates by default:
+      if (!auto_inline && !head_as_lambda->is_immediate) {
+        head_as_lambda = nullptr;
       }
     }
   }
@@ -453,7 +454,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // note, inlined functions will get a more specific type if possible
       // todo, is this right?
       auto type = eval_args.at(i)->type();
-      auto copy = env->make_ireg(type, m_ts.lookup_type(type)->get_preferred_reg_class());
+      auto copy =
+          env->make_ireg(type, m_ts.lookup_type_allow_partial_def(type)->get_preferred_reg_class());
       env->emit_ir<IR_RegSet>(form, copy, eval_args.at(i));
       copy->mark_as_settable();
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
@@ -733,7 +735,10 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid debug declare");
       }
-      env->file_env()->set_debug_file();
+      if (!env->file_env()->is_debug_file()) {
+        env->file_env()->set_debug_file();
+        throw DebugFileDeclareException();
+      }
 
     } else {
       throw_compiler_error(first, "Unrecognized declare-file option {}.", first.print());

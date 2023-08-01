@@ -1,57 +1,57 @@
 ("VI1.DGO"
-  ("villagep-obs.o" "villagep-obs")
-  ("oracle.o" "oracle")
-  ("farmer.o" "farmer")
-  ("explorer.o" "explorer")
-  ("assistant.o" "assistant")
-  ("sage.o" "sage")
-  ("yakow.o" "yakow")
-  ("village-obs.o" "village-obs")
-  ("fishermans-boat.o" "fishermans-boat")
-  ("village1-part.o" "village1-part")
-  ("village1-part2.o" "village1-part2")
-  ("sequence-a-village1.o" "sequence-a-village1")
-  ("tpage-398.go" "tpage-398")
-  ("tpage-400.go" "tpage-400")
-  ("tpage-399.go" "tpage-399")
-  ("tpage-401.go" "tpage-401")
-  ("tpage-1470.go" "tpage-1470")
-  ("assistant-ag.go" "assistant")
-  ("evilplant-ag.go" "evilplant")
-  ("explorer-ag.go" "explorer")
-  ("farmer-ag.go" "farmer")
-  ("fishermans-boat-ag.go" "fishermans-boat")
-  ("hutlamp-ag.go" "hutlamp")
-  ("mayorgears-ag.go" "mayorgears")
-  ("medres-beach-ag.go" "medres-beach")
-  ("medres-beach1-ag.go" "medres-beach1")
-  ("medres-beach2-ag.go" "medres-beach2")
-  ("medres-beach3-ag.go" "medres-beach3")
-  ("medres-jungle-ag.go" "medres-jungle")
-  ("medres-jungle1-ag.go" "medres-jungle1")
-  ("medres-jungle2-ag.go" "medres-jungle2")
-  ("medres-misty-ag.go" "medres-misty")
-  ("medres-training-ag.go" "medres-training")
-  ("medres-village11-ag.go" "medres-village11")
-  ("medres-village12-ag.go" "medres-village12")
-  ("medres-village13-ag.go" "medres-village13")
-  ("oracle-ag.go" "oracle")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("reflector-middle-ag.go" "reflector-middle")
-  ("revcycle-ag.go" "revcycle")
-  ("revcycleprop-ag.go" "revcycleprop")
-  ("ropebridge-32-ag.go" "ropebridge-32")
-  ("sage-ag.go" "sage")
-  ("sagesail-ag.go" "sagesail")
-  ("sharkey-ag.go" "sharkey")
-  ("villa-starfish-ag.go" "villa-starfish")
-  ("village-cam-ag.go" "village-cam")
-  ("village1cam-ag.go" "village1cam")
-  ("warp-gate-switch-ag.go" "warp-gate-switch")
-  ("warpgate-ag.go" "warpgate")
-  ("water-anim-village1-ag.go" "water-anim-village1")
-  ("windmill-sail-ag.go" "windmill-sail")
-  ("windspinner-ag.go" "windspinner")
-  ("yakow-ag.go" "yakow")
-  ("village1-vis.go" "village1-vis")
-  )
+ ("villagep-obs.o"
+  "oracle.o"
+  "farmer.o"
+  "explorer.o"
+  "assistant.o"
+  "sage.o"
+  "yakow.o"
+  "village-obs.o"
+  "fishermans-boat.o"
+  "village1-part.o"
+  "village1-part2.o"
+  "sequence-a-village1.o"
+  "tpage-398.go"
+  "tpage-400.go"
+  "tpage-399.go"
+  "tpage-401.go"
+  "tpage-1470.go"
+  "assistant-ag.go"
+  "evilplant-ag.go"
+  "explorer-ag.go"
+  "farmer-ag.go"
+  "fishermans-boat-ag.go"
+  "hutlamp-ag.go"
+  "mayorgears-ag.go"
+  "medres-beach-ag.go"
+  "medres-beach1-ag.go"
+  "medres-beach2-ag.go"
+  "medres-beach3-ag.go"
+  "medres-jungle-ag.go"
+  "medres-jungle1-ag.go"
+  "medres-jungle2-ag.go"
+  "medres-misty-ag.go"
+  "medres-training-ag.go"
+  "medres-village11-ag.go"
+  "medres-village12-ag.go"
+  "medres-village13-ag.go"
+  "oracle-ag.go"
+  "orb-cache-top-ag.go"
+  "reflector-middle-ag.go"
+  "revcycle-ag.go"
+  "revcycleprop-ag.go"
+  "ropebridge-32-ag.go"
+  "sage-ag.go"
+  "sagesail-ag.go"
+  "sharkey-ag.go"
+  "villa-starfish-ag.go"
+  "village-cam-ag.go"
+  "village1cam-ag.go"
+  "warp-gate-switch-ag.go"
+  "warpgate-ag.go"
+  "water-anim-village1-ag.go"
+  "windmill-sail-ag.go"
+  "windspinner-ag.go"
+  "yakow-ag.go"
+  "village1-vis.go"
+ ))

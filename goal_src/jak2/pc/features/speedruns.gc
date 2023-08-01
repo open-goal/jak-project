@@ -1,0 +1,86 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(define *speedrun-info* (new 'static 'speedrun-info-jak2 :should-display? #t :needs-post-blackout-setup? #f))
+
+(defun is-speedrun-category? ((category symbol))
+  (and (-> *pc-settings* speedrunner-mode?)
+        (name= category (enum->string speedrun-category (-> *speedrun-info* category)))
+        )
+  )
+
+(defun start-speedrun ((category speedrun-category))
+  ;; randomize game id so the autosplitter knows to restart
+  (update-autosplit-jak2-new-game)
+  ;; turn on speedrun verification display and flip flag for setting up speedrun after initialize!
+  (set! (-> *speedrun-info* should-display?) #t)
+  ;; start new game with specified checkpoint, if any (otherwise we're resetting current category)
+  (when category
+    (set! (-> *speedrun-info* category) category))
+  ;; TODO - ensure any required settings are enabled
+  (none)
+  )
+
+;; TODO - fix me
+(define post-blackout? #f)
+
+(defun setup-speedrun-post-blackout ()
+  (when post-blackout?
+    (set! (-> *speedrun-info* needs-post-blackout-setup?) #f)
+    (case (-> *speedrun-info* category)
+      (((speedrun-category full-game))
+        ;; setup a full-game run here
+        (none)
+        )
+      (else
+        ;;speedrun-category was not recognized, print an error to the screen and maybe play a sound.
+        )
+      )
+      ;; reset speedrun display (gets hidden on first collectable pickup)
+      (set! (-> *speedrun-info* should-display?) #t)
+      ;; reset actors to ensure any above changes take effect
+      (reset-actors 'life)
+      ;; autosave any changes back to file
+      (auto-save-command 'auto-save 0 0 *default-pool* #f)
+    )
+  (none)
+  )
+
+(defun hide-speedrun-display ()
+  (set! (-> *speedrun-info* should-display?) #f)
+  (none)
+  )
+
+(defun speedrun-mode-update ()
+  "A per frame update for speedrunning related stuff"
+  (when (-> *pc-settings* speedrunner-mode?)
+    ;; Update auto-splitter
+    (update-autosplit-info-jak2)
+    ;; Draw info to the screen
+    (speedrun-draw-settings)
+    ;;Disable any active cheats
+    ;; (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0))
+    ;; Run after-blackout speedrun setup (if needed)
+    (setup-speedrun-post-blackout)
+    )
+  (none))
+
+(defun speedrun-start-full-game-run ()
+  ;; start a full game speedrun, save file is already selected so don't default to first slot
+  (start-speedrun (speedrun-category full-game))
+  (none))
+
+(defun speedrun-draw-settings ()
+  "Draw speedrun related settings in the bottom left corner"
+  (when (and (-> *pc-settings* speedrunner-mode?)
+             (not (paused?))
+             (-> *speedrun-info* should-display?))
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                      (bucket-id debug-no-zbuf1))
+      (draw-string-xy (string-format "OpenGOAL Version: ~S ~%Speedrun mode: ~A ~%Category: ~S ~%Is fortress escaped: ~D"
+                                     *pc-settings-built-sha*
+                                     (-> *pc-settings* speedrunner-mode?)
+                                     (enum->string speedrun-category (-> *speedrun-info* category))
+                                     (-> *autosplit-info-jak2* res-fortress-escape))
+                      buf 0 (- 220 (* 8 4)) (font-color progress-old-yellow) (font-flags shadow kerning))))
+  (none))

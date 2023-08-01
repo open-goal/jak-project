@@ -1,5 +1,7 @@
 #include "fr3_to_gltf.h"
 
+#include <unordered_map>
+
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
 
@@ -62,7 +64,7 @@ void unstrip_merc_draws(const std::vector<u32>& stripped_indices,
     for (auto& effect : model.effects) {
       auto& effect_dts = model_dts.emplace_back();
       auto& effect_dtc = model_dtc.emplace_back();
-      for (auto& draw : effect.draws) {
+      for (auto& draw : effect.all_draws) {
         effect_dts.push_back(unstripped.size());
 
         for (size_t i = 2; i < draw.index_count; i++) {
@@ -688,8 +690,8 @@ void add_merc(const tfrag3::Level& level,
 
     for (size_t effect_idx = 0; effect_idx < mmodel.effects.size(); effect_idx++) {
       const auto& effect = mmodel.effects[effect_idx];
-      for (size_t draw_idx = 0; draw_idx < effect.draws.size(); draw_idx++) {
-        const auto& draw = effect.draws[draw_idx];
+      for (size_t draw_idx = 0; draw_idx < effect.all_draws.size(); draw_idx++) {
+        const auto& draw = effect.all_draws[draw_idx];
         auto& prim = mesh.primitives.emplace_back();
         prim.material =
             add_material_for_tex(level, model, draw.tree_tex_id, tex_image_map, draw.mode);
@@ -716,7 +718,7 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
   // a "scene" is a traditional scene graph, made up of Nodes.
   // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
   // everything into the top level.
-  auto& scene = model.scenes.emplace_back();
+  model.scenes.emplace_back();
 
   // hack, add a default material.
   tinygltf::Material mat;
@@ -755,7 +757,7 @@ void save_level_foreground_as_gltf(const tfrag3::Level& level, const fs::path& g
   // a "scene" is a traditional scene graph, made up of Nodes.
   // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
   // everything into the top level.
-  auto& scene = model.scenes.emplace_back();
+  model.scenes.emplace_back();
 
   // hack, add a default material.
   tinygltf::Material mat;

@@ -1,0 +1,1216 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type elec-gate-params
+(deftype elec-gate-params (structure)
+  ((bolt-spec       lightning-spec  :offset-assert   0)
+   (ring-spec       lightning-spec  :offset-assert   4)
+   (ring-radius-min float           :offset-assert   8)
+   (ring-radius-max float           :offset-assert  12)
+   (speed-mult      float           :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type elec-gate-params
+(defmethod inspect elec-gate-params ((obj elec-gate-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'elec-gate-params)
+  (format #t "~1Tbolt-spec: ~A~%" (-> obj bolt-spec))
+  (format #t "~1Tring-spec: ~A~%" (-> obj ring-spec))
+  (format #t "~1Tring-radius-min: ~f~%" (-> obj ring-radius-min))
+  (format #t "~1Tring-radius-max: ~f~%" (-> obj ring-radius-max))
+  (format #t "~1Tspeed-mult: ~f~%" (-> obj speed-mult))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type elec-gate-bolt
+(deftype elec-gate-bolt (structure)
+  ((ring        lightning-control 2 :offset-assert   0)
+   (bolt        lightning-control   :offset-assert   8)
+   (ring-radius float               :offset-assert  12)
+   (pos         float               :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type elec-gate-bolt
+(defmethod inspect elec-gate-bolt ((obj elec-gate-bolt))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'elec-gate-bolt)
+  (format #t "~1Tring[2] @ #x~X~%" (-> obj ring))
+  (format #t "~1Tbolt: ~A~%" (-> obj bolt))
+  (format #t "~1Tring-radius: ~f~%" (-> obj ring-radius))
+  (format #t "~1Tpos: ~f~%" (-> obj pos))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type elec-wall
+(deftype elec-wall (structure)
+  ((pos vector :inline :offset-assert   0)
+   (dir vector :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type elec-wall
+(defmethod inspect elec-wall ((obj elec-wall))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'elec-wall)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~1Tdir: #<vector @ #x~X>~%" (-> obj dir))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type elec-gate
+(deftype elec-gate (process-drawable)
+  ((params             elec-gate-params                   :offset-assert 200)
+   (path-l             path-control                       :offset        152)
+   (path-r             path-control                       :offset-assert 204)
+   (l-bolt             elec-gate-bolt           5 :inline :offset-assert 208)
+   (part-on            sparticle-launch-control           :offset        168)
+   (part-off           sparticle-launch-control           :offset-assert 368)
+   (part-spawner-left  part-spawner                       :offset-assert 372)
+   (part-spawner-right part-spawner                       :offset-assert 376)
+   (on-start           pair                               :offset-assert 380)
+   (on-stop            pair                               :offset-assert 384)
+   (dividing-wall      elec-wall                :inline   :offset-assert 400)
+   (plane              elec-wall                2 :inline :offset-assert 432)
+   (wall-y             float                              :offset-assert 496)
+   (wall-xz            float                              :offset-assert 500)
+   (lightning-quality  float                              :offset-assert 504)
+   (quality-enabled?   symbol                             :offset-assert 508)
+   )
+  :heap-base #x180
+  :method-count-assert 30
+  :size-assert         #x200
+  :flag-assert         #x1e01800200
+  (:methods
+    (idle () _type_ :state 20)
+    (active () _type_ :state 21)
+    (shutdown () _type_ :state 22)
+    (get-params (_type_) elec-gate-params 23)
+    (elec-gate-method-24 (_type_) none 24)
+    (set-palette! (_type_) none 25)
+    (set-state! (_type_) none 26)
+    (spawn-particles (_type_ sparticle-launch-control) none 27)
+    (set-elec-scale-if-close! (_type_ float) none 28)
+    (set-elec-scale! (_type_ float) none 29)
+    )
+  )
+
+;; definition for method 3 of type elec-gate
+(defmethod inspect elec-gate ((obj elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tparams: #<elec-gate-params @ #x~X>~%" (-> obj params))
+  (format #t "~2Tpath-l: ~A~%" (-> obj path))
+  (format #t "~2Tpath-r: ~A~%" (-> obj path-r))
+  (format #t "~2Tl-bolt[5] @ #x~X~%" (-> obj l-bolt))
+  (format #t "~2Tpart-on: ~A~%" (-> obj part))
+  (format #t "~2Tpart-off: ~A~%" (-> obj part-off))
+  (format #t "~2Tpart-spawner-left: ~A~%" (-> obj part-spawner-left))
+  (format #t "~2Tpart-spawner-right: ~A~%" (-> obj part-spawner-right))
+  (format #t "~2Ton-start: ~A~%" (-> obj on-start))
+  (format #t "~2Ton-stop: ~A~%" (-> obj on-stop))
+  (format #t "~2Tdividing-wall: #<elec-wall @ #x~X>~%" (-> obj dividing-wall))
+  (format #t "~2Tplane[2] @ #x~X~%" (-> obj plane))
+  (format #t "~2Twall-y: ~f~%" (-> obj wall-y))
+  (format #t "~2Twall-xz: ~f~%" (-> obj wall-xz))
+  (format #t "~2Tlightning-quality: ~f~%" (-> obj lightning-quality))
+  (format #t "~2Tquality-enabled?: ~A~%" (-> obj quality-enabled?))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *default-elec-gate-params*, type elec-gate-params
+(define *default-elec-gate-params* (new 'static 'elec-gate-params
+                                     :bolt-spec (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf2)
+                                       :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :end-color (new 'static 'rgba :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :fade-time 120.0
+                                       :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                       :reduction 0.42
+                                       :num-points 16
+                                       :box-size 8601.6
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 4096.0
+                                       :duration -1.0
+                                       :sound #f
+                                       )
+                                     :ring-spec (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf2)
+                                       :rand-func #x3
+                                       :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :fade-time 120.0
+                                       :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                       :reduction 0.42
+                                       :num-points 12
+                                       :box-size 3072.0
+                                       :merge-factor 0.5
+                                       :radius 2048.0
+                                       :duration -1.0
+                                       :sound #f
+                                       )
+                                     :ring-radius-min 1638.4
+                                     :ring-radius-max 2867.2
+                                     :speed-mult 1.0
+                                     )
+        )
+
+;; definition for function elec-gate-post
+;; INFO: Used lq/sq
+(defbehavior elec-gate-post elec-gate ()
+  (local-vars (curr-bolt elec-gate-bolt) (curr-point int))
+  (let ((num-points (-> self params ring-spec num-points)))
+    (dotimes (bolt-idx 5)
+      (set! curr-bolt (-> self l-bolt bolt-idx))
+      (let ((s4-0
+              (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
+              )
+            (s3-0
+              (get-point-at-percent-along-path! (-> self path-r) (new 'stack-no-clear 'vector) (-> curr-bolt pos) 'interp)
+              )
+            )
+        (let ((a0-2 (-> curr-bolt bolt))
+              (v1-10 s4-0)
+              )
+          (set! (-> a0-2 state meet data 0 quad) (-> v1-10 quad))
+          )
+        (let ((a0-5 (-> curr-bolt bolt))
+              (v1-13 s3-0)
+              )
+          (set! (-> a0-5 state meet data (+ (-> a0-5 state points-to-draw) -1) quad) (-> v1-13 quad))
+          )
+        (let ((s2-0 (-> curr-bolt ring 0))
+              (s1-0 (-> curr-bolt ring 1))
+              (s0-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s0-0 x) 0.0)
+          (set! (-> s0-0 y) 0.0)
+          (set! (-> s0-0 z) (-> curr-bolt ring-radius))
+          (set! (-> s0-0 w) 0.0)
+          (let ((f30-0 (* 65536.0 (/ 1.0 (the float (+ num-points -1))))))
+            (set! curr-point 0)
+            (while (< curr-point num-points)
+              (set-point! s2-0 curr-point (vector+! (new 'stack-no-clear 'vector) s4-0 s0-0))
+              (set-point! s1-0 curr-point (vector+! (new 'stack-no-clear 'vector) s3-0 s0-0))
+              (vector-rotate-y! s0-0 s0-0 f30-0)
+              (set! curr-point (+ curr-point 1))
+              )
+            )
+          )
+        )
+      )
+    )
+  (debug-draw (-> self path))
+  (debug-draw (-> self path-r))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (elec-gate)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual active)
+       )
+      )
+    )
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (dotimes (bolt-idx 5)
+      (let* ((bolt (-> self l-bolt bolt-idx bolt))
+             (mode (lightning-mode lm0))
+             (mode-diff? (!= mode (-> bolt state mode)))
+             )
+        (case mode
+          (((lightning-mode lm3))
+           (if mode-diff?
+               (set! (-> bolt state counter) 0.0)
+               )
+           )
+          (((lightning-mode lm1))
+           (set! (-> bolt state start-color) (-> bolt spec start-color))
+           (set! (-> bolt state end-color) (-> bolt spec end-color))
+           )
+          )
+        (set! (-> bolt state mode) mode)
+        (let ((first-ring (-> self l-bolt bolt-idx ring 0)))
+          (set! mode (lightning-mode lm0))
+          (set! mode-diff? (!= mode (-> first-ring state mode)))
+          (case mode
+            (((lightning-mode lm3))
+             (if mode-diff?
+                 (set! (-> first-ring state counter) 0.0)
+                 )
+             )
+            (((lightning-mode lm1))
+             (set! (-> first-ring state start-color) (-> first-ring spec start-color))
+             (set! (-> first-ring state end-color) (-> first-ring spec end-color))
+             )
+            )
+          (set! (-> first-ring state mode) mode)
+          )
+        (let ((second-ring (-> self l-bolt bolt-idx ring 1)))
+          (set! mode (lightning-mode lm0))
+          (set! mode-diff? (!= mode (-> second-ring state mode)))
+          (case mode
+            (((lightning-mode lm3))
+             (if mode-diff?
+                 (set! (-> second-ring state counter) 0.0)
+                 )
+             )
+            (((lightning-mode lm1))
+             (set! (-> second-ring state start-color) (-> second-ring spec start-color))
+             (set! (-> second-ring state end-color) (-> second-ring spec end-color))
+             )
+            )
+          (set! (-> second-ring state mode) mode)
+          )
+        )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :post (behavior ()
+    (set-elec-scale-if-close! self 0.0)
+    (if (nonzero? (-> self part-off))
+        (spawn-particles self (-> self part-off))
+        )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (elec-gate)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('shutdown)
+       (go-virtual shutdown)
+       )
+      )
+    )
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (if (-> self on-start)
+        (script-eval (-> self on-start) :vector (-> self root trans))
+        )
+    (dotimes (bolt-idx 5)
+      (let* ((curr-bolt (-> self l-bolt bolt-idx bolt))
+             (mode (lightning-mode lm1))
+             (mode-diff? (!= mode (-> curr-bolt state mode)))
+             )
+        (case mode
+          (((lightning-mode lm3))
+           (if mode-diff?
+               (set! (-> curr-bolt state counter) 0.0)
+               )
+           )
+          (((lightning-mode lm1))
+           (set! (-> curr-bolt state start-color) (-> curr-bolt spec start-color))
+           (set! (-> curr-bolt state end-color) (-> curr-bolt spec end-color))
+           )
+          )
+        (set! (-> curr-bolt state mode) mode)
+        (let ((first-ring (-> self l-bolt bolt-idx ring 0)))
+          (set! mode (lightning-mode lm1))
+          (set! mode-diff? (!= mode (-> first-ring state mode)))
+          (case mode
+            (((lightning-mode lm3))
+             (if mode-diff?
+                 (set! (-> first-ring state counter) 0.0)
+                 )
+             )
+            (((lightning-mode lm1))
+             (set! (-> first-ring state start-color) (-> first-ring spec start-color))
+             (set! (-> first-ring state end-color) (-> first-ring spec end-color))
+             )
+            )
+          (set! (-> first-ring state mode) mode)
+          )
+        (let ((second-ring (-> self l-bolt bolt-idx ring 1)))
+          (set! mode (lightning-mode lm1))
+          (set! mode-diff? (!= mode (-> second-ring state mode)))
+          (case mode
+            (((lightning-mode lm3))
+             (if mode-diff?
+                 (set! (-> second-ring state counter) 0.0)
+                 )
+             )
+            (((lightning-mode lm1))
+             (set! (-> second-ring state start-color) (-> second-ring spec start-color))
+             (set! (-> second-ring state end-color) (-> second-ring spec end-color))
+             )
+            )
+          (set! (-> second-ring state mode) mode)
+          )
+        )
+      )
+    (let ((vec-pair (new 'stack-no-clear 'inline-array 'vector 2)))
+      (dotimes (vec-idx 2)
+        (set! (-> vec-pair vec-idx quad) (the-as uint128 0))
+        )
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        0.0
+        (get-point-in-path! (-> self path) (-> vec-pair 0) 0.0 'interp)
+        (get-point-in-path! (-> self path-r) (-> vec-pair 1) 0.0 'interp)
+        (vector-! s5-0 (-> vec-pair 1) (-> vec-pair 0))
+        (vector-normalize! s5-0 8192.0)
+        (vector+! (-> vec-pair 1) (-> vec-pair 1) s5-0)
+        (vector-negate! s5-0 s5-0)
+        (vector+! (-> vec-pair 0) (-> vec-pair 0) s5-0)
+        (vector-normalize-copy! s5-0 *up-vector* -8192.0)
+        (vector+! (-> vec-pair 0) (-> vec-pair 0) s5-0)
+        (vector+! (-> vec-pair 1) (-> vec-pair 1) s5-0)
+        )
+      (let ((f0-6
+              (+ (- 81920.0 (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp) y))
+                 (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (get-num-segments (-> self path)) 'interp)
+                     y
+                     )
+                 )
+              )
+            )
+        (blocking-plane-spawn (the-as curve-control #f) vec-pair f0-6)
+        )
+      )
+    (none)
+    )
+  :trans (behavior ()
+    (local-vars
+      (sv-176
+        (function lightning-spec time-frame symbol process-drawable vector vector none :behavior lightning-tracker)
+        )
+      (sv-192 lightning-spec)
+      (sv-208 int)
+      (sv-224 symbol)
+      (sv-240 symbol)
+      (sv-256 lightning-spec)
+      (sv-272 int)
+      (sv-288 symbol)
+      (sv-304 symbol)
+      )
+    (let* ((target *target*)
+           (proc-focus (if (type? target process-focusable)
+                           target
+                           )
+                       )
+           )
+      (when proc-focus
+        (let ((focus-trans (get-trans proc-focus 0)))
+          (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) focus-trans (the-as vector (-> self dividing-wall))))
+                 (s4-0 (-> self plane (if (< 0.0 (vector-dot a0-3 (-> self dividing-wall dir)))
+                                          0
+                                          1
+                                          )
+                           )
+                       )
+                 (s3-1 (vector-! (new 'stack-no-clear 'vector) focus-trans (-> s4-0 pos)))
+                 )
+            (when (and (< (vector-dot (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-1 1.0) (-> s4-0 dir)) 0.0)
+                       (let ((v1-13 s3-1))
+                         (< (sqrtf (+ (* (-> v1-13 x) (-> v1-13 x)) (* (-> v1-13 z) (-> v1-13 z)))) (-> self wall-xz))
+                         )
+                       (< (fabs (-> s3-1 y)) (-> self wall-y))
+                       )
+              (let ((evt (new 'stack-no-clear 'event-message-block)))
+                (set! (-> evt from) (process->ppointer self))
+                (set! (-> evt num-params) 2)
+                (set! (-> evt message) 'attack)
+                (set! (-> evt param 0) (the-as uint #f))
+                (let ((attack (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
+                  (let* ((game-info *game-info*)
+                         (attack-id (+ (-> game-info attack-id) 1))
+                         )
+                    (set! (-> game-info attack-id) attack-id)
+                    (set! (-> attack id) attack-id)
+                    )
+                  (set! (-> attack vector quad) (-> s4-0 dir quad))
+                  (set! (-> attack shove-back) 24576.0)
+                  (set! (-> attack shove-up) 12288.0)
+                  (set! (-> attack control) (if (focus-test? proc-focus board)
+                                                1.0
+                                                0.0
+                                                )
+                        )
+                  (set! (-> evt param 1) (the-as uint attack))
+                  )
+                (send-event-function proc-focus evt)
+                )
+              (let* ((s4-1 (-> self l-bolt))
+                     (s3-2 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp))
+                     (s4-2
+                       (get-point-at-percent-along-path! (-> self path-r) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp)
+                       )
+                     )
+                (let ((s2-0 (get-process *default-dead-pool* lightning-tracker #x4000)))
+                  (when s2-0
+                    (let ((t9-7 (method-of-type lightning-tracker activate)))
+                      (t9-7
+                        (the-as lightning-tracker s2-0)
+                        *entity-pool*
+                        (symbol->string (-> lightning-tracker symbol))
+                        (the-as pointer #x70004000)
+                        )
+                      )
+                    (let ((s1-0 run-function-in-process)
+                          (s0-0 s2-0)
+                          )
+                      (set! sv-176 lightning-tracker-init)
+                      (set! sv-192 (-> self params bolt-spec))
+                      (set! sv-208 15)
+                      (set! sv-224 (the-as symbol #f))
+                      (set! sv-240 (the-as symbol #f))
+                      (let ((t3-0 (get-trans proc-focus 3)))
+                        ((the-as (function object object object object object object object object none) s1-0)
+                         s0-0
+                         sv-176
+                         sv-192
+                         sv-208
+                         sv-224
+                         sv-240
+                         s3-2
+                         t3-0
+                         )
+                        )
+                      )
+                    (-> s2-0 ppointer)
+                    )
+                  )
+                (let ((s3-3 (get-process *default-dead-pool* lightning-tracker #x4000)))
+                  (when s3-3
+                    (let ((t9-11 (method-of-type lightning-tracker activate)))
+                      (t9-11
+                        (the-as lightning-tracker s3-3)
+                        *entity-pool*
+                        (symbol->string (-> lightning-tracker symbol))
+                        (the-as pointer #x70004000)
+                        )
+                      )
+                    (let ((s2-1 run-function-in-process)
+                          (s1-1 s3-3)
+                          (s0-1 lightning-tracker-init)
+                          )
+                      (set! sv-256 (-> self params bolt-spec))
+                      (set! sv-272 15)
+                      (set! sv-288 (the-as symbol #f))
+                      (set! sv-304 (the-as symbol #f))
+                      (let ((t3-1 (get-trans proc-focus 3)))
+                        ((the-as (function object object object object object object object object none) s2-1)
+                         s1-1
+                         s0-1
+                         sv-256
+                         sv-272
+                         sv-288
+                         sv-304
+                         s4-2
+                         t3-1
+                         )
+                        )
+                      )
+                    (-> s3-3 ppointer)
+                    )
+                  )
+                )
+              )
+            )
+          (set! (-> self lightning-quality)
+                (lerp-scale 0.0 1.0 (vector-vector-distance focus-trans (-> self root trans)) 491520.0 163840.0)
+                )
+          )
+        )
+      )
+    (let ((gp-2 (+ (the int (* 5.0 (-> self lightning-quality))) 1)))
+      (dotimes (bolt-idx 5)
+        (let ((s3-5 (-> self l-bolt bolt-idx))
+              (s2-2 (-> self params))
+              (s4-4 (if (and (-> self quality-enabled?) (zero? (mod bolt-idx gp-2)))
+                        (lightning-mode lm0)
+                        (lightning-mode lm-1)
+                        )
+                    )
+              )
+          (seek! (-> s3-5 pos) 1.5 (* (-> s2-2 speed-mult) (+ 0.2 (-> s3-5 pos)) (-> self clock seconds-per-frame)))
+          (cond
+            ((>= (-> s3-5 pos) 1.5)
+             (let ((v1-59 (-> self l-bolt bolt-idx bolt))
+                   (a0-31 (logand s4-4 (lightning-mode lm1)))
+                   )
+               (let ((a1-19 (!= a0-31 (-> v1-59 state mode))))
+                 (case a0-31
+                   (((lightning-mode lm3))
+                    (if a1-19
+                        (set! (-> v1-59 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-59 state start-color) (-> v1-59 spec start-color))
+                    (set! (-> v1-59 state end-color) (-> v1-59 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-59 state mode) a0-31)
+               )
+             (let ((v1-62 (-> self l-bolt bolt-idx ring 0))
+                   (a0-32 (logand s4-4 (lightning-mode lm1)))
+                   )
+               (let ((a1-29 (!= a0-32 (-> v1-62 state mode))))
+                 (case a0-32
+                   (((lightning-mode lm3))
+                    (if a1-29
+                        (set! (-> v1-62 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-62 state start-color) (-> v1-62 spec start-color))
+                    (set! (-> v1-62 state end-color) (-> v1-62 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-62 state mode) a0-32)
+               )
+             (let ((v1-65 (-> self l-bolt bolt-idx ring 1))
+                   (a0-33 (logand s4-4 (lightning-mode lm1)))
+                   )
+               (let ((a1-39 (!= a0-33 (-> v1-65 state mode))))
+                 (case a0-33
+                   (((lightning-mode lm3))
+                    (if a1-39
+                        (set! (-> v1-65 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-65 state start-color) (-> v1-65 spec start-color))
+                    (set! (-> v1-65 state end-color) (-> v1-65 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-65 state mode) a0-33)
+               )
+             (set! (-> s3-5 ring-radius) (rand-vu-float-range (-> s2-2 ring-radius-min) (-> s2-2 ring-radius-max)))
+             (set! (-> s3-5 pos) 0.0)
+             )
+            ((>= (-> s3-5 pos) 1.0)
+             (let ((v1-69 (-> self l-bolt bolt-idx bolt))
+                   (a0-37 (logand (lightning-mode lm0) s4-4))
+                   )
+               (let ((a1-50 (!= a0-37 (-> v1-69 state mode))))
+                 (case a0-37
+                   (((lightning-mode lm3))
+                    (if a1-50
+                        (set! (-> v1-69 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-69 state start-color) (-> v1-69 spec start-color))
+                    (set! (-> v1-69 state end-color) (-> v1-69 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-69 state mode) a0-37)
+               )
+             (let ((v1-72 (-> self l-bolt bolt-idx ring 0))
+                   (a0-38 (logand (lightning-mode lm0) s4-4))
+                   )
+               (let ((a1-60 (!= a0-38 (-> v1-72 state mode))))
+                 (case a0-38
+                   (((lightning-mode lm3))
+                    (if a1-60
+                        (set! (-> v1-72 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-72 state start-color) (-> v1-72 spec start-color))
+                    (set! (-> v1-72 state end-color) (-> v1-72 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-72 state mode) a0-38)
+               )
+             (let ((v1-75 (-> self l-bolt bolt-idx ring 1))
+                   (a0-39 (logand (lightning-mode lm0) s4-4))
+                   )
+               (let ((a1-70 (!= a0-39 (-> v1-75 state mode))))
+                 (case a0-39
+                   (((lightning-mode lm3))
+                    (if a1-70
+                        (set! (-> v1-75 state counter) 0.0)
+                        )
+                    )
+                   (((lightning-mode lm1))
+                    (set! (-> v1-75 state start-color) (-> v1-75 spec start-color))
+                    (set! (-> v1-75 state end-color) (-> v1-75 spec end-color))
+                    )
+                   )
+                 )
+               (set! (-> v1-75 state mode) a0-39)
+               )
+             )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :post (behavior ()
+    (set-elec-scale-if-close! self 1.0)
+    (if (nonzero? (-> self part))
+        (spawn-particles self (-> self part))
+        )
+    (update! (-> self sound))
+    (elec-gate-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate shutdown (elec-gate)
+  :virtual #t
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (stop! (-> self sound))
+    (sound-play "elec-gate-off")
+    (blocking-plane-destroy)
+    (if (-> self on-stop)
+        (script-eval (-> self on-stop) :vector (-> self root trans))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((go-idle? #t))
+      (dotimes (bolt-idx 5)
+        (let ((left-bolt-0 (-> self l-bolt bolt-idx)))
+          (seek! (-> left-bolt-0 pos) 0.0 (* (- 1.14 (-> left-bolt-0 pos)) (-> self clock seconds-per-frame)))
+          (set! go-idle?
+                (cond
+                  ((or (< 1.0 (-> left-bolt-0 pos)) (>= 0.0 (-> left-bolt-0 pos)))
+                   (let* ((left-bolt-1 (-> self l-bolt bolt-idx bolt))
+                          (mode (lightning-mode lm3))
+                          (mode-diff? (!= mode (-> left-bolt-1 state mode)))
+                          )
+                     (case mode
+                       (((lightning-mode lm3))
+                        (if mode-diff?
+                            (set! (-> left-bolt-1 state counter) 0.0)
+                            )
+                        )
+                       (((lightning-mode lm1))
+                        (set! (-> left-bolt-1 state start-color) (-> left-bolt-1 spec start-color))
+                        (set! (-> left-bolt-1 state end-color) (-> left-bolt-1 spec end-color))
+                        )
+                       )
+                     (set! (-> left-bolt-1 state mode) mode)
+                     (let ((left-bolt-first-ring (-> self l-bolt bolt-idx ring 0)))
+                       (set! mode (lightning-mode lm3))
+                       (set! mode-diff? (!= mode (-> left-bolt-first-ring state mode)))
+                       (case mode
+                         (((lightning-mode lm3))
+                          (if mode-diff?
+                              (set! (-> left-bolt-first-ring state counter) 0.0)
+                              )
+                          )
+                         (((lightning-mode lm1))
+                          (set! (-> left-bolt-first-ring state start-color) (-> left-bolt-first-ring spec start-color))
+                          (set! (-> left-bolt-first-ring state end-color) (-> left-bolt-first-ring spec end-color))
+                          )
+                         )
+                       (set! (-> left-bolt-first-ring state mode) mode)
+                       )
+                     (let ((left-bolt-second-ring (-> self l-bolt bolt-idx ring 1)))
+                       (set! mode (lightning-mode lm3))
+                       (set! mode-diff? (!= mode (-> left-bolt-second-ring state mode)))
+                       (case mode
+                         (((lightning-mode lm3))
+                          (if mode-diff?
+                              (set! (-> left-bolt-second-ring state counter) 0.0)
+                              )
+                          )
+                         (((lightning-mode lm1))
+                          (set! (-> left-bolt-second-ring state start-color) (-> left-bolt-second-ring spec start-color))
+                          (set! (-> left-bolt-second-ring state end-color) (-> left-bolt-second-ring spec end-color))
+                          )
+                         )
+                       (set! (-> left-bolt-second-ring state mode) mode)
+                       )
+                     )
+                   go-idle?
+                   )
+                  (else
+                    #f
+                    )
+                  )
+                )
+          )
+        )
+      (if go-idle?
+          (go-virtual idle)
+          )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :post (behavior ()
+    (set-elec-scale-if-close! self 0.0)
+    (if (nonzero? (-> self part-off))
+        (spawn-particles self (-> self part-off))
+        )
+    (elec-gate-post)
+    (none)
+    )
+  )
+
+;; definition for method 28 of type elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-elec-scale-if-close! elec-gate ((obj elec-gate) (arg0 float))
+  "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
+@see [[elec-gate::29]]"
+  (if (< (vector-vector-distance (-> obj root trans) (target-pos 0)) 327680.0)
+      (set-elec-scale! obj arg0)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 27 of type elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-particles elec-gate ((obj elec-gate) (sparticle-lc sparticle-launch-control))
+  "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
+  (if (-> obj part-spawner-left)
+      (spawn sparticle-lc (the-as vector (&-> (-> obj part-spawner-left child) 8)))
+      )
+  (if (-> obj part-spawner-right)
+      (spawn sparticle-lc (the-as vector (&-> (-> obj part-spawner-right child) 8)))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type elec-gate
+;; WARN: Return type mismatch process-drawable vs elec-gate.
+(defmethod relocate elec-gate ((obj elec-gate) (new-addr int))
+  (dotimes (bolt-idx 5)
+    (let ((left-bolt (-> obj l-bolt bolt-idx)))
+      (if (nonzero? (-> left-bolt bolt))
+          (&+! (-> left-bolt bolt) new-addr)
+          )
+      (if (nonzero? (-> left-bolt ring 0))
+          (&+! (-> left-bolt ring 0) new-addr)
+          )
+      (if (nonzero? (-> left-bolt ring 1))
+          (&+! (-> left-bolt ring 1) new-addr)
+          )
+      )
+    )
+  (if (nonzero? (-> obj path-r))
+      (&+! (-> obj path-r) new-addr)
+      )
+  (when (nonzero? (-> obj part-off))
+    (if (nonzero? (-> obj part-off))
+        (&+! (-> obj part-off) new-addr)
+        )
+    )
+  (the-as elec-gate ((method-of-type process-drawable relocate) obj new-addr))
+  )
+
+;; definition for method 10 of type elec-gate
+(defmethod deactivate elec-gate ((obj elec-gate))
+  (set-elec-scale-if-close! obj 0.0)
+  ((the-as (function process-drawable none) (find-parent-method elec-gate 10)) obj)
+  (none)
+  )
+
+;; definition for method 23 of type elec-gate
+(defmethod get-params elec-gate ((obj elec-gate))
+  "@returns [[*default-elec-gate-params*]] by default"
+  *default-elec-gate-params*
+  )
+
+;; definition for method 24 of type elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod elec-gate-method-24 elec-gate ((obj elec-gate))
+  0
+  (none)
+  )
+
+;; definition for method 25 of type elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-palette! elec-gate ((obj elec-gate))
+  "Sets the [[elec-gate]]'s `palette-id` appropriately"
+  0
+  (none)
+  )
+
+;; definition for method 26 of type elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-state! elec-gate ((obj elec-gate))
+  "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
+make the gate `idle`.
+
+Otherwise, the gate will be `active`."
+  (if (or (logtest? (actor-option user17) (-> obj fact options))
+          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+          )
+      (go (method-of-object obj idle))
+      (go (method-of-object obj active))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type elec-gate
+;; INFO: Used lq/sq
+(defmethod init-from-entity! elec-gate ((obj elec-gate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj entity) arg0)
+  (set! (-> obj fact)
+        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (set! (-> obj params) (get-params obj))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj path) (new 'process 'path-control obj 'pathl 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-r) (new 'process 'path-control obj 'pathr 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path-r flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj part-spawner-left) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 0)))
+  (set! (-> obj part-spawner-right) (the-as part-spawner (entity-actor-lookup arg0 'alt-actor 1)))
+  (let ((params (-> obj params)))
+    (dotimes (bolt-idx 5)
+      (let ((left-bolt (-> obj l-bolt bolt-idx)))
+        (set! (-> left-bolt bolt) (new 'process 'lightning-control (-> params bolt-spec) obj 0.0))
+        (set! (-> left-bolt ring 0) (new 'process 'lightning-control (-> params ring-spec) obj 0.0))
+        (set! (-> left-bolt ring 1) (new 'process 'lightning-control (-> params ring-spec) obj 0.0))
+        (set! (-> left-bolt ring-radius)
+              (rand-vu-float-range (-> params ring-radius-min) (-> params ring-radius-max))
+              )
+        (set! (-> left-bolt pos) (* 0.2 (the float bolt-idx)))
+        )
+      )
+    )
+  (let* ((s4-1 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-26 (get-point-in-path! (-> obj path-r) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (a1-15 (vector-! (new 'stack-no-clear 'vector) v1-26 s4-1))
+         (s5-3 (vector+float*! (new 'stack-no-clear 'vector) s4-1 a1-15 0.5))
+         (v1-28 (vector-normalize-copy! (new 'stack-no-clear 'vector) a1-15 1.0))
+         )
+    (vector-cross! v1-28 v1-28 *up-vector*)
+    (set! (-> obj dividing-wall pos quad) (-> s5-3 quad))
+    (set! (-> obj dividing-wall dir quad) (-> v1-28 quad))
+    (vector+float*! (the-as vector (-> obj plane)) s5-3 v1-28 12288.0)
+    (set! (-> (the-as vector (-> obj plane 0 dir)) quad) (-> v1-28 quad))
+    (vector-float*! v1-28 v1-28 -1.0)
+    (vector+float*! (the-as vector (-> obj plane 1)) s5-3 v1-28 12288.0)
+    (set! (-> (the-as vector (-> obj plane 1 dir)) quad) (-> v1-28 quad))
+    )
+  (set! (-> obj wall-xz)
+        (vector-vector-distance
+          (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp)
+          (get-point-in-path! (-> obj path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
+          )
+        )
+  (set! (-> obj wall-xz) (* 0.5 (-> obj wall-xz)))
+  (+! (-> obj wall-xz) 4096.0)
+  (set! (-> obj wall-y)
+        (fabs
+          (- (-> (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (get-num-segments (-> obj path)) 'interp)
+                 y
+                 )
+             (-> (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp) y)
+             )
+          )
+        )
+  (+! (-> obj wall-y) 4096.0)
+  (set! (-> obj quality-enabled?) #t)
+  (set! (-> obj lightning-quality) 1.0)
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "electric-gate" :fo-max 70) (-> obj root trans))
+        )
+  (set! (-> obj on-start) (res-lump-struct (-> obj entity) 'on-start pair))
+  (set! (-> obj on-stop) (res-lump-struct (-> obj entity) 'on-stop pair))
+  (elec-gate-method-24 obj)
+  (set-palette! obj)
+  (set-state! obj)
+  (none)
+  )
+
+;; definition of type fort-elec-gate
+(deftype fort-elec-gate (elec-gate)
+  ((palette-id int32  :offset-assert 512)
+   )
+  :heap-base #x190
+  :method-count-assert 30
+  :size-assert         #x204
+  :flag-assert         #x1e01900204
+  )
+
+;; definition for method 3 of type fort-elec-gate
+(defmethod inspect fort-elec-gate ((obj fort-elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elec-gate inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpalette-id: ~D~%" (-> obj palette-id))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 29 of type fort-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-elec-scale! fort-elec-gate ((obj fort-elec-gate) (scale float))
+  "Calls associated mood functions to set the scale with the value provided
+@see mood-funcs
+@see mood-funcs2"
+  (set-fordumpa-electricity-scale! scale)
+  (set-forresca-electricity-scale! scale (-> obj palette-id))
+  (set-forrescb-electricity-scale! scale (-> obj palette-id))
+  0
+  (none)
+  )
+
+;; definition for method 25 of type fort-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-palette! fort-elec-gate ((obj fort-elec-gate))
+  "Sets the [[elec-gate]]'s `palette-id` appropriately"
+  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  0
+  (none)
+  )
+
+;; definition of type drill-elec-gate
+(deftype drill-elec-gate (elec-gate)
+  ((palette-id int32  :offset-assert 512)
+   )
+  :heap-base #x190
+  :method-count-assert 30
+  :size-assert         #x204
+  :flag-assert         #x1e01900204
+  )
+
+;; definition for method 3 of type drill-elec-gate
+(defmethod inspect drill-elec-gate ((obj drill-elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elec-gate inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpalette-id: ~D~%" (-> obj palette-id))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 29 of type drill-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-elec-scale! drill-elec-gate ((obj drill-elec-gate) (arg0 float))
+  "Calls associated mood functions to set the scale with the value provided
+@see mood-funcs
+@see mood-funcs2"
+  (set-drill-electricity-scale! arg0 (-> obj palette-id))
+  0
+  (none)
+  )
+
+;; definition for method 25 of type drill-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-palette! drill-elec-gate ((obj drill-elec-gate))
+  "Sets the [[elec-gate]]'s `palette-id` appropriately"
+  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  0
+  (none)
+  )
+
+;; definition of type caspad-elec-gate
+(deftype caspad-elec-gate (elec-gate)
+  ()
+  :heap-base #x180
+  :method-count-assert 30
+  :size-assert         #x200
+  :flag-assert         #x1e01800200
+  )
+
+;; definition for method 3 of type caspad-elec-gate
+(defmethod inspect caspad-elec-gate ((obj caspad-elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elec-gate inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type castle-elec-gate
+(deftype castle-elec-gate (elec-gate)
+  ()
+  :heap-base #x180
+  :method-count-assert 30
+  :size-assert         #x200
+  :flag-assert         #x1e01800200
+  )
+
+;; definition for method 3 of type castle-elec-gate
+(defmethod inspect castle-elec-gate ((obj castle-elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elec-gate inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 29 of type castle-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-elec-scale! castle-elec-gate ((obj castle-elec-gate) (arg0 float))
+  "Calls associated mood functions to set the scale with the value provided
+@see mood-funcs
+@see mood-funcs2"
+  (set-castle-electricity-scale! arg0)
+  0
+  (none)
+  )
+
+;; definition for symbol *caspad-elec-gate-params*, type elec-gate-params
+(define *caspad-elec-gate-params* (new 'static 'elec-gate-params
+                                    :bolt-spec (new 'static 'lightning-spec
+                                      :name #f
+                                      :flags (lightning-spec-flags lsf2)
+                                      :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                      :end-color (new 'static 'rgba :a #x80)
+                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                      :fade-start-factor 0.2
+                                      :fade-time 120.0
+                                      :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                      :reduction 0.42
+                                      :num-points 16
+                                      :box-size 16793.6
+                                      :merge-factor 0.5
+                                      :merge-count 2
+                                      :radius 18841.6
+                                      :duration -1.0
+                                      :sound #f
+                                      )
+                                    :ring-spec (new 'static 'lightning-spec
+                                      :name #f
+                                      :flags (lightning-spec-flags lsf2)
+                                      :rand-func #x3
+                                      :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                      :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                      :fade-start-factor 0.2
+                                      :fade-time 120.0
+                                      :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                      :reduction 0.42
+                                      :num-points 12
+                                      :box-size 17408.0
+                                      :merge-factor 0.5
+                                      :merge-count 2
+                                      :radius 17612.8
+                                      :duration -1.0
+                                      :sound #f
+                                      )
+                                    :ring-radius-min 40960.0
+                                    :ring-radius-max 53248.0
+                                    :speed-mult 0.3
+                                    )
+        )
+
+;; definition for method 23 of type caspad-elec-gate
+(defmethod get-params caspad-elec-gate ((obj caspad-elec-gate))
+  "@returns [[*default-elec-gate-params*]] by default"
+  *caspad-elec-gate-params*
+  )
+
+;; definition of type palroof-elec-gate
+(deftype palroof-elec-gate (elec-gate)
+  ((palette-id int32  :offset-assert 512)
+   )
+  :heap-base #x190
+  :method-count-assert 30
+  :size-assert         #x204
+  :flag-assert         #x1e01900204
+  )
+
+;; definition for method 3 of type palroof-elec-gate
+(defmethod inspect palroof-elec-gate ((obj palroof-elec-gate))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elec-gate inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpalette-id: ~D~%" (-> obj palette-id))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 29 of type palroof-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-elec-scale! palroof-elec-gate ((obj palroof-elec-gate) (arg0 float))
+  "Calls associated mood functions to set the scale with the value provided
+@see mood-funcs
+@see mood-funcs2"
+  (set-palroof-electricity-scale! arg0 (-> obj palette-id))
+  0
+  (none)
+  )
+
+;; definition for method 25 of type palroof-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod set-palette! palroof-elec-gate ((obj palroof-elec-gate))
+  "Sets the [[elec-gate]]'s `palette-id` appropriately"
+  (set! (-> obj palette-id) (res-lump-value (-> obj entity) 'extra-id int :time -1000000000.0))
+  0
+  (none)
+  )

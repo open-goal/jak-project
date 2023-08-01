@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defconstant PC_SUBTITLE_FILE_SIZE (* 192 1024)) ;; 192K heap for subtitles. adjust later if necessary.
+(defconstant PC_SUBTITLE_FILE_SIZE (* 256 1024)) ;; 256K heap for subtitles. adjust later if necessary.
 (defconstant PC_SUBTITLE_FILE_NAME "subtit")
 (defconstant PC_SUB_DBG_Y 32)
 (defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 22)
@@ -75,8 +75,8 @@
 
    ;; the name of the spool-anim
    (name  string        :offset 8)
-   ;; the game-text-id if this is for a hint
-   (id    game-text-id  :offset 12)
+   ;; the text-id if this is for a hint
+   (id    text-id  :offset 12)
    ;; the 8-character name for an ambient or hint
    (hash  uint64        :offset 8)
 
@@ -89,14 +89,14 @@
 ;; the global subtitle text info bank
 (deftype subtitle-text-info (basic)
   ((length  int32)
-   (lang    pc-subtitle-lang)
+   (lang    pc-language)
    (dummy   int32)
    (data    subtitle-text :inline :dynamic)
    )
 
   (:methods
     (get-scene-by-name (_type_ pc-subtitle-channel string) subtitle-text)
-    (get-scene-by-text-id (_type_ pc-subtitle-channel game-text-id) subtitle-text)
+    (get-scene-by-text-id (_type_ pc-subtitle-channel text-id) subtitle-text)
     )
   )
 
@@ -141,11 +141,11 @@
    (bank-backup subtitle-bank :inline) ;; debug backup.
 
    (state-time time-frame) ;; a timestamp, used for notices
-   (notice-id  game-text-id) ;; what notice text to display at the top of the screen
+   (notice-id  text-id) ;; what notice text to display at the top of the screen
 
    (    spool-name string)
    (old-spool-name string)
-   (text-id game-text-id)
+   (text-id text-id)
    (cur-channel pc-subtitle-channel)
 
    ;; debug things
@@ -191,29 +191,27 @@
 (defmethod get-scene-by-name subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (name string))
   "get a subtitle scene info with the corresponding name. #f = none found"
 
-  ;; invalid kind so return invalid scene.
-  (if (or (not name) (= kind (pc-subtitle-channel invalid)))
+  ;; invalid name so return invalid scene.
+  (if (not name)
       (return (the subtitle-text #f)))
 
   (dotimes (i (-> obj length))
     ;; name and kind matches, return that!
-    (when (and (= kind (-> obj data i kind)) (string= (-> obj data i name) name))
+    (when (and (or (= kind (pc-subtitle-channel invalid)) (= kind (-> obj data i kind)))
+               (string= (-> obj data i name) name))
       (return (-> obj data i))
       )
     )
 
   (the subtitle-text #f))
 
-(defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id game-text-id))
+(defmethod get-scene-by-text-id subtitle-text-info ((obj subtitle-text-info) (kind pc-subtitle-channel) (id text-id))
   "get a subtitle scene info with the corresponding name. #f = none found"
-
-  ;; invalid kind so return invalid scene.
-  (if (= kind (pc-subtitle-channel invalid))
-      (return (the subtitle-text #f)))
 
   (dotimes (i (-> obj length))
     ;; name and kind matches, return that!
-    (when (and (= kind (-> obj data i kind)) (= (-> obj data i id) id))
+    (when (and (or (= kind (pc-subtitle-channel invalid)) (= kind (-> obj data i kind)))
+               (= (-> obj data i id) id))
       (return (-> obj data i))
       )
     )
@@ -296,8 +294,16 @@
   `(begin
       (asm-text-file subtitle :files ("game/assets/game_subtitle.gp"))
       (if *subtitle-text*
-          (+! (-> *subtitle-text* lang) (the-as pc-subtitle-lang 1)))
+          (+! (-> *subtitle-text* lang) 1))
       (load-level-subtitle-files 0)))
+
+(defmacro reload-text ()
+  "rebuild and reload text."
+  `(begin
+      (mng)
+      (if *common-text*
+          (+! (-> *common-text* language-id) 1))
+      (load-level-text-files 0)))
 
 
 
@@ -308,7 +314,7 @@
 
 
 
-(defun-recursive print-game-subtitle float ((str string) (font-ctxt font-context) (opaque symbol) (alpha int) (line-height int))
+(defun-recursive print-game-subtitle float ((str string) (font-ctxt font-context) (no-draw symbol) (alpha int) (line-height int))
   "Print text. Not worth commenting until we get stack variables in lets, I think"
   (local-vars
    (sv-112 float)
@@ -461,7 +467,7 @@
               (if (nonzero? (-> *game-text-line* data 0))
                   (set! sv-168 (+ sv-168 1))
                   )
-              (when (not opaque)
+              (when (not no-draw)
                 (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
                        (s2-1 (-> s1-1 base))
                        )
@@ -558,7 +564,7 @@
 
   ;; set font settings.
   (set! (-> self font origin x) (* (- 1.0 (-> *SUBTITLE-bank* width)) 256))
-  (set! (-> self font origin y) (* (if (not (movie?))
+  (set! (-> self font origin y) (* (if (or (>= (-> *pc-settings* aspect-ratio) ASPECT_16X9) (not (movie?)))
                                        (-> *SUBTITLE-bank* hint-height)
                                        (-> *SUBTITLE-bank* height)
                                        ) 224))
@@ -645,7 +651,7 @@
                (!= (-> self old-spool-name) (-> self spool-name))
                (string= (-> self spool-name) "sage-intro-sequence-a"))
           (set-state-time)
-          (set! (-> self notice-id) (game-text-id subtitle-hint))
+          (set! (-> self notice-id) (text-id subtitle-hint))
           )
 
     ;; get a subtitle info that matches our current status
@@ -663,8 +669,8 @@
                 (not! (-> *pc-settings* subtitles?))
                 (set-state-time)
                 (if (-> *pc-settings* subtitles?)
-                    (set! (-> self notice-id) (game-text-id subtitle-enabled))
-                    (set! (-> self notice-id) (game-text-id subtitle-disabled))
+                    (set! (-> self notice-id) (text-id subtitle-enabled))
+                    (set! (-> self notice-id) (text-id subtitle-disabled))
                     )
                 )
             ;; find out position in the scene.
@@ -685,19 +691,20 @@
         (((pc-subtitle-channel hint) (pc-subtitle-channel hint-named))
           ;; hint! find it. or else.
           (set! (-> self hint-subtitle?) #t)
-          (awhen (if (= (-> self cur-channel) (pc-subtitle-channel hint-named))
-                     (get-scene-by-name *subtitle-text* (-> self cur-channel) (-> self spool-name))
-                     (get-scene-by-text-id *subtitle-text* (-> self cur-channel) (-> self text-id))
-                     )
 
-            (let ((pos (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id)))))
-                ;; find closest keyframe
-                (dotimes (i (-> it length))
-                  (when (>= pos (-> it keyframes i frame))
-                    (set! keyframe (-> it keyframes i)))
-                  )
-              )
-            )
+          (let ((scene (get-scene-by-text-id *subtitle-text* (pc-subtitle-channel hint) (-> self text-id))))
+            (if (not scene)
+                (set! scene (get-scene-by-name *subtitle-text* (pc-subtitle-channel hint-named) (-> self spool-name))))
+
+            (when scene
+              (let ((pos (subtitle-str-adjust (current-str-pos (-> *hint-semaphore* 0 sound-id)))))
+                  ;; find closest keyframe
+                  (dotimes (i (-> scene length))
+                    (when (>= pos (-> scene keyframes i frame))
+                      (set! keyframe (-> scene keyframes i)))
+                    )
+                )
+              ))
           )
         ))
 
@@ -726,7 +733,7 @@
       ((!= *master-mode* 'game)
        )
       ((and (< (time-passed) (seconds 5))
-            (= (-> self notice-id) (game-text-id subtitle-hint)))
+            (= (-> self notice-id) (text-id subtitle-hint)))
         (when (not (-> *pc-settings* subtitles?))
           (set-scale! (-> self font) (* (-> *SUBTITLE-bank* scale) 1.5))
           (print-game-subtitle (lookup-text! *common-text* (-> self notice-id) #f) (-> self font) #f 128 22)

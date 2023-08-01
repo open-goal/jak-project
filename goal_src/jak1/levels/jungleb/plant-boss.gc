@@ -236,13 +236,13 @@
   )
 
 (defstate plant-boss-arm-idle (plant-boss-arm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide 'die)
-       (go plant-boss-arm-die (the-as symbol (-> arg3 param 0)))
+       (go plant-boss-arm-die (the-as symbol (-> event param 0)))
        )
       (('hit)
-       (go plant-boss-arm-hit (the-as basic (-> arg3 param 0)))
+       (go plant-boss-arm-hit (the-as basic (-> event param 0)))
        )
       )
     )
@@ -351,16 +351,16 @@
   )
 
 (defstate plant-boss-back-arms-idle (plant-boss-arm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (or (= arg2 'touch) (= arg2 'attack))
-        (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (or (= event-type 'touch) (= event-type 'attack))
+        (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
         )
     (cond
-      ((= arg2 'hit)
-       (go plant-boss-back-arms-hit (the-as symbol (-> arg3 param 0)))
+      ((= event-type 'hit)
+       (go plant-boss-back-arms-hit (the-as symbol (-> event param 0)))
        )
-      ((= arg2 'die)
-       (go plant-boss-back-arms-die (the-as symbol (-> arg3 param 0)))
+      ((= event-type 'die)
+       (go plant-boss-back-arms-die (the-as symbol (-> event param 0)))
        )
       )
     )
@@ -443,13 +443,13 @@
   )
 
 (defstate plant-boss-vine-idle (plant-boss-arm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide 'die)
-       (go plant-boss-vine-die (the-as symbol (-> arg3 param 0)))
+       (go plant-boss-vine-die (the-as symbol (-> event param 0)))
        )
       (('hit)
-       (go plant-boss-vine-hit (the-as basic (-> arg3 param 0)))
+       (go plant-boss-vine-hit (the-as basic (-> event param 0)))
        )
       )
     )
@@ -515,10 +515,10 @@
   )
 
 (defstate plant-boss-root-idle (plant-boss-arm)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('hide 'die)
-       (go plant-boss-root-die (the-as symbol (-> arg3 param 0)))
+       (go plant-boss-root-die (the-as symbol (-> event param 0)))
        )
       )
     )
@@ -666,13 +666,13 @@
   )
 
 (defstate plant-boss-leaf-idle (plant-boss-leaf)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
-       (go plant-boss-leaf-open (the-as symbol (-> arg3 param 0)))
+       (go plant-boss-leaf-open (the-as symbol (-> event param 0)))
        )
       (('die)
-       (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
+       (go plant-boss-leaf-die (the-as basic (-> event param 0)))
        )
       )
     )
@@ -705,13 +705,13 @@
   )
 
 (defstate plant-boss-leaf-open (plant-boss-leaf)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('kill)
        (go plant-boss-leaf-close)
        )
       (('die)
-       (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
+       (go plant-boss-leaf-die (the-as basic (-> event param 0)))
        )
       )
     )
@@ -762,11 +762,11 @@
   )
 
 (defstate plant-boss-leaf-open-idle (plant-boss-leaf)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('kill)
        (set! (-> self state-object) #t)
-       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0))))))
+       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> event param 0))))))
          (set! (-> self state-time-frame) (the-as time-frame v0-0))
          v0-0
          )
@@ -777,7 +777,7 @@
            )
        )
       (('die)
-       (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
+       (go plant-boss-leaf-die (the-as basic (-> event param 0)))
        )
       )
     )
@@ -810,17 +810,17 @@
   )
 
 (defstate plant-boss-leaf-bounce (plant-boss-leaf)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('kill)
        (set! (-> self state-object) #t)
-       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> arg3 param 0))))))
+       (let ((v0-0 (the-as object (+ (-> *display* base-frame-counter) (the-as time-frame (-> event param 0))))))
          (set! (-> self state-time-frame) (the-as time-frame v0-0))
          v0-0
          )
        )
       (('die)
-       (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
+       (go plant-boss-leaf-die (the-as basic (-> event param 0)))
        )
       )
     )
@@ -852,10 +852,10 @@
   )
 
 (defstate plant-boss-leaf-close (plant-boss-leaf)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('die)
-       (go plant-boss-leaf-die (the-as basic (-> arg3 param 0)))
+       (go plant-boss-leaf-die (the-as basic (-> event param 0)))
        )
       )
     )
@@ -1092,10 +1092,10 @@
                                                                                 )
                    )
                *target*
-               (zero? (logand (-> *target* state-flags)
+               (not (logtest? (-> *target* state-flags)
                               (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                               )
-                      )
+                    )
                )
           (go plant-boss-attack 1)
           )
@@ -1236,25 +1236,25 @@
   )
 
 (defstate plant-boss-vulnerable (plant-boss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
        (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> arg3 param 0))
+              (the-as touching-shapes-entry (-> event param 0))
               (the-as collide-shape-moving (-> self root-override))
               (the-as uint 1)
               )
          (send-event
-           arg0
+           proc
            'shove
-           (-> arg3 param 0)
+           (-> event param 0)
            (static-attack-info ((shove-up (meters 2)) (shove-back (meters 6))))
            )
-         (go plant-boss-hit (the-as symbol (-> arg3 param 1)))
+         (go plant-boss-hit (the-as symbol (-> event param 1)))
          )
        )
       (else
-        (plant-boss-generic-event-handler arg0 arg1 arg2 arg3)
+        (plant-boss-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1335,17 +1335,17 @@
   )
 
 (defstate plant-boss-attack (plant-boss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch 'attack)
        (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                   (the-as touching-shapes-entry (-> arg3 param 0))
+                   (the-as touching-shapes-entry (-> event param 0))
                    (the-as collide-shape-moving (-> self root-override))
                    (the-as uint 1)
                    )
-                  (not (ja-group? plant-boss-main-vulnerable2idle-ja))
+                  (not (ja-group? (-> self draw art-group data 13)))
                   )
-         (when (send-event arg0 'attack-or-shove (-> arg3 param 0) (static-attack-info ((mode 'plant-boss))))
+         (when (send-event proc 'attack-or-shove (-> event param 0) (static-attack-info ((mode 'plant-boss))))
            (let ((v0-1 (the-as object #t)))
              (set! (-> self ate) (the-as symbol v0-1))
              v0-1
@@ -1354,7 +1354,7 @@
          )
        )
       (else
-        (plant-boss-default-event-handler arg0 arg1 arg2 arg3)
+        (plant-boss-default-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1683,20 +1683,20 @@
   )
 
 (defstate plant-boss-dead-idle (plant-boss)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('bonk)
        (go plant-boss-dead-bounce (lerp-scale
                                     (the-as float 0.1)
                                     (the-as float 1.0)
-                                    (the-as float (-> arg3 param 1))
+                                    (the-as float (-> event param 1))
                                     (the-as float 40960.0)
                                     (the-as float 81920.0)
                                     )
            )
        )
       (else
-        (plant-boss-generic-event-handler arg0 arg1 arg2 arg3)
+        (plant-boss-generic-event-handler proc arg1 event-type event)
         )
       )
     )
@@ -1947,7 +1947,3 @@
   (go plant-boss-far-idle)
   (none)
   )
-
-
-
-

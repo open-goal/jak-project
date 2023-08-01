@@ -13,5 +13,6 @@ void extract_merc(const ObjectFileData& ag_data,
                   const DecompilerTypeSystem& dts,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
-                  bool dump_level);
+                  bool dump_level,
+                  GameVersion version);
 }  // namespace decompiler

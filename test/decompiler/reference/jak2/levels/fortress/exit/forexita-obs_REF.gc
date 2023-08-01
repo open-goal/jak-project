@@ -1,0 +1,389 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type fort-lift-plat
+(deftype fort-lift-plat (plat)
+  ((sound-time time-frame  :offset-assert 328)
+   (last-val   float       :offset-assert 336)
+   )
+  :heap-base #xe0
+  :method-count-assert 38
+  :size-assert         #x154
+  :flag-assert         #x2600e00154
+  (:methods
+    (plat-anim-active () _type_ :state 37)
+    )
+  )
+
+;; definition for method 3 of type fort-lift-plat
+(defmethod inspect fort-lift-plat ((obj fort-lift-plat))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type plat inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsound-time: ~D~%" (-> obj sound-time))
+  (format #t "~2Tlast-val: ~f~%" (-> obj last-val))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-fort-lift-plat fort-lift-plat fort-lift-plat-lod0-jg fort-lift-plat-idle-ja
+              ((fort-lift-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2 -8 15)
+              )
+
+;; definition for method 30 of type fort-lift-plat
+(defmethod get-art-group fort-lift-plat ((obj fort-lift-plat))
+  "@returns The associated [[art-group]]"
+  (art-group-get-by-name *level* "skel-fort-lift-plat" (the-as (pointer uint32) #f))
+  )
+
+;; definition for method 32 of type fort-lift-plat
+;; INFO: this function exists in multiple non-identical object files
+;; WARN: Return type mismatch int vs none.
+(defmethod base-plat-method-32 fort-lift-plat ((obj fort-lift-plat))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate plat-idle (fort-lift-plat)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior fort-lift-plat) #f)
+  )
+
+;; failed to figure out what this is:
+(defstate plat-anim-active (fort-lift-plat)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior fort-lift-plat) #f)
+  :enter (behavior ()
+    (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+    (set! (-> self last-val) 0.0)
+    (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
+    (none)
+    )
+  :trans (the-as (function none :behavior fort-lift-plat) plat-trans)
+  :code (behavior ()
+    (until #f
+      (let ((f30-0 (* (get-current-phase-no-mod (-> self sync)) (the float (+ (-> (ja-group) frames num-frames) -1)))))
+        (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num f30-0)
+        (let ((f0-3 (* 0.5 (the float (+ (-> (ja-group) frames num-frames) -1)))))
+          (if (and (>= f30-0 f0-3) (< (-> self last-val) f0-3))
+              (sound-stop (-> self sound-id))
+              )
+          )
+        (set! (-> self last-val) f30-0)
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (when (< (-> self sound-time) (current-time))
+      (sound-stop (-> self sound-id))
+      (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
+      )
+    (sound-play "fort-lift-plat" :id (-> self sound-id) :position (-> self root trans))
+    (plat-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate plat-path-active (fort-lift-plat)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior fort-lift-plat) #f)
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type plat plat-path-active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self last-val) 0.0)
+    (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
+    (none)
+    )
+  :trans (behavior ()
+    (set! (-> self path-pos) (get-norm! (-> self sync) 0))
+    (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+    (let ((f0-2 0.9999))
+      (if (and (>= (-> self path-pos) f0-2) (< (-> self last-val) f0-2))
+          (sound-stop (-> self sound-id))
+          )
+      )
+    (set! (-> self last-val) (-> self path-pos))
+    (plat-trans)
+    (none)
+    )
+  :code (the-as (function none :behavior fort-lift-plat) sleep-code)
+  :post (behavior ()
+    (when (< (-> self sound-time) (current-time))
+      (sound-stop (-> self sound-id))
+      (set! (-> self sound-time) (get-timeframe-offset! (-> self sync) 0))
+      )
+    (sound-play "fort-lift-plat" :id (-> self sound-id) :position (-> self root trans))
+    (plat-post)
+    (none)
+    )
+  )
+
+;; definition for method 27 of type fort-lift-plat
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod execute-effects fort-lift-plat ((obj fort-lift-plat))
+  "Executes various ancillary tasks with the platform, such as spawning particles or playing the associated sound"
+  (if (nonzero? (-> obj part))
+      (spawn-with-cspace (-> obj part) (-> obj node-list data 6))
+      )
+  (when (nonzero? (-> obj sound))
+    (set! (-> obj sound trans quad) (-> obj root trans quad))
+    (update! (-> obj sound))
+    )
+  (none)
+  )
+
+;; definition for method 31 of type fort-lift-plat
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-plat-collision! fort-lift-plat ((obj fort-lift-plat))
+  "TODO - collision stuff for setting up the platform"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 5) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 6))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -16384.0 -49152.0 98304.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 7)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 49152.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 4)
+      (set-vector! (-> v1-17 local-sphere) -36864.0 0.0 -16384.0 32768.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 4)
+      (set-vector! (-> v1-19 local-sphere) 36864.0 0.0 -16384.0 32768.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 3) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 3)
+      (set-vector! (-> v1-21 local-sphere) -28672.0 -28672.0 -20480.0 24576.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 4) (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 28672.0 -28672.0 -20480.0 24576.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-26 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-26 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-26 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 32 of type fort-lift-plat
+;; INFO: this function exists in multiple non-identical object files
+;; WARN: Return type mismatch sparticle-launch-control vs none.
+(defmethod base-plat-method-32 fort-lift-plat ((obj fort-lift-plat))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 618) obj))
+  (none)
+  )
+
+;; definition for method 33 of type fort-lift-plat
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod init-plat! fort-lift-plat ((obj fort-lift-plat))
+  "Does any necessary initial platform setup.
+For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+  (set! (-> obj root pause-adjust-distance) 327680.0)
+  (set! (-> obj sound-id) (new-sound-id))
+  (none)
+  )
+
+;; definition for method 10 of type fort-lift-plat
+(defmethod deactivate fort-lift-plat ((obj fort-lift-plat))
+  (sound-stop (-> obj sound-id))
+  ((method-of-type plat deactivate) obj)
+  (none)
+  )
+
+;; definition for method 36 of type fort-lift-plat
+(defmethod plat-path-sync fort-lift-plat ((obj fort-lift-plat))
+  "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
+otherwise, [[plat::34]]
+
+@see [[sync-eased]]"
+  (cond
+    ((logtest? (-> obj path flags) (path-control-flag not-found))
+     (go (method-of-object obj plat-idle))
+     )
+    ((logtest? (actor-option user18) (-> obj fact options))
+     (set! (-> obj path-pos) (res-lump-float (-> obj entity) 'initial-spline-pos))
+     (get-point-at-percent-along-path! (-> obj path) (-> obj root trans) (-> obj path-pos) 'interp)
+     (go (method-of-object obj plat-anim-active))
+     )
+    ((> (-> obj sync period) 0)
+     (let ((a0-5 (-> obj skel root-channel 0)))
+       (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> obj draw art-group data 4)))
+       (set! (-> a0-5 frame-num) 0.0)
+       (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> obj draw art-group data 4)) num-func-identity)
+       )
+     (go (method-of-object obj plat-path-active))
+     )
+    (else
+      (go (method-of-object obj plat-idle))
+      )
+    )
+  )
+
+;; definition of type fort-claw
+(deftype fort-claw (process-drawable)
+  ((path-u    float  :offset-assert 200)
+   (path-dest float  :offset-assert 204)
+   )
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xd0
+  :flag-assert         #x16005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    (pause () _type_ :state 21)
+    )
+  )
+
+;; definition for method 3 of type fort-claw
+(defmethod inspect fort-claw ((obj fort-claw))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpath-u: ~f~%" (-> obj path-u))
+  (format #t "~2Tpath-dest: ~f~%" (-> obj path-dest))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-fort-claw fort-claw 0 3
+              ((1 (meters 20)) (2 (meters 999999)))
+              :bounds (static-spherem 0 -26 -4 35)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (fort-claw)
+  :virtual #t
+  :code (the-as (function none :behavior fort-claw) sleep-code)
+  :post (behavior ()
+    (let ((f30-0 (seek (-> self path-u) (-> self path-dest) (* 0.04 (-> self clock seconds-per-frame)))))
+      (set! (-> self path-u) f30-0)
+      (let ((f0-4 (-> self path-dest)))
+        (when (= f30-0 f0-4)
+          (set! (-> self path-dest) (- 1.0 f0-4))
+          (go-virtual pause)
+          )
+        )
+      (get-point-at-percent-along-path! (-> self path) (-> self root trans) (ease-value-in-out f30-0 0.2) 'interp)
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate pause (fort-claw)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (- (current-time) (-> self state-time)) (seconds 2))
+        (go-virtual idle)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior fort-claw) sleep-code)
+  )
+
+;; definition for method 11 of type fort-claw
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! fort-claw ((obj fort-claw) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-claw" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> obj path-u) 0.0)
+  (set! (-> obj path-dest) 1.0)
+  (let ((a0-8 (-> obj skel root-channel 0)))
+    (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+    (set! (-> a0-8 frame-num) 0.0)
+    (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    )
+  (ja-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node fortress-escape-introduction)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (until #f
+      (sound-play "fortress-alarm")
+      (let ((gp-1 (current-time)))
+        (until (>= (- (current-time) gp-1) (seconds 1))
+          (suspend)
+          )
+        )
+      )
+    (the-as object #f)
+    )
+  )

@@ -1,0 +1,10 @@
+("LSAMERGD.DGO"
+ ("samos-lsamergd+0-ag.go"
+  "tpage-2701.go"
+  "tpage-3248.go"
+  "samos-highres-ag.go"
+  "errol-highres-ag.go"
+  "crimson-guard-highres-ag.go"
+  "crimson-guard-lowres-ag.go"
+  "lsamergd.go"
+ ))

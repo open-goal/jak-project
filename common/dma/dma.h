@@ -113,6 +113,7 @@ struct VifCode {
     ITOP = 0b100,
     STMOD = 0b101,
     PC_PORT = 0b1000,  // not a valid PS2 VIF code, but we use this to signal PC-PORT specific stuff
+    PC_PORT2 = 0b1001,
     MSK3PATH = 0b110,
     MARK = 0b111,
     FLUSHE = 0b10000,

@@ -9,7 +9,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include <common/util/unicode_util.h>
+#include "common/util/unicode_util.h"
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 
@@ -634,7 +634,7 @@ int main(int argc, char** argv) {
 
   decompiler::DecompilerTypeSystem dts(game_version);
 
-  // TODO - this could be better
+  // TODO - this could be better (have a `jak1` folder)
   if (game_version == GameVersion::Jak1) {
     dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
   } else if (game_version == GameVersion::Jak2) {

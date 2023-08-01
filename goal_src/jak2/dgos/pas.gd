@@ -1,0 +1,11 @@
+("PAS.DGO"
+ ("com-elevator.o"
+  "palshaft-part.o"
+  "tpage-2371.go"
+  "tpage-2372.go"
+  "tpage-2692.go"
+  "com-airlock-outer-ag.go"
+  "com-airlock-inner-ag.go"
+  "com-elevator-ag.go"
+  "palshaft-vis.go"
+ ))

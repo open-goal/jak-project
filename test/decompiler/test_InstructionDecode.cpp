@@ -7,7 +7,7 @@ using namespace decompiler;
 
 TEST(InstructionDecode, VDIV) {
   init_opcode_info();
-  LinkedObjectFile file;
+  LinkedObjectFile file(GameVersion::Jak1);
   u32 vdiv_test = 0b010010'1'10'01'10100'01010'01110111100;
   //                 ......   z  y  20    10
   LinkedWord vdiv_word(vdiv_test);
@@ -17,7 +17,7 @@ TEST(InstructionDecode, VDIV) {
 
 TEST(InstructionDecode, VRSQRT) {
   init_opcode_info();
-  LinkedObjectFile file;
+  LinkedObjectFile file(GameVersion::Jak1);
   u32 vdiv_test = 0b010010'1'10'01'10100'01010'01110111110;
   //                 ......   z  y  20    10
   LinkedWord vdiv_word(vdiv_test);
@@ -27,7 +27,7 @@ TEST(InstructionDecode, VRSQRT) {
 
 TEST(InstructionDecode, VSQRT) {
   init_opcode_info();
-  LinkedObjectFile file;
+  LinkedObjectFile file(GameVersion::Jak1);
   u32 vdiv_test = 0b010010'1'10'00'10100'00000'01110111101;
   //                 ......   z  X  20    X
   LinkedWord vdiv_word(vdiv_test);
@@ -37,7 +37,7 @@ TEST(InstructionDecode, VSQRT) {
 
 TEST(Instruction, IntelMaskMove) {
   init_opcode_info();
-  LinkedObjectFile file;
+  LinkedObjectFile file(GameVersion::Jak1);
   u32 vmove_instr = 0b010010'1'1100'00001'00010'01100111100;
   LinkedWord vmove_word(vmove_instr);
   auto instr = decode_instruction(vmove_word, file, 0, 0);

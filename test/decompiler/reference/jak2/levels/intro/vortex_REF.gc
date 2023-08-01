@@ -1,0 +1,132 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function sort-vortex-data
+;; ERROR: function has no type analysis. Cannot decompile.
+
+;; definition for function init-vortex-regs
+;; INFO: function output is handled by mips2c
+(def-mips2c init-vortex-regs (function none))
+
+;; definition for function draw-large-polygon-vortex
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-large-polygon-vortex function)
+
+;; definition for function render-vortex-quad
+;; INFO: function output is handled by mips2c
+(def-mips2c render-vortex-quad (function vortex-vertex dma-buffer vector none))
+
+;; definition for function update-vortex-data
+;; WARN: Return type mismatch int vs none.
+(defun update-vortex-data ((arg0 float))
+  (when (not (paused?))
+    (+! (-> *vortex-work* off-s-0) (the int (* 4.0 arg0)))
+    (+! (-> *vortex-work* off-t-0) (the int (* -8.0 arg0)))
+    (+! (-> *vortex-work* off-s-1) (the int (* 4.0 arg0)))
+    (+! (-> *vortex-work* off-t-1) (the int (* -8.0 arg0)))
+    )
+  0
+  (none)
+  )
+
+;; definition for function draw-vortex
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ a0-6 8) 0) at op 34
+(defun draw-vortex ()
+  (rlet ((vf27 :class vf))
+    (when (and (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask sky))
+               (logtest? (-> *texture-pool* texture-enable-user) (texture-enable-mask sky))
+               )
+      (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf base)))
+        (update-vortex-data 60.0)
+        (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id sky-draw)
+                                     )
+          (dma-buffer-add-gs-set s4-0
+                                 (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                                 (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                                 (rgbaq (new 'static 'gs-rgbaq :b #x40 :q 1.0))
+                                 )
+          (let ((v1-20 (-> s4-0 base)))
+            (set! (-> (the-as (pointer uint128) v1-20)) (-> *sky-work* sprite-tmpl dma-vif quad))
+            (set! (-> (the-as (pointer uint128) v1-20) 1) (-> *sky-work* sprite-tmpl quad 1))
+            )
+          (&+! (-> s4-0 base) 32)
+          (let ((v1-23 (-> s4-0 base)))
+            (set-vector! (the-as vector4w (&+ v1-23 0)) #x7000 #x7300 0 0)
+            (set-vector! (the-as vector4w (&+ v1-23 16)) #x9000 #x8d00 0 0)
+            )
+          (&+! (-> s4-0 base) 32)
+          (dma-buffer-add-gs-set s4-0
+                                 (tex0-1
+                                   (new 'static 'gs-tex0
+                                     :tbp0 #x100
+                                     :tbw #x2
+                                     :psm #x1b
+                                     :tcc #x1
+                                     :cbp #x300
+                                     :cld #x1
+                                     :th (log2 128)
+                                     :tw (log2 128)
+                                     )
+                                   )
+                                 (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                                 (clamp-1 (new 'static 'gs-clamp))
+                                 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                                 (texflush 0)
+                                 )
+          (init-vortex-regs)
+          (.lvf vf27 (&-> *vortex-work* giftag quad))
+          (set-tex-offset (the-as int (-> *vortex-work* off-s-0)) (the-as int (-> *vortex-work* off-t-0)))
+          (let ((s3-1 (the-as dma-packet (-> s4-0 base))))
+            (&+! (-> s4-0 base) 16)
+            (let ((s2-1 *vortex-poly*))
+              (dotimes (s1-2 304)
+                (render-vortex-quad (-> s2-1 (* s1-2 4)) s4-0 (new 'static 'vector :z 128.0 :w 128.0))
+                )
+              )
+            (close-sky-buffer s4-0)
+            (let ((v1-54 (/ (+ (- -16 (the-as int s3-1)) (the-as int (-> s4-0 base))) 16)))
+              (set! (-> s3-1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-54))
+              (set! (-> s3-1 vif0) (new 'static 'vif-tag))
+              (set! (-> s3-1 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-54))
+              )
+            )
+          (dma-buffer-add-gs-set s4-0
+                                 (alpha-1 (new 'static 'gs-alpha :b #x2 :d #x1))
+                                 (colclamp (new 'static 'gs-color-clamp :clamp #x1))
+                                 )
+          (set-tex-offset (the-as int (-> *vortex-work* off-s-1)) (the-as int (-> *vortex-work* off-t-1)))
+          (let ((s3-2 (the-as dma-packet (-> s4-0 base))))
+            (&+! (-> s4-0 base) 16)
+            (let ((s2-2 *vortex-poly*))
+              (dotimes (s1-3 304)
+                (render-vortex-quad (-> s2-2 (* s1-3 4)) s4-0 (new 'static 'vector :x 144.0 :y 128.0 :z 255.0 :w 128.0))
+                )
+              )
+            (close-sky-buffer s4-0)
+            (let ((v1-72 (/ (+ (- -16 (the-as int s3-2)) (the-as int (-> s4-0 base))) 16)))
+              (set! (-> s3-2 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-72))
+              (set! (-> s3-2 vif0) (new 'static 'vif-tag))
+              (set! (-> s3-2 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm v1-72))
+              )
+            )
+          )
+        (let ((v1-83 *dma-mem-usage*))
+          (when (nonzero? v1-83)
+            (set! (-> v1-83 length) (max 89 (-> v1-83 length)))
+            (set! (-> v1-83 data 88 name) "sky")
+            (+! (-> v1-83 data 88 count) 1)
+            (+! (-> v1-83 data 88 used)
+                (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint gp-0))
+                )
+            (set! (-> v1-83 data 88 total) (-> v1-83 data 88 used))
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )

@@ -1,0 +1,300 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type count-info
+(deftype count-info (structure)
+  ((money-count  int32  :offset-assert   0)
+   (buzzer-count int32  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type count-info
+(defmethod inspect count-info ((obj count-info))
+  (format #t "[~8x] ~A~%" obj 'count-info)
+  (format #t "~Tmoney-count: ~D~%" (-> obj money-count))
+  (format #t "~Tbuzzer-count: ~D~%" (-> obj buzzer-count))
+  obj
+  )
+
+;; definition of type game-count-info
+(deftype game-count-info (basic)
+  ((length int32                       :offset-assert   4)
+   (data   count-info :inline :dynamic :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type game-count-info
+(defmethod inspect game-count-info ((obj game-count-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition of type task-info-data
+(deftype task-info-data (basic)
+  ((task-id                  game-task   :offset-assert   4)
+   (task-name                text-id   4 :offset-assert   8)
+   (text-index-when-resolved int32       :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; definition for method 3 of type task-info-data
+(defmethod inspect task-info-data ((obj task-info-data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Ttask-id: ~D~%" (-> obj task-id))
+  (format #t "~Ttask-name[4] @ #x~X~%" (-> obj task-name))
+  (format #t "~Ttext-index-when-resolved: ~D~%" (-> obj text-index-when-resolved))
+  obj
+  )
+
+;; definition of type level-tasks-info
+(deftype level-tasks-info (basic)
+  ((level-name-id     text-id          :offset-assert   4)
+   (text-group-index  int32            :offset-assert   8)
+   (nb-of-tasks       int32            :offset-assert  12)
+   (buzzer-task-index int32            :offset-assert  16)
+   (task-info         task-info-data 8 :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; definition for method 3 of type level-tasks-info
+(defmethod inspect level-tasks-info ((obj level-tasks-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlevel-name-id: ~D~%" (-> obj level-name-id))
+  (format #t "~Ttext-group-index: ~D~%" (-> obj text-group-index))
+  (format #t "~Tnb-of-tasks: ~D~%" (-> obj nb-of-tasks))
+  (format #t "~Tbuzzer-task-index: ~D~%" (-> obj buzzer-task-index))
+  (format #t "~Ttask-info[8] @ #x~X~%" (-> obj task-info))
+  obj
+  )
+
+;; definition of type game-option
+(deftype game-option (basic)
+  ((option-type     game-option-type  :offset-assert   8)
+   (name            text-id           :offset-assert  16)
+   (scale           symbol            :offset-assert  20)
+   (param1          float             :offset-assert  24)
+   (param2          float             :offset-assert  28)
+   (param3          game-option-menu  :offset-assert  32)
+   (value-to-modify pointer           :offset-assert  36)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+;; definition for method 3 of type game-option
+(defmethod inspect game-option ((obj game-option))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Toption-type: ~D~%" (-> obj option-type))
+  (format #t "~Tname: ~D~%" (-> obj name))
+  (format #t "~Tscale: ~A~%" (-> obj scale))
+  (format #t "~Tparam1: ~f~%" (-> obj param1))
+  (format #t "~Tparam2: ~f~%" (-> obj param2))
+  (format #t "~Tparam3: ~D~%" (-> obj param3))
+  (format #t "~Tvalue-to-modify: #x~X~%" (-> obj value-to-modify))
+  obj
+  )
+
+;; definition of type progress
+(deftype progress (process)
+  ((current-debug-string         int32              :offset-assert 112)
+   (current-debug-language       int32              :offset-assert 116)
+   (current-debug-group          int32              :offset-assert 120)
+   (in-out-position              int32              :offset-assert 124)
+   (display-state                progress-screen    :offset-assert 128)
+   (next-display-state           progress-screen    :offset-assert 136)
+   (option-index                 int32              :offset-assert 144)
+   (selected-option              basic              :offset-assert 148)
+   (completion-percentage        float              :offset-assert 152)
+   (ready-to-run                 basic              :offset-assert 156)
+   (display-level-index          int32              :offset-assert 160)
+   (next-level-index             int32              :offset-assert 164)
+   (task-index                   int32              :offset-assert 168)
+   (in-transition                basic              :offset-assert 172)
+   (last-in-transition           basic              :offset-assert 176)
+   (force-transition             basic              :offset-assert 180)
+   (stat-transition              basic              :offset-assert 184)
+   (level-transition             int32              :offset-assert 188)
+   (language-selection           language-enum      :offset-assert 192)
+   (language-direction           symbol             :offset-assert 200)
+   (language-transition          basic              :offset-assert 204)
+   (language-x-offset            int32              :offset-assert 208)
+   (sides-x-scale                float              :offset-assert 212)
+   (sides-y-scale                float              :offset-assert 216)
+   (left-x-offset                int32              :offset-assert 220)
+   (right-x-offset               int32              :offset-assert 224)
+   (button-scale                 float              :offset-assert 228)
+   (slot-scale                   float              :offset-assert 232)
+   (left-side-x-scale            float              :offset-assert 236)
+   (left-side-y-scale            float              :offset-assert 240)
+   (right-side-x-scale           float              :offset-assert 244)
+   (right-side-y-scale           float              :offset-assert 248)
+   (small-orb-y-offset           int32              :offset-assert 252)
+   (big-orb-y-offset             int32              :offset-assert 256)
+   (transition-offset            int32              :offset-assert 260)
+   (transition-offset-invert     int32              :offset-assert 264)
+   (transition-percentage        float              :offset-assert 268)
+   (transition-percentage-invert float              :offset-assert 272)
+   (transition-speed             float              :offset-assert 276)
+   (total-nb-of-power-cells      int32              :offset-assert 280)
+   (total-nb-of-orbs             int32              :offset-assert 284)
+   (total-nb-of-buzzers          int32              :offset-assert 288)
+   (card-info                    mc-slot-info       :offset-assert 292)
+   (last-option-index-change     time-frame         :offset-assert 296)
+   (video-mode-timeout           time-frame         :offset-assert 304)
+   (display-state-stack          progress-screen 5  :offset-assert 312)
+   (option-index-stack           int32           5  :offset-assert 352)
+   (display-state-pos            int32              :offset-assert 372)
+   (nb-of-icons                  int32              :offset-assert 376)
+   (icons                        hud-icon        6  :offset-assert 380)
+   (max-nb-of-particles          int32              :offset-assert 404)
+   (nb-of-particles              int32              :offset-assert 408)
+   (particles                    hud-particle    40 :offset-assert 412)
+   (particle-state               int32           40 :offset-assert 572)
+   )
+  :heap-base #x270
+  :method-count-assert 59
+  :size-assert         #x2dc
+  :flag-assert         #x3b027002dc
+  (:methods
+    (progress-method-14 (_type_) none 14)
+    (progress-method-15 (_type_) none 15)
+    (progress-method-16 (_type_) none 16)
+    (draw-progress (_type_) none 17)
+    (progress-method-18 () none 18)
+    (visible? (_type_) symbol 19)
+    (hidden? (_type_) symbol 20)
+    (adjust-sprites (_type_) none 21)
+    (adjust-icons (_type_) none 22)
+    (adjust-ratios (_type_ symbol symbol) none 23)
+    (draw-fuel-cell-screen (_type_ int) none 24)
+    (draw-money-screen (_type_ int) none 25)
+    (draw-buzzer-screen (_type_ int) none 26)
+    (draw-notice-screen (_type_) none 27)
+    (draw-options (_type_ int int float) none 28)
+    (respond-common (_type_) none 29)
+    (respond-progress (_type_) none 30)
+    (respond-memcard (_type_) none 31)
+    (can-go-back? (_type_) symbol 32)
+    (initialize-icons (_type_) none 33)
+    (initialize-particles (_type_) none 34)
+    (draw-memcard-storage-error (_type_ font-context) none 35)
+    (draw-memcard-data-exists (_type_ font-context) none 36)
+    (draw-memcard-no-data (_type_ font-context) none 37)
+    (draw-memcard-accessing (_type_ font-context) none 38)
+    (draw-memcard-insert (_type_ font-context) none 39)
+    (draw-memcard-file-select (_type_ font-context) none 40)
+    (draw-memcard-auto-save-error (_type_ font-context) none 41)
+    (draw-memcard-removed (_type_ font-context) none 42)
+    (draw-memcard-error (_type_ font-context) none 43)
+    (progress-method-44 (_type_) none 44)
+    (push! (_type_) none 45)
+    (pop! (_type_) none 46)
+    (progress-method-47 (_type_) none 47)
+    (enter! (_type_ progress-screen int) none 48)
+    (draw-memcard-format (_type_ font-context) none 49)
+    (draw-auto-save (_type_ font-context) none 50)
+    (set-transition-progress! (_type_ int) none 51)
+    (set-transition-speed! (_type_) none 52)
+    (set-memcard-screen (_type_ progress-screen) progress-screen 53)
+    (draw-pal-change-to-60hz (_type_ font-context) none 54)
+    (draw-pal-now-60hz (_type_ font-context) none 55)
+    (draw-no-disc (_type_ font-context) none 56)
+    (draw-bad-disc (_type_ font-context) none 57)
+    (draw-quit (_type_ font-context) none 58)
+    )
+  (:states
+    progress-coming-in
+    progress-debug
+    progress-going-out
+    progress-gone
+    progress-normal
+    progress-waiting
+    )
+  )
+
+;; definition for method 3 of type progress
+(defmethod inspect progress ((obj progress))
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~T~Tcurrent-debug-string: ~D~%" (-> obj current-debug-string))
+  (format #t "~T~Tcurrent-debug-language: ~D~%" (-> obj current-debug-language))
+  (format #t "~T~Tcurrent-debug-group: ~D~%" (-> obj current-debug-group))
+  (format #t "~T~Tin-out-position: ~D~%" (-> obj in-out-position))
+  (format #t "~T~Tdisplay-state: ~D~%" (-> obj display-state))
+  (format #t "~T~Tnext-display-state: ~D~%" (-> obj next-display-state))
+  (format #t "~T~Toption-index: ~D~%" (-> obj option-index))
+  (format #t "~T~Tselected-option: ~A~%" (-> obj selected-option))
+  (format #t "~T~Tcompletion-percentage: ~f~%" (-> obj completion-percentage))
+  (format #t "~T~Tready-to-run: ~A~%" (-> obj ready-to-run))
+  (format #t "~T~Tdisplay-level-index: ~D~%" (-> obj display-level-index))
+  (format #t "~T~Tnext-level-index: ~D~%" (-> obj next-level-index))
+  (format #t "~T~Ttask-index: ~D~%" (-> obj task-index))
+  (format #t "~T~Tin-transition: ~A~%" (-> obj in-transition))
+  (format #t "~T~Tlast-in-transition: ~A~%" (-> obj last-in-transition))
+  (format #t "~T~Tforce-transition: ~A~%" (-> obj force-transition))
+  (format #t "~T~Tstat-transition: ~A~%" (-> obj stat-transition))
+  (format #t "~T~Tlevel-transition: ~D~%" (-> obj level-transition))
+  (format #t "~T~Tlanguage-selection: ~D~%" (-> obj language-selection))
+  (format #t "~T~Tlanguage-direction: ~A~%" (-> obj language-direction))
+  (format #t "~T~Tlanguage-transition: ~A~%" (-> obj language-transition))
+  (format #t "~T~Tlanguage-x-offset: ~D~%" (-> obj language-x-offset))
+  (format #t "~T~Tsides-x-scale: ~f~%" (-> obj sides-x-scale))
+  (format #t "~T~Tsides-y-scale: ~f~%" (-> obj sides-y-scale))
+  (format #t "~T~Tleft-x-offset: ~D~%" (-> obj left-x-offset))
+  (format #t "~T~Tright-x-offset: ~D~%" (-> obj right-x-offset))
+  (format #t "~T~Tbutton-scale: ~f~%" (-> obj button-scale))
+  (format #t "~T~Tslot-scale: ~f~%" (-> obj slot-scale))
+  (format #t "~T~Tleft-side-x-scale: ~f~%" (-> obj left-side-x-scale))
+  (format #t "~T~Tleft-side-y-scale: ~f~%" (-> obj left-side-y-scale))
+  (format #t "~T~Tright-side-x-scale: ~f~%" (-> obj right-side-x-scale))
+  (format #t "~T~Tright-side-y-scale: ~f~%" (-> obj right-side-y-scale))
+  (format #t "~T~Tsmall-orb-y-offset: ~D~%" (-> obj small-orb-y-offset))
+  (format #t "~T~Tbig-orb-y-offset: ~D~%" (-> obj big-orb-y-offset))
+  (format #t "~T~Ttransition-offset: ~D~%" (-> obj transition-offset))
+  (format #t "~T~Ttransition-offset-invert: ~D~%" (-> obj transition-offset-invert))
+  (format #t "~T~Ttransition-percentage: ~f~%" (-> obj transition-percentage))
+  (format #t "~T~Ttransition-percentage-invert: ~f~%" (-> obj transition-percentage-invert))
+  (format #t "~T~Ttransition-speed: ~f~%" (-> obj transition-speed))
+  (format #t "~T~Ttotal-nb-of-power-cells: ~D~%" (-> obj total-nb-of-power-cells))
+  (format #t "~T~Ttotal-nb-of-orbs: ~D~%" (-> obj total-nb-of-orbs))
+  (format #t "~T~Ttotal-nb-of-buzzers: ~D~%" (-> obj total-nb-of-buzzers))
+  (format #t "~T~Tcard-info: #<mc-slot-info @ #x~X>~%" (-> obj card-info))
+  (format #t "~T~Tlast-option-index-change: ~D~%" (-> obj last-option-index-change))
+  (format #t "~T~Tvideo-mode-timeout: ~D~%" (-> obj video-mode-timeout))
+  (format #t "~T~Tdisplay-state-stack[5] @ #x~X~%" (-> obj display-state-stack))
+  (format #t "~T~Toption-index-stack[5] @ #x~X~%" (-> obj option-index-stack))
+  (format #t "~T~Tdisplay-state-pos: ~D~%" (-> obj display-state-pos))
+  (format #t "~T~Tnb-of-icons: ~D~%" (-> obj nb-of-icons))
+  (format #t "~T~Ticons[6] @ #x~X~%" (-> obj icons))
+  (format #t "~T~Tmax-nb-of-particles: ~D~%" (-> obj max-nb-of-particles))
+  (format #t "~T~Tnb-of-particles: ~D~%" (-> obj nb-of-particles))
+  (format #t "~T~Tparticles[40] @ #x~X~%" (-> obj particles))
+  (format #t "~T~Tparticle-state[40] @ #x~X~%" (-> obj particle-state))
+  obj
+  )
+
+;; definition for symbol *progress-process*, type (pointer progress)
+(define *progress-process* (the-as (pointer progress) #f))
+
+;; definition for symbol *progress-last-task-index*, type int
+(define *progress-last-task-index* 0)
+
+;; failed to figure out what this is:
+0

@@ -4,8 +4,11 @@
 
 #include "lsp/handlers/initialize.h"
 #include "lsp/protocol/error_codes.h"
+#include "text_document/completion.h"
+#include "text_document/document_color.h"
 #include "text_document/document_symbol.h"
 #include "text_document/document_synchronization.h"
+#include "text_document/formatting.h"
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
@@ -26,6 +29,11 @@ LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> req
     : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
+  m_routes["shutdown"] =
+      LSPRoute([](Workspace& workspace, int id, nlohmann::json params) -> std::optional<json> {
+        lg::info("Shutting down LSP due to explicit request");
+        exit(0);
+      });
   m_routes["initialize"] = LSPRoute(initialize_handler);
   m_routes["initialize"].m_generic_post_action = [](Workspace& workspace) {
     workspace.set_initialized(true);
@@ -37,6 +45,15 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
   m_routes["textDocument/hover"] = LSPRoute(hover_handler);
   m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
+  m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
+  m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
+  m_routes["textDocument/formatting"] = LSPRoute(formatting_handler);
+  // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
+  // Not Yet Supported Routes, noops
+  m_routes["$/cancelRequest"] = LSPRoute();
+  m_routes["textDocument/documentLink"] = LSPRoute();
+  m_routes["textDocument/codeLens"] = LSPRoute();
+  m_routes["textDocument/colorPresentation"] = LSPRoute();
 }
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
@@ -62,12 +79,11 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     const MessageBuffer& message_buffer,
     AppState& appstate) {
   const json& body = message_buffer.body();
-  auto method = body["method"];
-  lg::info(method);
+  const auto method = body.at("method").get<std::string>();
 
   // If the workspace has not yet been initialized but the client sends a
   // message that doesn't have method "initialize" then we'll return an error
-  // as per LSP spec.
+  // as per the LSP spec.
   if (method != "initialize" && !appstate.workspace.is_initialized()) {
     auto error = {
         make_response(error_resp(ErrorCodes::ServerNotInitialized, "Server not yet initialized."))};
@@ -75,7 +91,7 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
   }
 
   // Exit early if we can't handle the route
-  if (m_routes.count(method) == 0) {
+  if (m_routes.find(method) == m_routes.end()) {
     lg::warn("Method not supported '{}'", method);
     auto error = {make_response(
         error_resp(ErrorCodes::MethodNotFound, fmt::format("Method '{}' not supported", method)))};
@@ -83,7 +99,7 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
   }
 
   try {
-    auto route = m_routes[method];
+    auto& route = m_routes.at(method);
     std::vector<json> resp_bodies;
     // Handle the request/notificiation
     switch (route.m_route_type) {
@@ -94,13 +110,14 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
         break;
       case LSPRouteType::REQUEST_RESPONSE:
         auto resp_body = route.m_request_handler(appstate.workspace, body["id"], body["params"]);
+        json resp;
+        resp["id"] = body["id"];
         if (resp_body) {
-          json resp;
-          // TODO - this should be the job of the handler, not here!
-          resp["id"] = body["id"];
           resp["result"] = resp_body.value();
-          resp_bodies.push_back(resp);
+        } else {
+          resp["result"] = nullptr;
         }
+        resp_bodies.push_back(resp);
         break;
     }
 
@@ -108,7 +125,6 @@ std::optional<std::vector<std::string>> LSPRouter::route_message(
     if (route.m_post_notification_publish) {
       auto resp = route.m_post_notification_publish.value()(appstate.workspace, body["params"]);
       if (resp) {
-        lg::info("adding publish resp");
         resp_bodies.push_back(resp.value());
       }
     }

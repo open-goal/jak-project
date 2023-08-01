@@ -1,0 +1,1012 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hopper
+(deftype hopper (nav-enemy)
+  ((speed-y               float                      :offset-assert 604)
+   (accel-y               float                      :offset-assert 608)
+   (next-jump-time        int32                      :offset-assert 612)
+   (path-intro            path-control               :offset-assert 616)
+   (can-go-knocked?       symbol                     :offset-assert 620)
+   (land-anim-index       int32                      :offset-assert 624)
+   (step-num              int32                      :offset-assert 628)
+   (best-point            vector             :inline :offset-assert 640)
+   (best-score            float                      :offset-assert 656)
+   (origin                vector             :inline :offset-assert 672)
+   (direction             vector             :inline :offset-assert 688)
+   (jump-dist             float                      :offset-assert 704)
+   (side                  float                      :offset-assert 708)
+   (jump-start-anim       uint32                     :offset-assert 712)
+   (jump-air-anim         uint32                     :offset-assert 716)
+   (jump-land-anim        uint32                     :offset-assert 720)
+   (jump-height-min       float                      :offset-assert 724)
+   (jump-anim-start-frame float                      :offset-assert 728)
+   (minimap               connection-minimap         :offset-assert 732)
+   )
+  :heap-base #x260
+  :method-count-assert 180
+  :size-assert         #x2e0
+  :flag-assert         #xb4026002e0
+  (:methods
+    (hopper-method-178 (_type_) symbol 178)
+    (hopper-method-179 (_type_) none 179)
+    )
+  )
+
+;; definition for method 3 of type hopper
+(defmethod inspect hopper ((obj hopper))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspeed-y: ~f~%" (-> obj speed-y))
+  (format #t "~2Taccel-y: ~f~%" (-> obj accel-y))
+  (format #t "~2Tnext-jump-time: ~D~%" (-> obj next-jump-time))
+  (format #t "~2Tpath-intro: ~A~%" (-> obj path-intro))
+  (format #t "~2Tcan-go-knocked?: ~A~%" (-> obj can-go-knocked?))
+  (format #t "~2Tland-anim-index: ~D~%" (-> obj land-anim-index))
+  (format #t "~2Tstep-num: ~D~%" (-> obj step-num))
+  (format #t "~2Tbest-point: #<vector @ #x~X>~%" (-> obj best-point))
+  (format #t "~2Tbest-score: ~f~%" (-> obj best-score))
+  (format #t "~2Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~2Tdirection: #<vector @ #x~X>~%" (-> obj direction))
+  (format #t "~2Tjump-dist: ~f~%" (-> obj jump-dist))
+  (format #t "~2Tside: ~f~%" (-> obj side))
+  (format #t "~2Tjump-start-anim: ~D~%" (-> obj jump-start-anim))
+  (format #t "~2Tjump-air-anim: ~D~%" (-> obj jump-air-anim))
+  (format #t "~2Tjump-land-anim: ~D~%" (-> obj jump-land-anim))
+  (format #t "~2Tjump-height-min: ~f~%" (-> obj jump-height-min))
+  (format #t "~2Tjump-anim-start-frame: ~f~%" (-> obj jump-anim-start-frame))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-hopper hopper hopper-lod0-jg hopper-idle-ja
+              ((hopper-lod0-mg (meters 20)) (hopper-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 2.25 -0.7 6.5)
+              :shadow hopper-shadow-mg
+              )
+
+;; definition of type hopper-anim-info
+(deftype hopper-anim-info (structure)
+  ((hit-anim-index  int32  :offset-assert   0)
+   (land-anim-index int32  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type hopper-anim-info
+(defmethod inspect hopper-anim-info ((obj hopper-anim-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'hopper-anim-info)
+  (format #t "~1Thit-anim-index: ~D~%" (-> obj hit-anim-index))
+  (format #t "~1Tland-anim-index: ~D~%" (-> obj land-anim-index))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type hopper-global-info
+(deftype hopper-global-info (basic)
+  ((prev-yellow-hit int8                       :offset-assert   4)
+   (prev-blue-hit   int8                       :offset-assert   5)
+   (yellow-hit-anim hopper-anim-info 3 :inline :offset-assert   8)
+   (blue-hit-anim   hopper-anim-info 3 :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+;; definition for method 3 of type hopper-global-info
+(defmethod inspect hopper-global-info ((obj hopper-global-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprev-yellow-hit: ~D~%" (-> obj prev-yellow-hit))
+  (format #t "~1Tprev-blue-hit: ~D~%" (-> obj prev-blue-hit))
+  (format #t "~1Tyellow-hit-anim[3] @ #x~X~%" (-> obj yellow-hit-anim))
+  (format #t "~1Tblue-hit-anim[3] @ #x~X~%" (-> obj blue-hit-anim))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *hopper-global-info*, type hopper-global-info
+(define *hopper-global-info* (new 'static 'hopper-global-info
+                               :yellow-hit-anim (new 'static 'inline-array hopper-anim-info 3
+                                 (new 'static 'hopper-anim-info :hit-anim-index 25 :land-anim-index 26)
+                                 (new 'static 'hopper-anim-info :hit-anim-index 27 :land-anim-index 28)
+                                 (new 'static 'hopper-anim-info :hit-anim-index 29 :land-anim-index 30)
+                                 )
+                               :blue-hit-anim (new 'static 'inline-array hopper-anim-info 3
+                                 (new 'static 'hopper-anim-info :hit-anim-index 21 :land-anim-index 24)
+                                 (new 'static 'hopper-anim-info :hit-anim-index 22 :land-anim-index 24)
+                                 (new 'static 'hopper-anim-info :hit-anim-index 23 :land-anim-index 24)
+                                 )
+                               )
+        )
+
+;; definition for method 77 of type hopper
+(defmethod enemy-method-77 hopper ((obj hopper) (arg0 (pointer float)))
+  (case (-> obj incoming knocked-type)
+    (((knocked-type knocked-type-6))
+     (let* ((a2-0 (ash 1 (-> *hopper-global-info* prev-blue-hit)))
+            (v1-3 (enemy-method-120 obj 3 a2-0))
+            (a1-5 (-> obj draw art-group data (-> *hopper-global-info* blue-hit-anim v1-3 hit-anim-index)))
+            )
+       (set! (-> *hopper-global-info* prev-blue-hit) v1-3)
+       (let ((a0-12 (-> obj skel root-channel 0)))
+         (set! (-> a0-12 frame-group) (the-as art-joint-anim a1-5))
+         (set! (-> a0-12 param 0) (the float (+ (-> (the-as art-joint-anim a1-5) frames num-frames) -1)))
+         (set! (-> a0-12 param 1) 1.0)
+         (set! (-> a0-12 frame-num) 0.0)
+         (joint-control-channel-group! a0-12 (the-as art-joint-anim a1-5) num-func-seek!)
+         )
+       )
+     )
+    (else
+      (ja-channel-push! 1 (seconds 0.1))
+      (let* ((a2-2 (ash 1 (-> *hopper-global-info* prev-yellow-hit)))
+             (v1-13 (enemy-method-120 obj 3 a2-2))
+             (a1-11 (-> obj draw art-group data (-> *hopper-global-info* yellow-hit-anim v1-13 hit-anim-index)))
+             )
+        (set! (-> obj land-anim-index) (-> *hopper-global-info* yellow-hit-anim v1-13 land-anim-index))
+        (set! (-> *hopper-global-info* prev-yellow-hit) v1-13)
+        (let ((a0-27 (-> obj skel root-channel 0)))
+          (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-11))
+          (set! (-> a0-27 param 0) (the float (+ (-> (the-as art-joint-anim a1-11) frames num-frames) -1)))
+          (set! (-> a0-27 param 1) (-> arg0 0))
+          (set! (-> a0-27 frame-num) 0.0)
+          (joint-control-channel-group! a0-27 (the-as art-joint-anim a1-11) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for method 78 of type hopper
+(defmethod enemy-method-78 hopper ((obj hopper) (arg0 (pointer float)))
+  (cond
+    ((= (-> obj incoming knocked-type) (knocked-type knocked-type-6))
+     (when (>= (-> obj incoming blue-juggle-count) (the-as uint 2))
+       (let ((s4-0 (-> obj draw art-group data 24)))
+         (ja-channel-push! 1 (seconds 0.1))
+         (let ((a0-3 (-> obj skel root-channel 0)))
+           (set! (-> a0-3 frame-group) (the-as art-joint-anim s4-0))
+           (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+           (set! (-> a0-3 param 1) (-> arg0 0))
+           (set! (-> a0-3 frame-num) 0.0)
+           (joint-control-channel-group! a0-3 (the-as art-joint-anim s4-0) num-func-seek!)
+           )
+         )
+       #t
+       )
+     #f
+     )
+    (else
+      (ja-channel-push! 1 (seconds 0.1))
+      (let ((a0-5 (-> obj skel root-channel 0)))
+        (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> obj draw art-group data (-> obj land-anim-index))))
+        (set! (-> a0-5 param 0)
+              (the float
+                   (+ (-> (the-as art-joint-anim (-> obj draw art-group data (-> obj land-anim-index))) frames num-frames) -1)
+                   )
+              )
+        (set! (-> a0-5 param 1) (-> arg0 0))
+        (set! (-> a0-5 frame-num) 0.0)
+        (joint-control-channel-group!
+          a0-5
+          (the-as art-joint-anim (-> obj draw art-group data (-> obj land-anim-index)))
+          num-func-seek!
+          )
+        )
+      #t
+      )
+    )
+  )
+
+;; definition for symbol *hopper-nav-enemy-info*, type nav-enemy-info
+(define *hopper-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 8
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x5)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x5 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x4 :param0 #x1 :param1 #x5)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #x6 :param0 #x1 :param1 #x1)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 7
+    :hostile-anim 4
+    :hit-anim 4
+    :knocked-anim 25
+    :knocked-land-anim 26
+    :die-anim 19
+    :die-falling-anim 20
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint 5
+    :look-at-joint 5
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "hopper-hit")
+    :sound-die (static-sound-name "hopper-die")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 40)
+    :proximity-notice-distance (meters 4)
+    :default-hit-points 1
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-giant
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      penetrate-33
+      penetrate-34
+      penetrate-35
+      penetrate-36
+      penetrate-37
+      penetrate-38
+      penetrate-39
+      penetrate-40
+      penetrate-41
+      penetrate-42
+      penetrate-43
+      penetrate-44
+      penetrate-45
+      penetrate-46
+      penetrate-47
+      penetrate-48
+      penetrate-49
+      penetrate-50
+      penetrate-51
+      penetrate-52
+      penetrate-53
+      penetrate-54
+      penetrate-55
+      penetrate-56
+      penetrate-57
+      penetrate-58
+      penetrate-59
+      penetrate-60
+      penetrate-61
+      penetrate-62
+      penetrate-63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 4551.1113
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint 5
+    :gem-seg #x2
+    :gem-no-seg #x4
+    :gem-offset (new 'static 'sphere :y 1843.2 :z 1884.16 :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 4
+    :turn-anim 9
+    :run-anim 13
+    :taunt-anim -1
+    :run-travel-speed (meters 1)
+    :run-acceleration (meters 1)
+    :run-turning-acceleration (meters 2)
+    :walk-travel-speed (meters 1)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 3)
+    :maximum-rotation-rate (degrees 720)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *hopper-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 73 of type hopper
+(defmethod kill-prefer-falling hopper ((obj hopper))
+  "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
+  (cond
+    ((-> obj can-go-knocked?)
+     (set! (-> obj can-go-knocked?) #f)
+     (go (method-of-object obj knocked))
+     )
+    (else
+      ((method-of-type nav-enemy kill-prefer-falling) obj)
+      )
+    )
+  )
+
+;; definition for method 90 of type hopper
+;; INFO: Used lq/sq
+(defmethod enemy-method-90 hopper ((obj hopper) (arg0 int) (arg1 enemy-jump-info))
+  (when (= (-> obj jump-why) 2)
+    (cond
+      ((zero? arg0)
+       (logior! (-> obj focus-status) (focus-status touch-water under-water))
+       )
+      (else
+        (when (focus-test? obj touch-water)
+          (let ((s3-0 (new 'stack-no-clear 'water-info)))
+            (water-info-init! (-> obj root) s3-0 (collide-action solid semi-solid))
+            (let ((v1-9 #f))
+              (cond
+                ((not (logtest? (water-flags touch-water) (-> s3-0 flags)))
+                 (if (focus-test? obj under-water)
+                     (set! v1-9 #t)
+                     )
+                 (logclear! (-> obj focus-status) (focus-status touch-water under-water))
+                 )
+                ((focus-test? obj under-water)
+                 (let ((f0-1 (+ 11264.0 (-> obj root trans y))))
+                   (if (< (-> s3-0 trans y) f0-1)
+                       (set! v1-9 #t)
+                       )
+                   )
+                 )
+                )
+              (when v1-9
+                (logclear! (-> obj focus-status) (focus-status under-water))
+                (let ((s2-0 (new 'stack-no-clear 'vector)))
+                  (set! (-> s2-0 quad) (-> obj root trans quad))
+                  (when (logtest? (water-flags touch-water) (-> s3-0 flags))
+                    (set! (-> s2-0 y) (-> s3-0 trans y))
+                    (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
+                      (when s3-1
+                        (let ((t9-2 (method-of-type part-tracker activate)))
+                          (t9-2
+                            (the-as part-tracker s3-1)
+                            *entity-pool*
+                            (symbol->string (-> part-tracker symbol))
+                            (the-as pointer #x70004000)
+                            )
+                          )
+                        (let ((t9-3 run-function-in-process)
+                              (a0-26 s3-1)
+                              (a1-6 part-tracker-init)
+                              (a2-6 (-> *part-group-id-table* 121))
+                              (a3-1 0)
+                              (t0-0 #f)
+                              (t1-0 #f)
+                              (t2-0 #f)
+                              (t3-0 *launch-matrix*)
+                              )
+                          (set! (-> t3-0 trans quad) (-> s2-0 quad))
+                          ((the-as (function object object object object object object object object none) t9-3)
+                           a0-26
+                           a1-6
+                           a2-6
+                           a3-1
+                           t0-0
+                           t1-0
+                           t2-0
+                           t3-0
+                           )
+                          )
+                        (-> s3-1 ppointer)
+                        )
+                      )
+                    (sound-play "splash-out")
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type nav-enemy enemy-method-90) obj arg0 arg1)
+  )
+
+;; definition for method 89 of type hopper
+(defmethod enemy-method-89 hopper ((obj hopper) (arg0 enemy-jump-info))
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((a1-2 (-> obj draw art-group data (-> obj jump-start-anim)))
+        (a0-4 (-> obj skel root-channel 0))
+        )
+    (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
+    (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-4 frame-num) 0.0)
+    (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 87 of type hopper
+(defmethod enemy-method-87 hopper ((obj hopper) (arg0 enemy-jump-info))
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((a1-2 (-> obj draw art-group data (-> obj jump-air-anim)))
+        (a0-4 (-> obj skel root-channel 0))
+        )
+    (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
+    (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-4 frame-num) 0.0)
+    (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 88 of type hopper
+(defmethod enemy-method-88 hopper ((obj hopper) (arg0 enemy-jump-info))
+  (ja-channel-push! 1 (seconds 0.075))
+  (let ((a1-2 (-> obj draw art-group data (-> obj jump-land-anim)))
+        (a0-4 (-> obj skel root-channel 0))
+        )
+    (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
+    (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-4 frame-num) 0.0)
+    (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
+    )
+  #t
+  )
+
+;; failed to figure out what this is:
+(defstate jump (hopper)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy jump) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy jump) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self draw shadow-ctrl)))
+      (logclear! (-> v1-5 settings flags) (shadow-flags shdf03))
+      (let ((a0-2 v1-5))
+        (set! (-> a0-2 settings top-plane w) (- 4096.0))
+        )
+      0
+      (set! (-> v1-5 settings bot-plane w) (- -4096.0))
+      )
+    0
+    (none)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy jump) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self draw shadow-ctrl)))
+      (logior! (-> v1-5 settings flags) (shadow-flags shdf03))
+      (let ((a0-2 v1-5))
+        (set! (-> a0-2 settings bot-plane w) (- (+ (- -4096.0 (-> self root trans y)) (-> self root gspot-pos y))))
+        )
+      0
+      (set! (-> v1-5 settings top-plane w) (- (+ (- 8192.0 (-> self root trans y)) (-> self root gspot-pos y))))
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 178 of type hopper
+;; INFO: Used lq/sq
+(defmethod hopper-method-178 hopper ((obj hopper))
+  (local-vars (sv-752 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (+! (-> obj step-num) -1)
+    (cond
+      ((>= (-> obj step-num) 0)
+       (let ((s3-0 (new 'stack-no-clear 'vector))
+             (s5-0 (new 'stack-no-clear 'vector))
+             )
+         (vector-rotate-around-y! s3-0 (-> obj direction) (* 182.04445 (the float (+ (* (-> obj step-num) 16) -135))))
+         (let ((a1-1 s5-0))
+           (let ((v1-7 (-> obj origin)))
+             (let ((a0-2 s3-0))
+               (let ((a2-1 (-> obj jump-dist)))
+                 (.mov vf7 a2-1)
+                 )
+               (.lvf vf5 (&-> a0-2 quad))
+               )
+             (.lvf vf4 (&-> v1-7 quad))
+             )
+           (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+           (.mul.x.vf acc vf5 vf7 :mask #b111)
+           (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+           (.svf (&-> a1-1 quad) vf6)
+           )
+         (let ((v1-8 (-> obj nav))
+               (a0-3 s5-0)
+               (a1-2 (new 'stack-no-clear 'nav-find-poly-parms))
+               )
+           (vector-! (-> a1-2 point) a0-3 (-> v1-8 state mesh bounds))
+           (set! (-> a1-2 y-threshold) (-> v1-8 nearest-y-threshold))
+           (set! (-> a1-2 ignore) (the-as uint 2))
+           (let ((s4-0 (find-poly-containing-point-local (-> v1-8 state mesh) a1-2)))
+             (when s4-0
+               (let ((f30-0 (vector-dot s3-0 (-> obj direction))))
+                 (new 'stack-no-clear 'vector)
+                 (let ((a1-3 (new 'stack-no-clear 'vector)))
+                   (set! (-> a1-3 quad) (-> s5-0 quad))
+                   (set! (-> a1-3 w) 6144.0)
+                   (when (not (add-root-sphere-to-hash! (-> obj nav) a1-3 #x8006c))
+                     (when (< (-> obj best-score) f30-0)
+                       (set! (-> obj best-score) f30-0)
+                       (let ((s2-0 (new 'stack-no-clear 'vector)))
+                         (set! sv-752 (new 'stack-no-clear 'vector))
+                         (let ((s3-1 (new 'stack 'collide-query)))
+                           (let ((s0-0 (-> obj nav))
+                                 (s1-0 s2-0)
+                                 )
+                             (let* ((v1-21 s5-0)
+                                    (a0-10 (-> s0-0 state mesh))
+                                    (t9-4 (method-of-object a0-10 project-point-onto-plane-of-poly-local))
+                                    (a2-5 s1-0)
+                                    (t0-1 (vector-! (new 'stack-no-clear 'vector) v1-21 (-> s0-0 state mesh bounds)))
+                                    )
+                               (t9-4 a0-10 s4-0 a2-5 sv-752 t0-1)
+                               )
+                             (vector+! s1-0 s1-0 (-> s0-0 state mesh bounds))
+                             )
+                           0
+                           (set! (-> s5-0 y) (-> s2-0 y))
+                           (if (enemy-above-ground? obj s3-1 s5-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+                               (set! (-> s5-0 y) (-> s3-1 best-other-tri intersect y))
+                               )
+                           )
+                         )
+                       (set! (-> obj best-point quad) (-> s5-0 quad))
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate stare (hopper)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for symbol *hopper-next-jump-time*, type time-frame
+(define *hopper-next-jump-time* (the-as time-frame 0))
+
+;; failed to figure out what this is:
+(defstate hostile (hopper)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
+      (set! (-> v1-4 nav callback-info) *nav-enemy-null-callback-info*)
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-7 enemy-flags))))
+      )
+    0
+    (set! (-> self speed-y) 0.0)
+    (set! (-> self accel-y) 0.0)
+    (set! (-> self next-jump-time) (the-as int (+ (current-time) (get-rand-int-range self 0 120))))
+    (set! (-> self step-num) 0)
+    (set! (-> self best-score) -2.0)
+    (none)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (none)
+    )
+  :post (the-as (function none :behavior hopper) nav-enemy-simple-post)
+  )
+
+;; failed to figure out what this is:
+(defstate active (hopper)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (ja-no-eval :group! hopper-idle-ja
+                    :num! (seek! (the float (+ (-> (the-as art-joint-anim hopper-idle-ja) frames num-frames) -1)) f30-0)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior hopper) nav-enemy-simple-post)
+  )
+
+;; failed to figure out what this is:
+(defstate notice (hopper)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (if (zero? (get-rand-int self 2))
+          (ja :group! hopper-notice-ja)
+          (ja :group! hopper-notice-alt-ja)
+          )
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (let ((a1-4 (-> self nav state)))
+          (set! (-> gp-0 quad) (-> a1-4 travel quad))
+          )
+        (seek-toward-heading-vec! (-> self root) gp-0 (-> self nav max-rotation-rate) (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (react-to-focus self)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate ambush (hopper)
+  :virtual #t
+  :enter (behavior ()
+    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+      (let ((gp-0 (-> self on-notice)))
+        (if gp-0
+            (script-eval (the-as pair gp-0) :vector (-> self root trans))
+            )
+        )
+      )
+    (let ((v1-12 (-> self root root-prim)))
+      (set! (-> self root backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> self root backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (let ((v1-15 (-> self root root-prim)))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec))
+      )
+    0
+    (when (handle->process (-> self focus handle))
+      (let ((gp-1 (-> self root))
+            (s5-0 (new 'stack-no-clear 'vector))
+            )
+        (let ((s4-0 (new 'stack-no-clear 'vector)))
+          0.0
+          (get-point-in-path! (-> self path-intro) s5-0 0.0 'exact)
+          (+! (-> s5-0 y) -16384.0)
+          (get-point-in-path! (-> self path-intro) s4-0 1.0 'exact)
+          (let ((f0-3 (deg-diff
+                        (quaternion-y-angle (-> gp-1 quat))
+                        (vector-y-angle (vector-normalize! (vector-! (new 'stack-no-clear 'vector) s4-0 s5-0) 1.0))
+                        )
+                      )
+                )
+            (quaternion-rotate-y! (-> gp-1 quat) (-> gp-1 quat) f0-3)
+            )
+          )
+        (set! (-> gp-1 trans quad) (-> s5-0 quad))
+        )
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (none)
+    )
+  :trans (behavior ()
+    '()
+    (none)
+    )
+  :code (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (let ((s5-0 (new 'stack 'collide-query)))
+        (get-point-in-path! (-> self path-intro) gp-0 1.0 'exact)
+        (if (enemy-above-ground? self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+            (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
+            )
+        )
+      (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+      (send-event self 'jump 2 gp-0)
+      )
+    (go-virtual hostile)
+    (none)
+    )
+  )
+
+;; definition for method 132 of type hopper
+(defmethod dispose! hopper ((obj hopper))
+  "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
+  (when (-> obj minimap)
+    (logior! (-> obj minimap flags) (minimap-flag fade-out))
+    (set! (-> obj minimap) #f)
+    )
+  ((the-as (function enemy none) (find-parent-method hopper 132)) obj)
+  (none)
+  )
+
+;; definition for method 7 of type hopper
+;; WARN: Return type mismatch process-focusable vs hopper.
+(defmethod relocate hopper ((obj hopper) (arg0 int))
+  (if (nonzero? (-> obj path-intro))
+      (&+! (-> obj path-intro) arg0)
+      )
+  (the-as
+    hopper
+    ((the-as (function process-focusable int process-focusable) (find-parent-method hopper 7)) obj arg0)
+    )
+  )
+
+;; definition for method 114 of type hopper
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! hopper ((obj hopper))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-giant
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid deadly no-standon))
+      (set! (-> s4-0 transform-index) 12)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 9216.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-14 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-14 local-sphere) 0.0 3686.4 0.0 3686.4)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-16 prim-core action) (collide-action deadly))
+      (set! (-> v1-16 transform-index) 5)
+      (set-vector! (-> v1-16 local-sphere) 0.0 0.0 819.2 3276.8)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 115 of type hopper
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! hopper ((obj hopper))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (stack-size-set! (-> obj main-thread) 256)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hopper" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> obj skel generate-frame-function) create-interpolated2-joint-animation-frame)
+  (init-enemy-behaviour-and-stats! obj *hopper-nav-enemy-info*)
+  (set! (-> obj can-go-knocked?) #t)
+  (let ((v1-9 (-> obj neck)))
+    (set! (-> v1-9 up) (the-as uint 1))
+    (set! (-> v1-9 nose) (the-as uint 2))
+    (set! (-> v1-9 ear) (the-as uint 0))
+    (set-vector! (-> v1-9 twist-max) 10922.667 12743.111 0.0 1.0)
+    (set! (-> v1-9 ignore-angle) 18204.445)
+    )
+  (set! (-> obj jump-start-anim) (the-as uint 10))
+  (set! (-> obj jump-air-anim) (the-as uint 13))
+  (set! (-> obj jump-land-anim) (the-as uint 14))
+  (set! (-> obj jump-height-min) 12288.0)
+  (set! (-> obj jump-anim-start-frame) 8.0)
+  (set! (-> obj land-anim-index) 26)
+  (set! (-> obj side) (get-rand-float-range obj -1.5 1.5))
+  (when (logtest? (enemy-option ambush) (-> obj fact enemy-options))
+    (set! (-> obj path-intro) (new 'process 'path-control obj 'intro 0.0 (-> obj entity) #f))
+    (if (-> obj path-intro)
+        (logior! (-> obj path-intro flags) (path-control-flag display draw-line draw-point draw-text))
+        )
+    )
+  (add-connection *part-engine* obj 5 obj 318 (new 'static 'vector :x 1392.64 :y 491.52 :z 1638.4 :w 163840.0))
+  (add-connection *part-engine* obj 5 obj 318 (new 'static 'vector :x -1392.64 :y 491.52 :z 1638.4 :w 163840.0))
+  (logior! (-> obj nav flags) (nav-control-flag output-sphere-hash))
+  (let ((v1-34 (-> obj nav)))
+    (set! (-> v1-34 speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> obj root dynam) 327680.0)
+  (let ((v1-39 (-> obj nav)))
+    (set! (-> v1-39 nav-cull-radius) 61440.0)
+    )
+  0
+  (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 70) (the-as int #f) (the-as vector #t) 0))
+  0
+  (none)
+  )

@@ -1,23 +1,23 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
-in flat vec4 fragment_color;
+flat in vec4 fragment_color;
 in vec3 tex_coord;
-in flat uvec2 tex_info;
+flat in uvec2 tex_info;
 
 uniform sampler2D tex_T0;
 uniform float alpha_min;
 uniform float alpha_max;
 
 void main() {
-    vec4 T0 = texture(tex_T0, tex_coord.xy);
-    if (tex_info.y == 0) {
-        T0.w = 1.0;
-    }
-    color = fragment_color * T0;
+  vec4 T0 = texture(tex_T0, tex_coord.xy);
+  if (tex_info.y == 0) {
+    T0.w = 1.0;
+  }
+  color = fragment_color * T0;
 
-    if (color.a < alpha_min || color.a > alpha_max) {
-        discard;
-    }
+  if (color.a < alpha_min || color.a > alpha_max) {
+    discard;
+  }
 }

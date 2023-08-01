@@ -1,0 +1,286 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ctyfarma-part
+(deftype ctyfarma-part (part-spawner)
+  ()
+  :heap-base #x30
+  :method-count-assert 16
+  :size-assert         #xb0
+  :flag-assert         #x10003000b0
+  )
+
+;; definition for method 3 of type ctyfarma-part
+(defmethod inspect ctyfarma-part ((obj ctyfarma-part))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type part-spawner inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-ctyfarma-light
+  :id 1031
+  :flags (unk-8)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4492 :fade-after (meters 200) :flags (bit6) :hour-mask #b111111111110000000)
+    (sp-item 4493 :fade-after (meters 200) :flags (bit6) :hour-mask #b111111111110000000)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4492
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 2.5) (meters 0.1))
+    (:rot-x (degrees 9))
+    (:rot-z (degrees -17))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 20.0)
+    (:omega (degrees 4515.75))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 819.2)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4493
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 12) (meters 0.1))
+    (:rot-x (degrees 9))
+    (:rot-z (degrees -17))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0 255.0)
+    (:b 255.0)
+    (:a 12.0)
+    (:omega (degrees 4515.75))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 819.2)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-ctyfarma-drip-1
+  :id 1032
+  :flags (unk-8)
+  :bounds (static-bspherem 0 -4 0 16)
+  :parts ((sp-item 4494 :fade-after (meters 140) :falloff-to (meters 140)))
+  )
+
+;; definition for function birth-func-ctyfarma-drip
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun birth-func-ctyfarma-drip ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  "Create a new dirt drip, don't go below the ocean or the ground"
+  (let ((s4-0 (new 'stack-no-clear 'collide-query)))
+    (set! (-> s4-0 start-pos quad) (-> arg2 launchrot quad))
+    (set-vector! (-> s4-0 move-dist) 0.0 -163840.0 0.0 1.0)
+    (let ((v1-2 s4-0))
+      (set! (-> v1-2 radius) 40.96)
+      (set! (-> v1-2 collide-with) (collide-spec backgnd))
+      (set! (-> v1-2 ignore-process0) #f)
+      (set! (-> v1-2 ignore-process1) #f)
+      (set! (-> v1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-2 action-mask) (collide-action solid))
+      )
+    (fill-using-line-sphere *collide-cache* s4-0)
+    (cond
+      ((>= (probe-using-line-sphere *collide-cache* s4-0) 0.0)
+       (set! (-> arg1 user-float) (-> s4-0 best-other-tri intersect y))
+       (set! (-> arg1 datab 0) (the int (* 127.0 (-> s4-0 best-other-tri normal x))))
+       (set! (-> arg1 datab 1) (the int (* 127.0 (-> s4-0 best-other-tri normal y))))
+       (set! (-> arg1 datab 2) (the int (* 127.0 (-> s4-0 best-other-tri normal z))))
+       (set! (-> arg1 datab 3) (the-as int (-> s4-0 best-other-tri pat event)))
+       )
+      (else
+        (set! (-> arg1 omega) 65280.0)
+        (set! (-> arg1 user-float) (+ -204800.0 (-> arg2 launchrot y)))
+        )
+      )
+    )
+  (let ((f0-19 (get-height *ocean* (-> arg2 launchrot) #f)))
+    (when (!= f0-19 4095996000.0)
+      (when (< (-> arg1 user-float) f0-19)
+        (set! (-> arg1 user-float) f0-19)
+        (set! (-> arg1 datab 0) 0)
+        (set! (-> arg1 datab 1) 127)
+        (set! (-> arg1 datab 2) 0)
+        (set! (-> arg1 datab 3) 0)
+        0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function check-drop-level-ctyfarma-drop-userdata
+;; INFO: Used lq/sq
+(defun check-drop-level-ctyfarma-drop-userdata ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  "Ensure water drop particle effects don't go below the provided y-value, render the splash"
+  (when (< (-> arg2 vector 0 y) (-> arg1 user-float))
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! s3-0 (-> arg2 vector 0 x) (-> arg1 user-float) (-> arg2 vector 0 z) 1.0)
+      (if (< (vector-vector-distance (camera-pos) s3-0) 204800.0)
+          (sound-play "dirt-drips" :position s3-0)
+          )
+      (let ((t9-5 sp-launch-particles-var)
+            (a0-7 *sp-particle-system-2d*)
+            (a1-4 (-> *part-id-table* 4495))
+            (a2-2 *launch-matrix*)
+            )
+        (set! (-> a2-2 trans quad) (-> s3-0 quad))
+        (t9-5 a0-7 a1-4 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (let ((t9-6 sp-launch-particles-var)
+            (a0-8 *sp-particle-system-3d*)
+            (a1-5 (-> *part-id-table* 4496))
+            (a2-3 *launch-matrix*)
+            )
+        (set! (-> a2-3 trans quad) (-> s3-0 quad))
+        (t9-6 a0-8 a1-5 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      )
+    )
+  (sparticle-motion-blur arg0 arg1 (the-as vector arg2))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpart 4495
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 0.1) (meters 0.05))
+    (:rot-x 4)
+    (:scale-y :copy scale-x)
+    (:r 32.0 32.0)
+    (:g 32.0 32.0)
+    (:b 64.0 32.0)
+    (:a 32.0 32.0)
+    (:omega (degrees 0.045))
+    (:vel-y (meters 0.016666668) (meters 0.03))
+    (:fade-a -0.16)
+    (:accel-y (meters -0.001) (meters -0.00016666666))
+    (:friction 0.97)
+    (:timer (seconds 0.667))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:next-time (seconds 0) (seconds 0.747))
+    (:next-launcher 4491)
+    (:conerot-x (degrees 0) (degrees 60))
+    (:conerot-y (degrees 0) (degrees 360))
+    (:rotate-y (degrees 180))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4491
+  :init-specs ((:r 255.0) (:g 255.0) (:b 255.0) (:next-time (seconds 0.017)) (:next-launcher 4497))
+  )
+
+;; failed to figure out what this is:
+(defpart 4497
+  :init-specs ((:r 32.0 32.0) (:g 32.0 32.0) (:b 64.0 32.0) (:next-time (seconds 0) (seconds 1.497)) (:next-launcher 4491))
+  )
+
+;; failed to figure out what this is:
+(defpart 4496
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:y (meters 0.2))
+    (:scale-x (meters 0.5) (meters 0.25))
+    (:scale-y :copy scale-x)
+    (:r 32.0 32.0)
+    (:g 32.0 32.0)
+    (:b 64.0 32.0)
+    (:a 32.0 32.0)
+    (:omega (degrees 0))
+    (:scalevel-x (meters 0.006666667) (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.8)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:userdata :data (new 'static 'boxed-array :type int32 10 0 0 #xc0c900 #xc02600 #xc03300 #xc02c00))
+    (:func 'sparticle-texture-animate)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4494
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:birth-func 'birth-func-ctyfarma-drip)
+    (:num 0.05)
+    (:scale-x (meters 0))
+    (:rot-x 4)
+    (:scale-y :copy scale-x)
+    (:r 32.0 32.0)
+    (:g 32.0 32.0)
+    (:b 64.0 32.0)
+    (:a 0.0)
+    (:vel-z (meters 0))
+    (:scalevel-x (meters 0.00044444445))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.28444445)
+    (:friction 0.93 0.02)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12 use-global-acc))
+    (:userdata 0.0)
+    (:func 'check-drop-level-rain2)
+    (:next-time (seconds 0.75) (seconds 0.747))
+    (:next-launcher 4498)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4498
+  :init-specs ((:a 128.0)
+    (:fade-a 0.0)
+    (:accel-y (meters -0.006666667) (meters 0.00066666666))
+    (:friction 0.93 0.02)
+    (:next-time (seconds 0) (seconds 0.747))
+    (:next-launcher 4491)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-ctyfarma-wall-bubbles
+  :id 1033
+  :flags (unk-4)
+  :bounds (static-bspherem 0 0 0 32)
+  :parts ((sp-item 4499 :fade-after (meters 80) :falloff-to (meters 80) :flags (bit7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4499
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 0.5)
+    (:x (meters -0.75) (meters 1.5))
+    (:z (meters -4))
+    (:scale-x (meters 0.1) (meters 0.2))
+    (:rot-x 4)
+    (:scale-y :copy scale-x)
+    (:r 16.0 16.0)
+    (:g 64.0 16.0)
+    (:b 32.0 32.0)
+    (:a 32.0 64.0)
+    (:vel-z (meters 0.013333334) (meters 0.0033333334))
+    (:rotvel-z (degrees -1.2) (degrees 2.4))
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:rotate-y (degrees 0))
+    (:rotate-z (degrees 0) (degrees 3600))
+    )
+  )

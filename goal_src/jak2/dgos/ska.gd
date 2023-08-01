@@ -1,0 +1,13 @@
+("SKA.DGO"
+ ("skatea-part.o"
+  "skatea-obs.o"
+  "tpage-2992.go"
+  "tpage-3131.go"
+  "tpage-2995.go"
+  "tpage-3573.go"
+  "skate-training-ramp-ag.go"
+  "skatea-jump-pad-ag.go"
+  "skatea-floating-ring-ag.go"
+  "skate-gate-ag.go"
+  "skatea-vis.go"
+ ))

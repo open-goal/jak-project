@@ -1,37 +1,37 @@
 ("VI3.DGO"
-  ("villagep-obs.o" "villagep-obs")
-  ("oracle.o" "oracle")
-  ("village3-part.o" "village3-part")
-  ("village3-obs.o" "village3-obs")
-  ("minecart.o" "minecart")
-  ("miners.o" "miners")
-  ("assistant-village3.o" "assistant-village3")
-  ("sage-village3.o" "sage-village3")
-  ("tpage-1208.go" "tpage-1208")
-  ("tpage-1210.go" "tpage-1210")
-  ("tpage-1209.go" "tpage-1209")
-  ("tpage-1194.go" "tpage-1194")
-  ("assistant-village3-ag.go" "assistant-village3")
-  ("cavegem-ag.go" "cavegem")
-  ("evilbro-village3-ag.go" "evilbro-village3")
-  ("evilsis-village3-ag.go" "evilsis-village3")
-  ("gondola-ag.go" "gondola")
-  ("gondolacables-ag.go" "gondolacables")
-  ("lavaspoutdrip-ag.go" "lavaspoutdrip")
-  ("medres-finalboss-ag.go" "medres-finalboss")
-  ("medres-ogre-ag.go" "medres-ogre")
-  ("medres-ogre2-ag.go" "medres-ogre2")
-  ("medres-ogre3-ag.go" "medres-ogre3")
-  ("minecartsteel-ag.go" "minecartsteel")
-  ("minershort-ag.go" "minershort")
-  ("minertall-ag.go" "minertall")
-  ("oracle-ag.go" "oracle")
-  ("pistons-ag.go" "pistons")
-  ("sage-village3-ag.go" "sage-village3")
-  ("vil3-bridge-36-ag.go" "vil3-bridge-36")
-  ("village-cam-ag.go" "village-cam")
-  ("warp-gate-switch-ag.go" "warp-gate-switch")
-  ("warpgate-ag.go" "warpgate")
-  ("water-anim-village3-ag.go" "water-anim-village3")
-  ("village3-vis.go" "village3-vis")
-  )
+ ("villagep-obs.o"
+  "oracle.o"
+  "village3-part.o"
+  "village3-obs.o"
+  "minecart.o"
+  "miners.o"
+  "assistant-village3.o"
+  "sage-village3.o"
+  "tpage-1208.go"
+  "tpage-1210.go"
+  "tpage-1209.go"
+  "tpage-1194.go"
+  "assistant-village3-ag.go"
+  "cavegem-ag.go"
+  "evilbro-village3-ag.go"
+  "evilsis-village3-ag.go"
+  "gondola-ag.go"
+  "gondolacables-ag.go"
+  "lavaspoutdrip-ag.go"
+  "medres-finalboss-ag.go"
+  "medres-ogre-ag.go"
+  "medres-ogre2-ag.go"
+  "medres-ogre3-ag.go"
+  "minecartsteel-ag.go"
+  "minershort-ag.go"
+  "minertall-ag.go"
+  "oracle-ag.go"
+  "pistons-ag.go"
+  "sage-village3-ag.go"
+  "vil3-bridge-36-ag.go"
+  "village-cam-ag.go"
+  "warp-gate-switch-ag.go"
+  "warpgate-ag.go"
+  "water-anim-village3-ag.go"
+  "village3-vis.go"
+ ))

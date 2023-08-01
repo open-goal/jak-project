@@ -1,0 +1,267 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bouncer
+(deftype bouncer (process-drawable)
+  ((spring-height meters  :offset-assert 200)
+   (smush         float   :offset-assert 204)
+   (mods          basic   :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 25
+  :size-assert         #xd4
+  :flag-assert         #x19006000d4
+  (:methods
+    (idle () _type_ :state 20)
+    (fire () _type_ :state 21)
+    (smush () _type_ :state 22)
+    (init-skeleton! (_type_) none 23)
+    (bouncer-method-24 (_type_) none 24)
+    )
+  )
+
+;; definition for method 3 of type bouncer
+(defmethod inspect bouncer ((obj bouncer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspring-height: (meters ~m)~%" (-> obj spring-height))
+  (format #t "~2Tsmush: ~f~%" (-> obj smush))
+  (format #t "~2Tmods: ~A~%" (-> obj mods))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(method-set! bouncer 12 (method-of-type process run-logic?))
+
+;; failed to figure out what this is:
+(defskelgroup skel-bouncer bounceytarp 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 4))
+
+;; failed to figure out what this is:
+(defstate idle (bouncer)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('bonk)
+         (when ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> event param 0))
+                (the-as collide-shape (-> self root))
+                (the-as uint 1)
+                )
+           (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
+             (sound-play "trampoline")
+             (go-virtual fire)
+             )
+           )
+         )
+        (('touch)
+         (let ((gp-2 (-> event param 0)))
+           (cond
+             (((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry gp-2)
+               (the-as collide-shape (-> self root))
+               (collide-action solid)
+               (collide-action)
+               )
+              (when ((method-of-type touching-shapes-entry prims-touching?)
+                     (the-as touching-shapes-entry gp-2)
+                     (the-as collide-shape (-> self root))
+                     (the-as uint 1)
+                     )
+                (if (not (and (-> self next-state) (let ((v1-21 (-> self next-state name)))
+                                                     (or (= v1-21 'smush) (= v1-21 'fire))
+                                                     )
+                              )
+                         )
+                    (go-virtual smush)
+                    )
+                )
+              )
+             (((method-of-type touching-shapes-entry prims-touching?)
+               (the-as touching-shapes-entry gp-2)
+               (the-as collide-shape (-> self root))
+               (the-as uint 4)
+               )
+              (the-as object (persist-with-delay
+                               *setting-control*
+                               (the-as symbol (process->ppointer self))
+                               (seconds 0.05)
+                               'double-jump
+                               #f
+                               0.0
+                               0
+                               )
+                      )
+              )
+             )
+           )
+         )
+        (('attack)
+         (let ((v1-28 (the-as object (-> event param 1)))
+               (a0-17 (-> event param 0))
+               (a2-7 0)
+               )
+           (cond
+             ((= (-> (the-as attack-info v1-28) mode) 'flop)
+              (set! a2-7 1)
+              )
+             ((= (-> (the-as attack-info v1-28) mode) 'board)
+              (set! a2-7 9)
+              )
+             )
+           (when (and (nonzero? a2-7)
+                      (and ((method-of-type touching-shapes-entry prims-touching?)
+                            (the-as touching-shapes-entry a0-17)
+                            (the-as collide-shape (-> self root))
+                            (the-as uint a2-7)
+                            )
+                           (send-event proc 'jump (-> self spring-height) (-> self spring-height) (-> self mods))
+                           )
+                      )
+             (sound-play "trampoline")
+             (go-virtual fire)
+             #f
+             )
+           )
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) :num! min)
+    (transform-post)
+    (until #f
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate smush (bouncer)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touch)
+       (set! (-> self state-time) (current-time))
+       #f
+       )
+      (else
+        ((-> (method-of-object self idle) event) proc arg1 event-type event)
+        )
+      )
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (current-time))
+    (set! (-> self smush) 0.0)
+    (until #f
+      (if (>= (- (current-time) (-> self state-time)) (seconds 0.2))
+          (ja :num! (seek! 0.0 0.1))
+          (ja :num! (seek!
+                      (lerp-scale
+                        (ja-aframe 6.0 0)
+                        (ja-aframe 2.0 0)
+                        (vector-vector-xz-distance (target-pos 0) (-> self root trans))
+                        0.0
+                        4096.0
+                        )
+                      0.2
+                      )
+              )
+          )
+      (suspend)
+      (if (ja-min? 0)
+          (go-virtual idle)
+          )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior bouncer) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate fire (bouncer)
+  :virtual #t
+  :code (behavior ()
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
+    (ja-no-eval :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim)
+                :num! (seek!
+                  (the float (+ (-> (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) frames num-frames) -1))
+                  )
+                :frame-num (ja-aframe 6.0 0)
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual idle)
+    (none)
+    )
+  :post (the-as (function none :behavior bouncer) transform-post)
+  )
+
+;; definition for method 23 of type bouncer
+;; WARN: Return type mismatch int vs none.
+(defmethod init-skeleton! bouncer ((obj bouncer))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-bouncer" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 24 of type bouncer
+;; WARN: Return type mismatch int vs none.
+(defmethod bouncer-method-24 bouncer ((obj bouncer))
+  "TODO - collision stuff"
+  (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-spec crate))
+      (set! (-> collision-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> collision-mesh prim-core action) (collide-action solid))
+      (set! (-> collision-mesh transform-index) 0)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 3072.0 0.0 6963.2)
+      (set! (-> collision-shape total-prims) (the-as uint 1))
+      (set! (-> collision-shape root-prim) collision-mesh)
+      )
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (let ((prim (-> collision-shape root-prim)))
+      (set! (-> collision-shape backup-collide-as) (-> prim prim-core collide-as))
+      (set! (-> collision-shape backup-collide-with) (-> prim prim-core collide-with))
+      )
+    (set! (-> obj root) collision-shape)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type bouncer
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! bouncer ((obj bouncer) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj mods) #f)
+  (bouncer-method-24 obj)
+  (process-drawable-from-entity! obj arg0)
+  (init-skeleton! obj)
+  (nav-mesh-connect-from-ent obj)
+  (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
+  (go (method-of-object obj idle))
+  (none)
+  )

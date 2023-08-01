@@ -13,7 +13,6 @@
 #include "Reader.h"
 
 #include "common/goos/PrettyPrinter2.h"
-#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"

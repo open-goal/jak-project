@@ -42,7 +42,7 @@
          )
         )
       (eval-path-curve! (-> self path) (-> self root-override trans) arg1 'interp)
-      (set! (-> self root-override trans y) (+ 8192.0 (-> self root-override trans y)))
+      (+! (-> self root-override trans y) 8192.0)
       (set! (-> self root-override trans y) (fmax 106496.0 (-> self root-override trans y)))
       (set! (-> self base quad) (-> self root-override trans quad))
       (transform-post)
@@ -146,7 +146,7 @@
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self root-override trans quad))
     (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
-      (set! (-> gp-0 y) (+ 8192.0 (-> gp-0 y)))
+      (+! (-> gp-0 y) 8192.0)
       (let ((f0-2 (fill-and-probe-using-line-sphere
                     *collide-cache*
                     gp-0
@@ -183,7 +183,7 @@
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'vector))
         )
-    (TODO-RENAME-14 (-> self path) (-> self tangent) (-> self curve-position))
+    (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
     (cond
       ((and arg0 *target*)
        (vector-! gp-0 (-> self root-override trans) (target-pos 0))
@@ -223,10 +223,10 @@
       )
   (cond
     ((< 1.0 (-> self curve-position))
-     (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+     (+! (-> self curve-position) -1.0)
      )
     ((< (-> self curve-position) 0.0)
-     (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+     (+! (-> self curve-position) 1.0)
      )
     )
   (eval-path-curve! (-> self path) (-> self root-override trans) (-> self curve-position) 'interp)
@@ -250,10 +250,7 @@
        )
      )
     )
-  (let ((f0-34 (+ (-> self root-override trans y) (-> self y-offset))))
-    (set! (-> self root-override trans y) f0-34)
-    f0-34
-    )
+  (set! (-> self root-override trans y) (+ (-> self root-override trans y) (-> self y-offset)))
   )
 
 (defbehavior robber-calc-speed robber ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 symbol))
@@ -305,10 +302,10 @@
           )
         (cond
           ((< 1.0 (-> self curve-position))
-           (set! (-> self curve-position) (+ -1.0 (-> self curve-position)))
+           (+! (-> self curve-position) -1.0)
            )
           ((< (-> self curve-position) 0.0)
-           (set! (-> self curve-position) (+ 1.0 (-> self curve-position)))
+           (+! (-> self curve-position) 1.0)
            )
           )
         (eval-path-curve! (-> self path) (-> self root-override trans) (-> self curve-position) 'interp)
@@ -367,7 +364,7 @@
               (logior! (-> self draw status) (draw-status hidden))
               (let ((s5-1 (new 'stack-no-clear 'vector)))
                 (eval-path-curve! (-> self path) s5-1 (the-as float (-> v1-3 user-object 0)) 'interp)
-                (set! (-> s5-1 y) (+ 8192.0 (-> s5-1 y)))
+                (+! (-> s5-1 y) 8192.0)
                 (birth-pickup-at-point
                   s5-1
                   (pickup-type fuel-cell)
@@ -604,13 +601,7 @@
       (if (and *target*
                (>= 163840.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                )
-          (level-hint-spawn
-            (game-text-id rolling-robbers-hint)
-            "sksp0116"
-            (the-as entity #f)
-            *entity-pool*
-            (game-task none)
-            )
+          (level-hint-spawn (text-id rolling-robbers-hint) "sksp0116" (the-as entity #f) *entity-pool* (game-task none))
           )
       )
     (if (and *target*
@@ -621,7 +612,7 @@
     (none)
     )
   :code (behavior ()
-    (TODO-RENAME-14 (-> self path) (-> self tangent) (-> self curve-position))
+    (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
     (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root-override trans) (target-pos 0)))
           (f0-1 6.826667)
           )
@@ -686,7 +677,7 @@
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid ca-10 ca-11))
+      (set! (-> s3-0 prim-core action) (collide-action solid attackable attackable-unused))
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 10240.0)
@@ -708,7 +699,7 @@
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (set! (-> obj curve-position) (res-lump-float (-> obj entity) 'initial-spline-pos))
   (eval-path-curve! (-> obj path) (-> obj root-override trans) (-> obj curve-position) 'interp)
-  (TODO-RENAME-14 (-> obj path) (-> obj tangent) (-> obj curve-position))
+  (path-control-method-14 (-> obj path) (-> obj tangent) (-> obj curve-position))
   (set! (-> obj facing quad) (-> obj tangent quad))
   (let ((s4-1 (new 'stack-no-clear 'matrix)))
     (forward-down->inv-matrix s4-1 (-> obj facing) (new 'static 'vector :y -1.0))
@@ -736,7 +727,3 @@
       )
   (none)
   )
-
-
-
-

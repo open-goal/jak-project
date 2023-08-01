@@ -1,10 +1,10 @@
 ("KERNEL.CGO"
-  ("gcommon.o" "gcommon")
-  ("gstring-h.o" "gstring-h")
-  ("gkernel-h.o" "gkernel-h")
-  ("gkernel.o" "gkernel")
-  ("pskernel.o" "pskernel")
-  ("gstring.o" "gstring")
-  ("dgo-h.o" "dgo-h")
-  ("gstate.o" "gstate")
-  )
+ ("gcommon.o"
+  "gstring-h.o"
+  "gkernel-h.o"
+  "gkernel.o"
+  "pskernel.o"
+  "gstring.o"
+  "dgo-h.o"
+  "gstate.o"
+ ))

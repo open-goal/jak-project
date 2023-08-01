@@ -3,7 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/os.h"
-#include <common/util/unicode_util.h>
+#include "common/util/unicode_util.h"
 
 #include "gtest/gtest.h"
 

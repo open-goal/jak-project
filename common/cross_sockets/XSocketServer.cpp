@@ -2,6 +2,7 @@
 #include "XSocketServer.h"
 
 #include "common/cross_sockets/XSocket.h"
+#include "common/common_types.h"
 
 #include "third-party/fmt/core.h"
 
@@ -12,6 +13,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+#include "common/log/log.h"
 // clang-format on
 
 XSocketServer::XSocketServer(std::function<bool()> shutdown_callback,
@@ -40,19 +42,26 @@ bool XSocketServer::init_server() {
     return false;
   }
 
-#ifdef __linux
-  int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
-#elif _WIN32
-  int server_socket_opt = SO_EXCLUSIVEADDRUSE;
-#endif
+  int yes = 1;
 
-  int opt = 1;
-  if (set_socket_option(listening_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) < 0) {
+#ifdef OS_POSIX
+  if (set_socket_option(listening_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
+    close_server_socket();
+    return false;
+  }
+  // macOS doesn't support setting multiple options at once, so we have to do this separately.
+  if (set_socket_option(listening_socket, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) < 0) {
+    close_server_socket();
+    return false;
+  }
+#elif _WIN32
+  if (set_socket_option(listening_socket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, &yes, sizeof(yes)) < 0) {
     close_server_socket();
     return false;
   };
+#endif
 
-  if (set_socket_option(listening_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &opt, sizeof(opt)) < 0) {
+  if (set_socket_option(listening_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &yes, sizeof(yes)) < 0) {
     close_server_socket();
     return false;
   }
@@ -67,19 +76,19 @@ bool XSocketServer::init_server() {
   addr.sin_port = htons(tcp_port);
 
   if (bind(listening_socket, (sockaddr*)&addr, sizeof(addr)) < 0) {
-    fmt::print("[XSocketServer:{}] failed to bind\n", tcp_port);
+    lg::error("[XSocketServer:{}] failed to bind", tcp_port);
     close_server_socket();
     return false;
   }
 
   if (listen(listening_socket, 0) < 0) {
-    fmt::print("[XSocketServer:{}] failed to listen\n", tcp_port);
+    lg::error("[XSocketServer:{}] failed to listen", tcp_port);
     close_server_socket();
     return false;
   }
 
   server_initialized = true;
-  fmt::print("[XSocketServer:{}] initialized\n", tcp_port);
+  lg::info("[XSocketServer:{}] initialized", tcp_port);
   post_init();
   return true;
 }

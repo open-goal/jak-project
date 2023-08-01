@@ -1,0 +1,532 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type basebutton
+(deftype basebutton (process-focusable)
+  ((button-status     button-status                 :offset-assert 204)
+   (notify-actor      entity                        :offset-assert 208)
+   (actor-group       (pointer actor-group)         :offset-assert 212)
+   (actor-group-count int32                         :offset-assert 216)
+   (timeout           float                         :offset-assert 220)
+   (button-id         int32                         :offset-assert 224)
+   (event-going-down  symbol                        :offset-assert 228)
+   (event-down        symbol                        :offset-assert 232)
+   (event-going-up    symbol                        :offset-assert 236)
+   (event-up          symbol                        :offset-assert 240)
+   (anim-speed        float                         :offset-assert 244)
+   (move-to-pos       vector                :inline :offset-assert 256)
+   (move-to-quat      quaternion            :inline :offset-assert 272)
+   )
+  :heap-base #xa0
+  :method-count-assert 39
+  :size-assert         #x120
+  :flag-assert         #x2700a00120
+  (:methods
+    (down-idle () _type_ :state 27)
+    (going-down () _type_ :state 28)
+    (going-up () _type_ :state 29)
+    (up-idle () _type_ :state 30)
+    (reset! (_type_) none 31)
+    (idle-state-transition (_type_) object 32)
+    (basebutton-method-33 (_type_) none 33)
+    (basebutton-method-34 (_type_) none 34)
+    (prepare-trigger-event! (_type_) none 35)
+    (send-event! (_type_ symbol) none :behavior basebutton 36)
+    (move-to! (_type_ vector quaternion) none 37)
+    (press! (_type_ symbol) entity-perm-status 38)
+    )
+  )
+
+;; definition for method 3 of type basebutton
+(defmethod inspect basebutton ((obj basebutton))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tbutton-status: ~D~%" (-> obj button-status))
+  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
+  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
+  (dotimes (s5-0 (-> obj actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (format #t "~2Ttimeout: ~f~%" (-> obj timeout))
+  (format #t "~2Tbutton-id: ~D~%" (-> obj button-id))
+  (format #t "~2Tevent-going-down: ~A~%" (-> obj event-going-down))
+  (format #t "~2Tevent-down: ~A~%" (-> obj event-down))
+  (format #t "~2Tevent-going-up: ~A~%" (-> obj event-going-up))
+  (format #t "~2Tevent-up: ~A~%" (-> obj event-up))
+  (format #t "~2Tanim-speed: ~f~%" (-> obj anim-speed))
+  (format #t "~2Tmove-to-pos: #<vector @ #x~X>~%" (-> obj move-to-pos))
+  (format #t "~2Tmove-to-quat: #<quaternion @ #x~X>~%" (-> obj move-to-quat))
+  (label cfg-7)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-generic-button mtn-dice-button mtn-dice-button-lod0-jg mtn-dice-button-idle-ja
+              ((mtn-dice-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+;; definition for method 37 of type basebutton
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod move-to! basebutton ((obj basebutton) (vec vector) (quat quaternion))
+  (logclear! (-> obj button-status) (button-status button-status-2))
+  (if vec
+      (set! (-> obj move-to-pos quad) (-> vec quad))
+      (set! (-> obj move-to-pos quad) (-> obj root trans quad))
+      )
+  (if quat
+      (quaternion-copy! (-> obj move-to-quat) quat)
+      (quaternion-copy! (-> obj move-to-quat) (-> obj root quat))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 32 of type basebutton
+(defmethod idle-state-transition basebutton ((obj basebutton))
+  "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
+  (if (logtest? (-> obj button-status) (button-status pressed))
+      (go (method-of-object obj down-idle))
+      (go (method-of-object obj up-idle))
+      )
+  )
+
+;; failed to figure out what this is:
+(defstate up-idle (basebutton)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('attack)
+         (let ((attack (the-as attack-info (-> event param 1))))
+           (case (-> attack mode)
+             (('flop 'spin 'punch 'eco-yellow 'eco-red 'eco-blue 'eco-dark)
+              (when (or (not (or (= (-> attack mode) 'spin) (= (-> attack mode) 'punch)))
+                        (logtest? (-> self button-status) (button-status button-status-3))
+                        )
+                (send-event! self (-> self event-going-down))
+                (go-virtual going-down)
+                )
+              )
+             )
+           )
+         )
+        (('trigger)
+         (sound-play "silo-button")
+         (go-virtual going-down)
+         )
+        (('touch)
+         (when (logtest? (-> self button-status) (button-status button-status-4))
+           (send-event! self (-> self event-going-down))
+           (go-virtual going-down)
+           )
+         )
+        (('move-to)
+         (the-as object (move-to! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1))))
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (press! self #f)
+    (none)
+    )
+  :trans (behavior ()
+    (if (logtest? (-> self button-status) (button-status button-status-2))
+        (rider-trans)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior basebutton) sleep-code)
+  :post (behavior ()
+    (when (logtest? (-> self button-status) (button-status button-status-2))
+      (logclear! (-> self button-status) (button-status button-status-2))
+      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root quat) (-> self move-to-quat))
+      (rider-post)
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate going-down (basebutton)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('untrigger)
+         (go-virtual going-up)
+         )
+        (('move-to)
+         (the-as object (move-to! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1))))
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (press! self #t)
+    (none)
+    )
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
+    (ja-no-eval :num! (seek! max (-> self anim-speed)))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max (-> self anim-speed)))
+      )
+    (send-event! self (-> self event-down))
+    (let ((activation-script (res-lump-struct (-> self entity) 'on-activate structure)))
+      (if activation-script
+          (script-eval (the-as pair activation-script))
+          )
+      )
+    (go-virtual down-idle)
+    (none)
+    )
+  :post (behavior ()
+    (when (logtest? (-> self button-status) (button-status button-status-2))
+      (logclear! (-> self button-status) (button-status button-status-2))
+      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root quat) (-> self move-to-quat))
+      )
+    (rider-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate down-idle (basebutton)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('untrigger)
+         (go-virtual going-up)
+         )
+        (('move-to)
+         (the-as object (move-to! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1))))
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (press! self #t)
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (if (logtest? (-> self button-status) (button-status button-status-2))
+        (rider-trans)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (cond
+      ((= (-> self timeout) 0.0)
+       (sleep-code)
+       )
+      (else
+        (until (>= (- (current-time) (-> self state-time)) (the int (* 300.0 (-> self timeout))))
+          (suspend)
+          )
+        (send-event! self (-> self event-going-up))
+        (sound-play "silo-button")
+        (go-virtual going-up)
+        )
+      )
+    (none)
+    )
+  :post (behavior ()
+    (when (logtest? (-> self button-status) (button-status button-status-2))
+      (logclear! (-> self button-status) (button-status button-status-2))
+      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root quat) (-> self move-to-quat))
+      (rider-post)
+      )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate going-up (basebutton)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('move-to)
+         (the-as object (move-to! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1))))
+         )
+        (('trigger)
+         (go-virtual going-down)
+         )
+        )
+      )
+    )
+  :enter (behavior ()
+    (press! self #f)
+    (none)
+    )
+  :trans (the-as (function none :behavior basebutton) rider-trans)
+  :code (behavior ()
+    (ja-no-eval :num! (seek! 0.0 (-> self anim-speed)))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 0.0 (-> self anim-speed)))
+      )
+    (send-event! self (-> self event-up))
+    (go-virtual up-idle)
+    (none)
+    )
+  :post (behavior ()
+    (when (logtest? (-> self button-status) (button-status button-status-2))
+      (logclear! (-> self button-status) (button-status button-status-2))
+      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (quaternion-copy! (-> self root quat) (-> self move-to-quat))
+      )
+    (rider-post)
+    (none)
+    )
+  )
+
+;; definition for method 38 of type basebutton
+(defmethod press! basebutton ((obj basebutton) (pressed? symbol))
+  (if pressed?
+      (logior! (-> obj button-status) (button-status pressed))
+      (logclear! (-> obj button-status) (button-status pressed))
+      )
+  (when (not (logtest? (-> obj button-status) (button-status button-status-1)))
+    (if pressed?
+        (process-entity-status! obj (entity-perm-status subtask-complete) #t)
+        (process-entity-status! obj (entity-perm-status subtask-complete) #f)
+        )
+    )
+  )
+
+;; definition for method 36 of type basebutton
+;; WARN: Return type mismatch int vs none.
+(defmethod send-event! basebutton ((obj basebutton) (event-type symbol))
+  "Prepares an [[event-message-block]] using the provided type to send an event to:
+- the `notify-actor`
+- every [[entity-actor]] in the `actor-group` array
+@see [[entity-actor]]"
+  (when event-type
+    (let ((event (new 'stack-no-clear 'event-message-block)))
+      (set! (-> event from) (process->ppointer self))
+      (set! (-> event num-params) 0)
+      (set! (-> event message) event-type)
+      (let ((func send-event-function)
+            (actor (-> obj notify-actor))
+            )
+        (func
+          (if actor
+              (-> actor extra process)
+              )
+          event
+          )
+        (dotimes (actor-group-idx (-> obj actor-group-count))
+          (let ((actor-group (-> obj actor-group actor-group-idx)))
+            (dotimes (actor-idx (-> actor-group length))
+              (set! event (new 'stack-no-clear 'event-message-block))
+              (set! (-> event from) (process->ppointer self))
+              (set! (-> event num-params) 0)
+              (set! (-> event message) event-type)
+              (set! func send-event-function)
+              (set! actor (-> actor-group data actor-idx actor))
+              (func
+                (if actor
+                    (-> actor extra process)
+                    )
+                event
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 31 of type basebutton
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! basebutton ((obj basebutton))
+  (set! (-> obj button-status) (button-status))
+  (set! (-> obj notify-actor) #f)
+  (set! (-> obj timeout) 0.0)
+  (set! (-> obj event-going-down) #f)
+  (set! (-> obj event-down) #f)
+  (set! (-> obj event-going-up) #f)
+  (set! (-> obj event-up) #f)
+  (set! (-> obj anim-speed) 1.0)
+  0
+  (none)
+  )
+
+;; definition for method 35 of type basebutton
+;; WARN: Return type mismatch int vs none.
+(defmethod prepare-trigger-event! basebutton ((obj basebutton))
+  "Sets `event-going-down` to `'trigger`"
+  (set! (-> obj event-going-down) 'trigger)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type basebutton
+;; WARN: Return type mismatch int vs none.
+(defmethod basebutton-method-33 basebutton ((obj basebutton))
+  "TODO - joint stuff"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-generic-button" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (ja-channel-set! 1)
+  (cond
+    ((logtest? (-> obj button-status) (button-status pressed))
+     (let ((channel-0 (-> obj skel root-channel 0)))
+       (joint-control-channel-group-eval!
+         channel-0
+         (the-as art-joint-anim (-> obj draw art-group data 3))
+         num-func-identity
+         )
+       (set! (-> channel-0 frame-num)
+             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+             )
+       )
+     )
+    (else
+      (let ((channel-1 (-> obj skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          channel-1
+          (the-as art-joint-anim (-> obj draw art-group data 3))
+          num-func-identity
+          )
+        (set! (-> channel-1 frame-num) 0.0)
+        )
+      )
+    )
+  (set! (-> obj anim-speed) 2.0)
+  (transform-post)
+  (none)
+  )
+
+;; definition for method 34 of type basebutton
+;; WARN: Return type mismatch int vs none.
+(defmethod basebutton-method-34 basebutton ((obj basebutton))
+  "TODO - collision stuff"
+  (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> collision-mesh prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> collision-mesh prim-core action) (collide-action solid rideable))
+      (set! (-> collision-mesh transform-index) 3)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 0.0 0.0 12288.0)
+      (set! (-> collision-shape total-prims) (the-as uint 1))
+      (set! (-> collision-shape root-prim) collision-mesh)
+      )
+    (pusher-init collision-shape)
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (let ((prim (-> collision-shape root-prim)))
+      (set! (-> collision-shape backup-collide-as) (-> prim prim-core collide-as))
+      (set! (-> collision-shape backup-collide-with) (-> prim prim-core collide-with))
+      )
+    (set! (-> obj root) collision-shape)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type basebutton
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! basebutton ((obj basebutton) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (reset! obj)
+  (set! (-> obj button-id) -1)
+  (let ((v1-4 (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
+    (if (>= (the-as int v1-4) 0)
+        (set! (-> obj button-id) (the-as int v1-4))
+        )
+    )
+  (basebutton-method-34 obj)
+  (process-drawable-from-entity! obj arg0)
+  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+      (logior! (-> obj button-status) (button-status pressed))
+      (logclear! (-> obj button-status) (button-status pressed))
+      )
+  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-15 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-15 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-15))
+       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> obj actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> obj timeout) (res-lump-float arg0 'timeout))
+  (if (not (logtest? (-> obj button-status) (button-status button-status-1)))
+      (nav-mesh-connect-from-ent obj)
+      )
+  (prepare-trigger-event! obj)
+  (basebutton-method-33 obj)
+  (idle-state-transition obj)
+  (none)
+  )
+
+;; definition for function basebutton-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior basebutton-init-by-other basebutton ((process-actor entity-actor)
+                                        (vec vector)
+                                        (quat quaternion)
+                                        (notify-actor entity-actor)
+                                        (pressed? symbol)
+                                        (timeout float)
+                                        )
+  (reset! self)
+  (logior! (-> self button-status) (button-status button-status-1))
+  (set! (-> self button-id) -1)
+  (if pressed?
+      (logior! (-> self button-status) (button-status pressed))
+      )
+  (set! (-> self notify-actor) notify-actor)
+  (set! (-> self timeout) timeout)
+  (if process-actor
+      (process-entity-set! self process-actor)
+      )
+  (set! (-> self actor-group) (the-as (pointer actor-group) #f))
+  (set! (-> self actor-group-count) 0)
+  (basebutton-method-34 self)
+  (set! (-> self root trans quad) (-> vec quad))
+  (quaternion-copy! (-> self root quat) quat)
+  (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+  (prepare-trigger-event! self)
+  (basebutton-method-33 self)
+  (idle-state-transition self)
+  (none)
+  )

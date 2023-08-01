@@ -1,6 +1,8 @@
+#include "common/log/log.h"
+
 #include "Generic2.h"
 
-void Generic2::opengl_setup() {
+void Generic2::opengl_setup(ShaderLibrary& shaders) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.index_buffer);
@@ -54,15 +56,7 @@ void Generic2::opengl_setup() {
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-}
 
-void Generic2::opengl_cleanup() {
-  glDeleteBuffers(1, &m_ogl.vertex_buffer);
-  glDeleteBuffers(1, &m_ogl.index_buffer);
-  glDeleteVertexArrays(1, &m_ogl.vao);
-}
-
-void Generic2::init_shaders(ShaderLibrary& shaders) {
   const auto& shader = shaders[ShaderId::GENERIC];
   auto id = shader.id();
 
@@ -78,6 +72,13 @@ void Generic2::init_shaders(ShaderLibrary& shaders) {
   m_ogl.fog_consts = glGetUniformLocation(id, "fog_constants");
   m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
   m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
+  m_ogl.warp_sample_mode = glGetUniformLocation(id, "warp_sample_mode");
+}
+
+void Generic2::opengl_cleanup() {
+  glDeleteBuffers(1, &m_ogl.vertex_buffer);
+  glDeleteBuffers(1, &m_ogl.index_buffer);
+  glDeleteVertexArrays(1, &m_ogl.vao);
 }
 
 void Generic2::opengl_bind_and_setup_proj(SharedRenderState* render_state) {
@@ -127,13 +128,13 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - Cd) * As + Cd
       // Cs * As  + (1 - As) * Cd
       // s, d
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_SRC_DST) {
       // (Cs - 0) * As + Cd
       // Cs * As + (1) * Cd
       // s, d
-      ASSERT(fix == 0);
+      // fix is ignored. it's usually 0, except for lightning, which sets it to 0x80.
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::ZERO_SRC_SRC_DST) {
@@ -157,7 +158,7 @@ void Generic2::setup_opengl_for_draw_mode(const DrawMode& draw_mode,
       // (Cs - 0) * Ad + Cd
       glBlendFunc(GL_DST_ALPHA, GL_ONE);
       glBlendEquation(GL_FUNC_ADD);
-      color_mult = 0.5f;
+      color_mult = 1.0f;
     } else if (draw_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_FIX_DST) {
       glBlendEquation(GL_FUNC_ADD);
       glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
@@ -221,15 +222,8 @@ void Generic2::setup_opengl_tex(u16 unit,
   }
 
   if (!tex) {
-    // TODO Add back
-    if (tbp_to_lookup >= 8160 && tbp_to_lookup <= 8600) {
-      fmt::print("Failed to find texture at {}, using random (eye zone)\n", tbp_to_lookup);
-
-      tex = render_state->texture_pool->get_placeholder_texture();
-    } else {
-      fmt::print("Failed to find texture at {}, using random\n", tbp_to_lookup);
-      tex = render_state->texture_pool->get_placeholder_texture();
-    }
+    lg::warn("Failed to find texture at {}, using random (generic2)", tbp_to_lookup);
+    tex = render_state->texture_pool->get_placeholder_texture();
   }
 
   glActiveTexture(GL_TEXTURE0 + unit);
@@ -253,6 +247,15 @@ void Generic2::setup_opengl_tex(u16 unit,
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+
+  if (render_state->version == GameVersion::Jak2 && tbp_to_lookup == 1216) {
+    glUniform1ui(m_ogl.warp_sample_mode, 1);
+    // warp shader uses region clamp, which isn't supported by DrawMode.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glUniform1ui(m_ogl.warp_sample_mode, 0);
   }
 }
 

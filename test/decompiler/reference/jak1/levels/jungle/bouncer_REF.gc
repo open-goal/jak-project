@@ -40,10 +40,10 @@
 
 ;; failed to figure out what this is:
 (defstate bouncer-wait (springbox)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('bonk)
-       (when (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f)
+       (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f)
          (sound-play "trampoline")
          (go bouncer-fire)
          )
@@ -54,7 +54,7 @@
            )
        )
       (('attack)
-       (when (and (= (-> arg3 param 1) 'flop) (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f))
+       (when (and (= (-> event param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
          (go bouncer-fire)
          #f
          )
@@ -74,14 +74,14 @@
 
 ;; failed to figure out what this is:
 (defstate bouncer-smush (springbox)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('touch)
        (set! (-> self state-time) (-> *display* base-frame-counter))
        #f
        )
       (else
-        ((-> bouncer-wait event) arg0 arg1 arg2 arg3)
+        ((-> bouncer-wait event) proc arg1 event-type event)
         )
       )
     )

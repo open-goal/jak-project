@@ -67,6 +67,16 @@ bool integer_fits(s64 in, int size, bool is_signed);
 u32 float_as_u32(float x);
 
 template <typename T>
+T align64(T in) {
+  return (in + 63) & (~T(63));
+}
+
+template <typename T>
+T align32(T in) {
+  return (in + 31) & (~T(31));
+}
+
+template <typename T>
 T align16(T in) {
   return (in + 15) & (~T(15));
 }
@@ -82,8 +92,8 @@ T align4(T in) {
 }
 
 template <typename T>
-T align64(T in) {
-  return (in + 63) & (~T(63));
+T align2(T in) {
+  return (in + 1) & (~T(1));
 }
 
 inline u32 count_leading_zeros_u32(u32 in) {

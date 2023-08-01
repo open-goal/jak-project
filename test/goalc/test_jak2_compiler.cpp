@@ -51,5 +51,6 @@ TEST_F(Jak2GoalcTests, All) {
                            "basic types: type symbol string function\n"
                            "bools: #t #f #t #f #f #t\n"
                            "zero: 0\n"
-                           "parent of type: basic structure object object\n0\n"});
+                           "parent of type: basic structure object object\n"
+                           "array: asdf #f\n0\n"});
 }

@@ -16,10 +16,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "ReplUtils.h"
-
 #include "common/goos/Object.h"
 #include "common/goos/TextDB.h"
+#include "common/repl/util.h"
 #include "common/util/Assert.h"
 
 namespace goos {
@@ -74,7 +73,7 @@ class Reader {
   Object read_from_string(const std::string& str,
                           bool add_top_level = true,
                           const std::optional<std::string>& string_name = {});
-  std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
+  std::optional<Object> read_from_stdin(const std::string& prompt, REPL::Wrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
   bool check_string_is_valid(const std::string& str) const;
 

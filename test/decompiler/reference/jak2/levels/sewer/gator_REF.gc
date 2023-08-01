@@ -1,0 +1,664 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-gator amphibian amphibian-lod0-jg -1
+              ((amphibian-lod0-mg (meters 20)) (amphibian-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 5.5)
+              )
+
+;; definition of type gator
+(deftype gator (nav-enemy)
+  "Cannot take damage due to it overriding [[enemy::56]]"
+  ((ocean-y         float              :offset-assert 604)
+   (lock-nav-target symbol             :offset-assert 608)
+   (new-facing      vector     :inline :offset-assert 624)
+   (old-facing      vector     :inline :offset-assert 640)
+   (turn-time       time-frame         :offset-assert 656)
+   )
+  :heap-base #x220
+  :method-count-assert 182
+  :size-assert         #x298
+  :flag-assert         #xb602200298
+  (:methods
+    (attack-forward () _type_ :state 178)
+    (adjust-depth! (_type_) float 179)
+    (update-facing! (_type_ vector) vector 180)
+    (encircle-target! (_type_ float float symbol) time-frame 181)
+    )
+  )
+
+;; definition for method 3 of type gator
+(defmethod inspect gator ((obj gator))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tocean-y: ~f~%" (-> obj ocean-y))
+  (format #t "~2Tlock-nav-target: ~A~%" (-> obj lock-nav-target))
+  (format #t "~2Tnew-facing: #<vector @ #x~X>~%" (-> obj new-facing))
+  (format #t "~2Told-facing: #<vector @ #x~X>~%" (-> obj old-facing))
+  (format #t "~2Tturn-time: ~D~%" (-> obj turn-time))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *gator-nav-enemy-info*, type nav-enemy-info
+(define *gator-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'array idle-control-frame 4
+      (new 'static 'idle-control-frame :command (ic-cmd push) :param0 #x1e)
+      (new 'static 'idle-control-frame :command (ic-cmd play) :anim #xd :param0 #x64 :param1 #x64)
+      (new 'static 'idle-control-frame)
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 13
+    :notice-anim 13
+    :hostile-anim 14
+    :hit-anim 6
+    :knocked-anim 6
+    :knocked-land-anim 7
+    :die-anim 12
+    :die-falling-anim 21
+    :victory-anim -1
+    :jump-wind-up-anim 13
+    :jump-in-air-anim 13
+    :jump-land-anim 13
+    :neck-joint -1
+    :look-at-joint 12
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "gator-hit")
+    :sound-die (static-sound-name "gator-die")
+    :notice-distance (meters 80)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 40)
+    :default-hit-points 1
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3.5)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 13
+    :turn-anim -1
+    :run-anim 14
+    :taunt-anim -1
+    :run-travel-speed (meters 16)
+    :run-acceleration (meters 8)
+    :run-turning-acceleration (meters 40)
+    :walk-travel-speed (meters 4)
+    :walk-acceleration (meters 8)
+    :walk-turning-acceleration (meters 10)
+    :maximum-rotation-rate (degrees 200.00002)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *gator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 74 of type gator
+(defmethod general-event-handler gator ((obj gator) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
+  "Handles various events for the enemy
+@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+  (case event-type
+    (('hit-knocked)
+     (when (= (-> obj incoming knocked-type) (knocked-type knocked-type-4))
+       (set! (-> obj incoming knocked-type) (knocked-type knocked-type-0))
+       0
+       )
+     ((method-of-type nav-enemy general-event-handler) obj proc arg2 event-type event)
+     )
+    (('track)
+     #f
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj proc arg2 event-type event)
+      )
+    )
+  )
+
+;; definition for method 179 of type gator
+(defmethod adjust-depth! gator ((obj gator))
+  "Changes the height based on the ocean depth
+@see [[get-height]]"
+  (set! (-> obj ocean-y) (get-height *ocean* (-> obj root trans) #t))
+  (set! (-> obj root trans y) (+ -10240.0 (-> obj ocean-y)))
+  )
+
+;; definition for method 180 of type gator
+;; INFO: Used lq/sq
+(defmethod update-facing! gator ((obj gator) (arg0 vector))
+  "Updates the `new-facing` vector"
+  (let ((matrix (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat))))
+    (set! (-> arg0 quad) (-> matrix vector 2 quad))
+    )
+  arg0
+  )
+
+;; definition for method 181 of type gator
+(defmethod encircle-target! gator ((obj gator) (arg0 float) (arg1 float) (arg2 symbol))
+  "Core movement for the [[gator]], circles the target, charges at the target, etc
+@params TODO - not sure, they all dont seem to do very much and this method is a mess"
+  (local-vars (v1-17 object) (a0-5 object))
+  (let ((f30-0 (vector-dot (-> obj new-facing) (-> obj old-facing)))
+        (s5-0 75)
+        (s4-0 (the-as art-joint-anim (if (> (-> obj skel active-channels) 0)
+                                         (-> obj skel root-channel 0 frame-group)
+                                         )
+                      )
+              )
+        )
+    (b! (not arg2) cfg-26 :delay (nop!))
+    (set! s5-0 18)
+    (b! (>= f30-0 (cos (* 182.04445 arg0))) cfg-8 :delay #f)
+    (if (< (-> (vector-cross! (new 'stack-no-clear 'vector) (-> obj new-facing) (-> obj old-facing)) y) 0.0)
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 40)))
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 39)))
+        )
+    (b! #t cfg-25 :delay (nop!))
+    (label cfg-8)
+    (let ((v1-16 (< (cos (* 182.04445 arg1)) f30-0)))
+      (b! v1-16 cfg-23 :likely-delay (set! v1-17 v1-16))
+      )
+    (let ((v1-20 (if (> (-> obj skel active-channels) 0)
+                     (-> obj skel root-channel 0 frame-group)
+                     )
+                 )
+          )
+      (b! (not v1-20) cfg-21 :likely-delay (set! a0-5 v1-20))
+      (let ((a1-3 (= v1-20 (-> obj draw art-group data 14))))
+        (b! a1-3 cfg-21 :likely-delay (set! a0-5 a1-3))
+        )
+      (let ((a1-4 (= v1-20 (-> obj draw art-group data 40))))
+        (b! a1-4 cfg-21 :likely-delay (set! a0-5 a1-4))
+        )
+      (set! a0-5 (= v1-20 (-> obj draw art-group data 39)))
+      )
+    (label cfg-21)
+    (b! (not a0-5) cfg-23 :delay (set! v1-17 #t))
+    (set! v1-17 #f)
+    (label cfg-23)
+    (if v1-17
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 14)))
+        )
+    (label cfg-25)
+    (b! #t cfg-48 :delay (nop!))
+    (label cfg-26)
+    (b! (>= f30-0 (cos (* 182.04445 arg0))) cfg-31 :delay #f)
+    (if (< (-> (vector-cross! (new 'stack-no-clear 'vector) (-> obj new-facing) (-> obj old-facing)) y) 0.0)
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 38)))
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 37)))
+        )
+    (b! #t cfg-48 :delay (nop!))
+    (label cfg-31)
+    (if (or (< (cos (* 182.04445 arg1)) f30-0) (let ((v1-41 (if (> (-> obj skel active-channels) 0)
+                                                                (-> obj skel root-channel 0 frame-group)
+                                                                )
+                                                            )
+                                                     )
+                                                 (not (and v1-41 (or (= v1-41 (-> obj draw art-group data 13))
+                                                                     (= v1-41 (-> obj draw art-group data 38))
+                                                                     (= v1-41 (-> obj draw art-group data 37))
+                                                                     )
+                                                           )
+                                                      )
+                                                 )
+            )
+        (set! s4-0 (the-as art-joint-anim (-> obj draw art-group data 13)))
+        )
+    (label cfg-48)
+    (let ((v1-50 (if (> (-> obj skel active-channels) 0)
+                     (-> obj skel root-channel 0 frame-group)
+                     )
+                 )
+          )
+      (when (and (not (and v1-50 (= v1-50 (the-as art-element s4-0))))
+                 (>= (- (current-time) (the-as time-frame s5-0)) (-> obj turn-time))
+                 )
+        (let ((f30-2 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+          (ja-channel-push! 1 (the-as time-frame s5-0))
+          (set! (-> obj skel root-channel 0 frame-group) s4-0)
+          (let ((s5-1 (-> obj skel root-channel 0)))
+            (set! (-> s5-1 num-func) num-func-identity)
+            (set! (-> s5-1 frame-num) (* f30-2 (the float (ja-num-frames 0))))
+            )
+          )
+        (let ((v0-4 (current-time)))
+          (set! (-> obj turn-time) v0-4)
+          v0-4
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 55 of type gator
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defmethod track-target! gator ((obj gator))
+  "Does a lot of various things relating to interacting with the target
+- tracks when the enemy was last drawn
+- looks at the target and handles attacking
+@TODO Not extremely well understood yet"
+  (let ((func (method-of-type nav-enemy track-target!)))
+    (func obj)
+    )
+  (adjust-depth! obj)
+  (set! (-> obj old-facing quad) (-> obj new-facing quad))
+  (update-facing! obj (-> obj new-facing))
+  (none)
+  )
+
+;; definition for method 56 of type gator
+(defmethod damage-amount-from-attack gator ((obj gator) (arg0 process) (arg1 event-message-block))
+  "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
+  0
+  )
+
+;; definition for method 70 of type gator
+;; WARN: Return type mismatch object vs none.
+(defmethod go-hostile gator ((obj gator))
+  (go (method-of-object obj hostile))
+  (none)
+  )
+
+;; definition for method 107 of type gator
+(defmethod get-enemy-target gator ((obj gator))
+  "@returns the [[process-focusable]] that the enemy is currently focusing on, or [[#f]] otherwise"
+  (let ((enemy-target ((method-of-type nav-enemy get-enemy-target) obj)))
+    (if (and enemy-target
+             (< (+ 1024.0 (get-height *ocean* (get-trans enemy-target 0) #t)) (-> (get-trans enemy-target 1) y))
+             )
+        (set! enemy-target (the-as process-focusable #f))
+        )
+    enemy-target
+    )
+  )
+
+;; definition for method 98 of type gator
+;; INFO: Used lq/sq
+(defmethod in-aggro-range? gator ((obj gator) (arg0 process-focusable) (arg1 vector))
+  "Should the enemy activate.
+- if `activate-distance` is `0.0`, always true
+- otherwise, check if the provided process is close enough
+@param proc The process used to distance check
+@returns true/false"
+  (let ((target-pos (new 'stack-no-clear 'vector)))
+    (when (and (= *target* arg0) (not arg1) (= (-> *target* control ground-pat material) (pat-material waterbottom)))
+      (set! (-> target-pos quad) (-> (get-trans arg0 0) quad))
+      (set! (-> target-pos y) (get-height *ocean* target-pos #t))
+      (set! arg1 target-pos)
+      )
+    )
+  ((method-of-type nav-enemy in-aggro-range?) obj arg0 arg1)
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (gator)
+  :virtual #t
+  :trans (behavior ()
+    (let ((func (-> (method-of-type nav-enemy hostile) trans)))
+      (if func
+          (func)
+          )
+      )
+    (let ((enemy-target (get-enemy-target self)))
+      (when enemy-target
+        (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (get-trans enemy-target 0) (-> self root trans)))
+              (nav-state (-> self nav state))
+              (s5-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s5-0 quad) (-> nav-state heading quad))
+          0
+          (let ((v1-10 (vector-normalize-ret-len! dir-to-target 1.0)))
+            (if (and (>= #x47000000 (the-as int v1-10)) (< (cos 5461.3335) (vector-dot dir-to-target s5-0)))
+                (go-virtual attack-forward)
+                )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (let ((circle-for (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (encircle-target! self 2.0 0.5 #t)
+        (suspend)
+        (ja :num! (loop! circle-for))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack-forward (gator)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object :behavior gator) enemy-event-handler)
+  :enter (behavior ()
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (let ((_self self))
+      (if (not (logtest? (enemy-flag enemy-flag36) (-> _self enemy-flags)))
+          (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> _self enemy-flags))))
+          )
+      (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> _self enemy-flags))))
+      (set! (-> _self nav callback-info) (-> _self enemy-info callback-info))
+      )
+    0
+    (let ((__self self))
+      (set! (-> __self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> __self enemy-flags))))
+      )
+    0
+    (let ((nav-state (-> self nav state)))
+      (set! (-> nav-state speed) (* 1.25 (-> self enemy-info run-travel-speed)))
+      )
+    0
+    (set! (-> self lock-nav-target) #f)
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((game-info *game-info*)
+           (id (+ (-> game-info attack-id) 1))
+           )
+      (set! (-> game-info attack-id) id)
+      (set! (-> self attack-id) id)
+      )
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (none)
+    )
+  :trans (behavior ()
+    (let ((focus (handle->process (-> self focus handle))))
+      (if (not focus)
+          (react-to-focus self)
+          )
+      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable focus) 0) quad))
+      )
+    (cond
+      ((-> self lock-nav-target)
+       )
+      ((or (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+           (logtest? (-> self nav state flags) (nav-state-flag at-target))
+           )
+       (set! (-> self lock-nav-target) #t)
+       (let ((nav (-> self nav)))
+         (set! (-> nav target-speed) (-> self enemy-info walk-travel-speed))
+         )
+       0
+       (let ((_nav (-> self nav)))
+         (set! (-> _nav acceleration) 131072.0)
+         )
+       0
+       (let ((velocity (new 'stack-no-clear 'vector)))
+         (let ((nav-state (-> self nav state)))
+           (set! (-> velocity quad) (-> nav-state velocity quad))
+           )
+         (vector-normalize! velocity 32768.0)
+         (vector+! velocity velocity (-> self root trans))
+         (let ((_nav-state (-> self nav state)))
+           (logclear! (-> _nav-state flags) (nav-state-flag directional-mode))
+           (logior! (-> _nav-state flags) (nav-state-flag target-poly-dirty))
+           (set! (-> _nav-state target-post quad) (-> velocity quad))
+           )
+         )
+       0
+       )
+      (else
+        (let ((__nav-state (-> self nav state))
+              (target-pos (-> self focus-pos))
+              )
+          (logclear! (-> __nav-state flags) (nav-state-flag directional-mode))
+          (logior! (-> __nav-state flags) (nav-state-flag target-poly-dirty))
+          (set! (-> __nav-state target-post quad) (-> target-pos quad))
+          )
+        0
+        )
+      )
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.07))
+    (ja-no-eval :group! (-> self draw art-group data 15)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
+                :frame-num (ja-aframe 0.0 0)
+                )
+    (ja-no-eval :group! (ja-group)
+                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (let ((target-pos (new 'stack-no-clear 'vector)))
+        (let ((nav-state (-> self nav state)))
+          (set! (-> target-pos quad) (-> nav-state target-post quad))
+          )
+        (if (and (-> self lock-nav-target) (< (vector-vector-distance (-> self root trans) target-pos) 8192.0))
+            (react-to-focus self)
+            )
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (react-to-focus self)
+    (none)
+    )
+  :post (the-as (function none :behavior gator) nav-enemy-travel-post)
+  )
+
+;; failed to figure out what this is:
+(defstate pacing (gator)
+  :virtual #t
+  :code (behavior ()
+    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (encircle-target! self 2.0 0.5 #f)
+        (suspend)
+        (ja :num! (loop! circle-for?))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate stare (gator)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) (current-time))
+    (none)
+    )
+  :trans (behavior ()
+    (let ((func (-> (method-of-type nav-enemy stare) trans)))
+      (if func
+          (func)
+          )
+      )
+    (if (>= (- (current-time) (-> self state-time)) (seconds 0.017))
+        (go-virtual pacing)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+      (until #f
+        (encircle-target! self 2.0 0.5 #f)
+        (suspend)
+        (ja :num! (loop! circle-for?))
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+;; definition for method 60 of type gator
+(defmethod coin-flip? gator ((obj gator))
+  "@returns The result of a 50/50 RNG roll"
+  #f
+  )
+
+;; definition for method 114 of type gator
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! gator ((obj gator))
+  "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
+  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> cshape reaction) cshape-reaction-default)
+    (set! (-> cshape no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> cshape penetrated-by) (penetrate
+                                      generic-attack
+                                      lunge
+                                      flop
+                                      punch
+                                      spin
+                                      roll
+                                      uppercut
+                                      bonk
+                                      tube
+                                      vehicle
+                                      flut-attack
+                                      board
+                                      mech-punch
+                                      dark-punch
+                                      dark-giant
+                                      )
+          )
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 4) 0)))
+      (set! (-> cshape total-prims) (the-as uint 5))
+      (set! (-> prim-group prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-group prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> prim-group prim-core action) (collide-action deadly no-standon))
+      (set-vector! (-> prim-group local-sphere) 0.0 8192.0 0.0 19660.8)
+      (set! (-> cshape root-prim) prim-group)
+      )
+    (let ((prim-sphere-1 (new 'process 'collide-shape-prim-sphere cshape (the-as uint 0))))
+      (set! (-> prim-sphere-1 prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-sphere-1 prim-core collide-with) (collide-spec jak bot crate hit-by-others-list player-list))
+      (set! (-> prim-sphere-1 prim-core action) (collide-action no-standon))
+      (set-vector! (-> prim-sphere-1 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (let ((prim-sphere-2 (new 'process 'collide-shape-prim-sphere cshape (the-as uint 0))))
+      (set! (-> prim-sphere-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-sphere-2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-sphere-2 prim-core action) (collide-action deadly))
+      (set! (-> prim-sphere-2 transform-index) 12)
+      (set-vector! (-> prim-sphere-2 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((prim-sphere-3 (new 'process 'collide-shape-prim-sphere cshape (the-as uint 0))))
+      (set! (-> prim-sphere-3 prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-sphere-3 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-sphere-3 transform-index) 20)
+      (set-vector! (-> prim-sphere-3 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((prim-sphere-4 (new 'process 'collide-shape-prim-sphere cshape (the-as uint 0))))
+      (set! (-> prim-sphere-4 prim-core collide-as) (collide-spec enemy))
+      (set! (-> prim-sphere-4 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> prim-sphere-4 transform-index) 22)
+      (set-vector! (-> prim-sphere-4 local-sphere) 0.0 0.0 0.0 4505.6)
+      )
+    (set! (-> cshape nav-radius) 8192.0)
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> cshape max-iteration-count) (the-as uint 3))
+    (set! (-> obj root) cshape)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 115 of type gator
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! gator ((obj gator))
+  "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gator" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-behaviour-and-stats! obj *gator-nav-enemy-info*)
+  (let ((nav (-> obj nav)))
+    (set! (-> nav speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> obj root dynam) 573440.0)
+  (logior! (-> obj nav flags) (nav-control-flag momentum-ignore-heading))
+  (adjust-depth! obj)
+  (set! (-> obj turn-time) 0)
+  0
+  (none)
+  )

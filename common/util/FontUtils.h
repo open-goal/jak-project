@@ -30,6 +30,7 @@ enum class GameTextVersion {
 extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
 
 const std::string& get_text_version_name(GameTextVersion version);
+GameTextVersion get_text_version_from_name(const std::string& name);
 
 /*!
  * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
@@ -58,6 +59,8 @@ class GameTextFontBank {
 
   const EncodeInfo* find_encode_to_utf8(const char* in) const;
   const EncodeInfo* find_encode_to_game(const std::string& in, int off = 0) const;
+  const ReplaceInfo* find_replace_to_utf8(const std::string& in, int off = 0) const;
+  const ReplaceInfo* find_replace_to_game(const std::string& in, int off = 0) const;
 
   std::string replace_to_utf8(std::string& str) const;
   std::string replace_to_game(std::string& str) const;
@@ -75,11 +78,17 @@ class GameTextFontBank {
 
   GameTextVersion version() const { return m_version; }
 
-  std::string convert_utf8_to_game_with_escape(const std::string& str) const;
-  std::string convert_utf8_to_game(std::string str) const;
+  // TODO - methods would help make this code a lot better for different game versions
+  // hacking it for now
+  bool valid_char_range(const char in) const;
+
+  std::string convert_utf8_to_game(std::string str, bool escape = false) const;
   std::string convert_game_to_utf8(const char* in) const;
 };
 
+extern GameTextFontBank g_font_bank_jak1_v1;
+extern GameTextFontBank g_font_bank_jak1_v2;
+extern GameTextFontBank g_font_bank_jak2;
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 
 const GameTextFontBank* get_font_bank(GameTextVersion version);

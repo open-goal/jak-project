@@ -14,7 +14,7 @@
 
 ;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
 
 (declare-type debug-menu basic)
 (declare-type debug-menu-item basic)
@@ -203,7 +203,7 @@
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
    (set! (-> v0-0 name) name)
    (set! (-> v0-0 parent) #f)
-   (set! (-> v0-0 refresh-delay) 23)
+   (set! (-> v0-0 refresh-delay) (#if PC_PORT 1 23))
    (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
    (set! (-> v0-0 id) (the-as int id))
    (set! (-> v0-0 activate-func) func)
@@ -373,7 +373,7 @@
     (let ((max-chars (/ max-width 8)))
       (set! (-> gp-0 name) name)
       (set! (-> gp-0 parent) #f)
-      (set! (-> gp-0 refresh-delay) 31)
+      (set! (-> gp-0 refresh-delay) (#if PC_PORT 1 31))
       (set! (-> gp-0 refresh-ctr) (-> gp-0 refresh-delay))
       (set! (-> gp-0 id) id)
       (set! max-chars
@@ -424,21 +424,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun debug-menu-item-get-max-width ((arg0 debug-menu-item) (arg1 debug-menu))
-  "Determine the width, in pixels"
-  (local-vars (v0-1 int))
+  "Determine the width, in screen units"
   0
   (cond
-   ((= (-> arg0 type) debug-menu-item-submenu)
-    (set! v0-1 (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16))
+    ((= (-> arg0 type) debug-menu-item-submenu)
+      (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16)
+      )
+    ((= (-> arg0 type) debug-menu-item-var)
+      (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font)))
+      )
+    (else
+      (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6)
+      )
     )
-   ((= (-> arg0 type) debug-menu-item-var)
-    (set! v0-1 (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font))))
-    )
-   (else
-    (set! v0-1 (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6))
-    )
-   )
-  v0-1
   )
 
 (defun debug-menu-context-default-selection ((ctxt debug-menu-context) (keep-current symbol))
@@ -755,14 +753,12 @@
   The submenus parameter is the number of _open_ menus below the one containing this item"
   (let ((s5-0 (-> item parent context font)))
     (set-origin! s5-0 x y)
-    (set! (-> s5-0 color) (cond ((zero? submenus) (font-color dim-white))        ;; in the active menu, white
-                                (selected         (font-color dark-light-blue))  ;; a parent, but selected
-                                (else             (font-color dim-gray))         ;; a parent, but not selected
+    (set! (-> s5-0 color) (cond ((zero? submenus) (font-color menu))        ;; in the active menu, white
+                                (selected         (font-color menu-selected-parent))  ;; a parent, but selected
+                                (else             (font-color menu-parent))         ;; a parent, but not selected
                                 ))
     (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf))
                                  (bucket-id debug-no-zbuf))
-      ;; NOTE: the draw-string-adv advances too far on widescreen.
-      ;; NOTE 2: should be fixed?
       (draw-string-adv (-> item name) s3-0 s5-0)
       (draw-string-adv "..." s3-0 s5-0)
       )
@@ -779,20 +775,20 @@
             ((> (-> item hilite-timer) 0)
              ;; if the hilite is >0, we ran the function successfully, so we hilite in blue for a bit
              (1-! (-> item hilite-timer))
-             (font-color lighter-blue)
+             (font-color menu-selected)
              )
             ((< (-> item hilite-timer) 0)
              ;; if we're negative, it failed, so hilite in red
              (1+! (-> item hilite-timer))
-             (font-color orange-red-2)
+             (font-color menu-func-bad)
              )
             ((nonzero? submenus)
              ;; in a parent menu
-             (font-color dim-gray)
+             (font-color menu-parent)
              )
             (else
               ;; option in the active menu.
-              (font-color dim-white)
+              (font-color menu)
               )
             )
           )
@@ -811,19 +807,19 @@
     (set! (-> v1-2 color)
           (cond
             ((= (-> item is-on) 'invalid)
-             (font-color flat-dark-purple) ;; can't use this one.
+             (font-color menu-invalid) ;; can't use this one.
              )
             ((-> item is-on)
              (if (zero? submenus)
-                 (font-color yellow-green) ;; on, and in active menu
-                 (font-color dark-green)   ;; on, and in parent menu
+                 (font-color menu-flag-on) ;; on, and in active menu
+                 (font-color menu-flag-on-parent)   ;; on, and in parent menu
                  )
              )
             ((zero? submenus)
-             (font-color another-gray)  ;; off, and in active menu
+             (font-color menu-flag-off)  ;; off, and in active menu
              )
             (else
-              (font-color dark-dark-green)  ;; off, and in parent menu
+              (font-color menu-flag-off-parent)  ;; off, and in parent menu
               )
             )
           )
@@ -843,15 +839,15 @@
           (cond
             ((zero? submenus)
              (if (-> item grabbed-joypad-p)
-                 (font-color lighter-blue) ;; active menu, using joypad
-                 (font-color dim-white)    ;; active menu, but not grabbed
+                 (font-color menu-selected) ;; active menu, using joypad
+                 (font-color menu)    ;; active menu, but not grabbed
                  )
              )
             (selected
-              (font-color dark-light-blue) ;; not sure how this case can happen
+              (font-color menu-selected-parent) ;; not sure how this case can happen
               )
             (else
-              (font-color dim-gray)
+              (font-color menu-parent)
               )
             )
           )
@@ -958,8 +954,8 @@
         ;; dim it if it's in a parent menu.
         (set! (-> menu context font color)
               (if (nonzero? submenus)
-                  (font-color dim-gray)
-                  (font-color dim-white)
+                  (font-color menu-parent)
+                  (font-color menu)
                   )
               )
         (set-origin! (-> menu context font) s3-1 s2-1)
@@ -1510,8 +1506,6 @@
       )
   arg0
   )
-
-)
 
 
 

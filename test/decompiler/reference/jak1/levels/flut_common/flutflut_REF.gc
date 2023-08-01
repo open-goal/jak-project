@@ -92,25 +92,23 @@
 ;; failed to figure out what this is:
 (defstate wait-for-start (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as
-        object
-        (cond
-          ((= v1-0 'trans)
-           (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as
+      object
+      (case event-type
+        (('trans)
+         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+         )
+        (('notify)
+         (let ((v0-1 (the-as structure #t)))
+           (set! (-> self auto-get-off) (the-as symbol v0-1))
+           v0-1
            )
-          ((= v1-0 'notify)
-           (let ((v0-1 (the-as structure #t)))
-             (set! (-> self auto-get-off) (the-as symbol v0-1))
-             v0-1
-             )
-           )
-          ((or (= v1-0 'touch) (= v1-0 'attack))
-           (set! (-> self touch-time) (-> *display* base-frame-counter))
-           #f
-           )
-          )
+         )
+        (('touch 'attack)
+         (set! (-> self touch-time) (-> *display* base-frame-counter))
+         #f
+         )
         )
       )
     )
@@ -131,13 +129,13 @@
                             )
                         )
                    (and *cheat-mode* (cpad-hold? 0 l3))
-                   (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+                   (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
                    )
                (goto cfg-75)
                )
            )
           ((= v1-0 4)
-           (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+           (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
                (goto cfg-75)
                )
            )
@@ -153,7 +151,7 @@
                   (goto cfg-75)
                   )
               (if (and *target*
-                       (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))
+                       (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))
                        (< (- (-> *display* base-frame-counter) (-> self touch-time)) (seconds 0.05))
                        )
                   (go-virtual pickup (method-of-object self idle))
@@ -184,7 +182,7 @@
       (suspend)
       )
     (label cfg-75)
-    (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+    (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
         (go-virtual wait-for-return)
         (go-virtual idle)
         )
@@ -205,21 +203,15 @@
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 3))
-    (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
+    (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
     (loop
-      (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+      (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
           (go-virtual wait-for-return)
           )
       (when (logtest? (-> self draw status) (draw-status was-drawn))
         (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-            (level-hint-spawn
-              (game-text-id swamp-flutflut-hint)
-              "sksp0160"
-              (the-as entity #f)
-              *entity-pool*
-              (game-task none)
-              )
+            (level-hint-spawn (text-id swamp-flutflut-hint) "sksp0160" (the-as entity #f) *entity-pool* (game-task none))
             )
         )
       (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
@@ -242,7 +234,7 @@
               (set! (-> v1-35 height) (the float 80))
               )
             (set! (-> gp-0 flags) (font-flags shadow kerning large))
-            (print-game-text (lookup-text! *common-text* (game-text-id press-to-use) #f) gp-0 #f 128 22)
+            (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) gp-0 #f 128 22)
             )
           (if (and (cpad-pressed? 0 circle) (send-event *target* 'change-mode 'flut self))
               (go-virtual pickup (method-of-object self wait-for-return))
@@ -261,17 +253,17 @@
 ;; failed to figure out what this is:
 (defstate pickup (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('draw)
        (ja-channel-set! 1)
        (ja :group! (-> self draw art-group data 3))
-       (set! (-> self root-override root-prim prim-core action) (collide-action solid ca-11))
+       (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
@@ -294,7 +286,7 @@
       (flutflut-effect)
       (suspend)
       )
-    (while (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+    (while (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
       (flutflut-effect)
       (suspend)
       )
@@ -312,14 +304,14 @@
 ;; failed to figure out what this is:
 (defstate wait-for-return (flutflut)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (if (and (or (= arg2 'touch) (= arg2 'attack)) (send-event *target* 'end-mode))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (if (and (or (= event-type 'touch) (= event-type 'attack)) (send-event *target* 'end-mode))
         (go-virtual pickup (method-of-object self idle))
         )
     (the-as
       object
-      (if (= arg2 'trans)
-          (vector+! (the-as vector (-> arg3 param 0)) (-> self root-override trans) (-> self extra-trans))
+      (if (= event-type 'trans)
+          (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
           )
       )
     )
@@ -332,7 +324,7 @@
     (ja-channel-set! 0)
     (ja-post)
     (loop
-      (if (not (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14))))
+      (if (not (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))
           (go-virtual idle)
           )
       (flutflut-effect)
@@ -390,7 +382,7 @@
   (blocking-plane-spawn
     (the-as
       curve-control
-      (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action ca-14)))
+      (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
           (-> obj path-flut)
           (-> obj path-target)
           )

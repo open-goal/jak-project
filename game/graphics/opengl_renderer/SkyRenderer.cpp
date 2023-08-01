@@ -1,7 +1,5 @@
 #include "SkyRenderer.h"
 
-#include "common/log/log.h"
-
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 #include "game/graphics/pipelines/opengl.h"
 
@@ -23,10 +21,11 @@
 // size of the sky texture is 64x96, but it's actually a 64x64 (clouds) and a 32x32 (sky)
 
 SkyBlendHandler::SkyBlendHandler(const std::string& name,
-                                 BucketId my_id,
+                                 int my_id,
                                  int level_id,
                                  std::shared_ptr<SkyBlendGPU> shared_blender,
-                                 std::shared_ptr<SkyBlendCPU> shared_blender_cpu)
+                                 std::shared_ptr<SkyBlendCPU> shared_blender_cpu,
+                                 const std::vector<GLuint>* anim_slots)
     : BucketRenderer(name, my_id),
       m_shared_gpu_blender(shared_blender),
       m_shared_cpu_blender(shared_blender_cpu),
@@ -34,7 +33,12 @@ SkyBlendHandler::SkyBlendHandler(const std::string& name,
                        my_id,
                        {tfrag3::TFragmentTreeKind::TRANS, tfrag3::TFragmentTreeKind::LOWRES_TRANS},
                        true,
-                       level_id) {}
+                       level_id,
+                       anim_slots) {}
+
+void SkyBlendHandler::init_shaders(ShaderLibrary& shaders) {
+  m_tfrag_renderer.init_shaders(shaders);
+}
 
 void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
                                         SharedRenderState* render_state,
@@ -122,7 +126,7 @@ void SkyBlendHandler::draw_debug_window() {
   }
 }
 
-SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)
+SkyRenderer::SkyRenderer(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_direct_renderer("sky-direct", my_id, 100) {}
 
 void SkyRenderer::render(DmaFollower& dma,

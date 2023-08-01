@@ -9,8 +9,9 @@
 #include "common/util/Timer.h"
 #include "common/util/diff.h"
 #include "common/util/os.h"
-#include "common/versions.h"
-#include <common/util/unicode_util.h>
+#include "common/util/set_util.h"
+#include "common/util/unicode_util.h"
+#include "common/versions/versions.h"
 
 #include "ObjectFile/ObjectFileDB.h"
 #include "decompiler/data/TextureDB.h"
@@ -18,29 +19,45 @@
 #include "decompiler/level_extractor/extract_level.h"
 
 #include "third-party/CLI11.hpp"
+#include "third-party/json.hpp"
+
+template <typename... Args>
+static void mem_log(const std::string& format, Args&&... args) {
+#ifndef _WIN32
+  lg::info("[Mem] " + format, std::forward<Args>(args)...);
+#endif
+}
 
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
   if (!file_util::setup_project_path(std::nullopt)) {
+    lg::error("Unable to setup project path");
     return 1;
   }
-  lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
-  lg::set_file_level(lg::level::info);
-  lg::set_stdout_level(lg::level::info);
-  lg::set_flush_level(lg::level::info);
-  lg::initialize();
+
+  try {
+    lg::set_file(file_util::get_file_path({"log", "decompiler.log"}));
+    lg::set_file_level(lg::level::info);
+    lg::set_stdout_level(lg::level::info);
+    lg::set_flush_level(lg::level::info);
+    lg::initialize();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   fs::path config_path;
   fs::path in_folder;
   fs::path out_folder;
 
+  std::string config_game_version = "";
   std::string config_override = "{}";
 
   CLI::App app{"OpenGOAL Decompiler"};
   app.add_option("config-path", config_path,
                  "Path to the decompiler config .jsonc file. ie. "
-                 "./decompiler/config/jak1_ntsc_black_label.jsonc")
+                 "./decompiler/config/jak1/jak1_config.jsonc")
       ->required();
   app.add_option("in-folder", in_folder,
                  "The path containing the iso_data folders. ie. ./iso_data/. Assumes the "
@@ -49,6 +66,10 @@ int main(int argc, char** argv) {
   app.add_option("out-folder", out_folder,
                  "The path for where the decompiler should place it's outputs. Assumes the "
                  "'gameName' from the config as a sub-directory")
+      ->required();
+
+  app.add_option("--version", config_game_version,
+                 "The name of the game version to update the config with, ie. ntsc_v2")
       ->required();
   app.add_option("--config-override", config_override,
                  "JSON provided will be merged with the specified config, use to override options");
@@ -60,16 +81,27 @@ int main(int argc, char** argv) {
 
   Config config;
   try {
-    config = read_config_file(config_path, config_override);
+    config = read_config_file(config_path, config_game_version, config_override);
   } catch (const std::exception& e) {
     lg::error("Failed to parse config: {}", e.what());
+    return 1;
+  }
+
+  // these options imply read_spools
+  config.read_spools |= config.process_subtitle_text || config.process_subtitle_images;
+
+  // Check if any banned objects are also in the allowed objects list
+  // if so, throw an error as this can be a confusing situation
+  auto intersection = set_util::intersection(config.allowed_objects, config.banned_objects);
+  if (!intersection.empty()) {
+    lg::error("Aborting - There is an overlap between 'allowed_objects' and 'banned_objects'");
     return 1;
   }
 
   in_folder = in_folder / config.game_name;
   // Verify the in_folder is correct
   if (!exists(in_folder)) {
-    fmt::print("Aborting - 'in_folder' does not exist '{}'\n", in_folder.string());
+    lg::error("Aborting - 'in_folder' does not exist '{}'", in_folder.string());
     return 1;
   }
 
@@ -80,9 +112,9 @@ int main(int argc, char** argv) {
   // Warning message if expected ELF isn't found, user could be using bad assets / didn't extract
   // the ISO properly
   if (!config.expected_elf_name.empty() && !exists(in_folder / config.expected_elf_name)) {
-    fmt::print(
+    lg::error(
         "WARNING - '{}' does not contain the expected ELF file '{}'.  Was the ISO extracted "
-        "properly or is there a version mismatch?\n",
+        "properly or is there a version mismatch?",
         in_folder.string(), config.expected_elf_name);
   }
 
@@ -90,13 +122,13 @@ int main(int argc, char** argv) {
 
   Timer decomp_timer;
 
-  fmt::print("[Mem] Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("Top of main: {} MB\n", get_peak_rss() / (1024 * 1024));
 
   init_opcode_info();
 
-  fmt::print("[Mem] After init: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
-  std::vector<fs::path> dgos, objs, strs;
+  std::vector<fs::path> dgos, objs, strs, tex_strs;
   for (const auto& dgo_name : config.dgo_names) {
     dgos.push_back(in_folder / dgo_name);
   }
@@ -109,17 +141,32 @@ int main(int argc, char** argv) {
     strs.push_back(in_folder / str_name);
   }
 
-  if (config.rip_levels) {
-    file_util::create_dir_if_needed(file_util::get_jak_project_dir() / "debug_out");
+  for (const auto& str_name : config.str_texture_file_names) {
+    tex_strs.push_back(in_folder / str_name);
   }
 
-  fmt::print("[Mem] After config read: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, tex_strs, config);
 
-  fmt::print("[Mem] After DB setup: {} MB\n", get_peak_rss() / (1024 * 1024));
+  // Explicitly fail if a file in the 'allowed_objects' list wasn't found in the DB
+  // as this is another silent error that can be confusing
+  if (!config.allowed_objects.empty()) {
+    for (const auto& expected_obj : config.allowed_objects) {
+      if (db.obj_files_by_name.count(expected_obj) == 0) {
+        // TODO - this is wrong for jak1, fix eventually as this is now done in 3 places
+        lg::error(
+            "Expected to find '{}' in the ObjectFileDB but did not. Check "
+            "./decompiler/config/{}/inputs.jsonc",
+            expected_obj, config.game_name);
+        return 1;
+      }
+    }
+  }
+
+  mem_log("After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out DGO file info
   file_util::write_text_file(out_folder / "dgo.txt", db.generate_dgo_listing());
@@ -136,10 +183,10 @@ int main(int argc, char** argv) {
 
   // process files (required for all analysis)
   db.process_link_data(config);
-  fmt::print("[Mem] After link data: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After link data: {} MB", get_peak_rss() / (1024 * 1024));
   db.find_code(config);
   db.process_labels();
-  fmt::print("[Mem] After code: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After code: {} MB", get_peak_rss() / (1024 * 1024));
 
   // top level decompile (do this before printing asm so we get function names)
   if (config.find_functions) {
@@ -152,14 +199,29 @@ int main(int argc, char** argv) {
                          config.write_hex_near_instructions);
   }
 
-  // process art groups (used in decompilation)
-  if (config.decompile_code || config.process_art_groups) {
+  if (config.process_art_groups) {
     db.extract_art_info();
+    // dumb art info to json if requested
+    if (config.dump_art_group_info) {
+      auto file_name = out_folder / "dump" / "art-group-info.min.json";
+      nlohmann::json json = db.dts.art_group_info;
+      file_util::create_dir_if_needed_for_file(file_name);
+      file_util::write_text_file(file_name, json.dump(-1));
+      lg::info("[DUMP] Dumped art group info to {}", file_name.string());
+    }
+  } else if (!config.art_group_info_dump.empty()) {
+    // process art groups (used in decompilation)
+    // - if the config has a path to the art info dump, just use that
+    // - otherwise (or if we want to dump it fresh) extract it
+    db.dts.art_group_info = config.art_group_info_dump;
+  } else {
+    lg::error("`process_art_groups` was false and no art-group-info dump was provided!");
+    return 1;
   }
 
   // main decompile.
   if (config.decompile_code) {
-    db.analyze_functions_ir2(out_folder, config, {});
+    db.analyze_functions_ir2(out_folder, config, {}, {}, {});
   }
 
   if (config.generate_all_types) {
@@ -168,7 +230,7 @@ int main(int argc, char** argv) {
                              config.hacks.types_with_bad_inspect_methods);
   }
 
-  fmt::print("[Mem] After decomp: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After decomp: {} MB", get_peak_rss() / (1024 * 1024));
 
   // write out all symbols
   file_util::write_text_file(out_folder / "all-syms.gc", db.dts.dump_symbol_types());
@@ -194,19 +256,32 @@ int main(int argc, char** argv) {
     }
   }
 
-  fmt::print("[Mem] After text: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After text: {} MB", get_peak_rss() / (1024 * 1024));
+
+  if (config.process_subtitle_text || config.process_subtitle_images) {
+    auto result = db.process_all_spool_subtitles(
+        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+    if (!result.empty()) {
+      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    }
+  }
+
+  mem_log("After spool handling: {} MB", get_peak_rss() / (1024 * 1024));
 
   decompiler::TextureDB tex_db;
   if (config.process_tpages || config.levels_extract) {
     auto textures_out = out_folder / "textures";
     file_util::create_dir_if_needed(textures_out);
-    auto result = db.process_tpages(tex_db, textures_out);
+    auto result = db.process_tpages(tex_db, textures_out, config);
     if (!result.empty() && config.process_tpages) {
       file_util::write_text_file(textures_out / "tpage-dir.txt", result);
+      file_util::write_text_file(textures_out / "tex-remap.txt",
+                                 tex_db.generate_texture_dest_adjustment_table());
     }
   }
 
-  fmt::print("[Mem] After textures: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
@@ -223,11 +298,11 @@ int main(int argc, char** argv) {
     auto level_out_path =
         file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
     file_util::create_dir_if_needed(level_out_path);
-    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config.hacks,
-                       config.rip_levels, config.extract_collision, level_out_path);
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config, config.rip_levels,
+                       config.extract_collision, level_out_path);
   }
 
-  fmt::print("[Mem] After extraction: {} MB\n", get_peak_rss() / (1024 * 1024));
+  mem_log("After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (!config.audio_dir_file_name.empty()) {
     auto streaming_audio_in = in_folder / "VAG";

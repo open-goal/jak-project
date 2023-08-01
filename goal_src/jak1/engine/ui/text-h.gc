@@ -11,7 +11,7 @@
 ;; These ID's are shared with short spoken audio clips (daxter hints)
 ;; most (all?) of the daxter clips don't have text strings.
 
-(defenum game-text-id
+(defenum text-id
   :type uint32
   :bitfield #f
 ;; GAME-TEXT-ID ENUM BEGINS
@@ -754,18 +754,83 @@
   (swedish                      #x1114)
   (danish                       #x1115)
   (norwegian                    #x1116)
+  (hungarian                    #x1117)
+  (dutch                        #x1118)
+  (catalan                      #x1119)
+  (icelandic                    #x111a)
   (scene-0                      #x1200)
   (scene-255                    #x12ff)
   (hint-0                       #x1300)
   (hint-511                     #x14ff)
   (speedrunner-mode             #x1500)
+  (cutscene-skips               #x1501)
+  (checkpoint-select            #x1502)
+  (speedrun-options-heading     #x1503)
+  (speedrun-options-warning     #x1504)
+  (speedrun-reset-current-run   #x1505)
+  (speedrun-new-full-game       #x1506)
+  ;; (speedrun-full-game-any       #x1507)
+  ;; (speedrun-full-game-100       #x1508)
+  ;; (speedrun-full-game-nolts     #x1509)
+  ;; (speedrun-full-game-nofcs     #x150a)
+  ;; (speedrun-full-game-orbless   #x150b)
+  ;; (speedrun-full-game-all-flies #x150c)
+  ;; (speedrun-full-game-all-orbs  #x150d)
+  (speedrun-new-individual-level #x150e)
+  (speedrun-il-training          #x150f)
+  (speedrun-il-village1          #x1510)
+  (speedrun-il-beach             #x1511)
+  (speedrun-il-jungle            #x1512)
+  (speedrun-il-misty             #x1513)
+  (speedrun-il-firecanyon        #x1514)
+  (speedrun-il-village2          #x1515)
+  (speedrun-il-sunken            #x1516)
+  (speedrun-il-swamp             #x1517)
+  (speedrun-il-rolling           #x1518)
+  (speedrun-il-ogre              #x1519)
+  (speedrun-il-village3          #x151a)
+  (speedrun-il-snow              #x151b)
+  (speedrun-il-cave              #x151c)
+  (speedrun-il-lavatube          #x151d)
+  (speedrun-il-citadel           #x151e)
+  (speedrun-new-cat-ext          #x151f)
+  (speedrun-new-game-plus        #x1520)
+  (speedrun-hub1-100             #x1521)
+  (speedrun-hub2-100             #x1522)
+  (speedrun-hub3-100             #x1523)
+  (speedrun-all-cutscenes        #x1524)
+  ;; input options
+  (input-options #x1600)
+  (input-opts-select-controller #x1601)
+  (input-opts-analog-deadzone #x1602)
+  (input-opts-ignore-controller-win-focus #x1603)
+  (input-opts-controller-led-reflect-hp #x1604)
+  (input-opts-controller-led-reflect-eco #x1605)
+  (input-opts-mouse-enable-camera #x1606)
+  (input-opts-mouse-horizontal-sens #x1607)
+  (input-opts-mouse-vertical-sens #x1608)
+  (input-opts-mouse-enable-movement #x1609)
+  (input-opts-binds-controller #x160a)
+  (input-opts-binds-keyboard #x160b)
+  (input-opts-binds-mouse #x160c)
+  (input-opts-controller-opts #x160d)
+  (input-opts-enable-kb #x160e)
+  (input-opts-enable-mouse #x160f)
+  (input-opts-mouse-opts #x1610)
+  (input-opts-reassign-binds #x1611)
+  (input-opts-generic-controller #x1612)
+  (input-opts-auto-hide-cursor #x1613)
+  (input-opts-binds-unset #x1614)
+  (input-opts-binds-unknown #x1615)
+  (progress-no-other-resolution-options #x1616)
+  (input-opts-controller-led-reflect-heat #x1617)
 ;; GAME-TEXT-ID ENUM ENDS
   )
 
 
 ;; an individual string.
 (deftype game-text (structure)
-  ((id   game-text-id  :offset-assert 0)
+  ((id   text-id  :offset-assert 0)
    (text string  :offset-assert 4)
    )
   :pack-me
@@ -785,7 +850,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-   (lookup-text! (_type_ game-text-id symbol) string 9)
+   (lookup-text! (_type_ text-id symbol) string 9)
    )
   )
 
@@ -799,8 +864,26 @@
 ;; will store the COMMON text when it is loaded.
 (define *common-text* (the-as game-text-info #f))
 
+;; NOTE - PC PORT difference
+;; Partial translations are a thing that we should support. Parts of translating the game are intentionally made
+;; difficult for normal translators due to not wanting to make all the strings public (or in the case of subtitles,
+;; we straight up didn't have them yet)
+;;
+;; So to remedy this, we always load the english text as a fallback so that if there is only a partial translation
+;; the UX won't be horrible with everything displaying as UNKNOWN.
+;;
+;; One of the reasons we didn't do this is because it makes it obvious which strings are remaining,
+;; but there are better ways to keep track or check if strings are missing.
+(#when PC_PORT
+  (kheap-alloc (define *fallback-text-heap* (new 'global 'kheap)) (* 48 1024)) ;; 48K heap, should be plenty
+  (define *fallback-text* (the-as game-text-info #f)))
 
 (defun-extern print-game-text string font-context symbol int int float)
 
+
+;; added
+(defun-debug text-id->string ((text text-id))
+  (enum->string text-id text)
+  )
 
 

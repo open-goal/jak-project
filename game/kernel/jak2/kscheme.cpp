@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "common/common_types.h"
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
@@ -80,9 +81,9 @@ u64 alloc_from_heap(u32 heap_symbol, u32 type, s32 size, u32 pp) {
   auto heap_ptr = Ptr<Symbol4<Ptr<kheapinfo>>>(heap_symbol)->value();
 
   s32 aligned_size = ((size + 0xf) / 0x10) * 0x10;
-  if ((((heap_symbol == s7.offset + FIX_SYM_GLOBAL_HEAP) ||
-        (heap_symbol == s7.offset + FIX_SYM_DEBUG)) ||
-       (heap_symbol == s7.offset + FIX_SYM_LOADING_LEVEL)) ||
+  if ((heap_symbol == s7.offset + FIX_SYM_GLOBAL_HEAP) ||
+      (heap_symbol == s7.offset + FIX_SYM_DEBUG) ||
+      (heap_symbol == s7.offset + FIX_SYM_LOADING_LEVEL) ||
       (heap_symbol == s7.offset + FIX_SYM_PROCESS_LEVEL_HEAP)) {
     if (!type) {  // no type given, just call it a global-object
       return kmalloc(heap_ptr, size, KMALLOC_MEMSET, "global-object").offset;
@@ -255,21 +256,63 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+u64 make_debug_string_from_c(const char* c_str) {
+  auto str_size = strlen(c_str);
+  auto mem_size = str_size + 1;
+  if (mem_size < 8) {
+    mem_size = 8;
+  }
+
+  auto mem = alloc_heap_object((s7 + FIX_SYM_DEBUG).offset, u32_in_fixed_sym(FIX_SYM_STRING_TYPE),
+                               mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
+  // there's no check for failed allocation here!
+
+  // string size field
+  *Ptr<u32>(mem) = str_size;
+
+  // rest is chars
+  kstrcpy(Ptr<char>(mem + 4).c(), c_str);
+  return mem;
+}
+
 extern "C" {
-void _arg_call_linux();
+#ifndef __aarch64__
+#ifdef __APPLE__
+void _arg_call_systemv() asm("_arg_call_systemv");
+void _stack_call_systemv() asm("_stack_call_systemv");
+void _stack_call_win32() asm("_stack_call_win32");
+#else
+void _arg_call_systemv();
+void _stack_call_systemv();
+void _stack_call_win32();
+#endif
+#else
+#if defined(__APPLE__)
+void _arg_call_arm64() asm("_arg_call_arm64");
+void _stack_call_arm64() asm("_stack_call_arm64");
+#else
+void _arg_call_arm64();
+void _stack_call_arm64();
+#endif
+#endif
 }
 
 /*!
  * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
  * But calling this function is fast. It used to be really fast but wrong.
  */
-Ptr<Function> make_function_from_c_linux(void* func, bool arg3_is_pp) {
+Ptr<Function> make_function_from_c_systemv(void* func, bool arg3_is_pp) {
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  auto trampoline_function_addr = _arg_call_linux;
+#ifndef __aarch64__
+  auto trampoline_function_addr = _arg_call_systemv;
+#else
+  auto trampoline_function_addr = _arg_call_arm64;
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
+  // TODO - x86 code still being emitted below
 
   // movabs rax, target_function
   int offset = 0;
@@ -369,18 +412,17 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
   return mem.cast<Function>();
 }
 
-extern "C" {
-void _stack_call_linux();
-void _stack_call_win32();
-}
-
-Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
+Ptr<Function> make_stack_arg_function_from_c_systemv(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
                                        u32_in_fixed_sym(FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
-  auto trampoline_function_addr = _stack_call_linux;
+#ifndef __aarch64__
+  auto trampoline_function_addr = _stack_call_systemv;
+#else
+  auto trampoline_function_addr = _stack_call_arm64;
+#endif
   auto trampoline = (u8*)&trampoline_function_addr;
 
   // movabs rax, target_function
@@ -410,6 +452,7 @@ Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
   return mem.cast<Function>();
 }
 
+#ifdef _WIN32
 /*!
  * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
  * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.
@@ -450,6 +493,7 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
 
   return mem.cast<Function>();
 }
+#endif
 
 /*!
  * Create a GOAL function from a C function. This doesn't export it as a global function, it just
@@ -459,7 +503,9 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
  */
 Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
 #ifdef __linux__
-  return make_function_from_c_linux(func, arg3_is_pp);
+  return make_function_from_c_systemv(func, arg3_is_pp);
+#elif __APPLE__
+  return make_function_from_c_systemv(func, arg3_is_pp);
 #elif _WIN32
   return make_function_from_c_win32(func, arg3_is_pp);
 #endif
@@ -467,7 +513,9 @@ Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
 
 Ptr<Function> make_stack_arg_function_from_c(void* func) {
 #ifdef __linux__
-  return make_stack_arg_function_from_c_linux(func);
+  return make_stack_arg_function_from_c_systemv(func);
+#elif __APPLE__
+  return make_stack_arg_function_from_c_systemv(func);
 #elif _WIN32
   return make_stack_arg_function_from_c_win32(func);
 #endif
@@ -710,7 +758,6 @@ Ptr<Type> alloc_and_init_type(Ptr<Symbol4<Ptr<Type>>> sym,
 
   if (!force_global_type &&
       u32_in_fixed_sym(FIX_SYM_LOADING_LEVEL) != u32_in_fixed_sym(FIX_SYM_GLOBAL_HEAP)) {
-    printf("using level types!\n");  // added
     u32 type_list_ptr = LevelTypeList->value();
     if (type_list_ptr == 0) {
       // we don't have a type-list... just alloc on global
@@ -935,7 +982,6 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
       MsgWarn("dkernel: loading-level init of type %s, but was interned global (this is okay)\n",
               sym_to_string(new_type_obj->symbol)->data());
     } else {
-      printf("case 2 for new_type level types\n");
       new_type_obj->memusage_method.offset = original_type_list_value;
     }
   }
@@ -962,7 +1008,7 @@ u64 type_typep(Ptr<Type> t1, Ptr<Type> t2) {
 
 u64 method_set(u32 type_, u32 method_id, u32 method) {
   Ptr<Type> type(type_);
-  if (method_id > 127)
+  if (method_id > 255)
     printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
 
   auto existing_method = type->get_method(method_id).offset;
@@ -1000,8 +1046,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1020,8 +1064,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
                  method_id, sym_to_string(sym)->data());
           printf("***********************************\n");
         }
-        // todo remove once checked
-        printf("doing method set: %s %d\n", sym_to_string(sym)->data(), method_id);
         sym_value->get_method(method_id).offset = method;
       }
     }
@@ -1464,7 +1506,7 @@ int InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_ASIZE_OF_BASIC_FUNC, "asize-of-basic-func",
                    make_function_from_c((void*)asize_of_basic).offset);
   set_fixed_symbol(FIX_SYM_COPY_BASIC_FUNC, "asize-of-basic-func",
-                   make_function_from_c((void*)copy_basic).offset);
+                   make_function_from_c((void*)copy_basic, true).offset);
   set_fixed_symbol(FIX_SYM_DELETE_BASIC, "delete-basic",
                    make_function_from_c((void*)delete_basic).offset);
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
@@ -1513,7 +1555,7 @@ int InitHeapAndSymbol() {
       set_fixed_type(FIX_SYM_BASIC, "basic", get_fixed_type_symbol(FIX_SYM_STRUCTURE),
                      pack_type_flag(9, 0, 4), make_function_from_c((void*)print_basic).offset,
                      make_function_from_c((void*)inspect_basic).offset);
-  basic_type->new_method = make_function_from_c((void*)new_basic);
+  basic_type->new_method = make_function_from_c((void*)new_basic, true);
   basic_type->delete_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_DELETE_BASIC));
   basic_type->asize_of_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_ASIZE_OF_BASIC_FUNC));
   basic_type->copy_method = Ptr<Function>(u32_in_fixed_sym(FIX_SYM_COPY_BASIC_FUNC));
@@ -1640,7 +1682,7 @@ int InitHeapAndSymbol() {
                  pack_type_flag(9, 0, 16), 0, 0);
 
   Ptr<Type>(u32_in_fixed_sym(FIX_SYM_OBJECT_TYPE))->new_method =
-      make_function_from_c((void*)alloc_heap_object);
+      make_function_from_c((void*)alloc_heap_object, true);
 
   make_function_symbol_from_c("string->symbol", (void*)intern);
   make_function_symbol_from_c("print", (void*)sprint);
@@ -1656,7 +1698,7 @@ int InitHeapAndSymbol() {
   make_function_symbol_from_c("kmemclose", (void*)kmemclose);
   make_function_symbol_from_c("new-dynamic-structure", (void*)new_dynamic_structure);
   make_function_symbol_from_c("method-set!", (void*)method_set);
-  make_function_symbol_from_c("link", (void*)link_and_exec);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
   make_function_symbol_from_c("link-busy?", (void*)link_busy);
   make_function_symbol_from_c("link-reset", (void*)link_reset);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
@@ -1664,7 +1706,7 @@ int InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("memcpy-and-rellink", 0);
   make_raw_function_symbol_from_c("symlink2", 0);
   make_raw_function_symbol_from_c("symlink3", 0);
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   make_function_symbol_from_c("sql-query", (void*)sql_query_sync);
   make_function_symbol_from_c("mc-run", (void*)MC_run);
@@ -1705,6 +1747,7 @@ int InitHeapAndSymbol() {
   // load kernel!
 
   if (MasterUseKernel) {
+    auto p = scoped_prof("load-kernel-dgo");
     *EnableMethodSet = *EnableMethodSet + 1;
     load_and_link_dgo_from_c("kernel", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
@@ -1713,10 +1756,9 @@ int InitHeapAndSymbol() {
 
     auto kernel_version = intern_from_c("*kernel-version*")->value();
     if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-      MsgErr("\n");
-      MsgErr(
-          "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
-          "goal> prompt (:mch) then mkee your kernel in linux.\n",
+      lg::error(
+          "Kernel version mismatch! Compiled C kernel version is {}.{} but"
+          "the goal kernel is {}.{}",
           KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
           (kernel_version >> 3) & 0xffff);
       return -1;
@@ -1734,7 +1776,10 @@ int InitHeapAndSymbol() {
   InitListener();
 
   // Do final initialization, including loading and initializing the engine.
-  InitMachineScheme();
+  {
+    auto p = scoped_prof("init-machine-scheme");
+    InitMachineScheme();
+  }
   kmemclose();
   return 0;
 }
@@ -1754,9 +1799,11 @@ u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   return 0;
 }
 
-u64 loado(u32 /*file_name_in*/, u32 /*heap_in*/) {
-  ASSERT(false);
-  return 0;
+u64 loado(u32 file_name_in, u32 /*heap_in*/) {
+  // ASSERT(false);
+  Ptr<String> file_name(file_name_in);
+  printf("****** CALL TO loado(%s) ******\n", file_name->data());
+  return s7.offset;
 }
 
 /*!

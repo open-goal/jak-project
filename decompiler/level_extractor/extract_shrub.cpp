@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -141,7 +142,8 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 DrawSettings adgif_to_draw_mode(const AdGifData& ad,
                                 const TextureDB& tdb,
                                 const std::vector<level_tools::TextureRemap>& map,
-                                int count) {
+                                int count,
+                                bool alpha_tpage_flag) {
   // initialize draw mode
   DrawMode current_mode;
   current_mode.set_at(true);
@@ -154,13 +156,25 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
   current_mode.enable_fog();
 
+  if (alpha_tpage_flag) {
+    current_mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+    current_mode.set_aref(0);
+    current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+  }
+
   // ADGIF 0
   bool weird = (u8)ad.tex0_addr != (u32)GsRegisterAddress::TEX0_1;
   if (weird) {
-    fmt::print("----------------  WEIRD: 0x{:x}\n", ad.tex0_addr);
-    fmt::print("i have {} verts\n", count);
+    lg::info("----------------  WEIRD: 0x{:x}", ad.tex0_addr);
+    lg::info("i have {} verts", count);
   } else {
-    ASSERT(ad.tex0_data == 0 || ad.tex0_data == 0x800000000);  // note: decal?? todo
+    if (ad.tex0_data == 0) {
+      current_mode.set_decal(false);
+    } else if (ad.tex0_data == 0x8'0000'0000) {
+      current_mode.set_decal(true);
+    } else {
+      ASSERT(false);
+    }
   }
 
   // tw/th
@@ -171,7 +185,7 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   u32 new_tex = remap_texture(original_tex, map);
   // try remapping it
   if (original_tex != new_tex) {
-    fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+    lg::info("map from 0x{:x} to 0x{:x}", original_tex, new_tex);
   }
   // texture the texture page/texture index, and convert to a PC port texture ID
   u32 tpage = new_tex >> 20;
@@ -181,7 +195,7 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   auto tex = tdb.textures.find(tex_combo);
   ASSERT(tex != tdb.textures.end());
   if (weird) {
-    fmt::print("tex: {}\n", tex->second.name);
+    lg::info("tex: {}", tex->second.name);
   }
 
   // ADGIF 2
@@ -240,7 +254,8 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
 
 ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
                              const TextureDB& tdb,
-                             const std::vector<level_tools::TextureRemap>& map) {
+                             const std::vector<level_tools::TextureRemap>& map,
+                             GameVersion version) {
   ShrubProtoInfo result;
   for (int frag_idx = 0; frag_idx < proto.generic_geom.length; frag_idx++) {
     auto& frag_out = result.frags.emplace_back();
@@ -251,7 +266,7 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
     memcpy(adgif_data.data(), frag.textures.data(), frag.textures.size());
 
     if (frag_idx == 0 && proto.name == "vil2-cattail.mb") {
-      fmt::print("Skipping broken village2 thing\n");
+      lg::info("Skipping broken village2 thing");
       continue;
     }
 
@@ -286,7 +301,11 @@ ShrubProtoInfo extract_proto(const shrub_types::PrototypeBucketShrub& proto,
         ASSERT(3 * (vert_idx + draw.start_vtx_idx) + 3 <= frag.col.size());
       }
 
-      draw.settings = adgif_to_draw_mode(ag, tdb, map, count);
+      bool alpha_tpage_flag = false;
+      if (version > GameVersion::Jak1) {
+        alpha_tpage_flag = proto.flags & 0x4;  // tpage-alpha
+      }
+      draw.settings = adgif_to_draw_mode(ag, tdb, map, count, alpha_tpage_flag);
     }
 
     ASSERT(frag.vtx_cnt * 3 * sizeof(u16) <= frag.vtx.size());
@@ -549,12 +568,13 @@ void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& /*expected_missing_textures*/,
                    tfrag3::Level& out,
-                   bool dump_level) {
+                   bool dump_level,
+                   GameVersion version) {
   auto& tree_out = out.shrub_trees.emplace_back();
   auto& protos = tree->info.prototype_inline_array_shrub;
   std::vector<ShrubProtoInfo> proto_info;
   for (auto& proto : protos.data) {
-    proto_info.push_back(extract_proto(proto, tex_db, map));
+    proto_info.push_back(extract_proto(proto, tex_db, map, version));
   }
 
   for (auto& arr : tree->discovered_arrays) {

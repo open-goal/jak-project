@@ -60,7 +60,7 @@ void vm_prepare() {
 
 void vm_init() {
   if (status != Status::Uninited) {
-    lg::warn("[VM] unexpected status {}", status);
+    lg::warn("[VM] unexpected status {}", fmt::underlying(status));
   }
 
   lg::debug("[VM] Inited");

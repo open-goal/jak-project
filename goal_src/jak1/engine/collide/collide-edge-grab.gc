@@ -5,6 +5,8 @@
 ;; name in dgo: collide-edge-grab
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 (defmethod find-edge-grabs! target ((obj target) (arg0 collide-cache))
   "Main edge grabbing method.
    Will populate *edge-grab-info* and send *target* an 'edge-grab event if successful."
@@ -144,7 +146,7 @@
          )
     (let ((s0-0 (new 'stack-no-clear 'vector)))
       (vector+*! s0-0 (-> arg0 center-pt) (-> s3-0 edge-vec-norm) 1105.92)
-      (let ((f0-0 (dummy-14 obj (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
+      (let ((f0-0 (collide-edge-work-method-14 obj (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
         (if (< 491.52 f0-0)
             (return #f)
             )
@@ -157,7 +159,7 @@
             )
         (sv-144 sv-160 sv-176 a2-3 a3-2)
         )
-      (let ((f0-1 (dummy-14 obj (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
+      (let ((f0-1 (collide-edge-work-method-14 obj (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
         (if (< 491.52 f0-1)
             (return #f)
             )
@@ -229,7 +231,7 @@
   #t
   )
 
-(defmethod dummy-9 edge-grab-info ((obj edge-grab-info))
+(defmethod edge-grab-info-method-9 edge-grab-info ((obj edge-grab-info))
   (local-vars (v0-0 symbol) (v1-14 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -364,7 +366,7 @@
 (defmethod-mips2c "(method 16 collide-edge-work)" 16 collide-edge-work)
 (defmethod-mips2c "(method 15 collide-edge-work)" 15 collide-edge-work)
 
-(defmethod dummy-14 collide-edge-work ((obj collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
+(defmethod collide-edge-work-method-14 collide-edge-work ((obj collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
   (let ((f30-0 -1.0))
     (let ((s2-0 (new 'stack-no-clear 'vector)))
       (dotimes (s1-0 (the-as int (-> obj num-edges)))
@@ -650,7 +652,6 @@
     )
   )
 
-
 (defmethod debug-draw-sphere collide-edge-work ((obj collide-edge-work))
   (dotimes (s5-0 (the-as int (-> obj num-verts)))
     (let ((a2-0 (-> obj verts s5-0)))
@@ -730,90 +731,73 @@
   (none)
   )
 
-;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'surface
-     :name '*rotate-surface*
-     :turnv 1.0
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 1.0
-     :target-speed 1.0
-     :seek0 153600.0
-     :seek90 153600.0
-     :seek180 256000.0
-     :fric 153600.0
-     :nonlin-fric-dist 5120.0
-     :slip-factor 1.0
-     :slope-down-factor 10240.0
-     :slope-slip-angle 8192.0
-     :impact-fric 1.0
-     :bend-factor 0.8
-     :bend-speed 4.0
-     :alignv 1.0
-     :slope-up-traction 1.0
-     :align-speed 1.0
-     :flags #x4000
-     )
-    )
-   )
-  (define *rotate-surface* v1-1)
-  (set!
-   (-> v1-1 mult-hook)
-   (the-as
-    (function surface surface surface int none)
-    (lambda ((arg0 surface) (arg1 object) (arg2 object) (arg3 int))
-     (when (= arg3 1)
-      (let ((f0-0 151756.8))
-       (set! (-> arg0 fric) f0-0)
-       f0-0
-       )
+(let ((v1-1
+        (new 'static 'surface
+          :name '*rotate-surface*
+          :turnv 1.0
+          :turnvv 1.0
+          :tiltv 1.0
+          :tiltvv 1.0
+          :transv-max 1.0
+          :target-speed 1.0
+          :seek0 153600.0
+          :seek90 153600.0
+          :seek180 256000.0
+          :fric 153600.0
+          :nonlin-fric-dist 5120.0
+          :slip-factor 1.0
+          :slope-down-factor 10240.0
+          :slope-slip-angle 8192.0
+          :impact-fric 1.0
+          :bend-factor 0.8
+          :bend-speed 4.0
+          :alignv 1.0
+          :slope-up-traction 1.0
+          :align-speed 1.0
+          :flags (surface-flags moving-ground)
+          )
+        )
       )
-     )
-    )
-   )
+  (define *rotate-surface* v1-1)
+  (set! *rotate-surface* v1-1)
+  (set! (-> v1-1 mult-hook)
+        (the-as
+          (function surface surface surface int none)
+          (lambda ((arg0 surface) (arg1 object) (arg2 object) (arg3 int)) (if (= arg3 1)
+                                                                              (set! (-> arg0 fric) 151756.8)
+                                                                              )
+                  )
+          )
+        )
   (set! (-> v1-1 touch-hook) nothing)
   (set! (-> v1-1 active-hook) nothing)
   )
 
-;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'surface
-     :name '*no-walk-surface*
-     :turnv 0.5
-     :turnvv 1.0
-     :tiltv 1.0
-     :tiltvv 1.0
-     :transv-max 0.7
-     :target-speed 0.7
-     :seek0 24576.0
-     :seek90 24576.0
-     :seek180 24576.0
-     :fric 23756.8
-     :nonlin-fric-dist 4091904.0
-     :slope-slip-angle 16384.0
-     :bend-speed 4.0
-     :alignv 0.5
-     :slope-up-traction 0.9
-     :align-speed 1.0
-     :flags #x28
-     )
-    )
-   )
+(let ((v1-2 (new 'static 'surface
+              :name '*no-walk-surface*
+              :turnv 0.5
+              :turnvv 1.0
+              :tiltv 1.0
+              :tiltvv 1.0
+              :transv-max 0.7
+              :target-speed 0.7
+              :seek0 24576.0
+              :seek90 24576.0
+              :seek180 24576.0
+              :fric 23756.8
+              :nonlin-fric-dist 4091904.0
+              :slope-slip-angle 16384.0
+              :bend-speed 4.0
+              :alignv 0.5
+              :slope-up-traction 0.9
+              :align-speed 1.0
+              :flags (surface-flags no-turn-around always-rotate-toward-transv)
+              )
+            )
+      )
   (define *no-walk-surface* v1-2)
-  (set!
-   (-> v1-2 mult-hook)
-   (the-as (function surface surface surface int none) nothing)
-   )
+  (set! *no-walk-surface* v1-2)
+  (set! (-> v1-2 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-2 touch-hook) nothing)
   (set! (-> v1-2 active-hook) nothing)
   )
-
-
-; (defmethod find-edge-grabs! target ((obj target) (arg0 collide-cache))
-;   (format *stdcon* "no edge grabs for you!~%")
-;   (the object 0)
-;   )

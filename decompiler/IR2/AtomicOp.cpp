@@ -122,6 +122,13 @@ SimpleAtom SimpleAtom::make_sym_val(const std::string& name) {
   return result;
 }
 
+SimpleAtom SimpleAtom::make_sym_val_ptr(const std::string& name) {
+  SimpleAtom result;
+  result.m_kind = Kind::SYMBOL_VAL_PTR;
+  result.m_string = name;
+  return result;
+}
+
 SimpleAtom SimpleAtom::make_empty_list() {
   SimpleAtom result;
   result.m_kind = Kind::EMPTY_LIST;
@@ -142,16 +149,54 @@ SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
   return result;
 }
 
+/*!
+ * Mark this atom as a float. It will be printed as a float.
+ * This can only be applied to an "integer" atom.
+ * This should be used carefully, as this doesn't handle casts/types - it just changes the
+ * representation, which will do the wrong thing unless the type system is aware of this
+ * too.
+ */
+void SimpleAtom::mark_as_float() {
+  ASSERT(is_int());
+  m_display_int_as_float = true;
+}
+
+bool SimpleAtom::is_integer_promoted_to_float() const {
+  return m_kind == Kind::INTEGER_CONSTANT && m_display_int_as_float;
+}
+
+float SimpleAtom::get_integer_promoted_to_float() const {
+  ASSERT(is_integer_promoted_to_float());
+  s32 as_s32 = get_int();
+  ASSERT(get_int() == (s64)as_s32);
+  float result;
+  memcpy(&result, &as_s32, 4);
+  return result;
+}
+
 goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT: {
-      if (std::abs(m_int) > INT32_MAX) {
-        u64 v = m_int;
-        return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+      if (m_display_int_as_float) {
+        float f;
+        s32 as_s32 = m_int;
+        ASSERT(((s64)as_s32) == m_int);  // float should always be a sign extended 32-bit value.
+        memcpy(&f, &as_s32, 4);
+        if (f == f && std::isfinite(f)) {
+          return goos::Object::make_float(f);
+        } else {
+          // nan or weird
+          return pretty_print::to_symbol(fmt::format("(the-as float #x{:x})", (u32)m_int));
+        }
       } else {
-        return goos::Object::make_integer(m_int);
+        if (std::abs(m_int) > INT32_MAX) {
+          u64 v = m_int;
+          return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+        } else {
+          return goos::Object::make_integer(m_int);
+        }
       }
     }
 
@@ -167,6 +212,8 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
       return pretty_print::to_symbol("'()");
     case Kind::STATIC_ADDRESS:
       return pretty_print::to_symbol(labels.at(m_int).name);
+    case Kind::SYMBOL_VAL_PTR:
+      return pretty_print::to_symbol(fmt::format("(&-> '{} value)", m_string));
     default:
       ASSERT(false);
       return {};
@@ -311,6 +358,10 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vec3dot";
     case SimpleExpression::Kind::VECTOR_4_DOT:
       return "vec4dot";
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      return "veclength";
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      return "vecplusfloattimes";
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return "set-on-less-than";
@@ -378,6 +429,10 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return 2;
+    case SimpleExpression::Kind::VECTOR_LENGTH:
+      return 1;
+    case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+      return 4;
     default:
       ASSERT(false);
       return -1;
@@ -408,6 +463,20 @@ SimpleExpression::SimpleExpression(Kind kind,
   m_args[2] = arg2;
   m_kind = kind;
   ASSERT(get_simple_expression_arg_count(kind) == 3);
+}
+
+SimpleExpression::SimpleExpression(Kind kind,
+                                   const SimpleAtom& arg0,
+                                   const SimpleAtom& arg1,
+                                   const SimpleAtom& arg2,
+                                   const SimpleAtom& arg3)
+    : n_args(4) {
+  m_args[0] = arg0;
+  m_args[1] = arg1;
+  m_args[2] = arg2;
+  m_args[3] = arg3;
+  m_kind = kind;
+  ASSERT(get_simple_expression_arg_count(kind) == 4);
 }
 
 goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& labels,
@@ -691,6 +760,7 @@ void AsmOp::update_register_info() {
       case InstructionKind::VFTOI0:
       case InstructionKind::VFTOI4:
       case InstructionKind::VFTOI12:
+      case InstructionKind::VFTOI15:
       case InstructionKind::VITOF0:
       case InstructionKind::VITOF12:
       case InstructionKind::VITOF15:

@@ -1,0 +1,335 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dark-eco-pool
+(deftype dark-eco-pool (water-anim)
+  ()
+  :heap-base #x80
+  :method-count-assert 29
+  :size-assert         #x100
+  :flag-assert         #x1d00800100
+  )
+
+;; definition for method 3 of type dark-eco-pool
+(defmethod inspect dark-eco-pool ((obj dark-eco-pool))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type water-anim inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *ripple-for-dark-eco-pool*, type ripple-wave-set
+(define *ripple-for-dark-eco-pool* (new 'static 'ripple-wave-set
+                                     :count 3
+                                     :converted #f
+                                     :normal-scale 3.0
+                                     :wave (new 'static 'inline-array ripple-wave 4
+                                       (new 'static 'ripple-wave :scale 11.0 :xdiv 1 :speed 1.0)
+                                       (new 'static 'ripple-wave :scale 7.5 :xdiv -1 :zdiv 1 :speed 4.0)
+                                       (new 'static 'ripple-wave :scale 2.0 :xdiv 5 :zdiv 3 :speed 2.0)
+                                       (new 'static 'ripple-wave)
+                                       )
+                                     )
+        )
+
+;; definition for symbol *ripple-strip-dark-eco-near-lift*, type ripple-wave-set
+(define *ripple-strip-dark-eco-near-lift*
+  (new 'static 'ripple-wave-set
+    :count 3
+    :converted #f
+    :normal-scale 3.0
+    :wave (new 'static 'inline-array ripple-wave 4
+      (new 'static 'ripple-wave :scale 4.0 :xdiv 1 :speed 1.0)
+      (new 'static 'ripple-wave :scale 2.5 :xdiv -1 :zdiv 1 :speed 3.0)
+      (new 'static 'ripple-wave :scale 3.0 :xdiv 5 :zdiv 3 :speed 2.0)
+      (new 'static 'ripple-wave)
+      )
+    )
+  )
+
+;; definition for method 28 of type dark-eco-pool
+;; WARN: Return type mismatch ambient-sound vs none.
+(defmethod offset! dark-eco-pool ((obj dark-eco-pool))
+  "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
+  (let ((t9-0 (method-of-type water-anim offset!)))
+    (t9-0 obj)
+    )
+  (logclear! (-> obj flags) (water-flags part-water))
+  (logior! (-> obj flags) (water-flags dark-eco))
+  (set! (-> obj attack-event)
+        (the-as
+          symbol
+          ((method-of-type res-lump get-property-struct)
+           (-> obj entity)
+           'attack-event
+           'interp
+           -1000000000.0
+           (the-as structure 'dark-eco-pool)
+           (the-as (pointer res-tag) #f)
+           *res-static-buf*
+           )
+          )
+        )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-pool" :fo-min 30 :fo-max 50) (-> obj root trans))
+        )
+  (none)
+  )
+
+;; definition for method 24 of type dark-eco-pool
+;; WARN: Return type mismatch ripple-wave-set vs none.
+(defmethod init-water! dark-eco-pool ((obj dark-eco-pool))
+  "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
+  (let ((t9-0 (method-of-type water-anim init-water!)))
+    (t9-0 obj)
+    )
+  (let ((s5-0 (new 'process 'ripple-control)))
+    (set! (-> obj draw ripple) s5-0)
+    (set! (-> s5-0 global-scale) 3072.0)
+    (set! (-> s5-0 close-fade-dist) 163840.0)
+    (set! (-> s5-0 far-fade-dist) 245760.0)
+    (set! (-> s5-0 waveform) *ripple-for-dark-eco-pool*)
+    (set! (-> s5-0 query) (new 'process 'ripple-merc-query 100))
+    (case (-> obj look)
+      ((5)
+       (set! (-> s5-0 waveform) *ripple-strip-dark-eco-near-lift*)
+       )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-dark-eco-nasty
+  :id 128
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 577 :fade-after (meters 50)))
+  )
+
+;; failed to figure out what this is:
+(defpart 577
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:y (meters 0))
+    (:scale-x (meters 1) (meters 4))
+    (:scale-y (meters 0.25))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 96.0 32.0)
+    (:scalevel-x (meters 0.1875))
+    (:scalevel-y (meters -0.001875))
+    (:fade-a -3.2)
+    (:timer (seconds 0.035))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.05))
+    (:next-launcher 578)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 578
+  :init-specs ((:r 255.0) (:g 128.0 128.0) (:b 0.0) (:fade-a -1.28))
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-dark-eco-pool-nasty
+  :id 129
+  :duration (seconds 2)
+  :linger-duration (seconds 2)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 583 :fade-after (meters 100) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 584 :fade-after (meters 100) :period (seconds 2) :length (seconds 0.017) :binding 579)
+    (sp-item 579 :flags (start-dead launch-asap) :binding 580)
+    (sp-item 580 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 579 :flags (start-dead launch-asap) :binding 580)
+    (sp-item 580 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 579 :flags (start-dead launch-asap) :binding 580)
+    (sp-item 580 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 579 :flags (start-dead launch-asap) :binding 580)
+    (sp-item 580 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 585 :fade-after (meters 100) :period (seconds 2) :length (seconds 0.017) :binding 581)
+    (sp-item 581 :flags (start-dead launch-asap) :binding 582)
+    (sp-item 582 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 581 :flags (start-dead launch-asap) :binding 582)
+    (sp-item 582 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 581 :flags (start-dead launch-asap) :binding 582)
+    (sp-item 582 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    (sp-item 581 :flags (start-dead launch-asap) :binding 582)
+    (sp-item 582 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 583
+  :init-specs ((:texture (new 'static 'texture-id :index #x29 :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 8))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 64.0)
+    (:fade-a -1.8285716)
+    (:timer (seconds 0.18))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 584
+  :init-specs ((:texture (new 'static 'texture-id :index #x29 :page #xc))
+    (:num 1.0 6.0)
+    (:y (meters 1))
+    (:scale-x (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:a 0.0)
+    (:vel-y (meters 0.04) (meters 0.02))
+    (:accel-y (meters -0.00083333335))
+    (:friction 0.94)
+    (:timer (seconds 0.8))
+    (:flags (sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 140))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 579
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:y (meters 0) (meters 16))
+    (:z (meters 0.3) (meters 0.3))
+    (:scale-x (meters 0.4) (meters 0.3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 0) (degrees 360))
+    (:vel-x (meters 0.026666667) (meters 0.10666667))
+    (:scalevel-x (meters -0.000909091))
+    (:rotvel-z (degrees -0.3) 1 (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.26666668)
+    (:fade-a -0.19393939)
+    (:timer (seconds 0.2) (seconds 0.597))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 ready-to-launch sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 580
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 0.4) (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:r 32.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters -0.0006190476))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.01904762)
+    (:accel-y (meters -0.000100000005) (meters -0.00015))
+    (:timer (seconds 0.1) (seconds 0.797))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.8))
+    (:next-launcher 397)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 585
+  :init-specs ((:texture (new 'static 'texture-id :index #x29 :page #xc))
+    (:num 1.0 6.0)
+    (:y (meters 1))
+    (:scale-x (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:a 0.0)
+    (:vel-y (meters 0.04) (meters 0.02))
+    (:accel-y (meters -0.00083333335))
+    (:friction 0.94)
+    (:timer (seconds 0.8))
+    (:flags (sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 140))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 581
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:y (meters 0) (meters 16))
+    (:z (meters 0.3) (meters 0.3))
+    (:scale-x (meters 0.4) (meters 0.3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 16.0 32.0)
+    (:g 0.0 16.0)
+    (:b 192.0 64.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 0) (degrees 360))
+    (:vel-x (meters 0.026666667) (meters 0.10666667))
+    (:scalevel-x (meters -0.000909091))
+    (:rotvel-z (degrees -0.3) 1 (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.26666668)
+    (:fade-a -0.19393939)
+    (:timer (seconds 0.2) (seconds 0.597))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 ready-to-launch sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 582
+  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 0.4) (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:r 16.0 32.0)
+    (:g 0.0 16.0)
+    (:b 192.0 64.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters -0.0006190476))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.01904762)
+    (:accel-y (meters -0.000100000005) (meters -0.00015))
+    (:timer (seconds 0.1) (seconds 0.797))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.8))
+    (:next-launcher 397)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (dark-eco-pool)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type water-anim idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let* ((gp-0 (-> self draw ripple))
+           (f0-1 (the float (logand (current-time) #xffff)))
+           (f0-6 (cos (the float (sar (shl (the int (* 5.0 f0-1)) 48) 48))))
+           (f0-7 (* f0-6 f0-6))
+           (f0-9 (fmax -1.0 (fmin 1.0 f0-7)))
+           )
+      (set! (-> gp-0 global-scale) (* 4096.0 (* 3.0 (+ 1.0 f0-9))))
+      (set! (-> gp-0 individual-normal-scale) (+ 0.5 (* 0.5 f0-9)))
+      )
+    (none)
+    )
+  )

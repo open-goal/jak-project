@@ -1,0 +1,938 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type sprite-header
+(deftype sprite-header (structure)
+  ((header      qword 1 :inline :offset-assert   0)
+   (num-sprites int32           :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type sprite-header
+(defmethod inspect sprite-header ((obj sprite-header))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sprite-header)
+  (format #t "~1Theader[1] @ #x~X~%" (-> obj header))
+  (format #t "~1Tnum-sprites: ~D~%" (-> obj num-sprites))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function sprite-setup-header
+;; WARN: Return type mismatch int vs none.
+(defun sprite-setup-header ((hdr sprite-header) (num-sprites int))
+  (set! (-> hdr num-sprites) num-sprites)
+  (none)
+  )
+
+;; definition of type sprite-hvdf-data
+(deftype sprite-hvdf-data (structure)
+  ((data qword 76 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c0
+  :flag-assert         #x9000004c0
+  )
+
+;; definition for method 3 of type sprite-hvdf-data
+(defmethod inspect sprite-hvdf-data ((obj sprite-hvdf-data))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-data)
+  (format #t "~1Tdata[76] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sprite-hvdf-control
+(deftype sprite-hvdf-control (structure)
+  ((alloc int8 76 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+;; definition for method 3 of type sprite-hvdf-control
+(defmethod inspect sprite-hvdf-control ((obj sprite-hvdf-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sprite-hvdf-control)
+  (format #t "~1Talloc[76] @ #x~X~%" (-> obj alloc))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sprite-aux-elem
+(deftype sprite-aux-elem (structure)
+  ((aux-type sprite-aux-type      :offset-assert   0)
+   (data     vector             3 :offset-assert   4)
+   (vec-data sprite-vec-data-2d   :offset          4)
+   (gif-data adgif-shader         :offset          8)
+   (aux-data sparticle-cpuinfo    :offset         12)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type sprite-aux-elem
+(defmethod inspect sprite-aux-elem ((obj sprite-aux-elem))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sprite-aux-elem)
+  (format #t "~1Taux-type: ~D~%" (-> obj aux-type))
+  (format #t "~1Tdata[3] @ #x~X~%" (-> obj data))
+  (format #t "~1Tvec-data: #<sprite-vec-data-2d @ #x~X>~%" (-> obj vec-data))
+  (format #t "~1Tgif-data: #<adgif-shader @ #x~X>~%" (-> obj gif-data))
+  (format #t "~1Taux-data: #<sparticle-cpuinfo @ #x~X>~%" (-> obj aux-data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sprite-aux-list
+(deftype sprite-aux-list (basic)
+  ((num-entries int32                            :offset-assert   4)
+   (entry       int32                            :offset-assert   8)
+   (data        sprite-aux-elem :inline :dynamic :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type sprite-aux-list
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tnum-entries: ~D~%" (-> obj num-entries))
+  (format #t "~1Tentry: ~D~%" (-> obj entry))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type sprite-aux-list
+(defmethod new sprite-aux-list ((allocation symbol) (type-to-make type) (size int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* size 16))))))
+    (set! (-> v0-0 num-entries) size)
+    (set! (-> v0-0 entry) 0)
+    v0-0
+    )
+  )
+
+;; definition for method 3 of type sprite-aux-list
+;; INFO: this function exists in multiple non-identical object files
+;; WARN: Return type mismatch symbol vs sprite-aux-list.
+(defmethod inspect sprite-aux-list ((obj sprite-aux-list))
+  (format #t "[~X] sprite-aux-list:~%" obj)
+  (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
+  (format #t "~Tentry: ~D~%" (-> obj entry))
+  (dotimes (s5-0 (-> obj entry))
+    (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
+    )
+  (the-as sprite-aux-list #f)
+  )
+
+;; definition for function clear-sprite-aux-list
+;; WARN: Return type mismatch int vs none.
+(defun clear-sprite-aux-list ()
+  (set! (-> *sprite-aux-list* entry) 0)
+  0
+  (none)
+  )
+
+;; definition for function add-to-sprite-aux-list
+;; WARN: Return type mismatch int vs none.
+(defun add-to-sprite-aux-list ((system sparticle-system) (sprite-info sparticle-cpuinfo) (sprite-vec sprite-vec-data-3d) (arg3 uint))
+  (let ((s2-0 (-> sprite-info sp-func)))
+    (if (and (nonzero? s2-0) (not (paused?)))
+        (s2-0 system sprite-info sprite-vec arg3)
+        )
+    )
+  (let ((aux-list *sprite-aux-list*))
+    (when (< (-> aux-list entry) (-> aux-list num-entries))
+      (cond
+        ((logtest? (-> sprite-info flags) (sp-cpuinfo-flag distort))
+         (set! (-> aux-list data (-> aux-list entry) aux-type) (sprite-aux-type distort))
+         (set! (-> aux-list data (-> aux-list entry) vec-data) (-> sprite-info sprite))
+         (+! (-> aux-list entry) 1)
+         (set! (-> sprite-vec r-g-b-a w) 0.0)
+         )
+        ((logtest? (-> sprite-info flags) (sp-cpuinfo-flag glow))
+         (let ((a0-18 (-> system cpuinfo-table arg3))
+               (a1-11 (-> aux-list data (-> aux-list entry)))
+               )
+           (set! (-> a1-11 aux-type) (sprite-aux-type glow))
+           (set! (-> a1-11 vec-data) (-> sprite-info sprite))
+           (set! (-> a1-11 gif-data) (-> sprite-info adgif))
+           (set! (-> a1-11 aux-data) a0-18)
+           )
+         (+! (-> aux-list entry) 1)
+         (set! (-> sprite-vec qx-qy-qz-sy y) (the-as float #xffffffff))
+         )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type sprite-frame-data
+(deftype sprite-frame-data (structure)
+  ((cdata              vector       16 :inline :offset          0)
+   (xy-array           vector       8 :inline  :offset          0)
+   (st-array           vector       4 :inline  :offset        128)
+   (xyz-array          vector       4 :inline  :offset        192)
+   (hmge-scale         vector       :inline    :offset        256)
+   (consts             vector       :inline    :offset        272)
+   (pfog0              float                   :offset        272)
+   (deg-to-rad         float                   :offset        276)
+   (min-scale          float                   :offset        280)
+   (inv-area           float                   :offset        284)
+   (adgif-giftag       gs-gif-tag   :inline    :offset-assert 288)
+   (sprite-2d-giftag   gs-gif-tag   :inline    :offset-assert 304)
+   (sprite-2d-giftag-2 gs-gif-tag   :inline    :offset-assert 320)
+   (sincos-01          vector       :inline    :offset-assert 336)
+   (sincos-23          vector       :inline    :offset-assert 352)
+   (sincos-45          vector       :inline    :offset-assert 368)
+   (sincos-67          vector       :inline    :offset-assert 384)
+   (sincos-89          vector       :inline    :offset-assert 400)
+   (basis-x            vector       :inline    :offset-assert 416)
+   (basis-y            vector       :inline    :offset-assert 432)
+   (sprite-3d-giftag   gs-gif-tag   :inline    :offset-assert 448)
+   (sprite-3d-giftag-2 gs-gif-tag   :inline    :offset-assert 464)
+   (screen-shader      adgif-shader :inline    :offset-assert 480)
+   (inv-hmge-scale     vector       :inline    :offset        576)
+   (stq-offset         vector       :inline    :offset-assert 592)
+   (stq-scale          vector       :inline    :offset-assert 608)
+   (rgba-plain         qword        :inline    :offset-assert 624)
+   (warp-giftag        gs-gif-tag   :inline    :offset-assert 640)
+   (fog-clamp          vector       :inline    :offset-assert 656)
+   (fog-min            float                   :offset        656)
+   (fog-max            float                   :offset        660)
+   (max-scale          float                   :offset        664)
+   )
+  :method-count-assert 9
+  :size-assert         #x2a0
+  :flag-assert         #x9000002a0
+  )
+
+;; definition for method 3 of type sprite-frame-data
+(defmethod inspect sprite-frame-data ((obj sprite-frame-data))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'sprite-frame-data)
+  (format #t "~1Tdata[42] @ #x~X~%" (-> obj cdata))
+  (format #t "~1Tcdata[16] @ #x~X~%" (-> obj cdata))
+  (format #t "~1Tfdata[26] @ #x~X~%" (-> obj hmge-scale))
+  (format #t "~1Txy-array[8] @ #x~X~%" (-> obj cdata))
+  (format #t "~1Tst-array[4] @ #x~X~%" (-> obj st-array))
+  (format #t "~1Txyz-array[4] @ #x~X~%" (-> obj xyz-array))
+  (format #t "~1Thmge-scale: #<vector @ #x~X>~%" (-> obj hmge-scale))
+  (format #t "~1Tconsts: #<vector @ #x~X>~%" (&-> obj pfog0))
+  (format #t "~1Tpfog0: ~f~%" (-> obj pfog0))
+  (format #t "~1Tdeg-to-rad: ~f~%" (-> obj deg-to-rad))
+  (format #t "~1Tmin-scale: ~f~%" (-> obj min-scale))
+  (format #t "~1Tinv-area: ~f~%" (-> obj inv-area))
+  (format #t "~1Tadgif-giftag: #<qword @ #x~X>~%" (-> obj adgif-giftag))
+  (format #t "~1Tsprite-2d-giftag: #<qword @ #x~X>~%" (-> obj sprite-2d-giftag))
+  (format #t "~1Tsprite-2d-giftag-2: #<qword @ #x~X>~%" (-> obj sprite-2d-giftag-2))
+  (format #t "~1Tsincos-01: #<vector @ #x~X>~%" (-> obj sincos-01))
+  (format #t "~1Tsincos-23: #<vector @ #x~X>~%" (-> obj sincos-23))
+  (format #t "~1Tsincos-45: #<vector @ #x~X>~%" (-> obj sincos-45))
+  (format #t "~1Tsincos-67: #<vector @ #x~X>~%" (-> obj sincos-67))
+  (format #t "~1Tsincos-89: #<vector @ #x~X>~%" (-> obj sincos-89))
+  (format #t "~1Tbasis-x: #<vector @ #x~X>~%" (-> obj basis-x))
+  (format #t "~1Tbasis-y: #<vector @ #x~X>~%" (-> obj basis-y))
+  (format #t "~1Tsprite-3d-giftag: #<qword @ #x~X>~%" (-> obj sprite-3d-giftag))
+  (format #t "~1Tsprite-3d-giftag-2: #<qword @ #x~X>~%" (-> obj sprite-3d-giftag-2))
+  (format #t "~1Tscreen-shader: #<adgif-shader @ #x~X>~%" (-> obj screen-shader))
+  (format #t "~1Tinv-hmge-scale: #<vector @ #x~X>~%" (-> obj inv-hmge-scale))
+  (format #t "~1Tstq-offset: #<vector @ #x~X>~%" (-> obj stq-offset))
+  (format #t "~1Tstq-scale: #<vector @ #x~X>~%" (-> obj stq-scale))
+  (format #t "~1Trgba-plain: #<qword @ #x~X>~%" (-> obj rgba-plain))
+  (format #t "~1Twarp-giftag: #<qword @ #x~X>~%" (-> obj warp-giftag))
+  (format #t "~1Tfog-clamp: #<vector @ #x~X>~%" (-> obj fog-clamp))
+  (format #t "~1Tfog-min: ~f~%" (-> obj fog-clamp x))
+  (format #t "~1Tfog-max: ~f~%" (-> obj fog-clamp y))
+  (format #t "~1Tmax-scale: ~f~%" (-> obj max-scale))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function sprite-setup-frame-data
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defun sprite-setup-frame-data ((data sprite-frame-data) (tbp-offset uint))
+  (set! (-> data hmge-scale quad) (-> *math-camera* hmge-scale quad))
+  (set! (-> data inv-hmge-scale quad) (-> *math-camera* inv-hmge-scale quad))
+  (set! (-> data pfog0) (-> *math-camera* pfog0))
+  (set! (-> data deg-to-rad) 0.000095873795)
+  (set! (-> data adgif-giftag tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x5))
+  (set! (-> data adgif-giftag regs)
+        (new 'static 'gif-tag-regs
+          :regs0 (gif-reg-id a+d)
+          :regs1 (gif-reg-id a+d)
+          :regs2 (gif-reg-id a+d)
+          :regs3 (gif-reg-id a+d)
+          :regs4 (gif-reg-id a+d)
+          )
+        )
+  (set! (-> data sprite-2d-giftag tag)
+        (new 'static 'gif-tag64
+          :nloop #x1
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
+          :nreg #x9
+          )
+        )
+  (set! (-> data sprite-2d-giftag regs)
+        (new 'static 'gif-tag-regs
+          :regs0 (gif-reg-id rgbaq)
+          :regs1 (gif-reg-id st)
+          :regs2 (gif-reg-id xyzf2)
+          :regs3 (gif-reg-id st)
+          :regs4 (gif-reg-id xyzf2)
+          :regs5 (gif-reg-id st)
+          :regs6 (gif-reg-id xyzf2)
+          :regs7 (gif-reg-id st)
+          :regs8 (gif-reg-id xyzf2)
+          )
+        )
+  (set! (-> data sprite-2d-giftag-2 tag)
+        (new 'static 'gif-tag64
+          :nloop #x1
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :abe #x1)
+          :nreg #x9
+          )
+        )
+  (set! (-> data sprite-2d-giftag-2 regs)
+        (new 'static 'gif-tag-regs
+          :regs0 (gif-reg-id rgbaq)
+          :regs1 (gif-reg-id st)
+          :regs2 (gif-reg-id xyzf2)
+          :regs3 (gif-reg-id st)
+          :regs4 (gif-reg-id xyzf2)
+          :regs5 (gif-reg-id st)
+          :regs6 (gif-reg-id xyzf2)
+          :regs7 (gif-reg-id st)
+          :regs8 (gif-reg-id xyzf2)
+          )
+        )
+  (set! (-> data sprite-3d-giftag tag)
+        (new 'static 'gif-tag64
+          :nloop #x4
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
+          :nreg #x3
+          )
+        )
+  (set! (-> data sprite-3d-giftag regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> data sprite-3d-giftag-2 tag)
+        (new 'static 'gif-tag64
+          :nloop #x4
+          :eop #x1
+          :pre #x1
+          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :abe #x1)
+          :nreg #x3
+          )
+        )
+  (set! (-> data sprite-3d-giftag-2 regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (set! (-> data warp-giftag tag) (new 'static 'gif-tag64
+                                    :nloop #x1
+                                    :eop #x1
+                                    :pre #x1
+                                    :prim (new 'static 'gs-prim :prim (gs-prim-type tri) :tme #x1 :abe #x1)
+                                    :nreg #xc
+                                    )
+        )
+  (set! (-> data warp-giftag regs) (new 'static 'gif-tag-regs
+                                     :regs0 (gif-reg-id st)
+                                     :regs1 (gif-reg-id rgbaq)
+                                     :regs2 (gif-reg-id xyzf2)
+                                     :regs3 (gif-reg-id st)
+                                     :regs4 (gif-reg-id rgbaq)
+                                     :regs5 (gif-reg-id xyzf2)
+                                     :regs6 (gif-reg-id st)
+                                     :regs7 (gif-reg-id rgbaq)
+                                     :regs8 (gif-reg-id xyzf2)
+                                     )
+        )
+  (set! (-> data screen-shader prims 1) (gs-reg64 tex0-1))
+  (set! (-> data screen-shader tex0) (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tbp0 (* tbp-offset 32)))
+  (set! (-> data screen-shader prims 3) (gs-reg64 tex1-1))
+  (set! (-> data screen-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+  (set! (-> data screen-shader prims 5) (gs-reg64 miptbp1-1))
+  (set! (-> data screen-shader miptbp1) (new 'static 'gs-miptbp))
+  (set! (-> data screen-shader clamp-reg) (gs-reg64 clamp-1))
+  (set! (-> data screen-shader clamp) (new 'static 'gs-clamp
+                                        :wms (gs-tex-wrap-mode region-clamp)
+                                        :wmt (gs-tex-wrap-mode region-clamp)
+                                        :maxu #x27f
+                                        :maxv #xef
+                                        )
+        )
+  (set! (-> data screen-shader prims 9) (gs-reg64 alpha-1))
+  (set! (-> data screen-shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+  (set! (-> data sincos-01 z) 0.999998)
+  (set! (-> data sincos-23 z) -0.16666014)
+  (set! (-> data sincos-45 z) 0.008326521)
+  (set! (-> data sincos-67 z) -0.0001956241)
+  (set! (-> data sincos-89 z) 0.0000023042373)
+  (set! (-> data sincos-01 w) 1.0)
+  (set! (-> data sincos-23 w) -0.49998003)
+  (set! (-> data sincos-45 w) 0.041620404)
+  (set! (-> data sincos-67 w) -0.0013636408)
+  (set! (-> data sincos-89 w) 0.000020170546)
+  (set! (-> data basis-x quad) (the-as uint128 0))
+  (set! (-> data basis-x x) (- (-> *math-camera* perspective vector 0 x)))
+  (set! (-> data basis-y quad) (the-as uint128 0))
+  (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
+  (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
+  (set! (-> data inv-area) (/ 1.0 (* (-> data min-scale) (-> data min-scale))))
+  (set-vector! (-> data cdata 0) -0.5 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 1) 0.5 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 2) 0.5 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 3) -0.5 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 4) 0.0 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 5) 1.0 -0.5 0.0 0.0)
+  (set-vector! (-> data cdata 6) 1.0 0.5 0.0 0.0)
+  (set-vector! (-> data cdata 7) 0.0 0.5 0.0 0.0)
+  (set-vector! (-> data st-array 0) 0.0 0.0 1.0 0.0)
+  (set-vector! (-> data cdata 9) 1.0 0.0 1.0 0.0)
+  (set-vector! (-> data cdata 10) 1.0 1.0 1.0 0.0)
+  (set-vector! (-> data cdata 11) 0.0 1.0 1.0 0.0)
+  (set-vector! (-> data xyz-array 0) -0.5 0.0 -0.5 0.0)
+  (set-vector! (-> data cdata 13) 0.5 0.0 -0.5 0.0)
+  (set-vector! (-> data cdata 14) 0.5 0.0 0.5 0.0)
+  (set-vector! (-> data cdata 15) -0.5 0.0 0.5 0.0)
+  (set-vector! (-> data stq-offset) -1792.0 -1840.0 0.0 0.0)
+  (set-vector! (-> data stq-scale) 0.0009765625 0.00390625 1.0 1.0)
+  (set! (-> data rgba-plain vector4w x) 128)
+  (set! (-> data rgba-plain vector4w y) 128)
+  (set! (-> data rgba-plain vector4w z) 128)
+  (set! (-> data rgba-plain vector4w w) 64)
+  (set! (-> data fog-clamp x) (-> *math-camera* fog-min))
+  (set! (-> data fog-clamp y) (-> *math-camera* fog-max))
+  (set! (-> data max-scale) 2048.0)
+  (none)
+  )
+
+;; definition for symbol sprite-vu1-block, type vu-function
+(define sprite-vu1-block (new 'static 'vu-function :length #x35f :qlength #x1b0))
+
+;; definition for method 0 of type sprite-array-2d
+(defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
+  (let* ((sprite-count (+ group-0-size group-1-size))
+         (vec-data-size (* 3 sprite-count))
+         (adgif-data-size (* 5 sprite-count))
+         (v0-0 (object-new
+                 allocation
+                 type-to-make
+                 (the-as int (+ (-> type-to-make size) (* (+ adgif-data-size -1 vec-data-size) 16)))
+                 )
+               )
+         )
+    (set! (-> v0-0 num-sprites 0) group-0-size)
+    (set! (-> v0-0 num-sprites 1) group-1-size)
+    (set! (-> v0-0 num-valid 0) 0)
+    (set! (-> v0-0 num-valid 1) 0)
+    (set! (-> v0-0 vec-data) (-> v0-0 data))
+    (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
+    v0-0
+    )
+  )
+
+;; definition for method 0 of type sprite-array-3d
+(defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
+  (let* ((sprite-count (+ group-0-size group-1-size))
+         (vec-data-size (* 3 sprite-count))
+         (adgif-data-size (* 5 sprite-count))
+         (v0-0 (object-new
+                 allocation
+                 type-to-make
+                 (the-as int (+ (-> type-to-make size) (* (+ adgif-data-size -1 vec-data-size) 16)))
+                 )
+               )
+         )
+    (set! (-> v0-0 num-sprites 0) group-0-size)
+    (set! (-> v0-0 num-sprites 1) group-1-size)
+    (set! (-> v0-0 num-valid 0) 0)
+    (set! (-> v0-0 num-valid 1) 0)
+    (set! (-> v0-0 vec-data) (-> v0-0 data))
+    (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
+    v0-0
+    )
+  )
+
+;; definition for function sprite-set-3d-quaternion!
+(defun sprite-set-3d-quaternion! ((sprite sprite-vec-data-3d) (quat quaternion))
+  (local-vars (v1-0 float) (v1-1 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (cond
+      ((< (-> quat w) 0.0)
+       (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
+       (.lvf vf2 (&-> quat quad))
+       (.sub.vf vf1 vf0 vf2 :mask #b111)
+       (.svf (&-> sprite qx-qy-qz-sy quad) vf1)
+       (.mov v1-0 vf1)
+       )
+      (else
+        (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
+        (.lvf vf2 (&-> quat quad))
+        (.add.vf vf1 vf0 vf2 :mask #b111)
+        (.svf (&-> sprite qx-qy-qz-sy quad) vf1)
+        (.mov v1-1 vf1)
+        )
+      )
+    quat
+    )
+  )
+
+;; definition for function sprite-get-3d-quaternion!
+(defun sprite-get-3d-quaternion! ((out quaternion) (sprite sprite-vec-data-3d))
+  (let ((f0-0 (-> sprite qx-qy-qz-sy x))
+        (f1-0 (-> sprite qx-qy-qz-sy y))
+        (f2-0 (-> sprite qx-qy-qz-sy z))
+        )
+    (set! (-> out x) f0-0)
+    (set! (-> out y) f1-0)
+    (set! (-> out z) f2-0)
+    (set! (-> out w) (sqrtf (- (- (- 1.0 (* f2-0 f2-0)) (* f1-0 f1-0)) (* f0-0 f0-0))))
+    )
+  out
+  )
+
+;; definition for function sprite-add-matrix-data
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun sprite-add-matrix-data ((dma-buff dma-buffer) (matrix-mode uint))
+  (let ((count 900))
+    (cond
+      ((zero? matrix-mode)
+       (let* ((a1-1 dma-buff)
+              (pkt1 (the-as dma-packet (-> a1-1 base)))
+              )
+         (set! (-> pkt1 dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
+         (set! (-> pkt1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+         (set! (-> pkt1 vif1) (new 'static 'vif-tag :num #x5 :cmd (vif-cmd unpack-v4-32) :imm (shr (shl count 54) 54)))
+         (set! (-> a1-1 base) (&+ (the-as pointer pkt1) 16))
+         )
+       (let* ((mtx (the-as matrix (-> dma-buff base)))
+              (t1-0 (-> *math-camera* camera-temp))
+              (a2-4 (-> t1-0 quad 0))
+              (a3-4 (-> t1-0 quad 1))
+              (t0-4 (-> t1-0 quad 2))
+              (t1-1 (-> t1-0 trans quad))
+              )
+         (set! (-> mtx quad 0) a2-4)
+         (set! (-> mtx quad 1) a3-4)
+         (set! (-> mtx quad 2) t0-4)
+         (set! (-> mtx trans quad) t1-1)
+         )
+       (&+! (-> dma-buff base) 64)
+       (let ((v1-1 (+ count 4)))
+         (set! (-> (the-as (pointer uint128) (-> dma-buff base))) (-> *math-camera* hvdf-off quad))
+         (&+! (-> dma-buff base) 16)
+         (+ v1-1 1)
+         )
+       )
+      ((= matrix-mode 1)
+       (let* ((a1-10 dma-buff)
+              (pkt2 (the-as dma-packet (-> a1-10 base)))
+              )
+         (set! (-> pkt2 dma) (new 'static 'dma-tag :qwc #x50 :id (dma-tag-id cnt)))
+         (set! (-> pkt2 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+         (set! (-> pkt2 vif1)
+               (new 'static 'vif-tag :num #x50 :cmd (vif-cmd unpack-v4-32) :imm (shr (shl count 54) 54))
+               )
+         (set! (-> a1-10 base) (&+ (the-as pointer pkt2) 16))
+         )
+       (let ((mtx2 (the-as matrix (-> dma-buff base)))
+             (f1-0 (-> *math-camera* perspective vector 0 x))
+             (f2-0 (-> *math-camera* perspective vector 1 y))
+             (f0-1 (* -1.9996 (-> *math-camera* perspective vector 0 x)))
+             )
+         (set-vector! (the-as vector (&+ (the-as pointer mtx2) 0)) f0-1 0.0 0.0 0.0)
+         (set-vector! (the-as vector (&+ (the-as pointer mtx2) 16)) 0.0 (- (* (/ f2-0 f1-0) f0-1)) 0.0 0.0)
+         (set-vector! (the-as vector (&+ (the-as pointer mtx2) 32)) 0.0 0.0 (- f0-1) 0.0)
+         (set-vector!
+           (the-as vector (&+ (the-as pointer mtx2) 48))
+           0.0
+           0.0
+           (* 500000000.0 f0-1)
+           (* 60.0 f0-1 (-> *math-camera* pfog0))
+           )
+         )
+       (&+! (-> dma-buff base) 64)
+       (let ((v1-2 (+ count 4)))
+         (let ((a1-16 (the-as vector (-> dma-buff base))))
+           (set! (-> a1-16 quad) (-> *math-camera* hvdf-off quad))
+           (set! (-> a1-16 x) 2048.0)
+           (set! (-> a1-16 y) 2048.0)
+           (set! (-> a1-16 z) (-> *math-camera* hvdf-off z))
+           )
+         (&+! (-> dma-buff base) 16)
+         (let ((v1-3 (+ v1-2 1)))
+           (dotimes (hvdf-idx 75)
+             (set! (-> (the-as (pointer uint128) (-> dma-buff base))) (-> *sprite-hvdf-data* data (+ hvdf-idx 1) quad))
+             (&+! (-> dma-buff base) 16)
+             (+! v1-3 1)
+             )
+           )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function sprite-add-frame-data
+;; WARN: Return type mismatch pointer vs none.
+(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
+  (let ((s5-0 42))
+    (let* ((v1-0 dma-buff)
+           (pkt (the-as dma-packet (-> v1-0 base)))
+           )
+      (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s5-0))
+      (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> pkt vif1) (new 'static 'vif-tag :imm #x3d4 :cmd (vif-cmd unpack-v4-32) :num s5-0))
+      (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
+      )
+    (sprite-setup-frame-data (the-as sprite-frame-data (-> dma-buff base)) tbp-offset)
+    (&+! (-> dma-buff base) (* s5-0 16))
+    )
+  (none)
+  )
+
+;; definition for function sprite-add-2d-chunk
+;; WARN: Return type mismatch pointer vs none.
+(defun sprite-add-2d-chunk ((sprites sprite-array-2d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer) (mscal-addr int))
+  (let ((qwc-pkt1 1))
+    (let* ((v1-0 dma-buff)
+           (pkt1 (the-as dma-packet (-> v1-0 base)))
+           )
+      (set! (-> pkt1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-pkt1))
+      (set! (-> pkt1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> pkt1 vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt1))
+      (set! (-> v1-0 base) (&+ (the-as pointer pkt1) 16))
+      )
+    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
+    (&+! (-> dma-buff base) (* qwc-pkt1 16))
+    )
+  (let* ((qwc-pkt2 (* 3 num-sprites))
+         (v1-4 dma-buff)
+         (pkt2 (the-as dma-packet (-> v1-4 base)))
+         )
+    (set! (-> pkt2 dma) (new 'static 'dma-tag
+                          :id (dma-tag-id ref)
+                          :addr (the-as int (&+ (-> sprites vec-data) (* 48 start-sprite-idx)))
+                          :qwc qwc-pkt2
+                          )
+          )
+    (set! (-> pkt2 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt2 vif1) (new 'static 'vif-tag :imm #x8001 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2))
+    (set! (-> v1-4 base) (&+ (the-as pointer pkt2) 16))
+    )
+  (let* ((qwc-pkt3 (* 5 num-sprites))
+         (v1-6 dma-buff)
+         (pkt3 (the-as dma-packet (-> v1-6 base)))
+         )
+    (set! (-> pkt3 dma) (new 'static 'dma-tag
+                          :id (dma-tag-id ref)
+                          :addr (+ (the-as int (-> sprites adgif-data)) (* 80 start-sprite-idx))
+                          :qwc qwc-pkt3
+                          )
+          )
+    (set! (-> pkt3 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt3 vif1) (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3))
+    (set! (-> v1-6 base) (&+ (the-as pointer pkt3) 16))
+    )
+  (let ((pkt4 (the-as dma-packet (-> dma-buff base))))
+    (set! (-> pkt4 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> pkt4 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt4 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm mscal-addr))
+    (set! (-> dma-buff base) (&+ (the-as pointer pkt4) 16))
+    )
+  (none)
+  )
+
+;; definition for function sprite-add-2d-all
+(defun sprite-add-2d-all ((sprites sprite-array-2d) (dma-buff dma-buffer) (group-idx int))
+  (when (> (-> sprites num-valid group-idx) 0)
+    (let ((current-sprite-idx 0)
+          (mscal-addr 3)
+          )
+      (when (= group-idx 1)
+        (set! current-sprite-idx (-> sprites num-sprites 0))
+        (set! mscal-addr 115)
+        )
+      (let ((remaining-sprites (-> sprites num-valid group-idx)))
+        (while (< 48 remaining-sprites)
+          (sprite-add-2d-chunk sprites current-sprite-idx 48 dma-buff mscal-addr)
+          (+! current-sprite-idx 48)
+          (+! remaining-sprites -48)
+          )
+        (sprite-add-2d-chunk sprites current-sprite-idx remaining-sprites dma-buff mscal-addr)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function sprite-add-3d-chunk
+;; WARN: Return type mismatch pointer vs none.
+(defun sprite-add-3d-chunk ((sprites sprite-array-3d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer))
+  (let ((qwc-pkt1 1))
+    (let* ((v1-0 dma-buff)
+           (pkt1 (the-as dma-packet (-> v1-0 base)))
+           )
+      (set! (-> pkt1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-pkt1))
+      (set! (-> pkt1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> pkt1 vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt1))
+      (set! (-> v1-0 base) (&+ (the-as pointer pkt1) 16))
+      )
+    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
+    (&+! (-> dma-buff base) (* qwc-pkt1 16))
+    )
+  (let* ((qwc-pkt2 (* 3 num-sprites))
+         (v1-4 dma-buff)
+         (pkt2 (the-as dma-packet (-> v1-4 base)))
+         )
+    (set! (-> pkt2 dma) (new 'static 'dma-tag
+                          :id (dma-tag-id ref)
+                          :addr (the-as int (&+ (-> sprites vec-data) (* 48 start-sprite-idx)))
+                          :qwc qwc-pkt2
+                          )
+          )
+    (set! (-> pkt2 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt2 vif1) (new 'static 'vif-tag :imm #x8001 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2))
+    (set! (-> v1-4 base) (&+ (the-as pointer pkt2) 16))
+    )
+  (let* ((qwc-pkt3 (* 5 num-sprites))
+         (v1-6 dma-buff)
+         (pkt3 (the-as dma-packet (-> v1-6 base)))
+         )
+    (set! (-> pkt3 dma) (new 'static 'dma-tag
+                          :id (dma-tag-id ref)
+                          :addr (the-as int (-> sprites adgif-data start-sprite-idx))
+                          :qwc qwc-pkt3
+                          )
+          )
+    (set! (-> pkt3 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt3 vif1) (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3))
+    (set! (-> v1-6 base) (&+ (the-as pointer pkt3) 16))
+    )
+  (let ((pkt4 (the-as dma-packet (-> dma-buff base))))
+    (set! (-> pkt4 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> pkt4 vif0) (new 'static 'vif-tag))
+    (set! (-> pkt4 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #xd9))
+    (set! (-> dma-buff base) (&+ (the-as pointer pkt4) 16))
+    )
+  (none)
+  )
+
+;; definition for function sprite-add-3d-all
+(defun sprite-add-3d-all ((sprites sprite-array-3d) (dma-buff dma-buffer) (group-idx int))
+  (when (> (-> sprites num-valid group-idx) 0)
+    (let ((current-sprite-idx (if (zero? group-idx)
+                                  0
+                                  (-> sprites num-sprites 0)
+                                  )
+                              )
+          (remaining-sprites (-> sprites num-valid group-idx))
+          )
+      (while (< 48 remaining-sprites)
+        (sprite-add-3d-chunk sprites current-sprite-idx 48 dma-buff)
+        (+! current-sprite-idx 48)
+        (+! remaining-sprites -48)
+        )
+      (sprite-add-3d-chunk sprites current-sprite-idx remaining-sprites dma-buff)
+      )
+    )
+  (none)
+  )
+
+;; definition for function sprite-draw
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Failed store: (s.w! (+ a0-6 8) 0) at op 35
+(defun sprite-draw ((disp display))
+  (let ((dma-mem-begin (-> *display* frames (-> *display* on-screen) global-buf base)))
+    (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id particles)
+                                 )
+      (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+        (sprite-init-distorter dma-buff)
+        (sprite-draw-distorters dma-buff)
+        )
+      (dma-buffer-add-gs-set dma-buff
+                             (test-1 (new 'static 'gs-test
+                                       :ate #x1
+                                       :atst (gs-atest greater-equal)
+                                       :aref #x26
+                                       :afail #x1
+                                       :zte #x1
+                                       :ztst (gs-ztest greater-equal)
+                                       )
+                                     )
+                             (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                             )
+      (dma-buffer-add-vu-function dma-buff sprite-vu1-block 1)
+      (sprite-add-frame-data dma-buff (the-as uint 408))
+      (let* ((v1-20 dma-buff)
+             (pkt2 (the-as dma-packet (-> v1-20 base)))
+             )
+        (set! (-> pkt2 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> pkt2 vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm #x0))
+        (set! (-> pkt2 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+        (set! (-> v1-20 base) (&+ (the-as pointer pkt2) 16))
+        )
+      (let* ((v1-21 dma-buff)
+             (pkt3 (the-as dma-packet (-> v1-21 base)))
+             )
+        (set! (-> pkt3 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> pkt3 vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+        (set! (-> pkt3 vif1) (new 'static 'vif-tag :imm #x190 :cmd (vif-cmd offset)))
+        (set! (-> v1-21 base) (&+ (the-as pointer pkt3) 16))
+        )
+      (sprite-add-matrix-data dma-buff (the-as uint 0))
+      (sprite-add-3d-all *sprite-array-3d* dma-buff 0)
+      (sprite-add-2d-all *sprite-array-2d* dma-buff 0)
+      (let* ((v1-22 dma-buff)
+             (pkt4 (the-as dma-packet (-> v1-22 base)))
+             )
+        (set! (-> pkt4 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> pkt4 vif0) (new 'static 'vif-tag))
+        (set! (-> pkt4 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+        (set! (-> v1-22 base) (&+ (the-as pointer pkt4) 16))
+        )
+      (sprite-add-matrix-data dma-buff (the-as uint 1))
+      (sprite-add-2d-all *sprite-array-2d* dma-buff 1)
+      (let* ((v1-23 dma-buff)
+             (pkt5 (the-as dma-packet (-> v1-23 base)))
+             )
+        (set! (-> pkt5 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> pkt5 vif0) (new 'static 'vif-tag))
+        (set! (-> pkt5 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+        (set! (-> v1-23 base) (&+ (the-as pointer pkt5) 16))
+        )
+      (sprite-glow-init-engine dma-buff)
+      (sprite-glow-draw dma-buff)
+      (draw-all-sprites! *simple-sprite-system* dma-buff)
+      (let* ((v1-26 dma-buff)
+             (pkt6 (the-as dma-packet (-> v1-26 base)))
+             )
+        (set! (-> pkt6 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+        (set! (-> pkt6 vif0) (new 'static 'vif-tag))
+        (set! (-> pkt6 vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+        (set! (-> v1-26 base) (&+ (the-as pointer pkt6) 16))
+        )
+      )
+    (let ((mem-use *dma-mem-usage*))
+      (when (nonzero? mem-use)
+        (set! (-> mem-use length) (max 86 (-> mem-use length)))
+        (set! (-> mem-use data 85 name) "sprite")
+        (+! (-> mem-use data 85 count) 1)
+        (+! (-> mem-use data 85 used)
+            (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint dma-mem-begin))
+            )
+        (set! (-> mem-use data 85 total) (-> mem-use data 85 used))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function sprite-allocate-user-hvdf
+(defun sprite-allocate-user-hvdf ()
+  (dotimes (v1-0 76)
+    (when (zero? (-> *sprite-hvdf-control* alloc v1-0))
+      (set! (-> *sprite-hvdf-control* alloc v1-0) 1)
+      (return v1-0)
+      )
+    )
+  0
+  )
+
+;; definition for function sprite-release-user-hvdf
+;; WARN: Return type mismatch int vs none.
+(defun sprite-release-user-hvdf ((idx int))
+  (when (and (>= idx 1) (< idx 76))
+    (set! (-> *sprite-hvdf-control* alloc idx) 0)
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition for function sprite-get-user-hvdf
+;; WARN: Return type mismatch qword vs vector.
+(defun sprite-get-user-hvdf ((idx int))
+  (the-as vector (-> *sprite-hvdf-data* data idx))
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "sprite-tables")
+
+;; definition for symbol *sprite-hvdf-data*, type sprite-hvdf-data
+(define *sprite-hvdf-data* (new 'global 'sprite-hvdf-data))
+
+;; definition for symbol *sprite-hvdf-control*, type sprite-hvdf-control
+(define *sprite-hvdf-control* (new 'global 'sprite-hvdf-control))
+
+;; failed to figure out what this is:
+(dotimes (v1-25 76)
+  (set! (-> *sprite-hvdf-control* alloc v1-25) 0)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *sprite-hvdf-control* alloc 0) 1)
+
+;; definition for symbol *sprite-aux-list*, type sprite-aux-list
+(define *sprite-aux-list* (new 'global 'sprite-aux-list 256))
+
+;; definition for symbol *sprite-array-2d*, type sprite-array-2d
+(define *sprite-array-2d* (new 'global 'sprite-array-2d 1920 128))
+
+;; definition for symbol *sprite-array-3d*, type sprite-array-3d
+(define *sprite-array-3d* (new 'global 'sprite-array-3d 256 0))
+
+;; failed to figure out what this is:
+(kmemclose)

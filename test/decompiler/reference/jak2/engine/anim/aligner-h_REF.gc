@@ -1,0 +1,60 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type align-control
+(deftype align-control (basic)
+  ((flags       align-flags                :offset-assert   4)
+   (process     process-drawable           :offset-assert   8)
+   (frame-group art-joint-anim             :offset-assert  12)
+   (frame-num   float                      :offset-assert  16)
+   (matrix      matrix           2 :inline :offset-assert  32)
+   (transform   transform        2 :inline :offset-assert 160)
+   (delta       transformq       :inline   :offset-assert 256)
+   (last-speed  meters                     :offset-assert 304)
+   (align       transformq       :inline   :offset        160)
+   )
+  :method-count-assert 14
+  :size-assert         #x134
+  :flag-assert         #xe00000134
+  (:methods
+    (new (symbol type process) _type_ 0)
+    (compute-alignment! (_type_) transformq 9)
+    (align! (_type_ align-opts float float float) trsqv 10)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv :behavior process 11)
+    (first-transform (_type_) transform 12)
+    (second-transform (_type_) transform 13)
+    )
+  )
+
+;; definition for method 3 of type align-control
+(defmethod inspect align-control ((obj align-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: #x~X~%" (-> obj flags))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tframe-group: ~A~%" (-> obj frame-group))
+  (format #t "~1Tframe-num: ~f~%" (-> obj frame-num))
+  (format #t "~1Tmatrix[2] @ #x~X~%" (-> obj matrix))
+  (format #t "~1Ttransform[2] @ #x~X~%" (-> obj transform))
+  (format #t "~1Tdelta: #<transformq @ #x~X>~%" (-> obj delta))
+  (format #t "~1Tlast-speed: (meters ~m)~%" (-> obj last-speed))
+  (format #t "~1Talign: #<transformq @ #x~X>~%" (-> obj transform))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type align-control
+;; WARN: Return type mismatch object vs align-control.
+(defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? obj)
+      (go process-drawable-art-error "memory")
+      (return (the-as align-control 0))
+      )
+    (set! (-> obj process) (the-as process-drawable arg0))
+    (the-as align-control obj)
+    )
+  )

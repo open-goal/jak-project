@@ -56,6 +56,7 @@ s32 goal_main(int argc, const char* const* argv) {
       break;
     case SCE_ITALIAN_LANGUAGE:
       masterConfig.language = (u16)Language::Italian;
+      break;
     default:
       masterConfig.language = (u16)Language::English;
       break;

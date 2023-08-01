@@ -17,7 +17,7 @@
 namespace jak2 {
 
 void output_sql_query(char* query_name) {
-  if (MasterDebug != 0) {
+  if (MasterDebug) {
     sprintf(strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader)), "sql-query \"");
 
     char* buffer_ptr = strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
@@ -93,7 +93,7 @@ s32 format_impl_jak2(uint64_t* args) {
   // read goal binteger
   if (print_column.offset) {
     // added the if check so we can format even if the kernel didn't load right.
-    indentation = (*print_column) >> 3;
+    indentation = (*(print_column - 1)) >> 3;
   }
 
   // which arg we're on
@@ -123,7 +123,7 @@ s32 format_impl_jak2(uint64_t* args) {
       }
 
       // read arguments
-      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 10
+      while ((u8)(format_ptr[1] - '0') < 10 ||  // number 0 to 9
              format_ptr[1] == ',' ||            // comma
              format_ptr[1] == '\'' ||           // quote
              format_ptr[1] == '`' ||            // backtick
@@ -244,6 +244,16 @@ s32 format_impl_jak2(uint64_t* args) {
           u32 in = arg_regs[arg_reg_idx++];
           kstrcat(output_ptr, Ptr<char>(in).c());
           output_ptr = strend(output_ptr);
+        } break;
+
+        case 'O':
+        case 'o': {
+          *output_ptr = '~';
+          output_ptr++;
+          kitoa(output_ptr, arg_regs[arg_reg_idx++], 10, 0, ' ', 0);
+          output_ptr = strend(output_ptr);
+          *output_ptr = 'u';
+          output_ptr++;
         } break;
 
         case 'A':  // print a boxed object
@@ -505,6 +515,7 @@ s32 format_impl_jak2(uint64_t* args) {
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
+          MsgErr("input was %s\n", format_cstring);
           ASSERT(false);
           break;
       }
@@ -528,9 +539,14 @@ s32 format_impl_jak2(uint64_t* args) {
     // we'd get these eventually in ClearPending, but for some reason they flush these here.
     // This is nicer because we may crash in between here and flushing the print buffer.
     if (DiskBoot) {
-      printf("%s", PrintPendingLocal3);
-      fflush(stdout);
+      // however, we are going to disable it anyway because it spams the console and is annoying
+      if (false) {
+        printf("%s", PrintPendingLocal3);
+        fflush(stdout);
+      }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
+      // if we don't comment this line, our output gets cleared
+      // *PrintPendingLocal3 = 0;
     }
 
     return 0;

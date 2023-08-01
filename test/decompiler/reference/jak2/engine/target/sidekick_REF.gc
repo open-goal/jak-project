@@ -1,0 +1,489 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-sidekick daxter daxter-lod0-jg -1
+              ((daxter-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow daxter-shadow-mg
+              :texture-level 6
+              :sort 1
+              :origin-joint-index 6
+              :shadow-joint-index 6
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-sidekick-highres daxter-highres daxter-highres-lod0-jg -1
+              ((daxter-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :longest-edge (meters 1)
+              :shadow daxter-highres-shadow-mg
+              :sort 1
+              :origin-joint-index 6
+              :shadow-joint-index 6
+              )
+
+;; definition for symbol *sidekick-remap*, type pair
+(define *sidekick-remap*
+  '(("run-to-stance-left" "run-to-stance")
+    ("run-to-stance-loop-left" "run-to-stance-loop")
+    ("stance-loop-left" "stance-loop")
+    ("run-to-stance-right" "run-to-stance")
+    ("run-to-stance-loop-right" "run-to-stance-loop")
+    ("stance-loop-right" "stance-loop")
+    ("run-to-stance-up" "run-to-stance")
+    ("run-to-stance-loop-up" "run-to-stance-loop")
+    ("stance-loop-up" "stance-loop")
+    ("run-to-stance-down" "run-to-stance")
+    ("run-to-stance-loop-down" "run-to-stance-loop")
+    ("stance-loop-down" "stance-loop")
+    ("run-right" "run")
+    ("run-left" "run")
+    ("walk-right" "walk")
+    ("walk-left" "walk")
+    ("gun-hit-elec" "hit-elec")
+    ("gun-attack-from-stance-end"
+      "gun-attack-from-stance-end"
+      "gun-attack-from-stance-end"
+      "gun-attack-from-stance-end"
+      "gun-attack-from-stance-end-alt1"
+      )
+    ("gun-attack-butt-end"
+      "gun-attack-butt-end"
+      "gun-attack-butt-end"
+      "gun-attack-butt-end"
+      "gun-attack-butt-end"
+      "gun-attack-butt-end-alt1"
+      )
+    ("pole-cycle" "pole-cycle" "pole-cycle2")
+    ("hit-from-front-alt1" "hit-from-front")
+    ("board-jump"
+      ,(lambda :behavior sidekick
+         ((arg0 object) (arg1 vector) (arg2 object))
+         (let ((gp-0 (ppointer->process (-> self parent))))
+           (when (>= (- (current-time) (-> self special-anim-time)) (seconds 1))
+             (set! (-> self special-anim-interp) 0.0)
+             (set! (-> self special-anim-frame) 0.0)
+             )
+           (cond
+             ((or (and (= (-> gp-0 control mod-surface name) 'spin) (!= (-> gp-0 board trotyv) 0.0))
+                  (!= (-> self special-anim-interp) 0.0)
+                  )
+              (case arg2
+                ((1)
+                 (set! (-> self special-anim-time) (current-time))
+                 (cond
+                   ((= (-> gp-0 control mod-surface name) 'spin)
+                    (set! (-> arg1 z)
+                          (* (lerp-scale 0.0 5.0 (fabs (-> gp-0 board trotyv)) 0.0 182044.44) (-> self special-anim-interp))
+                          )
+                    (set! (-> self special-anim-frame) (-> arg1 z))
+                    (seek! (-> self special-anim-interp) 1.0 (* 8.0 (-> self clock seconds-per-frame)))
+                    )
+                   (else
+                     (seek! (-> self special-anim-interp) 0.0 (* 4.0 (-> self clock seconds-per-frame)))
+                     (set! (-> arg1 z) (* (-> self special-anim-frame) (-> self special-anim-interp)))
+                     )
+                   )
+                 )
+                )
+              (if (>= (-> gp-0 board trotyv) 0.0)
+                  "board-spin-ccw"
+                  "board-spin-cw"
+                  )
+              )
+             (else
+               "board-jump"
+               )
+             )
+           )
+         )
+      )
+    )
+  )
+
+;; definition for function cspace<-cspace+transformq!
+(defun cspace<-cspace+transformq! ((arg0 cspace) (arg1 cspace) (arg2 transformq))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (-> arg0 bone transform)))
+      (quaternion->matrix s4-0 (-> arg2 quat))
+      (.lvf vf1 (&-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
+      (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
+      (.lvf vf6 (&-> arg2 trans quad))
+      (.lvf vf3 (&-> s4-0 quad 0))
+      (.lvf vf4 (&-> s4-0 quad 1))
+      (.lvf vf5 (&-> s4-0 quad 2))
+      (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+      (.wait.vf)
+      (.mul.vf vf2 vf2 Q :mask #b111)
+      (.mov.vf vf2 vf0 :mask #b1000)
+      (.mul.x.vf vf3 vf3 vf1)
+      (.mul.y.vf vf4 vf4 vf1)
+      (.mul.z.vf vf5 vf5 vf1)
+      (.mul.x.vf acc vf3 vf6)
+      (.add.mul.y.vf acc vf4 vf6 acc)
+      (.add.mul.z.vf acc vf5 vf6 acc)
+      (.add.mul.w.vf vf2 vf2 vf0 acc :mask #b111)
+      (.svf (&-> s4-0 trans quad) vf2)
+      (.svf (&-> s4-0 quad 0) vf3)
+      (.svf (&-> s4-0 quad 1) vf4)
+      (.svf (&-> s4-0 quad 2) vf5)
+      s4-0
+      )
+    )
+  )
+
+;; definition for function target-sidekick-setup
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-sidekick-setup target ((arg0 symbol))
+  (if (zero? (-> self sidekick))
+      (set! (-> self sidekick) (the-as (pointer sidekick) #f))
+      )
+  (cond
+    (arg0
+      (if (not (-> self sidekick))
+          (set! (-> self sidekick) (process-spawn sidekick :init init-sidekick :from *16k-dead-pool* :to self))
+          )
+      )
+    ((-> self sidekick)
+     (deactivate (-> self sidekick 0))
+     (set! (-> self sidekick) (the-as (pointer sidekick) #f))
+     )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate sidekick-clone (sidekick)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (local-vars (v0-0 object))
+    (case event-type
+      (('matrix)
+       (case (-> event param 0)
+         (('play-anim)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace transformq none) cspace<-cspace+transformq!)
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent 0 node-list data)))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) (the-as basic (-> self offset)))
+          )
+         (('copy-parent)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace transformq none) cspace<-cspace!)
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent 0 node-list data)))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) #f)
+          )
+         (('root)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace transformq none) cspace<-cspace-normalized!)
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent 0 node-list data)))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) #f)
+          )
+         (('indax)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace transformq none) cspace<-transformq+trans!)
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent 0 control trans)))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2)
+                (the-as basic (-> self parent 0 control cspace-offset))
+                )
+          )
+         (('board)
+          (set! v0-0 (-> self node-list data))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                (the-as (function cspace transformq none) cspace<-cspace-normalized!)
+                )
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent 0 node-list data 25)))
+          (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) #f)
+          )
+         (else
+           (set! v0-0 (-> self node-list data))
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param0)
+                 (the-as (function cspace transformq none) cspace<-cspace+transformq!)
+                 )
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
+                 (the-as basic (-> self parent 0 control sidekick-root parent))
+                 )
+           (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) (the-as basic (-> self offset)))
+           )
+         )
+       v0-0
+       )
+      (('shadow)
+       (set! v0-0 (-> event param 0))
+       (set! (-> self shadow-in-movie?) (the-as symbol v0-0))
+       v0-0
+       )
+      (('blend-shape)
+       (cond
+         ((-> event param 0)
+          (set! v0-0 (logior (-> self skel status) (joint-control-status blend-shape)))
+          (set! (-> self skel status) (the-as joint-control-status v0-0))
+          )
+         (else
+           (set! v0-0 (logclear (-> self skel status) (joint-control-status blend-shape)))
+           (set! (-> self skel status) (the-as joint-control-status v0-0))
+           )
+         )
+       v0-0
+       )
+      )
+    )
+  :code (the-as (function none :behavior sidekick) looping-code)
+  :post (behavior ()
+    (when (not (and (-> (ppointer->process (-> self parent)) next-state)
+                    (= (-> (ppointer->process (-> self parent)) next-state name) 'process-drawable-art-error)
+                    )
+               )
+      (quaternion-rotate-y!
+        (-> self root quat)
+        (-> self parent 0 control quat)
+        (-> self parent 0 upper-body twist z)
+        )
+      (set! (-> self anim-seed) (-> self parent 0 anim-seed))
+      (set! (-> self draw status) (-> self parent 0 draw status))
+      (logclear! (-> self draw status) (draw-control-status no-draw-bounds2))
+      (let ((gp-0 0))
+        (cond
+          ((and (not (logtest? (-> self parent 0 focus-status) (focus-status edge-grab)))
+                (> (-> self parent 0 skel float-channels) 0)
+                )
+           (let ((gp-1 (-> self skel)))
+             (joint-control-copy! gp-1 (-> self parent 0 skel))
+             (set! (-> gp-1 root-channel)
+                   (the-as (inline-array joint-control-channel) (-> gp-1 channel (-> gp-1 active-channels)))
+                   )
+             (dotimes (s5-0 (the-as int (-> self parent 0 skel float-channels)))
+               (let ((s4-0 (-> gp-1 channel (+ s5-0 (-> gp-1 active-channels)))))
+                 (mem-copy!
+                   (the-as pointer s4-0)
+                   (the-as pointer (-> self parent 0 skel channel (+ s5-0 (-> self parent 0 skel active-channels))))
+                   64
+                   )
+                 (set! (-> s4-0 frame-interp 0) (-> s4-0 frame-interp 1))
+                 (set! (-> s4-0 command) (joint-control-command blend))
+                 )
+               )
+             (dotimes (v1-58 (the-as int (-> gp-1 allocated-length)))
+               (set! (-> gp-1 channel v1-58 parent) gp-1)
+               )
+             (+! (-> gp-1 active-channels) (-> self parent 0 skel float-channels))
+             (set! (-> gp-1 float-channels) (the-as uint 0))
+             )
+           (set! gp-0 1)
+           )
+          (else
+            (joint-control-copy! (-> self skel) (-> self parent 0 skel))
+            )
+          )
+        (joint-control-remap!
+          (-> self skel)
+          (-> self draw art-group)
+          (-> self parent 0 draw art-group)
+          *sidekick-remap*
+          (the-as int (-> self anim-seed))
+          ""
+          )
+        (cond
+          ((zero? gp-0)
+           (set! (-> self skel effect channel-offset) (-> self parent 0 skel effect channel-offset))
+           )
+          ((= gp-0 1)
+           (set! (-> self skel effect channel-offset) 0)
+           0
+           )
+          )
+        )
+      (let ((v1-85 (-> self parent 0 draw color-mult quad)))
+        (set! (-> self draw color-mult quad) v1-85)
+        )
+      (let ((v1-89 (-> self parent 0 draw color-emissive quad)))
+        (set! (-> self draw color-emissive quad) v1-89)
+        )
+      (set! (-> self draw force-fade) (-> self parent 0 draw force-fade))
+      (set! (-> self draw death-vertex-skip) (-> self parent 0 draw death-vertex-skip))
+      (set! (-> self draw death-effect) (-> self parent 0 draw death-effect))
+      (set! (-> self draw death-timer) (-> self parent 0 draw death-timer))
+      (set! (-> self draw death-timer-org) (-> self parent 0 draw death-timer-org))
+      (set! (-> self draw death-draw-overlap) (-> self parent 0 draw death-draw-overlap))
+      (quaternion-copy! (-> self offset quat) (-> self root quat))
+      (let ((f0-3 (* (-> self parent 0 darkjak-interp) (-> self parent 0 darkjak-giant-interp))))
+        (set! (-> self offset trans x) (* 286.72 f0-3))
+        (set! (-> self offset trans y) (* 204.8 f0-3))
+        (set! (-> self offset trans z) (* 409.6 f0-3))
+        )
+      (update-anim-data (-> self skel))
+      (when *debug-segment*
+        (let ((gp-2 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-132 'target-post)
+              (s5-1 *profile-target-post-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s4-1 (-> gp-2 data (-> gp-2 count))))
+              (let ((s3-0 (-> gp-2 base-time)))
+                (set! (-> s4-1 name) v1-132)
+                (set! (-> s4-1 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+                )
+              (set! (-> s4-1 depth) (the-as uint (-> gp-2 depth)))
+              (set! (-> s4-1 color) s5-1)
+              (set! (-> gp-2 segment (-> gp-2 depth)) s4-1)
+              )
+            (+! (-> gp-2 count) 1)
+            (+! (-> gp-2 depth) 1)
+            (set! (-> gp-2 max-depth) (max (-> gp-2 max-depth) (-> gp-2 depth)))
+            )
+          )
+        0
+        )
+      (do-joint-math (-> self draw) (-> self node-list) (-> self skel))
+      (when *debug-segment*
+        (let ((gp-3 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-158 (+ (-> gp-3 depth) -1))
+                   (s5-2 (-> gp-3 segment v1-158))
+                   (s4-2 (-> gp-3 base-time))
+                   )
+              (when (>= v1-158 0)
+                (set! (-> s5-2 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-2))))
+                (+! (-> gp-3 depth) -1)
+                )
+              )
+            )
+          )
+        0
+        )
+      )
+    (when *display-sidekick-stats*
+      (format *stdcon* "~%")
+      (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf1)
+        (-> self parent 0 control sidekick-root parent bone transform trans)
+        (meters 0.1)
+        (new 'static 'rgba :g #xff :a #x80)
+        )
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf1)
+        (-> self node-list data 3 bone transform trans)
+        (meters 0.1)
+        (new 'static 'rgba :r #xff :g #xff :a #x80)
+        )
+      (add-debug-sphere
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf1)
+        (-> self node-list data 0 bone transform trans)
+        (meters 0.1)
+        (new 'static 'rgba :r #xff :a #x80)
+        )
+      (add-debug-matrix
+        *display-sidekick-stats*
+        (bucket-id debug-no-zbuf1)
+        (-> self node-list data 0 bone transform)
+        (meters 2)
+        )
+      )
+    (set! (-> self draw shadow)
+          (the-as
+            shadow-geo
+            (if (or (and (movie?) (-> self shadow-in-movie?)) (logtest? (focus-status indax) (-> self parent 0 focus-status)))
+                (-> self draw art-group data 3)
+                )
+            )
+          )
+    (let ((a0-53 (-> self skel effect)))
+      (if a0-53
+          (update-effects a0-53)
+          )
+      )
+    (if (logtest? (-> self skel status) (joint-control-status blend-shape blend-shape-valid))
+        (merc-blend-shape self)
+        )
+    (if (logtest? (-> self skel status) (joint-control-status eye-anim-valid eye-anim))
+        (merc-eye-anim self)
+        )
+    (when (!= (not (-> *setting-control* user-current mirror)) (not (-> self mirror)))
+      (cond
+        ((-> self mirror)
+         (deactivate (-> self mirror 0))
+         (set! (-> self mirror) (the-as (pointer process-drawable) #f))
+         )
+        (else
+          (let* ((s5-3 (get-process *default-dead-pool* manipy #x4000))
+                 (gp-4 (when s5-3
+                         (let ((t9-22 (method-of-type manipy activate)))
+                           (t9-22 (the-as manipy s5-3) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
+                           )
+                         (run-now-in-process
+                           s5-3
+                           manipy-init
+                           (-> self root trans)
+                           (-> self entity)
+                           (art-group-get-by-name *level* "skel-sidekick" (the-as (pointer uint32) #f))
+                           #f
+                           0
+                           )
+                         (the-as (pointer process-drawable) (-> s5-3 ppointer))
+                         )
+                       )
+                 )
+            (send-event (ppointer->process gp-4) 'anim-mode 'mirror)
+            (send-event (ppointer->process gp-4) 'mirror #t)
+            (set! (-> self mirror) gp-4)
+            (let ((v0-29 (-> gp-4 0 node-list data)))
+              (set! (-> v0-29 0 param0) (the-as (function cspace transformq none) cspace<-cspace!))
+              (set! (-> v0-29 0 param1) (the-as basic (-> self node-list data)))
+              (set! (-> v0-29 0 param2) #f)
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for function init-sidekick
+;; WARN: Return type mismatch object vs none.
+(defbehavior init-sidekick sidekick ()
+  (logior! (-> self mask) (process-mask sidekick))
+  (set! (-> self root) (new 'process 'trsqv))
+  (vector-identity! (-> self root scale))
+  (quaternion-identity! (-> self root quat))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sidekick" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self draw shadow-ctrl) *target-shadow-control*)
+  (logior! (-> self skel status) (joint-control-status sync-math blend-shape eye-anim))
+  (set! (-> self draw light-index) (the-as uint 30))
+  (let ((v1-14 (-> self node-list data)))
+    (set! (-> v1-14 0 param0) (the-as (function cspace transformq none) cspace<-cspace+transformq!))
+    (set! (-> v1-14 0 param1) (the-as basic (-> self parent 0 control sidekick-root parent)))
+    (set! (-> v1-14 0 param2) (the-as basic (-> self offset)))
+    )
+  (set! (-> self shadow-in-movie?) #t)
+  (set! (-> self mirror) (the-as (pointer process-drawable) #f))
+  (go sidekick-clone)
+  (none)
+  )

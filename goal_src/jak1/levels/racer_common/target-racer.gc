@@ -128,14 +128,12 @@
   (let ((v1-1 (-> self racer slide-mode)))
     (cond
       ((zero? v1-1)
-       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-                  )
+       (if (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1))
            (set! (-> self racer slide-mode) -1)
            )
        )
       ((= v1-1 1)
-       (if (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons l1 r1))
-                  )
+       (if (not (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1))
            (set! (-> self racer slide-mode) -1)
            )
        )
@@ -446,7 +444,7 @@
          (-> self control trans)
          :to self
          )
-       (dummy-10 (-> self skel effect) 'effect-land -1.0 -1)
+       (effect-control-method-10 (-> self skel effect) 'effect-land -1.0 -1)
        )
       )
     (deg-diff (vector-y-angle gp-0) (vector-y-angle (-> self control transv)))
@@ -531,7 +529,7 @@
         )
   (let ((f0-2
           (if (or (and (logtest? (-> self control status) (cshape-moving-flags twall))
-                       (zero? (logand (-> self control status) (cshape-moving-flags onsurf)))
+                       (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
                        )
                   (logtest? (-> self state-flags) (state-flags dying))
                   )
@@ -773,7 +771,7 @@
                   )
              (cpad-pressed? (-> self control unknown-cpad-info00 number) circle square)
              (>= (- (-> *display* base-frame-counter) (-> self control unknown-dword82)) (seconds 0.25))
-             (zero? (logand (-> self state-flags) (state-flags being-attacked dying)))
+             (not (logtest? (-> self state-flags) (state-flags being-attacked dying)))
              )
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4)))
@@ -855,8 +853,7 @@
         (set! (-> self racer boost-curve) 0.0)
         )
     )
-  (when (or (zero? (logand (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) button0-abs 0) (pad-buttons x))
-                   )
+  (when (or (not (cpad-hold? (-> self control unknown-cpad-info00 number) x))
             (< (-> self control unknown-float01) 4096.0)
             (= (-> self racer boost-level) 0.0)
             )
@@ -1399,7 +1396,7 @@
                             (vector-! (new 'stack-no-clear 'vector) (-> self control trans) (-> self control last-known-safe-ground))
                             )
                           )
-                       (logtest? (-> self control root-prim prim-core action) (collide-action ca-15))
+                       (logtest? (-> self control root-prim prim-core action) (collide-action racer-grounded))
                        )
                   (+! (-> self racer stuck-count) 1)
                   (go target-racing-smack 122880.0 #f)
@@ -1455,7 +1452,3 @@
   0
   (none)
   )
-
-
-
-

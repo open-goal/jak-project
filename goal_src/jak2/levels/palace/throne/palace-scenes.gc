@@ -1,0 +1,730 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: palace-scenes.gc
+;; name in dgo: palace-scenes
+;; dgos: THR
+
+;; DECOMP BEGINS
+
+(deftype throne-throne (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+
+(defskelgroup skel-throne-throne throne-throne throne-throne-lod0-jg throne-throne-idle-ja
+              ((throne-throne-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              )
+
+(defstate idle (throne-throne)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior throne-throne) ja-post)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! throne-throne ((obj throne-throne) (entity entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((prim-group (new 'process 'collide-shape-prim-group cshape (the-as uint 1) 0)))
+      (set! (-> cshape total-prims) (the-as uint 2))
+      (set! (-> prim-group prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-group prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-group prim-core action) (collide-action solid))
+      (set-vector! (-> prim-group local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> cshape root-prim) prim-group)
+      )
+    (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
+      (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
+      (set! (-> prim-mesh prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> prim-mesh prim-core action) (collide-action solid))
+      (set! (-> prim-mesh transform-index) 3)
+      (set-vector! (-> prim-mesh local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
+    (let ((root-prim (-> cshape root-prim)))
+      (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
+      (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
+      )
+    (set! (-> obj root) cshape)
+    )
+  (process-drawable-from-entity! obj entity)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-throne-throne" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(defpartgroup group-palroof-snot
+  :id 1139
+  :duration (seconds 0.035)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 4926 :flags (bit7)) (sp-item 4927 :flags (bit7)) (sp-item 4928 :flags (bit7)))
+  )
+
+(defpart 4927
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 10.0)
+    (:z (meters -0.06))
+    (:scale-x (meters 0.1) (meters 0.05))
+    (:scale-y (meters 0.1) (meters 0.05))
+    (:r 64.0 128.0)
+    (:g 128.0 64.0)
+    (:b 64.0 32.0)
+    (:a 8.0 8.0)
+    (:omega (degrees 0.00225))
+    (:vel-z (meters -0.05))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12 use-global-acc))
+    (:next-time (seconds 0.035))
+    (:next-launcher 4929)
+    (:launchrot-x (degrees -60) (degrees 120))
+    (:launchrot-z (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4928
+  :init-specs ((:num 20.0)
+    (:z (meters -0.06))
+    (:rot-x 6)
+    (:r 614.4)
+    (:g 471.04)
+    (:b 491.52)
+    (:vel-z (meters -0.05))
+    (:timer (seconds 4))
+    (:flags (distort))
+    (:next-time (seconds 0.035))
+    (:next-launcher 4930)
+    (:launchrot-x (degrees -30) (degrees 60))
+    (:launchrot-z (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4930
+  :init-specs ((:vel-x (meters 0)) (:vel-y (meters 0)) (:vel-z (meters 0)))
+  )
+
+(defpart 4926
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 64.0)
+    (:z (meters -0.06))
+    (:scale-x (meters 0.01) (meters 0.03))
+    (:scale-y (meters 0.01) (meters 0.03))
+    (:r 64.0 128.0)
+    (:g 128.0 64.0)
+    (:b 64.0 32.0)
+    (:a 8.0 8.0)
+    (:omega (degrees 0.00225))
+    (:vel-z (meters -0.05))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-12 use-global-acc))
+    (:next-time (seconds 0.035))
+    (:next-launcher 4929)
+    (:launchrot-x (degrees -60) (degrees 120))
+    (:launchrot-z (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4929
+  :init-specs ((:vel-x (meters 0))
+    (:vel-y (meters 0))
+    (:vel-z (meters 0))
+    (:scalevel-x (meters 0.0033333334) (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0.017))
+    (:next-launcher 4931)
+    )
+  )
+
+(defpart 4931
+  :init-specs ((:scalevel-x (meters 0)) (:scalevel-y :copy scalevel-x))
+  )
+
+(defpartgroup group-palroof-rain0
+  :id 1140
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
+  :bounds (static-bspherem 0 0 0 128)
+  :parts ((sp-item 4932) (sp-item 4933))
+  )
+
+(defpart 4932
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:birth-func 'birth-func-rain)
+    (:num 1.0)
+    (:x (meters -30) (meters 45))
+    (:y (meters 16))
+    (:scale-x (meters 0.03) (meters 0.03))
+    (:scale-y (meters 0.5) (meters 0.5))
+    (:r 32.0 32.0)
+    (:g :copy r)
+    (:b 64.0 32.0)
+    (:a 32.0 64.0)
+    (:vel-y (meters -0.06666667) (meters -0.13333334))
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:userdata 0.0)
+    (:func 'check-drop-level-palace-roof-rain)
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4934
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 1.0 1.0)
+    (:scale-x (meters 0.08) (meters 0.03))
+    (:rot-x 4)
+    (:scale-y :copy scale-x)
+    (:r 32.0 32.0)
+    (:g :copy r)
+    (:b 64.0 32.0)
+    (:a 32.0 64.0)
+    (:omega (degrees 0.009) (degrees 0.0045))
+    (:vel-y (meters 0.033333335) (meters 0.06666667))
+    (:fade-a -1.2 -1.2)
+    (:accel-y (meters -0.005) (meters -0.00066666666))
+    (:friction 0.98)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 use-global-acc))
+    (:func 'sparticle-motion-blur)
+    (:next-time (seconds 0) (seconds 0.33))
+    (:next-launcher 63)
+    (:conerot-x (degrees 0) (degrees 30))
+    (:conerot-y (degrees 0) (degrees 3600))
+    (:rotate-x (degrees 0))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defun check-drop-level-palace-roof-rain ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+  "Ensure the rain on the palace roof doesn't go through the roof and displays the splash effect when it makes impact"
+  (when (< (-> arg2 vector 0 y) (+ 4096.0 (-> arg1 user-float)))
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (s5-0 (new 'stack-no-clear 'matrix))
+          )
+      (sp-kill-particle arg0 arg1)
+      (set-vector! s4-0 (-> arg2 vector 0 x) (-> arg1 user-float) (-> arg2 vector 0 z) 1.0)
+      (-> arg1 omega)
+      (set-vector!
+        (-> s5-0 vector 1)
+        (* 0.007874016 (the float (-> arg1 datab 0)))
+        (* 0.007874016 (the float (-> arg1 datab 1)))
+        (* 0.007874016 (the float (-> arg1 datab 2)))
+        0.0
+        )
+      (set-vector! (-> s5-0 vector 2) 0.0 0.0 1.0 0.0)
+      (vector-cross! (the-as vector (-> s5-0 vector)) (-> s5-0 vector 1) (-> s5-0 vector 2))
+      (set! (-> s5-0 trans quad) (-> s4-0 quad))
+      (set! (-> *part-id-table* 4934 init-specs 22 initial-valuef) (vector-y-angle (-> s5-0 vector 1)))
+      (set! (-> *part-id-table* 4934 init-specs 21 initial-valuef) (- 16384.0 (vector-x-angle (-> s5-0 vector 1))))
+      (sp-launch-particles-var
+        *sp-particle-system-2d*
+        (-> *part-id-table* 4934)
+        s5-0
+        (the-as sparticle-launch-state #f)
+        (the-as sparticle-launch-control #f)
+        1.0
+        )
+      (set! (-> *part-id-table* 64 init-specs 10 initial-valuef) (-> arg1 omega))
+      (sp-launch-particles-var
+        *sp-particle-system-3d*
+        (-> *part-id-table* 64)
+        s5-0
+        (the-as sparticle-launch-state #f)
+        (the-as sparticle-launch-control #f)
+        1.0
+        )
+      )
+    )
+  (none)
+  )
+
+(defpartgroup group-palroof-rain1
+  :id 1141
+  :duration (seconds 0.017)
+  :linger-duration (seconds 1.5)
+  :bounds (static-bspherem 0 0 0 128)
+  :parts ((sp-item 4935) (sp-item 4936))
+  )
+
+(defpart 4935
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 2.0)
+    (:x (meters 0) (meters 30))
+    (:y (meters 32))
+    (:z (meters -8) (meters 12))
+    (:scale-x (meters 0.03) (meters 0.03))
+    (:scale-y (meters 0.5) (meters 0.5))
+    (:r 32.0 32.0)
+    (:g :copy r)
+    (:b 64.0 32.0)
+    (:a 64.0 32.0)
+    (:vel-y (meters -0.06666667) (meters -0.033333335))
+    (:timer (seconds 1.3))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4936
+  :init-specs ((:texture (new 'static 'texture-id :index #x21 :page #xc))
+    (:num 4.0)
+    (:x (meters -60) (meters 60))
+    (:y (meters 32))
+    (:z (meters -10) (meters 12))
+    (:scale-x (meters 0.03) (meters 0.03))
+    (:scale-y (meters 0.5) (meters 0.5))
+    (:r 32.0 32.0)
+    (:g :copy r)
+    (:b 64.0 32.0)
+    (:a 64.0 32.0)
+    (:vel-y (meters -0.06666667) (meters -0.033333335))
+    (:timer (seconds 1.3))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:rotate-y (degrees 45))
+    )
+  )
+
+(defskelgroup skel-metalkor-head metalkor-head metalkor-head-lod0-jg metalkor-head-idle-ja
+              ((metalkor-head-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+(define *metalkor-head-lightning-shock-skel* (new 'static 'lightning-spec
+                                               :name #f
+                                               :flags (lightning-spec-flags lsf0)
+                                               :rand-func #x2
+                                               :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                               :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                               :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                               :fade-start-factor 0.2
+                                               :fade-time 120.0
+                                               :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                               :reduction 0.5
+                                               :num-points 32
+                                               :box-size 2048.0
+                                               :merge-factor 0.5
+                                               :merge-count 2
+                                               :radius 4096.0
+                                               :duration 30.0
+                                               :sound #f
+                                               )
+        )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "palace-outside-window-res"
+    :extra #f
+    :info #f
+    :mask-to-clear (process-mask movie enemy platform projectile)
+    :entity "scene-stage-54"
+    :art-group "scenecamera"
+    :anim "palace-outside-window-res"
+    :parts 23
+    :command-list '((0
+        (fadein (seconds (new 'static 'bfloat :data 0.5)))
+        (kill "pal-lowrez-throne-1")
+        (fadein (frame-time-30 10))
+        (apply ,(lambda :behavior scene-player () (set-setting! 'rain 'abs 0.0 0) (none)))
+        (send-event
+          "metalkor-head"
+          'trans-hook
+          ,(lambda :behavior scene-player
+             ()
+             (let ((frame-num (ja-aframe-num 0)))
+               (if (or (and (< 416.0 frame-num) (< frame-num 440.0))
+                       (and (< 462.0 frame-num) (< frame-num 473.0))
+                       (and (< 620.0 frame-num) (< frame-num 640.0))
+                       (and (< 665.0 frame-num) (< frame-num 670.0))
+                       (and (< 860.0 frame-num) (< frame-num 880.0))
+                       )
+                   (process-drawable-shock-skel-effect
+                     self
+                     *metalkor-head-lightning-shock-skel*
+                     lightning-probe-callback
+                     (-> *part-id-table* 166)
+                     8192.0
+                     -1
+                     -1
+                     )
+                   )
+               (cond
+                 ((>= frame-num 950.0)
+                  (set! (-> self draw force-fade) (the-as uint (the int (lerp-scale 0.0 128.0 frame-num 950.0 980.0))))
+                  (logior! (-> self draw status) (draw-control-status force-fade warp-cross-fade))
+                  )
+                 (else
+                   (logclear! (-> self draw status) (draw-control-status force-fade warp-cross-fade))
+                   )
+                 )
+               )
+             (none)
+             )
+          )
+        (part-tracker
+          "group-palroof-rain0"
+          entity
+          "particleman"
+          joint
+          "particleB"
+          track
+          #t
+          duration
+          (frame-range (new 'static 'bfloat) (new 'static 'bfloat :data 150.0))
+          )
+        )
+      (145
+        (part-tracker
+          "group-palroof-rain0"
+          entity
+          "particleman"
+          joint
+          "particleB"
+          track
+          #t
+          duration
+          (frame-range (new 'static 'bfloat :data 145.0) (new 'static 'bfloat :data 280.0))
+          )
+        )
+      (401 (want-display 'palcab #f))
+      (490
+        (want-display 'palcab 'display)
+        (part-tracker
+          "group-palroof-rain1"
+          entity
+          "particleman"
+          joint
+          "particleC"
+          track
+          #t
+          duration
+          (frame-range (new 'static 'bfloat :data 490.0) (new 'static 'bfloat :data 595.0))
+          )
+        )
+      (650 (part-tracker
+             "group-palroof-rain0"
+             entity
+             "particleman"
+             joint
+             "particleB"
+             track
+             #t
+             duration
+             (frame-range (new 'static 'bfloat :data 650.0) (new 'static 'bfloat :data 840.0))
+             )
+           )
+      (1100 (part-tracker
+              "group-palroof-rain1"
+              entity
+              "particleman"
+              joint
+              "particleC"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 1100.0) (new 'static 'bfloat :data 1285.0))
+              )
+            )
+      (1450 (part-tracker
+              "group-palroof-rain1"
+              entity
+              "particleman"
+              joint
+              "particleC"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 1450.0) (new 'static 'bfloat :data 1890.0))
+              )
+            )
+      (2055 (part-tracker
+              "group-palroof-rain0"
+              entity
+              "particleman"
+              joint
+              "particleB"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 2055.0) (new 'static 'bfloat :data 2240.0))
+              )
+            )
+      (2235 (part-tracker
+              "group-palroof-rain0"
+              entity
+              "particleman"
+              joint
+              "particleB"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 2235.0) (new 'static 'bfloat :data 2365.0))
+              )
+            )
+      (2360 (part-tracker
+              "group-palroof-rain0"
+              entity
+              "particleman"
+              joint
+              "particleB"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 2360.0) (new 'static 'bfloat :data 2615.0))
+              )
+            )
+      (2604 (part-tracker "group-palroof-snot" entity "particleman" joint "particleA" track #t))
+      (2660 (part-tracker
+              "group-palroof-rain0"
+              entity
+              "particleman"
+              joint
+              "particleB"
+              track
+              #t
+              duration
+              (frame-range (new 'static 'bfloat :data 2660.0) (new 'static 'bfloat :data 2750.0))
+              )
+            )
+      (10000 (task-close! "palace-cable-resolution"))
+      )
+    :cut-list '(151 281 401 501 596 716 841 1136 1286 1490 1671 1781 1891 2061 2241 2366 2616 2666)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'throne
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'throne
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'throne
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "baron-highres"
+        :level 'lbrnermk
+        :art-group "skel-baron-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((1286 1489))
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "errol-highres"
+        :level 'lbrnermk
+        :art-group "skel-errol-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "metalkor-head"
+        :level 'lbrnermk
+        :art-group "skel-metalkor-head"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "palroof-throne"
+    :end-point-obj "palroof-throne"
+    :borrow '((throne 0 lbrnermk special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )
+
+(scene-method-16
+  (new 'static 'scene
+    :name "palace-sneak-in-res"
+    :extra #f
+    :info #f
+    :mask-to-clear (process-mask movie enemy platform projectile)
+    :entity "scene-stage-54"
+    :art-group "scenecamera"
+    :anim "palace-sneak-in-res"
+    :parts 21
+    :command-list '((0 (fadein (seconds 1)) (apply ,(lambda :behavior scene-player () (set-setting! 'rain 'abs 0.0 0) (none))))
+      (10000
+        (unless (task-closed? "palace-sneak-in-meeting") (talker-spawn "miss010"))
+        (task-close! "palace-sneak-in-meeting")
+        )
+      )
+    :cut-list '(65 105 251 296 419 483 589 645 735 891 1029 1499 1660 1708 1851 2047 2151 2261 2421)
+    :wait-ground-time (seconds 1)
+    :draw-target #f
+    :abort #t
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'throne
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jak-highres"
+        :level 'throne
+        :art-group "skel-jak-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "ashelin-highres"
+        :level 'lashthrn
+        :art-group "skel-ashelin-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "palmpilot"
+        :level 'lashthrn
+        :art-group "skel-palmpilot"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point-obj "throne-ashelin"
+    :end-point-obj (new 'static 'continue-point
+      :name "throne-ashelin"
+      :level #f
+      :trans (new 'static 'vector :x 657938.44 :y 1414076.9 :z 2301379.5 :w 1.0)
+      :quat (new 'static 'vector :y 0.9228 :w 0.3851)
+      :camera-trans (new 'static 'vector :x 632095.94 :y 1433352.2 :z 2337665.8 :w 1.0)
+      :camera-rot (new 'static 'inline-array vector3s 3
+        (new 'static 'vector3s :data (new 'static 'array float 3 -0.81 0.0 -0.5863))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.0757 0.9916 -0.1046))
+        (new 'static 'vector3s :data (new 'static 'array float 3 0.5814 -0.1291 -0.8032))
+        )
+      :on-goto #f
+      :vis-nick 'throne
+      :want (new 'static 'inline-array level-buffer-state 6
+        (new 'static 'level-buffer-state :name 'palent :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'throne :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name 'palout :display? 'display :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        (new 'static 'level-buffer-state :name #f :display? #f :force-vis? #f :force-inside? #f)
+        )
+      :want-sound (new 'static 'array symbol 3 'palent1 'palent2 'palent3)
+      )
+    :borrow '((throne 0 lashthrn special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :blackout-end #t
+    :peaceful #t
+    :music-delay 1500.0
+    :save #t
+    )
+  )

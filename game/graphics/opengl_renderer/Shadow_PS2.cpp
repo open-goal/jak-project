@@ -1,3 +1,5 @@
+#include "common/log/log.h"
+
 #include "game/graphics/opengl_renderer/ShadowRenderer.h"
 
 void ShadowRenderer::run_mscal10_vu2c() {
@@ -148,7 +150,7 @@ void ShadowRenderer::run_mscal_vu2c(u16 imm) {
       goto L21;
 
     default:
-      fmt::print("didn't know mscal imm: {}\n", imm);
+      lg::warn("didn't know mscal imm: {}", imm);
       // ASSERT(false);
   }
   // clang-format off

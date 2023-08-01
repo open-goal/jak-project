@@ -1,0 +1,55 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for function gs-set-default-store-image
+;; INFO: Used lq/sq
+(defun gs-set-default-store-image ((arg0 gs-store-image-packet) (arg1 int) (arg2 int) (arg3 gs-psm) (arg4 int) (arg5 int) (arg6 int) (arg7 int))
+  (set! (-> arg0 vifcode 0) (new 'static 'vif-tag))
+  (set! (-> arg0 vifcode 1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd mskpath3)))
+  (set! (-> arg0 vifcode 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+  (set! (-> arg0 vifcode 3) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+  (set! (-> arg0 giftag) (new 'static 'gif-tag :nloop #x5 :eop #x1 :nreg #x1 :regs0 (gif-reg-id a+d)))
+  (set! (-> arg0 bitbltbuf) (new 'static 'gs-bitbltbuf :sbp arg1 :sbw arg2 :spsm (the-as int arg3)))
+  (set! (-> arg0 bitbltbuf-addr) (gs-reg64 bitbltbuf))
+  (set! (-> arg0 trxpos) (new 'static 'gs-trxpos :ssax arg4 :ssay arg5))
+  (set! (-> arg0 trxpos-addr) (gs-reg64 trxpos))
+  (set! (-> arg0 trxreg) (new 'static 'gs-trxreg :rrw arg6 :rrh arg7))
+  (set! (-> arg0 trxreg-addr) (gs-reg64 trxreg))
+  (set! (-> arg0 finish) 0)
+  (set! (-> arg0 finish-addr) (gs-reg64 finish))
+  (set! (-> arg0 trxdir) (new 'static 'gs-trxdir :xdir #x1))
+  (set! (-> arg0 trxdir-addr) (gs-reg64 trxdir))
+  (.sync.l)
+  7
+  )
+
+;; definition for function store-image
+(defun store-image ((arg0 screen-shot-work))
+  (let ((gp-0 512)
+        (s5-0 416)
+        )
+    (let ((a3-0 (-> arg0 count))
+          (a2-0 (-> arg0 name))
+          )
+      (set! (-> *image-name* data 0) (the-as uint 0))
+      (format *image-name* "final/rawshots/~s-~d.raw" a2-0 a3-0)
+      )
+    (format 0 "writing ~s~%" *image-name*)
+    (let ((s4-0 (new 'stack 'file-stream *image-name* 'write)))
+      (let ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf data)))
+        (let ((s2-0 (new 'static 'gs-store-image-packet)))
+          (gs-set-default-store-image s2-0 #x3300 (/ gp-0 64) (gs-psm ct32) 0 0 gp-0 s5-0)
+          (flush-cache 0)
+          (gs-store-image s2-0 s3-0)
+          )
+        (sync-path 0 0)
+        (file-stream-write s4-0 s3-0 (the-as uint (* (* s5-0 gp-0) 4)))
+        )
+      (file-stream-close s4-0)
+      )
+    )
+  0
+  )

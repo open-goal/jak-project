@@ -1,4 +1,5 @@
 #include "type_analysis.h"
+#include "common/log/log.h"
 
 namespace decompiler {
 namespace {
@@ -37,7 +38,7 @@ void modify_input_types_for_casts(
     try {
       auto type_from_cast = TP_Type::make_from_ts(dts.parse_type_spec(cast.type_name));
       auto original_type = state->get(cast.reg);
-      // fmt::print("Cast reg {} : {} -> {}\n", cast.reg.to_string(), original_type.print(),
+      // lg::print("Cast reg {} : {} -> {}\n", cast.reg.to_string(), original_type.print(),
       // type_from_cast.print());
       if (original_type != type_from_cast) {
         // the cast will have an effect on types. If we are removing the original type, remember it
@@ -63,7 +64,7 @@ void try_modify_input_types_for_casts(
     DecompilerTypeSystem& dts) {
   auto kv = casts.find(idx);
   if (kv != casts.end()) {
-    // fmt::print("at idx {}, casting:\n", idx);
+    // lg::print("at idx {}, casting:\n", idx);
     modify_input_types_for_casts(kv->second, state, changed_types, dts);
   }
 
@@ -208,7 +209,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
   for (auto& info : env.stack_slot_entries) {
     info.second.typespec = info.second.tp_type.typespec();
     //     debug
-    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    // lg::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
     //         info.second.tp_type.print());
   }
 

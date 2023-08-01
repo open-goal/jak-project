@@ -5,5 +5,320 @@
 ;; name in dgo: load-state
 ;; dgos: ENGINE, GAME
 
+(define-extern *backup-load-state* load-state)
+
+
 ;; DECOMP BEGINS
 
+(defmethod print level-buffer-state ((obj level-buffer-state))
+  (format
+    #t
+    "#<level-buffer-state ~A ~A ~A ~A @ #x~X>"
+    (-> obj name)
+    (-> obj display?)
+    (-> obj force-vis?)
+    (-> obj force-inside?)
+    obj
+    )
+  obj
+  )
+
+(defmethod reset! load-state ((obj load-state))
+  (dotimes (v1-0 (-> *level* length))
+    (set! (-> obj want v1-0 name) #f)
+    (set! (-> obj want v1-0 display?) #f)
+    (set! (-> obj want v1-0 force-vis?) #f)
+    (set! (-> obj want v1-0 force-inside?) #f)
+    )
+  (dotimes (v1-3 3)
+    (set! (-> obj want-sound v1-3) #f)
+    )
+  (set! (-> obj command-list) '())
+  (dotimes (v1-7 256)
+    (set! (-> obj object-name v1-7) #f)
+    (set! (-> obj object-status v1-7) (the-as basic 0))
+    )
+  obj
+  )
+
+(defmethod want-levels load-state ((obj load-state) (arg0 (pointer symbol)))
+  (dotimes (v1-0 LEVEL_MAX)
+    (dotimes (a2-0 6)
+      (when (= (-> obj want v1-0 name) (-> arg0 a2-0))
+        (set! (-> arg0 a2-0) #f)
+        (goto cfg-8)
+        )
+      )
+    (set! (-> obj want v1-0 name) #f)
+    (label cfg-8)
+    )
+  (dotimes (v1-3 6)
+    (when (-> arg0 v1-3)
+      (dotimes (a2-13 LEVEL_MAX)
+        (when (not (-> obj want a2-13 name))
+          (set! (-> obj want a2-13 name) (-> arg0 v1-3))
+          (set! (-> obj want a2-13 display?) #f)
+          (set! (-> obj want a2-13 force-vis?) #f)
+          (set! (-> obj want a2-13 force-inside?) #f)
+          (goto cfg-19)
+          )
+        )
+      )
+    (label cfg-19)
+    )
+  (add-borrow-levels obj)
+  0
+  )
+
+(defmethod want-sound-banks load-state ((obj load-state) (arg0 (pointer symbol)))
+  (dotimes (v1-0 3)
+    (dotimes (a2-0 3)
+      (when (= (-> obj want-sound v1-0) (-> arg0 a2-0))
+        (set! (-> arg0 a2-0) #f)
+        (goto cfg-8)
+        )
+      )
+    (set! (-> obj want-sound v1-0) #f)
+    (label cfg-8)
+    )
+  (dotimes (v1-3 3)
+    (when (-> arg0 v1-3)
+      (dotimes (a2-13 3)
+        (when (not (-> obj want-sound a2-13))
+          (set! (-> obj want-sound a2-13) (-> arg0 v1-3))
+          (goto cfg-19)
+          )
+        )
+      )
+    (label cfg-19)
+    )
+  0
+  (none)
+  )
+
+(defmethod want-display-level load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_MAX)
+    (when (= (-> obj want v1-0 name) arg0)
+      (set! (-> obj want v1-0 display?) arg1)
+      (add-borrow-levels obj)
+      (return 0)
+      )
+    )
+  (if arg1
+      (format 0 "ERROR: can't display ~A because it isn't loaded~%" arg0)
+      )
+  0
+  )
+
+(defmethod want-vis-level load-state ((obj load-state) (arg0 symbol))
+  (let ((v1-0 (lookup-level-info arg0)))
+    (if v1-0
+        (set! arg0 (-> v1-0 name))
+        )
+    )
+  (set! (-> obj vis-nick) arg0)
+  0
+  (none)
+  )
+
+(defmethod want-force-vis load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_MAX)
+    (when (= (-> obj want v1-0 name) arg0)
+      (set! (-> obj want v1-0 force-vis?) arg1)
+      (return 0)
+      )
+    )
+  (format 0 "ERROR: can't force vis on ~A because it isn't loaded~%" arg0)
+  0
+  )
+
+;; WARN: Function (method 16 load-state) has a return type of none, but the expression builder found a return statement.
+(defmethod want-force-inside load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_MAX)
+    (when (= (-> obj want v1-0 name) arg0)
+      (set! (-> obj want v1-0 force-inside?) arg1)
+      (return 0)
+      )
+    )
+  (format 0 "ERROR: can't force inside on ~A because it isn't loaded~%" arg0)
+  0
+  (none)
+  )
+
+(defmethod add-borrow-levels load-state ((obj load-state))
+  "Update the load state so it includes the 'borrow' levels associated with the desired levels.
+   This will also remove borrow levels that are no longer needed."
+
+  ;; remove borrow levels
+  (dotimes (s5-0 LEVEL_MAX)
+    (let ((a0-1 (-> obj want s5-0 name)))
+      (when a0-1
+        (let ((a0-2 (lookup-level-info a0-1)))
+          (when (= (-> a0-2 memory-mode) (load-buffer-mode borrow))
+            (set! (-> obj want s5-0 name) #f)
+            (set! (-> obj want s5-0 display?) #f)
+            (set! (-> obj want s5-0 force-vis?) #f)
+            (set! (-> obj want s5-0 force-inside?) #f)
+            )
+          )
+        )
+      )
+    )
+
+  ;; add 4 symbols to this array per level: name, display, force-vis, force-inside.
+  ;(let ((s5-1 (the-as (array symbol) (new 'stack 'array symbol 24))))
+  (let  ((symbol-array (new 'stack-no-clear 'array 'symbol 24))
+         (used-slots 0))
+    ; (set! (-> s5-1 length) 0)
+    (dotimes (s4-0 LEVEL_MAX)
+      (let ((a0-5 (-> obj want s4-0 name)))
+        ;; add level from the want state
+        (when a0-5
+          (set! (-> symbol-array used-slots) a0-5)
+          (set! (-> symbol-array (+ used-slots 1)) (-> obj want s4-0 display?))
+          (set! (-> symbol-array (+ used-slots 2)) (-> obj want s4-0 force-vis?))
+          (set! (-> symbol-array (+ used-slots 3)) (-> obj want s4-0 force-inside?))
+          (+! used-slots 4)
+          ;; and add borrows.
+          (let ((v1-34 (lookup-level-info a0-5)))
+            (countdown (a0-6 2)
+              (when (and (-> v1-34 borrow-level a0-6) (< used-slots 24))
+                (set! (-> symbol-array used-slots) (-> v1-34 borrow-level a0-6))
+                (set! (-> symbol-array (+ used-slots 1)) (if (-> obj want s4-0 display?)
+                                                           (-> v1-34 borrow-display? a0-6)
+                                                           )
+                      )
+                (set! (-> symbol-array (+ used-slots 2)) #f)
+                (set! (-> symbol-array (+ used-slots 3)) #f)
+                (+! used-slots 4)
+                )
+              )
+            )
+          )
+        )
+      )
+    ;; copy back to actual load-state.
+    (dotimes (v1-39 LEVEL_MAX)
+      (cond
+        ((< (* v1-39 4) used-slots)
+         (set! (-> obj want v1-39 name) (-> symbol-array (* v1-39 4)))
+         (set! (-> obj want v1-39 display?) (-> symbol-array (+ (* v1-39 4) 1)))
+         (set! (-> obj want v1-39 force-vis?) (-> symbol-array (+ (* v1-39 4) 2)))
+         (set! (-> obj want v1-39 force-inside?) (-> symbol-array (+ (* v1-39 4) 3)))
+         )
+        (else
+          (set! (-> obj want v1-39 name) #f)
+          (set! (-> obj want v1-39 display?) #f)
+          (set! (-> obj want v1-39 force-vis?) #f)
+          (set! (-> obj want v1-39 force-inside?) #f)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(define *display-load-commands* #f)
+
+(defmethod backup-load-state-and-set-cmds load-state ((obj load-state) (arg0 pair))
+  (dotimes (s4-0 256)
+    (when (-> obj object-name s4-0)
+      (format 0 "WARNING: load state somehow aquired object command ~A~%" (-> obj object-name s4-0))
+      (set! (-> obj object-name s4-0) #f)
+      )
+    )
+  (mem-copy! (&-> *backup-load-state* type) (&-> obj type) (psize-of load-state))
+  (set! (-> *backup-load-state* command-list) '())
+  (set! (-> obj command-list) arg0)
+  0
+  )
+
+(defmethod restore-load-state-and-cleanup load-state ((obj load-state))
+  (with-pp
+    (execute-commands-up-to obj 100000.0)
+    (dotimes (s5-0 256)
+      (when (-> obj object-name s5-0)
+        (let ((a0-3 (entity-by-name (-> obj object-name s5-0))))
+          (set! (-> a0-3 extra perm status) (the-as entity-perm-status (-> obj object-status s5-0)))
+          (if (-> a0-3 extra process)
+              (kill! a0-3)
+              )
+          )
+        (set! (-> obj object-name s5-0) #f)
+        )
+      )
+    (let ((s5-1 (new 'stack-no-clear 'inline-array 'level-buffer-state LEVEL_MAX)))
+      (dotimes (s4-0 LEVEL_MAX)
+        ((method-of-type level-buffer-state new) (the-as symbol (-> s5-1 s4-0)) level-buffer-state)
+        )
+      (dotimes (s4-1 LEVEL_MAX)
+        (mem-copy! (the-as pointer (-> s5-1 s4-1)) (the-as pointer (-> *load-state* want s4-1)) 16)
+        )
+      (mem-copy! (&-> obj type) (&-> *backup-load-state* type) (psize-of load-state))
+      (when (!= (-> pp type) scene-player)
+        (dotimes (gp-1 LEVEL_MAX)
+          (mem-copy! (the-as pointer (-> *load-state* want gp-1)) (the-as pointer (-> s5-1 gp-1)) 16)
+          )
+        )
+      )
+    (add-borrow-levels *load-state*)
+    0
+    )
+  )
+
+(defmethod restore-load-state load-state ((obj load-state))
+  (dotimes (v1-0 256)
+    (if (-> obj object-name v1-0)
+        (set! (-> obj object-name v1-0) #f)
+        )
+    )
+  (mem-copy! (&-> obj type) (&-> *backup-load-state* type) (psize-of load-state))
+  0
+  )
+
+;; WARN: Function (method 17 load-state) has a return type of none, but the expression builder found a return statement.
+(defmethod execute-commands-up-to load-state ((obj load-state) (arg0 float))
+  (with-pp
+    (let ((s4-0 (new 'stack 'script-context (process->ppointer pp) pp (the-as vector #f))))
+      (set! (-> s4-0 load-state) obj)
+      (while (not (null? (-> obj command-list)))
+        (let ((f0-0 (command-get-float (car (car (-> obj command-list))) 0.0))
+              (s3-0 (cdr (car (-> obj command-list))))
+              )
+          (if (< arg0 f0-0)
+              (return #f)
+              )
+          (if *display-load-commands*
+              (format 0 "NOTICE: ~D: ~f: execute command ~A~%" (current-time) f0-0 s3-0)
+              )
+          (cond
+            ((pair? (car s3-0))
+             (let ((a1-4 (car s3-0)))
+               (while (not (null? s3-0))
+                 (eval! s4-0 (the-as pair a1-4))
+                 (set! s3-0 (cdr s3-0))
+                 (set! a1-4 (car s3-0))
+                 )
+               )
+             )
+            (else
+              (eval! s4-0 s3-0)
+              )
+            )
+          )
+        (set! (-> obj command-list) (cdr (-> obj command-list)))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(kmemopen global "load-state")
+
+(define *backup-load-state* (new 'global 'load-state))
+
+(define-perm *load-state* load-state (new 'global 'load-state))
+
+(kmemclose)

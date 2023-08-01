@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
@@ -10,5 +10,5 @@ uniform float alpha_min;
 uniform float alpha_max;
 
 void main() {
-    color = fragment_color;
+  color = fragment_color;
 }

@@ -1,0 +1,539 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 10 of type touching-prims-entry-pool
+(defmethod get-free-node-count touching-prims-entry-pool ((obj touching-prims-entry-pool))
+  (let ((v0-0 0))
+    (let ((v1-0 (-> obj head)))
+      (while v1-0
+        (+! v0-0 1)
+        (set! v1-0 (-> v1-0 next))
+        (nop!)
+        (nop!)
+        (nop!)
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type touching-prims-entry-pool
+(defmethod alloc-node touching-prims-entry-pool ((obj touching-prims-entry-pool))
+  (let ((gp-0 (-> obj head)))
+    (cond
+      (gp-0
+        (let ((v1-0 (-> gp-0 next)))
+          (set! (-> obj head) v1-0)
+          (if v1-0
+              (set! (-> v1-0 prev) #f)
+              )
+          )
+        (set! (-> gp-0 allocated?) #t)
+        (set! (-> gp-0 next) #f)
+        (set! (-> gp-0 prev) #f)
+        )
+      (else
+        (format 0 "ERROR: touching-prims-entry-pool::alloc-node() failed!~%")
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 12 of type touching-prims-entry-pool
+(defmethod free-node touching-prims-entry-pool ((obj touching-prims-entry-pool) (arg0 touching-prims-entry))
+  (when (-> arg0 allocated?)
+    (set! (-> arg0 allocated?) #f)
+    (let ((v1-1 (-> obj head)))
+      (set! (-> arg0 next) v1-1)
+      (set! (-> arg0 prev) #f)
+      (set! (-> obj head) arg0)
+      (when v1-1
+        (set! (-> v1-1 prev) arg0)
+        arg0
+        )
+      )
+    )
+  )
+
+;; definition for method 14 of type touching-shapes-entry
+;; WARN: Return type mismatch int vs none.
+(defmethod free-touching-prims-list touching-shapes-entry ((obj touching-shapes-entry))
+  (when (-> obj cshape1)
+    (set! (-> obj cshape1) #f)
+    (let ((gp-0 (-> obj head)))
+      (when gp-0
+        (set! (-> obj head) #f)
+        (let ((s5-0 *touching-prims-entry-pool*))
+          (while gp-0
+            (let ((a1-0 gp-0))
+              (set! gp-0 (-> a1-0 next))
+              (free-node s5-0 a1-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type touching-list
+;; WARN: Return type mismatch int vs none.
+(defmethod free-nodes touching-list ((obj touching-list))
+  (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
+    (countdown (s4-0 (-> obj num-touching-shapes))
+      (free-touching-prims-list s5-0)
+      (&+! s5-0 32)
+      )
+    )
+  (set! (-> obj num-touching-shapes) 0)
+  (set! (-> obj resolve-u) 0)
+  0
+  (none)
+  )
+
+;; definition for method 13 of type touching-list
+;; WARN: Return type mismatch object vs touching-shapes-entry.
+(defmethod get-shapes-entry touching-list ((obj touching-list) (shape1 collide-shape) (shape2 collide-shape))
+  (let ((entry (the-as touching-shapes-entry (-> obj touching-shapes))))
+    (let ((v1-0 (the-as touching-shapes-entry #f)))
+      (countdown (a3-0 (-> obj num-touching-shapes))
+        (let ((t0-0 (-> entry cshape1)))
+          (set! v1-0
+                (cond
+                  (t0-0
+                    (if (or (and (= t0-0 shape1) (= (-> entry cshape2) shape2)) (and (= t0-0 shape2) (= (-> entry cshape2) shape1)))
+                        (return entry)
+                        )
+                    v1-0
+                    )
+                  (else
+                    entry
+                    )
+                  )
+                )
+          )
+        (&+! entry 32)
+        )
+      (cond
+        (v1-0
+          (set! entry v1-0)
+          )
+        (else
+          (when (>= (-> obj num-touching-shapes) 32)
+            (format 0 "ERROR: touching-list::get-shapes-entry() failed!~%")
+            (return (the-as touching-shapes-entry #f))
+            )
+          (+! (-> obj num-touching-shapes) 1)
+          )
+        )
+      )
+    (set! (-> entry cshape1) shape1)
+    (set! (-> entry cshape2) shape2)
+    (set! (-> entry head) #f)
+    (set! (-> entry resolve-u) 1)
+    (set! (-> obj resolve-u) 1)
+    (set! (-> entry handle1) (process->handle (-> shape1 process)))
+    (set! (-> entry handle2) (process->handle (-> shape2 process)))
+    (the-as touching-shapes-entry entry)
+    )
+  )
+
+;; definition of type add-prims-touching-work
+(deftype add-prims-touching-work (structure)
+  ((tri1 collide-tri-result  :offset-assert   0)
+   (tri2 collide-tri-result  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type add-prims-touching-work
+(defmethod inspect add-prims-touching-work ((obj add-prims-touching-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'add-prims-touching-work)
+  (format #t "~1Ttri1: #<collide-tri-result @ #x~X>~%" (-> obj tri1))
+  (format #t "~1Ttri2: #<collide-tri-result @ #x~X>~%" (-> obj tri2))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 9 of type touching-list
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 9 touching-list) has a return type of none, but the expression builder found a return statement.
+(defmethod add-touching-prims touching-list ((obj touching-list)
+                                           (arg0 collide-shape-prim)
+                                           (arg1 collide-shape-prim)
+                                           (arg2 float)
+                                           (arg3 collide-tri-result)
+                                           (arg4 collide-tri-result)
+                                           )
+  (let ((gp-0 (new 'stack-no-clear 'add-prims-touching-work)))
+    (set! (-> gp-0 tri1) arg3)
+    (set! (-> gp-0 tri2) arg4)
+    (let ((s2-0 (get-shapes-entry obj (-> arg0 cshape) (-> arg1 cshape))))
+      (when s2-0
+        (when (= (-> s2-0 cshape1) (-> arg1 cshape))
+          (let ((v1-4 arg0))
+            (set! arg0 arg1)
+            (set! arg1 v1-4)
+            )
+          )
+        (let ((s0-0 (-> s2-0 head)))
+          (while s0-0
+            (when (and (= (-> s0-0 prim1 cprim) arg0) (= (-> s0-0 prim2 cprim) arg1))
+              (when (< arg2 (-> s0-0 u))
+                (-> s0-0 u)
+                (let ((v1-12 (-> s0-0 prim1))
+                      (a1-2 (-> gp-0 tri1))
+                      )
+                  (cond
+                    (a1-2
+                      (set! (-> v1-12 has-tri?) #t)
+                      (mem-copy! (the-as pointer (-> v1-12 tri)) (the-as pointer a1-2) 88)
+                      )
+                    (else
+                      (set! (-> v1-12 has-tri?) #f)
+                      )
+                    )
+                  )
+                (let ((v1-15 (-> s0-0 prim2))
+                      (a1-3 (-> gp-0 tri2))
+                      )
+                  (cond
+                    (a1-3
+                      (set! (-> v1-15 has-tri?) #t)
+                      (mem-copy! (the-as pointer (-> v1-15 tri)) (the-as pointer a1-3) 88)
+                      )
+                    (else
+                      (set! (-> v1-15 has-tri?) #f)
+                      )
+                    )
+                  )
+                )
+              (return 0)
+              )
+            (set! s0-0 (-> s0-0 next))
+            )
+          )
+        (let ((s0-1 (alloc-node *touching-prims-entry-pool*)))
+          (when s0-1
+            (let ((v1-22 (-> s2-0 head)))
+              (set! (-> s0-1 next) v1-22)
+              (set! (-> s0-1 prev) #f)
+              (set! (-> s2-0 head) s0-1)
+              (if v1-22
+                  (set! (-> v1-22 prev) s0-1)
+                  )
+              )
+            (set! (-> s0-1 u) arg2)
+            (when (>= arg2 0.0)
+              (set! (-> s2-0 resolve-u) 1)
+              (set! (-> obj resolve-u) 1)
+              )
+            (let ((v1-26 (-> s0-1 prim1))
+                  (a1-4 (-> gp-0 tri1))
+                  )
+              (set! (-> v1-26 cprim) arg0)
+              (cond
+                (a1-4
+                  (set! (-> v1-26 has-tri?) #t)
+                  (mem-copy! (the-as pointer (-> v1-26 tri)) (the-as pointer a1-4) 88)
+                  )
+                (else
+                  (set! (-> v1-26 has-tri?) #f)
+                  )
+                )
+              )
+            (let ((v1-29 (-> s0-1 prim2))
+                  (a1-5 (-> gp-0 tri2))
+                  )
+              (set! (-> v1-29 cprim) arg1)
+              (cond
+                (a1-5
+                  (set! (-> v1-29 has-tri?) #t)
+                  (mem-copy! (the-as pointer (-> v1-29 tri)) (the-as pointer a1-5) 88)
+                  )
+                (else
+                  (set! (-> v1-29 has-tri?) #f)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type touching-list
+;; WARN: Return type mismatch int vs none.
+(defmethod update-from-step-size touching-list ((obj touching-list) (arg0 float))
+  (when (nonzero? (-> obj resolve-u))
+    (set! (-> obj resolve-u) 0)
+    (let ((s5-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
+      (countdown (s4-0 (-> obj num-touching-shapes))
+        (when (nonzero? (-> s5-0 resolve-u))
+          (set! (-> s5-0 resolve-u) 0)
+          (when (-> s5-0 cshape1)
+            (let ((s3-0 (-> s5-0 head)))
+              (while s3-0
+                (let ((f0-0 (-> s3-0 u)))
+                  (set! s3-0 (cond
+                               ((>= f0-0 0.0)
+                                (cond
+                                  ((>= arg0 f0-0)
+                                   (set! (-> s3-0 u) -1.0)
+                                   (set! s3-0 (-> s3-0 next))
+                                   )
+                                  (else
+                                    (let ((a1-1 s3-0))
+                                      (let ((v1-8 (-> s3-0 next)))
+                                        (let ((a0-1 (-> s3-0 prev)))
+                                          (if a0-1
+                                              (set! (-> a0-1 next) v1-8)
+                                              (set! (-> s5-0 head) v1-8)
+                                              )
+                                          (if v1-8
+                                              (set! (-> v1-8 prev) a0-1)
+                                              )
+                                          )
+                                        (set! s3-0 v1-8)
+                                        )
+                                      (free-node *touching-prims-entry-pool* a1-1)
+                                      )
+                                    )
+                                  )
+                                s3-0
+                                )
+                               (else
+                                 (-> s3-0 next)
+                                 )
+                               )
+                        )
+                  )
+                )
+              )
+            (if (not (-> s5-0 head))
+                (set! (-> s5-0 cshape1) #f)
+                )
+            )
+          )
+        (&+! s5-0 32)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type touching-list
+;; WARN: Return type mismatch int vs none.
+(defmethod send-events-for-touching-shapes touching-list ((obj touching-list))
+  (let ((gp-0 (the-as touching-shapes-entry (-> obj touching-shapes))))
+    (countdown (s5-0 (-> obj num-touching-shapes))
+      (let ((s3-0 (-> gp-0 cshape1)))
+        (when s3-0
+          (let ((s4-0 (handle->process (-> gp-0 handle1)))
+                (s2-0 (handle->process (-> gp-0 handle2)))
+                )
+            (when (and s4-0 s2-0)
+              (let ((s1-0 (-> gp-0 cshape2)))
+                (when (< (-> s3-0 event-priority) (-> s1-0 event-priority))
+                  (let ((v1-9 s3-0))
+                    (set! s3-0 s1-0)
+                    (set! s1-0 v1-9)
+                    )
+                  (let ((v1-11 s4-0))
+                    (set! s4-0 s2-0)
+                    (set! s2-0 v1-11)
+                    )
+                  )
+                (let ((v1-13 (-> s3-0 event-self)))
+                  (if v1-13
+                      (send-event s4-0 v1-13 :from s2-0 gp-0)
+                      )
+                  )
+                (let ((v1-14 (-> s3-0 event-other)))
+                  (if v1-14
+                      (send-event s2-0 v1-14 :from s4-0 gp-0)
+                      )
+                  )
+                (let ((v1-15 (-> s1-0 event-self)))
+                  (if v1-15
+                      (send-event s2-0 v1-15 :from s4-0 gp-0)
+                      )
+                  )
+                (let ((v1-16 (-> s1-0 event-other)))
+                  (if v1-16
+                      (send-event s4-0 v1-16 :from s2-0 gp-0)
+                      )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (&+! gp-0 32)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type touching-shapes-entry
+(defmethod prims-touching? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 uint))
+  (cond
+    ((= (-> obj cshape1) arg0)
+     (let ((v1-1 (-> obj head)))
+       (while v1-1
+         (if (logtest? (-> v1-1 prim1 cprim prim-id) arg1)
+             (return v1-1)
+             )
+         (set! v1-1 (-> v1-1 next))
+         )
+       )
+     )
+    ((= (-> obj cshape2) arg0)
+     (let ((v1-4 (-> obj head)))
+       (while v1-4
+         (if (logtest? (-> v1-4 prim2 cprim prim-id) arg1)
+             (return v1-4)
+             )
+         (set! v1-4 (-> v1-4 next))
+         )
+       )
+     )
+    (else
+      (format 0 "ERROR: touching-shapes-entry::prims-touching? : Bogus cshape value!~%")
+      )
+    )
+  (the-as touching-prims-entry #f)
+  )
+
+;; definition for method 13 of type touching-shapes-entry
+;; WARN: Return type mismatch touching-prims-entry vs basic.
+(defmethod prims-touching-action? touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape) (arg1 collide-action) (arg2 collide-action))
+  (cond
+    ((= (-> obj cshape1) arg0)
+     (let ((v1-1 (-> obj head)))
+       (while v1-1
+         (let ((a0-1 (-> v1-1 prim1 cprim)))
+           (if (and (logtest? arg1 (-> a0-1 prim-core action)) (not (logtest? arg2 (-> a0-1 prim-core action))))
+               (return (the-as basic v1-1))
+               )
+           )
+         (set! v1-1 (-> v1-1 next))
+         )
+       )
+     )
+    ((= (-> obj cshape2) arg0)
+     (let ((v1-4 (-> obj head)))
+       (while v1-4
+         (let ((a0-5 (-> v1-4 prim2 cprim)))
+           (if (and (logtest? arg1 (-> a0-5 prim-core action)) (not (logtest? arg2 (-> a0-5 prim-core action))))
+               (return (the-as basic v1-4))
+               )
+           )
+         (set! v1-4 (-> v1-4 next))
+         )
+       )
+     )
+    (else
+      (format 0 "ERROR: touching-shapes-entry::prims-touching-action? : Bogus cshape value!~%")
+      )
+    )
+  (the-as basic #f)
+  )
+
+;; definition for method 11 of type touching-shapes-entry
+(defmethod get-touched-shape touching-shapes-entry ((obj touching-shapes-entry) (arg0 collide-shape))
+  (cond
+    ((= (-> obj cshape1) arg0)
+     (return (-> obj cshape2))
+     )
+    ((= (-> obj cshape2) arg0)
+     (return (-> obj cshape1))
+     )
+    )
+  (the-as collide-shape #f)
+  )
+
+;; definition for method 10 of type touching-prims-entry
+(defmethod get-touched-prim touching-prims-entry ((obj touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+  (cond
+    ((= (-> arg1 cshape1) arg0)
+     (return (-> obj prim1 cprim))
+     )
+    ((= (-> arg1 cshape2) arg0)
+     (return (-> obj prim2 cprim))
+     )
+    )
+  (the-as collide-shape-prim #f)
+  )
+
+;; definition for method 11 of type touching-prims-entry
+(defmethod get-touched-tri touching-prims-entry ((obj touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+  (let ((v0-0 (the-as collide-tri-result #f)))
+    (cond
+      ((not obj)
+       )
+      ((= (-> arg1 cshape1) arg0)
+       (let ((v1-4 (-> obj prim1)))
+         (if (-> v1-4 has-tri?)
+             (set! v0-0 (-> v1-4 tri))
+             )
+         )
+       )
+      ((= (-> arg1 cshape2) arg0)
+       (let ((v1-7 (-> obj prim2)))
+         (if (-> v1-7 has-tri?)
+             (set! v0-0 (-> v1-7 tri))
+             )
+         )
+       )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type touching-prims-entry
+(defmethod get-middle-of-bsphere-overlap touching-prims-entry ((obj touching-prims-entry) (arg0 vector))
+  (let* ((s4-0 (-> obj prim1 cprim))
+         (v1-0 (-> obj prim2 cprim))
+         (gp-1 (vector-!
+                 (new 'stack-no-clear 'vector)
+                 (the-as vector (-> v1-0 prim-core))
+                 (the-as vector (-> s4-0 prim-core))
+                 )
+               )
+         )
+    (let ((f1-2 (- (- (vector-length gp-1) (-> v1-0 prim-core world-sphere w)) (-> s4-0 prim-core world-sphere w))))
+      (vector-normalize! gp-1 (+ (-> s4-0 prim-core world-sphere w) (* 0.5 f1-2)))
+      )
+    (vector+! arg0 gp-1 (the-as vector (-> s4-0 prim-core)))
+    )
+  arg0
+  )
+
+;; definition for function get-intersect-point
+;; INFO: Used lq/sq
+(defun get-intersect-point ((arg0 vector) (arg1 touching-prims-entry) (arg2 collide-shape) (arg3 touching-shapes-entry))
+  (when arg1
+    (let ((a0-2 (get-touched-tri arg1 arg2 arg3)))
+      (if a0-2
+          (set! (-> arg0 quad) (-> a0-2 intersect quad))
+          (get-middle-of-bsphere-overlap arg1 arg0)
+          )
+      )
+    )
+  arg0
+  )

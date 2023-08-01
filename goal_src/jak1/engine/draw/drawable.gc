@@ -1584,14 +1584,6 @@
 
 (define *surrogate-dma-buffer* (the dma-buffer #f))
 
-(defmacro cpu-usage ()
-  "print out the cpu usage of the most recently rendered frame"
-  `(format #t "CPU: ~,,2f%~%frame-time: ~,,1fms~%"
-           (* 100. (/ (the float (-> (current-frame) run-time)) *ticks-per-frame*))
-           (* 1000. (/ 1. 60.) (/ (the float (-> (current-frame) run-time)) *ticks-per-frame*))
-           )
-  )
-
 (#when PC_PORT
   (define *disasm-count* 0)
 
@@ -1613,9 +1605,8 @@
   ;; wait for rendering to finish.
   (sync-path 0 0)
   ;; remember when.
-  (set! (-> disp frames (-> disp on-screen) frame run-time)
-        (the-as int (timer-count (the-as timer-bank #x10000800)))
-        )
+  ;; NOTE : setting this to 0 to get rid of lag compensation in PC port, since it's not helpful
+  (set! (-> disp frames (-> disp on-screen) frame run-time) (#if PC_PORT 0 (the-as int (timer-count (the-as timer-bank #x10000800)))))
 
   ;; now, do a vsync. If we finished rendering in time, this will just wait until the next.
   (let ((frame-idx (-> disp on-screen))
@@ -1660,7 +1651,6 @@
             (-! *disasm-count* 1)
             )
           )
-        ;;(cpu-usage)
         (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
                                (cond
                                  ;; some buffer for debugging, not used

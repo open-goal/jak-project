@@ -13,8 +13,10 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
-#include "game/discord.h"
+#include "game/external/discord_jak1.h"
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/sceGraphicsInterface.h"
 #include "game/kernel/common/fileio.h"
@@ -35,8 +37,6 @@
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak1/ksound.h"
-#include "game/kernel/svnrev.h"
-#include "game/mips2c/mips2c_table.h"
 #include "game/sce/deci2.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/libdma.h"
@@ -61,7 +61,7 @@ void InitParms(int argc, const char* const* argv) {
     DiskBoot = 1;
     isodrv = fakeiso;
     modsrc = 0;
-    reboot = 0;
+    reboot_iop = 0;
     DebugSegment = 0;
     MasterDebug = 0;
   }
@@ -76,7 +76,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cd mode\n");
       isodrv = iso_cd;  // use the actual DVD drive for data files
       modsrc = 1;       // use the DVD drive data for IOP modules
-      reboot = 1;       // Reboot the IOP (load new IOP runtime)
+      reboot_iop = 1;   // Reboot the IOP (load new IOP runtime)
     }
 
     // the "cddata" uses the DVD drive for everything but IOP modules.
@@ -84,7 +84,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cddata mode\n");
       isodrv = iso_cd;  // tell IOP to use actual DVD drive for data files
       modsrc = 0;       // don't use DVD drive for IOP modules
-      reboot = 0;       // no need to reboot the IOP
+      reboot_iop = 0;   // no need to reboot the IOP
     }
 
     // the "deviso" mode is one of two modes for testing without the need for DVDs
@@ -92,7 +92,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: deviso mode\n");
       isodrv = deviso;  // IOP deviso mode
       modsrc = 0;       // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
@@ -100,7 +100,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: fakeiso mode\n");
       isodrv = fakeiso;  // IOP fakeeiso mode
       modsrc = 0;        // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // an added mode to allow booting without a KERNEL.CGO for testing
@@ -166,12 +166,12 @@ void InitIOP() {
   // before doing anything with the I/O Processor, we need to set up SIF RPC
   sceSifInitRpc(0);
 
-  if ((isodrv == iso_cd) || modsrc || reboot) {
+  if ((isodrv == iso_cd) || modsrc || reboot_iop) {
     // we will need the DVD drive to bring up the IOP
     InitCD();
   }
 
-  if (!reboot) {
+  if (!reboot_iop) {
     // reboot with development IOP kernel
     lg::debug("Rebooting IOP...");
     while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp221.img")) {
@@ -292,6 +292,8 @@ void InitIOP() {
   }
 }
 
+AutoSplitterBlock gAutoSplitterBlock;
+
 /*!
  * Initialize GOAL Runtime. This is the main initialization which is called before entering
  * the GOAL kernel dispatch loop (KernelCheckAndDispatch).
@@ -354,6 +356,10 @@ int InitMachine() {
     return goal_status;
   }
 
+  // TODO - better place to put this?
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak1*")->value;
+
   lg::info("InitListenerConnect");
   InitListenerConnect();
   lg::info("InitCheckListener");
@@ -378,55 +384,6 @@ int ShutdownMachine() {
 
   Msg(6, "kernel: machine shutdown\n");
   return 0;
-}
-
-// todo, these could probably be moved to common
-/*!
- * Called from game thread to submit rendering DMA chain.
- */
-void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
-  Gfx::send_chain(g_ee_main_mem, chain);
-}
-
-/*!
- * Called from game thread to upload a texture outside of the main DMA chain.
- */
-void pc_texture_upload_now(u32 page, u32 mode) {
-  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
-}
-
-void pc_texture_relocate(u32 dst, u32 src, u32 format) {
-  Gfx::texture_relocate(dst, src, format);
-}
-
-/*!
- * Called from the game thread at initialization.
- * The game thread is the only one to touch the mips2c function table (through the linker and
- * through this function), so no locking is needed.
- */
-u64 pc_get_mips2c(u32 name) {
-  const char* n = Ptr<String>(name).c()->data();
-  return Mips2C::gLinkedFunctionTable.get(n);
-}
-
-/*!
- * Called from the game thread at each frame to tell the PC rendering code which levels to start
- * loading. The loader internally handles locking.
- */
-void pc_set_levels(u32 l0, u32 l1) {
-  std::string l0s = Ptr<String>(l0).c()->data();
-  std::string l1s = Ptr<String>(l1).c()->data();
-
-  std::vector<std::string> levels;
-  if (l0s != "none" && l0s != "#f") {
-    levels.push_back(l0s);
-  }
-
-  if (l1s != "none" && l1s != "#f") {
-    levels.push_back(l1s);
-  }
-
-  Gfx::set_levels(levels);
 }
 
 /*!
@@ -461,19 +418,6 @@ void PutDisplayEnv(u32 ptr) {
   }
 }
 
-/*!
- * Return the current OS as a symbol. Actually returns what it was compiled for!
- */
-u64 get_os() {
-#ifdef _WIN32
-  return intern_from_c("windows").offset;
-#elif __linux__
-  return intern_from_c("linux").offset;
-#else
-  return s7.offset;
-#endif
-}
-
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
     DiscordRichPresence rpc;
@@ -496,9 +440,10 @@ void update_discord_rpc(u32 discord_info) {
       auto flutflut = Ptr<Symbol>(info->flutflut)->value;
       char* status = Ptr<String>(info->status).c()->data();
       char* level = Ptr<String>(info->level).c()->data();
-      const char* full_level_name = jak1_get_full_level_name(Ptr<String>(info->level).c()->data());
+      const char* full_level_name =
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
       memset(&rpc, 0, sizeof(rpc));
-      if (!indoors(level)) {
+      if (!indoors(indoor_levels, level)) {
         char level_with_tod[128];
         strcpy(level_with_tod, level);
         strcat(level_with_tod, "-");
@@ -531,22 +476,16 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(state, "Intro");
       } else if (cutscene != offset_of_s7()) {
         strcpy(state, "Watching a cutscene");
+        strcpy(large_image_text, fmt::format("Cells: {} | Orbs: {} | Flies: {} | Deaths: {}",
+                                             std::to_string(cells), std::to_string(orbs),
+                                             std::to_string(scout_flies), std::to_string(deaths))
+                                     .c_str());
       } else {
-        strcpy(state, "Cells: ");
-        strcat(state, std::to_string(cells).c_str());
-        strcat(state, " | Orbs: ");
-        strcat(state, std::to_string(orbs).c_str());
-        strcat(state, " | Flies: ");
-        strcat(state, std::to_string(scout_flies).c_str());
+        strcpy(state, fmt::format("Cells: {} | Orbs: {} | Flies: {}", std::to_string(cells),
+                                  std::to_string(orbs), std::to_string(scout_flies))
+                          .c_str());
 
-        strcat(large_image_text, " | Cells: ");
-        strcat(large_image_text, std::to_string(cells).c_str());
-        strcat(large_image_text, " | Orbs: ");
-        strcat(large_image_text, std::to_string(orbs).c_str());
-        strcat(large_image_text, " | Flies: ");
-        strcat(large_image_text, std::to_string(scout_flies).c_str());
-        strcat(large_image_text, " | Deaths: ");
-        strcat(large_image_text, std::to_string(deaths).c_str());
+        strcat(large_image_text, fmt::format(" | Deaths: {}", std::to_string(deaths)).c_str());
       }
       rpc.largeImageText = large_image_text;
       rpc.state = state;
@@ -557,7 +496,7 @@ void update_discord_rpc(u32 discord_info) {
         strcpy(small_image_key, "flutflut");
         strcpy(small_image_text, "Riding on Flut Flut");
       } else {
-        if (!indoors(level)) {
+        if (!indoors(indoor_levels, level)) {
           strcpy(small_image_key, time_of_day_str(time));
           strcpy(small_image_text, "Time of day: ");
           strcat(small_image_text, get_time_of_day(time).c_str());
@@ -579,108 +518,53 @@ void update_discord_rpc(u32 discord_info) {
   }
 }
 
-u32 get_fullscreen() {
-  switch (Gfx::get_fullscreen()) {
-    default:
-    case GfxDisplayMode::Windowed:
-      return intern_from_c("windowed").offset;
-    case GfxDisplayMode::Borderless:
-      return intern_from_c("borderless").offset;
-    case GfxDisplayMode::Fullscreen:
-      return intern_from_c("fullscreen").offset;
+void pc_set_levels(u32 l0, u32 l1) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
   }
-}
+  std::string l0s = Ptr<String>(l0).c()->data();
+  std::string l1s = Ptr<String>(l1).c()->data();
 
-void set_fullscreen(u32 symptr, s64 screen) {
-  if (symptr == intern_from_c("windowed").offset || symptr == s7.offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Windowed, screen);
-  } else if (symptr == intern_from_c("borderless").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Borderless, screen);
-  } else if (symptr == intern_from_c("fullscreen").offset) {
-    Gfx::set_fullscreen(GfxDisplayMode::Fullscreen, screen);
+  std::vector<std::string> levels;
+  if (l0s != "none" && l0s != "#f") {
+    levels.push_back(l0s);
   }
-}
 
-void set_game_resolution(s64 w, s64 h) {
-  Gfx::set_game_resolution(w, h);
-}
+  if (l1s != "none" && l1s != "#f") {
+    levels.push_back(l1s);
+  }
 
-void set_msaa(s64 samples) {
-  Gfx::set_msaa(samples);
+  Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
 void InitMachine_PCPort() {
   // PC Port added functions
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
 
-  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
-  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
+  // Game specific functions
+  // Called from the game thread at each frame to tell the PC rendering code which levels to start
+  // loading. The loader internally handles locking.
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
 
-  // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
-
-  // os stuff
-  make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
-  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
-  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
-  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
-  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  make_function_symbol_from_c("pc-get-monitor-count", (void*)get_monitor_count);
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
-  make_function_symbol_from_c("pc-set-game-resolution", (void*)set_game_resolution);
-  make_function_symbol_from_c("pc-set-msaa", (void*)set_msaa);
-
-  // graphics things
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
-  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
-  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
-  make_function_symbol_from_c("pc-set-gfx-hack", (void*)set_gfx_hack);
-
-  // file related functions
-  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
-
-  // discord rich presence
-  make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
-  // profiler
-  make_function_symbol_from_c("pc-prof", (void*)prof_event);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
-
   // setup string constants
+  // TODO - these may be able to be moved into `init_common_pc_port_functions` but it's trickier
+  // since they are accessing the Ptr's value
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value =
       make_string_from_c(user_dir_path.string().c_str());
-  // TODO - we will eventually need a better way to know what game we are playing
-  auto settings_path = file_util::get_user_settings_dir();
+  auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value = make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(GIT_VERSION);
+  intern_from_c("*pc-settings-built-sha*")->value = make_string_from_c(build_revision().c_str());
 }
 
 /*!

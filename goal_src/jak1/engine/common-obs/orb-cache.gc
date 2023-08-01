@@ -42,18 +42,18 @@
               )
 
 (defstate orb-cache-top-idle (orb-cache-top)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('eco-blue)
        (process-entity-status! self (entity-perm-status complete) #t)
        (dotimes (gp-0 5)
          (spawn-projectile-blue *target*)
          )
-       (increment-success-for-hint (game-text-id sidekick-hint-orb-cache-top))
+       (increment-success-for-hint (text-id sidekick-hint-orb-cache-top))
        (go orb-cache-top-activate #f)
        )
       (else
-        (plat-event arg0 arg1 arg2 arg3)
+        (plat-event proc arg1 event-type event)
         )
       )
     )
@@ -62,7 +62,7 @@
              (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
              )
         (level-hint-spawn
-          (game-text-id sidekick-hint-orb-cache-top)
+          (text-id sidekick-hint-orb-cache-top)
           "sksp0009"
           (the-as entity #f)
           *entity-pool*
@@ -90,7 +90,7 @@
     )
   )
 
-(defmethod dummy-22 orb-cache-top ((obj orb-cache-top))
+(defmethod baseplat-method-22 orb-cache-top ((obj orb-cache-top))
   (if (< 4096.0 (- (-> obj basetrans y) (-> obj root-pos)))
       (activate! (-> obj smush) -1.0 60 150 1.0 1.0)
       (activate! (-> obj smush) -0.5 60 150 1.0 1.0)
@@ -308,7 +308,7 @@
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object blue-eco-suck))
       (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
@@ -323,7 +323,7 @@
   (initialize-skeleton obj *orb-cache-top-sg* '())
   (logior! (-> obj skel status) (janim-status inited))
   (update-transforms! (-> obj root-override))
-  (dummy-21 obj)
+  (baseplat-method-21 obj)
   (set! (-> obj money) (res-lump-value (-> obj entity) 'orb-cache-count int :default (the-as uint128 20)))
   (set! (-> obj active-distance) 61440.0)
   (set! (-> obj inactive-distance) 245760.0)
@@ -355,7 +355,3 @@
     )
   (none)
   )
-
-
-
-

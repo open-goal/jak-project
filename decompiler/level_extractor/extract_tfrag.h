@@ -28,6 +28,8 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level);
+                   bool dump_level,
+                   const std::string& level_name,
+                   bool disable_atest_in_normal);
 
 }  // namespace decompiler

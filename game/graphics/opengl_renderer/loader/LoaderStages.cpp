@@ -11,13 +11,11 @@ constexpr float LOAD_BUDGET = 2.5f;
  */
 u64 add_texture(TexturePool& pool, const tfrag3::Texture& tex, bool is_common) {
   GLuint gl_tex;
+  glActiveTexture(GL_TEXTURE0);
   glGenTextures(1, &gl_tex);
   glBindTexture(GL_TEXTURE_2D, gl_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.w, tex.h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                tex.data.data());
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, gl_tex);
   glGenerateMipmap(GL_TEXTURE_2D);
   float aniso = 0.0f;
   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
@@ -397,6 +395,7 @@ class TieLoadStage : public LoaderStage {
             abort = true;
           }
         }
+        m_next_tree = 0;
       }
 
       m_wind_indices_done = true;
@@ -541,7 +540,7 @@ class CollideLoaderStage : public LoaderStage {
 class StallLoaderStage : public LoaderStage {
  public:
   StallLoaderStage() : LoaderStage("stall") {}
-  bool run(Timer&, LoaderInput& data) override {
+  bool run(Timer&, LoaderInput& /*data*/) override {
     m_count++;
     if (m_count > 10) {
       return true;

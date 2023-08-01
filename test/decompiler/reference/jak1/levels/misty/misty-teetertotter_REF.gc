@@ -49,14 +49,14 @@
 
 ;; failed to figure out what this is:
 (defstate teetertotter-idle (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('attack)
-       (case (-> arg3 param 1)
+       (case (-> event param 1)
          (('flop)
           (when (target-on-end-of-teetertotter? self)
             (set! (-> self in-launch-window) #f)
-            (increment-success-for-hint (game-text-id misty-teetertotter))
+            (increment-success-for-hint (text-id misty-teetertotter))
             (go teetertotter-launch)
             )
           )
@@ -64,13 +64,7 @@
        )
       (('bonk)
        (when (target-on-end-of-teetertotter? self)
-         (level-hint-spawn
-           (game-text-id misty-teetertotter)
-           "sksp0070"
-           (the-as entity #f)
-           *entity-pool*
-           (game-task none)
-           )
+         (level-hint-spawn (text-id misty-teetertotter) "sksp0070" (the-as entity #f) *entity-pool* (game-task none))
          (go teetertotter-bend)
          )
        )
@@ -88,21 +82,21 @@
 
 ;; failed to figure out what this is:
 (defstate teetertotter-launch (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (the-as
       object
-      (when (= arg2 'touch)
+      (when (= event-type 'touch)
         (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
+                  (the-as touching-shapes-entry (-> event param 0))
                   (the-as collide-shape-moving (-> self root))
                   (the-as uint 1)
                   )
                  (-> self rock-is-dangerous)
                  )
-            (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
+            (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'deadly))))
             )
         (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                    (the-as touching-shapes-entry (-> arg3 param 0))
+                    (the-as touching-shapes-entry (-> event param 0))
                     (the-as collide-shape-moving (-> self root))
                     (the-as uint 2)
                     )
@@ -111,7 +105,7 @@
                    (-> self in-launch-window)
                    )
           (when (send-event
-                  arg0
+                  proc
                   'shove
                   #f
                   (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
@@ -186,7 +180,7 @@
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 2))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-1 collide-with) (collide-kind target))
-        (set! (-> s2-1 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-1 prim-core action) (collide-action solid rider-plat-sticky))
         (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-1 transform-index) 7)
         (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 32768.0)
@@ -213,7 +207,7 @@
       (let ((s2-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 2))))
         (set! (-> s2-4 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-4 collide-with) (collide-kind target))
-        (set! (-> s2-4 prim-core action) (collide-action solid ca-1))
+        (set! (-> s2-4 prim-core action) (collide-action solid rider-plat-sticky))
         (set! (-> s2-4 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-4 transform-index) 3)
         (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 32768.0)

@@ -1,0 +1,110 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+;; This file is used for debugging and testing the large font encoding.
+;; This file should *not* be included as part of any packages, it should be manually loaded by the user.
+
+;; To run this:
+
+#|
+(mng)  ;; build the engine
+(lt)   ;; connect to the runtime
+(ml "goal_src/jak2/pc/util/font-encode-test.gc")  ;; build and load this file.
+|#
+
+(declare-file (debug))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant FONT_ENCODE_TEXT_LEFT (get-screen-x 0.35))
+(defconstant FONT_ENCODE_TEXT_Y (get-screen-y 0.4))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define *font-string* (new 'global 'string 64 (the string #f)))
+(define *font-string-val* #x96)
+(define *text-id-val* #x100)
+(define *music-to-be-less-annoying* 'finboss1)
+
+(defun font-encode-test-stop ()
+  "stop the encode test proc"
+  
+  (kill-by-name "font-encode" *active-pool*)
+  )
+
+(defun font-encode-test-start ()
+  "start the encode test proc"
+  
+  (font-encode-test-stop)
+  (process-spawn-function process :name "font-encode"
+      (lambda :behavior process ()
+          (let ((fnt (new 'stack 'font-context *font-default-matrix* FONT_ENCODE_TEXT_LEFT FONT_ENCODE_TEXT_Y 0.0
+                                  (font-color red) (font-flags shadow kerning large middle)))
+                )
+              
+              (set-width! fnt (get-screen-x 0.8))
+              (set-height! fnt (get-screen-y 0.1))
+              
+              (loop
+                (suspend)
+                
+                (set-setting! 'music *music-to-be-less-annoying* 0.0 0)
+                (cond
+                  ((not (cpad-hold? 0 r3))
+                    (if (or (cpad-pressed? 0 left) (cpad-hold? 0 l1))
+                      (-! *font-string-val* 1))
+                    (if (or (cpad-pressed? 0 right) (cpad-hold? 0 r1))
+                      (+! *font-string-val* 1))
+                    )
+                  (else
+                    (if (or (cpad-pressed? 0 left) (cpad-hold? 0 l1))
+                      (-! *text-id-val* 1))
+                    (if (or (cpad-pressed? 0 right) (cpad-hold? 0 r1))
+                      (+! *text-id-val* 1))
+                    )
+                  )
+                (minmax! *font-string-val* 1 #xfff)
+                
+                (let ((chars (1+ (/ (log2 *font-string-val*) 8))))
+                  (dotimes (i chars)
+                    (set! (-> *font-string* data (- chars i 1)) (ash *font-string-val* (* i -8))))
+                  (set! (-> *font-string* data (1+ (/ (log2 *font-string-val*) 8))) 0)
+                  )
+                
+                (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                             (bucket-id debug-no-zbuf2))
+                    (set-scale! fnt 1.0)
+                    (set-origin! fnt (get-screen-x 0.5) (- FONT_ENCODE_TEXT_Y 25))
+                    (set-flags! fnt (font-flags shadow kerning middle))
+                    (draw-string (string-format "#x~x (~x ~x ~x ~x)" *font-string-val*
+                                                                     (-> *font-string* data 0)
+                                                                     (-> *font-string* data 1)
+                                                                     (-> *font-string* data 2)
+                                                                     (-> *font-string* data 3))
+                                 buf fnt)
+                    (set-origin! fnt (get-screen-x 0.5) (+ FONT_ENCODE_TEXT_Y 50))
+                    (draw-string (string-format "#x~x" *text-id-val*) buf fnt)
+                    (set-flags! fnt (font-flags shadow kerning large middle))
+                    (set-origin! fnt (get-screen-x 0.5) FONT_ENCODE_TEXT_Y)
+                    (draw-string *font-string* buf fnt)
+                    (set-origin! fnt (get-screen-x 0.5) (+ FONT_ENCODE_TEXT_Y 75))
+                    (set-scale! fnt 0.75)
+                    (draw-string (lookup-text! *common-text* (the text-id *text-id-val*) #f) buf fnt)
+                    )
+                )
+              )
+          
+          )
+      )
+  )
+
+(font-encode-test-start)
+

@@ -1,0 +1,9 @@
+("CGC.DGO"
+ ("ctygenc-part.o"
+  "tpage-1605.go"
+  "tpage-2285.go"
+  "tpage-1612.go"
+  "tpage-1639.go"
+  "ctyn-lamp-ag.go"
+  "ctygenc-vis.go"
+ ))

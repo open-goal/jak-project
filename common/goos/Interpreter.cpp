@@ -9,7 +9,10 @@
 
 #include "ParseHelpers.h"
 
+#include "common/goos/Printer.h"
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
 #include "third-party/fmt/core.h"
@@ -52,6 +55,7 @@ Interpreter::Interpreter(const std::string& username) {
                    {"begin", &Interpreter::eval_begin},
                    {"exit", &Interpreter::eval_exit},
                    {"read", &Interpreter::eval_read},
+                   {"read-data-file", &Interpreter::eval_read_data_file},
                    {"read-file", &Interpreter::eval_read_file},
                    {"print", &Interpreter::eval_print},
                    {"inspect", &Interpreter::eval_inspect},
@@ -81,6 +85,10 @@ Interpreter::Interpreter(const std::string& username) {
                    {"string-ref", &Interpreter::eval_string_ref},
                    {"string-length", &Interpreter::eval_string_length},
                    {"string-append", &Interpreter::eval_string_append},
+                   {"string-starts-with?", &Interpreter::eval_string_starts_with},
+                   {"string-ends-with?", &Interpreter::eval_string_ends_with},
+                   {"string-split", &Interpreter::eval_string_split},
+                   {"string-substr", &Interpreter::eval_string_substr},
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
                    {"string->symbol", &Interpreter::eval_string_to_symbol},
@@ -159,7 +167,7 @@ HeapObject* Interpreter::intern_ptr(const std::string& name) {
 /*!
  * Display the REPL, which will run until the user executes exit.
  */
-void Interpreter::execute_repl(ReplWrapper& repl) {
+void Interpreter::execute_repl(REPL::Wrapper& repl) {
   want_exit = false;
   while (!want_exit) {
     try {
@@ -194,9 +202,8 @@ void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
  */
 Object Interpreter::eval_with_rewind(const Object& obj,
                                      const std::shared_ptr<EnvironmentObject>& env) {
-  Object result = Object::make_empty_list();
   try {
-    result = eval(obj, env);
+    return eval(obj, env);
   } catch (std::runtime_error& e) {
     if (!disable_printing) {
       printf("-----------------------------------------\n");
@@ -204,7 +211,6 @@ Object Interpreter::eval_with_rewind(const Object& obj,
     }
     throw e;
   }
-  return result;
 }
 
 /*!
@@ -254,14 +260,14 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
   Arguments args;
 
   // loop over forms in list
-  Object current = rest;
-  while (!current.is_empty_list()) {
-    auto arg = current.as_pair()->car;
+  const Object* current = &rest;
+  while (!current->is_empty_list()) {
+    const auto& arg = current->as_pair()->car;
 
     // did we get a ":keyword"
     if (arg.is_symbol() && arg.as_symbol()->name.at(0) == ':') {
       auto key_name = arg.as_symbol()->name.substr(1);
-      auto kv = spec.named.find(key_name);
+      const auto& kv = spec.named.find(key_name);
 
       // check for unknown key name
       if (!spec.varargs && kv == spec.named.end()) {
@@ -274,12 +280,12 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
       }
 
       // check for well-formed :key value expression
-      current = current.as_pair()->cdr;
-      if (current.is_empty_list()) {
+      current = &current->as_pair()->cdr;
+      if (current->is_empty_list()) {
         throw_eval_error(form, "Key argument didn't have a value");
       }
 
-      args.named[key_name] = current.as_pair()->car;
+      args.named[key_name] = current->as_pair()->car;
     } else {
       // not a keyword. Add to unnamed or rest, depending on what we expect
       if (spec.varargs || args.unnamed.size() < spec.unnamed.size()) {
@@ -288,12 +294,12 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
         args.rest.push_back(arg);
       }
     }
-    current = current.as_pair()->cdr;
+    current = &current->as_pair()->cdr;
   }
 
   // Check expected key args and set default values on unset ones if possible
   for (auto& kv : spec.named) {
-    auto defined_kv = args.named.find(kv.first);
+    const auto& defined_kv = args.named.find(kv.first);
     if (defined_kv == args.named.end()) {
       // key arg not given by user, try to use a default value.
       if (kv.second.has_default) {
@@ -303,6 +309,48 @@ Arguments Interpreter::get_args(const Object& form, const Object& rest, const Ar
                          "key argument \"" + kv.first + "\" wasn't given and has no default value");
       }
     }
+  }
+
+  // Check argument size, if spec defines it
+  if (!spec.varargs) {
+    if (args.unnamed.size() < spec.unnamed.size()) {
+      throw_eval_error(form, "didn't get enough arguments");
+    }
+    ASSERT(args.unnamed.size() == spec.unnamed.size());
+
+    if (!args.rest.empty() && spec.rest.empty()) {
+      throw_eval_error(form, "got too many arguments");
+    }
+  }
+
+  return args;
+}
+
+/*!
+ * Same as get_args, but named :key arguments are not parsed.
+ */
+Arguments Interpreter::get_args_no_named(const Object& form,
+                                         const Object& rest,
+                                         const ArgumentSpec& spec) {
+  Arguments args;
+
+  // Check expected key args, which should be none
+  if (!spec.named.empty()) {
+    throw_eval_error(form, "key arguments were expected in get_args_no_named");
+  }
+
+  // loop over forms in list
+  Object current = rest;
+  while (!current.is_empty_list()) {
+    auto arg = current.as_pair()->car;
+
+    // not a keyword. Add to unnamed or rest, depending on what we expect
+    if (spec.varargs || args.unnamed.size() < spec.unnamed.size()) {
+      args.unnamed.push_back(arg);
+    } else {
+      args.rest.push_back(arg);
+    }
+    current = current.as_pair()->cdr;
   }
 
   // Check argument size, if spec defines it
@@ -508,7 +556,7 @@ bool try_symbol_lookup(const Object& sym,
   // loop up envs until we find it.
   EnvironmentObject* search_env = env.get();
   for (;;) {
-    auto kv = search_env->vars.find(sym.as_symbol());
+    const auto& kv = search_env->vars.find(sym.as_symbol());
     if (kv != search_env->vars.end()) {
       *dest = kv->second;
       return true;
@@ -545,22 +593,22 @@ bool Interpreter::eval_symbol(const Object& sym,
  * Evaluate a pair, either as special form, builtin form, macro application, or lambda application.
  */
 Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<EnvironmentObject>& env) {
-  auto pair = obj.as_pair();
-  Object head = pair->car;
-  Object rest = pair->cdr;
+  const auto& pair = obj.as_pair();
+  const Object& head = pair->car;
+  const Object& rest = pair->cdr;
 
   // first see if we got a symbol:
   if (head.type == ObjectType::SYMBOL) {
-    auto head_sym = head.as_symbol();
+    const auto& head_sym = head.as_symbol();
 
     // try a special form first
-    auto kv_sf = special_forms.find(head_sym->name);
+    const auto& kv_sf = special_forms.find(head_sym->name);
     if (kv_sf != special_forms.end()) {
       return ((*this).*(kv_sf->second))(obj, rest, env);
     }
 
     // try builtins next
-    auto kv_b = builtin_forms.find(head_sym->name);
+    const auto& kv_b = builtin_forms.find(head_sym->name);
     if (kv_b != builtin_forms.end()) {
       Arguments args = get_args(obj, rest, make_varargs());
       // all "built-in" forms expect arguments to be evaluated (that's why they aren't special)
@@ -569,7 +617,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
     }
 
     // try custom forms next
-    auto kv_u = m_custom_forms.find(head_sym->name);
+    const auto& kv_u = m_custom_forms.find(head_sym->name);
     if (kv_u != m_custom_forms.end()) {
       Arguments args = get_args(obj, rest, make_varargs());
       return (kv_u->second)(obj, args, env);
@@ -578,7 +626,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
     // try macros next
     Object macro_obj;
     if (try_symbol_lookup(head, env, &macro_obj) && macro_obj.is_macro()) {
-      auto macro = macro_obj.as_macro();
+      const auto& macro = macro_obj.as_macro();
       Arguments args = get_args(obj, rest, macro->args);
 
       auto mac_env_obj = EnvironmentObject::make_new();
@@ -596,7 +644,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
     throw_eval_error(obj, "head of form didn't evaluate to lambda");
   }
 
-  auto lam = eval_head.as_lambda();
+  const auto& lam = eval_head.as_lambda();
   Arguments args = get_args(obj, rest, lam->args);
   eval_args(&args, env);
   auto lam_env_obj = EnvironmentObject::make_new();
@@ -760,8 +808,10 @@ Object Interpreter::eval_quote(const Object& form,
                                const Object& rest,
                                const std::shared_ptr<EnvironmentObject>& env) {
   (void)env;
-  auto args = get_args(form, rest, make_varargs());
-  vararg_check(form, args, {{}}, {});
+  auto args = get_args_no_named(form, rest, make_varargs());
+  if (args.unnamed.size() != 1) {
+    throw_eval_error(form, "invalid number of arguments to quote");
+  }
   return args.unnamed.front();
 }
 
@@ -770,53 +820,55 @@ Object Interpreter::eval_quote(const Object& form,
  */
 Object Interpreter::quasiquote_helper(const Object& form,
                                       const std::shared_ptr<EnvironmentObject>& env) {
-  Object lst = form;
+  const Object* lst_iter = &form;
   std::vector<Object> result;
   for (;;) {
-    if (lst.type == ObjectType::PAIR) {
-      Object item = lst.as_pair()->car;
+    if (lst_iter->type == ObjectType::PAIR) {
+      const Object& item = lst_iter->as_pair()->car;
       if (item.type == ObjectType::PAIR) {
         if (item.as_pair()->car.type == ObjectType::SYMBOL &&
             item.as_pair()->car.as_symbol()->name == "unquote") {
-          Object unquote_arg = item.as_pair()->cdr;
+          const Object& unquote_arg = item.as_pair()->cdr;
           if (unquote_arg.type != ObjectType::PAIR ||
               unquote_arg.as_pair()->cdr.type != ObjectType::EMPTY_LIST) {
             throw_eval_error(form, "unquote must have exactly 1 arg");
           }
-          item = eval_with_rewind(unquote_arg.as_pair()->car, env);
+          result.push_back(eval_with_rewind(unquote_arg.as_pair()->car, env));
+          lst_iter = &lst_iter->as_pair()->cdr;
+          continue;
         } else if (item.as_pair()->car.type == ObjectType::SYMBOL &&
                    item.as_pair()->car.as_symbol()->name == "unquote-splicing") {
-          Object unquote_arg = item.as_pair()->cdr;
+          const Object& unquote_arg = item.as_pair()->cdr;
           if (unquote_arg.type != ObjectType::PAIR ||
               unquote_arg.as_pair()->cdr.type != ObjectType::EMPTY_LIST) {
             throw_eval_error(form, "unquote must have exactly 1 arg");
           }
-          item = eval_with_rewind(unquote_arg.as_pair()->car, env);
 
           // bypass normal addition:
-          lst = lst.as_pair()->cdr;
-          Object to_add = item;
+          lst_iter = &lst_iter->as_pair()->cdr;
+          Object splice_result = eval_with_rewind(unquote_arg.as_pair()->car, env);
+          const Object* to_add = &splice_result;
           for (;;) {
-            if (to_add.type == ObjectType::PAIR) {
-              result.push_back(to_add.as_pair()->car);
-              to_add = to_add.as_pair()->cdr;
-            } else if (to_add.type == ObjectType::EMPTY_LIST) {
+            if (to_add->type == ObjectType::PAIR) {
+              result.push_back(to_add->as_pair()->car);
+              to_add = &to_add->as_pair()->cdr;
+            } else if (to_add->type == ObjectType::EMPTY_LIST) {
               break;
             } else {
               throw_eval_error(form, "malformed unquote-splicing result");
             }
           }
           continue;
-        }
-
-        else {
-          item = quasiquote_helper(item, env);
+        } else {
+          result.push_back(quasiquote_helper(item, env));
+          lst_iter = &lst_iter->as_pair()->cdr;
+          continue;
         }
       }
-      lst = lst.as_pair()->cdr;
       result.push_back(item);
-    } else if (lst.type == ObjectType::EMPTY_LIST) {
-      return build_list(result);
+      lst_iter = &lst_iter->as_pair()->cdr;
+    } else if (lst_iter->type == ObjectType::EMPTY_LIST) {
+      return build_list(std::move(result));
     } else {
       throw_eval_error(form, "malformed quasiquote");
     }
@@ -998,6 +1050,23 @@ Object Interpreter::eval_read(const Object& form,
     throw_eval_error(form, std::string("reader error inside of read:\n") + e.what());
   }
 
+  return Object::make_empty_list();
+}
+
+/*!
+ * Reads list data from a file, returns the pair. Not a lot of safety here!
+ */
+Object Interpreter::eval_read_data_file(const Object& form,
+                                        Arguments& args,
+                                        const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+
+  try {
+    return reader.read_from_file({args.unnamed.at(0).as_string()->data}).as_pair()->cdr;
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
+  }
   return Object::make_empty_list();
 }
 
@@ -1590,7 +1659,7 @@ Object Interpreter::eval_format(const Object& form,
                    fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
 
   if (truthy(dest)) {
-    printf("%s", formatted.c_str());
+    lg::print(formatted.c_str());
   }
 
   return StringObject::make_new(formatted);
@@ -1645,6 +1714,57 @@ Object Interpreter::eval_string_append(const Object& form,
   }
 
   return StringObject::make_new(result);
+}
+
+Object Interpreter::eval_string_starts_with(const Object& form,
+                                            Arguments& args,
+                                            const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& suffix = args.unnamed.at(1).as_string()->data;
+
+  if (str_util::starts_with(str, suffix)) {
+    return SymbolObject::make_new(reader.symbolTable, "#t");
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#f");
+}
+
+Object Interpreter::eval_string_ends_with(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& suffix = args.unnamed.at(1).as_string()->data;
+
+  if (str_util::ends_with(str, suffix)) {
+    return SymbolObject::make_new(reader.symbolTable, "#t");
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#f");
+}
+
+Object Interpreter::eval_string_split(const Object& form,
+                                      Arguments& args,
+                                      const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::STRING}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto& delim = args.unnamed.at(1).as_string()->data;
+
+  return pretty_print::build_list(str_util::split(str, delim.at(0)));
+}
+
+Object Interpreter::eval_string_substr(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::INTEGER, ObjectType::INTEGER}, {});
+  auto& str = args.unnamed.at(0).as_string()->data;
+  auto off = args.unnamed.at(1).as_int();
+  auto len = args.unnamed.at(2).as_int();
+
+  return StringObject::make_new(len != 0 ? str.substr(off, len) : str.substr(off));
 }
 
 Object Interpreter::eval_ash(const Object& form,
@@ -1712,9 +1832,17 @@ Object Interpreter::eval_make_string_hash_table(const Object& form,
 Object Interpreter::eval_hash_table_set(const Object& form,
                                         Arguments& args,
                                         const std::shared_ptr<EnvironmentObject>& /*env*/) {
-  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING, {}}, {});
-  args.unnamed.at(0).as_string_hash_table()->data[args.unnamed.at(1).as_string()->data] =
-      args.unnamed.at(2);
+  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, {}, {}}, {});
+  const char* str = nullptr;
+  if (args.unnamed.at(1).is_symbol()) {
+    str = args.unnamed.at(1).as_symbol()->name.c_str();
+  } else if (args.unnamed.at(1).is_string()) {
+    str = args.unnamed.at(1).as_string()->data.c_str();
+  } else {
+    throw_eval_error(form, "Hash table must use symbol or string as the key.");
+  }
+
+  args.unnamed.at(0).as_string_hash_table()->data[str] = args.unnamed.at(2);
   return Object::make_empty_list();
 }
 
@@ -1724,9 +1852,18 @@ Object Interpreter::eval_hash_table_set(const Object& form,
 Object Interpreter::eval_hash_table_try_ref(const Object& form,
                                             Arguments& args,
                                             const std::shared_ptr<EnvironmentObject>& /*env*/) {
-  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, ObjectType::STRING}, {});
+  vararg_check(form, args, {ObjectType::STRING_HASH_TABLE, {}}, {});
   const auto* table = args.unnamed.at(0).as_string_hash_table();
-  const auto& it = table->data.find(args.unnamed.at(1).as_string()->data);
+
+  const char* str = nullptr;
+  if (args.unnamed.at(1).is_symbol()) {
+    str = args.unnamed.at(1).as_symbol()->name.c_str();
+  } else if (args.unnamed.at(1).is_string()) {
+    str = args.unnamed.at(1).as_string()->data.c_str();
+  } else {
+    throw_eval_error(form, "Hash table must use symbol or string as the key.");
+  }
+  const auto& it = table->data.find(str);
   if (it == table->data.end()) {
     // not in table
     return PairObject::make_new(SymbolObject::make_new(reader.symbolTable, "#f"),

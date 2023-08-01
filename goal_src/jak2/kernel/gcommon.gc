@@ -13,6 +13,8 @@
 
 ;; disable PS2 only code and enable PC-specific code
 (defglobalconstant PC_PORT #t)
+;; removes level loading d3mo mode changes when enabled
+(defglobalconstant DEMO_HACK #f)
 
 ;; whether we're allowed to use more memory than the original game or not
 (defglobalconstant BIG_MEMORY #t)
@@ -1087,9 +1089,9 @@
   )
 
 (define-extern boolean type) ;; not really... but they use it here as if it was one.
-(define-extern valid? (function object type symbol symbol object symbol))
+(define-extern valid? (function object type string symbol object symbol))
 
-(defun valid? ((arg0 object) (arg1 type) (arg2 symbol) (arg3 symbol) (arg4 object))
+(defun valid? ((obj object) (expected-type type) (name string) (allow-false symbol) (print-dest object))
   "Check if the given object is valid. This will work for structures, pairs, basics, bintegers, symbols, and types.
    If you set expected-type to #f, it just checks for a 4-byte aligned address that's in GOAL memory.
    If you're checking a structure, set expected-type to structure. This requires 16-byte alignment
@@ -1103,21 +1105,21 @@
    Use a name of #f to suppress error prints.
    "
   (let ((v1-1
-          (and (>= (the-as uint arg0) (start-of-symbol-table)) (< (the-as uint arg0) END_OF_MEMORY))
+          (and (>= (the-as uint obj) (start-of-symbol-table)) (< (the-as uint obj) END_OF_MEMORY))
           )
         )
     (cond
-      ((not arg1)
+      ((not expected-type)
        (cond
-         ((logtest? (the-as int arg0) 3)
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object (misaligned)~%" arg0 arg2)
+         ((logtest? (the-as int obj) 3)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" obj name)
               )
           #f
           )
          ((not v1-1)
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object (bad address)~%" arg0 arg2)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" obj name)
               )
           #f
           )
@@ -1126,20 +1128,20 @@
            )
          )
        )
-      ((and arg3 (not arg0))
+      ((and allow-false (not obj))
        #t
        )
-      ((= arg1 structure)
+      ((= expected-type structure)
        (cond
-         ((logtest? (the-as int arg0) 15)
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+         ((logtest? (the-as int obj) 15)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
               )
           #f
           )
-         ((or (not v1-1) (< (the-as uint arg0) (end-of-symbol-table)))
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+         ((or (not v1-1) (< (the-as uint obj) (end-of-symbol-table)))
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
               )
           #f
           )
@@ -1148,17 +1150,17 @@
            )
          )
        )
-      ((= arg1 pair)
+      ((= expected-type pair)
        (cond
-         ((not (pair? arg0))
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+         ((not (pair? obj))
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
               )
           #f
           )
          ((not v1-1)
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
               )
           #f
           )
@@ -1167,30 +1169,30 @@
            )
          )
        )
-      ((= arg1 binteger)
+      ((= expected-type binteger)
        (cond
-         ((zero? (logand (the-as int arg0) 7))
+         ((zero? (logand (the-as int obj) 7))
           #t
           )
          (else
-           (if arg2
-               (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
                )
            #f
            )
          )
        )
-      ((or (= arg1 symbol) (= arg1 boolean))
+      ((or (= expected-type symbol) (= expected-type boolean))
        (cond
-         ((zero? (logand (the-as int arg0) 1))
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+         ((zero? (logand (the-as int obj) 1))
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
               )
           #f
           )
-         ((or (not v1-1) (< (the-as int arg0) (start-of-symbol-table))(>= (the-as int arg0) (end-of-symbol-table)))
-          (if arg2
-              (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+         ((or (not v1-1) (< (the-as int obj) (start-of-symbol-table))(>= (the-as int obj) (end-of-symbol-table)))
+          (if name
+              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
               )
           #f
           )
@@ -1199,67 +1201,67 @@
            )
          )
        )
-      ((!= (logand (the-as int arg0) 7) 4)
-       (if arg2
-           (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" arg0 arg2 arg1)
+      ((!= (logand (the-as int obj) 7) 4)
+       (if name
+           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
            )
        #f
        )
       ((not v1-1)
-       (if arg2
-           (format arg4 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" arg0 arg2 arg1)
+       (if name
+           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
            )
        #f
        )
-      ((and (= arg1 type) (!= (rtype-of arg0) type))
-       (if arg2
+      ((and (= expected-type type) (!= (rtype-of obj) type))
+       (if name
            (format
-             arg4
+             print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-             arg0
-             arg2
-             arg1
-             (rtype-of arg0)
+             obj
+             name
+             expected-type
+             (rtype-of obj)
              )
            )
        #f
        )
-      ((and (!= arg1 type) (not (valid? (rtype-of arg0) type #f #t 0)))
-       (if arg2
+      ((and (!= expected-type type) (not (valid? (rtype-of obj) type (the-as string #f) #t 0)))
+       (if name
            (format
-             arg4
+             print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-             arg0
-             arg2
-             arg1
-             (rtype-of arg0)
+             obj
+             name
+             expected-type
+             (rtype-of obj)
              )
            )
        #f
        )
-      ((not (type? arg0 arg1))
-       (if arg2
+      ((not (type? obj expected-type))
+       (if name
            (format
-             arg4
+             print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
-             arg0
-             arg2
-             arg1
-             (rtype-of arg0)
+             obj
+             name
+             expected-type
+             (rtype-of obj)
              )
            )
        #f
        )
-      ((= arg1 symbol)
+      ((= expected-type symbol)
        (cond
-         ((>= (the-as uint arg0) (end-of-symbol-table))
-          (if arg2
+         ((>= (the-as uint obj) (end-of-symbol-table))
+          (if name
               (format
-                arg4
+                print-dest
                 "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
-                arg0
-                arg2
-                arg1
+                obj
+                name
+                expected-type
                 )
               )
           #f
@@ -1269,14 +1271,14 @@
            )
          )
        )
-      ((< (the-as uint arg0) (end-of-symbol-table))
-       (if arg2
+      ((< (the-as uint obj) (end-of-symbol-table))
+       (if name
            (format
-             arg4
+             print-dest
              "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
-             arg0
-             arg2
-             arg1
+             obj
+             name
+             expected-type
              )
            )
        #f
@@ -1320,7 +1322,7 @@
      )
   )
 
-(defmacro with-profiler (name &rest body)
+(defmacro with-pc-profiler (name &rest body)
   "Execute the body in a named profiler block.
    Do not `return` or `go` from inside this block,
    otherwise the end will be skipped."
@@ -1372,8 +1374,27 @@
        )
    )
 
+(defmacro cmove-#f-nonzero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest ,src)
+       (set! ,dest #f)
+       )
+   )
+
 (defmacro empty-form ()
   `(none)
+  )
+
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
+  )
+
+(defmacro .sra (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  )
+
+(defmacro l32-false-check (in)
+  `(- (logand #xffffffff (the-as uint ,in)) (the-as uint #f))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -1388,4 +1409,8 @@
   (fake-asm .mfc0 dest src)
   ;; Copies the contents of a gpr to a cop0 (system control) register
   (fake-asm .mtc0 dest src)
+  ;; Move to perf counter register
+  (fake-asm .mtpc src dest)
+  ;; Move from perf counter register
+  (fake-asm .mfpc dest src)
   )

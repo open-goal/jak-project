@@ -5,6 +5,7 @@
 
 #include "common/link_types.h"
 #include "common/util/Assert.h"
+#include "common/util/BitUtils.h"
 
 namespace {
 template <typename T>
@@ -158,7 +159,7 @@ std::vector<u8> DataObjectGenerator::generate_v4() {
   first_header.type_tag = 0xffffffff;
   first_header.length = sizeof(LinkHeaderV2) + link.size();
   first_header.version = 4;
-  first_header.code_size = 4 * m_words.size();
+  first_header.code_size = align16(4 * m_words.size());
 
   LinkHeaderV2 second_header;
   second_header.version = 2;

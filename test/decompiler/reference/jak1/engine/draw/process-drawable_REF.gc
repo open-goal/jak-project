@@ -233,11 +233,8 @@
   )
 
 ;; definition for function fill-skeleton-cache
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a2, 0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a2, 1]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
 (defun fill-skeleton-cache ((arg0 process-drawable))
   (let ((v1-0 (-> arg0 node-list))
         (a0-2 (-> arg0 draw skeleton))
@@ -302,7 +299,7 @@
         (let ((s4-0 (+ s5-0 2)))
           (+ s4-0 1)
           ((-> obj skel generate-frame-function)
-           (the-as (inline-array vector) (+ 2416 (the-as int (the-as terrain-context #x70000000))))
+           (the-as (inline-array vector) (-> (the-as terrain-context #x70000000) work foreground joint-work mtx-acc))
            s4-0
            obj
            )
@@ -410,14 +407,7 @@
               (s3-0 68)
               )
           (format (clear *temp-string*) "~2j~s art error for ~s" arg0 (-> self name))
-          (s5-0
-            s4-0
-            (the-as bucket-id s3-0)
-            *temp-string*
-            (-> self root trans)
-            (font-color orange-red)
-            (the-as vector2h #f)
-            )
+          (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* (-> self root trans) (font-color red) (the-as vector2h #f))
           )
         )
       (suspend)
@@ -498,7 +488,7 @@
           (let ((s0-0 (-> s4-0 data v1-28))
                 (v1-32 (res-lump-value (-> obj entity) 'options uint128))
                 )
-            (if (and (zero? (logand #x20000 v1-32)) (= (-> s0-0 type) shadow-geo))
+            (if (and (not (logtest? #x20000 v1-32)) (= (-> s0-0 type) shadow-geo))
                 (set! (-> s3-0 shadow) (the-as shadow-geo s0-0))
                 )
             )
@@ -620,7 +610,7 @@
                                     (* (-> grav-rt-body x) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 (align-opts adjust-xz-vel keep-other-velocities)))
+        (if (not (logtest? arg0 (align-opts adjust-xz-vel keep-other-velocities)))
             (set! (-> vel-rt-body z) 0.0)
             )
         )
@@ -637,7 +627,7 @@
                                     (* (-> grav-rt-body z) (-> *display* seconds-per-frame))
                                     )
               )
-        (if (zero? (logand arg0 (align-opts adjust-x-vel keep-other-velocities)))
+        (if (not (logtest? arg0 (align-opts adjust-x-vel keep-other-velocities)))
             (set! (-> vel-rt-body x) 0.0)
             )
         )
@@ -972,7 +962,7 @@
     (label cfg-27)
     (let ((a0-17 (-> gp-0 effect)))
       (if a0-17
-          (TODO-RENAME-9 a0-17)
+          (effect-control-method-9 a0-17)
           )
       )
     )
@@ -1088,7 +1078,7 @@
 (defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
   (while (and *target*
               (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-              (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+              (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
               )
     (suspend)
     )

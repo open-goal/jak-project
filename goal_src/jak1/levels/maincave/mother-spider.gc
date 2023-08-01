@@ -61,22 +61,22 @@
   )
 
 (defpart 2477
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
-    (sp-rnd-flt spt-num 0.0 1.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.35) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-rnd-flt spt-r 64.0 128.0 1.0)
-    (sp-flt spt-g 0.0)
-    (sp-rnd-flt spt-b 96.0 128.0 1.0)
-    (sp-rnd-flt spt-a 48.0 48.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0) (meters 0.006666667) 1.0)
-    (sp-flt spt-scalevel-y (meters 0.002))
-    (sp-flt spt-fade-a -0.4)
-    (sp-rnd-flt spt-accel-y -1.3653333 -1.3653333 1.0)
-    (sp-int spt-timer 210)
-    (sp-cpuinfo-flags bit2)
-    (sp-rnd-flt spt-conerot-x (degrees 90.0) (degrees 180.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+  :init-specs ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+    (:num 0.0 1.0)
+    (:scale-x (meters 0.1) (meters 0.35))
+    (:scale-y :copy scale-x)
+    (:r 64.0 128.0)
+    (:g 0.0)
+    (:b 96.0 128.0)
+    (:a 48.0 48.0)
+    (:vel-y (meters 0) (meters 0.006666667))
+    (:scalevel-y (meters 0.002))
+    (:fade-a -0.4)
+    (:accel-y (meters -0.00033333333) (meters -0.00033333333))
+    (:timer (seconds 0.7))
+    (:flags (bit2))
+    (:conerot-x (degrees 90) (degrees 180))
+    (:conerot-y (degrees 0) (degrees 360))
     )
   )
 
@@ -178,7 +178,7 @@
 
 (defbehavior mother-spider-leg-init-by-other mother-spider-leg ((arg0 mother-spider) (arg1 vector) (arg2 vector) (arg3 vector))
   (set! (-> self entity) (-> arg0 entity))
-  (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
+  (logior! (-> self mask) (process-mask enemy))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg1 quad))
   (vector-identity! (-> self root scale))
@@ -211,26 +211,26 @@
   :id 618
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2498 :period 90 :length 30))
+  :parts ((sp-item 2498 :period (seconds 0.3) :length (seconds 0.1)))
   )
 
 (defpart 2498
-  :init-specs ((sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x2))
-    (sp-rnd-flt spt-num 1.0 2.0 1.0)
-    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.35) 1.0)
-    (sp-copy-from-other spt-scale-y -4)
-    (sp-rnd-flt spt-r 64.0 128.0 1.0)
-    (sp-flt spt-g 0.0)
-    (sp-rnd-flt spt-b 96.0 128.0 1.0)
-    (sp-rnd-flt spt-a 48.0 48.0 1.0)
-    (sp-rnd-flt spt-vel-y (meters 0.01) (meters 0.0033333334) 1.0)
-    (sp-flt spt-scalevel-y (meters 0.002))
-    (sp-flt spt-fade-a -0.4)
-    (sp-flt spt-accel-y -2.7306666)
-    (sp-int spt-timer 210)
-    (sp-cpuinfo-flags bit2)
-    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 360.0) 1.0)
-    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+  :init-specs ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+    (:num 1.0 2.0)
+    (:scale-x (meters 0.1) (meters 0.35))
+    (:scale-y :copy scale-x)
+    (:r 64.0 128.0)
+    (:g 0.0)
+    (:b 96.0 128.0)
+    (:a 48.0 48.0)
+    (:vel-y (meters 0.01) (meters 0.0033333334))
+    (:scalevel-y (meters 0.002))
+    (:fade-a -0.4)
+    (:accel-y (meters -0.00066666666))
+    (:timer (seconds 0.7))
+    (:flags (bit2))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:conerot-y (degrees 0) (degrees 360))
     )
   )
 
@@ -253,8 +253,8 @@
                     )
                   (set! (-> gp-0 y) 0.0)
                   (vector-normalize! gp-0 1.0)
-                  (set! (-> self thread-vel) (+ -40960.0 (-> self thread-vel)))
-                  (if (TODO-RENAME-21 self gp-0 102400.0 #t)
+                  (+! (-> self thread-vel) -40960.0)
+                  (if (mother-spider-method-21 self gp-0 102400.0 #t)
                       (go mother-spider-die)
                       )
                   )
@@ -270,8 +270,8 @@
              )
            (set! (-> gp-1 y) 0.0)
            (vector-normalize! gp-1 1.0)
-           (set! (-> self thread-vel) (+ -40960.0 (-> self thread-vel)))
-           (if (TODO-RENAME-21 self gp-1 102400.0 #t)
+           (+! (-> self thread-vel) -40960.0)
+           (if (mother-spider-method-21 self gp-1 102400.0 #t)
                (go mother-spider-die)
                )
            )
@@ -292,8 +292,8 @@
              )
            (set! (-> gp-2 y) 0.0)
            (vector-normalize! gp-2 1.0)
-           (set! (-> self thread-vel) (+ -8192.0 (-> self thread-vel)))
-           (TODO-RENAME-21 self gp-2 40960.0 #f)
+           (+! (-> self thread-vel) -8192.0)
+           (mother-spider-method-21 self gp-2 40960.0 #f)
            )
          )
        )
@@ -361,7 +361,7 @@
 
 (defmethod is-player-stuck? mother-spider ((obj mother-spider))
   (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                                (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
                            )
              )
@@ -378,16 +378,16 @@
   #f
   )
 
-(defmethod STUB-27 mother-spider ((obj mother-spider))
+(defmethod mother-spider-method-27 mother-spider ((obj mother-spider))
   (none)
   )
 
-(defmethod STUB-28 mother-spider ((obj mother-spider))
+(defmethod mother-spider-method-28 mother-spider ((obj mother-spider))
   0
   (none)
   )
 
-(defmethod TODO-RENAME-24 mother-spider ((obj mother-spider))
+(defmethod shadow-handler mother-spider ((obj mother-spider))
   (cond
     ((and (-> obj draw shadow)
           (zero? (-> obj draw cur-lod))
@@ -399,7 +399,7 @@
            )
        (set! (-> a1-0 quad) (-> obj root-override trans quad))
        (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
-       (set! (-> a1-0 y) (+ -8192.0 (-> a1-0 y)))
+       (+! (-> a1-0 y) -8192.0)
        (cond
          ((>= (fill-and-probe-using-line-sphere
                 *collide-cache*
@@ -427,10 +427,8 @@
           0
           (let* ((f3-0 (vector-vector-distance (-> s5-0 intersect) (-> obj root-override trans)))
                  (f0-14 (* 0.000030517578 (fmin 32768.0 (fmax 0.0 (+ -57344.0 f3-0)))))
-                 (f0-15 (lerp 409600.0 40960.0 f0-14))
                  )
-            (set! (-> obj draw shadow-ctrl settings shadow-dir w) f0-15)
-            f0-15
+            (set! (-> obj draw shadow-ctrl settings shadow-dir w) (lerp 409600.0 40960.0 f0-14))
             )
           )
          (else
@@ -494,7 +492,7 @@
   #f
   )
 
-(defmethod TODO-RENAME-21 mother-spider ((obj mother-spider) (arg0 vector) (arg1 float) (arg2 symbol))
+(defmethod mother-spider-method-21 mother-spider ((obj mother-spider) (arg0 vector) (arg1 float) (arg2 symbol))
   (local-vars (sv-112 process) (sv-128 vector) (sv-144 vector))
   (let ((f30-0 (vector-length (-> obj swing-pos))))
     (when (< 0.0 f30-0)
@@ -566,11 +564,11 @@
   (>= (-> obj damage) 6)
   )
 
-(defmethod TODO-RENAME-29 mother-spider ((obj mother-spider) (arg0 symbol) (arg1 symbol))
+(defmethod mother-spider-method-29 mother-spider ((obj mother-spider) (arg0 symbol) (arg1 symbol))
   (let ((v1-1 (-> *display* base-frame-counter)))
     (when (!= v1-1 (-> obj last-update-time))
       (set! (-> obj last-update-time) v1-1)
-      (TODO-RENAME-23 obj)
+      (mother-spider-method-23 obj)
       (let ((f0-1 (fmax 0.0 (- (-> obj dist-from-anchor) (-> obj idle-dist-from-anchor)))))
         (cond
           ((>= f0-1 20480.0)
@@ -584,7 +582,7 @@
           )
         )
       (if arg0
-          (TODO-RENAME-24 obj)
+          (shadow-handler obj)
           )
       (let ((s4-1 (-> obj leg-socket-part-mask)))
         (when (nonzero? s4-1)
@@ -625,7 +623,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-23 mother-spider ((obj mother-spider))
+(defmethod mother-spider-method-23 mother-spider ((obj mother-spider))
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -936,7 +934,7 @@
             )
         )
       )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ((arg0 uint))
@@ -979,7 +977,7 @@
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1047,7 +1045,7 @@
         )
       )
     (if (or (not *target*) (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
-                                (zero? (logand (-> *target* control status) (cshape-moving-flags onsurf)))
+                                (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
             )
         (set! (-> self last-player-in-air-time) (-> *display* base-frame-counter))
@@ -1065,7 +1063,7 @@
         (when (sphere-in-view-frustum? (the-as sphere gp-2))
           (vector<-cspace! gp-2 (-> self node-list data 21))
           (set! (-> s5-2 quad) (-> (target-pos 0) quad))
-          (set! (-> s5-2 y) (+ 4915.2 (-> s5-2 y)))
+          (+! (-> s5-2 y) 4915.2)
           (cond
             ((< 24576.0 (vector-vector-distance gp-2 s5-2))
              (go mother-spider-spit)
@@ -1079,7 +1077,7 @@
           )
         )
       )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1121,7 +1119,7 @@
       (set! (-> self last-spit-time) 0)
       (go mother-spider-tracking)
       )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1155,7 +1153,7 @@
     (if (-> self hit?)
         (go mother-spider-hit-while-tracking)
         )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1172,7 +1170,7 @@
                   )
               (vector<-cspace! s4-0 (-> self node-list data 21))
               (set! (-> s5-0 quad) (-> (target-pos 0) quad))
-              (set! (-> s5-0 y) (+ 4915.2 (-> s5-0 y)))
+              (+! (-> s5-0 y) 4915.2)
               (when (< 24576.0 (vector-vector-distance s5-0 s4-0))
                 (let ((a2-1 (-> self node-list data 19 bone transform)))
                   (set-vector! s2-0 0.0 0.0 1.0 1.0)
@@ -1196,7 +1194,7 @@
                 (set! gp-0 #t)
                 (set! (-> self last-spit-time) (-> *display* base-frame-counter))
                 (vector-negate! s5-0 s5-0)
-                (TODO-RENAME-21 self s5-0 49152.0 #f)
+                (mother-spider-method-21 self s5-0 49152.0 #f)
                 (when (nonzero? (-> self max-baby-count))
                   (+! (-> self spit-counter) -1)
                   (when (< (-> self spit-counter) 0)
@@ -1236,26 +1234,26 @@
         (go mother-spider-traveling (the-as uint 0))
         )
     (if (and (>= (- (-> *display* base-frame-counter) (-> self started-birthing-time)) (seconds 6))
-             (zero? (logand (-> *target* state-flags)
+             (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                             )
-                    )
+                  )
              )
         (go mother-spider-traveling (the-as uint 1))
         )
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.25))
              (> (-> self birthing-counter) 0)
              (and (>= 49152.0 (- (-> self max-dist-from-anchor) (-> self dist-from-anchor)))
-                  (zero? (logand (-> *target* state-flags)
+                  (not (logtest? (-> *target* state-flags)
                                  (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
                                  )
-                         )
-                  (TODO-RENAME-21 (-> self nav) (-> self root-override trans))
+                       )
+                  (nav-control-method-21 (-> self nav) (-> self root-override trans))
                   )
              )
         (go mother-spider-birth-baby)
         )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1297,10 +1295,10 @@
     (if (letgo-player? self)
         (go mother-spider-traveling (the-as uint 0))
         )
-    (if (not (TODO-RENAME-21 (-> self nav) (-> self root-override trans)))
+    (if (not (nav-control-method-21 (-> self nav) (-> self root-override trans)))
         (go mother-spider-birthing)
         )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1313,7 +1311,7 @@
           (let ((s5-0 (new 'stack-no-clear 'vector))
                 (s4-0 (new 'stack-no-clear 'vector))
                 )
-            (when (TODO-RENAME-20 self s5-0 s4-0)
+            (when (mother-spider-method-20 self s5-0 s4-0)
               (process-spawn mother-spider-egg (-> self entity) (-> self root-override trans) s5-0 s4-0 :to self)
               (+! (-> self baby-count) 1)
               (+! (-> self birthing-counter) -1)
@@ -1331,76 +1329,10 @@
   :post (the-as (function none :behavior mother-spider) transform-post)
   )
 
-(defmethod TODO-RENAME-20 mother-spider ((obj mother-spider) (arg0 vector) (arg1 vector))
+(defmethod mother-spider-method-20 mother-spider ((obj mother-spider) (arg0 vector) (arg1 vector))
   (set! (-> obj nav nav-cull-radius) 40960.0)
-  (set-current-poly! (-> obj nav) (dummy-16 (-> obj nav) (-> obj root-override trans)))
-  (TODO-RENAME-28 (-> obj nav) (collide-kind
-                                 background
-                                 cak-1
-                                 cak-2
-                                 cak-3
-                                 target
-                                 water
-                                 powerup
-                                 crate
-                                 enemy
-                                 wall-object
-                                 projectile
-                                 ground-object
-                                 target-attack
-                                 mother-spider
-                                 cak-14
-                                 blue-eco-suck
-                                 unknown-16
-                                 unknown-17
-                                 unknown-18
-                                 unknown-19
-                                 unknown-20
-                                 unknown-21
-                                 unknown-22
-                                 unknown-23
-                                 unknown-24
-                                 unknown-25
-                                 unknown-26
-                                 unknown-27
-                                 unknown-28
-                                 unknown-29
-                                 unknown-30
-                                 unknown-31
-                                 unknown-32
-                                 unknown-33
-                                 unknown-34
-                                 unknown-35
-                                 unknown-36
-                                 unknown-37
-                                 unknown-38
-                                 unknown-39
-                                 unknown-40
-                                 unknown-41
-                                 unknown-42
-                                 unknown-43
-                                 unknown-44
-                                 unknown-45
-                                 unknown-46
-                                 unknown-47
-                                 unknown-48
-                                 unknown-49
-                                 unknown-50
-                                 unknown-51
-                                 unknown-52
-                                 unknown-53
-                                 unknown-54
-                                 unknown-55
-                                 unknown-56
-                                 unknown-57
-                                 unknown-58
-                                 unknown-59
-                                 unknown-60
-                                 unknown-61
-                                 unknown-62
-                                 unknown-63
-                                 )
-                  )
+  (set-current-poly! (-> obj nav) (nav-control-method-16 (-> obj nav) (-> obj root-override trans)))
+  (nav-control-method-28 (-> obj nav) (the-as collide-kind -1))
   (dotimes (s3-1 4)
     (let ((f28-0 (+ 32768.0 (-> obj orient-rot y)))
           (f30-0 (rand-vu-float-range 16384.0 40960.0))
@@ -1412,9 +1344,9 @@
           (set-vector! s1-0 (sin f28-1) 0.0 (cos f28-1) 1.0)
           )
         (vector-float*! s2-1 s1-0 f30-0)
-        (dummy-35 (-> obj nav) (-> obj nav travel) (-> obj root-override trans) s2-1 s1-0 f30-0)
+        (nav-control-method-35 (-> obj nav) (-> obj nav travel) (-> obj root-override trans) s2-1 s1-0 f30-0)
         )
-      (dummy-24 (-> obj nav) f30-0 (the-as clip-travel-vector-to-mesh-return-info #f))
+      (nav-control-method-24 (-> obj nav) f30-0 (the-as clip-travel-vector-to-mesh-return-info #f))
       )
     (cond
       ((>= (vector-xz-length (-> obj nav travel)) 4096.0)
@@ -1453,7 +1385,7 @@
         (s3-2 (new 'stack-no-clear 'collide-tri-result))
         )
     (set! (-> a1-12 quad) (-> arg0 quad))
-    (set! (-> a1-12 y) (+ 8192.0 (-> a1-12 y)))
+    (+! (-> a1-12 y) 8192.0)
     (cond
       ((>= (fill-and-probe-using-line-sphere
              *collide-cache*
@@ -1492,7 +1424,7 @@
     (if (= (-> self spin-vel) 0.0)
         (go mother-spider-birthing)
         )
-    (TODO-RENAME-29 self #t #t)
+    (mother-spider-method-29 self #t #t)
     (none)
     )
   :code (behavior ()
@@ -1537,7 +1469,7 @@
             (vector-! s2-0 s2-0 s3-0)
             (vector-normalize! s2-0 1.0)
             (set! (-> s1-0 quad) (-> s2-0 quad))
-            (set! (-> s1-0 y) (+ 0.3 (-> s1-0 y)))
+            (+! (-> s1-0 y) 0.3)
             (vector-normalize! s1-0 1.0)
             (process-spawn mother-spider-leg self s3-0 s2-0 s1-0 :to self)
             )
@@ -1548,7 +1480,7 @@
     (none)
     )
   :trans (behavior ()
-    (TODO-RENAME-29 self #f #f)
+    (mother-spider-method-29 self #f #f)
     (none)
     )
   :code (behavior ()
@@ -1573,7 +1505,7 @@
 (defstate mother-spider-die (mother-spider)
   :event mother-spider-death-event-handler
   :trans (behavior ()
-    (TODO-RENAME-29 self #f #f)
+    (mother-spider-method-29 self #f #f)
     (none)
     )
   :code (behavior ()
@@ -1628,7 +1560,7 @@
           (set! (-> s4-0 vector 3 z) (+ (-> arg0 anchor-trans z) (* f0-5 (-> v1-1 swing-arc-u))))
           )
         (if a1-0
-            (dummy-22 arg0 a1-0 (-> s4-0 vector 3))
+            (mother-spider-method-22 arg0 a1-0 (-> s4-0 vector 3))
             )
         (set! a1-0 s4-0)
         )
@@ -1638,7 +1570,7 @@
           )
       (vector-! a2-7 (-> arg0 root-override trans) (-> a0-11 vector 3))
       (vector+! a2-7 a2-7 (-> arg0 root-override trans))
-      (dummy-22 arg0 a1-0 a2-7)
+      (mother-spider-method-22 arg0 a1-0 a2-7)
       )
     )
   (dotimes (v1-16 (-> arg0 damage))
@@ -1661,7 +1593,7 @@
   (none)
   )
 
-(defmethod dummy-22 mother-spider ((obj mother-spider) (arg0 matrix) (arg1 vector))
+(defmethod mother-spider-method-22 mother-spider ((obj mother-spider) (arg0 matrix) (arg1 vector))
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
     (vector-! (-> arg0 vector 2) arg1 (-> arg0 vector 3))
@@ -1680,15 +1612,12 @@
     (vector-normalize! (-> arg0 vector 1) 1.0)
     (set! (-> arg0 vector 0 w) 0.0)
     (set! (-> arg0 vector 1 w) 0.0)
-    (let ((f0-8 0.0))
-      (set! (-> arg0 vector 2 w) f0-8)
-      f0-8
-      )
+    (set! (-> arg0 vector 2 w) 0.0)
     )
   )
 
 (defmethod run-logic? mother-spider ((obj mother-spider))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (< (vector-vector-xz-distance (-> obj root-override trans) (math-camera-pos)) (-> obj deactivate-xz-dist))
           (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
           (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-status no-skeleton-update)))
@@ -1731,7 +1660,7 @@
     (set! (-> obj activate-z-thresh) -12288.0)
     (set! (-> obj deactivate-z-thresh) 24985.6)
     )
-  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (logior! (-> obj mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind mother-spider))
@@ -1859,8 +1788,8 @@
           (set! (-> obj deactivate-xz-dist) (-> (the-as (pointer float) v0-31) 7))
           )
         (else
-          (set! (-> obj thread-min-trans y) (+ 28672.0 (-> obj thread-min-trans y)))
-          (set! (-> obj anchor-trans y) (+ 204800.0 (-> obj anchor-trans y)))
+          (+! (-> obj thread-min-trans y) 28672.0)
+          (+! (-> obj anchor-trans y) 204800.0)
           (set! (-> obj max-spit-xz-dist) 81920.0)
           (set! (-> obj activate-xz-dist) 143360.0)
           (set! (-> obj deactivate-xz-dist) 163430.4)
@@ -1934,7 +1863,3 @@
     )
   (none)
   )
-
-
-
-

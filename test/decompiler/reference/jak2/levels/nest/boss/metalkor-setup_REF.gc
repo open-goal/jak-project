@@ -1,0 +1,2202 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-bomb metalkor-bomb metalkor-bomb-lod0-jg metalkor-bomb-idle-ja
+              ((metalkor-bomb-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :sort 4
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rift-occlude rift-occlude rift-occlude-lod0-jg rift-occlude-idle-ja
+              ((rift-occlude-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-distort metalkor-distort metalkor-distort-lod0-jg metalkor-distort-idle-ja
+              ((metalkor-distort-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-explode metalkor-explode metalkor-explode-lod0-jg metalkor-explode-idle-ja
+              ((metalkor-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-kid kid kid-lod0-jg 19
+              ((kid-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :shadow kid-shadow-mg
+              :origin-joint-index 13
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-egg metalkor-egg metalkor-egg-lod0-jg metalkor-egg-tumble-ja
+              ((metalkor-egg-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow metalkor-egg-shadow-mg
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor metalkor metalkor-lod0-jg metalkor-idle-ja
+              ((metalkor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 2 8)
+              :shadow metalkor-shadow-mg
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-spinner metalkor metalkor-spinner-lod0-jg metalkor-spinner-idle-ja
+              ((metalkor-spinner-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 40)
+              :origin-joint-index 8
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-lowtorso metalkor-lowtorso metalkor-lowtorso-lod0-jg metalkor-lowtorso-idle-ja
+              ((metalkor-lowtorso-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -9 -12 22)
+              :shadow metalkor-lowtorso-shadow-mg
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-legs metalkor-legs metalkor-legs-lod0-jg metalkor-legs-idle-ja
+              ((metalkor-legs-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -9 2 15)
+              :shadow metalkor-legs-shadow-mg
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-metalkor-wings metalkor-wings metalkor-wings-lod0-jg metalkor-wings-idle-ja
+              ((metalkor-wings-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              :shadow metalkor-wings-shadow-mg
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-nestb-tail-bound nestb-tail-bound nestb-tail-bound-lod0-jg nestb-tail-bound-idle-ja
+              ((nestb-tail-bound-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              )
+
+;; definition of type metalkor-bomb
+(deftype metalkor-bomb (process-drawable)
+  ((root       collide-shape-moving    :override)
+   (joint-mods joint-mod            49 :offset-assert 200)
+   )
+  :heap-base #x110
+  :method-count-assert 21
+  :size-assert         #x18c
+  :flag-assert         #x150110018c
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type metalkor-bomb
+(defmethod inspect metalkor-bomb ((obj metalkor-bomb))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tjoint-mods[49] @ #x~X~%" (-> obj joint-mods))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gem-tracker
+(deftype gem-tracker (process)
+  ((gems            handle 10 :offset-assert 128)
+   (gems-collected  int8      :offset-assert 208)
+   (perm-byte-index int8      :offset-assert 209)
+   )
+  :heap-base #x60
+  :method-count-assert 15
+  :size-assert         #xd2
+  :flag-assert         #xf006000d2
+  (:methods
+    (idle () _type_ :state 14)
+    )
+  )
+
+;; definition for method 3 of type gem-tracker
+(defmethod inspect gem-tracker ((obj gem-tracker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tgems[10] @ #x~X~%" (-> obj gems))
+  (format #t "~2Tgems-collected: ~D~%" (-> obj gems-collected))
+  (format #t "~2Tperm-byte-index: ~D~%" (-> obj perm-byte-index))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function gem-tracker-get-slot
+(defbehavior gem-tracker-get-slot gem-tracker ((arg0 process))
+  (cond
+    (arg0
+      (dotimes (v1-0 10)
+        (if (= (handle->process (-> self gems v1-0)) arg0)
+            (return v1-0)
+            )
+        )
+      -1
+      )
+    (else
+      (let ((v1-3 (-> self gems-collected))
+            (v0-0 -1)
+            )
+        (dotimes (a0-1 10)
+          (if (handle->process (-> self gems a0-1))
+              (+! v1-3 1)
+              (set! v0-0 a0-1)
+              )
+          )
+        (if (>= v1-3 10)
+            (return -1)
+            )
+        v0-0
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (gem-tracker)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('spawn-with-gem?)
+       (!= (gem-tracker-get-slot (the-as process #f)) -1)
+       )
+      (('have-gem?)
+       (!= (gem-tracker-get-slot proc) -1)
+       )
+      (('change-gem 'flitter-change-gem 'wasp-change-gem)
+       (let ((v1-3 (gem-tracker-get-slot (the-as process (-> event param 0)))))
+         (when (!= v1-3 -1)
+           (let ((gp-1 (-> event param 1)))
+             (set! (-> self gems v1-3) (process->handle (the-as process gp-1)))
+             (if (type? gp-1 gem)
+                 (send-event (the-as process-tree gp-1) 'get-notify self)
+                 )
+             )
+           )
+         )
+       )
+      (('notify)
+       (case (-> event param 0)
+         (('pickup)
+          (+! (-> self gems-collected) 1)
+          (let ((v1-14 (-> self entity extra perm)))
+            (logior! (-> v1-14 status) (entity-perm-status bit-5))
+            (let ((v0-1 (the-as object (-> self gems-collected))))
+              (set! (-> v1-14 user-int8 (-> self perm-byte-index)) (the-as int v0-1))
+              v0-1
+              )
+            )
+          )
+         )
+       )
+      )
+    )
+  :code (the-as (function none :behavior gem-tracker) sleep-code)
+  )
+
+;; definition of type flitter-gem-tracker
+(deftype flitter-gem-tracker (gem-tracker)
+  ()
+  :heap-base #x60
+  :method-count-assert 15
+  :size-assert         #xd2
+  :flag-assert         #xf006000d2
+  )
+
+;; definition for method 3 of type flitter-gem-tracker
+(defmethod inspect flitter-gem-tracker ((obj flitter-gem-tracker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gem-tracker inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type wasp-gem-tracker
+(deftype wasp-gem-tracker (gem-tracker)
+  ()
+  :heap-base #x60
+  :method-count-assert 15
+  :size-assert         #xd2
+  :flag-assert         #xf006000d2
+  )
+
+;; definition for method 3 of type wasp-gem-tracker
+(defmethod inspect wasp-gem-tracker ((obj wasp-gem-tracker))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gem-tracker inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type rift-occlude
+(deftype rift-occlude (process-drawable)
+  ((original-trans vector :inline :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 21
+  :size-assert         #xe0
+  :flag-assert         #x15006000e0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type rift-occlude
+(defmethod inspect rift-occlude ((obj rift-occlude))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Toriginal-trans: #<vector @ #x~X>~%" (-> obj original-trans))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-distort
+(deftype metalkor-distort (process-drawable)
+  ((root collide-shape-moving  :override)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type metalkor-distort
+(defmethod inspect metalkor-distort ((obj metalkor-distort))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-explode
+(deftype metalkor-explode (process-drawable)
+  ((ring handle  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xd0
+  :flag-assert         #x15005000d0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type metalkor-explode
+(defmethod inspect metalkor-explode ((obj metalkor-explode))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tring: ~D~%" (-> obj ring))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-kid
+(deftype metalkor-kid (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type metalkor-kid
+(defmethod inspect metalkor-kid ((obj metalkor-kid))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type nestb-tail-bound
+(deftype nestb-tail-bound (process-drawable)
+  ()
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xc8
+  :flag-assert         #x15005000c8
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type nestb-tail-bound
+(defmethod inspect nestb-tail-bound ((obj nestb-tail-bound))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-ja-float-info
+(deftype metalkor-ja-float-info (structure)
+  ((float-anim    art-joint-anim  :offset-assert   0)
+   (channel-index int8            :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+;; definition for method 3 of type metalkor-ja-float-info
+(defmethod inspect metalkor-ja-float-info ((obj metalkor-ja-float-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'metalkor-ja-float-info)
+  (format #t "~1Tfloat-anim: ~A~%" (-> obj float-anim))
+  (format #t "~1Tchannel-index: ~D~%" (-> obj channel-index))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-spinner-info
+(deftype metalkor-spinner-info (structure)
+  ((joint-index  int8   :offset-assert   0)
+   (launch-angle float  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type metalkor-spinner-info
+(defmethod inspect metalkor-spinner-info ((obj metalkor-spinner-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'metalkor-spinner-info)
+  (format #t "~1Tjoint-index: ~D~%" (-> obj joint-index))
+  (format #t "~1Tlaunch-angle: ~f~%" (-> obj launch-angle))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-shot
+(deftype metalkor-shot (metalhead-shot)
+  ((old-transv vector :inline :offset-assert 496)
+   )
+  :heap-base #x180
+  :method-count-assert 40
+  :size-assert         #x200
+  :flag-assert         #x2801800200
+  )
+
+;; definition for method 3 of type metalkor-shot
+(defmethod inspect metalkor-shot ((obj metalkor-shot))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type metalhead-shot inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Told-transv: #<vector @ #x~X>~%" (-> obj old-transv))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *metalkor-flitter-nav-enemy-info*, type nav-enemy-info
+(define *metalkor-flitter-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script #f
+    :idle-anim -1
+    :notice-anim -1
+    :hostile-anim -1
+    :hit-anim -1
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim -1
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint -1
+    :notice-distance (meters 30)
+    :notice-distance-delta (meters 10)
+    :default-hit-points 1
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim -1
+    :turn-anim -1
+    :run-anim -1
+    :taunt-anim -1
+    :run-travel-speed (meters 6)
+    :run-acceleration (meters 1)
+    :run-turning-acceleration (meters 2)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 1)
+    :maximum-rotation-rate (degrees 720)
+    :notice-nav-radius (meters 1)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *metalkor-flitter-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition of type metalkor-flitter
+(deftype metalkor-flitter (flitter)
+  ()
+  :heap-base #x240
+  :method-count-assert 184
+  :size-assert         #x2b8
+  :flag-assert         #xb8024002b8
+  )
+
+;; definition for method 3 of type metalkor-flitter
+(defmethod inspect metalkor-flitter ((obj metalkor-flitter))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type flitter inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-wasp
+(deftype metalkor-wasp (wasp)
+  ()
+  :heap-base #x310
+  :method-count-assert 166
+  :size-assert         #x388
+  :flag-assert         #xa603100388
+  )
+
+;; definition for method 3 of type metalkor-wasp
+(defmethod inspect metalkor-wasp ((obj metalkor-wasp))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type wasp inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-spinner-chain-physics
+(deftype metalkor-spinner-chain-physics (chain-physics)
+  ((gravity-mult  float  :offset-assert 1392)
+   (velocity-mult float  :offset-assert 1396)
+   )
+  :method-count-assert 18
+  :size-assert         #x578
+  :flag-assert         #x1200000578
+  )
+
+;; definition for method 3 of type metalkor-spinner-chain-physics
+(defmethod inspect metalkor-spinner-chain-physics ((obj metalkor-spinner-chain-physics))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tchain-joints[20] @ #x~X~%" (-> obj chain-joints))
+  (format #t "~1Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~1Troot-joint-index: ~D~%" (-> obj root-joint-index))
+  (format #t "~1Tjoint-length: ~f~%" (-> obj joint-length))
+  (format #t "~1Tgravity: #<vector @ #x~X>~%" (-> obj gravity))
+  (format #t "~1Tgravity-target: #<vector @ #x~X>~%" (-> obj gravity-target))
+  (format #t "~1Tstretch-vel: ~f~%" (-> obj stretch-vel))
+  (format #t "~1Tstretch-vel-parallel: ~f~%" (-> obj stretch-vel-parallel))
+  (format #t "~1Tcompress-vel: ~f~%" (-> obj compress-vel))
+  (format #t "~1Tcompress-vel-parallel: ~f~%" (-> obj compress-vel-parallel))
+  (format #t "~1Tnegate-y: ~A~%" (-> obj negate-y))
+  (format #t "~1Taxial-slop: ~f~%" (-> obj axial-slop))
+  (format #t "~1Tmaximum-stretch: ~f~%" (-> obj maximum-stretch))
+  (format #t "~1Tturn-off-start: ~D~%" (-> obj turn-off-start))
+  (format #t "~1Tturn-off-duration: ~D~%" (-> obj turn-off-duration))
+  (format #t "~1Tgravity-mult: ~f~%" (-> obj gravity-mult))
+  (format #t "~1Tvelocity-mult: ~f~%" (-> obj velocity-mult))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-spinner
+(deftype metalkor-spinner (process-drawable)
+  ((parent-joint-index int8                                   :offset-assert 200)
+   (target-pos         vector                         :inline :offset-assert 208)
+   (chain              metalkor-spinner-chain-physics         :offset-assert 224)
+   (anim-speed         float                                  :offset-assert 228)
+   )
+  :heap-base #x70
+  :method-count-assert 23
+  :size-assert         #xe8
+  :flag-assert         #x17007000e8
+  (:methods
+    (break-it () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (shoot-out () _type_ :state 22)
+    )
+  )
+
+;; definition for method 3 of type metalkor-spinner
+(defmethod inspect metalkor-spinner ((obj metalkor-spinner))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tparent-joint-index: ~D~%" (-> obj parent-joint-index))
+  (format #t "~2Ttarget-pos: #<vector @ #x~X>~%" (-> obj target-pos))
+  (format #t "~2Tchain: ~A~%" (-> obj chain))
+  (format #t "~2Tanim-speed: ~f~%" (-> obj anim-speed))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-egg
+(deftype metalkor-egg (process-focusable)
+  ((last-hit-normal vector     :inline :offset-assert 208)
+   (sticky-time     time-frame         :offset-assert 224)
+   (flitter-slot    int8               :offset-assert 232)
+   )
+  :heap-base #x70
+  :method-count-assert 31
+  :size-assert         #xe9
+  :flag-assert         #x1f007000e9
+  (:methods
+    (egg-pop () _type_ :state 27)
+    (fall () _type_ :state 28)
+    (hatch () _type_ :state 29)
+    (idle () _type_ :state 30)
+    )
+  )
+
+;; definition for method 3 of type metalkor-egg
+(defmethod inspect metalkor-egg ((obj metalkor-egg))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tlast-hit-normal: #<vector @ #x~X>~%" (-> obj last-hit-normal))
+  (format #t "~2Tsticky-time: ~D~%" (-> obj sticky-time))
+  (format #t "~2Tflitter-slot: ~D~%" (-> obj flitter-slot))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-wings
+(deftype metalkor-wings (process-drawable)
+  ((prefix string  :offset-assert 200)
+   )
+  :heap-base #x50
+  :method-count-assert 21
+  :size-assert         #xcc
+  :flag-assert         #x15005000cc
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type metalkor-wings
+(defmethod inspect metalkor-wings ((obj metalkor-wings))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tprefix: ~A~%" (-> obj prefix))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-foot-lock
+(deftype metalkor-foot-lock (structure)
+  ((lock         cam-float-seeker :inline :offset-assert   0)
+   (old-position vector           :inline :offset-assert  32)
+   (initialized  symbol                   :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; definition for method 3 of type metalkor-foot-lock
+(defmethod inspect metalkor-foot-lock ((obj metalkor-foot-lock))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'metalkor-foot-lock)
+  (format #t "~1Tlock: #<cam-float-seeker @ #x~X>~%" (-> obj lock))
+  (format #t "~1Told-position: #<vector @ #x~X>~%" (-> obj old-position))
+  (format #t "~1Tinitialized: ~A~%" (-> obj initialized))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-legs
+(deftype metalkor-legs (process-focusable)
+  ((prefix        string                           :offset-assert 204)
+   (trackable     symbol                           :offset-assert 208)
+   (joint-ik      joint-mod-ik           6         :offset-assert 212)
+   (ja-float-info metalkor-ja-float-info 3 :inline :offset-assert 236)
+   (foot-locks    metalkor-foot-lock     6 :inline :offset        288)
+   )
+  :heap-base #x220
+  :method-count-assert 28
+  :size-assert         #x2a0
+  :flag-assert         #x1c022002a0
+  (:methods
+    (idle () _type_ :state 27)
+    )
+  )
+
+;; definition for method 3 of type metalkor-legs
+(defmethod inspect metalkor-legs ((obj metalkor-legs))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tprefix: ~A~%" (-> obj prefix))
+  (format #t "~2Ttrackable: ~A~%" (-> obj trackable))
+  (format #t "~2Tjoint-ik[6] @ #x~X~%" (-> obj joint-ik))
+  (format #t "~2Tja-float-info[3] @ #x~X~%" (-> obj ja-float-info))
+  (format #t "~2Tfoot-locks[6] @ #x~X~%" (-> obj foot-locks))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-chain-physics
+(deftype metalkor-chain-physics (chain-physics)
+  ((prev-rotation    float                      :offset-assert 1392)
+   (prev-y-rotation  float                      :offset-assert 1396)
+   (osc-z            oscillating-float  :inline :offset-assert 1400)
+   (osc-y            oscillating-float  :inline :offset-assert 1424)
+   (rand-z           delayed-rand-float :inline :offset-assert 1448)
+   (rand-y           delayed-rand-float :inline :offset-assert 1480)
+   (move-with-parent symbol                     :offset-assert 1508)
+   )
+  :method-count-assert 18
+  :size-assert         #x5e8
+  :flag-assert         #x12000005e8
+  )
+
+;; definition for method 3 of type metalkor-chain-physics
+(defmethod inspect metalkor-chain-physics ((obj metalkor-chain-physics))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tchain-joints[20] @ #x~X~%" (-> obj chain-joints))
+  (format #t "~1Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~1Troot-joint-index: ~D~%" (-> obj root-joint-index))
+  (format #t "~1Tjoint-length: ~f~%" (-> obj joint-length))
+  (format #t "~1Tgravity: #<vector @ #x~X>~%" (-> obj gravity))
+  (format #t "~1Tgravity-target: #<vector @ #x~X>~%" (-> obj gravity-target))
+  (format #t "~1Tstretch-vel: ~f~%" (-> obj stretch-vel))
+  (format #t "~1Tstretch-vel-parallel: ~f~%" (-> obj stretch-vel-parallel))
+  (format #t "~1Tcompress-vel: ~f~%" (-> obj compress-vel))
+  (format #t "~1Tcompress-vel-parallel: ~f~%" (-> obj compress-vel-parallel))
+  (format #t "~1Tnegate-y: ~A~%" (-> obj negate-y))
+  (format #t "~1Taxial-slop: ~f~%" (-> obj axial-slop))
+  (format #t "~1Tmaximum-stretch: ~f~%" (-> obj maximum-stretch))
+  (format #t "~1Tturn-off-start: ~D~%" (-> obj turn-off-start))
+  (format #t "~1Tturn-off-duration: ~D~%" (-> obj turn-off-duration))
+  (format #t "~1Tprev-rotation: ~f~%" (-> obj prev-rotation))
+  (format #t "~1Tprev-y-rotation: ~f~%" (-> obj prev-y-rotation))
+  (format #t "~1Tosc-z: #<oscillating-float @ #x~X>~%" (-> obj osc-z))
+  (format #t "~1Tosc-y: #<oscillating-float @ #x~X>~%" (-> obj osc-y))
+  (format #t "~1Trand-z: #<delayed-rand-float @ #x~X>~%" (-> obj rand-z))
+  (format #t "~1Trand-y: #<delayed-rand-float @ #x~X>~%" (-> obj rand-y))
+  (format #t "~1Tmove-with-parent: ~A~%" (-> obj move-with-parent))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor-lowtorso
+(deftype metalkor-lowtorso (process-focusable)
+  ((prefix               string                           :offset-assert 204)
+   (tail                 metalkor-chain-physics           :offset-assert 208)
+   (tail-initialized     symbol                           :offset-assert 212)
+   (spinners             handle                 4         :offset-assert 216)
+   (ja-float-info        metalkor-ja-float-info 3 :inline :offset-assert 248)
+   (no-collision-timer   time-frame                       :offset        296)
+   (egg-toss-joint-1     joint-mod                        :offset-assert 304)
+   (egg-toss-joint-2     joint-mod                        :offset-assert 308)
+   (egg-toss-joint-3     joint-mod                        :offset-assert 312)
+   (egg-toss-joint-angle oscillating-float      :inline   :offset-assert 316)
+   )
+  :heap-base #xe0
+  :method-count-assert 28
+  :size-assert         #x154
+  :flag-assert         #x1c00e00154
+  (:methods
+    (idle () _type_ :state 27)
+    )
+  )
+
+;; definition for method 3 of type metalkor-lowtorso
+(defmethod inspect metalkor-lowtorso ((obj metalkor-lowtorso))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tprefix: ~A~%" (-> obj prefix))
+  (format #t "~2Ttail: ~A~%" (-> obj tail))
+  (format #t "~2Ttail-initialized: ~A~%" (-> obj tail-initialized))
+  (format #t "~2Tspinners[4] @ #x~X~%" (-> obj spinners))
+  (format #t "~2Tja-float-info[3] @ #x~X~%" (-> obj ja-float-info))
+  (format #t "~2Tno-collision-timer: ~D~%" (-> obj no-collision-timer))
+  (format #t "~2Tegg-toss-joint-1: ~A~%" (-> obj egg-toss-joint-1))
+  (format #t "~2Tegg-toss-joint-2: ~A~%" (-> obj egg-toss-joint-2))
+  (format #t "~2Tegg-toss-joint-3: ~A~%" (-> obj egg-toss-joint-3))
+  (format #t "~2Tegg-toss-joint-angle: #<oscillating-float @ #x~X>~%" (-> obj egg-toss-joint-angle))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type metalkor
+(deftype metalkor (process-focusable)
+  ((trackable                       symbol                           :offset-assert 204)
+   (flitters                        handle                   10      :offset-assert 208)
+   (flitter-gem-tracker             handle                           :offset-assert 288)
+   (wasps                           handle                   3       :offset-assert 296)
+   (wasp-gem-tracker                handle                           :offset-assert 320)
+   (last-flitter-launched           int8                             :offset-assert 328)
+   (last-wasp-launched              int8                             :offset-assert 329)
+   (live-flitters                   int8                             :offset-assert 330)
+   (live-wasps                      int8                             :offset-assert 331)
+   (shoot-timer                     time-frame                       :offset-assert 336)
+   (target-angle                    float                            :offset-assert 344)
+   (wave-timer                      time-frame                       :offset-assert 352)
+   (in-wave                         symbol                           :offset-assert 360)
+   (flitter-timer                   time-frame                       :offset-assert 368)
+   (wasp-timer                      time-frame                       :offset-assert 376)
+   (launching-flitters              symbol                           :offset-assert 384)
+   (launching-wasps                 symbol                           :offset-assert 388)
+   (egg-timer                       time-frame                       :offset-assert 392)
+   (last-close-attack               int8                             :offset-assert 400)
+   (last-standing-attack            int8                             :offset-assert 401)
+   (stage                           int8                             :offset-assert 402)
+   (next-stage-timer                time-frame                       :offset-assert 408)
+   (initial-y                       float                            :offset-assert 416)
+   (shots-fired                     int16                            :offset-assert 420)
+   (stage-hit-points                float                            :offset-assert 424)
+   (hud                             handle                           :offset-assert 432)
+   (lowtorso                        handle                           :offset-assert 440)
+   (legs                            handle                           :offset-assert 448)
+   (wings                           handle                           :offset-assert 456)
+   (kid                             handle                           :offset-assert 464)
+   (explode                         handle                           :offset-assert 472)
+   (rift-occlude                    handle                           :offset-assert 480)
+   (last-attack-id                  uint32                           :offset-assert 488)
+   (current-nav-poly                nav-poly                         :offset-assert 492)
+   (shot-anticipate                 sparticle-launch-control         :offset-assert 496)
+   (spinners                        handle                   4       :offset-assert 504)
+   (neck                            joint-mod                        :offset-assert 536)
+   (previous-flat-travel            vector                   :inline :offset-assert 544)
+   (previous-flat-travel-timer      time-frame                       :offset-assert 560)
+   (previous-flat-travel-long-timer time-frame                       :offset-assert 568)
+   (min-state-hit-points            float                            :offset-assert 576)
+   (countdown-to-roar               int8                             :offset-assert 580)
+   (for-back-interp                 cam-float-seeker         :inline :offset-assert 584)
+   (run-walk-interp                 cam-float-seeker         :inline :offset-assert 608)
+   (left-right-interp               cam-float-seeker         :inline :offset-assert 632)
+   (walk-turn-interp                cam-float-seeker         :inline :offset-assert 656)
+   (idle-interp                     cam-float-seeker         :inline :offset-assert 680)
+   (tmp-hit-points                  float                            :offset-assert 704)
+   (reps-till-idle-alt              int8                             :offset-assert 708)
+   (last-rotation                   float                            :offset-assert 712)
+   (no-collision-timer              time-frame                       :offset-assert 720)
+   (egg-angle                       float                            :offset        736)
+   (arm-frame                       float                            :offset-assert 740)
+   (been-to-entity                  symbol                           :offset-assert 744)
+   (flying-speed                    cam-float-seeker         :inline :offset-assert 748)
+   (wing-sound                      sound-id                         :offset-assert 772)
+   (wing-sound-playing              symbol                           :offset-assert 776)
+   (explode-sound                   sound-id                         :offset-assert 780)
+   (bomb-sound                      sound-id                         :offset-assert 784)
+   (stop-bomb-sound                 symbol                           :offset-assert 788)
+   (hit-ring-trans                  vector                   :inline :offset-assert 800)
+   (hit-ring-offset                 vector                   :inline :offset-assert 816)
+   (ring-cam-pos                    cam-float-seeker         :inline :offset-assert 832)
+   (need-teleport                   symbol                           :offset-assert 856)
+   )
+  :heap-base #x2e0
+  :method-count-assert 43
+  :size-assert         #x35c
+  :flag-assert         #x2b02e0035c
+  (:methods
+    (beaten (symbol) _type_ :state 27)
+    (explode () _type_ :state 28)
+    (fly-to-ring () _type_ :state 29)
+    (last-gasp () _type_ :state 30)
+    (overload-recover () _type_ :state 31)
+    (fall-down () _type_ :state 32)
+    (tail-attack () _type_ :state 33)
+    (foot-attack () _type_ :state 34)
+    (get-close () _type_ :state 35)
+    (standing-shot () _type_ :state 36)
+    (chase-target () _type_ :state 37)
+    (play-drop-movie () _type_ :state 38)
+    (start-second-stage () _type_ :state 39)
+    (hang-shoot-n-launch () _type_ :state 40)
+    (hidden () _type_ :state 41)
+    (test () _type_ :state 42)
+    )
+  )
+
+;; definition for method 3 of type metalkor
+(defmethod inspect metalkor ((obj metalkor))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttrackable: ~A~%" (-> obj trackable))
+  (format #t "~2Tflitters[10] @ #x~X~%" (-> obj flitters))
+  (format #t "~2Tflitter-gem-tracker: ~D~%" (-> obj flitter-gem-tracker))
+  (format #t "~2Twasps[3] @ #x~X~%" (-> obj wasps))
+  (format #t "~2Twasp-gem-tracker: ~D~%" (-> obj wasp-gem-tracker))
+  (format #t "~2Tlast-flitter-launched: ~D~%" (-> obj last-flitter-launched))
+  (format #t "~2Tlast-wasp-launched: ~D~%" (-> obj last-wasp-launched))
+  (format #t "~2Tlive-flitters: ~D~%" (-> obj live-flitters))
+  (format #t "~2Tlive-wasps: ~D~%" (-> obj live-wasps))
+  (format #t "~2Tshoot-timer: ~D~%" (-> obj shoot-timer))
+  (format #t "~2Ttarget-angle: ~f~%" (-> obj target-angle))
+  (format #t "~2Twave-timer: ~D~%" (-> obj wave-timer))
+  (format #t "~2Tin-wave: ~A~%" (-> obj in-wave))
+  (format #t "~2Tflitter-timer: ~D~%" (-> obj flitter-timer))
+  (format #t "~2Twasp-timer: ~D~%" (-> obj wasp-timer))
+  (format #t "~2Tlaunching-flitters: ~A~%" (-> obj launching-flitters))
+  (format #t "~2Tlaunching-wasps: ~A~%" (-> obj launching-wasps))
+  (format #t "~2Tegg-timer: ~D~%" (-> obj egg-timer))
+  (format #t "~2Tlast-close-attack: ~D~%" (-> obj last-close-attack))
+  (format #t "~2Tlast-standing-attack: ~D~%" (-> obj last-standing-attack))
+  (format #t "~2Tstage: ~D~%" (-> obj stage))
+  (format #t "~2Tnext-stage-timer: ~D~%" (-> obj next-stage-timer))
+  (format #t "~2Tinitial-y: ~f~%" (-> obj initial-y))
+  (format #t "~2Tshots-fired: ~D~%" (-> obj shots-fired))
+  (format #t "~2Tstage-hit-points: ~f~%" (-> obj stage-hit-points))
+  (format #t "~2Thud: ~D~%" (-> obj hud))
+  (format #t "~2Tlowtorso: ~D~%" (-> obj lowtorso))
+  (format #t "~2Tlegs: ~D~%" (-> obj legs))
+  (format #t "~2Twings: ~D~%" (-> obj wings))
+  (format #t "~2Tkid: ~D~%" (-> obj kid))
+  (format #t "~2Texplode: ~D~%" (-> obj explode))
+  (format #t "~2Trift-occlude: ~D~%" (-> obj rift-occlude))
+  (format #t "~2Tlast-attack-id: ~D~%" (-> obj last-attack-id))
+  (format #t "~2Tcurrent-nav-poly: #<nav-poly @ #x~X>~%" (-> obj current-nav-poly))
+  (format #t "~2Tshot-anticipate: ~A~%" (-> obj shot-anticipate))
+  (format #t "~2Tspinners[4] @ #x~X~%" (-> obj spinners))
+  (format #t "~2Tneck: ~A~%" (-> obj neck))
+  (format #t "~2Tprevious-flat-travel: #<vector @ #x~X>~%" (-> obj previous-flat-travel))
+  (format #t "~2Tprevious-flat-travel-timer: ~D~%" (-> obj previous-flat-travel-timer))
+  (format #t "~2Tprevious-flat-travel-long-timer: ~D~%" (-> obj previous-flat-travel-long-timer))
+  (format #t "~2Tmin-state-hit-points: ~f~%" (-> obj min-state-hit-points))
+  (format #t "~2Tcountdown-to-roar: ~D~%" (-> obj countdown-to-roar))
+  (format #t "~2Tfor-back-interp: #<cam-float-seeker @ #x~X>~%" (-> obj for-back-interp))
+  (format #t "~2Trun-walk-interp: #<cam-float-seeker @ #x~X>~%" (-> obj run-walk-interp))
+  (format #t "~2Tleft-right-interp: #<cam-float-seeker @ #x~X>~%" (-> obj left-right-interp))
+  (format #t "~2Twalk-turn-interp: #<cam-float-seeker @ #x~X>~%" (-> obj walk-turn-interp))
+  (format #t "~2Tidle-interp: #<cam-float-seeker @ #x~X>~%" (-> obj idle-interp))
+  (format #t "~2Ttmp-hit-points: ~f~%" (-> obj tmp-hit-points))
+  (format #t "~2Treps-till-idle-alt: ~D~%" (-> obj reps-till-idle-alt))
+  (format #t "~2Tlast-rotation: ~f~%" (-> obj last-rotation))
+  (format #t "~2Tno-collision-timer: ~D~%" (-> obj no-collision-timer))
+  (format #t "~2Tegg-timer: ~D~%" (-> obj egg-timer))
+  (format #t "~2Tegg-angle: ~f~%" (-> obj egg-angle))
+  (format #t "~2Tarm-frame: ~f~%" (-> obj arm-frame))
+  (format #t "~2Tbeen-to-entity: ~A~%" (-> obj been-to-entity))
+  (format #t "~2Tflying-speed: #<cam-float-seeker @ #x~X>~%" (-> obj flying-speed))
+  (format #t "~2Twing-sound: ~D~%" (-> obj wing-sound))
+  (format #t "~2Twing-sound-playing: ~A~%" (-> obj wing-sound-playing))
+  (format #t "~2Texplode-sound: ~D~%" (-> obj explode-sound))
+  (format #t "~2Tbomb-sound: ~D~%" (-> obj bomb-sound))
+  (format #t "~2Tstop-bomb-sound: ~A~%" (-> obj stop-bomb-sound))
+  (format #t "~2Thit-ring-trans: #<vector @ #x~X>~%" (-> obj hit-ring-trans))
+  (format #t "~2Thit-ring-offset: #<vector @ #x~X>~%" (-> obj hit-ring-offset))
+  (format #t "~2Tring-cam-pos: #<cam-float-seeker @ #x~X>~%" (-> obj ring-cam-pos))
+  (format #t "~2Tneed-teleport: ~A~%" (-> obj need-teleport))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *metalkor-bomb-probe-joints*, type (array int8)
+(define *metalkor-bomb-probe-joints* (new 'static 'boxed-array :type int8
+                                       3
+                                       4
+                                       7
+                                       10
+                                       13
+                                       16
+                                       19
+                                       22
+                                       25
+                                       28
+                                       31
+                                       34
+                                       37
+                                       40
+                                       43
+                                       46
+                                       49
+                                       52
+                                       55
+                                       58
+                                       61
+                                       64
+                                       67
+                                       70
+                                       73
+                                       76
+                                       79
+                                       82
+                                       85
+                                       88
+                                       91
+                                       )
+        )
+
+;; definition for function metalkor-bomb-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-bomb-init-by-other metalkor-bomb ((arg0 vector) (arg1 entity-actor))
+  (process-entity-set! self arg1)
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec projectile))
+      (set! (-> v1-6 prim-core collide-with)
+            (collide-spec jak crate enemy obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-6 prim-core action) (collide-action))
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> self root) s5-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-bomb" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self draw level-index) (the-as uint (-> *level* default-level index)))
+  (dotimes (gp-2 (min 49 (-> *metalkor-bomb-probe-joints* length)))
+    (set! (-> self joint-mods gp-2)
+          (new 'process 'joint-mod (joint-mod-mode joint-set*) self (-> *metalkor-bomb-probe-joints* gp-2))
+          )
+    (if (nonzero? (-> self joint-mods gp-2))
+        (set! (-> self joint-mods gp-2 track-mode) (track-mode no-rotate no-scale))
+        )
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for method 11 of type nestb-tail-bound
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! nestb-tail-bound ((obj nestb-tail-bound) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec special-obstacle))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 409600.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> obj root) s4-0)
+    )
+  (process-drawable-from-entity! obj arg0)
+  (+! (-> obj root trans y) -36864.0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-nestb-tail-bound" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (transform-post)
+  (logior! (-> obj draw status) (draw-control-status no-draw-bounds))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition for function gem-tracker-init-by-other
+;; WARN: Return type mismatch object vs none.
+(defbehavior gem-tracker-init-by-other gem-tracker ((arg0 entity-actor) (arg1 int))
+  (set! (-> self entity) arg0)
+  (dotimes (v1-0 10)
+    (set! (-> self gems v1-0) (the-as handle #f))
+    )
+  (set! (-> self perm-byte-index) arg1)
+  (let ((v1-5 (-> self entity extra perm)))
+    (logior! (-> v1-5 status) (entity-perm-status bit-5))
+    (set! (-> self gems-collected) (the-as int (-> v1-5 user-uint8 (-> self perm-byte-index))))
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function rift-occlude-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior rift-occlude-init-by-other rift-occlude ((arg0 vector))
+  (set! (-> self root) (new 'process 'trsqv))
+  (process-drawable-from-entity! self (the-as entity-actor arg0))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-rift-occlude" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> self mask) (process-mask enemy))
+  (set! (-> self original-trans quad) (-> self root trans quad))
+  (let ((v1-7 (-> self parent)))
+    (set! (-> self draw light-index) (-> (the-as process-drawable (if v1-7
+                                                                      (the-as process-drawable (-> v1-7 0 self))
+                                                                      )
+                                                 )
+                                         draw
+                                         light-index
+                                         )
+          )
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function metalkor-distort-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-distort-init-by-other metalkor-distort ((arg0 vector) (arg1 quaternion))
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-distort" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function metalkor-explode-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-explode-init-by-other metalkor-explode ((arg0 vector) (arg1 quaternion) (arg2 handle))
+  (set! (-> self root) (new 'process 'trsqv))
+  (quaternion-copy! (-> self root quat) arg1)
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-explode" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-7 (-> self parent)))
+    (set! (-> self draw light-index) (-> (the-as process-drawable (if v1-7
+                                                                      (the-as process-drawable (-> v1-7 0 self))
+                                                                      )
+                                                 )
+                                         draw
+                                         light-index
+                                         )
+          )
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self ring) arg2)
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1237) self))
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function metalkor-kid-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-kid-init-by-other metalkor-kid ((arg0 vector))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (+! (-> self root trans y) 61440.0)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-kid" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-9 (-> self parent)))
+    (set! (-> self draw light-index) (-> (the-as process-drawable (if v1-9
+                                                                      (the-as process-drawable (-> v1-9 0 self))
+                                                                      )
+                                                 )
+                                         draw
+                                         light-index
+                                         )
+          )
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1233) self))
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for symbol *metalkor-spinner-chain-setup*, type (array chain-physics-setup)
+(define *metalkor-spinner-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                         (new 'static 'chain-physics-setup :joint-index 4)
+                                         (new 'static 'chain-physics-setup :joint-index 5)
+                                         (new 'static 'chain-physics-setup :joint-index 6)
+                                         (new 'static 'chain-physics-setup :joint-index 7)
+                                         (new 'static 'chain-physics-setup :joint-index 8)
+                                         (new 'static 'chain-physics-setup :joint-index 9)
+                                         (new 'static 'chain-physics-setup :joint-index 10)
+                                         (new 'static 'chain-physics-setup :joint-index 11)
+                                         (new 'static 'chain-physics-setup :joint-index 12)
+                                         )
+        )
+
+;; definition for function metalkor-spinner-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-spinner-init-by-other metalkor-spinner ((arg0 vector) (arg1 int))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-spinner" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-6 (-> self parent)))
+    (set! (-> self draw light-index) (-> (the-as process-drawable (if v1-6
+                                                                      (the-as process-drawable (-> v1-6 0 self))
+                                                                      )
+                                                 )
+                                         draw
+                                         light-index
+                                         )
+          )
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set! (-> self parent-joint-index) arg1)
+  (set! (-> self target-pos quad) (-> arg0 quad))
+  (set! (-> self chain) (new 'process 'metalkor-spinner-chain-physics))
+  (chain-physics-initialize self (-> self chain) 3 4096.0 *metalkor-spinner-chain-setup*)
+  (let* ((f30-0 4096.0)
+         (f28-0 0.4)
+         (f26-0 0.2)
+         (v1-18 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-19 (the-as number (logior #x3f800000 v1-18)))
+         )
+    (set! (-> self chain gravity-mult) (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-19))))))
+    )
+  (let* ((f30-1 0.8)
+         (f28-1 0.19)
+         (v1-25 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-26 (the-as number (logior #x3f800000 v1-25)))
+         )
+    (set! (-> self chain velocity-mult) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-26)))))
+    )
+  (set! (-> self event-hook) (-> (method-of-object self shoot-out) event))
+  (go-virtual shoot-out)
+  (none)
+  )
+
+;; definition for function metalkor-egg-reaction
+;; INFO: Used lq/sq
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 48 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 64 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 48 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 64 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 48 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 64 mismatch: defined as size 4, got size 16
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f1, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f2, f5]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f1, f3, f6]
+(defbehavior metalkor-egg-reaction metalkor-egg ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
+  (local-vars (v1-11 float) (f1-1 float) (sv-16 vector) (sv-32 float) (sv-48 float) (sv-64 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! sv-16 arg3)
+    (cshape-reaction-update-state arg0 arg1 sv-16)
+    (let ((s5-0 (-> arg0 process)))
+      (cond
+        ((>= (- (current-time) (-> (the-as metalkor-egg s5-0) sticky-time)) (seconds 0.05))
+         (let ((t9-1 vector--float*!)
+               (a0-3 arg2)
+               (a1-1 sv-16)
+               (a2-2 (-> arg0 surface-normal))
+               (f0-0 1.01)
+               )
+           (let* ((v1-4 (-> arg0 surface-normal))
+                  (f1-0 (-> sv-16 x))
+                  (f2-0 (-> sv-16 y))
+                  (f3-0 (-> sv-16 z))
+                  (f4-0 (-> v1-4 x))
+                  (f5-0 (-> v1-4 y))
+                  (f6-0 (-> v1-4 z))
+                  )
+             (.mula.s f1-0 f4-0)
+             (.madda.s f2-0 f5-0)
+             (.madd.s f1-1 f3-0 f6-0)
+             )
+           (t9-1 a0-3 a1-1 a2-2 (* f0-0 f1-1))
+           )
+         (let ((s3-0 arg2)
+               (s2-0 arg2)
+               (s1-0 lerp-scale)
+               (s0-0 0.94)
+               )
+           (set! sv-32 (the-as float 1.0))
+           (set! sv-48 (-> arg0 surface-normal y))
+           (set! sv-64 (cos 5461.3335))
+           (let ((t0-0 (cos 16384.0)))
+             (vector-float*! s3-0 s2-0 (s1-0 s0-0 sv-32 sv-48 sv-64 t0-0))
+             )
+           )
+         )
+        (else
+          (vector--float*!
+            arg2
+            sv-16
+            (-> arg0 surface-normal)
+            (* (vector-dot sv-16 (-> arg0 surface-normal)) (rand-vu-float-range 1.2 1.4))
+            )
+          )
+        )
+      (.lvf vf1 (&-> arg2 quad))
+      (.add.w.vf vf2 vf0 vf0 :mask #b1)
+      (.mul.vf vf1 vf1 vf1)
+      (.mul.x.vf acc vf2 vf1 :mask #b1)
+      (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+      (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+      (.mov v1-11 vf1)
+      (let ((f0-10 v1-11)
+            (f1-3 409.6)
+            )
+        (cond
+          ((< f0-10 (* f1-3 f1-3))
+           (set! (-> arg2 quad) (the-as uint128 0))
+           0
+           )
+          ((let ((f1-6 4096.0))
+             (and (< (* f1-6 f1-6) f0-10)
+                  (>= (- (current-time) (-> (the-as metalkor-egg s5-0) sticky-time)) (seconds 0.2))
+                  )
+             )
+           (vector-float*! arg2 arg2 (/ 4096.0 (sqrtf f0-10)))
+           )
+          )
+        )
+      (if (< (-> arg0 surface-normal y) 1.0)
+          (set! (-> (the-as metalkor-egg s5-0) last-hit-normal quad) (-> arg0 surface-normal quad))
+          )
+      )
+    (-> arg0 status)
+    )
+  )
+
+;; definition for function metalkor-egg-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-egg-init-by-other metalkor-egg ((arg0 vector) (arg1 vector) (arg2 int))
+  (let ((s3-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s3-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s3-0 reaction) metalkor-egg-reaction)
+    (set! (-> s3-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s3-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec backgnd jak bot hit-by-others-list player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s3-0 total-prims) (the-as uint 1))
+      (set! (-> s3-0 root-prim) v1-6)
+      )
+    (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s3-0 root-prim)))
+      (set! (-> s3-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s3-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s3-0 event-self) 'touched)
+    (set! (-> s3-0 max-iteration-count) (the-as uint 3))
+    (set! (-> self root) s3-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-egg" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-20 (-> self parent)))
+    (set! (-> self draw light-index)
+          (-> (the-as process-drawable (if v1-20
+                                           (the-as process-drawable (-> v1-20 0 self))
+                                           )
+                      )
+              draw
+              light-index
+              )
+          )
+    )
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (logior! (-> self mask) (process-mask enemy))
+  (set-vector! (-> self last-hit-normal) 0.0 1.0 0.0 1.0)
+  (set! (-> self sticky-time) 0)
+  (set! (-> self flitter-slot) arg2)
+  (go-virtual fall)
+  (none)
+  )
+
+;; definition for function metalkor-wings-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-wings-init-by-other metalkor-wings ((arg0 vector) (arg1 vector))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root pause-adjust-distance) 409600.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (set! (-> self prefix) (the-as string arg0))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-wings" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-8 (-> self parent)))
+    (set! (-> self draw light-index) (-> (the-as process-drawable (if v1-8
+                                                                      (the-as process-drawable (-> v1-8 0 self))
+                                                                      )
+                                                 )
+                                         draw
+                                         light-index
+                                         )
+          )
+    )
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition of type metalkor-ik-setup
+(deftype metalkor-ik-setup (structure)
+  ((elbow-index int32  :offset-assert   0)
+   (hand-dist   float  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type metalkor-ik-setup
+(defmethod inspect metalkor-ik-setup ((obj metalkor-ik-setup))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'metalkor-ik-setup)
+  (format #t "~1Telbow-index: ~D~%" (-> obj elbow-index))
+  (format #t "~1Thand-dist: ~f~%" (-> obj hand-dist))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *metalkor-ik-setup*, type (array metalkor-ik-setup)
+(define *metalkor-ik-setup* (new 'static 'boxed-array :type metalkor-ik-setup
+                              (new 'static 'metalkor-ik-setup :elbow-index 7 :hand-dist 28041.217)
+                              (new 'static 'metalkor-ik-setup :elbow-index 12 :hand-dist 28041.217)
+                              (new 'static 'metalkor-ik-setup :elbow-index 17 :hand-dist 28041.217)
+                              (new 'static 'metalkor-ik-setup :elbow-index 22 :hand-dist 28041.217)
+                              (new 'static 'metalkor-ik-setup :elbow-index 27 :hand-dist 28041.217)
+                              (new 'static 'metalkor-ik-setup :elbow-index 32 :hand-dist 28041.217)
+                              )
+        )
+
+;; definition for function metalkor-legs-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-legs-init-by-other metalkor-legs ((arg0 string) (arg1 vector))
+  (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 18) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 19))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 -32768.0 0.0 49152.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 6)
+      (set-vector! (-> v1-13 local-sphere) 0.0 6144.0 0.0 12288.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 7)
+      (set-vector! (-> v1-15 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 8)
+      (set-vector! (-> v1-17 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 5) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 11)
+      (set-vector! (-> v1-19 local-sphere) 0.0 6144.0 0.0 12288.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 4) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 12)
+      (set-vector! (-> v1-21 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 13)
+      (set-vector! (-> v1-23 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 8) (the-as uint 0))))
+      (set! (-> v1-25 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-25 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-25 prim-core action) (collide-action solid))
+      (set! (-> v1-25 transform-index) 16)
+      (set-vector! (-> v1-25 local-sphere) 0.0 6144.0 0.0 12288.0)
+      )
+    (let ((v1-27 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 7) (the-as uint 0))))
+      (set! (-> v1-27 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-27 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-27 prim-core action) (collide-action solid))
+      (set! (-> v1-27 transform-index) 17)
+      (set-vector! (-> v1-27 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-29 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 6) (the-as uint 0))))
+      (set! (-> v1-29 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-29 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-29 prim-core action) (collide-action solid))
+      (set! (-> v1-29 transform-index) 18)
+      (set-vector! (-> v1-29 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (let ((v1-31 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 11) (the-as uint 0))))
+      (set! (-> v1-31 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-31 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-31 prim-core action) (collide-action solid))
+      (set! (-> v1-31 transform-index) 21)
+      (set-vector! (-> v1-31 local-sphere) 0.0 -6144.0 0.0 12288.0)
+      )
+    (let ((v1-33 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 10) (the-as uint 0))))
+      (set! (-> v1-33 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-33 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-33 prim-core action) (collide-action solid))
+      (set! (-> v1-33 transform-index) 22)
+      (set-vector! (-> v1-33 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-35 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 9) (the-as uint 0))))
+      (set! (-> v1-35 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-35 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-35 prim-core action) (collide-action solid))
+      (set! (-> v1-35 transform-index) 23)
+      (set-vector! (-> v1-35 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (let ((v1-37 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 14) (the-as uint 0))))
+      (set! (-> v1-37 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-37 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-37 prim-core action) (collide-action solid))
+      (set! (-> v1-37 transform-index) 26)
+      (set-vector! (-> v1-37 local-sphere) 0.0 -6144.0 0.0 12288.0)
+      )
+    (let ((v1-39 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 13) (the-as uint 0))))
+      (set! (-> v1-39 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-39 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-39 prim-core action) (collide-action solid))
+      (set! (-> v1-39 transform-index) 27)
+      (set-vector! (-> v1-39 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-41 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 12) (the-as uint 0))))
+      (set! (-> v1-41 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-41 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-41 prim-core action) (collide-action solid))
+      (set! (-> v1-41 transform-index) 28)
+      (set-vector! (-> v1-41 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (let ((v1-43 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 17) (the-as uint 0))))
+      (set! (-> v1-43 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-43 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-43 prim-core action) (collide-action solid))
+      (set! (-> v1-43 transform-index) 31)
+      (set-vector! (-> v1-43 local-sphere) 0.0 -6144.0 0.0 12288.0)
+      )
+    (let ((v1-45 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 16) (the-as uint 0))))
+      (set! (-> v1-45 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-45 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-45 prim-core action) (collide-action solid))
+      (set! (-> v1-45 transform-index) 32)
+      (set-vector! (-> v1-45 local-sphere) -4096.0 8192.0 0.0 13312.0)
+      )
+    (let ((v1-47 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 15) (the-as uint 0))))
+      (set! (-> v1-47 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-47 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-47 prim-core action) (collide-action solid))
+      (set! (-> v1-47 transform-index) 33)
+      (set-vector! (-> v1-47 local-sphere) 0.0 4096.0 0.0 8192.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-50 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-50 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-50 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> self root) s4-0)
+    )
+  (set! (-> self root pause-adjust-distance) 409600.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (set! (-> self prefix) arg0)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-legs" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-60 (-> self parent)))
+    (set! (-> self draw light-index)
+          (-> (the-as process-drawable (if v1-60
+                                           (the-as process-drawable (-> v1-60 0 self))
+                                           )
+                      )
+              draw
+              light-index
+              )
+          )
+    )
+  (logior! (-> self mask) (process-mask enemy))
+  (set! (-> self trackable) #f)
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (dotimes (gp-2 6)
+    (set! (-> self joint-ik gp-2) (new
+                                    'process
+                                    'joint-mod-ik
+                                    self
+                                    (-> *metalkor-ik-setup* gp-2 elbow-index)
+                                    (-> *metalkor-ik-setup* gp-2 hand-dist)
+                                    )
+          )
+    (set! (-> self joint-ik gp-2 elbow-pole-vector-axis) (the-as uint 0))
+    (set! (-> self joint-ik gp-2 elbow-rotation-axis) (the-as uint 2))
+    )
+  (logior! (-> self joint-ik 0 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> self joint-ik 1 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> self joint-ik 2 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> self joint-ik 3 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> self joint-ik 4 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> self joint-ik 5 flags) (joint-mod-ik-flags elbow-rot-neg))
+  (dotimes (v1-102 3)
+    (set! (-> (the-as metalkor-legs (+ (the-as uint self) (* v1-102 16))) ja-float-info 0 float-anim) #f)
+    )
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for symbol *metalkor-lowtorso-chain-setup*, type (array chain-physics-setup)
+(define *metalkor-lowtorso-chain-setup* (new 'static 'boxed-array :type chain-physics-setup
+                                          (new 'static 'chain-physics-setup :joint-index 8)
+                                          (new 'static 'chain-physics-setup :joint-index 9)
+                                          (new 'static 'chain-physics-setup :joint-index 10)
+                                          (new 'static 'chain-physics-setup :joint-index 11)
+                                          (new 'static 'chain-physics-setup :joint-index 12)
+                                          (new 'static 'chain-physics-setup :joint-index 13)
+                                          (new 'static 'chain-physics-setup :joint-index 14)
+                                          (new 'static 'chain-physics-setup :joint-index 15)
+                                          (new 'static 'chain-physics-setup :joint-index 16)
+                                          (new 'static 'chain-physics-setup :joint-index 17)
+                                          (new 'static 'chain-physics-setup :joint-index 18)
+                                          (new 'static 'chain-physics-setup :joint-index 19)
+                                          (new 'static 'chain-physics-setup :joint-index 20)
+                                          (new 'static 'chain-physics-setup :joint-index 21)
+                                          (new 'static 'chain-physics-setup :joint-index 22)
+                                          (new 'static 'chain-physics-setup :joint-index 23)
+                                          (new 'static 'chain-physics-setup :joint-index 24)
+                                          (new 'static 'chain-physics-setup :joint-index 25)
+                                          (new 'static 'chain-physics-setup :joint-index 26)
+                                          (new 'static 'chain-physics-setup :joint-index 27)
+                                          )
+        )
+
+;; definition for function metalkor-lowtorso-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior metalkor-lowtorso-init-by-other metalkor-lowtorso ((arg0 vector) (arg1 vector))
+  (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 21) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 22))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 14)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 65536.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 19) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 8)
+      (set-vector! (-> v1-13 local-sphere) 0.0 8192.0 0.0 20480.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 18) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 9)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 17408.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 17) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 10)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 16) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 11)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 15) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 12)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 14) (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 13)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 13) (the-as uint 0))))
+      (set! (-> v1-25 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-25 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-25 prim-core action) (collide-action solid))
+      (set! (-> v1-25 transform-index) 14)
+      (set-vector! (-> v1-25 local-sphere) 0.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-27 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 12) (the-as uint 0))))
+      (set! (-> v1-27 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-27 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-27 prim-core action) (collide-action solid))
+      (set! (-> v1-27 transform-index) 15)
+      (set-vector! (-> v1-27 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-29 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 11) (the-as uint 0))))
+      (set! (-> v1-29 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-29 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-29 prim-core action) (collide-action solid))
+      (set! (-> v1-29 transform-index) 16)
+      (set-vector! (-> v1-29 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-31 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 10) (the-as uint 0))))
+      (set! (-> v1-31 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-31 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-31 prim-core action) (collide-action solid))
+      (set! (-> v1-31 transform-index) 17)
+      (set-vector! (-> v1-31 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-33 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 9) (the-as uint 0))))
+      (set! (-> v1-33 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-33 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-33 prim-core action) (collide-action solid))
+      (set! (-> v1-33 transform-index) 18)
+      (set-vector! (-> v1-33 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-35 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 8) (the-as uint 0))))
+      (set! (-> v1-35 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-35 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-35 prim-core action) (collide-action solid))
+      (set! (-> v1-35 transform-index) 19)
+      (set-vector! (-> v1-35 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-37 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 7) (the-as uint 0))))
+      (set! (-> v1-37 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-37 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-37 prim-core action) (collide-action solid))
+      (set! (-> v1-37 transform-index) 20)
+      (set-vector! (-> v1-37 local-sphere) 0.0 2048.0 0.0 10240.0)
+      )
+    (let ((v1-39 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 6) (the-as uint 0))))
+      (set! (-> v1-39 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-39 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-39 prim-core action) (collide-action solid))
+      (set! (-> v1-39 transform-index) 21)
+      (set-vector! (-> v1-39 local-sphere) 0.0 4096.0 0.0 10240.0)
+      )
+    (let ((v1-41 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 5) (the-as uint 0))))
+      (set! (-> v1-41 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-41 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-41 prim-core action) (collide-action solid))
+      (set! (-> v1-41 transform-index) 22)
+      (set-vector! (-> v1-41 local-sphere) 0.0 2048.0 0.0 8192.0)
+      )
+    (let ((v1-43 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 4) (the-as uint 0))))
+      (set! (-> v1-43 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-43 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-43 prim-core action) (collide-action solid))
+      (set! (-> v1-43 transform-index) 23)
+      (set-vector! (-> v1-43 local-sphere) 0.0 2048.0 0.0 8192.0)
+      )
+    (let ((v1-45 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
+      (set! (-> v1-45 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-45 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-45 prim-core action) (collide-action solid))
+      (set! (-> v1-45 transform-index) 24)
+      (set-vector! (-> v1-45 local-sphere) 0.0 2048.0 0.0 8192.0)
+      )
+    (let ((v1-47 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-47 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-47 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-47 prim-core action) (collide-action solid))
+      (set! (-> v1-47 transform-index) 25)
+      (set-vector! (-> v1-47 local-sphere) 0.0 2048.0 0.0 8192.0)
+      )
+    (let ((v1-49 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-49 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-49 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-49 prim-core action) (collide-action solid))
+      (set! (-> v1-49 transform-index) 26)
+      (set-vector! (-> v1-49 local-sphere) 0.0 2048.0 0.0 8192.0)
+      )
+    (let ((v1-51 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-51 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-51 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-51 prim-core action) (collide-action solid))
+      (set! (-> v1-51 transform-index) 27)
+      (set-vector! (-> v1-51 local-sphere) 0.0 2048.0 -2048.0 10240.0)
+      )
+    (let ((v1-53 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 20) (the-as uint 0))))
+      (set! (-> v1-53 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-53 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-53 prim-core action) (collide-action solid))
+      (set! (-> v1-53 transform-index) 5)
+      (set-vector! (-> v1-53 local-sphere) 0.0 10240.0 -8192.0 26624.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-56 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-56 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-56 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> self root) s4-0)
+    )
+  (set! (-> self root pause-adjust-distance) 409600.0)
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (set! (-> self prefix) (the-as string arg0))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor-lowtorso" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-66 (-> self parent)))
+    (set! (-> self draw light-index)
+          (-> (the-as process-drawable (if v1-66
+                                           (the-as process-drawable (-> v1-66 0 self))
+                                           )
+                      )
+              draw
+              light-index
+              )
+          )
+    )
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (set! (-> self tail) (new 'process 'metalkor-chain-physics))
+  (chain-physics-initialize self (-> self tail) 7 5324.8 *metalkor-lowtorso-chain-setup*)
+  (set-params! (-> self tail osc-z) 0.0 0.01 0.1 0.9)
+  (set-params! (-> self tail osc-y) 0.0 0.01 0.1 0.9)
+  (set-params! (-> self tail rand-z) 6 150 1.0)
+  (set-params! (-> self tail rand-y) 6 150 1.0)
+  (set! (-> self tail axial-slop) 910.2222)
+  (set! (-> self tail-initialized) #f)
+  (dotimes (v1-88 4)
+    (set! (-> self spinners v1-88) (the-as handle #f))
+    )
+  (dotimes (v1-91 3)
+    (set! (-> (the-as metalkor-lowtorso (+ (the-as uint self) (* v1-91 16))) ja-float-info 0 float-anim) #f)
+    )
+  (let ((v1-95 (-> self root root-prim)))
+    (set! (-> self root backup-collide-as) (-> v1-95 prim-core collide-as))
+    (set! (-> self root backup-collide-with) (-> v1-95 prim-core collide-with))
+    )
+  (set! (-> self no-collision-timer) 0)
+  (set! (-> self egg-toss-joint-1) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 5))
+  (set! (-> self egg-toss-joint-2) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 6))
+  (set! (-> self egg-toss-joint-3) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 7))
+  (set-params! (-> self egg-toss-joint-angle) 0.0 0.01 0.1 0.9)
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for method 11 of type metalkor
+;; INFO: Used lq/sq
+(defmethod init-from-entity! metalkor ((obj metalkor) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 5))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 40960.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 6)
+      (set-vector! (-> v1-13 local-sphere) 0.0 -4096.0 4096.0 20480.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 5)
+      (set-vector! (-> v1-15 local-sphere) 0.0 2048.0 2048.0 20480.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 9)
+      (set-vector! (-> v1-17 local-sphere) 0.0 8192.0 -20480.0 24576.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 4) (the-as uint 1))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 12)
+      (set-vector! (-> v1-19 local-sphere) 0.0 8192.0 -20480.0 24576.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-22 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-22 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> obj root) s4-0)
+    )
+  (set! (-> obj root pause-adjust-distance) 409600.0)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-metalkor" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj mask) (process-mask enemy))
+  (set! (-> obj draw light-index) (the-as uint 10))
+  (set! (-> obj lowtorso) (the-as handle #f))
+  (set! (-> obj trackable) #f)
+  (dotimes (v1-33 10)
+    (set! (-> obj flitters v1-33) (the-as handle #f))
+    )
+  (dotimes (v1-36 3)
+    (set! (-> obj wasps v1-36) (the-as handle #f))
+    )
+  (set! (-> obj initial-y) (-> obj root trans y))
+  (set! (-> obj hud) (the-as handle #f))
+  (set! (-> obj legs) (the-as handle #f))
+  (set! (-> obj kid) (the-as handle #f))
+  (set! (-> obj wings) (the-as handle #f))
+  (set! (-> obj explode) (the-as handle #f))
+  (set! (-> obj rift-occlude) (the-as handle #f))
+  (set! (-> obj last-attack-id) (the-as uint 0))
+  (let ((a0-40 (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor 1)))
+    (if a0-40
+        (change-to a0-40 obj)
+        )
+    )
+  (set! (-> obj current-nav-poly) #f)
+  (set! (-> obj shot-anticipate) (create-launch-control (-> *part-group-id-table* 1232) obj))
+  (set! (-> obj last-flitter-launched) 0)
+  (set! (-> obj last-wasp-launched) 0)
+  (set! (-> obj live-flitters) 0)
+  (set! (-> obj live-wasps) 0)
+  (set! (-> obj flitter-gem-tracker) (the-as handle #f))
+  (set! (-> obj wasp-gem-tracker) (the-as handle #f))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-47 (res-lump-data (-> obj entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+    (when (and v1-47 (> (-> sv-16 elt-count) 0))
+      (let ((v1-48 (-> v1-47 0)))
+        (when (>= (-> v1-48 length) 1)
+          (let ((s5-2 (-> v1-48 data 0 actor)))
+            (let ((a0-52 (search-process-tree
+                           *active-pool*
+                           (the-as
+                             (function process-tree object)
+                             (lambda ((arg0 gem-tracker)) (= (-> arg0 type) flitter-gem-tracker) (none))
+                             )
+                           )
+                         )
+                  )
+              (if a0-52
+                  (set! (-> obj flitter-gem-tracker) (process->handle a0-52))
+                  (set! (-> obj flitter-gem-tracker)
+                        (ppointer->handle
+                          (process-spawn flitter-gem-tracker :init gem-tracker-init-by-other s5-2 0 :to *entity-pool*)
+                          )
+                        )
+                  )
+              )
+            (let ((a0-63
+                    (search-process-tree *active-pool* (the-as
+                                                         (function process-tree object)
+                                                         (lambda ((arg0 gem-tracker)) (= (-> arg0 type) wasp-gem-tracker) (none))
+                                                         )
+                                         )
+                    )
+                  )
+              (if a0-63
+                  (set! (-> obj wasp-gem-tracker) (process->handle a0-63))
+                  (set! (-> obj wasp-gem-tracker)
+                        (ppointer->handle (process-spawn wasp-gem-tracker :init gem-tracker-init-by-other s5-2 1 :to *entity-pool*))
+                        )
+                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  (copy-nav-enemy-info! *metalkor-flitter-nav-enemy-info* *flitter-nav-enemy-info*)
+  (set! (-> *metalkor-flitter-nav-enemy-info* notice-distance) 1638400.0)
+  (dotimes (v1-71 4)
+    (set! (-> obj spinners v1-71) (the-as handle #f))
+    )
+  (set! (-> obj neck) (new 'process 'joint-mod (joint-mod-mode flex-blend) obj 6))
+  (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
+  (set! (-> obj neck up) (the-as uint 1))
+  (set! (-> obj neck nose) (the-as uint 2))
+  (set! (-> obj neck ear) (the-as uint 0))
+  (set! (-> obj neck max-dist) 409600.0)
+  (set! (-> obj neck ignore-angle) 16384.0)
+  (mode-set! (-> obj neck) (joint-mod-mode look-at))
+  (set! (-> obj previous-flat-travel-timer) 0)
+  (set! (-> obj previous-flat-travel-long-timer) 0)
+  (set! (-> obj countdown-to-roar) 3)
+  (let ((v1-88 (-> obj root root-prim)))
+    (set! (-> obj root backup-collide-as) (-> v1-88 prim-core collide-as))
+    (set! (-> obj root backup-collide-with) (-> v1-88 prim-core collide-with))
+    )
+  (set! (-> obj no-collision-timer) 0)
+  (set! (-> obj wing-sound) (new-sound-id))
+  (set! (-> obj wing-sound-playing) #f)
+  (set! (-> obj explode-sound) (new-sound-id))
+  (set! (-> obj bomb-sound) (new-sound-id))
+  (set! (-> obj stage) -1)
+  (metalkor-go-next-stage)
+  (none)
+  )

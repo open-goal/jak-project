@@ -213,7 +213,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       // optimization - if we get junk, don't bother moving it, just leave junk in return.
       if (!is_none(case_result)) {
         // todo, what does GOAL do here? does it matter?
-        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_gpr(o, env)));
+        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_reg(o, env)));
       }
 
     } else {
@@ -238,7 +238,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       case_result_types.push_back(case_result->type());
       if (!is_none(case_result)) {
         // todo, what does GOAL do here?
-        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_gpr(o, env)));
+        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_reg(o, env)));
       }
 
       // GO TO END
@@ -260,6 +260,12 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
     result->set_type(TypeSpec("none"));
   } else {
     result->set_type(coerce_to_reg_type(m_ts.lowest_common_ancestor(case_result_types)));
+  }
+
+  // maybe use 128-bit register
+  if (result->type().base_type() != "none" &&
+      m_ts.lookup_type_allow_partial_def(result->type())->get_load_size() == 16) {
+    result->change_class(RegClass::INT_128);
   }
 
   // PATCH END

@@ -5,9 +5,7 @@
 ;; name in dgo: gstate
 ;; dgos: KERNEL
 
-;; DECOMP BEGINS
-
-#|
+#|@file
 Summary of state system:
 
 A process can be put into a state, using enter-state, or the go macro.
@@ -49,8 +47,9 @@ with the appropriate state type.
 
 The go-hook calls enter state and sets (-> proc next-state) for the given process.
 It type checks the arguments for the entry function.
-
 |#
+
+;; DECOMP BEGINS
 
 (defmacro go (next-state &rest args)
   "Change the state of the current process.
@@ -105,7 +104,7 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name (symbol->string proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -120,7 +119,7 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -167,7 +166,7 @@ It type checks the arguments for the entry function.
       (set! *defstate-type-stack* '())
       ;; check for default handlers
       (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
-          (when (not (null? default-handlers))
+          (when default-handlers
               ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
               ;; event
               (set! default-handlers (cadr default-handlers))
@@ -247,7 +246,7 @@ It type checks the arguments for the entry function.
                            &key (post #f))
   (let ((old (assoc proc *default-state-handlers*))
         (new (list proc (list event enter trans exit code post))))
-      (if (null? old)
+      (if (not old)
           (append!! *default-state-handlers* new) ;; add new set of default handlers
           (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
             (when (eq? (car hnd) old)
@@ -314,6 +313,8 @@ It type checks the arguments for the entry function.
 (defun enter-state (arg0 arg1 arg2 arg3 arg4 arg5)
   "Make the process stored in pp enter the state in pp next-state"
   (with-pp
+    (if (zero? (-> pp next-state))
+      (break!))
     ;; unsleep us
     (process-mask-clear! (-> pp mask) sleep sleep-code)
     ;; mark as going
@@ -446,15 +447,10 @@ It type checks the arguments for the entry function.
          ;; but we don't because I don't have an easy way to find where to stick this.
          ;; I can't see how this makes a difference, as all non-main threads seem
          ;; temporary, but if this turns out to be false, we will need to change this.
-         (rlet ((temp)
-                (off :reg r15 :type uint :reset-here #t))
-           (.mov temp return-from-thread) ;; could probably just call this...
-           (.add temp off)
-           (.push temp)
-           (.ret)
-           #f ;; can't get here
-           )
+         (abandon-thread)
+         #f ;; can't get here
          )
+       #t
        )
       )
     )
@@ -509,5 +505,14 @@ It type checks the arguments for the entry function.
   )
 
 
-
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
 

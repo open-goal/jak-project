@@ -31,7 +31,7 @@ class FormRegressionTest : public ::testing::TestWithParam<GameVersion> {
   static void TearDownTestCase();
 
   struct TestData {
-    explicit TestData(int instrs, GameVersion version) : func(0, instrs, version) {}
+    explicit TestData(int instrs, GameVersion version) : func(0, instrs, version), file(version) {}
     decompiler::Function func;
     decompiler::LinkedObjectFile file;
 
@@ -100,14 +100,10 @@ class FormRegressionTest : public ::testing::TestWithParam<GameVersion> {
 
 class FormRegressionTestJak1 : public FormRegressionTest {
  protected:
-  static const GameVersion game_version = GameVersion::Jak1;
-
   static void SetUpTestCase();
 };
 
 class FormRegressionTestJak2 : public FormRegressionTest {
  protected:
-  static const GameVersion game_version = GameVersion::Jak2;
-
   static void SetUpTestCase();
 };

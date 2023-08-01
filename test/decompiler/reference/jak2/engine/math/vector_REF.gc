@@ -1,0 +1,1550 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function vector-cross!
+(defun vector-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (vector-cross! arg0 arg1 arg2)
+  )
+
+;; definition for function vector-xz-cross!
+(defun vector-xz-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (.lvf vf2 (&-> arg2 quad))
+    (.add.x.vf vf1 vf0 vf0 :mask #b10)
+    (.add.x.vf vf2 vf0 vf0 :mask #b10)
+    (.outer.product.a.vf acc vf1 vf2)
+    (.outer.product.b.vf vf3 vf2 vf1 acc)
+    (.svf (&-> arg0 quad) vf3)
+    arg0
+    )
+  )
+
+;; definition for function vector+float!
+(defun vector+float! ((arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf6 arg2)
+    (.lvf vf4 (&-> arg1 quad))
+    (.add.x.vf vf5 vf0 vf0 :mask #b1000)
+    (.add.x.vf vf5 vf4 vf6 :mask #b111)
+    (.svf (&-> arg0 quad) vf5)
+    arg0
+    )
+  )
+
+;; definition for function vector*!
+(defun vector*! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf4 (&-> arg1 quad))
+    (.lvf vf5 (&-> arg2 quad))
+    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+    (.mul.vf vf6 vf4 vf5 :mask #b111)
+    (.svf (&-> arg0 quad) vf6)
+    arg0
+    )
+  )
+
+;; definition for function vector+*!
+(defun vector+*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf7 arg3)
+    (.lvf vf5 (&-> arg2 quad))
+    (.lvf vf4 (&-> arg1 quad))
+    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+    (.mul.x.vf acc vf5 vf7 :mask #b111)
+    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+    (.svf (&-> arg0 quad) vf6)
+    arg0
+    )
+  )
+
+;; definition for function vector-*!
+(defun vector-*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf7 arg3)
+    (.lvf vf5 (&-> arg2 quad))
+    (.lvf vf4 (&-> arg1 quad))
+    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+    (.mul.w.vf acc vf4 vf0 :mask #b111)
+    (.sub.mul.x.vf vf6 vf5 vf7 acc :mask #b111)
+    (.svf (&-> arg0 quad) vf6)
+    arg0
+    )
+  )
+
+;; definition for function vector/!
+(defun vector/! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf5 (&-> arg2 quad))
+    (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b1)
+    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+    (.lvf vf4 (&-> arg1 quad))
+    (let ((v1-0 (/ (-> arg1 x) (-> arg2 x))))
+      (.wait.vf)
+      (.mul.vf vf6 vf4 Q :mask #b10)
+      (.nop.vf)
+      (.nop.vf)
+      (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b10)
+      (.mov vf7 v1-0)
+      )
+    (.add.x.vf vf6 vf0 vf7 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf6 vf4 Q :mask #b100)
+    (.nop.vf)
+    (.nop.vf)
+    (.svf (&-> arg0 quad) vf6)
+    arg0
+    )
+  )
+
+;; definition for function vector-float*!
+(defun vector-float*! ((arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (.mov vf2 arg2)
+    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
+    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-average!
+(defun vector-average! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 #x3f000000))
+      (.lvf vf1 (&-> arg1 quad))
+      (.lvf vf2 (&-> arg2 quad))
+      (.mov vf3 v1-0)
+      )
+    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.mul.x.vf acc vf1 vf3)
+    (.add.mul.x.vf vf4 vf2 vf3 acc :mask #b111)
+    (.svf (&-> arg0 quad) vf4)
+    arg0
+    )
+  )
+
+;; definition for function vector+float*!
+(defun vector+float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg2 quad))
+    (.lvf vf1 (&-> arg1 quad))
+    (.mov vf3 arg3)
+    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.mul.x.vf acc vf2 vf3)
+    (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
+    (.svf (&-> arg0 quad) vf4)
+    arg0
+    )
+  )
+
+;; definition for function vector--float*!
+(defun vector--float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg2 quad))
+    (.lvf vf1 (&-> arg1 quad))
+    (.mov vf3 arg3)
+    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.mul.w.vf acc vf1 vf0)
+    (.sub.mul.x.vf vf4 vf2 vf3 acc :mask #b111)
+    (.svf (&-> arg0 quad) vf4)
+    arg0
+    )
+  )
+
+;; definition for function vector-float/!
+(defun vector-float/! ((arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf3 arg2)
+    (.div.vf Q vf0 vf3 :fsf #b11 :ftf #b0)
+    (.lvf vf1 (&-> arg1 quad))
+    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.wait.vf)
+    (.mul.vf vf4 vf1 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.svf (&-> arg0 quad) vf4)
+    arg0
+    )
+  )
+
+;; definition for function vector-negate!
+(defun vector-negate! ((arg0 vector) (arg1 vector))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (.sub.vf vf4 vf0 vf1 :mask #b111)
+    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.svf (&-> arg0 quad) vf4)
+    arg0
+    )
+  )
+
+;; definition for function vector-negate-in-place!
+(defun vector-negate-in-place! ((arg0 vector))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.sub.vf vf1 vf0 vf1 :mask #b111)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector=
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function vector-delta
+(defun vector-delta ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.sub.vf vf1 vf2 vf1)
+    (.abs.vf vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
+    (.add.mul.z.vf vf3 vf0 vf1 acc :mask #b1000)
+    (.add.w.vf vf3 vf0 vf3 :mask #b1)
+    (.mov v0-0 vf3)
+    v0-0
+    )
+  )
+
+;; definition for function vector-seek!
+(defun vector-seek! ((arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf4 arg2)
+    (.lvf vf1 (&-> arg1 quad))
+    (.lvf vf2 (&-> arg0 quad))
+    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
+    (.sub.x.vf vf5 vf0 vf4 :mask #b1)
+    (.sub.vf vf3 vf1 vf2 :mask #b111)
+    (.min.x.vf vf3 vf3 vf4 :mask #b111)
+    (.max.x.vf vf3 vf3 vf5 :mask #b111)
+    (.add.vf vf1 vf2 vf3 :mask #b111)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-smooth-seek!
+(defun vector-smooth-seek! ((arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (vector-! v1-0 arg1 arg0)
+      (let ((v0-0 arg0))
+        (let ((a1-2 (fmin 1.0 arg2)))
+          (.mov vf7 a1-2)
+          )
+        (.lvf vf5 (&-> v1-0 quad))
+        (.lvf vf4 (&-> arg0 quad))
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> v0-0 quad) vf6)
+        v0-0
+        )
+      )
+    )
+  )
+
+;; definition for function vector-seek-2d-xz-smooth!
+(defun vector-seek-2d-xz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (- (-> arg1 x) (-> arg0 x)))
+        (f2-1 (- (-> arg1 z) (-> arg0 z)))
+        )
+    (when (or (!= f0-1 0.0) (!= f2-1 0.0))
+      (let* ((f1-5 (* f0-1 arg3))
+             (f0-3 (* f2-1 arg3))
+             (f2-4 (sqrtf (+ (* f1-5 f1-5) (* f0-3 f0-3))))
+             )
+        (cond
+          ((>= arg2 f2-4)
+           (+! (-> arg0 x) f1-5)
+           (+! (-> arg0 z) f0-3)
+           )
+          (else
+            (let ((f2-6 (/ arg2 f2-4)))
+              (+! (-> arg0 x) (* f2-6 f1-5))
+              (+! (-> arg0 z) (* f2-6 f0-3))
+              )
+            )
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector-seek-2d-yz-smooth!
+(defun vector-seek-2d-yz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (- (-> arg1 y) (-> arg0 y)))
+        (f2-1 (- (-> arg1 z) (-> arg0 z)))
+        )
+    (when (or (!= f0-1 0.0) (!= f2-1 0.0))
+      (let* ((f1-5 (* f0-1 arg3))
+             (f0-3 (* f2-1 arg3))
+             (f2-4 (sqrtf (+ (* f1-5 f1-5) (* f0-3 f0-3))))
+             )
+        (cond
+          ((>= arg2 f2-4)
+           (+! (-> arg0 y) f1-5)
+           (+! (-> arg0 z) f0-3)
+           )
+          (else
+            (let ((f2-6 (/ arg2 f2-4)))
+              (+! (-> arg0 y) (* f2-6 f1-5))
+              (+! (-> arg0 z) (* f2-6 f0-3))
+              )
+            )
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector-seek-3d-smooth!
+(defun vector-seek-3d-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (- (-> arg1 x) (-> arg0 x)))
+        (f1-2 (- (-> arg1 y) (-> arg0 y)))
+        (f3-1 (- (-> arg1 z) (-> arg0 z)))
+        )
+    (when (or (!= f0-1 0.0) (!= f1-2 0.0) (!= f3-1 0.0))
+      (let* ((f2-6 (* f0-1 arg3))
+             (f1-3 (* f1-2 arg3))
+             (f0-4 (* f3-1 arg3))
+             (f3-5 (sqrtf (+ (* f2-6 f2-6) (* f1-3 f1-3) (* f0-4 f0-4))))
+             )
+        (cond
+          ((>= arg2 f3-5)
+           (+! (-> arg0 x) f2-6)
+           (+! (-> arg0 y) f1-3)
+           (+! (-> arg0 z) f0-4)
+           )
+          (else
+            (let ((f3-7 (/ arg2 f3-5)))
+              (+! (-> arg0 x) (* f3-7 f2-6))
+              (+! (-> arg0 y) (* f3-7 f1-3))
+              (+! (-> arg0 z) (* f3-7 f0-4))
+              )
+            )
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function seek-with-smooth
+(defun seek-with-smooth ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f0-1 (- arg1 arg0)))
+    (cond
+      ((>= arg4 (fabs f0-1))
+       arg1
+       )
+      (else
+        (let ((f0-2 (* f0-1 arg3)))
+          (let ((f1-4 (- arg2)))
+            (cond
+              ((< f0-2 f1-4)
+               (set! f0-2 f1-4)
+               )
+              ((< arg2 f0-2)
+               (set! f0-2 arg2)
+               )
+              )
+            )
+          (+ f0-2 arg0)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function vector-identity!
+(defun vector-identity! ((arg0 vector))
+  (set! (-> arg0 x) 1.0)
+  (set! (-> arg0 y) 1.0)
+  (set! (-> arg0 z) 1.0)
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for function vector-seconds
+(defun vector-seconds ((arg0 vector) (arg1 vector))
+  (set! (-> arg0 x) (* 300.0 (-> arg1 x)))
+  (set! (-> arg0 y) (* 300.0 (-> arg1 y)))
+  (set! (-> arg0 z) (* 300.0 (-> arg1 z)))
+  arg0
+  )
+
+;; definition for function vector-seconds!
+(defun vector-seconds! ((arg0 vector))
+  (set! (-> arg0 x) (* 300.0 (-> arg0 x)))
+  (set! (-> arg0 y) (* 300.0 (-> arg0 y)))
+  (set! (-> arg0 z) (* 300.0 (-> arg0 z)))
+  arg0
+  )
+
+;; definition for function vector-v!
+(defun vector-v! ((arg0 vector))
+  (with-pp
+    (vector-float*! arg0 arg0 (-> pp clock seconds-per-frame))
+    arg0
+    )
+  )
+
+;; definition for function vector-v+!
+(defun vector-v+! ((arg0 vector) (arg1 vector) (arg2 vector))
+  (with-pp
+    (vector+float*! arg0 arg1 arg2 (-> pp clock seconds-per-frame))
+    arg0
+    )
+  )
+
+;; definition for function vector-v*float+!
+(defun vector-v*float+! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (with-pp
+    (vector+float*! arg0 arg1 arg2 (* arg3 (-> pp clock seconds-per-frame)))
+    arg0
+    )
+  )
+
+;; definition for function vector-v++!
+(defun vector-v++! ((arg0 vector) (arg1 vector))
+  (with-pp
+    (vector+float*! arg0 arg0 arg1 (-> pp clock seconds-per-frame))
+    arg0
+    )
+  )
+
+;; definition for function vector-v*float!
+(defun vector-v*float! ((arg0 vector) (arg1 vector) (arg2 float))
+  (with-pp
+    (vector-float*! arg0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
+    )
+  )
+
+;; definition for function vector-v*float++!
+(defun vector-v*float++! ((arg0 vector) (arg1 vector) (arg2 float))
+  (with-pp
+    (vector+float*! arg0 arg0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
+    arg0
+    )
+  )
+
+;; definition for function vector-to-ups!
+(defun vector-to-ups! ((arg0 vector) (arg1 vector))
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (.lvf vf1 (&-> arg1 quad))
+      (let ((f0-0 (-> pp clock frames-per-second)))
+        (.mov at-0 f0-0)
+        )
+      (.mov vf2 at-0)
+      (.mov.vf vf1 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> arg0 quad) vf1)
+      arg0
+      )
+    )
+  )
+
+;; definition for function vector-from-ups!
+(defun vector-from-ups! ((arg0 vector) (arg1 vector))
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (.lvf vf1 (&-> arg1 quad))
+      (let ((f0-0 (-> pp clock seconds-per-frame)))
+        (.mov at-0 f0-0)
+        )
+      (.mov vf2 at-0)
+      (.mov.vf vf1 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> arg0 quad) vf1)
+      arg0
+      )
+    )
+  )
+
+;; definition for function vector-length
+(defun vector-length ((arg0 vector))
+  (vector-length arg0)
+  )
+
+;; definition for function vector-length-squared
+(defun vector-length-squared ((arg0 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-xz-length-squared
+(defun vector-xz-length-squared ((arg0 vector))
+  (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z)))
+  )
+
+;; definition for function vector-xz-length
+(defun vector-xz-length ((arg0 vector))
+  (sqrtf (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z))))
+  )
+
+;; definition for function vector-vector-distance
+(defun vector-vector-distance ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
+    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-vector-distance-squared
+(defun vector-vector-distance-squared ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-vector-xz-distance
+(defun vector-vector-xz-distance ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-vector-xy-distance
+(defun vector-vector-xy-distance ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.y.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-vector-xz-distance-squared
+(defun vector-vector-xz-distance-squared ((arg0 vector) (arg1 vector))
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector-normalize!
+(defun vector-normalize! ((arg0 vector) (arg1 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (let ((v1-0 arg1))
+      (.mov vf3 v1-0)
+      )
+    (.mul.x.vf acc vf0 vf2 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.nop.vf)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-normalize-ret-len!
+(defun vector-normalize-ret-len! ((arg0 vector) (arg1 float))
+  (local-vars (v1-1 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (let ((v1-0 arg1))
+      (.mov vf3 v1-0)
+      )
+    (.mul.x.vf acc vf0 vf2 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+    (.add.w.vf vf2 vf0 vf2 :mask #b1)
+    (.mov v1-1 vf2)
+    (let ((v0-0 (sqrtf v1-1)))
+      (.wait.vf)
+      (.mul.vf vf1 vf1 Q :mask #b111)
+      (.nop.vf)
+      (.nop.vf)
+      (.nop.vf)
+      (.svf (&-> arg0 quad) vf1)
+      v0-0
+      )
+    )
+  )
+
+;; definition for function vector-normalize-copy!
+;; INFO: Used lq/sq
+(defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
+  (let ((f0-0 (vector-length arg1)))
+    (cond
+      ((= f0-0 0.0)
+       (set! (-> arg0 quad) (-> arg1 quad))
+       )
+      (else
+        (let ((v1-3 (/ arg2 f0-0)))
+          (set! (-> arg0 x) (* (-> arg1 x) v1-3))
+          (set! (-> arg0 y) (* (-> arg1 y) v1-3))
+          (set! (-> arg0 z) (* (-> arg1 z) v1-3))
+          )
+        )
+      )
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for function vector-xz-normalize!
+(defun vector-xz-normalize! ((arg0 vector) (arg1 float))
+  (let* ((v1-0 arg0)
+         (f0-4 (sqrtf (+ (* (-> v1-0 x) (-> v1-0 x)) (* (-> v1-0 z) (-> v1-0 z)))))
+         )
+    (when (!= f0-4 0.0)
+      (let ((v1-3 (/ arg1 f0-4)))
+        (set! (-> arg0 x) (* (-> arg0 x) v1-3))
+        (set! (-> arg0 z) (* (-> arg0 z) v1-3))
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector-xz-normalize-copy!
+;; INFO: Used lq/sq
+(defun vector-xz-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
+  (let* ((v1-0 arg1)
+         (f0-4 (sqrtf (+ (* (-> v1-0 x) (-> v1-0 x)) (* (-> v1-0 z) (-> v1-0 z)))))
+         )
+    (cond
+      ((= f0-4 0.0)
+       (set! (-> arg0 quad) (-> arg1 quad))
+       )
+      (else
+        (let ((v1-3 (/ arg2 f0-4)))
+          (set! (-> arg0 x) (* (-> arg1 x) v1-3))
+          (set! (-> arg0 y) 0.0)
+          (set! (-> arg0 z) (* (-> arg1 z) v1-3))
+          )
+        )
+      )
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for function vector-length-max!
+(defun vector-length-max! ((arg0 vector) (arg1 float))
+  (let ((f0-0 (vector-length arg0)))
+    (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
+      (let ((f0-1 (/ f0-0 arg1)))
+        (when (!= f0-1 0.0)
+          (set! (-> arg0 x) (/ (-> arg0 x) f0-1))
+          (set! (-> arg0 y) (/ (-> arg0 y) f0-1))
+          (set! (-> arg0 z) (/ (-> arg0 z) f0-1))
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector-xz-length-max!
+(defun vector-xz-length-max! ((arg0 vector) (arg1 float))
+  (let* ((v1-0 arg0)
+         (f0-4 (sqrtf (+ (* (-> v1-0 x) (-> v1-0 x)) (* (-> v1-0 z) (-> v1-0 z)))))
+         )
+    (when (not (or (= f0-4 0.0) (< f0-4 arg1)))
+      (let ((f0-5 (/ f0-4 arg1)))
+        (when (!= f0-5 0.0)
+          (set! (-> arg0 x) (/ (-> arg0 x) f0-5))
+          (set! (-> arg0 z) (/ (-> arg0 z) f0-5))
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector-rotate-around-x!
+;; INFO: Used lq/sq
+(defun vector-rotate-around-x! ((arg0 vector) (arg1 vector) (arg2 float))
+  (let* ((f28-0 (- arg2))
+         (f30-0 (cos f28-0))
+         (f1-0 (sin f28-0))
+         (f2-0 (-> arg1 z))
+         (f0-1 (-> arg1 y))
+         )
+    (set! (-> arg0 quad) (-> arg1 quad))
+    (set! (-> arg0 z) (- (* f2-0 f30-0) (* f0-1 f1-0)))
+    (set! (-> arg0 y) (+ (* f2-0 f1-0) (* f0-1 f30-0)))
+    )
+  arg0
+  )
+
+;; definition for function vector-rotate-around-y!
+;; INFO: Used lq/sq
+(defun vector-rotate-around-y! ((arg0 vector) (arg1 vector) (arg2 float))
+  (let ((f26-0 (-> arg1 z))
+        (f30-0 (-> arg1 x))
+        (f28-0 (cos arg2))
+        (f0-0 (sin arg2))
+        )
+    (set! (-> arg0 quad) (-> arg1 quad))
+    (set! (-> arg0 z) (- (* f26-0 f28-0) (* f30-0 f0-0)))
+    (set! (-> arg0 x) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
+    )
+  arg0
+  )
+
+;; definition for function vector-rotate90-around-y!
+;; INFO: Used lq/sq
+(defun vector-rotate90-around-y! ((arg0 vector) (arg1 vector))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  (let ((f0-0 (-> arg0 x)))
+    (set! (-> arg0 x) (- (-> arg1 z)))
+    (set! (-> arg0 z) f0-0)
+    )
+  arg0
+  )
+
+;; definition for function vector-rotate-around-z!
+;; INFO: Used lq/sq
+(defun vector-rotate-around-z! ((arg0 vector) (arg1 vector) (arg2 float))
+  (let ((f26-0 (-> arg1 x))
+        (f30-0 (-> arg1 y))
+        (f28-0 (cos arg2))
+        (f0-0 (sin arg2))
+        )
+    (set! (-> arg0 quad) (-> arg1 quad))
+    (set! (-> arg0 x) (- (* f26-0 f28-0) (* f30-0 f0-0)))
+    (set! (-> arg0 y) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
+    )
+  arg0
+  )
+
+;; definition for function rotate-y<-vector+vector
+(defun rotate-y<-vector+vector ((arg0 vector) (arg1 vector))
+  (atan (- (-> arg1 x) (-> arg0 x)) (- (-> arg1 z) (-> arg0 z)))
+  )
+
+;; definition for function rotate-x<-vector+vector
+(defun rotate-x<-vector+vector ((arg0 vector) (arg1 vector))
+  (atan (- (-> arg1 y) (-> arg0 y)) (- (-> arg1 z) (-> arg0 z)))
+  )
+
+;; definition for function rotate-z<-vector+vector
+(defun rotate-z<-vector+vector ((arg0 vector) (arg1 vector))
+  (atan (- (-> arg1 x) (-> arg0 x)) (- (-> arg1 y) (-> arg0 y)))
+  )
+
+;; definition for function vector-cvt.w.s!
+(defun vector-cvt.w.s! ((arg0 vector) (arg1 vector))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> arg1 quad))
+    (.ftoi.vf vf1 vf1)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-cvt.s.w!
+(defun vector-cvt.s.w! ((arg0 vector) (arg1 vector))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> arg1 quad))
+    (.itof.vf vf1 vf1)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function rot-zxy-from-vector!
+(defun rot-zxy-from-vector! ((arg0 vector) (arg1 vector))
+  (let* ((f28-0 (-> arg1 z))
+         (f30-0 (-> arg1 x))
+         (f0-0 (atan f30-0 f28-0))
+         )
+    (set! (-> arg0 y) f0-0)
+    (let* ((f26-0 (- f0-0))
+           (f0-4 (- (* f28-0 (cos f26-0)) (* f30-0 (sin f26-0))))
+           )
+      (set! (-> arg0 x) (atan (- (-> arg1 y)) f0-4))
+      )
+    )
+  (set! (-> arg0 z) 0.0)
+  arg0
+  )
+
+;; definition for function rot-zyx-from-vector!
+(defun rot-zyx-from-vector! ((arg0 vector) (arg1 vector))
+  (let* ((f28-0 (-> arg1 z))
+         (f30-0 (- (-> arg1 y)))
+         (f0-1 (atan f30-0 f28-0))
+         )
+    (set! (-> arg0 x) f0-1)
+    (let* ((f26-0 (- f0-1))
+           (f0-5 (- (* f28-0 (cos f26-0)) (* f30-0 (sin f26-0))))
+           )
+      (set! (-> arg0 y) (atan (-> arg1 x) f0-5))
+      )
+    )
+  (set! (-> arg0 z) 0.0)
+  arg0
+  )
+
+;; definition for function vector-lerp!
+(defun vector-lerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg1 quad))
+    (.lvf vf2 (&-> arg2 quad))
+    (.mov vf4 arg3)
+    (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+    (.sub.vf vf2 vf2 vf1)
+    (.mul.x.vf vf2 vf2 vf4)
+    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.svf (&-> arg0 quad) vf3)
+    arg0
+    )
+  )
+
+;; definition for function vector-lerp-clamp!
+;; INFO: Used lq/sq
+(defun vector-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (cond
+      ((>= 0.0 arg3)
+       (set! (-> arg0 quad) (-> arg1 quad))
+       )
+      ((>= arg3 1.0)
+       (set! (-> arg0 quad) (-> arg2 quad))
+       )
+      (else
+        (let ((v1-3 arg0))
+          (let ((f0-2 arg3))
+            (.lvf vf1 (&-> arg1 quad))
+            (.lvf vf2 (&-> arg2 quad))
+            (let ((a1-1 f0-2))
+              (.mov vf4 a1-1)
+              )
+            )
+          (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+          (.sub.vf vf2 vf2 vf1)
+          (.mul.x.vf vf2 vf2 vf4)
+          (.add.vf vf3 vf1 vf2 :mask #b111)
+          (.svf (&-> v1-3 quad) vf3)
+          )
+        )
+      )
+    arg0
+    )
+  )
+
+;; definition for function vector4-lerp!
+(defun vector4-lerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (.lvf vf1 (&-> arg1 quad))
+    (.lvf vf2 (&-> arg2 quad))
+    (.mov vf4 arg3)
+    (.sub.vf vf2 vf2 vf1)
+    (.mul.x.vf vf2 vf2 vf4)
+    (.add.vf vf3 vf1 vf2)
+    (.svf (&-> arg0 quad) vf3)
+    arg0
+    )
+  )
+
+;; definition for function vector4-lerp-clamp!
+;; INFO: Used lq/sq
+(defun vector4-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (cond
+      ((>= 0.0 arg3)
+       (set! (-> arg0 quad) (-> arg1 quad))
+       )
+      ((>= arg3 1.0)
+       (set! (-> arg0 quad) (-> arg2 quad))
+       )
+      (else
+        (let ((v1-3 arg0))
+          (let ((f0-2 arg3))
+            (.lvf vf1 (&-> arg1 quad))
+            (.lvf vf2 (&-> arg2 quad))
+            (let ((a1-1 f0-2))
+              (.mov vf4 a1-1)
+              )
+            )
+          (.sub.vf vf2 vf2 vf1)
+          (.mul.x.vf vf2 vf2 vf4)
+          (.add.vf vf3 vf1 vf2)
+          (.svf (&-> v1-3 quad) vf3)
+          )
+        )
+      )
+    arg0
+    )
+  )
+
+;; definition for function vector-degi
+;; INFO: Used lq/sq
+(defun vector-degi ((arg0 vector) (arg1 vector))
+  (local-vars (v1-0 uint128) (v1-1 uint128))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> arg1 quad))
+    (.ftoi.vf vf1 vf1)
+    (.mov v1-0 vf1)
+    (.pw.sll v1-1 v1-0 16)
+    (set! (-> arg0 quad) v1-1)
+    arg0
+    )
+  )
+
+;; definition for function vector-degf
+;; INFO: Used lq/sq
+(defun vector-degf ((arg0 vector) (arg1 vector))
+  (local-vars (v1-1 uint128))
+  (rlet ((vf1 :class vf))
+    (let ((v1-0 (-> arg1 quad)))
+      (.pw.sra v1-1 v1-0 16)
+      )
+    (.mov vf1 v1-1)
+    (.itof.vf vf1 vf1)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-degmod
+(defun vector-degmod ((arg0 vector) (arg1 vector))
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> arg1 quad))
+    (.ftoi.vf vf1 vf1)
+    (.mov v1-0 vf1)
+    (.pw.sll v1-1 v1-0 16)
+    (.pw.sra v1-2 v1-1 16)
+    (.mov vf1 v1-2)
+    (.itof.vf vf1 vf1)
+    (.svf (&-> arg0 quad) vf1)
+    arg0
+    )
+  )
+
+;; definition for function vector-deg-diff
+;; WARN: Return type mismatch float vs none.
+(defun vector-deg-diff ((arg0 vector) (arg1 vector) (arg2 vector))
+  (local-vars
+    (v0-0 float)
+    (v1-0 uint128)
+    (v1-1 uint128)
+    (v1-2 uint128)
+    (v1-3 uint128)
+    (a1-1 uint128)
+    (a1-2 uint128)
+    )
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (.lvf vf1 (&-> arg1 quad))
+    (.lvf vf2 (&-> arg2 quad))
+    (.ftoi.vf vf1 vf1)
+    (.ftoi.vf vf2 vf2)
+    (.mov a1-1 vf1)
+    (.mov v1-0 vf2)
+    (.pw.sll a1-2 a1-1 16)
+    (.pw.sll v1-1 v1-0 16)
+    (.psubw v1-2 a1-2 v1-1)
+    (.pw.sra v1-3 v1-2 16)
+    (.mov vf1 v1-3)
+    (.itof.vf vf1 vf1)
+    (.svf (&-> arg0 quad) vf1)
+    (.mov v0-0 vf1)
+    (none)
+    )
+  )
+
+;; definition for function vector-deg-lerp-clamp!
+;; INFO: Used lq/sq
+(defun vector-deg-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (cond
+    ((>= 0.0 arg3)
+     (set! (-> arg0 quad) (-> arg1 quad))
+     )
+    ((>= arg3 1.0)
+     (set! (-> arg0 quad) (-> arg2 quad))
+     )
+    (else
+      (set! (-> arg0 x) (deg-lerp-clamp (-> arg1 x) (-> arg2 x) arg3))
+      (set! (-> arg0 y) (deg-lerp-clamp (-> arg1 y) (-> arg2 y) arg3))
+      (set! (-> arg0 z) (deg-lerp-clamp (-> arg1 z) (-> arg2 z) arg3))
+      (set! (-> arg0 w) 1.0)
+      )
+    )
+  arg0
+  )
+
+;; definition for function vector3s-copy!
+(defun vector3s-copy! ((arg0 vector) (arg1 vector))
+  "Copy a vector3s"
+  (set! (-> arg0 x) (-> arg1 x))
+  (set! (-> arg0 y) (-> arg1 y))
+  (set! (-> arg0 z) (-> arg1 z))
+  arg0
+  )
+
+;; definition for function vector3s+!
+(defun vector3s+! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Add 2 vectors3."
+  (set! (-> arg0 x) (+ (-> arg1 x) (-> arg2 x)))
+  (set! (-> arg0 y) (+ (-> arg1 y) (-> arg2 y)))
+  (set! (-> arg0 z) (+ (-> arg1 z) (-> arg2 z)))
+  arg0
+  )
+
+;; definition for function vector3s*float!
+(defun vector3s*float! ((arg0 vector) (arg1 vector) (arg2 float))
+  "mult vectors3 by float"
+  (set! (-> arg0 x) (* (-> arg1 x) arg2))
+  (set! (-> arg0 y) (* (-> arg1 y) arg2))
+  (set! (-> arg0 z) (* (-> arg1 z) arg2))
+  arg0
+  )
+
+;; definition for function vector3s-!
+(defun vector3s-! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Subtract 2 vectors3: c = (a - b)."
+  (set! (-> arg0 x) (- (-> arg1 x) (-> arg2 x)))
+  (set! (-> arg0 y) (- (-> arg1 y) (-> arg2 y)))
+  (set! (-> arg0 z) (- (-> arg1 z) (-> arg2 z)))
+  arg0
+  )
+
+;; definition for function vector4-add!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-add! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
+  (local-vars (v0-0 float))
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (.lvf vf5 (&-> arg1 quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.add.vf vf4 vf5 vf6)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-sub!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-sub! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
+  (local-vars (v0-0 float))
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (.lvf vf5 (&-> arg1 quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.sub.vf vf4 vf5 vf6)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-mul!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-mul! ((arg0 vector4) (arg1 vector4) (arg2 vector4))
+  (local-vars (v0-0 float))
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (.lvf vf5 (&-> arg1 quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.mul.vf vf4 vf5 vf6)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-scale!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-scale! ((arg0 vector4) (arg1 vector4) (arg2 float))
+  (local-vars (v0-0 float))
+  (rlet ((vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (.mov vf6 arg2)
+    (.lvf vf5 (&-> arg1 quad))
+    (.mul.x.vf vf4 vf5 vf6)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-madd!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-madd! ((arg0 vector4) (arg1 vector4) (arg2 vector4) (arg3 float))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf7 arg3)
+    (.lvf vf5 (&-> arg1 quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.mul.w.vf acc vf5 vf0)
+    (.add.mul.x.vf vf4 vf6 vf7 acc)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-msub!
+;; WARN: Return type mismatch float vs none.
+(defun vector4-msub! ((arg0 vector4) (arg1 vector4) (arg2 vector4) (arg3 float))
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov vf7 arg3)
+    (.lvf vf5 (&-> arg1 quad))
+    (.lvf vf6 (&-> arg2 quad))
+    (.mul.w.vf acc vf5 vf0)
+    (.sub.mul.x.vf vf4 vf6 vf7 acc)
+    (.svf (&-> arg0 quad) vf4)
+    (.mov v0-0 vf4)
+    (none)
+    )
+  )
+
+;; definition for function vector4-array-add!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-add! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
+  (dotimes (s2-0 arg3)
+    (vector4-add! (the-as vector4 arg0) (the-as vector4 arg1) (the-as vector4 arg2))
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-sub!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-sub! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
+  (dotimes (s2-0 arg3)
+    (vector4-sub! (the-as vector4 arg0) (the-as vector4 arg1) (the-as vector4 arg2))
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-mul!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-mul! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 (inline-array vector4)) (arg3 int))
+  (dotimes (s2-0 arg3)
+    (vector4-mul! (the-as vector4 arg0) (the-as vector4 arg1) (the-as vector4 arg2))
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-scale!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-scale! ((arg0 (inline-array vector4)) (arg1 (inline-array vector4)) (arg2 float) (arg3 int))
+  (dotimes (s2-0 arg3)
+    (vector4-scale! (the-as vector4 arg0) (the-as vector4 arg1) arg2)
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-madd!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-madd! ((arg0 (inline-array vector4))
+                   (arg1 (inline-array vector4))
+                   (arg2 (inline-array vector4))
+                   (arg3 float)
+                   (arg4 int)
+                   )
+  (dotimes (s1-0 arg4)
+    (vector4-madd! (the-as vector4 arg0) (the-as vector4 arg1) (the-as vector4 arg2) arg3)
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-msub!
+;; WARN: Return type mismatch symbol vs none.
+(defun vector4-array-msub! ((arg0 (inline-array vector4))
+                   (arg1 (inline-array vector4))
+                   (arg2 (inline-array vector4))
+                   (arg3 float)
+                   (arg4 int)
+                   )
+  (dotimes (s1-0 arg4)
+    (vector4-msub! (the-as vector4 arg0) (the-as vector4 arg1) (the-as vector4 arg2) arg3)
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  (none)
+  )
+
+;; definition for function vector4-array-lerp!
+(defun vector4-array-lerp! ((arg0 (inline-array vector4))
+                   (arg1 (inline-array vector4))
+                   (arg2 (inline-array vector4))
+                   (arg3 float)
+                   (arg4 int)
+                   )
+  (dotimes (s1-0 arg4)
+    (vector4-lerp! (the-as vector arg0) (the-as vector arg1) (the-as vector arg2) arg3)
+    (set! arg1 (the-as (inline-array vector4) (-> arg1 1)))
+    (set! arg2 (the-as (inline-array vector4) (-> arg2 1)))
+    (set! arg0 (the-as (inline-array vector4) (-> arg0 1)))
+    )
+  #f
+  )
+
+;; definition for function spheres-overlap?
+(defun spheres-overlap? ((arg0 sphere) (arg1 sphere))
+  (local-vars (v1-0 float) (a0-1 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.sub.vf vf3 vf1 vf2 :mask #b111)
+    (.mul.vf vf3 vf3 vf3 :mask #b111)
+    (.add.w.vf vf4 vf1 vf2 :mask #b1000)
+    (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+    (.add.y.vf vf3 vf3 vf3 :mask #b1)
+    (.add.z.vf vf3 vf3 vf3 :mask #b1)
+    (.add.w.vf vf4 vf0 vf4 :mask #b1)
+    (.mov a0-1 vf4)
+    (.mov v1-0 vf3)
+    (>= a0-1 v1-0)
+    )
+  )
+
+;; definition for function sphere<-vector!
+;; INFO: Used lq/sq
+(defun sphere<-vector! ((arg0 sphere) (arg1 vector))
+  (let ((f0-0 (-> arg0 r)))
+    (set! (-> arg0 quad) (-> arg1 quad))
+    (set! (-> arg0 r) f0-0)
+    )
+  arg0
+  )
+
+;; definition for function sphere<-vector+r!
+;; INFO: Used lq/sq
+(defun sphere<-vector+r! ((arg0 sphere) (arg1 vector) (arg2 float))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  (set! (-> arg0 r) arg2)
+  arg0
+  )
+
+;; definition for function rand-vu-sphere-point!
+(defun rand-vu-sphere-point! ((arg0 vector) (arg1 float))
+  (set-vector!
+    arg0
+    (rand-vu-float-range -1.0 1.0)
+    (rand-vu-float-range -1.0 1.0)
+    (rand-vu-float-range -1.0 1.0)
+    1.0
+    )
+  (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
+  )
+
+;; definition for method 2 of type vector2
+(defmethod print vector2 ((obj vector2))
+  (format #t "#<vector ~F ~F @ #x~X>" (-> obj x) (-> obj y) obj)
+  obj
+  )
+
+;; definition for function vector-vector-angle-safe
+(defun vector-vector-angle-safe ((arg0 vector) (arg1 vector))
+  (let ((f0-1 (vector-dot
+                (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
+                (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0)
+                )
+              )
+        )
+    (cond
+      ((>= f0-1 1.0)
+       0.0
+       )
+      ((>= -1.0 f0-1)
+       0.017257283
+       )
+      (else
+        (acos f0-1)
+        )
+      )
+    )
+  )

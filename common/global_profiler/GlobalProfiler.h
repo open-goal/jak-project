@@ -8,9 +8,9 @@
 
 struct ProfNode {
   u64 ts;
-  char name[32];
+  u64 tid;
+  char name[128];
   enum Kind : u8 { BEGIN, END, INSTANT, UNUSED } kind = UNUSED;
-  u32 tid;
 };
 
 class GlobalProfiler {
@@ -24,6 +24,7 @@ class GlobalProfiler {
   void clear();
   void set_enable(bool en);
   void dump_to_json(const std::string& path);
+  void root_event();
 
  private:
   std::atomic_bool m_enabled = false;

@@ -11,8 +11,10 @@
 
 class Shrub : public BucketRenderer {
  public:
-  Shrub(const std::string& name, BucketId my_id);
+  Shrub(const std::string& name, int my_id);
   ~Shrub();
+  void init_shaders(ShaderLibrary& shaders) override;
+
   bool setup_for_level(const std::string& level, SharedRenderState* render_state);
   void render_all_trees(const TfragRenderSettings& settings,
                         SharedRenderState* render_state,
@@ -53,6 +55,10 @@ class Shrub : public BucketRenderer {
     } perf;
   };
 
+  struct {
+    GLuint decal;
+  } m_uniforms;
+
   std::vector<Tree> m_trees;
   std::string m_level_name;
   const std::vector<GLuint>* m_textures;
@@ -62,6 +68,7 @@ class Shrub : public BucketRenderer {
 
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
   bool m_has_level = false;
+  bool m_use_fast_time_of_day = true;
 
   struct Cache {
     std::vector<std::pair<int, int>> draw_idx_temp;

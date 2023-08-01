@@ -1,0 +1,362 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hover-enemy-battle-command
+(deftype hover-enemy-battle-command (structure)
+  ((command     symbol      :offset-assert   0)
+   (wave        uint16      :offset-assert   4)
+   (time        time-frame  :offset-assert   8)
+   (alive-count int32       :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type hover-enemy-battle-command
+(defmethod inspect hover-enemy-battle-command ((obj hover-enemy-battle-command))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'hover-enemy-battle-command)
+  (format #t "~1Tcommand: ~A~%" (-> obj command))
+  (format #t "~1Twave: ~D~%" (-> obj wave))
+  (format #t "~1Ttime: ~D~%" (-> obj time))
+  (format #t "~1Talive-count: ~D~%" (-> obj alive-count))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type hover-enemy-manager
+(deftype hover-enemy-manager (process)
+  ((command-table     (array hover-enemy-battle-command)  :offset-assert 128)
+   (path              path-control                        :offset-assert 132)
+   (formation         hover-formation-control             :offset-assert 136)
+   (actor-group       (pointer actor-group)               :offset-assert 140)
+   (actor-group-count int32                               :offset-assert 144)
+   (total-to-spawn    int32                               :offset-assert 148)
+   (num-spawned       int32                               :offset-assert 152)
+   (alive-count       int32                               :offset-assert 156)
+   (formation-timer   time-frame                          :offset-assert 160)
+   )
+  :heap-base #x30
+  :method-count-assert 19
+  :size-assert         #xa8
+  :flag-assert         #x13003000a8
+  (:methods
+    (idle () _type_ :state 14)
+    (spawning (object object process pointer) _type_ :state 15)
+    (die () _type_ :state 16)
+    (hover-enemy-manager-init! (_type_ (array hover-enemy-battle-command)) none 17)
+    (spawn-enemy (_type_ uint) none 18)
+    )
+  )
+
+;; definition for method 3 of type hover-enemy-manager
+(defmethod inspect hover-enemy-manager ((obj hover-enemy-manager))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcommand-table: ~A~%" (-> obj command-table))
+  (format #t "~2Tpath: ~A~%" (-> obj path))
+  (format #t "~2Tformation: ~A~%" (-> obj formation))
+  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
+  (dotimes (s5-0 (-> obj actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (format #t "~2Ttotal-to-spawn: ~D~%" (-> obj total-to-spawn))
+  (format #t "~2Tnum-spawned: ~D~%" (-> obj num-spawned))
+  (format #t "~2Talive-count: ~D~%" (-> obj alive-count))
+  (format #t "~2Tformation-timer: ~D~%" (-> obj formation-timer))
+  (label cfg-7)
+  obj
+  )
+
+;; definition for function hover-enemy-manager-handler
+(defbehavior hover-enemy-manager-handler hover-enemy-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('join 'leave 'set-type 'get-formation 'set-los)
+     (when (-> self formation)
+       (let ((v1-2 (-> self formation))
+             (a1-8 arg0)
+             )
+         (case arg2
+           (('join)
+            (hover-formation-control-method-17 v1-2 a1-8)
+            )
+           (('leave)
+            (hover-formation-control-method-18 v1-2 a1-8)
+            )
+           (('set-type)
+            (let ((a1-11 1))
+              (case (-> arg3 param 0)
+                (('line)
+                 (set! a1-11 0)
+                 )
+                (('circle)
+                 (set! a1-11 2)
+                 )
+                (('semicircle)
+                 (set! a1-11 3)
+                 )
+                )
+              (try-update-formation-type v1-2 (the-as formation-type a1-11))
+              )
+            )
+           (('get-formation)
+            v1-2
+            )
+           (('set-los)
+            (cond
+              ((-> arg3 param 0)
+               (set! v0-0 (logior (-> v1-2 flags) 2))
+               (set! (-> v1-2 flags) (the-as uint v0-0))
+               )
+              (else
+                (set! v0-0 (logand -3 (-> v1-2 flags)))
+                (set! (-> v1-2 flags) (the-as uint v0-0))
+                )
+              )
+            v0-0
+            )
+           )
+         )
+       )
+     )
+    (('num-alive?)
+     (-> self alive-count)
+     )
+    (('num-spawned?)
+     (-> self num-spawned)
+     )
+    (('total-to-spawn?)
+     (-> self total-to-spawn)
+     )
+    (('hover-die)
+     (set! v0-0 (max 0 (+ (-> self alive-count) -1)))
+     (set! (-> self alive-count) (the-as int v0-0))
+     v0-0
+     )
+    (('path)
+     (if (not (logtest? (-> self path flags) (path-control-flag not-found)))
+         (-> self path)
+         )
+     )
+    )
+  )
+
+;; definition for function hover-enemy-manager-post
+(defbehavior hover-enemy-manager-post hover-enemy-manager ()
+  (when (-> self formation)
+    (let ((gp-0 (-> self formation)))
+      (let ((a0-0 gp-0))
+        ((the-as (function hover-formation-control none) (method-of-object a0-0 hover-formation-control-method-14))
+         a0-0
+         )
+        )
+      (when (and (logtest? (-> gp-0 flags) 2) (>= (- (current-time) (-> self formation-timer)) (seconds 0.2)))
+        (hover-formation-control-method-11 gp-0)
+        (set! (-> self formation-timer) (current-time))
+        )
+      )
+    )
+  (if (not (logtest? (-> self path flags) (path-control-flag not-found)))
+      (debug-draw (-> self path))
+      )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (hover-enemy-manager)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('trigger)
+       (go-virtual spawning proc arg1 (the-as process event-type) (the-as pointer event))
+       )
+      (else
+        (hover-enemy-manager-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :code (the-as (function none :behavior hover-enemy-manager) sleep-code)
+  :post hover-enemy-manager-post
+  )
+
+;; failed to figure out what this is:
+(defstate spawning (hover-enemy-manager)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('spawning?)
+       #t
+       )
+      (else
+        (hover-enemy-manager-handler proc arg1 event-type event)
+        )
+      )
+    )
+  :enter (behavior ((arg0 object) (arg1 object) (arg2 process) (arg3 pointer))
+    (let ((a0-1 (-> self formation)))
+      (if a0-1
+          (set-anchor-proc a0-1 (process->handle *target*))
+          )
+      )
+    (none)
+    )
+  :code (behavior ((arg0 object) (arg1 object) (arg2 process) (arg3 pointer))
+    (let ((gp-0 (-> self command-table)))
+      (dotimes (s5-0 (-> gp-0 length))
+        (case (-> gp-0 s5-0 command)
+          (('spawn)
+           (spawn-enemy self (-> gp-0 s5-0 wave))
+           )
+          (('wait)
+           )
+          )
+        (let ((s4-0 (current-time)))
+          (until (>= (- (current-time) s4-0) (-> gp-0 s5-0 time))
+            (suspend)
+            )
+          )
+        (while (< (-> gp-0 s5-0 alive-count) (-> self alive-count))
+          (suspend)
+          )
+        )
+      )
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 2))
+        (suspend)
+        )
+      )
+    (go-virtual die)
+    (none)
+    )
+  :post hover-enemy-manager-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (hover-enemy-manager)
+  :virtual #t
+  :event hover-enemy-manager-handler
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (none)
+    )
+  )
+
+;; definition for method 18 of type hover-enemy-manager
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-enemy hover-enemy-manager ((obj hover-enemy-manager) (arg0 uint))
+  (when (< arg0 (the-as uint (-> obj actor-group-count)))
+    (dotimes (s4-0 (-> obj actor-group arg0 length))
+      (let* ((s1-0 (-> obj actor-group arg0 data s4-0 actor))
+             (s2-0 (-> (the-as entity-actor s1-0) etype))
+             (s3-0 (new 'stack-no-clear 'transformq))
+             )
+        (set! (-> s3-0 trans quad) (-> s1-0 extra trans quad))
+        (quaternion-copy! (-> s3-0 quat) (-> (the-as entity-actor s1-0) quat))
+        (set! (-> s3-0 scale x) (the-as float s1-0))
+        (set! (-> s3-0 scale y) (the-as float #f))
+        (set! (-> s3-0 scale z) (the-as float #t))
+        (let ((s1-1 (get-process *default-dead-pool* s2-0 #x4000)))
+          (when (when s1-1
+                  (let ((t9-2 (method-of-type process activate)))
+                    (t9-2 s1-1 obj (symbol->string (-> s2-0 symbol)) (the-as pointer #x70004000))
+                    )
+                  (run-now-in-process s1-1 enemy-init-by-other obj s3-0)
+                  (-> s1-1 ppointer)
+                  )
+            (+! (-> obj alive-count) 1)
+            (+! (-> obj num-spawned) 1)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type hover-enemy-manager
+;; WARN: Return type mismatch process vs hover-enemy-manager.
+(defmethod relocate hover-enemy-manager ((obj hover-enemy-manager) (arg0 int))
+  (when (-> obj formation)
+    (if (nonzero? (-> obj formation))
+        (&+! (-> obj formation) arg0)
+        )
+    )
+  (if (nonzero? (-> obj path))
+      (&+! (-> obj path) arg0)
+      )
+  (the-as
+    hover-enemy-manager
+    ((the-as (function process int process) (find-parent-method hover-enemy-manager 7)) obj arg0)
+    )
+  )
+
+;; definition for method 17 of type hover-enemy-manager
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-manager-init! hover-enemy-manager ((obj hover-enemy-manager) (arg0 (array hover-enemy-battle-command)))
+  "Initialize this [[hover-enemy-manager]]."
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj command-table) arg0)
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (-> obj entity) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-5 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-5 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-5))
+       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> obj actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> obj total-to-spawn) 0)
+  (set! (-> obj num-spawned) 0)
+  (when (-> obj command-table)
+    (let ((v1-13 (-> obj command-table)))
+      (dotimes (a0-6 (-> v1-13 length))
+        (if (= (-> v1-13 a0-6 command) 'spawn)
+            (+! (-> obj total-to-spawn) (-> obj actor-group (-> v1-13 a0-6 wave) length))
+            )
+        )
+      )
+    )
+  (set! (-> obj formation) #f)
+  (set! (-> obj formation-timer) (current-time))
+  (set! (-> obj alive-count) 0)
+  0
+  (none)
+  )
+
+;; definition for function hover-enemy-manager-init-by-other
+;; WARN: Return type mismatch object vs none.
+(defbehavior hover-enemy-manager-init-by-other hover-enemy-manager ((arg0 entity-actor) (arg1 (array hover-enemy-battle-command)))
+  (set! (-> self entity) arg0)
+  (hover-enemy-manager-init! self arg1)
+  (go-virtual idle)
+  (none)
+  )
+
+;; definition for function hover-manager-spawn
+(defun hover-manager-spawn ((arg0 turret) (arg1 entity-actor) (arg2 (array hover-enemy-battle-command)))
+  (ppointer->process (process-spawn hover-enemy-manager arg1 arg2 :to arg0))
+  )

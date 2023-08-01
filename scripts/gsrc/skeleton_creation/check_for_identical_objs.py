@@ -36,6 +36,8 @@ print(len(obj_files))
 # Find all the files that have the same name, but a different prefix
 potentially_identical_files = {}
 
+print("WARNING: Be aware of the NOTE below, double check the output that the assumption has not changed")
+
 for file in obj_files:
   name = Path(file).stem
   base_name = None
@@ -45,8 +47,12 @@ for file in obj_files:
       # some files have multiple dgos in the name
       base_name_parts = []
       for token in name.split("-"):
-        if token.lower() not in dgos:
-          base_name_parts.append(token)
+        # NOTE - this is still a little fragile
+        # some files begin with a dgo name, for example `oracle-door-ag-ORACLE`
+        # so the easy hack is to skip tokens only if they are DGOs _and_ uppercase
+        if token.isupper() and token.lower() in dgos:
+          continue
+        base_name_parts.append(token)
       base_name = "-".join(base_name_parts)
       duplicate = True
   if duplicate:

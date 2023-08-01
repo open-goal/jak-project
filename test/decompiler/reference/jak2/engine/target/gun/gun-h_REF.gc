@@ -1,0 +1,592 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type gun
+(deftype gun (process-drawable)
+  ((control       control-info   :offset        128)
+   (shadow-backup shadow-geo     :offset        208)
+   (read-scale    basic          :offset-assert 212)
+   (gun-type      pickup-type    :offset-assert 216)
+   (barrel        joint-mod      :offset-assert 220)
+   (mag           joint-mod    4 :offset-assert 224)
+   (mag-scale     float        4 :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 24
+  :size-assert         #x100
+  :flag-assert         #x1800800100
+  (:methods
+    (idle () _type_ :state 20)
+    (use (symbol) _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (die () _type_ :state 23)
+    )
+  )
+
+;; definition for method 3 of type gun
+(defmethod inspect gun ((obj gun))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tcontrol: ~A~%" (-> obj root))
+  (format #t "~2Tstate-time: ~D~%" (-> obj state-time))
+  (format #t "~2Tshadow-backup: ~A~%" (-> obj shadow-backup))
+  (format #t "~2Tread-scale: ~A~%" (-> obj read-scale))
+  (format #t "~2Tgun-type: ~D~%" (-> obj gun-type))
+  (format #t "~2Tbarrel: ~A~%" (-> obj barrel))
+  (format #t "~2Tmag[4] @ #x~X~%" (-> obj mag))
+  (format #t "~2Tmag-scale[4] @ #x~X~%" (-> obj mag-scale))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type gun-info
+(deftype gun-info (basic)
+  ((process                (pointer target)           :offset-assert   4)
+   (gun                    (pointer gun)              :offset-assert   8)
+   (gun-pos                transformq       :inline   :offset-assert  16)
+   (gun-trans              vector           :inline   :offset         16)
+   (gun-quat               quaternion       :inline   :offset         32)
+   (gun-scale              vector           :inline   :offset         48)
+   (gun-type               pickup-type                :offset-assert  64)
+   (using-gun-type         pickup-type                :offset-assert  68)
+   (active?                symbol                     :offset-assert  72)
+   (latch?                 symbol                     :offset-assert  76)
+   (put-away?              symbol                     :offset-assert  80)
+   (surpress-time          time-frame                 :offset-assert  88)
+   (fire-time              time-frame                 :offset-assert  96)
+   (gun-time               time-frame                 :offset-assert 104)
+   (gun-get-on-time        time-frame                 :offset-assert 112)
+   (active-time            time-frame                 :offset-assert 120)
+   (fire-delay             uint32                     :offset-assert 128)
+   (gun-control            uint32                     :offset-assert 132)
+   (gun-target             uint32                     :offset-assert 136)
+   (gun-daxter             float                      :offset-assert 140)
+   (gun-roty-rel           degrees                    :offset-assert 144)
+   (gun-roty               degrees                    :offset-assert 148)
+   (gun-roty-targ          degrees                    :offset-assert 152)
+   (hips                   joint-mod                  :offset-assert 156)
+   (upper-body             joint-mod                  :offset-assert 160)
+   (chest                  joint-mod                  :offset-assert 164)
+   (fire-dir-rot           degrees                    :offset-assert 168)
+   (fire-dir               vector           2 :inline :offset-assert 176)
+   (fire-point             vector           :inline   :offset-assert 208)
+   (fire-dir-backup        vector           :inline   :offset-assert 224)
+   (fire-dir-out           vector           :inline   :offset-assert 240)
+   (fire-pending           int32                      :offset-assert 256)
+   (fire-pending-time      time-frame                 :offset-assert 264)
+   (fire-start-time        time-frame                 :offset-assert 272)
+   (fire-charge            float                      :offset-assert 280)
+   (fire-spin              degrees                    :offset-assert 284)
+   (fire-spinv             degrees                    :offset-assert 288)
+   (fire-chamber           int32                      :offset-assert 292)
+   (fire-range             meters                     :offset-assert 296)
+   (laser-active?          symbol                     :offset-assert 300)
+   (laser-point            vector           :inline   :offset-assert 304)
+   (laser-dir              vector           2 :inline :offset-assert 320)
+   (laser-hit-point        vector           :inline   :offset-assert 352)
+   (track?                 uint16                     :offset-assert 368)
+   (track-tilt             degrees                    :offset-assert 372)
+   (track-turn             degrees                    :offset-assert 376)
+   (track-find-range       meters                     :offset-assert 380)
+   (track-turnv-range      meters                     :offset-assert 384)
+   (track-tilt-range       meters                     :offset-assert 388)
+   (track-turn-range       meters                     :offset-assert 392)
+   (track-tilt-max         degrees                    :offset-assert 396)
+   (track-turn-max         degrees                    :offset-assert 400)
+   (track-angle-mult       float                      :offset-assert 404)
+   (track-beam-size        float                      :offset-assert 408)
+   (track-auto-fire        symbol                     :offset-assert 412)
+   (track-require          uint32                     :offset-assert 416)
+   (track-target-hold-time time-frame                 :offset-assert 424)
+   (track-start-time       time-frame                 :offset-assert 432)
+   (track-press-start-time time-frame                 :offset-assert 440)
+   (track-target           focus            2 :inline :offset-assert 448)
+   (track-trans            vector           :inline   :offset-assert 480)
+   (track-dir              vector           :inline   :offset-assert 496)
+   (turn-fast-hold-time    time-frame                 :offset-assert 512)
+   (blue-whine-sound-id    sound-id                   :offset-assert 520)
+   (blue-whine-volume      float                      :offset-assert 524)
+   (top-anim-twist         vector           :inline   :offset-assert 528)
+   (top-anim-twist-targ    vector           :inline   :offset-assert 544)
+   (top-anim-look-at       vector           :inline   :offset-assert 560)
+   (top-anim-twist-reset   uint64                     :offset-assert 576)
+   (top-anim-gun-height    meters                     :offset-assert 584)
+   (top-anim-blue-cycle    float                      :offset-assert 588)
+   (top-anim-low-high      float                      :offset-assert 592)
+   (top-anim-extra-twistv  degrees                    :offset-assert 596)
+   (top-anim-tilt-up       degrees                    :offset-assert 600)
+   (attack-combo           combo-tracker    :inline   :offset-assert 608)
+   (combo-window-start     time-frame                 :offset-assert 656)
+   (combo-window-state     symbol                     :offset-assert 664)
+   (combo-fire-delay       uint32                     :offset-assert 668)
+   (charge-ammo            float                      :offset-assert 672)
+   (charge-start-time      time-frame                 :offset-assert 680)
+   (charge-inc-time        time-frame                 :offset-assert 688)
+   (charge-active?         handle                     :offset-assert 696)
+   )
+  :method-count-assert 10
+  :size-assert         #x2c0
+  :flag-assert         #xa000002c0
+  (:methods
+    (gun-info-method-9 (_type_) (inline-array vector) 9)
+    )
+  )
+
+;; definition for method 3 of type gun-info
+(defmethod inspect gun-info ((obj gun-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-145)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: #x~X~%" (-> obj process))
+  (format #t "~1Tgun: #x~X~%" (-> obj gun))
+  (format #t "~1Tgun-pos: #<transformq @ #x~X>~%" (-> obj gun-pos))
+  (format #t "~1Tgun-trans: ~`vector`P~%" (-> obj gun-pos))
+  (format #t "~1Tgun-quat: ~`vector`P~%" (-> obj gun-pos quat))
+  (format #t "~1Tgun-scale: ~`vector`P~%" (-> obj gun-pos scale))
+  (let ((t9-7 format)
+        (a0-8 #t)
+        (a1-7 "~1Tgun-type: #x~X : ~S~%")
+        (a2-7 (-> obj gun-type))
+        (v1-2 (-> obj gun-type))
+        )
+    (t9-7 a0-8 a1-7 a2-7 (cond
+                           ((= v1-2 (pickup-type eco-pill-dark))
+                            "eco-pill-dark"
+                            )
+                           ((= v1-2 (pickup-type gun-blue))
+                            "gun-blue"
+                            )
+                           ((= v1-2 (pickup-type ammo-random))
+                            "ammo-random"
+                            )
+                           ((= v1-2 (pickup-type eco-blue))
+                            "eco-blue"
+                            )
+                           ((= v1-2 (pickup-type gun-red))
+                            "gun-red"
+                            )
+                           ((= v1-2 (pickup-type pass-red))
+                            "pass-red"
+                            )
+                           ((= v1-2 (pickup-type eco-pill-green))
+                            "eco-pill-green"
+                            )
+                           ((= v1-2 (pickup-type eco-red))
+                            "eco-red"
+                            )
+                           ((= v1-2 (pickup-type skill))
+                            "skill"
+                            )
+                           ((= v1-2 (pickup-type karma))
+                            "karma"
+                            )
+                           ((= v1-2 (pickup-type gun-dark))
+                            "gun-dark"
+                            )
+                           ((= v1-2 (pickup-type eco-dark))
+                            "eco-dark"
+                            )
+                           ((= v1-2 (pickup-type gem))
+                            "gem"
+                            )
+                           ((= v1-2 (pickup-type eco-green))
+                            "eco-green"
+                            )
+                           ((= v1-2 (pickup-type darkjak))
+                            "darkjak"
+                            )
+                           ((= v1-2 (pickup-type ammo-yellow))
+                            "ammo-yellow"
+                            )
+                           ((= v1-2 (pickup-type pass-blue))
+                            "pass-blue"
+                            )
+                           ((= v1-2 (pickup-type ammo-red))
+                            "ammo-red"
+                            )
+                           ((= v1-2 (pickup-type fuel-cell))
+                            "fuel-cell"
+                            )
+                           ((= v1-2 (pickup-type buzzer))
+                            "buzzer"
+                            )
+                           ((= v1-2 (pickup-type shield))
+                            "shield"
+                            )
+                           ((= v1-2 (pickup-type eco-pill-random))
+                            "eco-pill-random"
+                            )
+                           ((= v1-2 (pickup-type board))
+                            "board"
+                            )
+                           ((= v1-2 (pickup-type none))
+                            "none"
+                            )
+                           ((= v1-2 (pickup-type pass-green))
+                            "pass-green"
+                            )
+                           ((= v1-2 (pickup-type gun-yellow))
+                            "gun-yellow"
+                            )
+                           ((= v1-2 (pickup-type money))
+                            "money"
+                            )
+                           ((= v1-2 (pickup-type eco-yellow))
+                            "eco-yellow"
+                            )
+                           ((= v1-2 (pickup-type ammo-dark))
+                            "ammo-dark"
+                            )
+                           ((= v1-2 (pickup-type trick-judge))
+                            "trick-judge"
+                            )
+                           ((= v1-2 (pickup-type trick-point))
+                            "trick-point"
+                            )
+                           ((= v1-2 (pickup-type ammo-blue))
+                            "ammo-blue"
+                            )
+                           ((= v1-2 (pickup-type pass-yellow))
+                            "pass-yellow"
+                            )
+                           ((= v1-2 (pickup-type health))
+                            "health"
+                            )
+                           (else
+                             "*unknown*"
+                             )
+                           )
+          )
+    )
+  (let ((t9-8 format)
+        (a0-9 #t)
+        (a1-8 "~1Tusing-gun-type: #x~X : ~S~%")
+        (a2-8 (-> obj using-gun-type))
+        (v1-3 (-> obj using-gun-type))
+        )
+    (t9-8 a0-9 a1-8 a2-8 (cond
+                           ((= v1-3 (pickup-type eco-pill-dark))
+                            "eco-pill-dark"
+                            )
+                           ((= v1-3 (pickup-type gun-blue))
+                            "gun-blue"
+                            )
+                           ((= v1-3 (pickup-type ammo-random))
+                            "ammo-random"
+                            )
+                           ((= v1-3 (pickup-type eco-blue))
+                            "eco-blue"
+                            )
+                           ((= v1-3 (pickup-type gun-red))
+                            "gun-red"
+                            )
+                           ((= v1-3 (pickup-type pass-red))
+                            "pass-red"
+                            )
+                           ((= v1-3 (pickup-type eco-pill-green))
+                            "eco-pill-green"
+                            )
+                           ((= v1-3 (pickup-type eco-red))
+                            "eco-red"
+                            )
+                           ((= v1-3 (pickup-type skill))
+                            "skill"
+                            )
+                           ((= v1-3 (pickup-type karma))
+                            "karma"
+                            )
+                           ((= v1-3 (pickup-type gun-dark))
+                            "gun-dark"
+                            )
+                           ((= v1-3 (pickup-type eco-dark))
+                            "eco-dark"
+                            )
+                           ((= v1-3 (pickup-type gem))
+                            "gem"
+                            )
+                           ((= v1-3 (pickup-type eco-green))
+                            "eco-green"
+                            )
+                           ((= v1-3 (pickup-type darkjak))
+                            "darkjak"
+                            )
+                           ((= v1-3 (pickup-type ammo-yellow))
+                            "ammo-yellow"
+                            )
+                           ((= v1-3 (pickup-type pass-blue))
+                            "pass-blue"
+                            )
+                           ((= v1-3 (pickup-type ammo-red))
+                            "ammo-red"
+                            )
+                           ((= v1-3 (pickup-type fuel-cell))
+                            "fuel-cell"
+                            )
+                           ((= v1-3 (pickup-type buzzer))
+                            "buzzer"
+                            )
+                           ((= v1-3 (pickup-type shield))
+                            "shield"
+                            )
+                           ((= v1-3 (pickup-type eco-pill-random))
+                            "eco-pill-random"
+                            )
+                           ((= v1-3 (pickup-type board))
+                            "board"
+                            )
+                           ((= v1-3 (pickup-type none))
+                            "none"
+                            )
+                           ((= v1-3 (pickup-type pass-green))
+                            "pass-green"
+                            )
+                           ((= v1-3 (pickup-type gun-yellow))
+                            "gun-yellow"
+                            )
+                           ((= v1-3 (pickup-type money))
+                            "money"
+                            )
+                           ((= v1-3 (pickup-type eco-yellow))
+                            "eco-yellow"
+                            )
+                           ((= v1-3 (pickup-type ammo-dark))
+                            "ammo-dark"
+                            )
+                           ((= v1-3 (pickup-type trick-judge))
+                            "trick-judge"
+                            )
+                           ((= v1-3 (pickup-type trick-point))
+                            "trick-point"
+                            )
+                           ((= v1-3 (pickup-type ammo-blue))
+                            "ammo-blue"
+                            )
+                           ((= v1-3 (pickup-type pass-yellow))
+                            "pass-yellow"
+                            )
+                           ((= v1-3 (pickup-type health))
+                            "health"
+                            )
+                           (else
+                             "*unknown*"
+                             )
+                           )
+          )
+    )
+  (format #t "~1Tactive?: ~A~%" (-> obj active?))
+  (format #t "~1Tlatch?: ~A~%" (-> obj latch?))
+  (format #t "~1Tput-away?: ~A~%" (-> obj put-away?))
+  (format #t "~1Tsurpress-time: ~D~%" (-> obj surpress-time))
+  (format #t "~1Tfire-time: ~D~%" (-> obj fire-time))
+  (format #t "~1Tgun-time: ~D~%" (-> obj gun-time))
+  (format #t "~1Tgun-get-on-time: ~D~%" (-> obj gun-get-on-time))
+  (format #t "~1Tactive-time: ~D~%" (-> obj active-time))
+  (format #t "~1Tfire-delay: ~D~%" (-> obj fire-delay))
+  (format #t "~1Tgun-control: ~D~%" (-> obj gun-control))
+  (format #t "~1Tgun-target: ~D~%" (-> obj gun-target))
+  (format #t "~1Tgun-daxter: ~f~%" (-> obj gun-daxter))
+  (format #t "~1Tgun-roty-rel: (deg ~r)~%" (-> obj gun-roty-rel))
+  (format #t "~1Tgun-roty: (deg ~r)~%" (-> obj gun-roty))
+  (format #t "~1Tgun-roty-targ: (deg ~r)~%" (-> obj gun-roty-targ))
+  (format #t "~1Thips: ~A~%" (-> obj hips))
+  (format #t "~1Tupper-body: ~A~%" (-> obj upper-body))
+  (format #t "~1Tchest: ~A~%" (-> obj chest))
+  (format #t "~1Tfire-dir-rot: (deg ~r)~%" (-> obj fire-dir-rot))
+  (format #t "~1Tfire-dir: ~`vector`P~%" (-> obj fire-dir))
+  (format #t "~1Tfire-point: ~`vector`P~%" (-> obj fire-point))
+  (format #t "~1Tfire-dir-backup: ~`vector`P~%" (-> obj fire-dir-backup))
+  (format #t "~1Tfire-dir-out: ~`vector`P~%" (-> obj fire-dir-out))
+  (format #t "~1Tfire-pending: ~D~%" (-> obj fire-pending))
+  (format #t "~1Tfire-pending-time: ~D~%" (-> obj fire-pending-time))
+  (format #t "~1Tfire-start-time: ~D~%" (-> obj fire-start-time))
+  (format #t "~1Tfire-charge: ~f~%" (-> obj fire-charge))
+  (format #t "~1Tfire-spin: (deg ~r)~%" (-> obj fire-spin))
+  (format #t "~1Tfire-spinv: (deg ~r)~%" (-> obj fire-spinv))
+  (format #t "~1Tfire-chamber: ~D~%" (-> obj fire-chamber))
+  (format #t "~1Tfire-range: (meters ~m)~%" (-> obj fire-range))
+  (format #t "~1Tlaser-active?: ~A~%" (-> obj laser-active?))
+  (format #t "~1Tlaser-point: ~`vector`P~%" (-> obj laser-point))
+  (format #t "~1Tlaser-dir: ~`vector`P~%" (-> obj laser-dir))
+  (format #t "~1Tlaser-hit-point: ~`vector`P~%" (-> obj laser-hit-point))
+  (format #t "~1Ttrack?: ~D~%" (-> obj track?))
+  (format #t "~1Ttrack-tilt: (deg ~r)~%" (-> obj track-tilt))
+  (format #t "~1Ttrack-turn: (deg ~r)~%" (-> obj track-turn))
+  (format #t "~1Ttrack-find-range: (meters ~m)~%" (-> obj track-find-range))
+  (format #t "~1Ttrack-turnv-range: (meters ~m)~%" (-> obj track-turnv-range))
+  (format #t "~1Ttrack-tilt-range: (meters ~m)~%" (-> obj track-tilt-range))
+  (format #t "~1Ttrack-turn-range: (meters ~m)~%" (-> obj track-turn-range))
+  (format #t "~1Ttrack-tilt-max: (deg ~r)~%" (-> obj track-tilt-max))
+  (format #t "~1Ttrack-turn-max: (deg ~r)~%" (-> obj track-turn-max))
+  (format #t "~1Ttrack-angle-mult: ~f~%" (-> obj track-angle-mult))
+  (format #t "~1Ttrack-beam-size: ~f~%" (-> obj track-beam-size))
+  (format #t "~1Ttrack-auto-fire: ~A~%" (-> obj track-auto-fire))
+  (format #t "~1Ttrack-require: ~D~%" (-> obj track-require))
+  (format #t "~1Ttrack-target-hold-time: ~D~%" (-> obj track-target-hold-time))
+  (format #t "~1Ttrack-start-time: ~D~%" (-> obj track-start-time))
+  (format #t "~1Ttrack-press-start-time: ~D~%" (-> obj track-press-start-time))
+  (format #t "~1Ttrack-target[2] @ #x~X~%" (-> obj track-target))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~1Ttrack-target: ~`focus`P~%" s5-0 (-> obj track-target s5-0))
+    )
+  (format #t "~1Ttrack-trans: ~`vector`P~%" (-> obj track-trans))
+  (format #t "~1Ttrack-dir: ~`vector`P~%" (-> obj track-dir))
+  (format #t "~1Tturn-fast-hold-time: ~D~%" (-> obj turn-fast-hold-time))
+  (format #t "~1Tblue-whine-sound-id: ~D~%" (-> obj blue-whine-sound-id))
+  (format #t "~1Tblue-whine-volume: ~f~%" (-> obj blue-whine-volume))
+  (format #t "~1Ttop-anim-twist: ~`vector`P~%" (-> obj top-anim-twist))
+  (format #t "~1Ttop-anim-twist-targ: ~`vector`P~%" (-> obj top-anim-twist-targ))
+  (format #t "~1Ttop-anim-look-at: ~`vector`P~%" (-> obj top-anim-look-at))
+  (format #t "~1Ttop-anim-twist-reset: ~D~%" (-> obj top-anim-twist-reset))
+  (format #t "~1Ttop-anim-gun-height: (meters ~m)~%" (-> obj top-anim-gun-height))
+  (format #t "~1Ttop-anim-blue-cycle: ~f~%" (-> obj top-anim-blue-cycle))
+  (format #t "~1Ttop-anim-low-high: ~f~%" (-> obj top-anim-low-high))
+  (format #t "~1Ttop-anim-extra-twistv: (deg ~r)~%" (-> obj top-anim-extra-twistv))
+  (format #t "~1Ttop-anim-tilt-up: (deg ~r)~%" (-> obj top-anim-tilt-up))
+  (format #t "~1Tattack-combo: #<combo-tracker @ #x~X>~%" (-> obj attack-combo))
+  (format #t "~1Tcombo-window-start: ~D~%" (-> obj combo-window-start))
+  (format #t "~1Tcombo-window-state: ~A~%" (-> obj combo-window-state))
+  (format #t "~1Tcombo-fire-delay: ~D~%" (-> obj combo-fire-delay))
+  (format #t "~1Tcharge-ammo: ~f~%" (-> obj charge-ammo))
+  (format #t "~1Tcharge-start-time: ~D~%" (-> obj charge-start-time))
+  (format #t "~1Tcharge-inc-time: ~D~%" (-> obj charge-inc-time))
+  (format #t "~1Tcharge-active?: ~D~%" (-> obj charge-active?))
+  (label cfg-145)
+  obj
+  )
+
+;; definition for function want-to-gun?
+(defbehavior want-to-gun? process ((arg0 target) (arg1 symbol))
+  (local-vars (v1-36 symbol))
+  (and (logtest? (-> arg0 game features) (game-feature gun))
+       (>= (- (current-time) (-> arg0 gun gun-time)) (seconds 0.1))
+       (not (focus-test? arg0 dead hit board mech dark teleporting))
+       (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control current-surface flags)))
+       (not (logtest? (state-flags prevent-gun) (-> arg0 state-flags)))
+       (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow gun-red gun-blue gun-dark))
+                 (-> arg0 game features)
+                 )
+       (or (not (logtest? (-> arg0 control current-surface flags) (surface-flag duck))) (can-exit-duck? arg0))
+       (or (not (focus-test? arg0 pilot)) (-> arg0 pilot gun?))
+       (or arg1
+           (nonzero? (-> arg0 gun using-gun-type))
+           (begin
+             (set! v1-36 (and (cpad-hold? (-> arg0 control cpad number) r1)
+                              (not (focus-test? arg0 grabbed))
+                              (begin (set! v1-36 #t) (set! (-> arg0 gun latch?) v1-36) v1-36)
+                              )
+                   )
+             v1-36
+             )
+           (-> arg0 gun latch?)
+           )
+       (not (-> arg0 skel top-anim frame-group))
+       (>= (- (current-time) (-> arg0 control time-of-last-debug-float)) (seconds 0.1))
+       )
+  )
+
+;; definition for function using-gun?
+(defun using-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun gun-type))
+  )
+
+;; definition for function enabled-gun?
+(defun enabled-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun using-gun-type))
+  )
+
+;; definition for function gun->ammo
+(defun gun->ammo ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-yellow))
+     13
+     )
+    (((pickup-type eco-red))
+     14
+     )
+    (((pickup-type eco-blue))
+     15
+     )
+    (((pickup-type eco-dark))
+     16
+     )
+    (else
+      0
+      )
+    )
+  )
+
+;; definition for method 12 of type fact-info-target
+(defmethod get-gun-ammo fact-info-target ((obj fact-info-target))
+  (let ((current-gun (gun->ammo (-> (the-as target (-> obj process)) gun gun-type))))
+    (if (zero? current-gun)
+        0.0
+        (-> (the-as target (-> obj process)) game gun-ammo (+ current-gun -13))
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gun gun gun-lod0-jg -1
+              ((gun-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :shadow gun-shadow-mg
+              :sort 1
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *gun-shadow-control*, type shadow-control
+(define *gun-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :flags (shadow-flags disable-fade shdf03)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
+                                           )
+                               )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ammo-yellow gun gun-ammo-yellow-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-yellow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ammo-red gun gun-ammo-red-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-red-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ammo-blue gun gun-ammo-blue-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-blue-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ammo-dark gun gun-ammo-dark-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-dark-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              :sort 1
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gun-red-cone gun gun-red-cone-lod0-jg gun-red-cone-idle-ja
+              ((gun-red-cone-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 6
+              )

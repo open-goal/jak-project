@@ -15,7 +15,7 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem(const std::string& username = "#f");
+  MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username = "#f");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,
@@ -30,6 +30,10 @@ class MakeSystem {
                            goos::Arguments&,
                            const std::shared_ptr<goos::EnvironmentObject>& env);
 
+  goos::Object handle_get_gsrc_path(const goos::Object& obj,
+                                    goos::Arguments&,
+                                    const std::shared_ptr<goos::EnvironmentObject>& env);
+
   goos::Object handle_map_path(const goos::Object& obj,
                                goos::Arguments& args,
                                const std::shared_ptr<goos::EnvironmentObject>& env);
@@ -37,6 +41,18 @@ class MakeSystem {
   goos::Object handle_set_output_prefix(const goos::Object& obj,
                                         goos::Arguments& args,
                                         const std::shared_ptr<goos::EnvironmentObject>& env);
+
+  goos::Object handle_set_gsrc_folder(const goos::Object& obj,
+                                      goos::Arguments& args,
+                                      const std::shared_ptr<goos::EnvironmentObject>& env);
+
+  goos::Object handle_get_gsrc_folder(const goos::Object& obj,
+                                      goos::Arguments& args,
+                                      const std::shared_ptr<goos::EnvironmentObject>& env);
+
+  goos::Object handle_get_game_version_folder(const goos::Object& obj,
+                                              goos::Arguments&,
+                                              const std::shared_ptr<goos::EnvironmentObject>& env);
 
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
@@ -73,7 +89,11 @@ class MakeSystem {
 
   goos::Interpreter m_goos;
 
+  std::optional<REPL::Config> m_repl_config;
+
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;
   PathMap m_path_map;
+  std::vector<std::string> m_gsrc_folder;
+  std::map<std::string, std::string> m_gsrc_files = {};
 };

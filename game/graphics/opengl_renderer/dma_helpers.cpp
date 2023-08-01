@@ -1,5 +1,7 @@
 #include "dma_helpers.h"
 
+#include "common/log/log.h"
+
 #include "third-party/fmt/format.h"
 
 /*!
@@ -15,17 +17,17 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
                                bool usn,
                                bool flg) {
   if (transfer.size_bytes != qwc * 16) {
-    fmt::print("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
+    lg::error("verify_unpack: bad size {} vs {}", transfer.size_bytes, qwc * 16);
     return false;
   }
 
   if (transfer.vifcode0().kind != VifCode::Kind::STCYCL) {
-    fmt::print("verify_unpack: bad vifcode 0\n");
+    lg::error("verify_unpack: bad vifcode 0");
     return false;
   }
 
   if (transfer.vifcode1().kind != unpack_kind) {
-    fmt::print("verify_unpack: bad vifcode 1\n");
+    lg::error("verify_unpack: bad vifcode 1");
     return false;
   }
 
@@ -33,18 +35,18 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
   VifCodeUnpack unpack(transfer.vifcode1());
 
   if (stcycl.cl != cl || stcycl.wl != wl) {
-    fmt::print("verify_unpack: bad cl/wl {}/{} vs {}/{}\n", stcycl.cl, stcycl.wl, cl, wl);
+    lg::error("verify_unpack: bad cl/wl {}/{} vs {}/{}", stcycl.cl, stcycl.wl, cl, wl);
     return false;
   }
 
   if (unpack.addr_qw != addr || unpack.use_tops_flag != flg || unpack.is_unsigned != usn) {
-    fmt::print("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
-               unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
+    lg::error("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
+              unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
     return false;
   }
 
   if (transfer.vifcode1().num != qwc) {
-    fmt::print("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
+    lg::error("verify_unpack: bad num {} vs {}", transfer.vifcode1().num, qwc);
     return false;
   }
 
@@ -82,30 +84,30 @@ bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
                              bool usn,
                              bool flg) {
   if (transfer.size_bytes != qwc * 16) {
-    fmt::print("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
+    lg::error("verify_unpack: bad size {} vs {}", transfer.size_bytes, qwc * 16);
     return false;
   }
 
   if (transfer.vifcode0().kind != VifCode::Kind::NOP) {
-    fmt::print("verify_unpack: bad vifcode 0\n");
+    lg::error("verify_unpack: bad vifcode 0");
     return false;
   }
 
   if (transfer.vifcode1().kind != unpack_kind) {
-    fmt::print("verify_unpack: bad vifcode 1\n");
+    lg::error("verify_unpack: bad vifcode 1");
     return false;
   }
 
   VifCodeUnpack unpack(transfer.vifcode1());
 
   if (unpack.addr_qw != addr || unpack.use_tops_flag != flg || unpack.is_unsigned != usn) {
-    fmt::print("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
-               unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
+    lg::error("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
+              unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
     return false;
   }
 
   if (transfer.vifcode1().num != qwc) {
-    fmt::print("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
+    lg::error("verify_unpack: bad num {} vs {}", transfer.vifcode1().num, qwc);
     return false;
   }
 

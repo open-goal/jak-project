@@ -1,0 +1,13 @@
+("LGUARD.DGO"
+ ("tpage-1753.go"
+  "tpage-2883.go"
+  "tpage-3272.go"
+  "krew-highres-ag.go"
+  "sig-highres-ag.go"
+  "crimson-guard-highres-ag.go"
+  "gun-upgrade-a-ag.go"
+  "palmpilot-ag.go"
+  "hip-mug-ag.go"
+  "computerpaper-ag.go"
+  "lguard.go"
+ ))

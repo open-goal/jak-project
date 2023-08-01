@@ -1,0 +1,33 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node castle-break-in-castle-1)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+      (set! (-> gp-0 pos quad) (-> self info end-sphere quad))
+      (quaternion-identity! (-> gp-0 quat))
+      (set! (-> gp-0 flags) (task-arrow-flags))
+      (set! (-> gp-0 map-icon) (the-as uint 15))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
+      )
+    (until #f
+      (when (< (vector-vector-distance (target-pos 0) (-> self info end-sphere)) (-> self info end-sphere r))
+        (send-event (handle->process (-> self arrow)) 'leave)
+        (let ((gp-2 (current-time)))
+          (until (>= (- (current-time) gp-2) (seconds 0.007))
+            (suspend)
+            )
+          )
+        (go-virtual complete)
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )

@@ -1,0 +1,163 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type speech-type-info
+(deftype speech-type-info (structure)
+  ((channel         uint8             :offset-assert   0)
+   (flags           speech-type-flag  :offset-assert   1)
+   (priority        int8              :offset-assert   2)
+   (request-timeout uint16            :offset-assert   4)
+   (min-delay       uint16            :offset-assert   6)
+   (max-delay       uint16            :offset-assert   8)
+   (delay           uint16            :offset-assert  10)
+   (play-index      int16             :offset-assert  12)
+   (list            (array string)    :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; definition for method 3 of type speech-type-info
+(defmethod inspect speech-type-info ((obj speech-type-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-6)
+    )
+  (format #t "[~8x] ~A~%" obj 'speech-type-info)
+  (format #t "~1Tchannel: ~D~%" (-> obj channel))
+  (format #t "~1Tflags: #x~X : (speech-type-flag " (-> obj flags))
+  (let ((a0-4 (-> obj flags)))
+    (if (= (logand a0-4 (speech-type-flag random-order)) (speech-type-flag random-order))
+        (format #t "random-order ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tpriority: ~D~%" (-> obj priority))
+  (format #t "~1Trequest-timeout: ~D~%" (-> obj request-timeout))
+  (format #t "~1Tmin-delay: ~D~%" (-> obj min-delay))
+  (format #t "~1Tmax-delay: ~D~%" (-> obj max-delay))
+  (format #t "~1Tdelay: ~D~%" (-> obj delay))
+  (format #t "~1Tplay-index: ~D~%" (-> obj play-index))
+  (format #t "~1Tlist: ~A~%" (-> obj list))
+  (label cfg-6)
+  obj
+  )
+
+;; definition of type speech-request
+(deftype speech-request (structure)
+  ((handle      handle       :offset-assert   0)
+   (time        time-frame   :offset-assert   8)
+   (priority    float        :offset-assert  16)
+   (speech-type speech-type  :offset-assert  20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x15
+  :flag-assert         #x900000015
+  )
+
+;; definition for method 3 of type speech-request
+(defmethod inspect speech-request ((obj speech-request))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'speech-request)
+  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "~1Ttime: ~D~%" (-> obj time))
+  (format #t "~1Tpriority: ~f~%" (-> obj priority))
+  (format #t "~1Tspeech-type: ~D~%" (-> obj speech-type))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type speech-channel
+(deftype speech-channel (structure)
+  ((flags        speech-channel-flag                :offset-assert   0)
+   (gui-channel  gui-channel                        :offset-assert   1)
+   (delay        uint16                             :offset-assert   2)
+   (id           sound-id                           :offset-assert   4)
+   (update-time  time-frame                         :offset-assert   8)
+   (start-time   time-frame                         :offset-assert  16)
+   (end-time     time-frame                         :offset-assert  24)
+   (request      speech-request             :inline :offset-assert  32)
+   (last-request speech-request             :inline :offset-assert  56)
+   (target-pos   vector                     :inline :offset-assert  80)
+   (speech-table (pointer speech-type-info)         :offset-assert  96)
+   )
+  :method-count-assert 14
+  :size-assert         #x64
+  :flag-assert         #xe00000064
+  (:methods
+    (speech-channel-method-9 (_type_ process-drawable speech-type) none 9)
+    (speech-channel-method-10 (_type_ handle) none 10)
+    (speech-channel-method-11 (_type_) none 11)
+    (speech-channel-method-12 (_type_) none 12)
+    (speech-channel-method-13 (_type_) none 13)
+    )
+  )
+
+;; definition for method 3 of type speech-channel
+(defmethod inspect speech-channel ((obj speech-channel))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-6)
+    )
+  (format #t "[~8x] ~A~%" obj 'speech-channel)
+  (format #t "~1Tflags: #x~X : (speech-channel-flag " (-> obj flags))
+  (let ((a0-3 (-> obj flags)))
+    (if (= (logand a0-3 (speech-channel-flag disable)) (speech-channel-flag disable))
+        (format #t "disable ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tgui-channel: ~D~%" (-> obj gui-channel))
+  (format #t "~1Tdelay: ~D~%" (-> obj delay))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tupdate-time: ~D~%" (-> obj update-time))
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tend-time: ~D~%" (-> obj end-time))
+  (format #t "~1Trequest: #<speech-request @ #x~X>~%" (-> obj request))
+  (format #t "~1Tlast-request: #<speech-request @ #x~X>~%" (-> obj last-request))
+  (format #t "~1Ttarget-pos: #<vector @ #x~X>~%" (-> obj target-pos))
+  (format #t "~1Tspeech-table: #x~X~%" (-> obj speech-table))
+  (label cfg-6)
+  obj
+  )
+
+;; definition of type speech-control
+(deftype speech-control (structure)
+  ((channel-array speech-channel   2 :inline :offset-assert   0)
+   (speech-table  speech-type-info 57        :offset-assert 224)
+   )
+  :method-count-assert 17
+  :size-assert         #x1c4
+  :flag-assert         #x11000001c4
+  (:methods
+    (speech-control-method-9 (_type_) none 9)
+    (speech-table-set! (_type_ speech-type speech-type-info) none 10)
+    (speech-control-method-11 (_type_) none 11)
+    (speech-control-method-12 (_type_ process-drawable speech-type) none 12)
+    (speech-control-method-13 (_type_ handle) none 13)
+    (speech-control-method-14 (_type_) none 14)
+    (speech-control-method-15 (_type_ process-drawable) none 15)
+    (speech-control-method-16 (_type_) none 16)
+    )
+  )
+
+;; definition for method 3 of type speech-control
+(defmethod inspect speech-control ((obj speech-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'speech-control)
+  (format #t "~1Tchannel-array[2] @ #x~X~%" (-> obj channel-array))
+  (format #t "~1Tspeech-table[57] @ #x~X~%" (-> obj speech-table))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

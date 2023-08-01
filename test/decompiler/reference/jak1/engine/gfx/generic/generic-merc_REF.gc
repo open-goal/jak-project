@@ -39,25 +39,32 @@
         )
 
 ;; definition for function generic-merc-init-asm
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-init-asm (function none))
 
 ;; definition for function mercneric-matrix-asm
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-matrix-asm function)
 
 ;; definition for function mercneric-shader-asm
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-shader-asm function)
 
 ;; definition for function mercneric-bittable-asm
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-bittable-asm function)
 
 ;; definition for function mercneric-convert
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-convert function)
 
 ;; definition for function high-speed-reject
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c high-speed-reject (function none))
 
 ;; definition for function generic-merc-execute-asm
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-execute-asm (function none))
 
 ;; definition for function generic-merc-add-to-cue
 ;; INFO: Return type mismatch merc-globals vs none.
@@ -70,26 +77,9 @@
 
 ;; definition for function generic-merc-execute-all
 ;; INFO: Return type mismatch profile-frame vs none.
-;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
-;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr0, r0]
-;; ERROR: Unsupported inline assembly instruction kind - [mtpc pcr1, r0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
-;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, a0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
-;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Perf, r0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
-;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr0]
-;; ERROR: Unsupported inline assembly instruction kind - [mfpc a0, pcr1]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Failed store: (s.w! (the-as int a0-19) a1-7) at op 109
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 1]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.l]
 (defun generic-merc-execute-all ((arg0 dma-buffer))
   (local-vars (a0-26 int) (a0-28 int))
   (when (nonzero? (-> *merc-global-array* count))
@@ -106,11 +96,11 @@
              )
         (+! (-> v1-15 count) 1)
         (b! (zero? a0-8) cfg-5 :delay (nop!))
-        (.mtc0 Perf r0)
+        (.mtc0 Perf 0)
         (.sync.l)
         (.sync.p)
-        (.mtpc pcr0 r0)
-        (.mtpc pcr1 r0)
+        (.mtpc pcr0 0)
+        (.mtpc pcr1 0)
         (.sync.l)
         (.sync.p)
         (.mtc0 Perf a0-8)
@@ -152,7 +142,7 @@
               (let ((v1-36 (the-as object #x1000d000))
                     (a0-19 (the-as object #x7000006c))
                     )
-                (b! (zero? (logand (-> (the-as terrain-context v1-36) bsp lev-index) 256)) cfg-9 :delay (nop!))
+                (b! (not (logtest? (-> (the-as terrain-context v1-36) bsp lev-index) 256)) cfg-9 :delay (nop!))
                 (let ((a1-6 (-> (the-as generic-envmap-saves a0-19) index-mask x)))
                   (nop!)
                   (let ((a2-1 (-> (the-as (pointer int32) v1-36) 0)))
@@ -195,7 +185,7 @@
         )
       (let ((v1-51 (-> *perf-stats* data 1)))
         (b! (zero? (-> v1-51 ctrl)) cfg-14 :delay (nop!))
-        (.mtc0 Perf r0)
+        (.mtc0 Perf 0)
         (.sync.l)
         (.sync.p)
         (.mfpc a0-26 pcr0)

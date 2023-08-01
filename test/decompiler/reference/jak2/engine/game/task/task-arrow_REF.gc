@@ -1,0 +1,357 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-task-arrow ctywide-arrow ctywide-arrow-lod0-jg ctywide-arrow-idle-ja
+              ((ctywide-arrow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 6
+              )
+
+;; definition of type task-arrow-params
+(deftype task-arrow-params (structure)
+  ((flags    task-arrow-flags         :offset-assert   0)
+   (map-icon uint16                   :offset-assert   4)
+   (pos      vector           :inline :offset-assert  16)
+   (quat     quaternion       :inline :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type task-arrow-params
+(defmethod inspect task-arrow-params ((obj task-arrow-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'task-arrow-params)
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tmap-icon: ~D~%" (-> obj map-icon))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type task-arrow
+(deftype task-arrow (process-drawable)
+  "Despite the name, these are actually the beams of light that highlight
+various objections.  Such as the flag in the first ruins mission
+or collectable items on the ground (jetboard / weapon upgrades / etc)"
+  ((pos              vector             :inline :offset-assert 208)
+   (theta            float                      :offset-assert 224)
+   (phi              float                      :offset-assert 228)
+   (dist             float                      :offset-assert 232)
+   (smoothed-dist    float                      :offset-assert 236)
+   (max-dist         float                      :offset-assert 240)
+   (flags            task-arrow-flags           :offset-assert 244)
+   (map-icon         uint16                     :offset-assert 248)
+   (minimap          connection-minimap         :offset-assert 252)
+   (hud-dist         handle                     :offset-assert 256)
+   (base-quat        quaternion         :inline :offset-assert 272)
+   (rod-of-god-scale float                      :offset-assert 288)
+   (moving           symbol                     :offset-assert 292)
+   )
+  :heap-base #xb0
+  :method-count-assert 25
+  :size-assert         #x128
+  :flag-assert         #x1900b00128
+  (:methods
+    (idle () _type_ :state 20)
+    (die () _type_ :state 21)
+    (leave () _type_ :state 22)
+    (task-arrow-method-23 (_type_ vector) none 23)
+    (draw-arrow (_type_) none :behavior task-arrow 24)
+    )
+  )
+
+;; definition for method 3 of type task-arrow
+(defmethod inspect task-arrow ((obj task-arrow))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~2Ttheta: ~f~%" (-> obj theta))
+  (format #t "~2Tphi: ~f~%" (-> obj phi))
+  (format #t "~2Tdist: ~f~%" (-> obj dist))
+  (format #t "~2Tsmoothed-dist: ~f~%" (-> obj smoothed-dist))
+  (format #t "~2Tmax-dist: ~f~%" (-> obj max-dist))
+  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tmap-icon: ~D~%" (-> obj map-icon))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> obj minimap))
+  (format #t "~2Thud-dist: ~D~%" (-> obj hud-dist))
+  (format #t "~2Tbase-quat: #<quaternion @ #x~X>~%" (-> obj base-quat))
+  (format #t "~2Trod-of-god-scale: ~f~%" (-> obj rod-of-god-scale))
+  (format #t "~2Tmoving: ~A~%" (-> obj moving))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 10 of type task-arrow
+;; WARN: Return type mismatch int vs none.
+(defmethod deactivate task-arrow ((obj task-arrow))
+  (send-event (handle->process (-> obj hud-dist)) 'hide-and-die)
+  ((method-of-type process-drawable deactivate) obj)
+  0
+  (none)
+  )
+
+;; definition for method 23 of type task-arrow
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod task-arrow-method-23 task-arrow ((obj task-arrow) (arg0 vector))
+  "Some weird debugging code left here, but checks for collisions on the arrow"
+  (let ((s5-0 (new 'stack-no-clear 'collide-query-with-vec)))
+    (set! (-> s5-0 vec quad) (-> arg0 quad))
+    (set! (-> s5-0 cquery start-pos quad) (-> s5-0 vec quad))
+    (+! (-> s5-0 cquery start-pos y) 20480.0)
+    (set-vector! (-> s5-0 cquery move-dist) 0.0 -81920.0 0.0 1.0)
+    (let ((v1-4 (-> s5-0 cquery)))
+      (set! (-> v1-4 radius) 1024.0)
+      (set! (-> v1-4 collide-with) (collide-spec backgnd))
+      (set! (-> v1-4 ignore-process0) #f)
+      (set! (-> v1-4 ignore-process1) #f)
+      (set! (-> v1-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-4 action-mask) (collide-action solid))
+      )
+    (let ((f0-7 (fill-and-probe-using-line-sphere *collide-cache* (-> s5-0 cquery))))
+      (if (>= f0-7 0.0)
+          (vector+float*! (-> s5-0 vec) (-> s5-0 cquery start-pos) (-> s5-0 cquery move-dist) f0-7)
+          )
+      )
+    (set! (-> arg0 quad) (-> s5-0 vec quad))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 24 of type task-arrow
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-arrow task-arrow ((obj task-arrow))
+  (cond
+    ((logtest? (-> obj flags) (task-arrow-flags task-arrow-flag-00))
+     (if (and (not (handle->process (-> obj hud-dist))) *target*)
+         (set! (-> obj hud-dist) (ppointer->handle (process-spawn hud-progress :init hud-init-by-other :to *target*)))
+         )
+     (let ((s5-1 (get-trail-for-connection *minimap* (-> obj minimap) #f)))
+       (if (and s5-1 (nonzero? (-> s5-1 last-updated)))
+           (set! (-> obj dist) (get-distance-with-path s5-1 (target-pos 0) (-> obj pos)))
+           )
+       )
+     (if (= (-> obj max-dist) 0.0)
+         (set! (-> obj max-dist) (-> obj dist))
+         )
+     (let ((f0-4 (- (-> obj dist) (-> obj smoothed-dist))))
+       (if (< (fabs f0-4) 40960.0)
+           (+! (-> obj smoothed-dist) (* 10.0 (-> self clock seconds-per-frame) f0-4))
+           (set! (-> obj smoothed-dist) (-> obj dist))
+           )
+       )
+     (let ((f1-5 (/ (-> obj smoothed-dist) (-> obj max-dist))))
+       (set! (-> *game-info* distance) (- 1.0 (fmax 0.0 (fmin 1.0 f1-5))))
+       )
+     )
+    (else
+      (let ((a0-16 (handle->process (-> obj hud-dist))))
+        (when a0-16
+          (send-event a0-16 'hide-and-die)
+          (set! (-> obj hud-dist) (the-as handle #f))
+          )
+        )
+      )
+    )
+  (cond
+    ((-> obj moving)
+     (set! (-> obj rod-of-god-scale) (- (-> obj rod-of-god-scale) (* 8.0 (-> self clock seconds-per-frame))))
+     (when (< (-> obj rod-of-god-scale) 0.0)
+       (set! (-> obj rod-of-god-scale) 0.0)
+       (set! (-> obj moving) #f)
+       (let ((f0-15 81920.0))
+         (cond
+           ((< (* f0-15 f0-15) (vector-vector-xz-distance-squared (-> obj pos) (-> obj root trans)))
+            (kill-callback (-> *minimap* engine) (-> obj minimap))
+            (set! (-> obj root trans quad) (-> obj pos quad))
+            (set! (-> obj minimap) (add-icon! *minimap* obj (-> obj map-icon) (the-as int #f) (the-as vector #t) 0))
+            )
+           (else
+             (set! (-> obj root trans quad) (-> obj pos quad))
+             )
+           )
+         )
+       )
+     )
+    (else
+      (set! (-> obj pos quad) (-> obj root trans quad))
+      (+! (-> obj rod-of-god-scale) (* 8.0 (-> self clock seconds-per-frame)))
+      (if (< 1.0 (-> obj rod-of-god-scale))
+          (set! (-> obj rod-of-god-scale) 1.0)
+          )
+      )
+    )
+  (cond
+    ((not (logtest? (-> obj flags) (task-arrow-flags task-arrow-flag-02)))
+     (set! (-> *part-id-table* 267 init-specs 4 initial-valuef) (* 24576.0 (-> obj rod-of-god-scale)))
+     (set! (-> *part-id-table* 270 init-specs 3 initial-valuef) (* 65536.0 (-> obj rod-of-god-scale)))
+     (set! (-> *part-id-table* 268 init-specs 9 initial-valuef) (* 20.0 (-> obj rod-of-god-scale)))
+     (spawn (-> obj part) (-> obj root trans))
+     )
+    (else
+      (+! (-> obj theta) (* 32768.0 (-> self clock seconds-per-frame)))
+      (+! (-> obj phi) (* 9102.223 (-> self clock seconds-per-frame)))
+      (set! (-> obj root trans quad) (-> obj pos quad))
+      (set! (-> obj root trans y) (+ 28672.0 (* 4096.0 (cos (-> obj theta))) (-> obj pos y)))
+      )
+    )
+  (when (logtest? (-> obj flags) (task-arrow-flags task-arrow-flag-01))
+    (quaternion-axis-angle! (-> obj root quat) 0.0 1.0 0.0 (-> obj phi))
+    (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj base-quat) (-> obj root quat)))
+    )
+  (ja-post)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (task-arrow)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (local-vars (v0-2 object))
+    (case event-type
+      (('set-position)
+       (let ((a0-3 (the-as object (-> event param 0))))
+         (set! (-> self pos quad) (-> (the-as vector a0-3) quad))
+         )
+       (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-03))
+           (task-arrow-method-23 self (-> self pos))
+           )
+       (let ((f0-0 4096.0))
+         (when (< (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> self pos) (-> self root trans)))
+           (set! v0-2 #t)
+           (set! (-> self moving) (the-as symbol v0-2))
+           v0-2
+           )
+         )
+       )
+      (('leave)
+       (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-02))
+           (go-virtual die)
+           (go-virtual leave)
+           )
+       )
+      (('modify-flags)
+       (let ((v1-16 (-> event param 0))
+             (a1-3 (-> event param 1))
+             )
+         (set! v0-2 (logior (logclear (-> self flags) a1-3) v1-16))
+         )
+       (set! (-> self flags) (the-as task-arrow-flags v0-2))
+       v0-2
+       )
+      (('map-icon)
+       (kill-callback (-> *minimap* engine) (-> self minimap))
+       (let ((a2-1 (-> event param 0)))
+         (set! (-> self map-icon) a2-1)
+         (set! v0-2 (add-icon! *minimap* self a2-1 (the-as int #f) (the-as vector #t) 0))
+         )
+       (set! (-> self minimap) (the-as connection-minimap v0-2))
+       v0-2
+       )
+      (('die)
+       (go-virtual die)
+       )
+      )
+    )
+  :code (the-as (function none :behavior task-arrow) sleep-code)
+  :post (behavior ()
+    (draw-arrow self)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate leave (task-arrow)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self moving) #t)
+    (while (-> self moving)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    (none)
+    )
+  :post (behavior ()
+    (draw-arrow self)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (task-arrow)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+;; definition for function task-arrow-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs task-arrow.
+(defbehavior task-arrow-init-by-other task-arrow ((arg0 task-arrow-params))
+  (set! (-> self flags) (-> arg0 flags))
+  (set! (-> self map-icon) (-> arg0 map-icon))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self pos quad) (-> arg0 pos quad))
+  (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-03))
+      (task-arrow-method-23 self (-> self pos))
+      )
+  (set! (-> self root trans quad) (-> self pos quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 quat))
+  (quaternion-copy! (-> self base-quat) (-> arg0 quat))
+  (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+  (set! (-> self hud-dist) (the-as handle #f))
+  (set! (-> self max-dist) 0.0)
+  (set! (-> self theta) 0.0)
+  (set! (-> self phi) 0.0)
+  (set! (-> self minimap) (add-icon! *minimap* self (-> arg0 map-icon) (the-as int #f) (the-as vector #t) 0))
+  (cond
+    ((not (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-02)))
+     (set! (-> self part) (create-launch-control (-> *part-group-id-table* 78) self))
+     )
+    (else
+      (initialize-skeleton
+        self
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-task-arrow" (the-as (pointer uint32) #f)))
+        (the-as pair 0)
+        )
+      (set! (-> self draw lod-set lod 0 dist) 1228800.0)
+      (set-vector! (-> self draw color-mult) 0.5 0.5 0.0 1.0)
+      (set-vector! (-> self draw color-emissive) 0.5 0.5 0.0 1.0)
+      )
+    )
+  (set! (-> self rod-of-god-scale) 0.0)
+  (set! (-> self moving) #f)
+  (logclear! (-> self mask) (process-mask actor-pause movie))
+  (process-entity-status! self (entity-perm-status no-kill) #t)
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (the-as task-arrow (go-virtual idle))
+  )
+
+;; definition for function task-arrow-spawn
+(defun task-arrow-spawn ((arg0 task-arrow-params) (arg1 task-arrow))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn task-arrow arg0 :to arg1)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    gp-0
+    )
+  )

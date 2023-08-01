@@ -7,8 +7,11 @@ set(SOUND_SOURCES
   989snd/blocksound_handler.cpp
   989snd/musicbank.cpp
   989snd/sfxblock.cpp
+  989snd/sfxblock2.cpp
+  989snd/sfxgrain.cpp
   989snd/loader.cpp
   989snd/vagvoice.cpp
+  989snd/lfo.cpp
   989snd/util.cpp
   common/synth.cpp
   common/voice.cpp
@@ -18,10 +21,12 @@ set(SOUND_SOURCES
   )
 
 add_library(sound STATIC ${SOUND_SOURCES})
-target_link_libraries(sound PRIVATE fmt cubeb)
+target_link_libraries(sound PRIVATE fmt cubeb common)
 
 add_executable(sndplay 989snd/sndplay.cpp)
 if(WIN32)
+    target_link_libraries(sndplay PRIVATE sound cubeb)
+elseif(APPLE)
     target_link_libraries(sndplay PRIVATE sound cubeb)
 else()
     target_link_libraries(sndplay PRIVATE sound cubeb stdc++fs)

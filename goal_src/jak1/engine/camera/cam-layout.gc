@@ -5,13 +5,11 @@
 ;; name in dgo: cam-layout
 ;; dgos: GAME, ENGINE
 
-(declare-file (debug))
-
 ;; DECOMP BEGINS
 
 ;; this file is debug only
 (declare-file (debug))
-(when *debug-segment*
+
 (define *camera-layout-blink* #f)
 
 (deftype cam-layout-bank (basic)
@@ -188,17 +186,6 @@
     )
   )
 
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
-;; WARN: Stack slot offset 164 signed mismatch
 (defbehavior cam-layout-entity-volume-info-create cam-layout ((arg0 entity-camera) (arg1 symbol))
   (local-vars
     (sv-16 res-tag)
@@ -356,10 +343,7 @@
                         (set! (-> *volume-normal* data *volume-normal-current* quad) (-> s0-0 quad))
                         (set! (-> *volume-normal* data (+ *volume-normal-current* 1) quad) (-> s3-0 s1-0 quad))
                         (set! *volume-normal-current* (+ *volume-normal-current* 2))
-                        (let ((v1-132 (+ (-> s2-0 normal-count) 2)))
-                          (set! (-> s2-0 normal-count) v1-132)
-                          v1-132
-                          )
+                        (set! (-> s2-0 normal-count) (+ (-> s2-0 normal-count) 2))
                         )
                       )
                     )
@@ -383,7 +367,7 @@
     (cond
       ((and (= gp-0 (-> self cur-volume))
             (= *camera-layout-blink* 'volume)
-            (zero? (logand (-> *display* real-actual-frame-counter) 8))
+            (not (logtest? (-> *display* real-actual-frame-counter) 8))
             )
        )
       (else
@@ -482,13 +466,7 @@
     (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
     (vector+! gp-0 gp-0 (-> arg1 origin))
     (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
-    (camera-cross
-      (new 'static 'vector :y 1024.0)
-      (new 'static 'vector :z 1024.0)
-      gp-0
-      (-> arg1 color)
-      (meters 1.0)
-      )
+    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) gp-0 (-> arg1 color) (meters 1))
     )
   )
 
@@ -508,13 +486,7 @@
     (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
     (vector+! gp-0 gp-0 (-> arg1 origin))
     (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
-    (camera-cross
-      (new 'static 'vector :y 1024.0)
-      (new 'static 'vector :z 1024.0)
-      gp-0
-      (-> arg1 color)
-      (meters 1.0)
-      )
+    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) gp-0 (-> arg1 color) (meters 1))
     )
   )
 
@@ -548,7 +520,7 @@
           (new 'static 'vector :z 1024.0)
           s5-1
           (new 'static 'vector4w :x #x80 :w #x80)
-          (meters 1.0)
+          (meters 1)
           )
         )
     )
@@ -561,7 +533,7 @@
           (new 'static 'vector :z 1024.0)
           s5-2
           (new 'static 'vector4w :y #x80 :w #x80)
-          (meters 1.0)
+          (meters 1)
           )
         )
     )
@@ -574,7 +546,7 @@
           (new 'static 'vector :z 1024.0)
           s5-3
           (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
-          (meters 1.0)
+          (meters 1)
           )
         )
     )
@@ -625,7 +597,7 @@
         (new 'static 'vector :z 1024.0)
         s5-4
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (meters 1.0)
+        (meters 1)
         )
       )
     )
@@ -668,7 +640,7 @@
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (meters 1.0)
+        (meters 1)
         )
       (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (the-as float 0.0)) s3-2)
       (vector+! s5-5 s5-5 s4-2)
@@ -677,7 +649,7 @@
         (new 'static 'vector :z 1024.0)
         s5-5
         (new 'static 'vector4w :z #xff :w #x80)
-        (meters 1.0)
+        (meters 1)
         )
       )
     )
@@ -705,7 +677,7 @@
         (new 'static 'vector :z 1024.0)
         s5-6
         (new 'static 'vector4w :x #xff :y #xff :w #x80)
-        (meters 1.0)
+        (meters 1)
         )
       )
     )
@@ -729,7 +701,7 @@
         (new 'static 'vector :z 1024.0)
         s5-7
         (new 'static 'vector4w :y #xff :z #xff :w #x80)
-        (meters 1.0)
+        (meters 1)
         )
       )
     )
@@ -2417,7 +2389,7 @@
            )
          (format arg0 ": on")
          )
-        ((zero? (logand ((method-of-type res-lump get-property-value)
+        ((not (logtest? ((method-of-type res-lump get-property-value)
                          (-> self cam-entity)
                          (the-as symbol arg2)
                          'exact
@@ -2428,7 +2400,7 @@
                          )
                         s5-0
                         )
-                )
+              )
          (format arg0 ": off(maya)")
          )
         (else
@@ -3344,14 +3316,14 @@
       ((and (logtest? (-> arg0 options) 8) (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> arg0 button)))
        #f
        )
-      ((and (zero? (logand (-> arg0 options) 12))
+      ((and (not (logtest? (-> arg0 options) 12))
             (logtest? (-> arg0 options) 1)
-            (zero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (-> arg0 button)))
+            (not (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (-> arg0 button)))
             )
        #f
        )
-      ((and (zero? (logand (-> arg0 options) 13))
-            (zero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (-> arg0 button)))
+      ((and (not (logtest? (-> arg0 options) 13))
+            (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> arg0 button)))
             )
        #f
        )
@@ -3597,8 +3569,3 @@
   (cam-layout-start)
   (none)
   )
-
-)
-
-
-

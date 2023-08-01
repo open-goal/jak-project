@@ -1,0 +1,255 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type profile-segment
+(deftype profile-segment (structure)
+  ((name       symbol  :offset-assert   0)
+   (start-time int16   :offset-assert   4)
+   (end-time   int16   :offset-assert   6)
+   (count      uint8   :offset-assert   8)
+   (vu-count   uint8   :offset-assert   9)
+   (depth      uint16  :offset-assert  10)
+   (color      rgba    :offset-assert  12)
+   (code-time  uint16  :offset          4)
+   (vu-time    uint16  :offset          6)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type profile-segment
+(defmethod inspect profile-segment ((obj profile-segment))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'profile-segment)
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tend-time: ~D~%" (-> obj end-time))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tvu-count: ~D~%" (-> obj vu-count))
+  (format #t "~1Tdepth: ~D~%" (-> obj depth))
+  (format #t "~1Tcolor: #x~X~%" (-> obj color))
+  (format #t "~1Tcode-time: ~D~%" (-> obj code-time))
+  (format #t "~1Tvu-time: ~D~%" (-> obj vu-time))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type profile-collapse
+(deftype profile-collapse (structure)
+  ((count int32                      :offset-assert   0)
+   (data  profile-segment 48 :inline :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x304
+  :flag-assert         #x900000304
+  )
+
+;; definition for method 3 of type profile-collapse
+(defmethod inspect profile-collapse ((obj profile-collapse))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'profile-collapse)
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tdata[48] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type profile-segment-array
+(deftype profile-segment-array (basic)
+  ((count     int16                       :offset-assert   4)
+   (depth     int8                        :offset-assert   6)
+   (max-depth int8                        :offset-assert   7)
+   (base-time int16                       :offset-assert   8)
+   (segment   profile-segment 9           :offset-assert  12)
+   (data      profile-segment 512 :inline :offset-assert  48)
+   )
+  :method-count-assert 13
+  :size-assert         #x2030
+  :flag-assert         #xd00002030
+  (:methods
+    (get-total-time (_type_) int 9)
+    (start-frame! (_type_) none 10)
+    (start-segment! (_type_ symbol rgba) none 11)
+    (end-segment! (_type_) none 12)
+    )
+  )
+
+;; definition for method 3 of type profile-segment-array
+(defmethod inspect profile-segment-array ((obj profile-segment-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tdepth: ~D~%" (-> obj depth))
+  (format #t "~1Tmax-depth: ~D~%" (-> obj max-depth))
+  (format #t "~1Tbase-time: ~D~%" (-> obj base-time))
+  (format #t "~1Tsegment[9] @ #x~X~%" (-> obj segment))
+  (format #t "~1Tdata[512] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type profile-array
+(deftype profile-array (structure)
+  ((data profile-segment-array 2 :offset-assert   0)
+   )
+  :method-count-assert 12
+  :size-assert         #x8
+  :flag-assert         #xc00000008
+  (:methods
+    (setup-categories! (_type_) none 9)
+    (draw-bars! (_type_ dma-buffer int) none 10)
+    (draw-text! (_type_) none 11)
+    )
+  )
+
+;; definition for method 3 of type profile-array
+(defmethod inspect profile-array ((obj profile-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'profile-array)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 9 of type profile-segment-array
+(defmethod get-total-time profile-segment-array ((obj profile-segment-array))
+  (- (-> obj data 0 end-time) (-> obj data 0 start-time))
+  )
+
+;; definition for symbol *profile-gap-color*, type rgba
+(define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))
+
+;; definition for symbol *profile-all-color*, type rgba
+(define *profile-all-color* (new 'static 'rgba :r #x55 :g #x55 :b #x55 :a #x80))
+
+;; definition for symbol *profile-particles-color*, type rgba
+(define *profile-particles-color* (new 'static 'rgba :r #x80 :g #x40 :b #x40 :a #x80))
+
+;; definition for symbol *profile-target-color*, type rgba
+(define *profile-target-color* (new 'static 'rgba :r #x40 :g #x80 :b #x40 :a #x80))
+
+;; definition for symbol *profile-target-post-color*, type rgba
+(define *profile-target-post-color* (new 'static 'rgba :r #x40 :g #x40 :b #x80 :a #x80))
+
+;; definition for symbol *profile-joints-color*, type rgba
+(define *profile-joints-color* (new 'static 'rgba :r #x70 :g #x70 :b #x20 :a #x80))
+
+;; definition for symbol *profile-debug-color*, type rgba
+(define *profile-debug-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-draw-hook-color*, type rgba
+(define *profile-draw-hook-color* (new 'static 'rgba :r #x20 :g #x70 :b #x70 :a #x80))
+
+;; definition for symbol *profile-sky-color*, type rgba
+(define *profile-sky-color* (new 'static 'rgba :r #x80 :g #x60 :b #x20 :a #x80))
+
+;; definition for symbol *profile-ocean-color*, type rgba
+(define *profile-ocean-color* (new 'static 'rgba :r #x60 :g #x80 :b #x20 :a #x80))
+
+;; definition for symbol *profile-background-color*, type rgba
+(define *profile-background-color* (new 'static 'rgba :r #x60 :g #x60 :b #x40 :a #x80))
+
+;; definition for symbol *profile-bsp-color*, type rgba
+(define *profile-bsp-color* (new 'static 'rgba :r #x60 :g #x40 :b #x60 :a #x80))
+
+;; definition for symbol *profile-foreground-color*, type rgba
+(define *profile-foreground-color* (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80))
+
+;; definition for symbol *profile-tfrag-color*, type rgba
+(define *profile-tfrag-color* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+
+;; definition for symbol *profile-instance-tie-color*, type rgba
+(define *profile-instance-tie-color* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-instance-shrubbery-color*, type rgba
+(define *profile-instance-shrubbery-color* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-generic-tie-color*, type rgba
+(define *profile-generic-tie-color* (new 'static 'rgba :r #x80 :g #x20 :b #x60 :a #x80))
+
+;; definition for symbol *profile-bones-color*, type rgba
+(define *profile-bones-color* (new 'static 'rgba :r #x20 :g #x80 :b #x60 :a #x80))
+
+;; definition for symbol *profile-generic-merc-color*, type rgba
+(define *profile-generic-merc-color* (new 'static 'rgba :r #x20 :g #x60 :b #x80 :a #x80))
+
+;; definition for symbol *profile-shadow-color*, type rgba
+(define *profile-shadow-color* (new 'static 'rgba :r #x48 :g #x48 :b #x70 :a #x80))
+
+;; definition for symbol *profile-update-actors-color*, type rgba
+(define *profile-update-actors-color* (new 'static 'rgba :r #x48 :g #x70 :b #x48 :a #x80))
+
+;; definition for symbol *profile-menu-hook-color*, type rgba
+(define *profile-menu-hook-color* (new 'static 'rgba :r #x70 :g #x48 :b #x48 :a #x80))
+
+;; definition for symbol *profile-texture-color*, type rgba
+(define *profile-texture-color* (new 'static 'rgba :r #x80 :g #x70 :b #x10 :a #x80))
+
+;; definition for symbol *profile-effects-color*, type rgba
+(define *profile-effects-color* (new 'static 'rgba :r #x70 :g #x80 :b #x10 :a #x80))
+
+;; definition for symbol *profile-sprite-color*, type rgba
+(define *profile-sprite-color* (new 'static 'rgba :r #x70 :g #x10 :b #x80 :a #x80))
+
+;; definition for symbol *profile-merc-color*, type rgba
+(define *profile-merc-color* (new 'static 'rgba :r #x10 :g #x70 :b #x80 :a #x80))
+
+;; definition for symbol *profile-actors-color*, type rgba
+(define *profile-actors-color* (new 'static 'rgba :r #x80 :g #x10 :b #x70 :a #x80))
+
+;; definition for symbol *profile-collide-color*, type rgba
+(define *profile-collide-color* (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80))
+
+;; definition for symbol *profile-nav-color*, type rgba
+(define *profile-nav-color* (new 'static 'rgba :r #x38 :g #x48 :b #x80 :a #x80))
+
+;; definition for symbol *profile-camera-color*, type rgba
+(define *profile-camera-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-blit-color*, type rgba
+(define *profile-blit-color* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+
+;; definition for symbol *profile-hud-color*, type rgba
+(define *profile-hud-color* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+
+;; definition for symbol *profile-emerc-color*, type rgba
+(define *profile-emerc-color* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+
+;; this part is debug only
+(when *debug-segment*
+;; definition for symbol *profile-array*, type profile-array
+(define *profile-array* (new 'debug 'profile-array))
+
+;; failed to figure out what this is:
+(set! (-> *profile-array* data 0) (new 'debug 'profile-segment-array))
+
+;; failed to figure out what this is:
+(set! (-> *profile-array* data 1) (new 'debug 'profile-segment-array))
+
+;; definition for symbol *profile-collapse*, type profile-collapse
+(define *profile-collapse* (new 'debug 'profile-collapse))
+
+;; definition for symbol *profile-interrupt-segment*, type profile-segment-array
+(define *profile-interrupt-segment* (-> *profile-array* data 1))
+
+;; definition for symbol *profile-interrupt-start*, type symbol
+(define *profile-interrupt-start* #f)
+
+)
+
+
+

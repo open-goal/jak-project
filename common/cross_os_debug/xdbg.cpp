@@ -392,7 +392,7 @@ bool cont_now(const ThreadID& tid) {
 DEBUG_EVENT debugEvent;
 void ignore_debug_event() {
   if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-    win_print_last_error("ContinueDebugEvent");
+    win_print_last_error("ContinueDebugEvent ignore_debug_event");
   }
   cont_status = -1;
 }
@@ -456,7 +456,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
     if (cont_status != -1) {
       cv.wait(lk, [&] { return cont_status == 1; });
       if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-        win_print_last_error("ContinueDebugEvent");
+        win_print_last_error("ContinueDebugEvent check_stopped");
       }
       cont_status = -1;
     }
@@ -505,18 +505,12 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
           }
         }
       } break;
+      case CREATE_THREAD_DEBUG_EVENT:   // 2
       case CREATE_PROCESS_DEBUG_EVENT:  // 3
-        if (debugEvent.u.CreateProcessInfo.hProcess != NULL &&
-            GetProcessId(debugEvent.u.CreateProcessInfo.hProcess) == debugEvent.dwProcessId) {
-        }
-        // out->kind = SignalInfo::NOTHING;
-        ignore_debug_event();
-        break;
-      case CREATE_THREAD_DEBUG_EVENT:  // 2
-      case EXIT_THREAD_DEBUG_EVENT:    // 4
-      case LOAD_DLL_DEBUG_EVENT:       // 6
-      case UNLOAD_DLL_DEBUG_EVENT:     // 7
-      case OUTPUT_DEBUG_STRING_EVENT:  // 8
+      case EXIT_THREAD_DEBUG_EVENT:     // 4
+      case LOAD_DLL_DEBUG_EVENT:        // 6
+      case UNLOAD_DLL_DEBUG_EVENT:      // 7
+      case OUTPUT_DEBUG_STRING_EVENT:   // 8
         // don't care about these
         // out->kind = SignalInfo::NOTHING;
         ignore_debug_event();
@@ -554,7 +548,7 @@ bool read_goal_memory(u8* dest_buffer,
   HANDLE hProc = OpenProcess(PROCESS_VM_READ, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
-    win_print_last_error("OpenProcess");
+    win_print_last_error("OpenProcess read_goal_memory");
     return false;
   }
 
@@ -579,7 +573,7 @@ bool write_goal_memory(const u8* src_buffer,
   HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
-    win_print_last_error("OpenProcess");
+    win_print_last_error("OpenProcess write_goal_memory");
     return false;
   }
 
@@ -601,7 +595,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread get_regs_now");
     return false;
   }
 
@@ -609,7 +603,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("GetThreadContext");
+    win_print_last_error("GetThreadContext get_regs_now");
     return false;
   }
 
@@ -641,7 +635,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread set_regs_now");
     return false;
   }
 
@@ -649,7 +643,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("GetThreadContext");
+    win_print_last_error("GetThreadContext set_regs_now");
     return false;
   }
 
@@ -674,7 +668,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   hThr = OpenThread(THREAD_SET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
-    win_print_last_error("OpenThread");
+    win_print_last_error("OpenThread set_regs_now set");
     return false;
   }
 
@@ -682,11 +676,66 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   CloseHandle(hThr);
 
   if (!result) {
-    win_print_last_error("SetThreadContext");
+    win_print_last_error("SetThreadContext set_regs_now set");
     return false;
   }
   // todo, set fprs.
   return true;
+}
+#elif __APPLE__
+ThreadID::ThreadID(const std::string& str) {}
+
+std::string ThreadID::to_string() const {
+  return "invalid";
+}
+
+ThreadID get_current_thread_id() {
+  return ThreadID("not implemented on macOS");
+}
+
+bool attach_and_break(const ThreadID& tid);
+
+void allow_debugging() {
+  printf("allow_debugging not implemented on macOS\n");
+}
+
+bool detach_and_resume(const ThreadID& tid) {
+  return false;
+}
+bool get_regs_now(const ThreadID& tid, Regs* out) {
+  return false;
+}
+bool set_regs_now(const ThreadID& tid, const Regs& in) {
+  return false;
+}
+bool break_now(const ThreadID& tid) {
+  return false;
+}
+bool cont_now(const ThreadID& tid) {
+  return false;
+}
+bool open_memory(const ThreadID& tid, MemoryHandle* out);
+bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
+  return false;
+}
+bool read_goal_memory(u8* dest_buffer,
+                      int size,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& mem) {
+  return false;
+}
+
+bool write_goal_memory(const u8* src_buffer,
+                       int size,
+                       u32 goal_addr,
+                       const DebugContext& context,
+                       const MemoryHandle& mem) {
+  return false;
+}
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  return false;
 }
 #endif
 

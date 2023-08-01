@@ -1,0 +1,2011 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 15 of type skeleton-group
+(defmethod add-to-loading-level skeleton-group ((obj skeleton-group))
+  (let ((v1-1 (-> *level* loading-level)))
+    (if v1-1
+        (set-loaded-art (-> v1-1 art-group) obj)
+        )
+    )
+  obj
+  )
+
+;; definition for function cspace-by-name
+(defun cspace-by-name ((arg0 process-drawable) (arg1 string))
+  (let* ((s4-0 (-> arg0 node-list length))
+         (s3-0 0)
+         (s2-0 (-> arg0 node-list data s3-0))
+         )
+    (while (< s3-0 s4-0)
+      (if (and (-> s2-0 joint) (name= (-> s2-0 joint name) arg1))
+          (return s2-0)
+          )
+      (+! s3-0 1)
+      (set! s2-0 (-> arg0 node-list data s3-0))
+      )
+    )
+  (the-as cspace #f)
+  )
+
+;; definition for function cspace-index-by-name
+(defun cspace-index-by-name ((arg0 process-drawable) (arg1 string))
+  (let* ((s4-0 0)
+         (s3-0 (-> arg0 node-list length))
+         (s2-0 0)
+         (v1-3 (-> arg0 node-list data s2-0))
+         )
+    (while (< s2-0 s3-0)
+      (if (and (-> v1-3 joint) (name= (-> v1-3 joint name) arg1))
+          (return s4-0)
+          )
+      (+! s4-0 1)
+      (+! s2-0 1)
+      (set! v1-3 (-> arg0 node-list data s2-0))
+      )
+    )
+  -1
+  )
+
+;; definition for function vector<-cspace!
+(defun vector<-cspace! ((arg0 vector) (arg1 cspace))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
+    (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> arg0 quad) vf2)
+    arg0
+    )
+  )
+
+;; definition for function vector<-matrix!
+(defun vector<-matrix! ((arg0 vector) (arg1 matrix))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf2 (&-> arg1 trans quad))
+    (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> arg0 quad) vf2)
+    arg0
+    )
+  )
+
+;; definition for function vector<-cspace+vector!
+(defun vector<-cspace+vector! ((arg0 vector) (arg1 cspace) (arg2 vector))
+  (vector-matrix*! arg0 arg2 (-> arg1 bone transform))
+  )
+
+;; definition (debug) for function cspace-children
+(defun-debug cspace-children ((arg0 process-drawable) (arg1 int))
+  (let ((a3-0 '()))
+    (countdown (s4-0 (-> arg0 node-list length))
+      (if (= (-> arg0 node-list data s4-0 parent) arg1)
+          (set! a3-0 (cons (-> arg0 node-list data s4-0) a3-0))
+          )
+      )
+    a3-0
+    )
+  )
+
+;; definition (debug) for function cspace-inspect-tree
+;; INFO: Used lq/sq
+;; WARN: Using new Jak 2 rtype-of
+(defun-debug cspace-inspect-tree ((arg0 process-drawable) (arg1 cspace) (arg2 int) (arg3 int) (arg4 object))
+  (local-vars (sv-16 string) (sv-32 int) (sv-48 int))
+  (if (and (= arg4 'mesh) (zero? *debug-vertex-stats*))
+      (set! *debug-vertex-stats* (new 'debug 'debug-vertex-stats))
+      )
+  (if (not arg1)
+      (set! arg1 (the-as cspace (-> arg0 node-list data)))
+      )
+  (print-tree-bitmask arg3 arg2)
+  (cond
+    ((-> arg1 joint)
+     (format
+       #t
+       "~S~S ~D"
+       (if (zero? arg2)
+           ""
+           "+---"
+           )
+       (-> arg1 joint name)
+       (-> arg1 joint number)
+       )
+     (let ((v1-11 arg4))
+       (cond
+         ((= v1-11 'matrix)
+          #f
+          )
+         ((= v1-11 'mesh)
+          (let ((s1-0 format)
+                (s0-0 #t)
+                )
+            (set! sv-16 " ~D/~D/~F")
+            (set! sv-32 (drawable-frag-count (-> arg1 geo)))
+            (set! sv-48 (drawable-tri-count (-> arg1 geo)))
+            (let ((t0-2 (drawable-vertex-ratio (-> arg1 geo) *debug-vertex-stats*)))
+              (s1-0 s0-0 sv-16 sv-32 sv-48 t0-2)
+              )
+            )
+          )
+         )
+       )
+     (format #t "~%")
+     )
+    (else
+      (format
+        #t
+        "~S~S~%"
+        (if (zero? arg2)
+            ""
+            "+---"
+            )
+        arg1
+        )
+      )
+    )
+  (let* ((s2-1 (cspace-children arg0 (the-as int arg1)))
+         (a0-16 s2-1)
+         (s1-1 ((method-of-type (rtype-of a0-16) length) a0-16))
+         (a1-11 (car s2-1))
+         )
+    (while (not (null? s2-1))
+      (+! s1-1 -1)
+      (cspace-inspect-tree
+        arg0
+        (the-as cspace a1-11)
+        (+ arg2 1)
+        (if (zero? s1-1)
+            arg3
+            (logior arg3 (ash 1 (+ arg2 1)))
+            )
+        arg4
+        )
+      (set! s2-1 (cdr s2-1))
+      (set! a1-11 (car s2-1))
+      )
+    )
+  arg0
+  )
+
+;; definition for method 0 of type draw-control
+(defmethod new draw-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 jgeo) (the-as art-joint-geo arg1))
+    (set! (-> v0-0 process) (the-as process-drawable arg0))
+    (set! (-> v0-0 ripple) #f)
+    v0-0
+    )
+  )
+
+;; definition for method 10 of type draw-control
+;; WARN: Return type mismatch int vs none.
+(defmethod lod-set! draw-control ((obj draw-control) (arg0 int))
+  (let ((v1-1 (max 0 (min arg0 (-> obj lod-set max-lod)))))
+    (set! (-> obj desired-lod) v1-1)
+    (when (!= (-> obj cur-lod) v1-1)
+      (set! (-> obj mgeo) (-> obj lod-set lod v1-1 geo))
+      (set! (-> obj cur-lod) v1-1)
+      (if (nonzero? (-> obj seg-mask))
+          (setup-masks obj 0 0)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type draw-control
+;; WARN: Return type mismatch int vs none.
+(defmethod lods-assign! draw-control ((obj draw-control) (arg0 lod-set))
+  (mem-copy! (the-as pointer (-> obj lod-set)) (the-as pointer arg0) 49)
+  (let ((a1-2 (min (-> obj cur-lod) (-> obj lod-set max-lod))))
+    (set! (-> obj cur-lod) -1)
+    (lod-set! obj a1-2)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type draw-control
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-masks draw-control ((obj draw-control) (arg0 int) (arg1 int))
+  "TODO - use the enum types"
+  (local-vars (v1-4 int) (a2-1 (array uint64)))
+  (let ((a1-2 (logior (logclear (-> obj seg-mask) arg0) arg1)))
+    (set! (-> obj seg-mask) a1-2)
+    (cond
+      ((zero? a1-2)
+       (set! (-> obj effect-mask) (the-as uint 0))
+       0
+       )
+      ((begin (set! a2-1 (-> obj mgeo seg-table)) (set! v1-4 0) (nonzero? a2-1))
+       (countdown (a3-0 (-> a2-1 length))
+         (if (logtest? a1-2 (ash 1 a3-0))
+             (set! v1-4 (logior v1-4 (-> a2-1 a3-0)))
+             )
+         )
+       (set! (-> obj effect-mask) (the-as uint v1-4))
+       )
+      (else
+        (set! (-> obj effect-mask) (the-as uint 0))
+        0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type lod-set
+;; INFO: Used lq/sq
+(defmethod setup-lods! lod-set ((obj lod-set) (arg0 skeleton-group) (arg1 art-group) (arg2 entity))
+  (local-vars (sv-16 res-tag))
+  (let ((v1-0 (-> arg1 length))
+        (s3-0 (-> arg0 max-lod))
+        )
+    (set! (-> obj max-lod) s3-0)
+    (dotimes (a0-1 (+ s3-0 1))
+      (when (or (< (-> arg0 mgeo a0-1) 0) (>= (-> arg0 mgeo a0-1) v1-0))
+        (set! obj (the-as lod-set #f))
+        (goto cfg-22)
+        )
+      (let ((a1-14 (-> arg1 data (-> arg0 mgeo a0-1))))
+        (when (or (zero? a1-14) (!= (-> a1-14 type) merc-ctrl))
+          (set! obj (the-as lod-set #f))
+          (goto cfg-22)
+          )
+        (set! (-> obj lod a0-1 geo) (the-as merc-ctrl a1-14))
+        )
+      (set! (-> obj lod a0-1 dist) (-> arg0 lod-dist a0-1))
+      )
+    (if (= (-> obj lod s3-0 dist) 4095996000.0)
+        (set! (-> obj lod s3-0 dist) (res-lump-float arg2 'vis-dist :default 4095996000.0))
+        )
+    )
+  (let ((v1-14 (-> arg1 data (-> arg0 jgeo))))
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-15 (res-lump-data (-> v1-14 extra) 'lod-dist pointer :tag-ptr (& sv-16))))
+      (when v1-15
+        (dotimes (a0-6 (the-as int (-> sv-16 elt-count)))
+          (set! (-> obj lod a0-6 dist) (-> (the-as (pointer float) (&+ v1-15 (* a0-6 4)))))
+          )
+        )
+      )
+    )
+  (label cfg-22)
+  obj
+  )
+
+;; definition for method 13 of type draw-control
+(defmethod setup-cspace-and-add draw-control ((obj draw-control) (arg0 art-joint-geo) (arg1 symbol))
+  (let ((s5-0 ((method-of-type cspace-array new) arg1 cspace-array (+ (-> arg0 length) 1))))
+    (let ((v0-1 ((method-of-type skeleton new) arg1 skeleton (+ (-> arg0 length) 1))))
+      (set! (-> obj skeleton) v0-1)
+      (let ((s3-1 v0-1))
+        (when (or (zero? s5-0) (zero? s3-1))
+          (go process-drawable-art-error "memory")
+          (set! s5-0 (the-as cspace-array #f))
+          (goto cfg-13)
+          )
+        (let ((v1-9 ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (-> s5-0 data)) (the-as drawable #f))))
+          (set! (-> v1-9 bone) (the-as bone (-> s3-1 bones)))
+          )
+        (let ((v1-10 (-> s5-0 data)))
+          (set! (-> v1-10 0 param0) (the-as (function cspace transformq none) cspace<-transformq!))
+          (set! (-> v1-10 0 param1) (the-as basic (-> (the-as process-drawable (-> obj process)) root trans)))
+          )
+        (let ((v1-12 (reset-and-assign-geo! (-> s5-0 data 1) (the-as drawable #f))))
+          (set! (-> v1-12 joint) (-> arg0 data 0))
+          (set! (-> v1-12 bone) (-> s3-1 bones 1))
+          (set! (-> v1-12 parent) (the-as cspace (-> s5-0 data)))
+          )
+        (let ((v1-14 (reset-and-assign-geo! (-> s5-0 data 2) (the-as drawable #f))))
+          (set! (-> v1-14 joint) (-> arg0 data 1))
+          (set! (-> v1-14 bone) (-> s3-1 bones 2))
+          (set! (-> v1-14 parent) (the-as cspace (-> s5-0 data)))
+          (set! (-> v1-14 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint!))
+          (set! (-> v1-14 param1) (-> obj process))
+          )
+        (let ((s2-0 3))
+          (while (< s2-0 (-> s5-0 length))
+            (let* ((s0-0 (-> arg0 data (+ s2-0 -1)))
+                   (s1-0 (if (-> s0-0 parent)
+                             (+ (-> s0-0 parent number) 1)
+                             0
+                             )
+                         )
+                   (v1-25 (reset-and-assign-geo! (-> s5-0 data s2-0) (the-as drawable #f)))
+                   )
+              (set! (-> v1-25 joint) s0-0)
+              (set! (-> v1-25 bone) (-> s3-1 bones s2-0))
+              (set! (-> v1-25 parent) (-> s5-0 data s1-0))
+              )
+            (+! s2-0 1)
+            )
+          )
+        )
+      )
+    (add-connection *foreground-draw-engine* (-> obj process) add-process-drawable (-> obj process) obj #f)
+    (label cfg-13)
+    s5-0
+    )
+  )
+
+;; definition for function execute-math-engine
+(defun execute-math-engine ()
+  (let ((gp-0 *matrix-engine*))
+    (let ((s5-0 (-> gp-0 length)))
+      (dotimes (s4-0 s5-0)
+        (let ((v1-3 (the-as process-drawable (handle->process (-> gp-0 s4-0)))))
+          (if v1-3
+              (do-joint-math (-> v1-3 draw) (-> v1-3 node-list) (-> v1-3 skel))
+              )
+          )
+        )
+      )
+    (set! (-> gp-0 length) 0)
+    )
+  0
+  0
+  )
+
+;; definition for method 14 of type draw-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod do-joint-math draw-control ((obj draw-control) (arg0 cspace-array) (arg1 joint-control))
+  (with-pp
+    (cond
+      ((logtest? (-> obj status) (draw-control-status no-draw no-draw-temp))
+       )
+      ((zero? arg1)
+       (matrix<-transformq+trans!
+         (the-as matrix (-> obj skeleton bones 3))
+         (the-as transformq (-> (the-as process-drawable (-> obj process)) root trans))
+         (-> obj skeleton bones 0 transform trans)
+         )
+       (vector+! (-> obj origin) (-> obj skeleton bones 3 transform trans) (-> obj bounds))
+       (set! (-> obj origin w) (-> obj bounds w))
+       )
+      (else
+        (let* ((s2-0 (-> obj mgeo num-joints))
+               (s1-0 (+ s2-0 2))
+               )
+          (+ s1-0 1)
+          (let ((s5-0 pp))
+            (set! pp (-> obj process))
+            ((-> arg1 generate-frame-function) (the-as joint-anim-frame (+ 2400 #x70000000)) s1-0 arg1)
+            (if (-> arg1 prebind-function)
+                ((-> arg1 prebind-function) (the-as joint-anim-frame (+ 2400 #x70000000)) s1-0 arg1)
+                )
+            (dotimes (s1-1 1)
+              (let* ((v1-20 (-> arg0 data s1-1))
+                     (t9-3 (the-as function (-> v1-20 param0)))
+                     )
+                (if (the-as (function cspace transformq none) t9-3)
+                    ((the-as (function object object object none) t9-3) v1-20 (-> v1-20 param1) (-> v1-20 param2))
+                    )
+                )
+              )
+            (dotimes (s1-2 2)
+              (let* ((a0-11 (-> arg0 data (+ s1-2 1)))
+                     (a1-7 (+ (* s1-2 64) 2400 #x70000000))
+                     (t9-4 (-> a0-11 param0))
+                     )
+                (if t9-4
+                    (t9-4 a0-11 (the-as transformq a1-7))
+                    )
+                )
+              )
+            (let ((s1-3 3))
+              (dotimes (s0-0 s2-0)
+                (let ((a0-12 (-> arg0 data (+ s0-0 s1-3)))
+                      (a1-9 (+ (* 48 s0-0) 2528 #x70000000))
+                      )
+                  (if (-> a0-12 param0)
+                      ((-> a0-12 param0) a0-12 (the-as transformq a1-9))
+                      (cspace<-parented-transformq-joint! a0-12 (the-as transformq a1-9))
+                      )
+                  )
+                )
+              )
+            (if (-> arg1 postbind-function)
+                ((-> arg1 postbind-function) obj arg0 arg1)
+                )
+            (let ((a1-11 (new 'stack-no-clear 'vector)))
+              (set! (-> a1-11 quad) (-> obj bounds quad))
+              (set! (-> a1-11 w) 1.0)
+              (vector-matrix*! (-> obj origin) a1-11 (the-as matrix (-> obj skeleton bones (-> obj origin-joint-index))))
+              )
+            (let ((f0-2 (-> obj bounds w)))
+              (set! (-> obj origin w) f0-2)
+              f0-2
+              )
+            (set! pp s5-0)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 17 of type process-drawable
+;; WARN: Return type mismatch int vs none.
+(defmethod cleanup-for-death process-drawable ((obj process-drawable))
+  (when (type? (-> obj root) collide-shape)
+    (let ((v1-2 (-> (the-as collide-shape (-> obj root)) root-prim)))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  (if (nonzero? (-> obj skel))
+      (ja-channel-set! 0)
+      )
+  (process-entity-status! obj (entity-perm-status dead) #t)
+  0
+  (none)
+  )
+
+;; definition for method 18 of type process-drawable
+;; WARN: Return type mismatch int vs none.
+(defmethod relocate-nav process-drawable ((obj process-drawable) (arg0 int))
+  (set! (-> obj nav) (the-as nav-control (&+ (the-as pointer (-> obj nav)) arg0)))
+  0
+  (none)
+  )
+
+;; definition for function draw-joint-axes
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defun draw-joint-axes ((arg0 process-drawable))
+  (local-vars
+    (sv-64 (function symbol bucket-id vector vector meters rgba symbol))
+    (sv-80 symbol)
+    (sv-96 int)
+    (sv-112 vector)
+    )
+  (let ((s5-0 (new 'stack-no-clear 'vector2h))
+        (s4-0 (shl #x8000 16))
+        (s3-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((v1-1 s5-0))
+      (set! (-> v1-1 x) 5)
+      (set! (-> v1-1 y) -5)
+      )
+    (dotimes (s2-0 (-> arg0 node-list length))
+      (let ((s1-0 (-> arg0 node-list data s2-0 bone transform)))
+        (vector<-cspace! s3-0 (-> arg0 node-list data s2-0))
+        (dotimes (s0-0 3)
+          (set! sv-64 add-debug-vector)
+          (set! sv-80 #t)
+          (set! sv-96 318)
+          (set! sv-112 s3-0)
+          (let ((a3-0
+                  (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (+ (the-as uint s1-0) (* s0-0 16))) 1.0)
+                  )
+                (t0-0 #x444ccccd)
+                (t1-0 (logior (ash 255 (* s0-0 8)) s4-0))
+                )
+            (sv-64 sv-80 (the-as bucket-id sv-96) sv-112 a3-0 (the-as meters t0-0) (the-as rgba t1-0))
+            )
+          )
+        )
+      (format (clear *temp-string*) "~d" (+ s2-0 -1))
+      (let ((a2-3 *temp-string*))
+        (add-debug-text-3d #t (bucket-id debug-no-zbuf1) a2-3 s3-0 (font-color blue) s5-0)
+        )
+      (+! (-> s5-0 x) 10)
+      )
+    )
+  (none)
+  )
+
+;; definition for function draw-root
+(defun draw-root ((arg0 process-drawable))
+  (add-debug-quaternion #t (bucket-id debug-no-zbuf1) (-> arg0 root trans) (-> arg0 root quat))
+  (none)
+  )
+
+;; definition for method 10 of type process-drawable
+(defmethod deactivate process-drawable ((obj process-drawable))
+  (if (nonzero? (-> obj part))
+      (kill-and-free-particles (-> obj part))
+      )
+  (if (nonzero? (-> obj sound))
+      (stop! (-> obj sound))
+      )
+  (let ((a0-3 (-> obj nav)))
+    (if (and a0-3 (nonzero? a0-3))
+        (remove! a0-3)
+        )
+    )
+  (let* ((s5-0 (-> obj root))
+         (a0-5 (if (type? s5-0 collide-shape)
+                   s5-0
+                   )
+               )
+         )
+    (when a0-5
+      (let ((a2-0 (-> (the-as collide-shape a0-5) actor-hash-index))
+            (v1-12 *actor-hash*)
+            )
+        (when (and (!= a2-0 -1) (= a0-5 (-> v1-12 object-array a2-0 object)))
+          (remove-by-id v1-12 (-> v1-12 sphere-array a2-0) a2-0)
+          0
+          )
+        )
+      )
+    )
+  ((method-of-type process deactivate) obj)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate empty-state (process)
+  :code (the-as (function none :behavior process) nothing)
+  )
+
+;; failed to figure out what this is:
+(defstate process-drawable-art-error (process-drawable)
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('nav-mesh-kill)
+                      (deactivate self)
+                      #t
+                      )
+                     )
+            )
+    )
+  :code (behavior ((arg0 string))
+    (if (-> self entity)
+        (logior! (-> self entity extra perm status) (entity-perm-status error))
+        )
+    (let* ((s5-0 (-> self root))
+           (v1-6 (if (type? s5-0 collide-shape)
+                     s5-0
+                     )
+                 )
+           )
+      (when v1-6
+        (let ((a0-5 (-> (the-as collide-shape v1-6) root-prim)))
+          (set! (-> a0-5 prim-core collide-as) (collide-spec))
+          (set! (-> a0-5 prim-core collide-with) (collide-spec))
+          )
+        (set! (-> (the-as collide-shape v1-6) backup-collide-as) (collide-spec))
+        (set! (-> (the-as collide-shape v1-6) backup-collide-with) (collide-spec))
+        0
+        )
+      )
+    (until #f
+      (when (the-as collide-shape *display-entity-errors*)
+        (let ((s5-1 (cond
+                      ((nonzero? (the-as collide-shape (-> self root)))
+                       (-> (the-as collide-shape (-> self root)) trans)
+                       )
+                      ((the-as collide-shape (-> self entity))
+                       (&-> (the-as collide-shape (-> (the-as collide-shape (-> self entity)) trans z)) quat y)
+                       )
+                      (else
+                        #f
+                        )
+                      )
+                    )
+              )
+          (when s5-1
+            (let ((s4-0 add-debug-text-3d)
+                  (s3-0 #t)
+                  (s2-0 318)
+                  )
+              (format (clear *temp-string*) "~2j~s error for ~s" arg0 (-> self name))
+              (s4-0 s3-0 (the-as bucket-id s2-0) *temp-string* (the-as vector s5-1) (font-color red) (the-as vector2h #f))
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate process-drawable-idle (process-drawable)
+  :code (the-as (function none :behavior process-drawable) sleep-code)
+  :post ja-post
+  )
+
+;; definition for function skeleton-group->draw-control
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+(defun skeleton-group->draw-control ((arg0 process-drawable) (arg1 skeleton-group) (arg2 (pointer cspace-array)))
+  (local-vars (s2-0 draw-control) (sv-16 art-element) (sv-20 int))
+  (let ((s3-0 (if (= (-> arg1 texture-level) 6)
+                  (-> *level* default-level)
+                  (-> arg0 level)
+                  )
+              )
+        )
+    (let ((s1-0 (load-to-heap-by-name (-> s3-0 art-group) (-> arg1 art-group-name) #f global (-> arg1 version))))
+      (when (or (zero? s1-0) (or (not s1-0) (!= (-> s1-0 type) art-group)))
+        (go process-drawable-art-error "art-group")
+        (set! s2-0 (the-as draw-control #f))
+        (goto cfg-50)
+        )
+      (set! sv-16 (-> s1-0 data (-> arg1 jgeo)))
+      (set! sv-20 (-> s1-0 length))
+      (when (or (< (-> arg1 jgeo) 0) (>= (-> arg1 jgeo) sv-20) (not sv-16) (!= (-> sv-16 type) art-joint-geo))
+        (go process-drawable-art-error "joint-geo")
+        (set! s2-0 (the-as draw-control #f))
+        (goto cfg-50)
+        )
+      (set! s2-0 (new 'process 'draw-control arg0 (the-as symbol sv-16)))
+      (let ((v1-24 s2-0))
+        (set! (-> v1-24 status) (draw-control-status uninited))
+        (set! (-> v1-24 art-group) s1-0)
+        (set! (-> v1-24 jgeo) (the-as art-joint-geo sv-16))
+        (set! (-> v1-24 force-lod) -1)
+        (set! (-> v1-24 cur-lod) -1)
+        (set! (-> v1-24 shadow) #f)
+        (set! (-> v1-24 shadow-ctrl) #f)
+        (set! (-> v1-24 data-format) (draw-control-data-format merc))
+        (set! (-> v1-24 color-mult quad) (-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
+        (set! (-> v1-24 color-emissive quad) (-> (new 'static 'vector) quad))
+        (set! (-> v1-24 longest-edge) (-> arg1 longest-edge))
+        (set! (-> v1-24 origin-joint-index) (the-as uint (-> arg1 origin-joint-index)))
+        (set! (-> v1-24 shadow-joint-index) (the-as uint (-> arg1 shadow-joint-index)))
+        )
+      (set! (-> s2-0 bounds quad) (-> arg1 bounds quad))
+      (let ((v1-26 (-> arg1 shadow)))
+        (when (and (> v1-26 0) (< v1-26 sv-20))
+          (let ((s0-0 (-> s1-0 data v1-26)))
+            (if (and (not (logtest? (the-as int (res-lump-value (-> arg0 entity) 'options uint128 :time -1000000000.0)) 8192))
+                     (= (-> s0-0 type) shadow-geo)
+                     )
+                (set! (-> s2-0 shadow) (the-as shadow-geo s0-0))
+                )
+            )
+          )
+        )
+      (if (not (setup-lods! (-> s2-0 lod-set) arg1 s1-0 (-> arg0 entity)))
+          (go process-drawable-art-error "mesh")
+          )
+      )
+    (let ((v1-41 (res-lump-value (-> sv-16 extra) 'texture-bucket int :default (the-as uint128 1) :time -1000000000.0))
+          )
+      (case (if (= (-> arg1 texture-level) 6)
+                6
+                (-> s3-0 index)
+                )
+        ((6)
+         (set! v1-41 (-> arg1 sort))
+         )
+        )
+      (set! (-> s2-0 default-texture-page) (the-as uint v1-41))
+      )
+    (set! (-> s2-0 level-index) (the-as uint (-> s3-0 index)))
+    )
+  (set! (-> s2-0 dma-add-func) (the-as (function process-drawable draw-control symbol object none) nothing))
+  (set! (-> arg2 0) (setup-cspace-and-add s2-0 (the-as art-joint-geo sv-16) 'process))
+  (set! (-> s2-0 dma-add-func) dma-add-process-drawable)
+  (set! (-> s2-0 shadow-mask) (res-lump-value (-> arg0 entity) 'shadow-mask uint :time -1000000000.0))
+  (set! (-> s2-0 shadow-values) (res-lump-value (-> arg0 entity) 'shadow-values uint :time -1000000000.0))
+  (set! (-> s2-0 light-index) (if (zero? (-> arg1 light-index))
+                                  (res-lump-value (-> arg0 entity) 'light-index uint :time -1000000000.0)
+                                  (-> arg1 light-index)
+                                  )
+        )
+  (let* ((gp-1 (ppointer->process (-> arg0 parent)))
+         (v1-54 (if (type? gp-1 process-drawable)
+                    gp-1
+                    )
+                )
+         )
+    (when (and v1-54 (nonzero? (-> (the-as process-drawable v1-54) draw)))
+      (set! (-> s2-0 light-index) (-> (the-as process-drawable v1-54) draw light-index))
+      (set! (-> s2-0 shadow-mask) (-> (the-as process-drawable v1-54) draw shadow-mask))
+      (set! (-> s2-0 shadow-values) (-> (the-as process-drawable v1-54) draw shadow-values))
+      )
+    )
+  (lod-set! s2-0 0)
+  (label cfg-50)
+  s2-0
+  )
+
+;; definition for method 14 of type process-drawable
+;; INFO: Used lq/sq
+(defmethod initialize-skeleton process-drawable ((obj process-drawable) (arg0 skeleton-group) (arg1 pair))
+  (local-vars (v1-14 art-element))
+  (if (not arg0)
+      (go process-drawable-art-error "skel-group")
+      )
+  (set! (-> obj draw) (skeleton-group->draw-control obj arg0 (&-> obj node-list)))
+  (let* ((s3-0 (-> obj draw))
+         (a2-3
+           (res-lump-value (-> s3-0 jgeo extra) 'joint-channel uint128 :default (the-as uint128 6) :time -1000000000.0)
+           )
+         )
+    (cond
+      ((> (the-as int a2-3) 0)
+       (logior! (-> s3-0 status) (draw-control-status math-skel))
+       (let ((v0-3 (new 'process 'joint-control (the-as int a2-3))))
+         (set! (-> obj skel) v0-3)
+         (let ((s4-0 v0-3))
+           (let ((s3-1 (-> s3-0 art-group)))
+             (cond
+               ((>= (-> arg0 janim) 0)
+                (when (or (>= (-> arg0 janim) (-> s3-1 length))
+                          (begin (set! v1-14 (-> s3-1 data (-> arg0 janim))) (not v1-14))
+                          (!= (-> v1-14 type) art-joint-anim)
+                          )
+                  (go process-drawable-art-error "initial joint-anim")
+                  (return (the-as draw-control #f))
+                  )
+                (ja-channel-set! 1)
+                (let ((s2-0 (-> obj skel root-channel 0)))
+                  (joint-control-channel-group-eval!
+                    s2-0
+                    (the-as art-joint-anim (-> s3-1 data (-> arg0 janim)))
+                    num-func-identity
+                    )
+                  (set! (-> s2-0 frame-num) 0.0)
+                  )
+                )
+               (else
+                 (ja-channel-set! 0)
+                 )
+               )
+             )
+           (set! (-> s4-0 effect) (new 'process 'effect-control obj))
+           )
+         )
+       )
+      (else
+        (set! (-> s3-0 skeleton bones 0 transform trans quad) (-> (the-as vector (get-property-struct
+                                                                                   (-> s3-0 jgeo extra)
+                                                                                   'trans-offset
+                                                                                   'interp
+                                                                                   -1000000000.0
+                                                                                   *null-vector*
+                                                                                   (the-as (pointer res-tag) #f)
+                                                                                   *res-static-buf*
+                                                                                   )
+                                                                          )
+                                                                  quad
+                                                                  )
+              )
+        )
+      )
+    )
+  (let ((s5-3 (-> obj root)))
+    (if (and s5-3 (nonzero? s5-3) (type? s5-3 collide-shape))
+        (find-collision-meshes (the-as collide-shape s5-3))
+        )
+    )
+  (-> obj draw)
+  )
+
+;; definition for method 15 of type process-drawable
+(defmethod initialize-skeleton-by-name process-drawable ((obj process-drawable) (arg0 string))
+  (let* ((s4-0 *level*)
+         (s3-0 (method-of-object s4-0 art-group-get-by-name))
+         )
+    (format (clear *temp-string*) "skel-~S" arg0)
+    (let ((s4-1 (s3-0 s4-0 *temp-string* (the-as (pointer uint32) #f))))
+      (if (and (nonzero? s4-1) (valid? s4-1 skeleton-group (the-as string #f) #f 0))
+          (initialize-skeleton obj (the-as skeleton-group s4-1) (the-as pair 0))
+          (go process-drawable-art-error arg0)
+          )
+      )
+    )
+  (-> obj draw)
+  )
+
+;; definition for method 16 of type process-drawable
+(defmethod apply-alignment process-drawable ((obj process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
+  (with-pp
+    (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
+      (let* ((s3-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> obj root quat)))
+             (s0-0 (matrix-transpose! (new 'stack-no-clear 'matrix) s3-0))
+             (s2-0 (vector-matrix*! (new 'stack-no-clear 'vector) (-> *standard-dynamics* gravity) s0-0))
+             (a1-5 (vector-matrix*! (new 'stack-no-clear 'vector) (-> obj root transv) s0-0))
+             )
+        (if (logtest? arg0 (align-opts no-gravity))
+            (set-vector! s2-0 0.0 0.0 0.0 1.0)
+            )
+        (when (logtest? arg0 (align-opts adjust-x-vel))
+          (set! (-> a1-5 x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> pp clock frames-per-second))
+                               (* (-> s2-0 x) (-> pp clock seconds-per-frame))
+                               )
+                )
+          (if (not (logtest? arg0 (align-opts adjust-xz-vel keep-other-velocities)))
+              (set! (-> a1-5 z) 0.0)
+              )
+          )
+        (if (and (logtest? arg0 (align-opts adjust-y-vel))
+                 (not (and (logtest? arg0 (align-opts ignore-y-if-zero)) (= (-> arg1 trans y) 0.0)))
+                 )
+            (set! (-> a1-5 y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> pp clock frames-per-second))
+                                 (* (-> s2-0 y) (-> pp clock seconds-per-frame))
+                                 )
+                  )
+            )
+        (when (logtest? arg0 (align-opts adjust-xz-vel))
+          (set! (-> a1-5 z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> pp clock frames-per-second))
+                               (* (-> s2-0 z) (-> pp clock seconds-per-frame))
+                               )
+                )
+          (if (not (logtest? arg0 (align-opts adjust-x-vel keep-other-velocities)))
+              (set! (-> a1-5 x) 0.0)
+              )
+          )
+        (vector-matrix*! (-> obj root transv) a1-5 s3-0)
+        )
+      )
+    (if (logtest? arg0 (align-opts adjust-quat))
+        (quaternion-normalize! (quaternion*! (-> obj root quat) (-> obj root quat) (-> arg1 quat)))
+        )
+    (-> obj root)
+    )
+  )
+
+;; definition for function ja-done?
+(defbehavior ja-done? process-drawable ((arg0 int))
+  (let ((v1-2 (-> self skel root-channel arg0)))
+    (cond
+      ((zero? (-> self skel active-channels))
+       #t
+       )
+      ((= (-> v1-2 num-func) num-func-seek!)
+       (= (-> v1-2 frame-num) (-> v1-2 param 0))
+       )
+      ((= (-> v1-2 num-func) num-func-interp-play!)
+       (= (the int (-> v1-2 frame-num)) (+ (-> v1-2 frame-group frames num-frames) -1))
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )
+
+;; definition for function ja-min?
+(defbehavior ja-min? process-drawable ((arg0 int))
+  (= (-> self skel root-channel arg0 frame-num) 0.0)
+  )
+
+;; definition for function ja-max?
+(defbehavior ja-max? process-drawable ((arg0 int))
+  (let ((v1-2 (-> self skel root-channel arg0)))
+    (>= (-> v1-2 frame-num) (the float (+ (-> v1-2 frame-group frames num-frames) -1)))
+    )
+  )
+
+;; definition for function ja-num-frames
+;; WARN: Return type mismatch uint vs int.
+(defbehavior ja-num-frames process-drawable ((arg0 int))
+  (the-as int (+ (-> self skel root-channel arg0 frame-group frames num-frames) -1))
+  )
+
+;; definition for function ja-frame-num
+(defbehavior ja-frame-num process-drawable ((arg0 int))
+  (-> self skel root-channel arg0 frame-num)
+  )
+
+;; definition for function ja-aframe-num
+(defbehavior ja-aframe-num process-drawable ((arg0 int))
+  (let* ((a0-2 (-> self skel root-channel arg0))
+         (v1-2 (-> a0-2 frame-group))
+         )
+    (if (and v1-2 (nonzero? v1-2))
+        (+ (* (-> a0-2 frame-num) (-> v1-2 artist-step)) (-> v1-2 artist-base))
+        0.0
+        )
+    )
+  )
+
+;; definition for function ja-aframe
+(defbehavior ja-aframe process-drawable ((arg0 float) (arg1 int))
+  (let ((v1-3 (-> self skel root-channel arg1 frame-group)))
+    (if (and v1-3 (nonzero? v1-3))
+        (/ (- arg0 (-> v1-3 artist-base)) (-> v1-3 artist-step))
+        arg0
+        )
+    )
+  )
+
+;; definition for function ja-speed
+(defbehavior ja-speed process-drawable ((arg0 int))
+  (-> self skel root-channel arg0 frame-group speed)
+  )
+
+;; definition for function ja-step
+(defbehavior ja-step process-drawable ((arg0 int))
+  (-> self skel root-channel arg0 frame-group artist-step)
+  )
+
+;; definition for function ja-channel-set!
+(defbehavior ja-channel-set! process-drawable ((arg0 int))
+  (let ((s5-0 (-> self skel)))
+    (when (nonzero? (-> s5-0 float-channels))
+      (if (>= arg0 (the-as int (-> s5-0 active-channels)))
+          (qmem-copy->!
+            (the-as pointer (-> s5-0 channel arg0))
+            (the-as pointer (-> s5-0 channel (-> s5-0 active-channels)))
+            (the-as int (* (-> s5-0 float-channels) 64))
+            )
+          (qmem-copy<-!
+            (the-as pointer (-> s5-0 channel arg0))
+            (the-as pointer (-> s5-0 channel (-> s5-0 active-channels)))
+            (the-as int (* (-> s5-0 float-channels) 64))
+            )
+          )
+      )
+    (set! (-> s5-0 active-channels) (the-as uint arg0))
+    (set! (-> s5-0 root-channel) (-> s5-0 channel))
+    (set! (-> s5-0 blend-index) (the-as uint -1))
+    (dotimes (v1-19 arg0)
+      (set! (-> s5-0 root-channel v1-19 eval-time) (the-as uint (current-time)))
+      (set! (-> s5-0 root-channel v1-19 group-sub-index) v1-19)
+      (set! (-> s5-0 root-channel v1-19 command) (if (zero? v1-19)
+                                                     (joint-control-command push)
+                                                     (joint-control-command blend)
+                                                     )
+            )
+      (set! (-> s5-0 root-channel v1-19 frame-interp 0) 0.0)
+      (set! (-> s5-0 root-channel v1-19 frame-interp 1) 0.0)
+      (set! (-> s5-0 root-channel v1-19 frame-num) 0.0)
+      (set! (-> s5-0 root-channel v1-19 frame-group) #f)
+      (set! (-> s5-0 root-channel v1-19 num-func) num-func-none)
+      (set! (-> s5-0 root-channel v1-19 group-size) arg0)
+      )
+    )
+  arg0
+  )
+
+;; definition for function ja-channel-push!
+(defbehavior ja-channel-push! process-drawable ((arg0 int) (arg1 time-frame))
+  (let ((s5-0 (-> self skel)))
+    (cond
+      ((or (zero? (-> s5-0 active-channels))
+           (zero? arg1)
+           (when (>= (+ (-> s5-0 active-channels) (-> s5-0 float-channels) arg0) (-> s5-0 allocated-length))
+             (format
+               0
+               "WARNING: ~A could not do (ja-channel-push! ~D) because it has ~D/~D channels.~%"
+               self
+               arg0
+               (+ (-> s5-0 active-channels) (-> s5-0 float-channels))
+               (-> s5-0 allocated-length)
+               )
+             #t
+             )
+           )
+       (ja-channel-set! arg0)
+       )
+      (else
+        (when (not (-> s5-0 root-channel 0 frame-group))
+          (let ((s3-0 (/ (- (the-as int (-> s5-0 root-channel)) (the-as uint (the-as int (-> s5-0 channel)))) 64)))
+            (if (nonzero? (-> s5-0 float-channels))
+                (qmem-copy<-!
+                  (the-as pointer (-> s5-0 channel s3-0))
+                  (the-as pointer (-> s5-0 channel (-> s5-0 active-channels)))
+                  (the-as int (* (-> s5-0 float-channels) 64))
+                  )
+                )
+            (set! (-> s5-0 active-channels) (the-as uint s3-0))
+            )
+          (if (zero? (-> s5-0 active-channels))
+              (return (ja-channel-set! arg0))
+              )
+          )
+        (let ((s3-1 (-> s5-0 active-channels)))
+          (if (nonzero? (-> s5-0 float-channels))
+              (qmem-copy->!
+                (the-as pointer (-> s5-0 channel (+ arg0 1 s3-1)))
+                (the-as pointer (-> s5-0 channel s3-1))
+                (the-as int (* (-> s5-0 float-channels) 64))
+                )
+              )
+          (set! (-> s5-0 root-channel) (the-as (inline-array joint-control-channel) (-> s5-0 channel s3-1)))
+          )
+        (set! (-> s5-0 active-channels) (the-as uint (+ arg0 1 (-> s5-0 active-channels))))
+        (dotimes (v1-38 arg0)
+          (set! (-> s5-0 root-channel v1-38 eval-time) (the-as uint (current-time)))
+          (set! (-> s5-0 root-channel v1-38 group-sub-index) v1-38)
+          (set! (-> s5-0 root-channel v1-38 command) (if (zero? v1-38)
+                                                         (joint-control-command push)
+                                                         (joint-control-command blend)
+                                                         )
+                )
+          (set! (-> s5-0 root-channel v1-38 frame-interp 0) 0.0)
+          (set! (-> s5-0 root-channel v1-38 frame-interp 1) 0.0)
+          (set! (-> s5-0 root-channel v1-38 frame-num) 0.0)
+          (set! (-> s5-0 root-channel v1-38 frame-group) #f)
+          (set! (-> s5-0 root-channel v1-38 num-func) num-func-none)
+          (set! (-> s5-0 root-channel v1-38 group-size) arg0)
+          )
+        (let ((v1-42 (-> s5-0 root-channel arg0)))
+          (set! (-> v1-42 eval-time) (the-as uint 0))
+          (set! (-> v1-42 group-sub-index) arg0)
+          (set! (-> s5-0 blend-index) (+ (-> s5-0 active-channels) -1))
+          (set! (-> v1-42 frame-interp 0) 0.0)
+          (set! (-> v1-42 frame-interp 1) 0.0)
+          (set! (-> v1-42 frame-num) 0.0)
+          (set! (-> v1-42 frame-group) #f)
+          (set! (-> v1-42 group-size) arg0)
+          (set! (-> v1-42 param 0) (/ 5.0 (+ 5.0 (the float arg1))))
+          (set! (-> v1-42 num-func) num-func-blend-in!)
+          (cond
+            ((= arg0 1)
+             (set! (-> v1-42 command) (joint-control-command stack1))
+             (set! (-> s5-0 root-channel 0 command) (joint-control-command push1))
+             )
+            (else
+              (set! (-> v1-42 command) (joint-control-command stack))
+              )
+            )
+          )
+        arg0
+        )
+      )
+    )
+  )
+
+;; definition for function ja-channel-float!
+(defbehavior ja-channel-float! process-drawable ((arg0 art-joint-anim) (arg1 float) (arg2 float) (arg3 float))
+  (cond
+    ((>= (+ (-> self skel active-channels) (-> self skel float-channels)) (-> self skel allocated-length))
+     (format
+       0
+       "WARNING: ~A could not do (ja-channel-float! ~D) because it has ~D/~D channels.~%"
+       self
+       1
+       (+ (-> self skel active-channels) (-> self skel float-channels))
+       (-> self skel allocated-length)
+       )
+     (the-as joint-control-channel #f)
+     )
+    (else
+      (let ((v0-1 (-> self skel channel (+ (-> self skel active-channels) (-> self skel float-channels)))))
+        (+! (-> self skel float-channels) 1)
+        (set! (-> v0-1 eval-time) (the-as uint (current-time)))
+        (set! (-> v0-1 group-sub-index) 0)
+        (set! (-> v0-1 command) (joint-control-command float))
+        (set! (-> v0-1 frame-interp 0) arg2)
+        (set! (-> v0-1 frame-interp 1) arg3)
+        (set! (-> v0-1 frame-num) arg1)
+        (set! (-> v0-1 frame-group) arg0)
+        (set! (-> v0-1 num-func) num-func-none)
+        (set! (-> v0-1 group-size) 1)
+        (set! (-> v0-1 dist) 0.0)
+        v0-1
+        )
+      )
+    )
+  )
+
+;; definition for function joint-control-reset!
+;; WARN: Return type mismatch uint vs none.
+(defbehavior joint-control-reset! process-drawable ((arg0 joint-control) (arg1 joint-control-channel))
+  (let* ((v1-2 (the-as object (- (the-as int arg1) (the-as uint (* (-> arg1 group-size) 64)))))
+         (s5-0 (/ (- (the-as int v1-2) (the-as uint (the-as int (-> arg0 channel)))) 64))
+         (s4-0 (/ (- (the-as int arg1) (the-as uint v1-2)) 64))
+         )
+    (when (> s5-0 0)
+      (if (= (-> (the-as joint-control-channel v1-2) command) (joint-control-command push1))
+          (set! (-> (the-as joint-control-channel v1-2) command) (joint-control-command push))
+          )
+      (if (= (-> arg0 root-channel) (the-as joint-control-channel v1-2))
+          (set! (-> arg0 root-channel) (-> arg0 channel))
+          (set! (-> arg0 root-channel)
+                (the-as (inline-array joint-control-channel) (-> arg0 root-channel (- (+ s5-0 1))))
+                )
+          )
+      (qmem-copy<-!
+        (the-as pointer (-> arg0 channel))
+        (the-as pointer v1-2)
+        (the-as int (* (- (+ (-> arg0 active-channels) (-> arg0 float-channels)) (the-as uint s5-0)) 64))
+        )
+      (qmem-copy<-!
+        (the-as pointer (-> arg0 channel s4-0))
+        (the-as pointer (+ (the-as uint (-> arg0 channel 1)) (* s4-0 64)))
+        (* (+ (- (- -1 s5-0) s4-0) (-> arg0 float-channels) (-> arg0 active-channels)) 64)
+        )
+      (set! (-> arg0 active-channels) (- (-> arg0 active-channels) (the-as uint (+ s5-0 1))))
+      )
+    )
+  (none)
+  )
+
+;; definition for function ja-group-size
+(defbehavior ja-group-size process-drawable ()
+  (if (< (the-as int (-> self skel root-channel))
+         (the-as int (-> self skel channel (-> self skel active-channels)))
+         )
+      (-> self skel root-channel 0 group-size)
+      0
+      )
+  )
+
+;; definition for function ja-eval
+(defbehavior ja-eval process-drawable ()
+  (let ((gp-0 (-> self skel root-channel 0))
+        (s5-0 (-> self skel channel (+ (-> self skel active-channels) (-> self skel float-channels))))
+        (s4-0 (current-time))
+        )
+    (while (< (the-as int gp-0) (the-as int s5-0))
+      (cond
+        ((logtest? (-> gp-0 command) (joint-control-command joint-control-command-4))
+         )
+        (else
+          (if (!= (-> gp-0 eval-time) s4-0)
+              (joint-control-channel-eval gp-0)
+              )
+          )
+        )
+      (&+! gp-0 64)
+      )
+    )
+  0
+  )
+
+;; definition for function ja-blend-eval
+(defbehavior ja-blend-eval process-drawable ()
+  (let ((gp-0 (-> self skel root-channel))
+        (s5-0 (the-as joint-control-channel (-> self skel channel)))
+        (s4-0 (current-time))
+        )
+    (when (and (nonzero? (-> self skel active-channels)) (!= gp-0 s5-0))
+      (while (< (the-as int s5-0) (the-as int gp-0))
+        (cond
+          ((logtest? (-> s5-0 command) (joint-control-command joint-control-command-4))
+           )
+          (else
+            (if (!= (-> s5-0 eval-time) s4-0)
+                (joint-control-channel-eval s5-0)
+                )
+            )
+          )
+        (&+! s5-0 64)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 10 of type joint-control
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+(defmethod update-anim-data joint-control ((obj joint-control))
+  (local-vars (s7-0 none) (ra-0 int))
+  (let ((s5-0 (+ (-> obj active-channels) (-> obj float-channels))))
+    (dotimes (s4-0 (the-as int s5-0))
+      (let ((s3-0 (-> obj channel s4-0)))
+        (case (-> s3-0 command)
+          (((joint-control-command stack) (joint-control-command stack1))
+           )
+          (else
+            (let ((s2-0 (-> s3-0 frame-group)))
+              (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
+                (go process-drawable-art-error "joint-anim")
+                (.lw ra-0 return-from-thread s7-0)
+                (.jr ra-0)
+                (nop!)
+                0
+                )
+              (when (nonzero? (-> s2-0 frames flags))
+                (cond
+                  ((logtest? (-> s2-0 frames flags) 2)
+                   (update-time-stamp *anim-manager* s2-0)
+                   )
+                  ((logtest? (-> s2-0 frames flags) 1)
+                   (decompress *anim-manager* s2-0)
+                   )
+                  )
+                )
+              (set! (-> s3-0 frame-num)
+                    (fmax 0.0 (fmin (-> s3-0 frame-num) (the float (+ (-> s2-0 frames num-frames) -1))))
+                    )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 19 of type process-drawable
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+(defmethod evaluate-joint-control process-drawable ((obj process-drawable))
+  (local-vars (s1-0 joint-control-channel) (s2-0 int) (s4-0 uint) (s7-0 none) (ra-0 int))
+  (let ((gp-0 (-> obj skel)))
+    (let ((a0-1 (-> gp-0 top-anim)))
+      (b! (not a0-1) cfg-2 :delay (empty-form))
+      (update a0-1)
+      )
+    (until (= s4-0 (+ (-> gp-0 active-channels) (-> gp-0 float-channels)))
+      (label cfg-2)
+      (set! s4-0 (+ (-> gp-0 active-channels) (-> gp-0 float-channels)))
+      (let ((s3-0 (current-time)))
+        (b! (logtest? (-> obj draw status) (draw-control-status no-draw)) cfg-45 :delay (empty-form))
+        (set! s2-0 0)
+        (b! #t cfg-30 :delay (nop!))
+        (label cfg-4)
+        (set! s1-0 (-> gp-0 channel s2-0))
+        (b!
+          (not (and (logtest? (-> s1-0 command) (joint-control-command thirty-two)) (!= (-> s1-0 eval-time) s3-0)))
+          cfg-10
+          :delay (empty-form)
+          )
+        )
+      (joint-control-channel-eval s1-0)
+      )
+    (label cfg-10)
+    (let ((v1-19 (-> s1-0 command)))
+      (b! (!= v1-19 (joint-control-command stack)) cfg-12 :delay (nop!))
+      (b! #t cfg-29 :delay (nop!))
+      (label cfg-12)
+      (cond
+        ((= v1-19 (joint-control-command stack1))
+         (set! (-> gp-0 channel (+ s2-0 -1) frame-interp 0) (-> s1-0 frame-interp 0))
+         (set! (-> gp-0 channel (+ s2-0 -1) frame-interp 1) (-> s1-0 frame-interp 1))
+         )
+        (else
+          (let ((s0-0 (-> s1-0 frame-group)))
+            (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
+              (go process-drawable-art-error "joint-anim")
+              (.lw ra-0 return-from-thread s7-0)
+              (.jr ra-0)
+              (nop!)
+              0
+              )
+            (when (nonzero? (-> s0-0 frames flags))
+              (cond
+                ((logtest? (-> s0-0 frames flags) 2)
+                 (update-time-stamp *anim-manager* s0-0)
+                 )
+                ((logtest? (-> s0-0 frames flags) 1)
+                 (decompress *anim-manager* s0-0)
+                 )
+                )
+              )
+            (set! (-> s1-0 frame-num)
+                  (fmax 0.0 (fmin (-> s1-0 frame-num) (the float (+ (-> s0-0 frames num-frames) -1))))
+                  )
+            )
+          )
+        )
+      )
+    (label cfg-29)
+    (+! s2-0 1)
+    (label cfg-30)
+    (b! (< s2-0 (the-as int s4-0)) cfg-4)
+    (dotimes (v1-56 (the-as int s4-0))
+      (set! (-> gp-0 channel v1-56 frame-interp 0) (fmax 0.0 (fmin 1.0 (-> gp-0 channel v1-56 frame-interp 0))))
+      (set! (-> gp-0 channel v1-56 frame-interp 1) (fmax 0.0 (fmin 1.0 (-> gp-0 channel v1-56 frame-interp 1))))
+      )
+    (if (or (zero? s4-0) (or (not (-> gp-0 root-channel 0 frame-group)) (zero? (-> gp-0 active-channels))))
+        (logior! (-> obj draw status) (draw-control-status no-draw-temp))
+        )
+    (if (logtest? (-> obj skel status) (joint-control-status blend-shape blend-shape-valid))
+        (merc-blend-shape obj)
+        )
+    (if (logtest? (-> obj skel status) (joint-control-status eye-anim-valid eye-anim))
+        (merc-eye-anim obj)
+        )
+    (label cfg-45)
+    (let ((a0-26 (-> gp-0 effect)))
+      (if a0-26
+          (update-effects a0-26)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function ja-post
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function ja-post has a return type of none, but the expression builder found a return statement.
+(defbehavior ja-post process-drawable ()
+  (when (nonzero? (-> self draw))
+    (let ((gp-1 (logtest? (-> self draw status) (draw-control-status uninited))))
+      (logclear! (-> self draw status) (draw-control-status no-draw-temp uninited))
+      (when (nonzero? (-> self skel))
+        (evaluate-joint-control self)
+        (when (or (logtest? (-> self skel status) (joint-control-status sync-math)) gp-1)
+          (do-joint-math (-> self draw) (-> self node-list) (-> self skel))
+          (if (and gp-1 (type? (-> self root) collide-shape))
+              (update-transforms (the-as collide-shape (-> self root)))
+              )
+          (return #f)
+          )
+        )
+      )
+    (let ((v1-23 *matrix-engine*))
+      (set! (-> v1-23 (-> v1-23 length)) (process->handle self))
+      (+! (-> v1-23 length) 1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type joint-control
+(defmethod current-cycle-distance joint-control ((obj joint-control))
+  (cond
+    ((< (the-as int (-> obj root-channel)) (the-as int (-> obj channel (-> obj active-channels))))
+     (let ((s4-0 (-> obj root-channel (-> obj root-channel 0 group-size)))
+           (s3-0 (the-as joint-control-channel (-> obj root-channel)))
+           (s5-0 (the-as (pointer float) (new 'stack-no-clear 'vector)))
+           )
+       (while (< (the-as int s3-0) (the-as int s4-0))
+         (case (-> s3-0 command)
+           (((joint-control-command push))
+            (set! (-> s5-0 0) (-> s3-0 dist))
+            (set! s5-0 (&-> s5-0 1))
+            )
+           (((joint-control-command blend) (joint-control-command push1) (joint-control-command float))
+            (set! (-> s5-0 -1) (lerp (-> s5-0 -1) (-> s3-0 dist) (-> s3-0 frame-interp (-> obj active-frame-interp))))
+            )
+           (((joint-control-command stack))
+            (set! (-> s5-0 -2) (lerp (-> s5-0 -2) (-> s5-0 -1) (-> s3-0 frame-interp (-> obj active-frame-interp))))
+            (set! s5-0 (&-> s5-0 -1))
+            )
+           )
+         (&+! s3-0 64)
+         )
+       (-> s5-0 -1)
+       )
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+;; definition for method 0 of type top-anim-joint-control
+(defmethod new top-anim-joint-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 process) (the-as (pointer process-drawable) (process->ppointer arg0)))
+    (set! (-> gp-0 interp-select 0) (the-as uint (-> arg0 skel interp-select 0)))
+    (set! (-> gp-0 interp-select 1) (the-as uint (-> arg0 skel interp-select 1)))
+    (set! (-> gp-0 base-anim-speed) 1.0)
+    (set! (-> gp-0 base-anim-blend) 0.1333333)
+    (set! (-> gp-0 frame-post-put-away) #f)
+    (reset gp-0)
+    gp-0
+    )
+  )
+
+;; definition for method 9 of type top-anim-joint-control
+;; WARN: Return type mismatch top-anim-joint-control vs none.
+(defmethod reset top-anim-joint-control ((obj top-anim-joint-control))
+  (let ((v0-0 obj))
+    (set! (-> v0-0 interp) 0.0)
+    (set! (-> v0-0 frame-targ) #f)
+    (set! (-> v0-0 frame-group) #f)
+    (set! (-> v0-0 frame-group-push) #f)
+    (set! (-> v0-0 frame-num) 0.0)
+    (set! (-> v0-0 frame-start) 0.0)
+    (set! (-> v0-0 frame-blend) 0.0)
+    (set! (-> v0-0 frame-post-blend) 0.1333333)
+    (set! (-> v0-0 frame-post-end) 0.0)
+    (set! (-> v0-0 base-anim) #f)
+    (set! (-> v0-0 base-anim-speed) 1.0)
+    (set! (-> v0-0 base-anim-blend) 0.1333333)
+    )
+  (none)
+  )
+
+;; definition for method 11 of type top-anim-joint-control
+(defmethod get-channel top-anim-joint-control ((obj top-anim-joint-control) (arg0 int))
+  (case arg0
+    ((1)
+     (case (-> obj process 0 skel float-channels)
+       ((2)
+        (-> obj process 0 skel channel (-> obj process 0 skel active-channels))
+        )
+       (else
+         (the-as joint-control-channel #f)
+         )
+       )
+     )
+    (else
+      (case (-> obj process 0 skel float-channels)
+        ((1)
+         (-> obj process 0 skel channel (-> obj process 0 skel active-channels))
+         )
+        ((2)
+         (-> obj process 0 skel channel (+ (-> obj process 0 skel active-channels) 1))
+         )
+        (else
+          (the-as joint-control-channel #f)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type top-anim-joint-control
+;; WARN: Return type mismatch int vs none.
+(defmethod push-anim-to-targ top-anim-joint-control ((obj top-anim-joint-control)
+                                                   (arg0 art-joint-anim)
+                                                   (arg1 float)
+                                                   (arg2 int)
+                                                   (arg3 int)
+                                                   (arg4 float)
+                                                   (arg5 float)
+                                                   (arg6 symbol)
+                                                   )
+  (when (!= (-> obj interp) 0.0)
+    (let ((v1-1 obj))
+      (set! (-> v1-1 frame-targ) arg0)
+      (set! (-> v1-1 frame-speed) arg4)
+      (set! (-> v1-1 frame-start) (/ arg1 (-> arg0 artist-step)))
+      (set! (-> v1-1 frame-blend) (if (zero? arg2)
+                                      0.0
+                                      (/ 5.0 (+ 5.0 (the float arg2)))
+                                      )
+            )
+      (set! (-> v1-1 frame-post-blend) (if (zero? arg3)
+                                           0.0
+                                           (/ 5.0 (+ 5.0 (the float arg3)))
+                                           )
+            )
+      (set! (-> v1-1 frame-post-end) (/ arg5 (-> arg0 artist-step)))
+      (set! (-> v1-1 frame-push-time) (current-time))
+      (set! (-> v1-1 frame-post-put-away) #f)
+      )
+    (if arg6
+        (sound-play-by-spec (the-as sound-spec arg6) (new-sound-id) (the-as vector #t))
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type top-anim-joint-control
+;; WARN: Return type mismatch int vs none.
+(defmethod update top-anim-joint-control ((obj top-anim-joint-control))
+  (with-pp
+    (let* ((v1-0 (-> obj process))
+           (pp (if v1-0
+                   (the-as process-drawable (-> v1-0 0 self))
+                   )
+               )
+           (s3-0 (get-channel obj 1))
+           (s5-0 (get-channel obj 0))
+           (s4-0 (-> obj base-anim))
+           )
+      (set! (-> obj frame-group-push) #f)
+      (cond
+        ((= (-> obj interp) 0.0)
+         (when s5-0
+           (seek! (-> s5-0 frame-interp 1) 0.0 (* 8.0 (-> pp clock seconds-per-frame)))
+           (if s3-0
+               (set! (-> s3-0 frame-interp 1) (fmin (-> s3-0 frame-interp 1) (-> s5-0 frame-interp 1)))
+               )
+           (when (= (-> s5-0 frame-interp 1) 0.0)
+             (set! (-> obj frame-post-put-away) #f)
+             (when (= (-> obj interp) 0.0)
+               (joint-channel-float-delete! s5-0)
+               (set! (-> obj frame-group) #f)
+               (set! (-> obj frame-num) 0.0)
+               (set! (-> pp skel generate-frame-function) create-interpolated-joint-animation-frame)
+               )
+             (when s3-0
+               (joint-channel-float-delete! s3-0)
+               (set! (-> obj frame-group-push) #f)
+               )
+             )
+           )
+         )
+        (else
+          (when (or (not s5-0)
+                    (or (and (-> obj frame-targ)
+                             (and (!= (-> obj frame-blend) 0.0)
+                                  (or (!= (-> s5-0 frame-group) (-> obj frame-targ)) (< (-> obj update-time) (-> obj frame-push-time)))
+                                  )
+                             )
+                        (and (not (-> obj frame-targ))
+                             (!= (-> s5-0 frame-group) s4-0)
+                             (set! (-> obj frame-blend) (-> obj frame-post-blend))
+                             )
+                        )
+                    )
+            (when s3-0
+              (joint-channel-float-delete! s3-0)
+              (set! (-> obj frame-group-push) #f)
+              (set! s5-0 (get-channel obj 0))
+              (set! (-> s5-0 frame-interp 1) (-> obj interp))
+              )
+            (set! (-> pp skel generate-frame-function) create-interpolated2-joint-animation-frame)
+            (let ((s2-0 (the-as basic (-> obj frame-targ))))
+              (set! s2-0 (cond
+                           ((the-as art-joint-anim s2-0)
+                            (empty)
+                            s2-0
+                            )
+                           (else
+                             s4-0
+                             )
+                           )
+                    )
+              (set! s3-0 s5-0)
+              (if s3-0
+                  (set! (-> obj frame-group-push) (-> s3-0 frame-group))
+                  )
+              (cond
+                ((= s4-0 s2-0)
+                 (let ((v1-30 (ja-channel-float! (the-as art-joint-anim s2-0) 0.0 0.0 0.0)))
+                   (set! s5-0 (when v1-30
+                                (set! (-> v1-30 param 0) 1.0)
+                                (set! (-> v1-30 num-func) num-func-loop!)
+                                v1-30
+                                )
+                         )
+                   )
+                 (when s5-0
+                   (set! (-> s5-0 frame-num) (-> obj frame-start))
+                   (set! (-> obj base-anim-speed) 1.0)
+                   (set! (-> obj base-anim-blend) 0.1333333)
+                   )
+                 )
+                ((>= (-> obj frame-speed) 0.0)
+                 (let ((v1-35 (ja-channel-float! (the-as art-joint-anim s2-0) 0.0 0.0 0.0)))
+                   (set! s5-0
+                         (when v1-35
+                           (set! (-> v1-35 param 0)
+                                 (- (the float (+ (-> (the-as art-joint-anim s2-0) frames num-frames) -1)) (-> obj frame-post-end))
+                                 )
+                           (set! (-> v1-35 param 1) (-> obj frame-speed))
+                           (set! (-> v1-35 num-func) num-func-seek!)
+                           v1-35
+                           )
+                         )
+                   )
+                 (if s5-0
+                     (set! (-> s5-0 frame-num) (-> obj frame-start))
+                     )
+                 )
+                (else
+                  (when s5-0
+                    (let ((v1-39 (ja-channel-float! (the-as art-joint-anim s2-0) 0.0 0.0 0.0)))
+                      (set! s5-0 (when v1-39
+                                   (set! (-> v1-39 param 0) 0.0)
+                                   (set! (-> v1-39 param 1) (fabs (-> obj frame-speed)))
+                                   (set! (-> v1-39 num-func) num-func-seek!)
+                                   v1-39
+                                   )
+                            )
+                      )
+                    (when s5-0
+                      (set! (-> s5-0 frame-num) (- (the float (+ (-> s5-0 frame-group frames num-frames) -1)) (-> obj frame-start)))
+                      (set! (-> obj base-anim-speed) 1.0)
+                      (set! (-> obj base-anim-blend) 0.1333333)
+                      )
+                    )
+                  )
+                )
+              )
+            (when s5-0
+              (set! (-> obj frame-group) (-> s5-0 frame-group))
+              (set! (-> obj frame-num) (-> s5-0 frame-num))
+              (set! (-> obj frame-cur-blend) (-> obj frame-blend))
+              )
+            )
+          (when s5-0
+            (set! (-> pp skel interp-select 0) (the-as int (-> obj interp-select 0)))
+            (set! (-> pp skel interp-select 1) (the-as int (-> obj interp-select 1)))
+            (let ((f0-35 (cond
+                           ((not (-> obj frame-targ))
+                            (-> obj base-anim-blend)
+                            )
+                           (s3-0
+                             (-> obj frame-cur-blend)
+                             )
+                           (else
+                             0.1333333
+                             )
+                           )
+                         )
+                  )
+              (if (= f0-35 0.0)
+                  (set! (-> s5-0 frame-interp 1) (-> obj interp))
+                  (seek! (-> s5-0 frame-interp 1) (-> obj interp) (* f0-35 (-> pp clock time-adjust-ratio)))
+                  )
+              )
+            (when s3-0
+              (set! (-> obj frame-group-push) (-> s3-0 frame-group))
+              (set! (-> s3-0 frame-interp 1) (-> obj interp))
+              (if (!= (-> s3-0 eval-time) (current-time))
+                  (joint-control-channel-eval s3-0)
+                  )
+              (when (= (-> s5-0 frame-interp 1) (-> obj interp))
+                (joint-channel-float-delete! s3-0)
+                (set! (-> obj frame-group-push) #f)
+                (set! s5-0 (get-channel obj 0))
+                (set! (-> s5-0 frame-interp 1) (-> obj interp))
+                )
+              )
+            (let ((v1-70 (-> obj frame-targ)))
+              (cond
+                (v1-70
+                  (cond
+                    ((= (-> s5-0 frame-group) v1-70)
+                     (if (!= (-> s5-0 eval-time) (current-time))
+                         (joint-control-channel-eval s5-0)
+                         )
+                     (when (= (-> s5-0 frame-num) (-> s5-0 param 0))
+                       (set! (-> obj frame-targ) #f)
+                       (set! (-> obj frame-start) 0.0)
+                       (cond
+                         ((-> obj frame-post-put-away)
+                          (set! (-> obj interp) 0.0)
+                          (set! (-> obj frame-post-put-away) #f)
+                          )
+                         ((!= (-> obj frame-post-blend) 0.0)
+                          (set! (-> s5-0 param 0) (the float (+ (-> s5-0 frame-group frames num-frames) -1)))
+                          )
+                         (else
+                           (set! (-> s5-0 frame-num) 0.0)
+                           (set! (-> s5-0 frame-group) (the-as art-joint-anim s4-0))
+                           (set! (-> s5-0 num-func) num-func-loop!)
+                           (set! (-> s5-0 param 0) 1.0)
+                           )
+                         )
+                       )
+                     )
+                    (else
+                      (set! (-> s5-0 eval-time) (the-as uint (current-time)))
+                      (set! (-> s5-0 frame-group) v1-70)
+                      (set! (-> s5-0 frame-num) (if (< (-> obj frame-speed) 0.0)
+                                                    (- (the float (+ (-> v1-70 frames num-frames) -1)) (-> obj frame-start))
+                                                    (set! (-> s5-0 frame-num) (-> obj frame-start))
+                                                    )
+                            )
+                      (set! (-> s5-0 num-func) num-func-seek!)
+                      (if (>= (-> obj frame-speed) 0.0)
+                          (set! (-> s5-0 param 0)
+                                (- (the float (+ (-> s5-0 frame-group frames num-frames) -1)) (-> obj frame-post-end))
+                                )
+                          (set! (-> s5-0 param 0) 0.0)
+                          )
+                      (set! (-> s5-0 param 1) (fabs (-> obj frame-speed)))
+                      )
+                    )
+                  )
+                (else
+                  (when (!= (-> s5-0 frame-group) s4-0)
+                    (set! (-> s5-0 frame-num) 0.0)
+                    (set! (-> obj base-anim-speed) 1.0)
+                    (set! (-> obj base-anim-blend) 0.1333333)
+                    )
+                  (set! (-> s5-0 frame-group) (the-as art-joint-anim s4-0))
+                  (set! (-> s5-0 num-func) num-func-loop!)
+                  (set! (-> s5-0 param 0) (-> obj base-anim-speed))
+                  (set! (-> obj frame-post-blend) 0.1333333)
+                  )
+                )
+              )
+            (set! (-> obj frame-group) (-> s5-0 frame-group))
+            (set! (-> obj frame-num) (-> s5-0 frame-num))
+            )
+          )
+        )
+      )
+    (set! (-> obj update-time) (current-time))
+    0
+    (none)
+    )
+  )
+
+;; definition for function sleep-code
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior sleep-code process-drawable ()
+  (until #f
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+  #f
+  )
+
+;; definition for function transform-and-sleep
+;; WARN: Return type mismatch int vs none.
+(defbehavior transform-and-sleep process-drawable ()
+  (let ((gp-0 (-> self skel status)))
+    (logior! (-> self skel status) (joint-control-status sync-math))
+    (ja-post)
+    (update-transforms (the-as collide-shape (-> self root)))
+    (set! (-> self skel status) gp-0)
+    )
+  (logior! (-> self mask) (process-mask sleep))
+  (suspend)
+  0
+  (none)
+  )
+
+;; definition for function transform-and-sleep-code
+;; WARN: Return type mismatch int vs none.
+(defbehavior transform-and-sleep-code process-drawable ()
+  (let ((gp-0 (-> self skel status)))
+    (logior! (-> self skel status) (joint-control-status sync-math))
+    (ja-post)
+    (update-transforms (the-as collide-shape (-> self root)))
+    (set! (-> self skel status) gp-0)
+    )
+  (logior! (-> self mask) (process-mask sleep-code))
+  (suspend)
+  0
+  (none)
+  )
+
+;; definition for function transform-post
+(defbehavior transform-post process-drawable ()
+  (ja-post)
+  (update-transforms (the-as collide-shape (-> self root)))
+  0
+  )
+
+;; definition for function rider-trans
+;; WARN: Return type mismatch int vs none.
+(defbehavior rider-trans process-drawable ()
+  (detect-riders! (the-as collide-shape (-> self root)))
+  0
+  (none)
+  )
+
+;; definition for function rider-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior rider-post process-drawable ()
+  (ja-post)
+  (let ((gp-0 (the-as collide-shape (-> self root))))
+    (update-transforms gp-0)
+    (pull-riders! gp-0)
+    (do-push-aways gp-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function pusher-post
+(defbehavior pusher-post process-drawable ()
+  (ja-post)
+  (let ((gp-0 (the-as collide-shape (-> self root))))
+    (update-transforms gp-0)
+    (do-push-aways gp-0)
+    )
+  0
+  )
+
+;; definition for function process-drawable-delay-player
+(defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
+  (while (and *target* (focus-test? *target* in-air))
+    (suspend)
+    )
+  (set! (-> self state-time) (current-time))
+  (process-grab? *target* #f)
+  (while (or (-> *setting-control* user-current talking)
+             (-> *setting-control* user-current spooling)
+             (-> *setting-control* user-current hint)
+             (-> *setting-control* user-current ambient)
+             )
+    (suspend)
+    )
+  (while (< (- (current-time) (-> self state-time)) arg0)
+    (suspend)
+    )
+  (process-release? *target*)
+  (suspend)
+  0
+  )
+
+;; definition for function process-drawable-fuel-cell-handler
+;; WARN: Return type mismatch entity-perm-status vs none.
+(defbehavior process-drawable-fuel-cell-handler process-drawable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('notify)
+     (case (-> arg3 param 0)
+       (('pickup)
+        (if (type? arg0 fuel-cell)
+            (process-entity-status! self (entity-perm-status dead) #t)
+            )
+        )
+       )
+     )
+    )
+  (none)
+  )
+
+;; definition for function process-drawable-birth-fuel-cell
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior process-drawable-birth-fuel-cell process-drawable ((arg0 entity) (arg1 vector) (arg2 symbol))
+  (let ((v1-0 arg0)
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+    (if (not v1-0)
+        (set! v1-0 (-> self entity))
+        )
+    (if arg1
+        (set! (-> gp-0 quad) (-> arg1 quad))
+        (set! (-> gp-0 quad) (-> v1-0 extra trans quad))
+        )
+    (let ((s5-0 (-> v1-0 extra perm task))
+          (s4-0 (new 'static 'fact-info))
+          )
+      (set! (-> s4-0 options) (actor-option))
+      (if arg2
+          (set! (-> s4-0 options) (actor-option auto-pickup))
+          )
+      (when (and (nonzero? s5-0) (not (task-complete? *game-info* s5-0)))
+        (label cfg-12)
+        (birth-pickup-at-point gp-0 (pickup-type fuel-cell) (the float s5-0) #f self s4-0)
+        (when (not (-> self child))
+          (suspend)
+          (goto cfg-12)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function find-offending-process-focusable
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; WARN: Return type mismatch object vs process-focusable.
+(defbehavior find-offending-process-focusable process-drawable ((arg0 process-tree) (arg1 attack-info))
+  (let ((s5-0 (the-as object #f)))
+    (when (and arg1 (logtest? (-> arg1 mask) (attack-info-mask attacker)))
+      (let ((s4-0 (handle->process (-> arg1 attacker))))
+        (set! s5-0 (if (type? s4-0 process-focusable)
+                       s4-0
+                       )
+              )
+        )
+      )
+    (when (not (the-as process s5-0))
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-3 from) (process->ppointer self))
+        (set! (-> a1-3 num-params) 0)
+        (set! (-> a1-3 message) 'get-offending-focusable)
+        (set! s5-0 (send-event-function arg0 a1-3))
+        )
+      (when (not s5-0)
+        (label cfg-16)
+        (b! (not arg0) cfg-24 :delay (empty-form))
+        (set! s5-0 (cond
+                     ((type? arg0 process-focusable)
+                      arg0
+                      )
+                     (else
+                       (let ((v1-12 process-tree))
+                         (b! (= (-> arg0 type) v1-12) cfg-24 :delay (nop!))
+                         )
+                       (nop!)
+                       (set! arg0 (ppointer->process (-> arg0 parent)))
+                       (goto cfg-16)
+                       s5-0
+                       )
+                     )
+              )
+        0
+        )
+      )
+    (label cfg-24)
+    (the-as process-focusable s5-0)
+    )
+  )
+
+;; this part is debug only
+(when *debug-segment*
+;; definition for symbol *valid-con*, type string
+(define *valid-con* (new 'debug 'string #x4000 (the-as string #f)))
+
+)
+;; definition (debug) for function process-drawable-valid?
+(defun-debug process-drawable-valid? ((arg0 process-drawable))
+  (let ((s5-0 #t))
+    (clear *valid-con*)
+    (format *valid-con* "~%--- ~A -----------------------------~%" arg0)
+    (dotimes (s4-0 (-> arg0 node-list length))
+      (let ((s3-0 (-> arg0 node-list data s4-0)))
+        (when (-> s3-0 geo)
+          (cond
+            ((valid? (-> s3-0 geo) drawable "cspace geo" #t *valid-con*)
+             )
+            (else
+              (format *valid-con* "ERROR: ~A has an invalid geo ~A~%" s3-0 (-> s3-0 geo))
+              (set! s5-0 #f)
+              )
+            )
+          )
+        )
+      )
+    (let ((s4-1 (+ (-> arg0 skel active-channels) (-> arg0 skel float-channels))))
+      (when (< (-> arg0 skel allocated-length) s4-1)
+        (format
+          *valid-con*
+          "ERROR: ~~A has ~D joint channels, but only ~D are allowed~%"
+          arg0
+          s4-1
+          (-> arg0 skel allocated-length)
+          )
+        (set! s5-0 #f)
+        )
+      (dotimes (s3-1 (the-as int s4-1))
+        (let ((s2-0 (-> arg0 skel channel s3-1)))
+          (cond
+            ((logtest? (-> s2-0 command) (joint-control-command joint-control-command-4))
+             )
+            ((valid? (-> s2-0 frame-group) art-joint-anim "joint-control frame-group" #t *valid-con*)
+             (when (not (and (>= (the int (-> s2-0 frame-num)) 0)
+                             (< (the int (-> s2-0 frame-num)) (the-as int (-> s2-0 frame-group frames num-frames)))
+                             )
+                        )
+               (format
+                 *valid-con*
+                 "ERROR: ~`joint-control-channel`P #~D has an invalid frame-num ~F/~D [0-~D]~%"
+                 s2-0
+                 s3-1
+                 (-> s2-0 frame-num)
+                 (the int (-> s2-0 frame-num))
+                 (+ (-> s2-0 frame-group frames num-frames) -1)
+                 )
+               (set! s5-0 #f)
+               )
+             )
+            (else
+              (format
+                *valid-con*
+                "ERROR: ~`joint-control-channel`P #~D has an invalid frame-group ~A~%"
+                s2-0
+                s3-1
+                (-> s2-0 frame-group)
+                )
+              (set! s5-0 #f)
+              )
+            )
+          )
+        )
+      )
+    (when (not s5-0)
+      (format *valid-con* "--------------------------------~%~%")
+      (format 0 "~S" *valid-con*)
+      )
+    s5-0
+    )
+  )
+
+;; failed to figure out what this is:
+0

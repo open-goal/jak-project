@@ -55,18 +55,18 @@
   :size-assert         #xe4
   :flag-assert         #x1b008000e4
   (:methods
-    (dummy-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
-    (dummy-22 (_type_) none 22)
+    (baseplat-method-20 (_type_) none 20)
+    (baseplat-method-21 (_type_) none 21)
+    (baseplat-method-22 (_type_) none 22)
     (get-unlit-skel (_type_) skeleton-group 23)
-    (dummy-24 (_type_) none 24)
-    (TODO-RENAME-25 (_type_) sparticle-launch-group 25)
-    (dummy-26 (_type_) none 26)
+    (baseplat-method-24 (_type_) none 24)
+    (baseplat-method-25 (_type_) sparticle-launch-group 25)
+    (baseplat-method-26 (_type_) none 26)
     )
   )
 
 
-(defmethod dummy-21 baseplat ((obj baseplat))
+(defmethod baseplat-method-21 baseplat ((obj baseplat))
   (logior! (-> obj skel status) (janim-status inited))
   (set! (-> obj basetrans quad) (-> obj root-override trans quad))
   (set! (-> obj bouncing) #f)
@@ -74,7 +74,7 @@
   (none)
   )
 
-(defmethod dummy-22 baseplat ((obj baseplat))
+(defmethod baseplat-method-22 baseplat ((obj baseplat))
   (activate! (-> obj smush) -1.0 60 150 1.0 1.0)
   (set! (-> obj bouncing) #t)
   (logclear! (-> obj mask) (process-mask sleep))
@@ -122,16 +122,16 @@
   )
 
 (defbehavior plat-post baseplat ()
-  (dummy-20 self)
+  (baseplat-method-20 self)
   (rider-post)
   (none)
   )
 
-(defmethod TODO-RENAME-25 baseplat ((obj baseplat))
+(defmethod baseplat-method-25 baseplat ((obj baseplat))
   (the-as sparticle-launch-group 0)
   )
 
-(defmethod dummy-20 baseplat ((obj baseplat))
+(defmethod baseplat-method-20 baseplat ((obj baseplat))
   (if (nonzero? (-> obj part))
       (spawn (-> obj part) (-> obj root-override trans))
       )
@@ -139,12 +139,12 @@
   )
 
 (defbehavior plat-event baseplat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'bonk)
-                       (dummy-22 self)
-                       )
-            )
-    )
+  (the-as object (case arg2
+                   (('bonk)
+                    (baseplat-method-22 self)
+                    )
+                   )
+          )
   )
 
 (deftype eco-door (process-drawable)
@@ -170,31 +170,31 @@
     (door-opening () _type_ :state 21)
     (door-open () _type_ :state 22)
     (door-closing () _type_ :state 23)
-    (TODO-RENAME-24 (_type_) none 24)
-    (TODO-RENAME-25 (_type_) none 25)
-    (dummy-26 (_type_) none 26)
+    (eco-door-method-24 (_type_) none 24)
+    (eco-door-method-25 (_type_) none 25)
+    (eco-door-method-26 (_type_) none 26)
     )
   )
 
 
 (defbehavior eco-door-event-handler eco-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                     (set! (-> self locked) (not (-> self locked)))
-                     (cond
-                       ((-> self locked)
-                        (if (= (-> self next-state name) 'door-closed)
-                            (sound-play "door-lock")
-                            )
-                        )
-                       (else
-                         (sound-play "door-unlock")
-                         )
+  (the-as object (case arg2
+                   (('trigger)
+                    (set! (-> self locked) (not (-> self locked)))
+                    (cond
+                      ((-> self locked)
+                       (if (= (-> self next-state name) 'door-closed)
+                           (sound-play "door-lock")
+                           )
                        )
-                     #t
-                     )
-            )
-    )
+                      (else
+                        (sound-play "door-unlock")
+                        )
+                      )
+                    #t
+                    )
+                   )
+          )
   )
 
 eco-door-event-handler
@@ -212,7 +212,7 @@ eco-door-event-handler
                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
                               )
                  )
-        (dummy-26 self)
+        (eco-door-method-26 self)
         (if (and (not (-> self locked))
                  (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                      (send-event *target* 'query 'powerup (pickup-type eco-blue))
@@ -221,7 +221,7 @@ eco-door-event-handler
                  )
             (go-virtual door-opening)
             )
-        (level-hint-spawn (game-text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
+        (level-hint-spawn (text-id zero) (the-as string #f) (-> self entity) *entity-pool* (game-task none))
         )
       (suspend)
       )
@@ -318,7 +318,7 @@ eco-door-event-handler
   :post (the-as (function none :behavior eco-door) transform-post)
   )
 
-(defmethod dummy-26 eco-door ((obj eco-door))
+(defmethod eco-door-method-26 eco-door ((obj eco-door))
   (when (-> obj state-actor)
     (if (logtest? (-> obj state-actor extra perm status) (entity-perm-status complete))
         (set! (-> obj locked) (logtest? (-> obj flags) (eco-door-flags ecdf01)))
@@ -329,7 +329,7 @@ eco-door-event-handler
   (none)
   )
 
-(defmethod TODO-RENAME-24 eco-door ((obj eco-door))
+(defmethod eco-door-method-24 eco-door ((obj eco-door))
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -348,13 +348,13 @@ eco-door-event-handler
   (none)
   )
 
-(defmethod TODO-RENAME-25 eco-door ((obj eco-door))
+(defmethod eco-door-method-25 eco-door ((obj eco-door))
   0
   (none)
   )
 
 (defmethod init-from-entity! eco-door ((obj eco-door) (arg0 entity-actor))
-  (TODO-RENAME-24 obj)
+  (eco-door-method-24 obj)
   (process-drawable-from-entity! obj arg0)
   (let ((f0-0 (res-lump-float (-> obj entity) 'scale :default 1.0)))
     (set-vector! (-> obj root-override scale) f0-0 f0-0 f0-0 1.0)
@@ -370,13 +370,13 @@ eco-door-event-handler
     )
   (set! (-> obj locked) #f)
   (set! (-> obj flags) (res-lump-value arg0 'flags eco-door-flags))
-  (dummy-26 obj)
+  (eco-door-method-26 obj)
   (set! (-> obj auto-close) (logtest? (-> obj flags) (eco-door-flags auto-close)))
   (set! (-> obj one-way) (logtest? (-> obj flags) (eco-door-flags one-way)))
   (vector-z-quaternion! (-> obj out-dir) (-> obj root-override quat))
   (set! (-> obj out-dir w) (- (vector-dot (-> obj out-dir) (-> obj root-override trans))))
   (update-transforms! (-> obj root-override))
-  (TODO-RENAME-25 obj)
+  (eco-door-method-25 obj)
   (if (and (not (-> obj auto-close))
            (-> obj entity)
            (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
@@ -386,7 +386,3 @@ eco-door-event-handler
       )
   (none)
   )
-
-
-
-

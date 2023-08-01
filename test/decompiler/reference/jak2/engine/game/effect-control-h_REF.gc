@@ -1,0 +1,73 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type effect-control
+(deftype effect-control (basic)
+  ((process          process-drawable     :offset-assert   4)
+   (flags            effect-control-flag  :offset-assert   8)
+   (last-frame-group art-joint-anim       :offset-assert  12)
+   (last-frame-num   float                :offset-assert  16)
+   (channel-offset   int32                :offset-assert  20)
+   (res              res-lump             :offset-assert  24)
+   (name             (pointer res-tag)    :offset-assert  28)
+   (param            uint32               :offset-assert  32)
+   )
+  :method-count-assert 15
+  :size-assert         #x24
+  :flag-assert         #xf00000024
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (update-effects (_type_) none 9)
+    (do-effect (_type_ symbol float int) none 10)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none 11)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int 12)
+    (set-channel-offset! (_type_ int) none 13)
+    (play-effects-from-res-lump (_type_ float float float) none 14)
+    )
+  )
+
+;; definition for method 3 of type effect-control
+(defmethod inspect effect-control ((obj effect-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tflags: #x~X~%" (-> obj flags))
+  (format #t "~1Tlast-frame-group: ~A~%" (-> obj last-frame-group))
+  (format #t "~1Tlast-frame-num: ~f~%" (-> obj last-frame-num))
+  (format #t "~1Tchannel-offset: ~D~%" (-> obj channel-offset))
+  (format #t "~1Tres: ~A~%" (-> obj res))
+  (format #t "~1Tname: #x~X~%" (-> obj name))
+  (format #t "~1Tparam: #x~X~%" (-> obj param))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 0 of type effect-control
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (cond
+    ((res-lump-struct (-> arg0 draw jgeo extra) 'effect-name structure)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) arg0)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+      (the-as effect-control #f)
+      )
+    )
+  )
+
+;; definition for method 13 of type effect-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-channel-offset! effect-control ((obj effect-control) (arg0 int))
+  (set! (-> obj channel-offset) arg0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

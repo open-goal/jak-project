@@ -4,6 +4,7 @@
 #include <set>
 #include <unordered_map>
 
+#include "common/log/log.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
 
@@ -246,7 +247,7 @@ void build_graph(std::vector<Node>& nodes,
         int group_a = info_a.source_group;
         int group_b = info_b.source_group;
         if (info_a.source_group == info_b.source_group) {
-          fmt::print("duplicate edge in group!\n");  // ??
+          lg::print("duplicate edge in group!\n");  // ??
           continue;
         }
 

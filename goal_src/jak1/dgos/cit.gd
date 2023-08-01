@@ -1,54 +1,53 @@
-
 ("CIT.DGO"
-  ("villagep-obs.o" "villagep-obs")
-  ("oracle.o" "oracle")
-  ("battlecontroller.o" "battlecontroller")
-  ("citadel-part.o" "citadel-part")
-  ("citadel-obs.o" "citadel-obs")
-  ("citb-plat.o" "citb-plat")
-  ("citadel-sages.o" "citadel-sages")
-  ("snow-bunny.o" "snow-bunny")
-  ("citb-bunny.o" "citb-bunny")
-  ("citb-drop-plat.o" "citb-drop-plat")
-  ("assistant-citadel.o" "assistant-citadel")
-  ("tpage-1415.go" "tpage-1415")
-  ("tpage-1417.go" "tpage-1417")
-  ("tpage-1416.go" "tpage-1416")
-  ("tpage-1414.go" "tpage-1414")
-  ("assistant-lavatube-end-ag.go" "assistant-lavatube-end")
-  ("babak-ag.go" "babak")
-  ("bluesage-ag.go" "bluesage")
-  ("citadelcam-ag.go" "citadelcam")
-  ("citb-arm-ag.go" "citb-arm")
-  ("citb-arm-shoulder-ag.go" "citb-arm-shoulder")
-  ("citb-bunny-ag.go" "citb-bunny")
-  ("citb-button-ag.go" "citb-button")
-  ("citb-chain-plat-ag.go" "citb-chain-plat")
-  ("citb-chains-ag.go" "citb-chains")
-  ("citb-coil-ag.go" "citb-coil")
-  ("citb-disc-ag.go" "citb-disc")
-  ("citb-donut-ag.go" "citb-donut")
-  ("citb-drop-plat-ag.go" "citb-drop-plat")
-  ("citb-exit-plat-ag.go" "citb-exit-plat")
-  ("citb-firehose-ag.go" "citb-firehose")
-  ("citb-generator-ag.go" "citb-generator")
-  ("citb-hose-ag.go" "citb-hose")
-  ("citb-iris-door-ag.go" "citb-iris-door")
-  ("citb-launcher-ag.go" "citb-launcher")
-  ("citb-robotboss-ag.go" "citb-robotboss")
-  ("citb-rotatebox-ag.go" "citb-rotatebox")
-  ("citb-sagecage-ag.go" "citb-sagecage")
-  ("citb-stopbox-ag.go" "citb-stopbox")
-  ("ecovalve-ag.go" "ecovalve")
-  ("evilbro-citadel-ag.go" "evilbro-citadel")
-  ("evilsis-citadel-ag.go" "evilsis-citadel")
-  ("green-sagecage-ag.go" "green-sagecage")
-  ("orb-cache-top-ag.go" "orb-cache-top")
-  ("plat-citb-ag.go" "plat-citb")
-  ("plat-eco-citb-ag.go" "plat-eco-citb")
-  ("redsage-ag.go" "redsage")
-  ("warp-gate-switch-ag.go" "warp-gate-switch")
-  ("warpgate-ag.go" "warpgate")
-  ("yellowsage-ag.go" "yellowsage")
-  ("citadel-vis.go" "citadel-vis")
-  )
+ ("villagep-obs.o"
+  "oracle.o"
+  "battlecontroller.o"
+  "citadel-part.o"
+  "citadel-obs.o"
+  "citb-plat.o"
+  "citadel-sages.o"
+  "snow-bunny.o"
+  "citb-bunny.o"
+  "citb-drop-plat.o"
+  "assistant-citadel.o"
+  "tpage-1415.go"
+  "tpage-1417.go"
+  "tpage-1416.go"
+  "tpage-1414.go"
+  "assistant-lavatube-end-ag.go"
+  "babak-ag.go"
+  "bluesage-ag.go"
+  "citadelcam-ag.go"
+  "citb-arm-ag.go"
+  "citb-arm-shoulder-ag.go"
+  "citb-bunny-ag.go"
+  "citb-button-ag.go"
+  "citb-chain-plat-ag.go"
+  "citb-chains-ag.go"
+  "citb-coil-ag.go"
+  "citb-disc-ag.go"
+  "citb-donut-ag.go"
+  "citb-drop-plat-ag.go"
+  "citb-exit-plat-ag.go"
+  "citb-firehose-ag.go"
+  "citb-generator-ag.go"
+  "citb-hose-ag.go"
+  "citb-iris-door-ag.go"
+  "citb-launcher-ag.go"
+  "citb-robotboss-ag.go"
+  "citb-rotatebox-ag.go"
+  "citb-sagecage-ag.go"
+  "citb-stopbox-ag.go"
+  "ecovalve-ag.go"
+  "evilbro-citadel-ag.go"
+  "evilsis-citadel-ag.go"
+  "green-sagecage-ag.go"
+  "orb-cache-top-ag.go"
+  "plat-citb-ag.go"
+  "plat-eco-citb-ag.go"
+  "redsage-ag.go"
+  "warp-gate-switch-ag.go"
+  "warpgate-ag.go"
+  "yellowsage-ag.go"
+  "citadel-vis.go"
+ ))

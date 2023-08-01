@@ -1,0 +1,3204 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type sig-atoll
+(deftype sig-atoll (sig)
+  ((sig-course sig0-course  :offset 652)
+   )
+  :heap-base #x3b0
+  :method-count-assert 260
+  :size-assert         #x430
+  :flag-assert         #x10403b00430
+  (:methods
+    (sig-atoll-method-259 (_type_) symbol 259)
+    )
+  )
+
+;; definition for method 3 of type sig-atoll
+(defmethod inspect sig-atoll ((obj sig-atoll))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type sig inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type sig0-course
+(deftype sig0-course (bot-course)
+  ((liftcat-speech-index    int8           :offset-assert  48)
+   (first-liftcat-speeches  (array int16)  :offset-assert  52)
+   (second-liftcat-speeches (array int16)  :offset-assert  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
+  )
+
+;; definition for method 3 of type sig0-course
+(defmethod inspect sig0-course ((obj sig0-course))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tcourse-id: ~D~%" (-> obj course-id))
+  (format #t "~1Tspeech-count: ~D~%" (-> obj speech-count))
+  (format #t "~1Tspot-count: ~D~%" (-> obj spot-count))
+  (format #t "~1Tretry-cookie: ~D~%" (-> obj retry-cookie))
+  (format #t "~1Ttoo-far-warn-speeches: ~A~%" (-> obj too-far-warn-speeches))
+  (format #t "~1Ttoo-far-fail-speeches: ~A~%" (-> obj too-far-fail-speeches))
+  (format #t "~1Tattack-player-speeches: ~A~%" (-> obj attack-player-speeches))
+  (format #t "~1Tdefault-check-too-far: ~A~%" (-> obj default-check-too-far))
+  (format #t "~1Twaypoints: ~A~%" (-> obj waypoints))
+  (format #t "~1Tspeeches: #x~X~%" (-> obj speeches))
+  (format #t "~1Tspeech-tunings: #x~X~%" (-> obj speech-tunings))
+  (format #t "~1Tdirs: #x~X~%" (-> obj dirs))
+  (format #t "~1Tspots: #x~X~%" (-> obj spots))
+  (format #t "~1Tliftcat-speech-index: ~D~%" (-> obj liftcat-speech-index))
+  (format #t "~1Tfirst-liftcat-speeches: ~A~%" (-> obj first-liftcat-speeches))
+  (format #t "~1Tsecond-liftcat-speeches: ~A~%" (-> obj second-liftcat-speeches))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 183 of type sig-atoll
+;; WARN: Return type mismatch object vs symbol.
+(defmethod alive? sig-atoll ((obj sig-atoll))
+  (let ((t9-0 (method-of-type bot alive?)))
+    (the-as symbol (and (t9-0 obj) (-> obj next-state) (let ((v1-3 (-> obj next-state name)))
+                                                         (or (= v1-3 'waiting-far)
+                                                             (= v1-3 'waiting-close)
+                                                             (= v1-3 'waiting-turn)
+                                                             (= v1-3 'waiting-crouched)
+                                                             (= v1-3 'charge-plasma)
+                                                             )
+                                                         )
+                        )
+            )
+    )
+  )
+
+;; definition for method 116 of type sig-atoll
+;; WARN: Return type mismatch object vs none.
+(defmethod go-idle sig-atoll ((obj sig-atoll))
+  (cond
+    ((task-node-closed? (game-task-node atoll-sig-resolution))
+     (cleanup-for-death obj)
+     (go (method-of-object obj die-fast))
+     )
+    (else
+      (go (method-of-object obj waiting-crouched))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 259 of type sig-atoll
+;; WARN: Return type mismatch object vs symbol.
+(defmethod sig-atoll-method-259 sig-atoll ((obj sig-atoll))
+  (let ((v1-0 *target*))
+    (the-as symbol (and v1-0
+                        (not (focus-test? v1-0 edge-grab))
+                        (>= (- (-> v1-0 control trans y) (-> obj sig-course spots 11 center y)) -819.2)
+                        )
+            )
+    )
+  )
+
+;; definition for function sig0-first-battle-too-far
+(defun sig0-first-battle-too-far ((arg0 sig-atoll))
+  (let ((gp-0 (bot-simple-check-too-far arg0)))
+    (cond
+      ((and (zero? gp-0) (< 24576.0 (- (-> (get-trans *target* 1) y) (-> arg0 sig-course spots 2 center y))))
+       (set! gp-0 1)
+       )
+      ((>= (-> (target-pos 0) z) -3399680.0)
+       (set! gp-0 2)
+       )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function sig0-tank-check-too-far
+(defun sig0-tank-check-too-far ((arg0 sig-atoll))
+  (let ((gp-0 (bot-simple-check-too-far arg0)))
+    (if (and (zero? gp-0) (not (sig-atoll-method-259 arg0)))
+        (set! gp-0 1)
+        )
+    gp-0
+    )
+  )
+
+;; definition for function sig0-gangway-check-too-far
+(defun sig0-gangway-check-too-far ((arg0 sig-atoll))
+  (let ((gp-0 (bot-simple-check-too-far arg0)))
+    (when (nonzero? gp-0)
+      (let* ((s5-1 (-> arg0 sig-course spots))
+             (f0-0 (vector-segment-distance-point!
+                     (target-pos 0)
+                     (the-as vector (-> s5-1 18))
+                     (the-as vector (-> s5-1 19))
+                     (the-as vector #f)
+                     )
+                   )
+             )
+        (cond
+          ((< f0-0 45056.0)
+           (set! gp-0 0)
+           )
+          ((< f0-0 110592.0)
+           (set! gp-0 1)
+           )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function sig0-final-snipers-check-too-far
+(defun sig0-final-snipers-check-too-far ((arg0 sig-atoll))
+  (let ((gp-0 (bot-simple-check-too-far arg0)))
+    (when (or (zero? gp-0) (= gp-0 1))
+      (let ((f0-1 (- (-> (get-trans *target* 1) y) (-> arg0 sig-course spots 38 center y))))
+        (cond
+          ((>= f0-1 53248.0)
+           (set! gp-0 2)
+           )
+          ((>= f0-1 34816.0)
+           (set! gp-0 1)
+           )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function sig0-say-look-out-if-should
+(defun sig0-say-look-out-if-should ((arg0 sig-atoll))
+  (when (logtest? (-> arg0 bot-task-bits) 4)
+    (when (not (logtest? (-> arg0 bot-task-bits) 16))
+      (let ((s5-0 (handle->process (-> arg0 focus handle))))
+        (when s5-0
+          (let ((v1-9 (if (type? s5-0 nav-enemy)
+                          s5-0
+                          )
+                      )
+                )
+            (when v1-9
+              (if (>= 20480.0 (- (-> (the-as process-focusable v1-9) root trans y) (-> arg0 root trans y)))
+                  (logior! (-> arg0 bot-task-bits) 16)
+                  )
+              )
+            )
+          )
+        )
+      )
+    (if (and (logtest? (-> arg0 bot-task-bits) 16)
+             (not (speech-playing? arg0 26))
+             (not (channel-active? arg0 (the-as uint 0)))
+             )
+        (play-speech arg0 26)
+        )
+    )
+  (none)
+  )
+
+;; definition for function sig-say-waste-the-suckers-if-should
+(defun sig-say-waste-the-suckers-if-should ((arg0 sig-atoll))
+  (if (and (logtest? (-> arg0 bot-task-bits) 8)
+           (not (speech-playing? arg0 25))
+           (not (channel-active? arg0 (the-as uint 0)))
+           )
+      (play-speech arg0 25)
+      )
+  (none)
+  )
+
+;; definition for symbol *sig0-course*, type sig0-course
+(define *sig0-course*
+  (new 'static 'sig0-course
+    :speech-count #x34
+    :spot-count #x2a
+    :too-far-warn-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #xa
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 35 36 37)
+      )
+    :too-far-fail-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #xa
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 38 43 44 45 48 49 50 51)
+      )
+    :attack-player-speeches (new 'static 'bot-speech-list
+      :flags #x2
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 42 41 39 40 46 47)
+      )
+    :default-check-too-far 'bot-simple-check-too-far
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((a0-1 20))
+            (set! (-> arg0 hit-points) a0-1)
+            (set! (-> arg0 enemy-info default-hit-points) a0-1)
+            )
+          (let ((a1-0 (new 'stack-no-clear 'vector)))
+            (set-vector! a1-0 0.0 32768.0 0.0 1.0)
+            (quaternion-zxy! (-> arg0 root quat) a1-0)
+            )
+          (clear-speech-flags! arg0)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (let ((v1-9 (get-current-task-event (-> arg0 task))))
+            (if (= (-> v1-9 action) (game-task-action say))
+                (add-process
+                  *gui-control*
+                  arg0
+                  (gui-channel art-load)
+                  (gui-action queue)
+                  (the-as string (-> v1-9 scene))
+                  -99.0
+                  0
+                  )
+                )
+            )
+          (let ((v1-11 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-11 bytes 5) 1)
+            (set! (-> v1-11 bytes 6) 0)
+            (set! (-> v1-11 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-11) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when *target*
+                        (let* ((s5-0 (target-pos 0))
+                               (f1-0 (vector-vector-xz-distance (-> arg1 root trans) s5-0))
+                               (f0-1 (- (-> s5-0 x) (-> arg1 root trans x)))
+                               (f2-2 (- (-> s5-0 z) (-> arg1 root trans z)))
+                               )
+                          (when (and (>= f2-2 -40960.0)
+                                     (or (>= 40960.0 f1-0) (< f2-2 24576.0) (and (< f2-2 192512.0) (or (< f0-1 -81920.0) (< 53248.0 f0-1))))
+                                     )
+                            (let ((v1-19 (get-current-task-event (-> arg1 task))))
+                              (cond
+                                ((= (-> v1-19 action) (game-task-action say))
+                                 (when (scene-play arg1 (the-as string (-> v1-19 scene)) #f)
+                                   (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                   (go-to-waypoint! arg1 2 #f)
+                                   (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                   (return #t)
+                                   )
+                                 )
+                                (else
+                                  (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                  (go-to-waypoint! arg1 3 #f)
+                                  (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                  (return #t)
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (stop-speech arg0 (the-as uint 0) #f)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 0)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (when (scene-release? arg1)
+                                                               (reset-warn-time! arg1)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 3 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 3
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (if (demo?)
+                (talker-spawn-func (-> *talker-speech* 77) *entity-pool* (target-pos 0) (the-as region #f))
+                )
+            (process-entity-status! arg0 (entity-perm-status no-kill) #t)
+            (logclear! (-> arg0 focus-status) (focus-status disable))
+            (logior! (-> arg0 bot-flags) (bot-flags bf06))
+            (set! (-> arg0 too-far-warn-dist) 286720.0)
+            (set-setting! 'airlock #f 0.0 0)
+            (let ((a1-3 (new 'stack-no-clear 'array 'symbol 3)))
+              (set! (-> a1-3 2) 'atoll3)
+              (set! (-> a1-3 1) 'atoll2)
+              (set! (-> a1-3 0) 'atoll1)
+              (want-sound-banks *load-state* a1-3)
+              )
+            (play-speech arg0 0)
+            (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-5 from) (process->ppointer pp))
+              (set! (-> a1-5 num-params) 0)
+              (set! (-> a1-5 message) 'trigger)
+              (let ((t9-7 send-event-function)
+                    (v1-21 (-> arg0 actor-group 0 data 0 actor))
+                    )
+                (t9-7
+                  (if v1-21
+                      (-> v1-21 extra process)
+                      )
+                  a1-5
+                  )
+                )
+              )
+            (let ((v1-25 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+              (set! (-> v1-25 bytes 5) 1)
+              (set! (-> v1-25 bytes 6) 1)
+              (set! (-> v1-25 bytes 4) -1)
+              (set! (-> (the-as sigt-wait-spot v1-25) check-done)
+                    (the-as
+                      (function sigt-wait-spot sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 4 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (if (and (logtest? (-> arg0 bot-task-bits) 2)
+                   (not (speech-playing? arg0 33))
+                   (not (channel-active? arg0 (the-as uint 0)))
+                   )
+              (play-speech arg0 33)
+              )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far 'sig0-first-battle-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 4
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 too-far-warn-dist) 286720.0)
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 2)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-2) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (with-pp
+                                                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                                                 (set! (-> a1-1 num-params) 1)
+                                                                 (set! (-> a1-1 message) 'query)
+                                                                 (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                                                                 (let ((t9-0 send-event-function)
+                                                                       (v1-6 (-> arg1 actor-group 0 data 0 actor))
+                                                                       )
+                                                                   (when (t9-0
+                                                                           (if v1-6
+                                                                               (-> v1-6 extra process)
+                                                                               )
+                                                                           a1-1
+                                                                           )
+                                                                     (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                     (go-to-waypoint! arg1 5 #f)
+                                                                     (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                     #t
+                                                                     )
+                                                                   )
+                                                                 )
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (if (and (logtest? (-> arg0 bot-task-bits) 2)
+                   (not (speech-playing? arg0 33))
+                   (not (channel-active? arg0 (the-as uint 0)))
+                   )
+              (play-speech arg0 33)
+              )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far 'sig0-first-battle-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 5
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-choose-piston arg0)))
+            (set! (-> v1-1 bytes 5) 4)
+            (set! (-> v1-1 bytes 6) 3)
+            (set! (-> v1-1 bytes 7) 4)
+            (set! (-> v1-1 bytes 8) 5)
+            (set! (-> v1-1 bytes 9) 6)
+            (set! (-> v1-1 bytes 10) 1)
+            (set! (-> v1-1 bytes 11) 1)
+            (set! (-> v1-1 bytes 12) 2)
+            (set! (-> v1-1 bytes 13) 2)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-choose-piston v1-1) check-done)
+                  (lambda ((arg0 sigt-choose-piston) (arg1 sig-atoll))
+                    (when (sigt-choose-piston-method-12 arg0 arg1)
+                      (reset-warn-time! arg1)
+                      (set! (-> arg1 platform-index) (-> arg0 actor-indexes (-> arg0 which-spot)))
+                      (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                      (go-to-waypoint! arg1 6 #f)
+                      (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                      #t
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (if (and (not (speech-playing? arg0 1))
+                   (not (channel-active? arg0 (the-as uint 0)))
+                   (< (-> arg0 root trans z) (-> (target-pos 0) z))
+                   )
+              (play-speech arg0 1)
+              )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 6
+        :nav-mesh-index 1
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (logior! (-> arg0 focus-status) (focus-status ignore))
+          (let ((gp-0 7)
+                (s5-0 8)
+                )
+            (when (= (-> arg0 platform-index) 2)
+              (set! gp-0 9)
+              (set! s5-0 10)
+              )
+            (let ((v1-6 (get-task-by-type (-> arg0 ai-ctrl) sigt-riding-piston arg0)))
+              (set! (-> v1-6 bytes 5) 2)
+              (set! (-> v1-6 bytes 6) gp-0)
+              (set! (-> v1-6 bytes 7) s5-0)
+              (set! (-> v1-6 bytes 4) -1)
+              (set! (-> (the-as sigt-riding-piston v1-6) check-done)
+                    (the-as
+                      (function sigt-riding-piston sig symbol)
+                      (lambda ((arg0 ai-task-control) (arg1 sig-atoll)) (when (ai-task-control-method-12 arg0 arg1)
+                                                                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                          (go-to-waypoint! arg1 7 #f)
+                                                                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                          #t
+                                                                          )
+                              )
+                      )
+                    )
+              )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (when (not (channel-active? arg0 (the-as uint 0)))
+            (if (and (not (speech-playing? arg0 1)) (< (-> arg0 root trans z) (-> (target-pos 0) z)))
+                (play-speech arg0 1)
+                )
+            )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 7
+        :nav-mesh-index 1
+        :skip-to 10
+        :on-set (lambda ((arg0 sig-atoll))
+          (reset-warn-time! arg0)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 11)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (with-pp
+                        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                          (set! (-> a1-1 from) (process->ppointer pp))
+                          (set! (-> a1-1 num-params) 1)
+                          (set! (-> a1-1 message) 'query)
+                          (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                          (let ((t9-0 send-event-function)
+                                (v1-6 (-> arg1 actor-group 0 data 3 actor))
+                                )
+                            (when (t9-0
+                                    (if v1-6
+                                        (-> v1-6 extra process)
+                                        )
+                                    a1-1
+                                    )
+                              (cond
+                                ((sig-atoll-method-259 arg1)
+                                 (let ((a0-4 (-> arg1 actor-group 0 data 4 actor)))
+                                   (set! (-> arg1 poi-handle) (ppointer->handle (if a0-4
+                                                                                    (process->ppointer (-> a0-4 extra process))
+                                                                                    )
+                                                                                )
+                                         )
+                                   )
+                                 (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                 (go-to-waypoint! arg1 8 #f)
+                                 (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                 #t
+                                 )
+                                ((not (speech-playing? arg1 3))
+                                 (play-speech arg1 3)
+                                 (reset-warn-time! arg1)
+                                 #f
+                                 )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-tank-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 8
+        :nav-mesh-index 1
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (logclear! (-> arg0 focus-status) (focus-status ignore))
+          (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sig-tank" -99.0 0)
+          (let ((v1-6 (-> arg0 entity extra perm)))
+            (logior! (-> v1-6 status) (entity-perm-status bit-5))
+            (set! (-> arg0 plasma charge-speed) (if (logtest? (-> v1-6 user-uint8 0) 1)
+                                                    0.5
+                                                    0.25
+                                                    )
+                  )
+            )
+          (play-speech arg0 2)
+          (let ((v1-14 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+            (set! (-> v1-14 bytes 5) 3)
+            (set! (-> v1-14 bytes 6) 12)
+            (set! (-> v1-14 bytes 7) 13)
+            (set! (-> v1-14 bytes 8) 14)
+            (set! (-> v1-14 bytes 10) 4)
+            (set! (-> (the-as sigt-charge-plasma v1-14) check-done)
+                  (the-as
+                    (function sigt-charge-plasma sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (if (and (not (channel-active? arg1 (the-as uint 0))) (sig-atoll-method-259 arg1))
+                          (sig-plasma-method-9 (-> arg1 plasma))
+                          )
+                      (when (and (sig-plasma-method-13 (-> arg1 plasma)) (scene-play arg1 "atoll-sig-tank" #f))
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 9 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-tank-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 9
+        :nav-mesh-index 1
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 15)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (scene-release? arg1)
+                        (clear-poi-and-focus! arg1)
+                        (reset-warn-time! arg1)
+                        (let ((v1-8 (-> arg1 entity extra perm)))
+                          (logior! (-> v1-8 status) (entity-perm-status bit-5))
+                          (set! (-> v1-8 user-int8 0) (the-as int (logior (-> v1-8 user-uint8 0) 1)))
+                          )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 10 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 10
+        :nav-mesh-index 2
+        :skip-to 15
+        :on-set (lambda ((arg0 sig-atoll))
+          (play-speech arg0 4)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 36864.0)
+          (let ((v1-6 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-6 bytes 5) 2)
+            (set! (-> v1-6 bytes 6) 16)
+            (set! (-> v1-6 bytes 7) 17)
+            (set! (-> v1-6 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-6) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (cond
+                        ((and (logtest? (-> arg1 actor-group 0 data 5 actor extra perm status) (entity-perm-status dead))
+                              (logtest? (-> arg1 actor-group 0 data 6 actor extra perm status) (entity-perm-status dead))
+                              )
+                         (logclear! (-> arg1 focus-status) (focus-status disable))
+                         (set! (-> arg1 notice-enemy-dist) 122880.0)
+                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                         (go-to-waypoint! arg1 11 #f)
+                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                         #t
+                         )
+                        (else
+                          (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                            (if (and (not (speech-playing? arg1 5))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (let ((f0-1 73728.0))
+                                       (>= (* f0-1 f0-1) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 root trans)))
+                                       )
+                                     )
+                                (play-speech arg1 5)
+                                )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 sig-atoll))
+          (set-action!
+            *gui-control*
+            (gui-action stop)
+            (the-as sound-id 1)
+            (gui-channel art-load)
+            (gui-action none)
+            (the-as string #f)
+            (the-as (function gui-connection symbol) #f)
+            (the-as process #f)
+            )
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (process-entity-status! arg0 (entity-perm-status no-kill) #t)
+          (logior! (-> arg0 bot-flags) (bot-flags bf06))
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (clear-poi-and-focus! arg0)
+          (send-event arg0 'move-trans (-> arg0 sig-course spots 16))
+          (send-event *target* 'continue (get-continue-by-name *game-info* "sig0-hiding-behind-blocks"))
+          (none)
+          )
+        :check-too-far 'sig0-gangway-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 11
+        :nav-mesh-index 2
+        :skip-to 15
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 sig-course liftcat-speech-index) 0)
+          (let ((f0-0 (vector-vector-xz-distance-squared (target-pos 0) (-> arg0 root trans)))
+                (f1-0 98304.0)
+                )
+            (if (>= f0-0 (* f1-0 f1-0))
+                (logior! (-> arg0 waypoint-bits) 2)
+                )
+            )
+          (play-speech arg0 6)
+          (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-10 bytes 5) 1)
+            (set! (-> v1-10 bytes 6) 20)
+            (set! (-> v1-10 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-10) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (with-pp
+                        (when (and (not (logtest? (-> arg1 waypoint-bits) 4))
+                                   (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                   )
+                          (logand! (-> arg1 waypoint-bits) -5)
+                          (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                            (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                              (set! (-> a1-2 from) (process->ppointer pp))
+                              (set! (-> a1-2 num-params) 0)
+                              (set! (-> a1-2 message) 'trigger)
+                              (let ((t9-1 send-event-function)
+                                    (v1-14 (-> arg1 actor-group 0 data 7 actor))
+                                    )
+                                (t9-1
+                                  (if v1-14
+                                      (-> v1-14 extra process)
+                                      )
+                                  a1-2
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                          (set! (-> a1-3 from) (process->ppointer pp))
+                          (set! (-> a1-3 num-params) 0)
+                          (set! (-> a1-3 message) 'query)
+                          (let ((t9-2 send-event-function)
+                                (v1-21 (-> arg1 actor-group 0 data 8 actor))
+                                )
+                            (case (t9-2
+                                    (if v1-21
+                                        (-> v1-21 extra process)
+                                        )
+                                    a1-3
+                                    )
+                              ((2)
+                               (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                                 (logior! (-> arg1 waypoint-bits) 1)
+                                 (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+                                   (set! (-> a1-4 from) (process->ppointer pp))
+                                   (set! (-> a1-4 num-params) 0)
+                                   (set! (-> a1-4 message) 'beaten)
+                                   (let ((t9-3 send-event-function)
+                                         (v1-34 (-> arg1 actor-group 0 data 7 actor))
+                                         )
+                                     (t9-3
+                                       (if v1-34
+                                           (-> v1-34 extra process)
+                                           )
+                                       a1-4
+                                       )
+                                     )
+                                   )
+                                 )
+                               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-5 from) (process->ppointer pp))
+                                 (set! (-> a1-5 num-params) 1)
+                                 (set! (-> a1-5 message) 'query)
+                                 (set! (-> a1-5 param 0) (the-as uint 'beaten))
+                                 (let ((t9-4 send-event-function)
+                                       (v1-43 (-> arg1 actor-group 0 data 7 actor))
+                                       )
+                                   (when (and (t9-4
+                                                (if v1-43
+                                                    (-> v1-43 extra process)
+                                                    )
+                                                a1-5
+                                                )
+                                              (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                              )
+                                     (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                     (go-to-waypoint! arg1 12 #f)
+                                     (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                     (return #t)
+                                     )
+                                   )
+                                 )
+                               )
+                              )
+                            )
+                          )
+                        #f
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (with-pp
+            (cond
+              ((and (logtest? (-> arg0 waypoint-bits) 2)
+                    (outside-spot-radius? arg0 (the-as bot-spot #f) (the-as vector #f) #f)
+                    )
+               (logand! (-> arg0 waypoint-bits) -3)
+               (let ((f0-0 98304.0))
+                 (if (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg0 root trans)))
+                     (play-speech arg0 34)
+                     )
+                 )
+               )
+              ((and (logtest? (-> arg0 waypoint-bits) 2)
+                    (let ((f0-3 49152.0))
+                      (>= (* f0-3 f0-3) (vector-vector-xz-distance-squared (target-pos 0) (-> arg0 root trans)))
+                      )
+                    )
+               (logand! (-> arg0 waypoint-bits) -3)
+               (play-speech arg0 34)
+               )
+              (else
+                (when (and (outside-spot-radius? arg0 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (not (channel-active? arg0 (the-as uint 0)))
+                           )
+                  (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> a1-7 from) (process->ppointer pp))
+                    (set! (-> a1-7 num-params) 0)
+                    (set! (-> a1-7 message) 'query)
+                    (let ((t9-9 send-event-function)
+                          (v1-28 (-> arg0 actor-group 0 data 8 actor))
+                          )
+                      (when (and (zero? (t9-9
+                                          (if v1-28
+                                              (-> v1-28 extra process)
+                                              )
+                                          a1-7
+                                          )
+                                        )
+                                 (let ((f0-6 98304.0))
+                                   (>= (* f0-6 f0-6) (vector-vector-xz-distance-squared (target-pos 0) (-> arg0 root trans)))
+                                   )
+                                 )
+                        (when (and (demo?)
+                                   (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 1))
+                                   (logtest? (-> arg0 waypoint-bits) 16)
+                                   )
+                          (logand! (-> arg0 waypoint-bits) -17)
+                          (talker-spawn-func (-> *talker-speech* 80) *entity-pool* (target-pos 0) (the-as region #f))
+                          )
+                        (when (or (not (logtest? (-> arg0 waypoint-bits) 8)) (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 8)))
+                          (if (and (demo?) (not (logtest? (-> arg0 waypoint-bits) 8)))
+                              (logior! (-> arg0 waypoint-bits) 16)
+                              )
+                          (logior! (-> arg0 waypoint-bits) 8)
+                          (let* ((s5-4 (-> arg0 sig-course))
+                                 (s4-1 (-> s5-4 liftcat-speech-index))
+                                 )
+                            (play-speech arg0 (-> s5-4 first-liftcat-speeches s4-1))
+                            (let ((v1-62 (+ s4-1 1)))
+                              (if (>= v1-62 (-> s5-4 first-liftcat-speeches length))
+                                  (set! v1-62 0)
+                                  )
+                              (set! (-> s5-4 liftcat-speech-index) v1-62)
+                              )
+                            )
+                          (set! (-> arg0 waypoint-time0) (current-time))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            (none)
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far 'sig0-gangway-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 12
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (if (< -86016.0 (- (-> (target-pos 0) z) (-> arg0 sig-course spots 20 center z)))
+              (play-speech arg0 9)
+              )
+          (let ((a0-3 (-> arg0 actor-group 0 data 10 actor)))
+            (set! (-> arg0 poi-handle) (ppointer->handle (if a0-3
+                                                             (process->ppointer (-> a0-3 extra process))
+                                                             )
+                                                         )
+                  )
+            )
+          (let ((v1-13 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-13 bytes 5) 2)
+            (set! (-> v1-13 bytes 6) 21)
+            (set! (-> v1-13 bytes 7) 22)
+            (set! (-> v1-13 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-13) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (set! (-> arg1 too-far-warn-dist) 184320.0)
+                      (set! (-> arg1 too-far-fail-dist-delta) 122880.0)
+                      (cond
+                        ((not (logtest? (-> arg1 waypoint-bits) 1))
+                         (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (let ((f0-2 (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                 (f1-0 81920.0)
+                                 )
+                             (cond
+                               ((and (< f0-2 (* f1-0 f1-0))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (process-grab? arg1 #t)
+                                     (process-grab? *target* #t)
+                                     )
+                                (set! (-> arg1 waypoint-time0) (current-time))
+                                (logior! (-> arg1 waypoint-bits) 1)
+                                (process-grab? arg1 #f)
+                                (process-grab? *target* #f)
+                                (reset-warn-time! arg1)
+                                (play-speech arg1 10)
+                                (set-setting! 'entity-name "camera-68" 0.0 0)
+                                )
+                               (else
+                                 (set! (-> arg1 too-far-warn-dist) 81920.0)
+                                 (set! (-> arg1 too-far-fail-dist-delta) 225280.0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                        ((begin (reset-warn-time! arg1) (logtest? (-> arg1 waypoint-bits) 2))
+                         (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4.5))
+                           (process-release? arg1)
+                           (process-release? *target*)
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 13 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           (return #t)
+                           )
+                         )
+                        (else
+                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 3))
+                            (remove-setting! 'entity-name)
+                            (logior! (-> arg1 waypoint-bits) 2)
+                            (set-setting! 'sound-mode #f 0.0 1)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 13
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sniper-a" -99.0 0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-6 (-> arg0 actor-group 0 data 9 actor))
+                    )
+                (t9-1
+                  (if v1-6
+                      (-> v1-6 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+              (set! (-> v1-10 bytes 5) 2)
+              (set! (-> v1-10 bytes 6) 21)
+              (set! (-> v1-10 bytes 7) 22)
+              (set! (-> v1-10 bytes 10) 10)
+              (set! (-> (the-as sigt-charge-plasma v1-10) check-done)
+                    (the-as
+                      (function sigt-charge-plasma sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (with-pp
+                          (cond
+                            ((sig-plasma-method-10 (-> arg1 plasma))
+                             (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                 (set! (-> a1-1 num-params) 0)
+                                 (set! (-> a1-1 message) 'beaten)
+                                 (let ((t9-1 send-event-function)
+                                       (v1-9 (-> arg1 actor-group 0 data 9 actor))
+                                       )
+                                   (t9-1
+                                     (if v1-9
+                                         (-> v1-9 extra process)
+                                         )
+                                     a1-1
+                                     )
+                                   )
+                                 )
+                               (logior! (-> arg1 waypoint-bits) 1)
+                               )
+                             (let ((s5-0 *target*))
+                               (if (and s5-0 (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                               (set! (-> a1-2 from) (process->ppointer pp))
+                                               (set! (-> a1-2 num-params) 1)
+                                               (set! (-> a1-2 message) 'query)
+                                               (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                               (let ((t9-2 send-event-function)
+                                                     (v1-21 (-> arg1 actor-group 0 data 9 actor))
+                                                     )
+                                                 (and (t9-2
+                                                        (if v1-21
+                                                            (-> v1-21 extra process)
+                                                            )
+                                                        a1-2
+                                                        )
+                                                      (not (channel-active? arg1 (the-as uint 0)))
+                                                      (not (focus-test? s5-0 edge-grab))
+                                                      (>= (- (-> s5-0 control trans y) (-> arg1 root trans y)) -4096.0)
+                                                      )
+                                                 )
+                                               )
+                                        )
+                                   (sig-plasma-method-9 (-> arg1 plasma))
+                                   )
+                               )
+                             (when (and (sig-plasma-method-13 (-> arg1 plasma)) (scene-play arg1 "atoll-sniper-a" #f))
+                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                               (go-to-waypoint! arg1 14 #f)
+                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                               (return #t)
+                               )
+                             )
+                            (else
+                              (when (logtest? (-> arg1 waypoint-bits) 1)
+                                (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+                                  (set! (-> a1-8 from) (process->ppointer pp))
+                                  (set! (-> a1-8 num-params) 0)
+                                  (set! (-> a1-8 message) 'resume)
+                                  (let ((t9-10 send-event-function)
+                                        (v1-54 (-> arg1 actor-group 0 data 9 actor))
+                                        )
+                                    (t9-10
+                                      (if v1-54
+                                          (-> v1-54 extra process)
+                                          )
+                                      a1-8
+                                      )
+                                    )
+                                  )
+                                (logand! (-> arg1 waypoint-bits) -2)
+                                )
+                              )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 14
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 2)
+            (set! (-> v1-1 bytes 6) 21)
+            (set! (-> v1-1 bytes 7) 22)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (scene-release? arg1)
+                        (let ((a1-1 (new 'stack-no-clear 'vector)))
+                          (set-vector! a1-1 0.0 -16384.0 0.0 1.0)
+                          (quaternion-zxy! (-> arg1 root quat) a1-1)
+                          )
+                        (let ((s5-0 (new 'stack-no-clear 'vector)))
+                          (let ((v1-6 (-> arg1 sig-course spots)))
+                            (vector-lerp! s5-0 (the-as vector (-> v1-6 21)) (the-as vector (-> v1-6 22)) 0.5)
+                            )
+                          (move-to-point! (-> arg1 root) s5-0)
+                          )
+                        (clear-poi-and-focus! arg1)
+                        (remove-setting! 'sound-mode)
+                        (reset-warn-time! arg1)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 15 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 15
+        :nav-mesh-index 3
+        :skip-to 23
+        :on-set (lambda ((arg0 sig-atoll))
+          (play-speech arg0 11)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 23)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (with-pp
+                        (when (or (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                  (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                    (set! (-> a1-2 from) (process->ppointer pp))
+                                    (set! (-> a1-2 num-params) 1)
+                                    (set! (-> a1-2 message) 'query)
+                                    (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                    (let ((t9-1 send-event-function)
+                                          (v1-9 (-> arg1 actor-group 0 data 11 actor))
+                                          )
+                                      (t9-1
+                                        (if v1-9
+                                            (-> v1-9 extra process)
+                                            )
+                                        a1-2
+                                        )
+                                      )
+                                    )
+                                  )
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 16 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (with-pp
+            (b! (not (channel-active? arg0 (the-as uint 0))) cfg-2 :delay (empty-form))
+            (set! (-> arg0 waypoint-time0) (current-time))
+            (b! #t cfg-21 :delay (nop!))
+            (label cfg-2)
+            (b!
+              (not (and (not (speech-playing? arg0 12)) (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.75))))
+              cfg-7
+              :delay (empty-form)
+              )
+            (play-speech arg0 12)
+            (b! #t cfg-21 :delay (nop!))
+            (label cfg-7)
+            (if (and (not (speech-playing? arg0 13))
+                     (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.5))
+                     (outside-spot-radius? arg0 (the-as bot-spot #f) (the-as vector #f) #f)
+                     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+                       (set! (-> a1-5 from) (process->ppointer pp))
+                       (set! (-> a1-5 num-params) 1)
+                       (set! (-> a1-5 message) 'query)
+                       (set! (-> a1-5 param 0) (the-as uint 'beaten))
+                       (let ((t9-5 send-event-function)
+                             (v1-26 (-> arg0 actor-group 0 data 11 actor))
+                             )
+                         (not (t9-5
+                                (if v1-26
+                                    (-> v1-26 extra process)
+                                    )
+                                a1-5
+                                )
+                              )
+                         )
+                       )
+                     )
+                (play-speech arg0 13)
+                )
+            (label cfg-21)
+            (none)
+            )
+          )
+        :on-skipping-here (lambda ((arg0 sig-atoll))
+          (with-pp
+            (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+            (clear-poi-and-focus! arg0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'beaten)
+              (let ((t9-2 send-event-function)
+                    (v1-8 (-> arg0 actor-group 0 data 7 actor))
+                    )
+                (t9-2
+                  (if v1-8
+                      (-> v1-8 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (logclear! (-> arg0 focus-status) (focus-status disable))
+            (set! (-> arg0 notice-enemy-dist) 122880.0)
+            (send-event arg0 'move-trans (-> arg0 sig-course spots 21))
+            (send-event *target* 'continue (get-continue-by-name *game-info* "sig0-down-ramp"))
+            (none)
+            )
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 16
+        :nav-mesh-index 3
+        :skip-to 23
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 24)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (with-pp
+                                                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                                                 (set! (-> a1-1 num-params) 1)
+                                                                 (set! (-> a1-1 message) 'query)
+                                                                 (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                                                                 (let ((t9-0 send-event-function)
+                                                                       (v1-6 (-> arg1 actor-group 0 data 11 actor))
+                                                                       )
+                                                                   (when (t9-0
+                                                                           (if v1-6
+                                                                               (-> v1-6 extra process)
+                                                                               )
+                                                                           a1-1
+                                                                           )
+                                                                     (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                     (go-to-waypoint! arg1 17 #f)
+                                                                     (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                     #t
+                                                                     )
+                                                                   )
+                                                                 )
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (with-pp
+            (if (and (not (speech-playing? arg0 13))
+                     (not (channel-active? arg0 (the-as uint 0)))
+                     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                       (set! (-> a1-2 from) (process->ppointer pp))
+                       (set! (-> a1-2 num-params) 1)
+                       (set! (-> a1-2 message) 'query)
+                       (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                       (let ((t9-2 send-event-function)
+                             (v1-11 (-> arg0 actor-group 0 data 11 actor))
+                             )
+                         (not (t9-2
+                                (if v1-11
+                                    (-> v1-11 extra process)
+                                    )
+                                a1-2
+                                )
+                              )
+                         )
+                       )
+                     )
+                (play-speech arg0 13)
+                )
+            (none)
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 17
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 waypoint-time0) 0)
+          (let ((a0-1 (-> arg0 actor-group 0 data 13 actor)))
+            (set! (-> arg0 poi-handle) (ppointer->handle (if a0-1
+                                                             (process->ppointer (-> a0-1 extra process))
+                                                             )
+                                                         )
+                  )
+            )
+          (play-speech arg0 14)
+          (let ((v1-9 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-9 bytes 5) 2)
+            (set! (-> v1-9 bytes 6) 25)
+            (set! (-> v1-9 bytes 7) 26)
+            (set! (-> v1-9 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-9) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (set! (-> arg1 too-far-warn-dist) 184320.0)
+                      (set! (-> arg1 too-far-fail-dist-delta) 122880.0)
+                      (cond
+                        ((zero? (-> arg1 waypoint-time0))
+                         (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (let ((f0-2 (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                 (f1-0 73728.0)
+                                 )
+                             (cond
+                               ((and (< f0-2 (* f1-0 f1-0))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (process-grab? arg1 #t)
+                                     (process-grab? *target* #t)
+                                     )
+                                (set! (-> arg1 waypoint-time0) (current-time))
+                                (process-grab? arg1 #f)
+                                (process-grab? *target* #f)
+                                (play-speech arg1 15)
+                                (reset-warn-time! arg1)
+                                (set-setting! 'entity-name "camera-69" 0.0 0)
+                                )
+                               (else
+                                 (set! (-> arg1 too-far-warn-dist) 73728.0)
+                                 (set! (-> arg1 too-far-fail-dist-delta) 233472.0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                        ((begin (reset-warn-time! arg1) (logtest? (-> arg1 waypoint-bits) 1))
+                         (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4.5))
+                           (process-release? arg1)
+                           (process-release? *target*)
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 18 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           (return #t)
+                           )
+                         )
+                        (else
+                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 3))
+                            (remove-setting! 'entity-name)
+                            (logior! (-> arg1 waypoint-bits) 1)
+                            (set-setting! 'sound-mode #f 0.0 1)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 18
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sniper-b" -99.0 0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-6 (-> arg0 actor-group 0 data 12 actor))
+                    )
+                (t9-1
+                  (if v1-6
+                      (-> v1-6 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (play-speech arg0 16)
+            (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+              (set! (-> v1-12 bytes 5) 2)
+              (set! (-> v1-12 bytes 6) 25)
+              (set! (-> v1-12 bytes 7) 26)
+              (set! (-> v1-12 bytes 10) 13)
+              (set! (-> (the-as sigt-charge-plasma v1-12) check-done)
+                    (the-as
+                      (function sigt-charge-plasma sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (with-pp
+                          (cond
+                            ((sig-plasma-method-10 (-> arg1 plasma))
+                             (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                 (set! (-> a1-1 num-params) 0)
+                                 (set! (-> a1-1 message) 'beaten)
+                                 (let ((t9-1 send-event-function)
+                                       (v1-9 (-> arg1 actor-group 0 data 12 actor))
+                                       )
+                                   (t9-1
+                                     (if v1-9
+                                         (-> v1-9 extra process)
+                                         )
+                                     a1-1
+                                     )
+                                   )
+                                 )
+                               (logior! (-> arg1 waypoint-bits) 1)
+                               )
+                             (if (and *target*
+                                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                        (set! (-> a1-2 from) (process->ppointer pp))
+                                        (set! (-> a1-2 num-params) 1)
+                                        (set! (-> a1-2 message) 'query)
+                                        (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                        (let ((t9-2 send-event-function)
+                                              (v1-22 (-> arg1 actor-group 0 data 12 actor))
+                                              )
+                                          (and (t9-2
+                                                 (if v1-22
+                                                     (-> v1-22 extra process)
+                                                     )
+                                                 a1-2
+                                                 )
+                                               (not (channel-active? arg1 (the-as uint 0)))
+                                               (let ((f0-0 102400.0))
+                                                 (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                                 )
+                                               )
+                                          )
+                                        )
+                                      )
+                                 (sig-plasma-method-9 (-> arg1 plasma))
+                                 )
+                             (when (and (sig-plasma-method-13 (-> arg1 plasma)) (scene-play arg1 "atoll-sniper-b" #f))
+                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                               (go-to-waypoint! arg1 19 #f)
+                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                               (return #t)
+                               )
+                             )
+                            (else
+                              (when (logtest? (-> arg1 waypoint-bits) 1)
+                                (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                                  (set! (-> a1-9 from) (process->ppointer pp))
+                                  (set! (-> a1-9 num-params) 0)
+                                  (set! (-> a1-9 message) 'resume)
+                                  (let ((t9-12 send-event-function)
+                                        (v1-53 (-> arg1 actor-group 0 data 12 actor))
+                                        )
+                                    (t9-12
+                                      (if v1-53
+                                          (-> v1-53 extra process)
+                                          )
+                                      a1-9
+                                      )
+                                    )
+                                  )
+                                (logand! (-> arg1 waypoint-bits) -2)
+                                )
+                              )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 19
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 2)
+            (set! (-> v1-1 bytes 6) 25)
+            (set! (-> v1-1 bytes 7) 26)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (and (not (logtest? (-> arg1 waypoint-bits) 1)) (scene-release? arg1))
+                        (remove-setting! 'sound-mode)
+                        (clear-poi-and-focus! arg1)
+                        (reset-warn-time! arg1)
+                        (play-speech arg1 17)
+                        (logior! (-> arg1 waypoint-bits) 1)
+                        )
+                      (when (and (logtest? (-> arg1 waypoint-bits) 1) (not (channel-active? arg1 (the-as uint 0))))
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 20 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 20
+        :nav-mesh-index 4
+        :skip-to 23
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 27)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 21 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (if (and (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 1.5))
+                   (not (speech-playing? arg0 18))
+                   (not (channel-active? arg0 (the-as uint 0)))
+                   )
+              (play-speech arg0 18)
+              )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 21
+        :nav-mesh-index 5
+        :skip-to 23
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 sig-course liftcat-speech-index) 0)
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 29)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-2) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (with-pp
+                        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                          (set! (-> a1-1 from) (process->ppointer pp))
+                          (set! (-> a1-1 num-params) 0)
+                          (set! (-> a1-1 message) 'query)
+                          (let* ((t9-0 send-event-function)
+                                 (v1-4 (-> arg1 actor-group 0 data 15 actor))
+                                 (v1-6 (t9-0
+                                         (if v1-4
+                                             (-> v1-4 extra process)
+                                             )
+                                         a1-1
+                                         )
+                                       )
+                                 )
+                            (cond
+                              ((zero? v1-6)
+                               (when (not (channel-active? arg1 (the-as uint 0)))
+                                 (let ((s5-0 (-> arg1 root trans))
+                                       (s4-0 (-> arg1 sig-course spots))
+                                       (f0-0 163840.0)
+                                       )
+                                   (when (and (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared s5-0 (target-pos 0)))
+                                              (let ((f0-3 86016.0))
+                                                (or (>= (* f0-3 f0-3) (vector-vector-xz-distance-squared s5-0 (the-as vector (-> s4-0 28))))
+                                                    (let ((f0-6 102400.0))
+                                                      (>= (* f0-6 f0-6) (vector-vector-xz-distance-squared s5-0 (the-as vector (-> s4-0 29))))
+                                                      )
+                                                    )
+                                                )
+                                              )
+                                     (when (or (not (logtest? (-> arg1 waypoint-bits) 2)) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 8)))
+                                       (logior! (-> arg1 waypoint-bits) 2)
+                                       (let* ((s5-1 (-> arg1 sig-course))
+                                              (s4-1 (-> s5-1 liftcat-speech-index))
+                                              )
+                                         (play-speech arg1 (-> s5-1 second-liftcat-speeches s4-1))
+                                         (let ((v1-35 (+ s4-1 1)))
+                                           (if (>= v1-35 (-> s5-1 second-liftcat-speeches length))
+                                               (set! v1-35 0)
+                                               )
+                                           (set! (-> s5-1 liftcat-speech-index) v1-35)
+                                           )
+                                         )
+                                       (set! (-> arg1 waypoint-time0) (current-time))
+                                       )
+                                     )
+                                   )
+                                 )
+                               )
+                              ((= v1-6 2)
+                               (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                                 (logior! (-> arg1 waypoint-bits) 1)
+                                 (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+                                   (set! (-> a1-8 from) (process->ppointer pp))
+                                   (set! (-> a1-8 num-params) 0)
+                                   (set! (-> a1-8 message) 'beaten)
+                                   (let ((t9-7 send-event-function)
+                                         (v1-48 (-> arg1 actor-group 0 data 14 actor))
+                                         )
+                                     (t9-7
+                                       (if v1-48
+                                           (-> v1-48 extra process)
+                                           )
+                                       a1-8
+                                       )
+                                     )
+                                   )
+                                 )
+                               (if (and (not (speech-playing? arg1 20)) (not (channel-active? arg1 (the-as uint 0))))
+                                   (play-speech arg1 20)
+                                   )
+                               (when (and (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                          (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+                                            (set! (-> a1-13 from) (process->ppointer pp))
+                                            (set! (-> a1-13 num-params) 1)
+                                            (set! (-> a1-13 message) 'query)
+                                            (set! (-> a1-13 param 0) (the-as uint 'beaten))
+                                            (let ((t9-12 send-event-function)
+                                                  (v1-68 (-> arg1 actor-group 0 data 14 actor))
+                                                  )
+                                              (t9-12
+                                                (if v1-68
+                                                    (-> v1-68 extra process)
+                                                    )
+                                                a1-13
+                                                )
+                                              )
+                                            )
+                                          )
+                                 (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                 (go-to-waypoint! arg1 22 #f)
+                                 (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                 (return #t)
+                                 )
+                               )
+                              )
+                            )
+                          )
+                        #f
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 22
+        :nav-mesh-index 6
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 waypoint-time0) 0)
+          (let ((a0-1 (-> arg0 actor-group 0 data 16 actor)))
+            (set! (-> arg0 poi-handle) (ppointer->handle (if a0-1
+                                                             (process->ppointer (-> a0-1 extra process))
+                                                             )
+                                                         )
+                  )
+            )
+          (if (not (speech-playing? arg0 20))
+              (play-speech arg0 20)
+              )
+          (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-12 bytes 5) 1)
+            (set! (-> v1-12 bytes 6) 30)
+            (set! (-> v1-12 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-12) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (set! (-> arg1 too-far-warn-dist) 184320.0)
+                      (set! (-> arg1 too-far-fail-dist-delta) 122880.0)
+                      (cond
+                        ((zero? (-> arg1 waypoint-time0))
+                         (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (let ((f0-2 (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                 (f1-0 61440.0)
+                                 )
+                             (cond
+                               ((and (< f0-2 (* f1-0 f1-0))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (process-grab? arg1 #t)
+                                     (process-grab? *target* #t)
+                                     )
+                                (set! (-> arg1 waypoint-time0) (current-time))
+                                (process-grab? arg1 #f)
+                                (process-grab? *target* #f)
+                                (reset-warn-time! arg1)
+                                (play-speech arg1 21)
+                                (set-setting! 'entity-name "camera-70" 0.0 0)
+                                )
+                               (else
+                                 (set! (-> arg1 too-far-warn-dist) 61440.0)
+                                 (set! (-> arg1 too-far-fail-dist-delta) 245760.0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                        ((begin (reset-warn-time! arg1) (logtest? (-> arg1 waypoint-bits) 1))
+                         (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4.5))
+                           (process-release? arg1)
+                           (process-release? *target*)
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 23 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           (return #t)
+                           )
+                         )
+                        (else
+                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 3))
+                            (remove-setting! 'entity-name)
+                            (logior! (-> arg1 waypoint-bits) 1)
+                            (set-setting! 'sound-mode #f 0.0 1)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 23
+        :nav-mesh-index 6
+        :skip-to 31
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sniper-c" -99.0 0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-6 (-> arg0 actor-group 0 data 17 actor))
+                    )
+                (t9-1
+                  (if v1-6
+                      (-> v1-6 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+              (set! (-> v1-10 bytes 5) 1)
+              (set! (-> v1-10 bytes 6) 30)
+              (set! (-> v1-10 bytes 10) 16)
+              (set! (-> (the-as sigt-charge-plasma v1-10) check-done)
+                    (the-as
+                      (function sigt-charge-plasma sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (with-pp
+                          (cond
+                            ((sig-plasma-method-10 (-> arg1 plasma))
+                             (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                 (set! (-> a1-1 num-params) 0)
+                                 (set! (-> a1-1 message) 'beaten)
+                                 (let ((t9-1 send-event-function)
+                                       (v1-9 (-> arg1 actor-group 0 data 17 actor))
+                                       )
+                                   (t9-1
+                                     (if v1-9
+                                         (-> v1-9 extra process)
+                                         )
+                                     a1-1
+                                     )
+                                   )
+                                 )
+                               (logior! (-> arg1 waypoint-bits) 1)
+                               )
+                             (if (and *target*
+                                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                        (set! (-> a1-2 from) (process->ppointer pp))
+                                        (set! (-> a1-2 num-params) 1)
+                                        (set! (-> a1-2 message) 'query)
+                                        (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                        (let ((t9-2 send-event-function)
+                                              (v1-22 (-> arg1 actor-group 0 data 17 actor))
+                                              )
+                                          (and (t9-2
+                                                 (if v1-22
+                                                     (-> v1-22 extra process)
+                                                     )
+                                                 a1-2
+                                                 )
+                                               (not (channel-active? arg1 (the-as uint 0)))
+                                               (let ((f0-0 102400.0))
+                                                 (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                                 )
+                                               )
+                                          )
+                                        )
+                                      )
+                                 (sig-plasma-method-9 (-> arg1 plasma))
+                                 )
+                             (when (and (sig-plasma-method-13 (-> arg1 plasma))
+                                        (and (>= (- (-> (target-pos 0) y) (-> arg1 sig-course spots 30 center y)) -8192.0)
+                                             (scene-play arg1 "atoll-sniper-c" #f)
+                                             )
+                                        )
+                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                               (go-to-waypoint! arg1 24 #f)
+                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                               (return #t)
+                               )
+                             )
+                            (else
+                              (when (logtest? (-> arg1 waypoint-bits) 1)
+                                (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                                  (set! (-> a1-9 from) (process->ppointer pp))
+                                  (set! (-> a1-9 num-params) 0)
+                                  (set! (-> a1-9 message) 'resume)
+                                  (let ((t9-13 send-event-function)
+                                        (v1-57 (-> arg1 actor-group 0 data 17 actor))
+                                        )
+                                    (t9-13
+                                      (if v1-57
+                                          (-> v1-57 extra process)
+                                          )
+                                      a1-9
+                                      )
+                                    )
+                                  )
+                                (logand! (-> arg1 waypoint-bits) -2)
+                                )
+                              )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 sig-atoll))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (clear-poi-and-focus! arg0)
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (send-event arg0 'move-trans (-> arg0 sig-course spots 30))
+          (send-event *target* 'continue (get-continue-by-name *game-info* "sig0-charge-gun-for-sniper-c"))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 24
+        :nav-mesh-index 6
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 30)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (when (scene-release? arg1)
+                                                               (clear-poi-and-focus! arg1)
+                                                               (remove-setting! 'sound-mode)
+                                                               (reset-warn-time! arg1)
+                                                               (play-speech arg1 22)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 25 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 25
+        :nav-mesh-index 6
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 36864.0)
+          (let ((v1-4 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-4 bytes 5) 1)
+            (set! (-> v1-4 bytes 6) 31)
+            (set! (-> v1-4 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-4) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 26 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll)) (sig-say-waste-the-suckers-if-should arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 26
+        :nav-mesh-index 7
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 32)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 27 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll)) (sig-say-waste-the-suckers-if-should arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 27
+        :nav-mesh-index 8
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (let ((v1-4 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-4 bytes 5) 1)
+            (set! (-> v1-4 bytes 6) 33)
+            (set! (-> v1-4 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-4) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (with-pp
+                                                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                                                 (set! (-> a1-1 num-params) 1)
+                                                                 (set! (-> a1-1 message) 'query)
+                                                                 (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                                                                 (let ((t9-0 send-event-function)
+                                                                       (v1-6 (-> arg1 actor-group 0 data 18 actor))
+                                                                       )
+                                                                   (when (t9-0
+                                                                           (if v1-6
+                                                                               (-> v1-6 extra process)
+                                                                               )
+                                                                           a1-1
+                                                                           )
+                                                                     (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                     (go-to-waypoint! arg1 28 #f)
+                                                                     (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                     #t
+                                                                     )
+                                                                   )
+                                                                 )
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll)) (sig-say-waste-the-suckers-if-should arg0) (none))
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 28
+        :nav-mesh-index 8
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 waypoint-time0) 0)
+          (let ((a1-0 (-> arg0 actor-group 0 data 19 actor)))
+            (set! (-> arg0 poi-handle) (ppointer->handle (if a1-0
+                                                             (process->ppointer (-> a1-0 extra process))
+                                                             )
+                                                         )
+                  )
+            )
+          (let ((v1-7 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-7 bytes 5) 1)
+            (set! (-> v1-7 bytes 6) 34)
+            (set! (-> v1-7 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-7) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (set! (-> arg1 too-far-warn-dist) 184320.0)
+                      (set! (-> arg1 too-far-fail-dist-delta) 122880.0)
+                      (cond
+                        ((zero? (-> arg1 waypoint-time0))
+                         (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (let ((f0-2 (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                 (f1-0 73728.0)
+                                 )
+                             (cond
+                               ((and (< f0-2 (* f1-0 f1-0))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (process-grab? arg1 #t)
+                                     (process-grab? *target* #t)
+                                     )
+                                (set! (-> arg1 waypoint-time0) (current-time))
+                                (process-grab? arg1 #f)
+                                (process-grab? *target* #f)
+                                (reset-warn-time! arg1)
+                                (play-speech arg1 23)
+                                (set-setting! 'entity-name "camera-71" 0.0 0)
+                                )
+                               (else
+                                 (set! (-> arg1 too-far-warn-dist) 73728.0)
+                                 (set! (-> arg1 too-far-fail-dist-delta) 233472.0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                        ((begin (reset-warn-time! arg1) (logtest? (-> arg1 waypoint-bits) 1))
+                         (when (and (not (logtest? (-> arg1 waypoint-bits) 2))
+                                    (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.1))
+                                    )
+                           (remove-setting! 'string-startup-vector)
+                           (logior! (-> arg1 waypoint-bits) 2)
+                           )
+                         (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 3.5))
+                           (process-release? arg1)
+                           (process-release? *target*)
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 29 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           (return #t)
+                           )
+                         )
+                        (else
+                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2))
+                            (set-setting! 'string-startup-vector 'abs (new 'static 'vector :x 1.0) 0)
+                            (remove-setting! 'entity-name)
+                            (logior! (-> arg1 waypoint-bits) 1)
+                            (set-setting! 'sound-mode #f 0.0 1)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 29
+        :nav-mesh-index 8
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sniper-d" -99.0 0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-6 (-> arg0 actor-group 0 data 20 actor))
+                    )
+                (t9-1
+                  (if v1-6
+                      (-> v1-6 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+              (set! (-> v1-10 bytes 5) 1)
+              (set! (-> v1-10 bytes 6) 34)
+              (set! (-> v1-10 bytes 10) 19)
+              (set! (-> (the-as sigt-charge-plasma v1-10) check-done)
+                    (the-as
+                      (function sigt-charge-plasma sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (with-pp
+                          (cond
+                            ((sig-plasma-method-10 (-> arg1 plasma))
+                             (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                 (set! (-> a1-1 num-params) 0)
+                                 (set! (-> a1-1 message) 'beaten)
+                                 (let ((t9-1 send-event-function)
+                                       (v1-9 (-> arg1 actor-group 0 data 20 actor))
+                                       )
+                                   (t9-1
+                                     (if v1-9
+                                         (-> v1-9 extra process)
+                                         )
+                                     a1-1
+                                     )
+                                   )
+                                 )
+                               (logior! (-> arg1 waypoint-bits) 1)
+                               )
+                             (if (and *target*
+                                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                        (set! (-> a1-2 from) (process->ppointer pp))
+                                        (set! (-> a1-2 num-params) 1)
+                                        (set! (-> a1-2 message) 'query)
+                                        (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                        (let ((t9-2 send-event-function)
+                                              (v1-22 (-> arg1 actor-group 0 data 20 actor))
+                                              )
+                                          (and (t9-2
+                                                 (if v1-22
+                                                     (-> v1-22 extra process)
+                                                     )
+                                                 a1-2
+                                                 )
+                                               (not (channel-active? arg1 (the-as uint 0)))
+                                               (let ((f0-0 102400.0))
+                                                 (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                                 )
+                                               )
+                                          )
+                                        )
+                                      )
+                                 (sig-plasma-method-9 (-> arg1 plasma))
+                                 )
+                             (when (and (sig-plasma-method-13 (-> arg1 plasma)) (scene-play arg1 "atoll-sniper-d" #f))
+                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                               (go-to-waypoint! arg1 30 #f)
+                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                               (return #t)
+                               )
+                             )
+                            (else
+                              (when (logtest? (-> arg1 waypoint-bits) 1)
+                                (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                                  (set! (-> a1-9 from) (process->ppointer pp))
+                                  (set! (-> a1-9 num-params) 0)
+                                  (set! (-> a1-9 message) 'resume)
+                                  (let ((t9-12 send-event-function)
+                                        (v1-53 (-> arg1 actor-group 0 data 20 actor))
+                                        )
+                                    (t9-12
+                                      (if v1-53
+                                          (-> v1-53 extra process)
+                                          )
+                                      a1-9
+                                      )
+                                    )
+                                  )
+                                (logand! (-> arg1 waypoint-bits) -2)
+                                )
+                              )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 30
+        :nav-mesh-index 8
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 34)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (and (not (logtest? (-> arg1 waypoint-bits) 1)) (scene-release? arg1))
+                        (clear-poi-and-focus! arg1)
+                        (remove-setting! 'sound-mode)
+                        (reset-warn-time! arg1)
+                        (play-speech arg1 24)
+                        (logior! (-> arg1 waypoint-bits) 1)
+                        )
+                      (when (and (logtest? (-> arg1 waypoint-bits) 1) (not (channel-active? arg1 (the-as uint 0))))
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 31 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 31
+        :nav-mesh-index 9
+        :skip-to 37
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 too-far-warn-dist) 327680.0)
+          (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 36864.0)
+          (let ((v1-6 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-6 bytes 5) 1)
+            (set! (-> v1-6 bytes 6) 35)
+            (set! (-> v1-6 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-6) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (and (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                 (not (channel-active? arg1 (the-as uint 0)))
+                                 )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 32 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (with-pp
+            (cond
+              ((not (logtest? (-> arg0 bot-task-bits) 4))
+               (when (and (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.25))
+                          (< (-> arg0 sig-course spots 36 center x) (-> (target-pos 0) x))
+                          )
+                 (logior! (-> arg0 bot-task-bits) 4)
+                 (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                   (set! (-> a1-0 from) (process->ppointer pp))
+                   (set! (-> a1-0 num-params) 0)
+                   (set! (-> a1-0 message) 'trigger)
+                   (let ((t9-1 send-event-function)
+                         (v1-14 (-> arg0 actor-group 0 data 21 actor))
+                         )
+                     (t9-1
+                       (if v1-14
+                           (-> v1-14 extra process)
+                           )
+                       a1-0
+                       )
+                     )
+                   )
+                 )
+               )
+              (else
+                (sig0-say-look-out-if-should arg0)
+                )
+              )
+            (none)
+            )
+          )
+        :on-skipping-here (lambda ((arg0 sig-atoll))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (clear-poi-and-focus! arg0)
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (send-event arg0 'move-trans (-> arg0 sig-course spots 34))
+          (send-event *target* 'continue (get-continue-by-name *game-info* "sig0-cross-water"))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 32
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (set! (-> arg0 too-far-warn-dist) 327680.0)
+            (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+            (logclear! (-> arg0 focus-status) (focus-status disable))
+            (set! (-> arg0 notice-enemy-dist) 122880.0)
+            (when (not (logtest? (-> arg0 bot-task-bits) 4))
+              (logior! (-> arg0 bot-task-bits) 4)
+              (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-0 from) (process->ppointer pp))
+                (set! (-> a1-0 num-params) 0)
+                (set! (-> a1-0 message) 'trigger)
+                (let ((t9-0 send-event-function)
+                      (v1-14 (-> arg0 actor-group 0 data 21 actor))
+                      )
+                  (t9-0
+                    (if v1-14
+                        (-> v1-14 extra process)
+                        )
+                    a1-0
+                    )
+                  )
+                )
+              )
+            (let ((v1-18 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+              (set! (-> v1-18 bytes 5) 1)
+              (set! (-> v1-18 bytes 6) 37)
+              (set! (-> v1-18 bytes 4) -1)
+              (set! (-> (the-as sigt-wait-spot v1-18) check-done)
+                    (the-as
+                      (function sigt-wait-spot sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll)) (when (logtest? (-> arg1 waypoint-bits) 1)
+                                                                 (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                 (go-to-waypoint! arg1 33 #f)
+                                                                 (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                 #t
+                                                                 )
+                              )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (sig0-say-look-out-if-should arg0)
+          (when (and (not (logtest? (-> arg0 waypoint-bits) 1)) (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 8)))
+            (logior! (-> arg0 waypoint-bits) 1)
+            (logior! (-> arg0 focus-status) (focus-status disable))
+            (set! (-> arg0 notice-enemy-dist) 16384.0)
+            )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 33
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 too-far-warn-dist) 327680.0)
+          (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 38)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (cond
+                        ((logtest? (bot-flags bf19) (-> arg1 bot-flags))
+                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                         (go-to-waypoint! arg1 34 #f)
+                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                         #t
+                         )
+                        (else
+                          (if (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                              (logior! (-> arg1 bot-flags) (bot-flags bf20))
+                              (logclear! (-> arg1 bot-flags) (bot-flags bf20))
+                              )
+                          #f
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 34
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (set! (-> arg0 too-far-warn-dist) 327680.0)
+            (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+            (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-0 from) (process->ppointer pp))
+              (set! (-> a1-0 num-params) 1)
+              (set! (-> a1-0 message) 'query)
+              (set! (-> a1-0 param 0) (the-as uint 'die-count))
+              (let ((t9-0 send-event-function)
+                    (v1-8 (-> arg0 actor-group 0 data 21 actor))
+                    )
+                (set! (-> arg0 waypoint-int32a) (the-as int (t9-0
+                                                              (if v1-8
+                                                                  (-> v1-8 extra process)
+                                                                  )
+                                                              a1-0
+                                                              )
+                                                        )
+                      )
+                )
+              )
+            (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+              (set! (-> v1-12 bytes 5) 1)
+              (set! (-> v1-12 bytes 6) 38)
+              (set! (-> v1-12 bytes 4) -1)
+              (set! (-> (the-as sigt-wait-spot v1-12) check-done)
+                    (the-as
+                      (function sigt-wait-spot sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll)) (when (not (logtest? (bot-flags bf19) (-> arg1 bot-flags)))
+                                                                 (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                 (go-to-waypoint! arg1 35 #f)
+                                                                 (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                 #t
+                                                                 )
+                              )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update (lambda ((arg0 sig-atoll))
+          (with-pp
+            (cond
+              ((not (speech-playing? arg0 27))
+               (if (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.5))
+                   (play-speech arg0 27)
+                   )
+               )
+              ((not (logtest? (-> arg0 waypoint-bits) 1))
+               (when (speech-ended? arg0 27)
+                 (logior! (-> arg0 waypoint-bits) 1)
+                 (logclear! (-> arg0 focus-status) (focus-status disable))
+                 (set! (-> arg0 notice-enemy-dist) 122880.0)
+                 (set! (-> arg0 waypoint-time0) (current-time))
+                 )
+               )
+              ((not (logtest? (-> arg0 waypoint-bits) 2))
+               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-3 from) (process->ppointer pp))
+                 (set! (-> a1-3 num-params) 1)
+                 (set! (-> a1-3 message) 'query)
+                 (set! (-> a1-3 param 0) (the-as uint 'die-count))
+                 (let ((t9-3 send-event-function)
+                       (v1-26 (-> arg0 actor-group 0 data 21 actor))
+                       )
+                   (cond
+                     ((or (>= (- (the-as int (t9-3
+                                               (if v1-26
+                                                   (-> v1-26 extra process)
+                                                   )
+                                               a1-3
+                                               )
+                                         )
+                                 (the-as uint (-> arg0 waypoint-int32a))
+                                 )
+                              5
+                              )
+                          (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 10))
+                          )
+                      (logior! (-> arg0 bot-flags) (bot-flags bf21))
+                      (logior! (-> arg0 waypoint-bits) 2)
+                      )
+                     (else
+                       (if (and (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 4)) (not (speech-playing? arg0 28)))
+                           (play-speech arg0 28)
+                           )
+                       )
+                     )
+                   )
+                 )
+               )
+              )
+            (none)
+            )
+          )
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 35
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (set! (-> arg0 too-far-warn-dist) 327680.0)
+            (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+            (play-speech arg0 29)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'beaten)
+              (let ((t9-1 send-event-function)
+                    (v1-8 (-> arg0 actor-group 0 data 21 actor))
+                    )
+                (t9-1
+                  (if v1-8
+                      (-> v1-8 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+              (set! (-> v1-12 bytes 5) 1)
+              (set! (-> v1-12 bytes 6) 37)
+              (set! (-> v1-12 bytes 4) -1)
+              (set! (-> (the-as sigt-wait-spot v1-12) check-done)
+                    (the-as
+                      (function sigt-wait-spot sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll)) (with-pp
+                                                                 (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                                                   (set! (-> a1-1 from) (process->ppointer pp))
+                                                                   (set! (-> a1-1 num-params) 1)
+                                                                   (set! (-> a1-1 message) 'query)
+                                                                   (set! (-> a1-1 param 0) (the-as uint 'beaten))
+                                                                   (let ((t9-0 send-event-function)
+                                                                         (v1-6 (-> arg1 actor-group 0 data 21 actor))
+                                                                         )
+                                                                     (when (t9-0
+                                                                             (if v1-6
+                                                                                 (-> v1-6 extra process)
+                                                                                 )
+                                                                             a1-1
+                                                                             )
+                                                                       (clear-poi-and-focus! arg1)
+                                                                       (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                       (go-to-waypoint! arg1 36 #f)
+                                                                       (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                       #t
+                                                                       )
+                                                                     )
+                                                                   )
+                                                                 )
+                              )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 36
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 too-far-warn-dist) 327680.0)
+          (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 39)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-3) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (when (and (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                 (not (channel-active? arg1 (the-as uint 0)))
+                                 )
+                        (let ((f0-0 122880.0))
+                          (if (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                              (play-speech arg1 30)
+                              )
+                          )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 37 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 37
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (set! (-> arg0 too-far-warn-dist) 327680.0)
+          (set! (-> arg0 too-far-fail-dist-delta) 163840.0)
+          (set! (-> arg0 waypoint-time0) 0)
+          (let ((a0-1 (-> arg0 actor-group 0 data 22 actor)))
+            (set! (-> arg0 poi-handle) (ppointer->handle (if a0-1
+                                                             (process->ppointer (-> a0-1 extra process))
+                                                             )
+                                                         )
+                  )
+            )
+          (reset-warn-time! arg0)
+          (let ((v1-11 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-11 bytes 5) 1)
+            (set! (-> v1-11 bytes 6) 40)
+            (set! (-> v1-11 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-11) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll))
+                      (cond
+                        ((zero? (-> arg1 waypoint-time0))
+                         (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                           (let ((f0-0 (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                 (f1-0 61440.0)
+                                 )
+                             (cond
+                               ((and (< f0-0 (* f1-0 f1-0))
+                                     (not (channel-active? arg1 (the-as uint 0)))
+                                     (process-grab? arg1 #t)
+                                     (process-grab? *target* #t)
+                                     )
+                                (set! (-> arg1 waypoint-time0) (current-time))
+                                (process-grab? arg1 #f)
+                                (process-grab? *target* #f)
+                                (reset-warn-time! arg1)
+                                (play-speech arg1 31)
+                                (set-setting! 'entity-name "camera-72" 0.0 0)
+                                )
+                               (else
+                                 (set! (-> arg1 too-far-warn-dist) 61440.0)
+                                 (set! (-> arg1 too-far-fail-dist-delta) 430080.0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                        ((begin (reset-warn-time! arg1) (logtest? (-> arg1 waypoint-bits) 1))
+                         (when (and (not (logtest? (-> arg1 waypoint-bits) 2))
+                                    (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.1))
+                                    )
+                           (remove-setting! 'string-startup-vector)
+                           (logior! (-> arg1 waypoint-bits) 2)
+                           )
+                         (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4.5))
+                           (process-release? arg1)
+                           (process-release? *target*)
+                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                           (go-to-waypoint! arg1 38 #f)
+                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                           (return #t)
+                           )
+                         )
+                        (else
+                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 3))
+                            (set-setting! 'string-startup-vector 'abs (new 'static 'vector :x -1.0) 0)
+                            (remove-setting! 'entity-name)
+                            (logior! (-> arg1 waypoint-bits) 1)
+                            (set-setting! 'sound-mode #f 0.0 1)
+                            )
+                          )
+                        )
+                      #f
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 sig-atoll))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (logior! (-> arg0 bot-flags) (bot-flags bf06))
+          (set! (-> arg0 notice-enemy-dist) 122880.0)
+          (clear-poi-and-focus! arg0)
+          (send-event arg0 'move-trans (-> arg0 sig-course spots 38))
+          (send-event *target* 'continue (get-continue-by-name *game-info* "sig0-show-sniper-e"))
+          (none)
+          )
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 38
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (with-pp
+            (add-process *gui-control* arg0 (gui-channel art-load) (gui-action queue) "atoll-sniper-e" -99.0 0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-6 (-> arg0 actor-group 0 data 23 actor))
+                    )
+                (t9-1
+                  (if v1-6
+                      (-> v1-6 extra process)
+                      )
+                  a1-1
+                  )
+                )
+              )
+            (let ((v1-10 (get-task-by-type (-> arg0 ai-ctrl) sigt-charge-plasma arg0)))
+              (set! (-> v1-10 bytes 5) 1)
+              (set! (-> v1-10 bytes 6) 40)
+              (set! (-> v1-10 bytes 10) 22)
+              (set! (-> (the-as sigt-charge-plasma v1-10) check-done)
+                    (the-as
+                      (function sigt-charge-plasma sig symbol)
+                      (lambda ((arg0 object) (arg1 sig-atoll))
+                        (with-pp
+                          (cond
+                            ((sig-plasma-method-10 (-> arg1 plasma))
+                             (when (not (logtest? (-> arg1 waypoint-bits) 1))
+                               (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-1 from) (process->ppointer pp))
+                                 (set! (-> a1-1 num-params) 0)
+                                 (set! (-> a1-1 message) 'beaten)
+                                 (let ((t9-1 send-event-function)
+                                       (v1-9 (-> arg1 actor-group 0 data 23 actor))
+                                       )
+                                   (t9-1
+                                     (if v1-9
+                                         (-> v1-9 extra process)
+                                         )
+                                     a1-1
+                                     )
+                                   )
+                                 )
+                               (logior! (-> arg1 waypoint-bits) 1)
+                               )
+                             (when (and *target*
+                                        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                                          (set! (-> a1-2 from) (process->ppointer pp))
+                                          (set! (-> a1-2 num-params) 1)
+                                          (set! (-> a1-2 message) 'query)
+                                          (set! (-> a1-2 param 0) (the-as uint 'beaten))
+                                          (let ((t9-2 send-event-function)
+                                                (v1-22 (-> arg1 actor-group 0 data 23 actor))
+                                                )
+                                            (and (t9-2
+                                                   (if v1-22
+                                                       (-> v1-22 extra process)
+                                                       )
+                                                   a1-2
+                                                   )
+                                                 (not (channel-active? arg1 (the-as uint 0)))
+                                                 (let ((f0-0 102400.0))
+                                                   (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> arg1 root trans) (target-pos 0)))
+                                                   )
+                                                 )
+                                            )
+                                          )
+                                        )
+                               (sig-plasma-method-9 (-> arg1 plasma))
+                               (if (and (not (speech-playing? arg1 32))
+                                        (and (>= (-> arg1 plasma level) 1.0) (-> arg1 next-state) (= (-> arg1 next-state name) 'charge-plasma))
+                                        )
+                                   (play-speech arg1 32)
+                                   )
+                               )
+                             (when (and (sig-plasma-method-13 (-> arg1 plasma))
+                                        (not (channel-active? arg1 (the-as uint 0)))
+                                        (scene-play arg1 "atoll-sniper-e" #f)
+                                        )
+                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                               (go-to-waypoint! arg1 39 #f)
+                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                               (return #t)
+                               )
+                             )
+                            (else
+                              (when (logtest? (-> arg1 waypoint-bits) 1)
+                                (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+                                  (set! (-> a1-12 from) (process->ppointer pp))
+                                  (set! (-> a1-12 num-params) 0)
+                                  (set! (-> a1-12 message) 'resume)
+                                  (let ((t9-15 send-event-function)
+                                        (v1-66 (-> arg1 actor-group 0 data 23 actor))
+                                        )
+                                    (t9-15
+                                      (if v1-66
+                                          (-> v1-66 extra process)
+                                          )
+                                      a1-12
+                                      )
+                                    )
+                                  )
+                                (logand! (-> arg1 waypoint-bits) -2)
+                                )
+                              )
+                            )
+                          #f
+                          )
+                        )
+                      )
+                    )
+              )
+            (none)
+            )
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'sig0-final-snipers-check-too-far
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 39
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 40)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-1) check-done)
+                  (the-as
+                    (function sigt-wait-spot sig symbol)
+                    (lambda ((arg0 object) (arg1 sig-atoll)) (when (scene-release? arg1)
+                                                               (clear-poi-and-focus! arg1)
+                                                               (remove-setting! 'sound-mode)
+                                                               (reset-warn-time! arg1)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 40 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 40
+        :nav-mesh-index 10
+        :skip-to -1
+        :on-set (lambda ((arg0 sig-atoll))
+          (task-node-close! (game-task-node atoll-sig-resolution))
+          (process-entity-status! arg0 (entity-perm-status bit-4) #f)
+          (logclear! (-> arg0 enemy-flags) (enemy-flag use-notice-distance))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf06))
+          (bot-method-196 arg0)
+          (logior! (-> arg0 bot-flags) (bot-flags bf22))
+          (if (demo?)
+              (send-event *target* 'continue (get-continue-by-name *game-info* "demo-restart"))
+              )
+          (let ((v1-16 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
+            (set! (-> v1-16 bytes 5) 1)
+            (set! (-> v1-16 bytes 6) 41)
+            (set! (-> v1-16 bytes 4) -1)
+            (set! (-> (the-as sigt-wait-spot v1-16) check-done)
+                  (the-as (function sigt-wait-spot sig symbol) (lambda () #f))
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far 'bot-check-too-far-always-okay
+        )
+      )
+    :speeches (new 'static 'inline-array bot-speech-info 52
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt003")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt004")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt005")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt006")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt007")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt008")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt020")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt009")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt010")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt011")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt012")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt013")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt014")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt058")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt015")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt021")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt022")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt023")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt024")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt057")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt059")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt025")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt026")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt027")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt028")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt019")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt029")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt030")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt031")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt032")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt039")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt033")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt038")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt036")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt037")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt043")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt044")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt045")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt049")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt046")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt047")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt056")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt082")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt054")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt052")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "sigt053")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt083")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt087")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt089")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt090")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt091")
+      (new 'static 'bot-speech-info :hold-time #x5a :slave-id -1 :name "sigt092")
+      )
+    :speech-tunings (new 'static 'inline-array bot-speech-tuning 1
+      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x78 :fo-curve 11 :trans? #t)
+      )
+    :spots (new 'static 'inline-array bot-spot 42
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2341970.0 :y 4915.2 :z -3590061.8 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2294497.2 :y 5529.6 :z -3631104.0 :w 49152.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2222940.2 :y 4505.6 :z -3746652.2 :w 28672.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2244567.0 :y 4259.84 :z -3795067.0 :w 8192.0)
+        :blocked-xz-dist 12288.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2217410.5 :y 5160.96 :z -3782819.8 :w 8192.0)
+        :blocked-xz-dist 12288.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2192261.0 :y 4915.2 :z -3784007.8 :w 8192.0)
+        :blocked-xz-dist 12288.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2160926.8 :y 5283.84 :z -3787817.0 :w 8192.0)
+        :blocked-xz-dist 12288.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2227036.2 :y 62382.08 :z -3838361.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2204221.5 :y 62382.08 :z -3836395.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2196521.0 :y 62382.08 :z -3837337.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2174771.2 :y 62382.08 :z -3838484.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2190704.8 :y 62382.08 :z -3870187.5 :w 16384.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2216222.8 :y 62382.08 :z -3853189.0 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2216059.0 :y 62382.08 :z -3863265.2 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 2215854.0 :y 62382.08 :z -3873341.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2239406.0 :y 62382.08 :z -3848929.2 :w 12288.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1997209.6 :y 53739.52 :z -3898613.8 :w 4096.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1988894.8 :y 53739.52 :z -3888701.5 :w 4096.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2043289.6 :y 53739.52 :z -3884318.8 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1721098.2 :y 53739.52 :z -3884318.8 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1742438.4 :y 53821.44 :z -3885301.8 :w 16384.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1734860.8 :y 53698.56 :z -4004085.8 :w 6144.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1731543.0 :y 53698.56 :z -4017602.5 :w 6144.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1492582.4 :y 3850.24 :z -3921797.0 :w 73728.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1431347.2 :y 7127.04 :z -4036894.8 :w 16384.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1407754.2 :y 6184.96 :z -4143308.8 :w 6144.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 1407426.5 :y 5980.16 :z -4121272.2 :w 6144.0)
+        :blocked-xz-dist 6144.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1414840.4 :y 53698.56 :z -4339835.0 :w 47104.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1394319.4 :y 53698.56 :z -4419051.5 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1453342.8 :y 53575.68 :z -4515963.0 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1591091.2 :y 53698.56 :z -4761313.5 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1732485.1 :y 53493.76 :z -4682547.0 :w 11264.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1879244.8 :y 4628.48 :z -4555899.0 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1847214.1 :y 8028.16 :z -4351385.5 :w 24576.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 1859297.2 :y 7536.64 :z -4371702.0 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2036899.9 :y 4956.16 :z -4314726.5 :w 32768.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2024038.4 :y 5201.92 :z -4323574.0 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2155069.5 :y 4915.2 :z -4291543.0 :w 24576.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2155069.5 :y 4915.2 :z -4291543.0 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2272133.0 :y 5734.4 :z -4268851.0 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2389196.8 :y 6553.6 :z -4246282.0 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 2389196.8 :y 6553.6 :z -4246282.0 :w 26624.0))
+      )
+    :first-liftcat-speeches (new 'static 'boxed-array :type int16 7 8 19)
+    :second-liftcat-speeches (new 'static 'boxed-array :type int16 19 8 7)
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *bot-course-table* course 0) *sig0-course*)

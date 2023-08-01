@@ -1,6 +1,6 @@
 #pragma once
 
-#include "workspace.h"
+#include "lsp/state/workspace.h"
 
 struct AppState {
   Workspace workspace;

@@ -1,0 +1,261 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: lightning-h.gc
+;; name in dgo: lightning-h
+;; dgos: ENGINE, GAME
+
+(define-extern unlink-lightning-spec-by-heap (function kheap none))
+
+;; +++lightning-spec-flags
+(defenum lightning-spec-flags
+  :type uint16
+  :bitfield #t
+  (lsf0 0)
+  (lsf1 1)
+  (lsf2 2)
+  (lsf3 3)
+  (size-from-adjust-dist 4)
+  )
+;; ---lightning-spec-flags
+
+
+;; +++lightning-mode
+(defenum lightning-mode
+  :type uint8
+  (lm-1 -1)
+  (lm0 0)
+  (lm1 1)
+  (lm2 2)
+  (lm3 3)
+  )
+;; ---lightning-mode
+
+(declare-type lightning-spec basic)
+(declare-type lightning-tracker process)
+(define-extern *lightning-spec-id-table* (array lightning-spec))
+
+;; DECOMP BEGINS
+
+(deftype lightning-spec (basic)
+  ((name              string                :offset-assert   4)
+   (flags             lightning-spec-flags  :offset-assert   8)
+   (rand-func         uint8                 :offset-assert  10)
+   (adjust-distance   uint8                 :offset-assert  11)
+   (start-color       rgba                  :offset-assert  12)
+   (end-color         rgba                  :offset-assert  16)
+   (fade-to-color     rgba                  :offset-assert  20)
+   (fade-start-factor float                 :offset-assert  24)
+   (fade-time         float                 :offset-assert  28)
+   (texture           texture-id            :offset-assert  32)
+   (reduction         float                 :offset-assert  36)
+   (num-points        int32                 :offset-assert  40)
+   (box-size          float                 :offset-assert  44)
+   (merge-factor      float                 :offset-assert  48)
+   (merge-count       int32                 :offset-assert  52)
+   (radius            float                 :offset-assert  56)
+   (duration          float                 :offset-assert  60)
+   (duration-rand     float                 :offset-assert  64)
+   (sound             basic                 :offset-assert  68)
+   (delay             float                 :offset-assert  72)
+   (delay-rand        float                 :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+
+(defun lookup-lightning-spec-by-name ((arg0 string))
+  (let* ((s5-0 *lightning-spec-id-table*)
+         (s4-0 (-> s5-0 length))
+         )
+    (dotimes (s3-0 s4-0)
+      (let ((s2-0 (-> s5-0 s3-0)))
+        (if (and (nonzero? s2-0) (string= arg0 (-> s2-0 name)))
+            (return s2-0)
+            )
+        )
+      )
+    )
+  (the-as lightning-spec #f)
+  )
+
+(deftype lightning-state (structure)
+  ((mode           lightning-mode         :offset-assert   0)
+   (counter        float                  :offset-assert   4)
+   (points-to-draw int32                  :offset-assert   8)
+   (box-size       float                  :offset-assert  12)
+   (gcf-control    gcf-control    :inline :offset-assert  16)
+   (line           vector-array           :offset-assert 128)
+   (meet           vector-array           :offset-assert 132)
+   (path           vector-array           :offset-assert 136)
+   (start-color    rgba                   :offset-assert 140)
+   (end-color      rgba                   :offset-assert 144)
+   )
+  :method-count-assert 9
+  :size-assert         #x94
+  :flag-assert         #x900000094
+  )
+
+
+(deftype lightning-control (basic)
+  ((spec    lightning-spec            :offset-assert   4)
+   (process (pointer process)         :offset-assert   8)
+   (state   lightning-state   :inline :offset-assert  16)
+   )
+  :method-count-assert 14
+  :size-assert         #xa4
+  :flag-assert         #xe000000a4
+  (:methods
+    (new (symbol type lightning-spec process float) _type_ 0)
+    (change-mode (_type_ lightning-mode) lightning-mode 9)
+    (get-mode (_type_) lightning-mode 10)
+    (set-point! (_type_ int vector) none 11)
+    (set-first-meet-point (_type_ vector) none 12)
+    (set-last-meet-point (_type_ vector) none 13)
+    )
+  )
+
+
+(defmethod change-mode lightning-control ((obj lightning-control) (arg0 lightning-mode))
+  (let ((v1-1 (!= arg0 (-> obj state mode))))
+    (case arg0
+      (((lightning-mode lm3))
+       (if v1-1
+           (set! (-> obj state counter) 0.0)
+           )
+       )
+      (((lightning-mode lm1))
+       (set! (-> obj state start-color) (-> obj spec start-color))
+       (set! (-> obj state end-color) (-> obj spec end-color))
+       )
+      )
+    )
+  (set! (-> obj state mode) arg0)
+  arg0
+  )
+
+(defmethod get-mode lightning-control ((obj lightning-control))
+  (-> obj state mode)
+  )
+
+(defmethod set-point! lightning-control ((obj lightning-control) (arg0 int) (arg1 vector))
+  (let ((v1-0 (-> obj state)))
+    (when (and (-> v1-0 path) (>= arg0 0) (< arg0 (-> v1-0 path length)))
+      (set! (-> v1-0 path data arg0 quad) (-> arg1 quad))
+      (when (and (< (+ (-> v1-0 points-to-draw) -1) arg0) (case (-> v1-0 mode)
+                                                            (((lightning-mode lm2) (lightning-mode lm3))
+                                                             #t
+                                                             )
+                                                            (else
+                                                              #f
+                                                              )
+                                                            )
+                 )
+        (set! (-> v1-0 line data arg0 quad) (-> arg1 quad))
+        (set! (-> v1-0 meet data arg0 quad) (-> arg1 quad))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (inline-array vector) vs none.
+(defmethod set-first-meet-point lightning-control ((obj lightning-control) (arg0 vector))
+  (set! (-> obj state meet data 0 quad) (-> arg0 quad))
+  (none)
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod set-last-meet-point lightning-control ((obj lightning-control) (arg0 vector))
+  (set! (-> obj state meet data (+ (-> obj state points-to-draw) -1) quad) (-> arg0 quad))
+  (none)
+  )
+
+(defmethod relocate lightning-control ((obj lightning-control) (arg0 int))
+  (&+! (-> obj state line) arg0)
+  (&+! (-> obj state meet) arg0)
+  (if (-> obj state path)
+      (&+! (-> obj state path) arg0)
+      )
+  (let ((v1-8 (-> obj spec)))
+    (if (and (>= (the-as int v1-8) (-> *kernel-context* relocating-min))
+             (< (the-as int v1-8) (-> *kernel-context* relocating-max))
+             )
+        (&+! (-> obj spec) arg0)
+        )
+    )
+  obj
+  )
+
+;; WARN: Return type mismatch object vs lightning-control.
+(defmethod new lightning-control ((allocation symbol) (type-to-make type) (arg0 lightning-spec) (arg1 process) (arg2 float))
+  (with-pp
+    (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+      (when (zero? obj)
+        (go process-drawable-art-error "memory")
+        (set! obj (the-as lightning-control 0))
+        (goto cfg-14)
+        )
+      (let ((s3-0 (-> arg0 num-points)))
+        (let ((f0-0 (-> arg0 box-size)))
+          (when (logtest? (-> arg0 flags) (lightning-spec-flags size-from-adjust-dist))
+            (let ((f1-1 (fmax 1.0 (fmin 5.0 (/ arg2 (* 4096.0 (the float (-> arg0 adjust-distance))))))))
+              (set! s3-0 (* s3-0 (the int f1-1)))
+              (set! f0-0 (* f0-0 f1-1))
+              )
+            )
+          (set! (-> obj state box-size) f0-0)
+          )
+        (set! (-> obj process) (process->ppointer arg1))
+        (set! (-> obj state mode) (lightning-mode lm1))
+        (set! (-> obj state line) ((method-of-type vector-array new) allocation vector-array s3-0))
+        (set! (-> obj state meet) ((method-of-type vector-array new) allocation vector-array s3-0))
+        (let ((v1-18 (-> arg0 rand-func)))
+          (set! (-> obj state path) (if (or (= v1-18 2) (= v1-18 3))
+                                        ((method-of-type vector-array new) allocation vector-array s3-0)
+                                        (the-as vector-array #f)
+                                        )
+                )
+          )
+        (set! (-> obj state counter) 0.0)
+        (set! (-> obj state points-to-draw) s3-0)
+        )
+      (set! (-> obj spec) arg0)
+      (set! (-> obj state start-color) (-> arg0 start-color))
+      (set! (-> obj state end-color) (-> arg0 end-color))
+      (add-connection *lightning-engine* pp nothing obj #f #f)
+      (label cfg-14)
+      (the-as lightning-control obj)
+      )
+    )
+  )
+
+(deftype lightning-probe-vars (basic)
+  ((src-joint-index uint32                          :offset-assert   4)
+   (next-spawn-time time-frame                      :offset-assert   8)
+   (last-valid-time time-frame                      :offset-assert  16)
+   (point           vector                2 :inline :offset-assert  32)
+   (start-pos       vector                :inline   :offset         32)
+   (end-pos         vector                :inline   :offset         48)
+   (probe-dirs      (inline-array vector)           :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+
+(define *lightning-probe-vars*
+  (new 'static 'lightning-probe-vars :probe-dirs (new 'static 'inline-array vector 6
+                                                   (new 'static 'vector :z 1.0 :w 1.0)
+                                                   (new 'static 'vector :x 1.0 :w 1.0)
+                                                   (new 'static 'vector :z -1.0 :w 1.0)
+                                                   (new 'static 'vector :x -1.0 :w 1.0)
+                                                   (new 'static 'vector :y 1.0 :w 1.0)
+                                                   (new 'static 'vector :y -1.0 :w 1.0)
+                                                   )
+                                     )
+  )

@@ -1,0 +1,254 @@
+(in-package goal)
+
+(define *collide-list-boxes* (the-as object #f))
+
+(define *collide-hash-fragments* (the-as object 0))
+
+(define *collide-hash-fragments-tfrag* (the-as object 0))
+
+(define *collide-hash-fragments-instance* (the-as object 0))
+
+(define *already-printed-exeeded-max-cache-tris* #f)
+
+(deftype collide-hash-scratch (structure)
+  ((collidable-bits uint128 128 :offset-assert   0)
+   (poly-bits       uint64  2   :offset          0)
+   (id-bits         uint32  512 :offset          0)
+   (tris            uint32      :offset-assert 2048)
+   )
+  :method-count-assert 9
+  :size-assert         #x804
+  :flag-assert         #x900000804
+  )
+
+(defmethod inspect collide-hash-scratch ((obj collide-hash-scratch))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-hash-scratch)
+  (format #t "~1Tcollidable-bits[128] @ #x~X~%" (-> obj collidable-bits))
+  (format #t "~1Tpoly-bits[2] @ #x~X~%" (-> obj collidable-bits))
+  (format #t "~1Tid-bits[512] @ #x~X~%" (-> obj collidable-bits))
+  (format #t "~1Ttris: ~D~%" (-> obj tris))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-bucket (structure)
+  ((index int16  :offset-assert   0)
+   (count int16  :offset-assert   2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmethod inspect collide-hash-bucket ((obj collide-hash-bucket))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-hash-bucket)
+  (format #t "~1Tindex: ~D~%" (-> obj index))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-item (structure)
+  ((id         uint32  :offset-assert   0)
+   (collidable basic   :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(defmethod inspect collide-hash-item ((obj collide-hash-item))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-hash-item)
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tcollidable: ~A~%" (-> obj collidable))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-poly (structure)
+  ((data        uint8  4 :offset-assert   0)
+   (vert-index0 uint8    :offset          0)
+   (vert-index1 uint8    :offset          1)
+   (vert-index2 uint8    :offset          2)
+   (pat-index   uint8    :offset          3)
+   (word        uint32   :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmethod inspect collide-hash-poly ((obj collide-hash-poly))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-hash-poly)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> obj vert-index0))
+  (format #t "~1Tvert-index0: ~D~%" (-> obj vert-index0))
+  (format #t "~1Tvert-index1: ~D~%" (-> obj vert-index1))
+  (format #t "~1Tvert-index2: ~D~%" (-> obj vert-index2))
+  (format #t "~1Tpat-index: ~D~%" (-> obj pat-index))
+  (format #t "~1Tword: ~D~%" (-> obj word))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-fragment-stats (structure)
+  ((num-verts  uint16  :offset-assert   0)
+   (num-polys  uint8   :offset-assert   2)
+   (poly-count uint8   :offset-assert   3)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmethod inspect collide-hash-fragment-stats ((obj collide-hash-fragment-stats))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'collide-hash-fragment-stats)
+  (format #t "~1Tnum-verts: ~D~%" (-> obj num-verts))
+  (format #t "~1Tnum-polys: ~D~%" (-> obj num-polys))
+  (format #t "~1Tpoly-count: ~D~%" (-> obj poly-count))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-fragment (drawable)
+  ((num-buckets     uint16                              :offset          4)
+   (num-indices     uint16                              :offset          6)
+   (pat-array       uint32                              :offset          8)
+   (bucket-array    uint32                              :offset         12)
+   (grid-step       vector                      :inline :offset-assert  32)
+   (bbox            bounding-box                :inline :offset-assert  48)
+   (bbox4w          bounding-box4w              :inline :offset-assert  80)
+   (axis-scale      vector                      :inline :offset         64)
+   (avg-extents     vector                      :inline :offset         80)
+   (dimension-array uint32                      4       :offset         44)
+   (stats           collide-hash-fragment-stats :inline :offset         60)
+   (num-verts       uint16                              :offset         60)
+   (num-polys       uint8                               :offset         62)
+   (poly-count      uint8                               :offset         63)
+   (poly-array      uint32                              :offset         76)
+   (vert-array      uint32                              :offset         92)
+   (index-array     uint32                              :offset        108)
+   )
+  :method-count-assert 17
+  :size-assert         #x70
+  :flag-assert         #x1100000070
+  )
+
+(defmethod inspect collide-hash-fragment ((obj collide-hash-fragment))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> obj bsphere))
+  (format #t "~1Tnum-buckets: ~D~%" (-> obj num-buckets))
+  (format #t "~1Tnum-indices: ~D~%" (-> obj num-indices))
+  (format #t "~1Tpat-array: #x~X~%" (-> obj pat-array))
+  (format #t "~1Tbucket-array: #x~X~%" (-> obj bucket-array))
+  (format #t "~1Tgrid-step: #<vector @ #x~X>~%" (-> obj grid-step))
+  (format #t "~1Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
+  (format #t "~1Tbbox4w: #<bounding-box4w @ #x~X>~%" (-> obj bbox4w))
+  (format #t "~1Taxis-scale: #<vector @ #x~X>~%" (-> obj bbox max))
+  (format #t "~1Tavg-extents: #<vector @ #x~X>~%" (-> obj bbox4w))
+  (format #t "~1Tdimension-array[4] @ #x~X~%" (&-> obj grid-step w))
+  (format #t "~1Tstats: #<collide-hash-fragment-stats @ #x~X>~%" (&-> obj bbox min w))
+  (format #t "~1Tnum-verts: ~D~%" (-> obj stats num-verts))
+  (format #t "~1Tnum-polys: ~D~%" (-> obj stats num-polys))
+  (format #t "~1Tpoly-count: ~D~%" (-> obj stats poly-count))
+  (format #t "~1Tpoly-array: #x~X~%" (-> obj bbox max w))
+  (format #t "~1Tvert-array: #x~X~%" (-> obj avg-extents w))
+  (format #t "~1Tindex-array: #x~X~%" (-> obj index-array))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash-fragment-array (array)
+  ((fragments collide-hash-fragment :dynamic :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod inspect collide-hash-fragment-array ((obj collide-hash-fragment-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttype: ~A~%" (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tcontent-type: ~A~%" (-> obj content-type))
+  (label cfg-4)
+  obj
+  )
+
+(deftype collide-hash (drawable)
+  ((num-ids         uint16                                   :offset          4)
+   (id-count        uint16                                   :offset          6)
+   (num-buckets     uint32                                   :offset          8)
+   (qwc-id-bits     uint32                                   :offset         12)
+   (grid-step       vector                           :inline :offset         16)
+   (bbox            bounding-box                     :inline :offset-assert  32)
+   (bbox4w          bounding-box4w                   :inline :offset-assert  64)
+   (axis-scale      vector                           :inline :offset         48)
+   (avg-extents     vector                           :inline :offset         64)
+   (bucket-array    uint32                                   :offset         44)
+   (item-array      (inline-array collide-hash-item)         :offset         60)
+   (dimension-array uint32                           3       :offset         76)
+   (num-items       uint32                                   :offset         92)
+   )
+  :method-count-assert 17
+  :size-assert         #x60
+  :flag-assert         #x1100000060
+  )
+
+(defmethod inspect collide-hash ((obj collide-hash))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tid: ~D~%" (-> obj id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> obj bsphere))
+  (format #t "~1Tnum-ids: ~D~%" (-> obj num-ids))
+  (format #t "~1Tid-count: ~D~%" (-> obj id-count))
+  (format #t "~1Tnum-buckets: ~D~%" (-> obj num-buckets))
+  (format #t "~1Tqwc-id-bits: ~D~%" (-> obj qwc-id-bits))
+  (format #t "~1Tgrid-step: #<vector @ #x~X>~%" (-> obj bsphere))
+  (format #t "~1Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
+  (format #t "~1Tbbox4w: #<bounding-box4w @ #x~X>~%" (-> obj bbox4w))
+  (format #t "~1Taxis-scale: #<vector @ #x~X>~%" (-> obj bbox max))
+  (format #t "~1Tavg-extents: #<vector @ #x~X>~%" (-> obj bbox4w))
+  (format #t "~1Tbucket-array: #x~X~%" (-> obj bbox min w))
+  (format #t "~1Titem-array: #x~X~%" (-> obj item-array))
+  (format #t "~1Tdimension-array[3] @ #x~X~%" (&-> obj bbox4w min w))
+  (format #t "~1Tnum-items: ~D~%" (-> obj num-items))
+  (label cfg-4)
+  obj
+  )
+
+0

@@ -3,6 +3,7 @@
 
 #include "common/dma/dma_chain_read.h"
 #include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/util/Timer.h"
 
 #include "third-party/fmt/core.h"
@@ -36,11 +37,11 @@ void diff_dma_chains(DmaFollower ref, DmaFollower dma) {
     auto ref_tag = ref.current_tag();
     auto dma_tag = dma.current_tag();
     if (ref_tag.kind != dma_tag.kind) {
-      fmt::print("Bad dma tag kinds\n");
+      lg::warn("Bad dma tag kinds");
     }
 
     if (ref_tag.qwc != dma_tag.qwc) {
-      fmt::print("Bad dma tag qwc: {} {}\n", ref_tag.qwc, dma_tag.qwc);
+      lg::warn("Bad dma tag qwc: {} {}", ref_tag.qwc, dma_tag.qwc);
     }
 
     auto ref_result = ref.read_and_advance();
@@ -48,19 +49,19 @@ void diff_dma_chains(DmaFollower ref, DmaFollower dma) {
 
     for (int i = 0; i < (int)ref_result.size_bytes; i++) {
       if (ref_result.data[i] != dma_result.data[i]) {
-        fmt::print("Bad data ({} vs {}) at {} into transfer: {} {}\n", ref_result.data[i],
-                   dma_result.data[i], i, ref_tag.print(), dma_tag.print());
+        lg::error("Bad data ({} vs {}) at {} into transfer: {} {}", ref_result.data[i],
+                  dma_result.data[i], i, ref_tag.print(), dma_tag.print());
         return;
       }
     }
   }
 
   if (!ref.ended()) {
-    fmt::print("dma ended early\n");
+    lg::warn("dma ended early");
   }
 
   if (!dma.ended()) {
-    fmt::print("dma had extra data\n");
+    lg::warn("dma had extra data");
   }
 }
 
@@ -175,12 +176,12 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
     auto v2 = flatten_dma(DmaFollower(m_result.data.data(), m_result.start_offset));
 
     if (ref != v2) {
-      fmt::print("Verification has failed.\n");
-      fmt::print("size diff: {} {}\n", ref.size(), v2.size());
+      lg::error("Verification has failed.");
+      lg::error("size diff: {} {}", ref.size(), v2.size());
 
       for (size_t i = 0; i < std::min(ref.size(), v2.size()); i++) {
         if (ref[i] != v2[i]) {
-          fmt::print("first diff at {}\n", i);
+          lg::error("first diff at {}", i);
           break;
         }
       }
@@ -188,7 +189,7 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
                       DmaFollower(m_result.data.data(), m_result.start_offset));
       ASSERT(false);
     } else {
-      fmt::print("verification ok: {} bytes\n", ref.size());
+      lg::debug("verification ok: {} bytes", ref.size());
     }
   }
 

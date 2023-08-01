@@ -119,6 +119,7 @@ class BitfieldAccessElement : public FormElement {
 
 struct BitFieldDef {
   bool is_signed = false;
+  bool is_float = false;
   Form* value = nullptr;
   std::string field_name;
 

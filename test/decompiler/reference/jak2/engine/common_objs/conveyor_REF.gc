@@ -1,0 +1,572 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type conveyor-section
+(deftype conveyor-section (structure)
+  ((start      vector :inline :offset-assert   0)
+   (trailing   plane  :inline :offset-assert  16)
+   (pull-dir   vector :inline :offset-assert  32)
+   (radial-dir vector :inline :offset-assert  48)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type conveyor-section
+(defmethod inspect conveyor-section ((obj conveyor-section))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'conveyor-section)
+  (format #t "~1Tstart: #<vector @ #x~X>~%" (-> obj start))
+  (format #t "~1Ttrailing: #<plane @ #x~X>~%" (-> obj trailing))
+  (format #t "~1Tpull-dir: #<vector @ #x~X>~%" (-> obj pull-dir))
+  (format #t "~1Tradial-dir: #<vector @ #x~X>~%" (-> obj radial-dir))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type conveyor-section-array
+(deftype conveyor-section-array (inline-array-class)
+  ((data conveyor-section :inline :dynamic :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type conveyor-section-array
+(defmethod inspect conveyor-section-array ((obj conveyor-section-array))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> conveyor-section-array heap-base) (the-as uint 64))
+
+;; definition of type conveyor
+(deftype conveyor (process-drawable)
+  ((speed                float                          :offset-assert 200)
+   (belt-radius          float                          :offset-assert 204)
+   (pull-y-threshold     float                          :offset-assert 208)
+   (speed-mult-array     (array float)                  :offset-assert 212)
+   (speed-mult-array-len int8                           :offset-assert 216)
+   (sections             conveyor-section-array         :offset-assert 220)
+   (leading              plane                  :inline :offset-assert 224)
+   (collide-bounds       sphere                 :inline :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  (:methods
+    (idle () _type_ :state 20)
+    (conveyor-method-21 (_type_) float 21)
+    (get-art-group (_type_) art-group 22)
+    (reset-root! (_type_) none 23)
+    (init! (_type_) none 24)
+    (set-and-get-ambient-sound! (_type_) ambient-sound 25)
+    (conveyor-method-26 (_type_ process-focusable) symbol :behavior conveyor 26)
+    (conveyor-method-27 (_type_) symbol 27)
+    )
+  )
+
+;; definition for method 3 of type conveyor
+(defmethod inspect conveyor ((obj conveyor))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tspeed: ~f~%" (-> obj speed))
+  (format #t "~2Tbelt-radius: ~f~%" (-> obj belt-radius))
+  (format #t "~2Tpull-y-threshold: ~f~%" (-> obj pull-y-threshold))
+  (format #t "~2Tspeed-mult-array: #x~X~%" (-> obj speed-mult-array))
+  (format #t "~2Tspeed-mult-array-len: ~D~%" (-> obj speed-mult-array-len))
+  (format #t "~2Tsections: ~A~%" (-> obj sections))
+  (format #t "~2Tleading: #<plane @ #x~X>~%" (-> obj leading))
+  (format #t "~2Tcollide-bounds: #<sphere @ #x~X>~%" (-> obj collide-bounds))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 7 of type conveyor
+;; WARN: Return type mismatch process-drawable vs conveyor.
+(defmethod relocate conveyor ((obj conveyor) (new-addr int))
+  (&+! (-> obj sections) new-addr)
+  (the-as
+    conveyor
+    ((the-as (function process-drawable int process-drawable) (find-parent-method conveyor 7)) obj new-addr)
+    )
+  )
+
+;; definition for method 22 of type conveyor
+;; WARN: Return type mismatch symbol vs art-group.
+(defmethod get-art-group conveyor ((obj conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (go process-drawable-art-error "invalid type")
+  (the-as art-group #f)
+  )
+
+;; definition for method 23 of type conveyor
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-root! conveyor ((obj conveyor))
+  "Re-initializes the `root` [[trsqv]]"
+  (set! (-> obj root) (new 'process 'trsqv))
+  0
+  (none)
+  )
+
+;; definition for method 24 of type conveyor
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init! conveyor ((obj conveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (local-vars (tag res-tag))
+  (set! (-> obj speed) 24576.0)
+  (set! (-> obj belt-radius) 11878.4)
+  (set! (-> obj pull-y-threshold) 10240.0)
+  (set! (-> obj speed-mult-array) #f)
+  (set! (-> obj speed-mult-array-len) 0)
+  (let ((entity (-> obj entity)))
+    (set! tag (new 'static 'res-tag))
+    (let ((scale-factor (res-lump-data entity 'scale-factor pointer :tag-ptr (& tag))))
+      (when scale-factor
+        (set! (-> obj speed-mult-array) (the-as (array float) scale-factor))
+        (set! (-> obj speed-mult-array-len) (the-as int (-> tag elt-count)))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 25 of type conveyor
+;; WARN: Return type mismatch object vs ambient-sound.
+(defmethod set-and-get-ambient-sound! conveyor ((obj conveyor))
+  "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
+and return it as well.  Otherwise, set it to `0`"
+  (let ((actor-options (res-lump-value (-> obj entity) 'options actor-option :time -1000000000.0)))
+    (the-as
+      ambient-sound
+      (cond
+        ((not (logtest? (actor-option no-amb-sound) actor-options))
+         (let ((sound
+                 (the-as object (new 'process 'ambient-sound (static-sound-spec "conveyor" :fo-max 80) (-> obj root trans)))
+                 )
+               )
+           (set! (-> obj sound) (the-as ambient-sound sound))
+           sound
+           )
+         )
+        (else
+          (set! (-> obj sound) (the-as ambient-sound 0))
+          0
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 26 of type conveyor
+;; INFO: Used lq/sq
+(defmethod conveyor-method-26 conveyor ((obj conveyor) (proc-focus process-focusable))
+  "TODO - conveyor section related, perhaps related to moving the process along the belt?"
+  (let ((vec (new 'stack-no-clear 'vector)))
+    (set! (-> vec quad) (-> (get-trans proc-focus 0) quad))
+    (set! (-> vec w) 1.0)
+    (when (>= (vector4-dot vec (the-as vector (-> obj leading))) 0.0)
+      (let* ((sections (-> obj sections))
+             (section-count (-> sections length))
+             )
+        (dotimes (section-idx section-count)
+          (let ((section (-> sections data section-idx)))
+            (when (< (vector4-dot vec (the-as vector (-> section trailing))) 0.0)
+              (let ((vec-temp (new 'stack-no-clear 'vector)))
+                (vector-! vec-temp vec (-> section start))
+                (when (>= (-> obj belt-radius) (fabs (vector-dot vec-temp (-> section radial-dir))))
+                  (let* ((f0-7 (vector-dot vec-temp (-> section pull-dir)))
+                         (f1-6 (- (-> vec-temp y) (* (-> section pull-dir y) f0-7)))
+                         )
+                    (when (>= (-> obj pull-y-threshold) (fabs f1-6))
+                      (let ((a2-8 (new 'stack-no-clear 'vector)))
+                        (let ((f0-10 (-> obj speed)))
+                          (if (< section-idx (-> obj speed-mult-array-len))
+                              (set! f0-10
+                                    (* f0-10 (-> (the-as (pointer float) (+ (the-as uint (-> obj speed-mult-array)) (* section-idx 4)))))
+                                    )
+                              )
+                          (vector-float*! a2-8 (-> section pull-dir) (* f0-10 (-> self clock seconds-per-frame)))
+                          )
+                        (send-event proc-focus 'push-trans a2-8 (seconds 10))
+                        )
+                      )
+                    )
+                  )
+                )
+              (return #f)
+              )
+            )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+;; definition for method 27 of type conveyor
+(defmethod conveyor-method-27 conveyor ((obj conveyor))
+  "TODO - collision related, has some dead code as well (previous iteration?)"
+  (local-vars (a0-10 float) (a2-5 float) (a2-12 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (set! *actor-list-length* 0)
+    (if #t
+        (set! *actor-list-length* (fill-actor-list-for-sphere *actor-hash* (-> obj collide-bounds) *actor-list* 256))
+        )
+    (when #t
+      (let ((a0-2 (-> *collide-player-list* alive-list next0)))
+        *collide-player-list*
+        (let ((v1-11 (-> a0-2 next0)))
+          (while (!= a0-2 (-> *collide-player-list* alive-list-end))
+            (let* ((a0-3 (-> (the-as connection a0-2) param1))
+                   (a1-1 (-> (the-as collide-shape a0-3) root-prim))
+                   )
+              (when (logtest? (-> a1-1 prim-core collide-as) (collide-spec jak bot enemy hit-by-others-list player-list))
+                (let ((a1-2 (-> a1-1 prim-core)))
+                  (let ((a2-4 a1-2)
+                        (a3-1 (-> obj collide-bounds))
+                        )
+                    (.lvf vf2 (&-> a2-4 world-sphere quad))
+                    (.lvf vf3 (&-> a3-1 quad))
+                    )
+                  (.sub.vf vf1 vf3 vf2)
+                  (.mul.vf vf1 vf1 vf1)
+                  (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                  (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                  (.mov a2-5 vf1)
+                  (let ((f0-0 a2-5)
+                        (f1-1 (+ (-> a1-2 world-sphere w) (-> obj collide-bounds r)))
+                        )
+                    (b! (>= f0-0 (* f1-1 f1-1)) cfg-8 :delay #f)
+                    )
+                  )
+                (when (< *actor-list-length* 256)
+                  (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
+                  (set! *actor-list-length* (+ *actor-list-length* 1))
+                  )
+                )
+              )
+            (label cfg-8)
+            (set! a0-2 v1-11)
+            *collide-player-list*
+            (set! v1-11 (-> v1-11 next0))
+            )
+          )
+        )
+      )
+    (when #f
+      (let ((a0-5 (-> *collide-hit-by-player-list* alive-list next0)))
+        *collide-hit-by-player-list*
+        (let ((v1-18 (-> a0-5 next0)))
+          (while (!= a0-5 (-> *collide-hit-by-player-list* alive-list-end))
+            (let* ((a0-6 (-> (the-as connection a0-5) param1))
+                   (a1-13 (-> (the-as collide-shape a0-6) root-prim))
+                   )
+              (when (logtest? (-> a1-13 prim-core collide-as) (collide-spec jak bot enemy hit-by-others-list player-list))
+                (let ((a1-14 (-> a1-13 prim-core)))
+                  (let ((a2-11 a1-14)
+                        (a3-2 (-> obj collide-bounds))
+                        )
+                    (.lvf vf2 (&-> a2-11 world-sphere quad))
+                    (.lvf vf3 (&-> a3-2 quad))
+                    )
+                  (.sub.vf vf1 vf3 vf2)
+                  (.mul.vf vf1 vf1 vf1)
+                  (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                  (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                  (.mov a2-12 vf1)
+                  (let ((f0-1 a2-12)
+                        (f1-5 (+ (-> a1-14 world-sphere w) (-> obj collide-bounds r)))
+                        )
+                    (b! (>= f0-1 (* f1-5 f1-5)) cfg-17 :delay #f)
+                    )
+                  )
+                (when (< *actor-list-length* 256)
+                  (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
+                  (set! *actor-list-length* (+ *actor-list-length* 1))
+                  )
+                )
+              )
+            (label cfg-17)
+            (set! a0-5 v1-18)
+            *collide-hit-by-player-list*
+            (set! v1-18 (-> v1-18 next0))
+            )
+          )
+        )
+      )
+    (dotimes (s5-0 *actor-list-length*)
+      (let* ((v1-23 (-> *actor-list* s5-0))
+             (a0-9 (-> v1-23 root-prim))
+             )
+        (when (logtest? (-> a0-9 prim-core collide-as) (collide-spec jak bot enemy hit-by-others-list player-list))
+          (.lvf vf1 (&-> obj collide-bounds quad))
+          (.lvf vf2 (&-> a0-9 prim-core world-sphere quad))
+          (.sub.vf vf3 vf1 vf2)
+          (.add.w.vf vf4 vf1 vf2 :mask #b1000)
+          (.mul.vf vf3 vf3 vf3 :mask #b111)
+          (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
+          (.mul.x.vf acc vf0 vf3 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf3 acc :mask #b1000)
+          (.add.mul.z.vf vf3 vf0 vf3 acc :mask #b1000)
+          (.sub.w.vf vf3 vf3 vf4 :mask #b1000)
+          (let ((f0-2 0.0))
+            (.add.w.vf vf3 vf0 vf3 :mask #b1)
+            (.mov a0-10 vf3)
+            (let ((s4-0 (-> v1-23 process)))
+              (b! (< f0-2 a0-10) cfg-27)
+              (let ((a1-29 (if (type? s4-0 process-focusable)
+                               (the-as process-focusable s4-0)
+                               )
+                           )
+                    )
+                (if a1-29
+                    (conveyor-method-26 obj a1-29)
+                    )
+                )
+              )
+            )
+          (label cfg-27)
+          0
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 21 of type conveyor
+;; INFO: Used lq/sq
+(defmethod conveyor-method-21 conveyor ((obj conveyor))
+  "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
+  (local-vars (sv-32 conveyor-section) (sv-48 conveyor-section))
+  (let* ((s5-0 (-> obj path))
+         (s4-0 (-> s5-0 curve num-cverts))
+         (s3-0 (new 'stack-no-clear 'vector))
+         )
+    (let ((s2-0 (new 'process 'conveyor-section-array (+ s4-0 -1))))
+      (set! (-> obj sections) s2-0)
+      (set! (-> obj collide-bounds quad) (the-as uint128 0))
+      (get-point-in-path! s5-0 s3-0 0.0 'exact)
+      (vector+! (the-as vector (-> obj collide-bounds)) (the-as vector (-> obj collide-bounds)) s3-0)
+      (let ((s1-0 (+ s4-0 -1)))
+        (set! sv-32 (the-as conveyor-section #f))
+        (dotimes (s0-0 s1-0)
+          (set! sv-48 (-> s2-0 data s0-0))
+          (set! (-> sv-48 start quad) (-> s3-0 quad))
+          (get-point-in-path! s5-0 s3-0 (the float (+ s0-0 1)) 'exact)
+          (vector+! (the-as vector (-> obj collide-bounds)) (the-as vector (-> obj collide-bounds)) s3-0)
+          (vector-! (-> sv-48 pull-dir) s3-0 (-> sv-48 start))
+          (vector-normalize! (-> sv-48 pull-dir) 1.0)
+          (set! (-> sv-48 trailing quad) (-> sv-48 pull-dir quad))
+          (set! (-> sv-48 trailing y) 0.0)
+          (vector-normalize! (-> sv-48 trailing) 1.0)
+          (set-vector! (-> sv-48 radial-dir) (- (-> sv-48 trailing z)) 0.0 (-> sv-48 trailing x) 1.0)
+          (set! (-> sv-48 trailing w) (- (vector-dot s3-0 (the-as vector (-> sv-48 trailing)))))
+          (when (the-as vector sv-32)
+            (vector+! (&+ (the-as vector sv-32) 16) (&+ (the-as vector sv-32) 16) (the-as vector (-> sv-48 trailing)))
+            (vector-normalize! (&+ (the-as vector sv-32) 16) 1.0)
+            (set! (-> sv-32 trailing w) (- (vector-dot (-> sv-48 start) (&+ (the-as vector sv-32) 16))))
+            )
+          (set! sv-32 sv-48)
+          sv-32
+          )
+        )
+      )
+    (let ((s2-1 (-> obj sections data)))
+      (set! (-> obj leading quad) (-> s2-1 0 pull-dir quad))
+      (set! (-> obj leading y) 0.0)
+      (vector-normalize! (-> obj leading) 1.0)
+      (set! (-> obj leading w) (- (vector-dot (the-as vector (-> s2-1 0)) (the-as vector (-> obj leading)))))
+      )
+    (let ((f0-19 (/ 1.0 (the float s4-0)))
+          (f30-0 0.0)
+          )
+      (vector-float*! (the-as vector (-> obj collide-bounds)) (the-as vector (-> obj collide-bounds)) f0-19)
+      (dotimes (s2-2 s4-0)
+        (get-point-in-path! s5-0 s3-0 (the float s2-2) 'exact)
+        (let ((f0-22 (vector-vector-distance-squared s3-0 (-> obj collide-bounds))))
+          (if (< f30-0 f0-22)
+              (set! f30-0 f0-22)
+              )
+          )
+        )
+      (set! (-> obj collide-bounds r) (+ (sqrtf f30-0) (-> obj belt-radius)))
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (conveyor)
+  :virtual #t
+  :code (the-as (function none :behavior conveyor) sleep-code)
+  :post (behavior ()
+    (conveyor-method-27 self)
+    (if (nonzero? (-> self sound))
+        (update! (-> self sound))
+        )
+    (none)
+    )
+  )
+
+;; definition for method 11 of type conveyor
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! conveyor ((obj conveyor) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (reset-root! obj)
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton obj (the-as skeleton-group (get-art-group obj)) (the-as pair 0))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (if (< (-> obj path curve num-cverts) 2)
+      (go process-drawable-art-error "bad path")
+      )
+  (init! obj)
+  (set-and-get-ambient-sound! obj)
+  (conveyor-method-21 obj)
+  (ja-post)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; definition of type strip-conveyor
+(deftype strip-conveyor (conveyor)
+  ()
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  )
+
+;; definition for method 3 of type strip-conveyor
+(defmethod inspect strip-conveyor ((obj strip-conveyor))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type conveyor inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-strip-conveyor strip-conveyor strip-conveyor-lod0-jg strip-conveyor-idle-ja
+              ((strip-conveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 36)
+              )
+
+;; definition for method 22 of type strip-conveyor
+(defmethod get-art-group strip-conveyor ((obj strip-conveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (art-group-get-by-name *level* "skel-strip-conveyor" (the-as (pointer uint32) #f))
+  )
+
+;; definition of type lgconveyor
+(deftype lgconveyor (conveyor)
+  ()
+  :heap-base #x80
+  :method-count-assert 28
+  :size-assert         #x100
+  :flag-assert         #x1c00800100
+  )
+
+;; definition for method 3 of type lgconveyor
+(defmethod inspect lgconveyor ((obj lgconveyor))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type conveyor inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-lgconveyor lgconveyor lgconveyor-lod0-jg lgconveyor-idle-ja
+              ((lgconveyor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 15)
+              :longest-edge (meters 24.7389)
+              :origin-joint-index 3
+              )
+
+;; definition for method 22 of type lgconveyor
+(defmethod get-art-group lgconveyor ((obj lgconveyor))
+  "@returns The respective [[art-group]] for the [[conveyor]]"
+  (art-group-get-by-name *level* "skel-lgconveyor" (the-as (pointer uint32) #f))
+  )
+
+;; definition for method 24 of type lgconveyor
+;; WARN: Return type mismatch float vs none.
+(defmethod init! lgconveyor ((obj lgconveyor))
+  "Initializes defaults for things like the `speed` and `belt-radius`"
+  (set! (-> obj speed) 30720.0)
+  (set! (-> obj belt-radius) 11878.4)
+  (set! (-> obj pull-y-threshold) 10240.0)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (lgconveyor)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 3)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type conveyor idle) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (ja-post)
+    (none)
+    )
+  )

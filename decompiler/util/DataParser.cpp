@@ -1,6 +1,7 @@
 #include "DataParser.h"
 
 #include <stdexcept>
+#include <unordered_map>
 
 #include "common/util/Assert.h"
 

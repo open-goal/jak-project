@@ -1,0 +1,726 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition of type vif-disasm-element
+(deftype vif-disasm-element (structure)
+  ((mask    uint32      :offset-assert   0)
+   (tag     vif-cmd-32  :offset-assert   4)
+   (val     uint32      :offset-assert   8)
+   (print   uint32      :offset-assert  12)
+   (string1 string      :offset-assert  16)
+   (string2 string      :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type vif-disasm-element
+(defmethod inspect vif-disasm-element ((obj vif-disasm-element))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'vif-disasm-element)
+  (format #t "~1Tmask: ~D~%" (-> obj mask))
+  (format #t "~1Ttag: ~D~%" (-> obj tag))
+  (format #t "~1Tval: ~D~%" (-> obj val))
+  (format #t "~1Tprint: ~D~%" (-> obj print))
+  (format #t "~1Tstring1: ~A~%" (-> obj string1))
+  (format #t "~1Tstring2: ~A~%" (-> obj string2))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *vif-disasm-table*, type (array vif-disasm-element)
+(define *vif-disasm-table*
+  (new 'static 'boxed-array :type vif-disasm-element
+    (new 'static 'vif-disasm-element :mask #x7f :string1 "nop")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print #x2 :string1 "stcycl")
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 offset)
+      :print #x1
+      :string1 "offset"
+      :string2 "offset"
+      )
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 base) :print #x1 :string1 "base" :string2 "base")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 itop) :print #x1 :string1 "itop" :string2 "addr")
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 stmod)
+      :print #x1
+      :string1 "stmod"
+      :string2 "mode"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 mskpath3)
+      :print #x1
+      :string1 "mskpath3"
+      :string2 "mask"
+      )
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 mark) :print #x1 :string1 "mark" :string2 "mark")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 flushe) :string1 "flushe")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 flush) :string1 "flush")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 flusha) :string1 "flusha")
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 mscal)
+      :print #x1
+      :string1 "mscal"
+      :string2 "addr"
+      )
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 mscnt) :string1 "mscnt")
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 mscalf)
+      :print #x1
+      :string1 "mscalf"
+      :string2 "addr"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 stmask)
+      :print #x3
+      :string1 "stmask"
+      :string2 "mask"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 strow)
+      :print #x4
+      :string1 "strow"
+      :string2 "row"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x7f
+      :tag (vif-cmd-32 stcol)
+      :print #x4
+      :string1 "stcol"
+      :string2 "col"
+      )
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 mpg) :print #x5 :string1 "mpg")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 direct) :print #x6 :string1 "direct")
+    (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 directhl) :print #x6 :string1 "directhl")
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-s-32)
+      :val #x10
+      :print #x7
+      :string1 "unpack-s-32"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-s-16)
+      :val #x8
+      :print #x7
+      :string1 "unpack-s-16"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-s-8)
+      :val #x4
+      :print #x7
+      :string1 "unpack-s-8"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v2-32)
+      :val #x8
+      :print #x7
+      :string1 "unpack-v2-32"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v2-16)
+      :val #x4
+      :print #x7
+      :string1 "unpack-v2-16"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v2-8)
+      :val #x2
+      :print #x7
+      :string1 "unpack-v2-8"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v3-32)
+      :val #xc
+      :print #x7
+      :string1 "unpack-v3-32"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v3-16)
+      :val #x6
+      :print #x7
+      :string1 "unpack-v3-16"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v3-8)
+      :val #x3
+      :print #x7
+      :string1 "unpack-v3-8"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v4-32)
+      :val #x10
+      :print #x7
+      :string1 "unpack-v4-32"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v4-16)
+      :val #x8
+      :print #x7
+      :string1 "unpack-v4-16"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v4-8)
+      :val #x4
+      :print #x7
+      :string1 "unpack-v4-8"
+      )
+    (new 'static 'vif-disasm-element
+      :mask #x6f
+      :tag (vif-cmd-32 unpack-v4-5)
+      :val #x2
+      :print #x7
+      :string1 "unpack-v4-5"
+      )
+    (new 'static 'vif-disasm-element :print #x8)
+    )
+  )
+
+;; definition for function disasm-vif-details
+(defun disasm-vif-details ((arg0 symbol) (arg1 (pointer uint8)) (arg2 vif-cmd) (arg3 int))
+  (let ((s4-0 arg3))
+    (cond
+      ((= arg2 (vif-cmd unpack-v4-8))
+       (let ((s3-0 (&-> arg1 4)))
+         (dotimes (s2-0 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~2X #x~2X #x~2X #x~2X~%"
+             (+ (+ (* s2-0 4) 4) (the-as int arg1))
+             (-> s3-0 (* s2-0 4))
+             (-> s3-0 (+ (* s2-0 4) 1))
+             (-> s3-0 (+ (* s2-0 4) 2))
+             (-> s3-0 (+ (* s2-0 4) 3))
+             )
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-s-8))
+       (let ((s3-1 (&-> arg1 4)))
+         (dotimes (s2-1 s4-0)
+           (format arg0 "  #x~X:    #x~2x~%" (+ (+ s2-1 4) (the-as int arg1)) arg3)
+           (-> s3-1 (* 3 s2-1))
+           (-> s3-1 (+ (* 3 s2-1) 1))
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-v4-32))
+       (let ((s3-2 (the-as (pointer uint32) (&-> arg1 4))))
+         (dotimes (s2-2 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
+             (+ (+ (* s2-2 16) 4) (the-as int arg1))
+             (-> s3-2 (* s2-2 4))
+             (-> s3-2 (+ (* s2-2 4) 1))
+             (-> s3-2 (+ (* s2-2 4) 2))
+             (-> s3-2 (+ (* s2-2 4) 3))
+             )
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-v4-16))
+       (let ((s3-3 (the-as (pointer uint16) (&-> arg1 4))))
+         (dotimes (s2-3 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~4x #x~4x #x~4x #x~4x~%"
+             (+ (+ (* s2-3 8) 4) (the-as int arg1))
+             (-> s3-3 (* s2-3 4))
+             (-> s3-3 (+ (* s2-3 4) 1))
+             (-> s3-3 (+ (* s2-3 4) 2))
+             (-> s3-3 (+ (* s2-3 4) 3))
+             )
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-v3-32))
+       (let ((s3-4 (the-as (pointer uint32) (&-> arg1 4))))
+         (dotimes (s2-4 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~8x #x~8x #x~8x~%"
+             (+ (+ (* 12 s2-4) 4) (the-as int arg1))
+             (-> (&+ s3-4 (* 12 s2-4)) 0)
+             (-> s3-4 (+ (* 3 s2-4) 1))
+             (-> s3-4 (+ (* 3 s2-4) 2))
+             )
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-v3-16))
+       (let ((s3-5 (the-as (pointer uint16) (&-> arg1 4))))
+         (dotimes (s2-5 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~4x #x~4x #x~4x~%"
+             (+ (+ (* 6 s2-5) 4) (the-as int arg1))
+             (-> (&+ s3-5 (* 6 s2-5)) 0)
+             (-> s3-5 (+ (* 3 s2-5) 1))
+             (-> s3-5 (+ (* 3 s2-5) 2))
+             )
+           )
+         )
+       )
+      ((= arg2 (vif-cmd unpack-v2-16))
+       (let ((s3-6 (the-as (pointer uint16) (&-> arg1 4))))
+         (dotimes (s2-6 s4-0)
+           (format
+             arg0
+             "  #x~X:    #x~4x #x~4x~%"
+             (+ (+ (* s2-6 4) 4) (the-as int arg1))
+             (-> (&+ s3-6 (* 6 s2-6)) 0)
+             (-> s3-6 (+ (* 3 s2-6) 1))
+             )
+           )
+         )
+       )
+      (else
+        (format arg0 "  #x~X:    Data format #b~b not yet supported, add it for yourself!~%" (&-> arg1 4) arg2)
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function disasm-vif-tag
+;; INFO: Used lq/sq
+(defun disasm-vif-tag ((arg0 (pointer vif-tag)) (arg1 int) (arg2 symbol) (arg3 symbol))
+  (local-vars (sv-16 vif-cmd) (sv-32 (pointer vif-tag)) (sv-48 int) (sv-64 vif-unpack-imm))
+  (let ((gp-0 0))
+    (while (< gp-0 (* arg1 4))
+      (let ((s0-0 4))
+        (let ((s1-0 (-> arg0 0)))
+          (format arg2 "  #x~X:" arg0)
+          (dotimes (v1-0 (-> *vif-disasm-table* length))
+            (set! sv-16 (-> s1-0 cmd))
+            (when (= (logand sv-16 (-> *vif-disasm-table* v1-0 mask)) (-> *vif-disasm-table* v1-0 tag))
+              (let ((a0-12 (-> *vif-disasm-table* v1-0 print)))
+                (cond
+                  ((zero? a0-12)
+                   (format arg2 "  (~s :irq ~D)~%" (-> *vif-disasm-table* v1-0 string1) (-> s1-0 irq))
+                   )
+                  ((= a0-12 1)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     (-> s1-0 imm)
+                     )
+                   )
+                  ((= a0-12 2)
+                   (let ((t1-1 (-> s1-0 imm)))
+                     (format
+                       arg2
+                       "  (~s :irq ~D :wl ~D :cl ~D)~%"
+                       (-> *vif-disasm-table* v1-0 string1)
+                       (-> s1-0 irq)
+                       (shr (shl (the-as int t1-1) 48) 56)
+                       (shr (shl (the-as int t1-1) 56) 56)
+                       )
+                     )
+                   )
+                  ((= a0-12 3)
+                   (set! s0-0 8)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     (-> arg0 1)
+                     )
+                   )
+                  ((= a0-12 4)
+                   (set! s0-0 20)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :~s "
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> *vif-disasm-table* v1-0 string2)
+                     )
+                   (format arg2 "#x~X #x~X #x~X #x~X)~%" (-> arg0 1) (-> arg0 2) (-> arg0 3) (-> arg0 4))
+                   )
+                  ((= a0-12 5)
+                   (format
+                     arg2
+                     "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> s1-0 num)
+                     (-> s1-0 imm)
+                     )
+                   )
+                  ((= a0-12 6)
+                   (if (-> s1-0 imm)
+                       (set! s0-0 #x100000)
+                       (set! s0-0 (the-as int (* (-> s1-0 imm) 16)))
+                       )
+                   (format arg2 "  (~s :irq ~D :qwc #x~D)~%" (-> *vif-disasm-table* v1-0 string1) (-> s1-0 irq) (-> s1-0 imm))
+                   (set! sv-32 (&-> arg0 1))
+                   (set! sv-48 0)
+                   (while (< sv-48 (the-as int (-> s1-0 imm)))
+                     (format
+                       arg2
+                       "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
+                       (+ (+ (* sv-48 16) 4) (the-as int arg0))
+                       (-> sv-32 (* sv-48 4))
+                       (-> sv-32 (+ (* sv-48 4) 1))
+                       (-> sv-32 (+ (* sv-48 4) 2))
+                       (-> sv-32 (+ (* sv-48 4) 3))
+                       )
+                     (set! sv-48 (+ sv-48 1))
+                     )
+                   #f
+                   )
+                  ((= a0-12 7)
+                   (set! s0-0 (the-as int (+ (logand -4 (+ (* (-> *vif-disasm-table* v1-0 val) (-> s1-0 num)) 3)) 4)))
+                   (set! sv-64 (the-as vif-unpack-imm (-> s1-0 imm)))
+                   (format
+                     arg2
+                     "  (~s :irq ~D :num ~D :addr #x~X "
+                     (-> *vif-disasm-table* v1-0 string1)
+                     (-> s1-0 irq)
+                     (-> s1-0 num)
+                     (-> sv-64 addr)
+                     )
+                   (format
+                     arg2
+                     ":msk ~D :flg ~D :usn ~D [skip ~d])~%"
+                     (-> s1-0 msk)
+                     (-> sv-64 flg)
+                     (-> sv-64 usn)
+                     (the-as uint s0-0)
+                     )
+                   (if arg3
+                       (disasm-vif-details
+                         arg2
+                         (the-as (pointer uint8) arg0)
+                         (logand sv-16 (vif-cmd cmd-mask))
+                         (the-as int (-> s1-0 num))
+                         )
+                       )
+                   )
+                  ((= a0-12 8)
+                   (format arg2 "  (*unknown* vif-tag #x~X)~%" (-> s1-0 cmd))
+                   )
+                  )
+                )
+              (set! v1-0 (-> *vif-disasm-table* length))
+              )
+            )
+          )
+        (+! gp-0 s0-0)
+        (&+! arg0 s0-0)
+        )
+      )
+    (- gp-0 (* arg1 4))
+    )
+  )
+
+;; definition for function disasm-dma-tag
+;; WARN: Return type mismatch object vs none.
+(defun disasm-dma-tag ((arg0 dma-tag) (arg1 symbol))
+  (format arg1 "(dma-tag ")
+  (let ((t9-1 format)
+        (a0-2 arg1)
+        (a1-2 "~s")
+        (v1-1 (-> arg0 id))
+        )
+    (t9-1 a0-2 a1-2 (cond
+                      ((= v1-1 (dma-tag-id refe))
+                       "refe"
+                       )
+                      ((= v1-1 (dma-tag-id refs))
+                       "refs"
+                       )
+                      ((= v1-1 (dma-tag-id ret))
+                       "ret"
+                       )
+                      ((= v1-1 (dma-tag-id cnt))
+                       "cnt"
+                       )
+                      ((= v1-1 (dma-tag-id next))
+                       "next"
+                       )
+                      ((= v1-1 (dma-tag-id call))
+                       "call"
+                       )
+                      ((= v1-1 (dma-tag-id ref))
+                       "ref"
+                       )
+                      ((= v1-1 (dma-tag-id end))
+                       "end"
+                       )
+                      (else
+                        "*unknown*"
+                        )
+                      )
+          )
+    )
+  (if (> (-> arg0 addr) 0)
+      (format arg1 " :addr #x~8x" (-> arg0 addr))
+      )
+  (if (> (-> arg0 qwc) 0)
+      (format arg1 " :qwc ~d" (-> arg0 qwc))
+      )
+  (if (> (-> arg0 spr) 0)
+      (format arg1 " :spr ~d" (-> arg0 spr))
+      )
+  (if (> (-> arg0 irq) 0)
+      (format arg1 " :irq ~d" (-> arg0 irq))
+      )
+  (if (> (-> arg0 pce) 0)
+      (format arg1 " :pce ~d" (-> arg0 pce))
+      )
+  (format arg1 ")~%")
+  (none)
+  )
+
+;; definition for symbol *dma-disasm*, type symbol
+(define *dma-disasm* #t)
+
+;; definition for function disasm-dma-list
+;; WARN: Check prologue - tricky store of a0
+;; INFO: Used lq/sq
+(defun disasm-dma-list ((arg0 dma-packet) (arg1 symbol) (arg2 symbol) (arg3 symbol) (arg4 int))
+  (local-vars
+    (sv-16 object)
+    (sv-32 dma-packet)
+    (sv-48 int)
+    (sv-64 object)
+    (sv-80 object)
+    (sv-96 int)
+    (sv-112 dma-tag)
+    )
+  (set! sv-32 arg0)
+  (let ((s2-0 arg1)
+        (s3-0 arg2)
+        (gp-0 arg3)
+        (s1-0 arg4)
+        )
+    (if s3-0
+        (format gp-0 "~%--- ~X -----------------------------~%" sv-32)
+        )
+    (let ((s0-0 #f))
+      (let ((s4-0 0)
+            (s5-0 0)
+            )
+        (set! sv-16 0)
+        (set! sv-48 0)
+        (set! sv-64 0)
+        (set! sv-80 1)
+        (set! sv-96 -1)
+        (set! sv-112 (new 'static 'dma-tag))
+        (while (not s0-0)
+          (let ((t9-1 valid?)
+                (a0-2 sv-32)
+                (a1-2 #f)
+                (a2-2 "dma-list tag pointer")
+                )
+            (cond
+              ((not (t9-1 a0-2 (the-as type a1-2) a2-2 #t gp-0))
+               (format gp-0 "ERROR: dma-list tag pointer invalid~%")
+               (set! s0-0 'error)
+               )
+              (else
+                (set! sv-112 (-> sv-32 dma))
+                (when (not (or (zero? s5-0) (let ((t9-3 valid?)
+                                                  (a0-4 sv-16)
+                                                  (a1-4 #f)
+                                                  )
+                                              (set! a2-2 "dma-list data pointer")
+                                              (t9-3 a0-4 (the-as type a1-4) a2-2 #t gp-0)
+                                              )
+                               )
+                           )
+                  (format gp-0 "ERROR: dma-list data pointer invalid~%")
+                  (set! s0-0 'error)
+                  )
+                (when (logtest? (the-as dma-tag #x3ff0000) sv-112)
+                  (format gp-0 "ERROR: dma tag has data in reserved bits ~X~%" (the-as none a2-2))
+                  (set! s0-0 'error)
+                  )
+                )
+              )
+            )
+          (when (or s3-0 (= s0-0 'error))
+            (format gp-0 "#x~8x: " sv-32)
+            (cond
+              ((zero? sv-96)
+               (format gp-0 "  ")
+               )
+              ((= sv-96 1)
+               (format gp-0 "    ")
+               )
+              )
+            (disasm-dma-tag sv-112 gp-0)
+            )
+          (cond
+            (s0-0
+              )
+            ((or (= (-> sv-112 id) (dma-tag-id ref)) (= (-> sv-112 id) (dma-tag-id refs)) (zero? (-> sv-112 id)))
+             (set! sv-16 (-> sv-112 addr))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (when s2-0
+               (let ((v0-10 (disasm-vif-tag (&-> sv-32 vif0) 2 gp-0 (= s2-0 'details))))
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (+ sv-16 v0-10))
+                   (the-as int (- (* sv-48 4) (the-as uint (/ v0-10 4))))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+               )
+             (set! sv-32 (the-as dma-packet (&-> (the-as (pointer uint64) sv-32) 2)))
+             (if (= (-> sv-112 id) (dma-tag-id refe))
+                 (set! s0-0 #t)
+                 )
+             )
+            ((= (-> sv-112 id) (dma-tag-id cnt))
+             (set! sv-16 (&-> (the-as (pointer uint64) sv-32) 2))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (if s2-0
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) sv-32) 1))
+                   (the-as int (+ (* sv-48 4) 2))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+             (set! sv-32 (the-as dma-packet (+ (the-as uint sv-32) (* (+ sv-48 1) 16))))
+             sv-32
+             )
+            ((= (-> sv-112 id) (dma-tag-id next))
+             (set! sv-16 (&-> (the-as (pointer uint64) sv-32) 2))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (if s2-0
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) sv-32) 1))
+                   (the-as int (+ (* sv-48 4) 2))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+             (when (= sv-32 (-> sv-112 addr))
+               (format gp-0 "ERROR: next tag creates infinite loop.~%")
+               (set! s0-0 'error)
+               )
+             (set! sv-32 (the-as dma-packet (-> sv-112 addr)))
+             sv-32
+             )
+            ((= (-> sv-112 id) (dma-tag-id call))
+             (set! sv-16 (&-> (the-as (pointer uint64) sv-32) 2))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (if s2-0
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) sv-32) 1))
+                   (the-as int (+ (* sv-48 4) 2))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+             (set! sv-32 (the-as dma-packet (-> sv-112 addr)))
+             (set! sv-96 (+ sv-96 1))
+             (cond
+               ((zero? sv-96)
+                (set! sv-64 (&+ sv-16 sv-48))
+                (the-as (pointer uint64) sv-64)
+                )
+               (else
+                 (set! sv-80 (&+ sv-16 sv-48))
+                 (the-as (pointer uint64) sv-80)
+                 )
+               )
+             )
+            ((= (-> sv-112 id) (dma-tag-id ret))
+             (set! sv-16 (&-> (the-as (pointer uint64) sv-32) 2))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (if s2-0
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) sv-32) 1))
+                   (the-as int (+ (* sv-48 4) 2))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+             (let ((v1-123 sv-96))
+               (cond
+                 ((zero? v1-123)
+                  (set! sv-32 (the-as dma-packet sv-64))
+                  sv-32
+                  )
+                 ((= v1-123 1)
+                  (set! sv-32 (the-as dma-packet sv-80))
+                  sv-32
+                  )
+                 (else
+                   (set! s0-0 #t)
+                   )
+                 )
+               )
+             (set! sv-96 (+ sv-96 -1))
+             sv-96
+             )
+            ((= (-> sv-112 id) (dma-tag-id end))
+             (set! sv-16 (&-> (the-as (pointer uint64) sv-32) 2))
+             (set! sv-48 (the-as int (-> sv-112 qwc)))
+             (set! s0-0 #t)
+             (if s2-0
+                 (disasm-vif-tag
+                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) sv-32) 1))
+                   (the-as int (+ (* sv-48 4) 2))
+                   gp-0
+                   (= s2-0 'details)
+                   )
+                 )
+             )
+            (else
+              (format gp-0 "ERROR: Unknown DMA TAG command.~%")
+              (set! s0-0 'error)
+              )
+            )
+          (+! s4-0 sv-48)
+          (+! s5-0 1)
+          (if (and (>= s1-0 0) (>= s5-0 s1-0))
+              (set! s0-0 #t)
+              )
+          )
+        (when (or s3-0 (= s0-0 'error))
+          (format gp-0 "NOTICE: Total tags: ~d~%" s5-0)
+          (format gp-0 "NOTICE: Total QWC: ~d~%" s4-0)
+          (format gp-0 "--------------------------------~%~%")
+          )
+        )
+      (!= s0-0 'error)
+      )
+    )
+  )

@@ -1,0 +1,40 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function cam-stop
+(defun cam-stop ()
+  (kill-by-name "camera-master" *active-pool*)
+  (kill-by-name "camera-slave" *active-pool*)
+  (kill-by-name "camera-combiner" *active-pool*)
+  (set! *camera* #f)
+  (set! *camera-combiner* #f)
+  #f
+  )
+
+;; definition for function cam-start
+;; WARN: Return type mismatch int vs none.
+(defun cam-start ((arg0 symbol))
+  (cam-stop)
+  (set! *camera-combiner*
+        (the-as camera-combiner
+          (ppointer->process
+            (process-spawn camera-combiner :init cam-combiner-init :from *camera-dead-pool* :to *camera-pool*)
+            )
+          )
+        )
+  (set! *camera*
+        (the-as camera-master
+          (ppointer->process
+            (process-spawn camera-master :init cam-master-init :from *camera-master-dead-pool* :to *camera-pool*)
+            )
+          )
+        )
+  (if arg0
+      (reset-cameras)
+      )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(cam-start #f)

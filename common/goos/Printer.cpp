@@ -1,5 +1,11 @@
 #include "Printer.h"
 
+#include <cmath>
+#include <mutex>
+
+#include "common/goos/Object.h"
+#include "common/util/print_float.h"
+
 #include "third-party/fmt/core.h"
 
 namespace pretty_print {
@@ -19,9 +25,7 @@ const std::unordered_map<u32, std::string> const_floats = {{0x40490fda, "PI"},
 goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
-  u8 exp = (int_value >> 23) & 0xff;
-  u32 mant = int_value & 0x7fffff;
-  if ((exp == 0 && mant != 0) || exp == 0xff) {
+  if (!proper_float(value)) {
     // lg::warn("PS2-incompatible float (0x{:08X}) detected! Writing as the-as cast.", int_value);
     return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
   } else if (const_floats.find(int_value) != const_floats.end()) {
@@ -34,6 +38,7 @@ goos::Object float_representation(float value) {
 }
 
 std::unique_ptr<goos::Reader> pretty_printer_reader;
+std::mutex pretty_printer_reader_mutex;
 
 goos::Reader& get_pretty_printer_reader() {
   if (!pretty_printer_reader) {
@@ -43,7 +48,12 @@ goos::Reader& get_pretty_printer_reader() {
 }
 
 goos::Object to_symbol(const std::string& str) {
+  std::lock_guard<std::mutex> guard(pretty_printer_reader_mutex);
   return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
+}
+
+goos::Object new_string(const std::string& str) {
+  return goos::StringObject::make_new(str);
 }
 
 goos::Object build_list(const std::string& str) {
@@ -65,14 +75,12 @@ goos::Object build_list(const std::vector<goos::Object>& objects) {
 // build a list out of an array of forms
 goos::Object build_list(const goos::Object* objects, int count) {
   ASSERT(count);
-  auto car = objects[0];
-  goos::Object cdr;
-  if (count - 1) {
-    cdr = build_list(objects + 1, count - 1);
-  } else {
-    cdr = goos::Object::make_empty_list();
+  goos::Object result = goos::Object::make_empty_list();
+  for (int i = count; i-- > 0;) {
+    result = goos::PairObject::make_new(objects[i], result);
   }
-  return goos::PairObject::make_new(car, cdr);
+
+  return result;
 }
 
 // build a list out of a vector of strings that are converted to symbols

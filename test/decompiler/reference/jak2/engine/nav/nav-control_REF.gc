@@ -1,0 +1,4227 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *nav-triangle-test-count*, type int
+(define *nav-triangle-test-count* 0)
+
+;; definition for symbol *nav-last-triangle-test-count*, type int
+(define *nav-last-triangle-test-count* 0)
+
+;; definition for function debug-nav-validate-current-poly
+(defun debug-nav-validate-current-poly ((arg0 nav-mesh) (arg1 nav-poly) (arg2 vector))
+  (local-vars (sv-32 vector) (sv-36 float))
+  (when (not (point-in-poly? arg0 arg1 arg2))
+    (set! sv-32 (new 'stack-no-clear 'vector))
+    (project-point-into-poly-2d arg0 arg1 sv-32 arg2)
+    (set! sv-36 (vector-vector-xz-distance arg2 sv-32))
+    #f
+    )
+  )
+
+;; definition for function debug-report-nav-stats
+;; WARN: Return type mismatch int vs none.
+(defun debug-report-nav-stats ()
+  "Does nothing"
+  0
+  (none)
+  )
+
+;; definition for method 7 of type nav-control
+(defmethod relocate nav-control ((obj nav-control) (arg0 int))
+  (&+! (-> obj process) arg0)
+  (&+! (-> obj shape) arg0)
+  obj
+  )
+
+;; definition for method 41 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod remove! nav-control ((obj nav-control))
+  "Remove this nav-control from the nav-mesh it belongs to."
+  (remove-nav-control (-> obj state mesh) obj)
+  0
+  (none)
+  )
+
+;; definition for method 28 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod enable-extra-sphere! nav-control ((obj nav-control))
+  "Sets a flag indicating that this nav-control has an extra-nav-sphere."
+  (logior! (-> obj shape nav-flags) (nav-flags has-extra-sphere))
+  0
+  (none)
+  )
+
+;; definition for method 29 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod disable-extra-sphere! nav-control ((obj nav-control))
+  "Clears a flag indicating that this nav-control has an extra-nav-sphere."
+  (logclear! (-> obj shape nav-flags) (nav-flags has-extra-sphere))
+  0
+  (none)
+  )
+
+;; definition for method 30 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod copy-extra-nav-sphere! nav-control ((obj nav-control) (arg0 sphere))
+  "Copies the given [[sphere]] into `extra-nav-sphere`"
+  (mem-copy! (the-as pointer (-> obj extra-nav-sphere)) (the-as pointer arg0) 16)
+  0
+  (none)
+  )
+
+;; definition for method 31 of type nav-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-extra-nav-sphere-xyz! nav-control ((obj nav-control) (arg0 sphere))
+  "Set the `extra-nav-sphere` with the data in the given [[sphere]]"
+  (let ((f0-0 (-> obj extra-nav-sphere w)))
+    (set! (-> obj extra-nav-sphere quad) (-> arg0 quad))
+    (set! (-> obj extra-nav-sphere w) f0-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 32 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-extra-nav-sphere-radius! nav-control ((obj nav-control) (arg0 float))
+  "Set's `extra-nav-sphere`'s radius"
+  (set! (-> obj extra-nav-sphere w) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-nearest-y-thres! nav-control ((obj nav-control) (arg0 float))
+  "Set `nearest-y-threshold`"
+  (set! (-> obj nearest-y-threshold) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 34 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-nav-cull-radius! nav-control ((obj nav-control) (arg0 meters))
+  "Set `nav-cull-radius`"
+  (set! (-> obj nav-cull-radius) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 35 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-speed-scale! nav-control ((obj nav-control) (arg0 float))
+  "Set `speed-scale`"
+  (set! (-> obj speed-scale) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 36 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-target-speed! nav-control ((obj nav-control) (arg0 meters))
+  "Set `target-speed`"
+  (set! (-> obj target-speed) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 27 of type nav-control
+(defmethod get-target-speed nav-control ((obj nav-control))
+  (-> obj target-speed)
+  )
+
+;; definition for method 37 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-acceleration! nav-control ((obj nav-control) (arg0 meters))
+  "Set `acceleration`"
+  (set! (-> obj acceleration) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 38 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-turning-acceleration! nav-control ((obj nav-control) (arg0 meters))
+  "Set `turning-acceleration`"
+  (set! (-> obj turning-acceleration) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 39 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-max-rotation-rate! nav-control ((obj nav-control) (arg0 float))
+  "Set `max-rotation-rate`"
+  (set! (-> obj max-rotation-rate) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 25 of type nav-control
+(defmethod get-max-rotation-rate nav-control ((obj nav-control))
+  (-> obj max-rotation-rate)
+  )
+
+;; definition for method 40 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-sphere-mask! nav-control ((obj nav-control) (arg0 uint))
+  "TODO - probably an enum - Set `sphere-mask`"
+  (set! (-> obj sphere-mask) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 26 of type nav-control
+(defmethod get-sphere-mask nav-control ((obj nav-control))
+  (-> obj sphere-mask)
+  )
+
+;; definition for method 10 of type nav-control
+(defmethod point-in-bsphere? nav-control ((obj nav-control) (arg0 vector))
+  "Is the given point ([[vector]]) outside of the [[nav-mesh]]'s `bounds` [[sphere]] radius"
+  (let ((v1-1 (-> obj state mesh bounds)))
+    (>= (-> v1-1 w) (vector-vector-distance arg0 v1-1))
+    )
+  )
+
+;; definition for method 43 of type nav-control
+(defmethod display-marks? nav-control ((obj nav-control))
+  "Returns if navigation related marks should be displayed"
+  (and *display-nav-marks* (logtest? (-> obj flags) (nav-control-flag display-marks)))
+  )
+
+;; definition for method 42 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod init! nav-control ((obj nav-control) (arg0 collide-shape))
+  "Initializes the [[nav-control]], setting `shape` with the provided [[collide-shape]]"
+  (set! (-> obj callback-info) #f)
+  (logior! (-> obj flags) (nav-control-flag update-heading-from-facing output-sphere-hash))
+  (let ((v1-2 obj))
+    (set! (-> v1-2 sphere-mask) (the-as uint #x800f8))
+    )
+  0
+  (set! (-> obj sphere-count) 0)
+  (set! (-> obj sphere-array) (the-as (inline-array sphere) #f))
+  (set! (-> obj shape) arg0)
+  (set! (-> obj process) (-> arg0 process))
+  (set! (-> obj speed-scale) 1.0)
+  (set! (-> obj acceleration) 4096.0)
+  (set! (-> obj turning-acceleration) 4096.0)
+  (set! (-> obj max-rotation-rate) 131072.0)
+  (set! (-> obj target-speed) 0.0)
+  (set! (-> obj nav-cull-radius) 40960.0)
+  (reset! (-> obj state) obj)
+  0
+  (none)
+  )
+
+;; definition for function get-nav-control
+;; WARN: Function get-nav-control has a return type of none, but the expression builder found a return statement.
+(defun get-nav-control ((arg0 process-drawable) (arg1 nav-mesh))
+  "Given a [[process-drawable]] get the associated [[nav-control]] using either:
+- the provided `nav-mesh` arg
+- the `nav-mesh` associated with the [[process-drawable]]'s [[entity]]
+If no [[nav-mesh]] is set or found, set the [[entity]]'s [[entity-perm-status]] to TODO and return an error.
+Note that this doesn't actually return the nav-control, but instead adds this process-drawable to the nav-mesh."
+  (if (not arg1)
+      (set! arg1 (nav-mesh-from-res-tag (-> arg0 entity) 'nav-mesh-actor 0))
+      )
+  (when (not arg1)
+    (if (-> arg0 entity)
+        (logior! (-> arg0 entity extra perm status) (entity-perm-status error))
+        )
+    (go process-drawable-art-error "no nav-mesh")
+    (return 0)
+    )
+  (add-process-drawable-to-navmesh arg1 arg0 #t)
+  (none)
+  )
+
+;; definition for method 13 of type nav-control
+(defmethod find-nearest-poly-to-point nav-control ((obj nav-control) (arg0 vector))
+  "Find the nav-poly closest to this point in the nav-mesh."
+  (let ((gp-0 (new 'stack 'nav-find-poly-parms)))
+    (vector-! (-> gp-0 point) arg0 (-> obj state mesh bounds))
+    (set! (-> gp-0 y-threshold) (-> obj nearest-y-threshold))
+    (set! (-> gp-0 ignore) (the-as uint 2))
+    (find-nearest-poly-to-point-local (-> obj state mesh) gp-0)
+    (-> gp-0 poly)
+    )
+  )
+
+;; definition for method 14 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod project-point-onto-plane-of-poly nav-control ((obj nav-control) (arg0 nav-poly) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Move a point to the be on the plane containing the given nav-poly. Return the normal too"
+  (project-point-onto-plane-of-poly-local
+    (-> obj state mesh)
+    arg0
+    arg1
+    arg2
+    (vector-! (new 'stack-no-clear 'vector) arg3 (-> obj state mesh bounds))
+    )
+  (vector+! arg1 arg1 (-> obj state mesh bounds))
+  0
+  (none)
+  )
+
+;; definition for method 17 of type nav-control
+(defmethod is-in-mesh? nav-control ((obj nav-control) (arg0 vector) (arg1 float))
+  "Is this point in the mesh?"
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector-! v1-0 arg0 (-> obj state mesh bounds))
+    (let ((a1-1 (-> obj state mesh)))
+      (is-in-mesh-local? a1-1 v1-0 arg1 (-> obj nearest-y-threshold))
+      )
+    )
+  )
+
+;; definition for method 9 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw nav-control ((obj nav-control))
+  (local-vars (sv-32 nav-mesh) (sv-36 vector))
+  (when (display-marks? obj)
+    (debug-draw (-> obj state mesh))
+    (set! sv-32 (-> obj state mesh))
+    (set! sv-36 (new 'stack-no-clear 'vector))
+    (if (logtest? (-> obj shape nav-flags) (nav-flags has-root-sphere))
+        (add-debug-sphere
+          #t
+          (bucket-id debug-no-zbuf1)
+          (-> obj root-nav-sphere)
+          (-> obj root-nav-sphere w)
+          (new 'static 'rgba :g #xff :b #xff :a #x20)
+          )
+        )
+    (if (logtest? (-> obj shape nav-flags) (nav-flags has-extra-sphere))
+        (add-debug-sphere
+          #t
+          (bucket-id debug-no-zbuf1)
+          (-> obj extra-nav-sphere)
+          (-> obj extra-nav-sphere w)
+          (new 'static 'rgba :g #xff :b #xff :a #x20)
+          )
+        )
+    (dotimes (s5-0 (-> obj sphere-count))
+      (let ((v1-19 (-> obj state mesh work debug sphere-array s5-0)))
+        (vector+! sv-36 (-> sv-32 bounds) (the-as vector v1-19))
+        (add-debug-sphere
+          #t
+          (bucket-id debug-no-zbuf1)
+          sv-36
+          (- (-> v1-19 r) (-> obj shape nav-radius))
+          (new 'static 'rgba :g #xff :b #xff :a #x20)
+          )
+        )
+      )
+    (dotimes (s5-1 (the-as int (-> sv-32 static-sphere-count)))
+      (let ((s4-0 (-> sv-32 static-sphere s5-1)))
+        (add-debug-sphere #t (bucket-id debug2) s4-0 (-> s4-0 r) *color-blue*)
+        (let ((s3-0 add-debug-text-3d)
+              (s2-0 #t)
+              (s1-0 318)
+              )
+          (format (clear *temp-string*) "~D" s5-1)
+          (s3-0 s2-0 (the-as bucket-id s1-0) *temp-string* s4-0 (font-color cyan) (the-as vector2h #f))
+          )
+        )
+      )
+    (debug-draw (-> obj state))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type nav-control
+(defmethod find-poly-containing-point-1 nav-control ((obj nav-control) (arg0 vector))
+  "Find nav-poly containing this point."
+  (let ((v1-0 (new 'stack-no-clear 'nav-find-poly-parms)))
+    (vector-! (-> v1-0 point) arg0 (-> obj state mesh bounds))
+    (set! (-> v1-0 y-threshold) (-> obj nearest-y-threshold))
+    (set! (-> v1-0 ignore) (the-as uint 2))
+    (find-poly-containing-point-local (-> obj state mesh) v1-0)
+    )
+  )
+
+;; definition for method 15 of type nav-control
+(defmethod find-poly-containing-point-2 nav-control ((obj nav-control) (arg0 vector))
+  "Find nav-poly containing this point - same as 1"
+  (let ((v1-0 (new 'stack-no-clear 'nav-find-poly-parms)))
+    (vector-! (-> v1-0 point) arg0 (-> obj state mesh bounds))
+    (set! (-> v1-0 y-threshold) (-> obj nearest-y-threshold))
+    (set! (-> v1-0 ignore) (the-as uint 2))
+    (find-poly-containing-point-local (-> obj state mesh) v1-0)
+    )
+  )
+
+;; definition for method 16 of type nav-control
+;; WARN: Return type mismatch object vs symbol.
+(defmethod is-above-poly-max-height? nav-control ((obj nav-control) (arg0 vector) (arg1 float))
+  "Is the point in a poly, and lower than a max height?"
+  (let ((a1-1 (new 'stack-no-clear 'nav-find-poly-parms)))
+    (vector-! (-> a1-1 point) arg0 (-> obj state mesh bounds))
+    (set! (-> a1-1 y-threshold) (-> obj nearest-y-threshold))
+    (set! (-> a1-1 ignore) (the-as uint 2))
+    (the-as symbol (and (find-poly-containing-point-local (-> obj state mesh) a1-1)
+                        (< (-> arg0 y) (+ (-> obj state mesh bounds y) arg1))
+                        )
+            )
+    )
+  )
+
+;; definition for method 45 of type nav-control
+(defmethod find-first-sphere-intersecting-ray nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 vector))
+  "Find the first sphere that this ray intersects"
+  (let ((s5-0 (the-as sphere #f)))
+    (let ((f30-0 -0.000001))
+      (countdown (s1-0 (-> obj sphere-count))
+        (let* ((s0-0 (-> obj sphere-array s1-0))
+               (f0-1 (ray-circle-intersect arg0 arg1 s0-0 (-> s0-0 r)))
+               )
+          (when (< f30-0 f0-1)
+            (set! s5-0 s0-0)
+            (set! f30-0 f0-1)
+            )
+          )
+        )
+      (set! (-> arg2 x) f30-0)
+      )
+    s5-0
+    )
+  )
+
+;; definition for function add-nav-sphere
+;; WARN: Return type mismatch int vs none.
+(defun add-nav-sphere ((nav nav-control) (sphere sphere) (max-spheres int))
+  "Adds the given [[sphere]] to the [[nav-control]]'s `sphere-array` so long as
+`max-spheres` is less than [[nav-control]]'s `sphere-count`"
+  (local-vars (a2-4 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (when (< (-> nav sphere-count) max-spheres)
+      (let ((v1-3 (-> nav sphere-array (-> nav sphere-count))))
+        (let ((a2-3 sphere)
+              (a3-0 (-> nav root-nav-sphere))
+              )
+          (.lvf vf2 (&-> a2-3 quad))
+          (.lvf vf3 (&-> a3-0 quad))
+          )
+        (.sub.vf vf1 vf3 vf2)
+        (.mul.vf vf1 vf1 vf1)
+        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+        (.mov a2-4 vf1)
+        (let ((f1-0 a2-4)
+              (f0-1 (+ (-> sphere r) (-> nav shape nav-radius)))
+              )
+          (when (and (< 0.0 f1-0) (let ((f2-3 (+ f0-1 (-> nav nav-cull-radius))))
+                                    (< f1-0 (* f2-3 f2-3))
+                                    )
+                     )
+            (vector-! (the-as vector v1-3) (the-as vector sphere) (-> nav state mesh bounds))
+            (set! (-> v1-3 r) f0-1)
+            (+! (-> nav sphere-count) 1)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for function add-collide-shape-spheres
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun add-collide-shape-spheres ((arg0 nav-control) (arg1 collide-shape) (arg2 sphere))
+  (local-vars (a2-6 float) (t0-4 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (when (logtest? (-> arg1 nav-flags) (nav-flags has-root-sphere))
+      (set! (-> arg2 quad) (-> arg1 trans quad))
+      (set! (-> arg2 r) (-> arg1 nav-radius))
+      (let ((v1-4 arg0)
+            (a3-2 16)
+            )
+        (when (< (-> v1-4 sphere-count) a3-2)
+          (let ((a3-5 (-> v1-4 sphere-array (-> v1-4 sphere-count))))
+            (let ((t0-3 arg2)
+                  (t1-0 (-> v1-4 root-nav-sphere))
+                  )
+              (.lvf vf2 (&-> t0-3 quad))
+              (.lvf vf3 (&-> t1-0 quad))
+              )
+            (.sub.vf vf1 vf3 vf2)
+            (.mul.vf vf1 vf1 vf1)
+            (.add.z.vf vf1 vf1 vf1 :mask #b1)
+            (.mov t0-4 vf1)
+            (let ((f1-0 t0-4)
+                  (f0-2 (+ (-> arg2 r) (-> v1-4 shape nav-radius)))
+                  )
+              (when (and (< 0.0 f1-0) (let ((f2-3 (+ f0-2 (-> v1-4 nav-cull-radius))))
+                                        (< f1-0 (* f2-3 f2-3))
+                                        )
+                         )
+                (vector-! (the-as vector a3-5) (the-as vector arg2) (-> v1-4 state mesh bounds))
+                (set! (-> a3-5 r) f0-2)
+                (+! (-> v1-4 sphere-count) 1)
+                )
+              )
+            )
+          )
+        )
+      0
+      )
+    (when (logtest? (-> arg1 nav-flags) (nav-flags has-extra-sphere))
+      (let ((v1-9 arg0)
+            (a0-1 (-> arg1 process nav extra-nav-sphere))
+            (a1-2 16)
+            )
+        (when (< (-> v1-9 sphere-count) a1-2)
+          (let ((a1-5 (-> v1-9 sphere-array (-> v1-9 sphere-count))))
+            (let ((a2-5 a0-1)
+                  (a3-6 (-> v1-9 root-nav-sphere))
+                  )
+              (.lvf vf2 (&-> a2-5 quad))
+              (.lvf vf3 (&-> a3-6 quad))
+              )
+            (.sub.vf vf1 vf3 vf2)
+            (.mul.vf vf1 vf1 vf1)
+            (.add.z.vf vf1 vf1 vf1 :mask #b1)
+            (.mov a2-6 vf1)
+            (let ((f1-1 a2-6)
+                  (f0-4 (+ (-> a0-1 w) (-> v1-9 shape nav-radius)))
+                  )
+              (when (and (< 0.0 f1-1) (let ((f2-9 (+ f0-4 (-> v1-9 nav-cull-radius))))
+                                        (< f1-1 (* f2-9 f2-9))
+                                        )
+                         )
+                (vector-! (the-as vector a1-5) a0-1 (-> v1-9 state mesh bounds))
+                (set! (-> a1-5 r) f0-4)
+                (+! (-> v1-9 sphere-count) 1)
+                )
+              )
+            )
+          )
+        )
+      0
+      )
+    (none)
+    )
+  )
+
+;; definition for method 46 of type nav-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod find-sphere-ids-from-sphere-hash nav-control ((obj nav-control) (arg0 symbol))
+  "Use sphere-hash to look up navigation sphere IDs and save them."
+  (let ((s5-0 (new 'stack-no-clear 'find-nav-sphere-ids-params)))
+    (set! (-> s5-0 bsphere quad) (-> obj root-nav-sphere quad))
+    (+! (-> s5-0 bsphere r) (-> obj nav-cull-radius))
+    (set! (-> s5-0 max-len) 16)
+    (set! (-> s5-0 mask) (-> obj sphere-mask))
+    (set! (-> s5-0 array) (-> obj sphere-id-array))
+    (set! (-> s5-0 y-threshold) (-> obj nearest-y-threshold))
+    (find-nav-sphere-ids (-> obj state mesh sphere-hash) s5-0)
+    (set! (-> obj sphere-count) (-> s5-0 len))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 23 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-spheres-from-nav-ids nav-control ((obj nav-control))
+  "Set up spheres from sphere ids previously found by find-sphere-ids-from-sphere-hash"
+  (let ((v1-2 (-> obj state mesh sphere-hash sphere-array))
+        (a1-0 (-> obj sphere-id-array))
+        (a2-1 (-> obj state mesh bounds))
+        (a3-0 (-> obj root-nav-sphere))
+        (t0-0 (-> obj sphere-count))
+        )
+    (dotimes (t1-0 t0-0)
+      (let ((t3-0 (-> v1-2 (-> a1-0 t1-0)))
+            (t2-4 (-> obj sphere-array t1-0))
+            )
+        (vector-! (the-as vector t2-4) (the-as vector t3-0) a2-1)
+        (set! (-> t2-4 r) (+ (-> t3-0 r) (-> a3-0 w)))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type nav-control-cfs-work
+(deftype nav-control-cfs-work (structure)
+  ((in-dir              vector  :inline   :offset-assert   0)
+   (right-dir           vector  :inline   :offset-assert  16)
+   (best-dir            vector  2 :inline :offset-assert  32)
+   (temp-dir            vector  2 :inline :offset-assert  64)
+   (away-dir            vector  :inline   :offset-assert  96)
+   (best-dir-angle      degrees 2         :offset-assert 112)
+   (ignore-mask         uint64            :offset-assert 120)
+   (initial-ignore-mask uint64            :offset-assert 128)
+   (i-sphere            int32             :offset-assert 136)
+   (i-first-sphere      int32             :offset-assert 140)
+   (i-inside-sphere     int32             :offset-assert 144)
+   (inside-sphere-dist  float             :offset-assert 148)
+   (sign                float             :offset-assert 152)
+   (travel-len          float             :offset-assert 156)
+   (dist2               float             :offset-assert 160)
+   (inside-dist         float             :offset-assert 164)
+   (rand-angle          float             :offset-assert 168)
+   (dir-update          basic             :offset-assert 172)
+   (debug-offset        vector  :inline   :offset-assert 176)
+   )
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
+
+;; definition for method 3 of type nav-control-cfs-work
+(defmethod inspect nav-control-cfs-work ((obj nav-control-cfs-work))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'nav-control-cfs-work)
+  (format #t "~1Tin-dir: #<vector @ #x~X>~%" (-> obj in-dir))
+  (format #t "~1Tright-dir: #<vector @ #x~X>~%" (-> obj right-dir))
+  (format #t "~1Tbest-dir[2] @ #x~X~%" (-> obj best-dir))
+  (format #t "~1Ttemp-dir[2] @ #x~X~%" (-> obj temp-dir))
+  (format #t "~1Taway-dir: #<vector @ #x~X>~%" (-> obj away-dir))
+  (format #t "~1Tbest-dir-angle[2] @ #x~X~%" (-> obj best-dir-angle))
+  (format #t "~1Tignore-mask: ~D~%" (-> obj ignore-mask))
+  (format #t "~1Tinitial-ignore-mask: ~D~%" (-> obj initial-ignore-mask))
+  (format #t "~1Ti-sphere: ~D~%" (-> obj i-sphere))
+  (format #t "~1Ti-first-sphere: ~D~%" (-> obj i-first-sphere))
+  (format #t "~1Ti-inside-sphere: ~D~%" (-> obj i-inside-sphere))
+  (format #t "~1Tinside-sphere-dist: ~f~%" (-> obj inside-sphere-dist))
+  (format #t "~1Tsign: ~f~%" (-> obj sign))
+  (format #t "~1Ttravel-len: ~f~%" (-> obj travel-len))
+  (format #t "~1Tdist2: ~f~%" (-> obj dist2))
+  (format #t "~1Tinside-dist: ~f~%" (-> obj inside-dist))
+  (format #t "~1Trand-angle: ~f~%" (-> obj rand-angle))
+  (format #t "~1Tdir-update: ~A~%" (-> obj dir-update))
+  (format #t "~1Tdebug-offset: #<vector @ #x~X>~%" (-> obj debug-offset))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function circle-tangent-directions
+;; INFO: Used lq/sq
+(defun circle-tangent-directions ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((t1-0 (new 'stack-no-clear 'vector))
+          (t0-0 (new 'stack-no-clear 'vector))
+          (v1-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-! t1-0 arg1 arg0)
+      (set! (-> t1-0 y) 0.0)
+      (let ((a0-1 t0-0))
+        (let ((t3-2 t1-0))
+          (set! (-> a0-1 quad) (-> t3-2 quad))
+          )
+        (let ((f0-1 1.0))
+          (.lvf vf1 (&-> a0-1 quad))
+          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (let ((t2-3 f0-1))
+            (.mov vf3 t2-3)
+            )
+          )
+        (.mul.x.vf acc vf0 vf2 :mask #b1000)
+        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> a0-1 quad) vf1)
+        )
+      (set! (-> v1-0 quad) (-> t0-0 quad))
+      (set! (-> v1-0 x) (-> t0-0 z))
+      (set! (-> v1-0 z) (- (-> t0-0 x)))
+      (let* ((f0-5 (-> arg1 w))
+             (f1-1 (vector-dot t0-0 t1-0))
+             (f0-6 (fmin f0-5 f1-1))
+             (f2-0 f1-1)
+             (f2-2 (* f2-0 f2-0))
+             (f3-0 f0-6)
+             (f2-4 (sqrtf (- f2-2 (* f3-0 f3-0))))
+             (f3-4 (/ 1.0 f1-1))
+             (f1-3 (* f2-4 f3-4))
+             (f0-7 (* f0-6 f3-4))
+             (a0-9 (new 'stack-no-clear 'vector))
+             )
+        (vector-float*! a0-9 t0-0 f1-3)
+        (let ((t0-1 arg2))
+          (let ((a1-3 a0-9))
+            (let ((a2-1 v1-0))
+              (let ((t1-1 f0-7))
+                (.mov vf7 t1-1)
+                )
+              (.lvf vf5 (&-> a2-1 quad))
+              )
+            (.lvf vf4 (&-> a1-3 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> t0-1 quad) vf6)
+          )
+        (let ((v0-0 arg3))
+          (let ((a1-4 (- f0-7)))
+            (.mov vf7 a1-4)
+            )
+          (.lvf vf5 (&-> v1-0 quad))
+          (.lvf vf4 (&-> a0-9 quad))
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> v0-0 quad) vf6)
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function circle-ray-intersection?
+(defun circle-ray-intersection? ((arg0 vector) (arg1 vector) (arg2 float) (arg3 vector))
+  (let ((f1-1 (- (-> arg3 x) (-> arg0 x)))
+        (f0-2 (- (-> arg3 z) (-> arg0 z)))
+        )
+    (when (< (fabs (- (* (-> arg1 z) f1-1) (* (-> arg1 x) f0-2))) (-> arg3 w))
+      (let ((f2-7 (+ (* (-> arg1 x) f1-1) (* (-> arg1 z) f0-2))))
+        (cond
+          ((< f2-7 0.0)
+           (let ((f0-5 (+ (* f1-1 f1-1) (* f0-2 f0-2)))
+                 (f1-4 (-> arg3 w))
+                 )
+             (< f0-5 (* f1-4 f1-4))
+             )
+           )
+          ((< arg2 f2-7)
+           (let* ((f0-8 (- (-> arg3 x) (+ (-> arg0 x) (* (-> arg1 x) arg2))))
+                  (f1-10 (- (-> arg3 z) (+ (-> arg0 z) (* (-> arg1 z) arg2))))
+                  (f0-11 (+ (* f0-8 f0-8) (* f1-10 f1-10)))
+                  (f1-13 (-> arg3 w))
+                  )
+             (< f0-11 (* f1-13 f1-13))
+             )
+           )
+          (else
+            #t
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function find-closest-circle-ray-intersection
+(defun find-closest-circle-ray-intersection ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int) (arg4 (inline-array vector)) (arg5 int))
+  1.0
+  (let ((v0-0 -1))
+    (vector-float*! (new 'stack-no-clear 'vector) arg1 arg2)
+    (let ((v1-3 0))
+      (b! #t cfg-18 :delay (nop!))
+      (label cfg-1)
+      (b! (logtest? arg5 (ash 1 v1-3)) cfg-17 :delay (empty-form))
+      (let* ((t4-0 arg0)
+             (t3-1 arg1)
+             (f0-2 arg2)
+             (t2-6 (-> arg4 v1-3))
+             (f2-1 (- (-> t2-6 x) (-> t4-0 x)))
+             (f1-2 (- (-> t2-6 z) (-> t4-0 z)))
+             )
+        (b!
+          (not (when (< (fabs (- (* (-> t3-1 z) f2-1) (* (-> t3-1 x) f1-2))) (-> t2-6 w))
+                 (let ((f3-7 (+ (* (-> t3-1 x) f2-1) (* (-> t3-1 z) f1-2))))
+                   (cond
+                     ((< f3-7 0.0)
+                      (let ((f0-5 (+ (* f2-1 f2-1) (* f1-2 f1-2)))
+                            (f1-5 (-> t2-6 w))
+                            )
+                        (< f0-5 (* f1-5 f1-5))
+                        )
+                      )
+                     ((< f0-2 f3-7)
+                      (let* ((f1-9 (- (-> t2-6 x) (+ (-> t4-0 x) (* (-> t3-1 x) f0-2))))
+                             (f2-5 (- (-> t2-6 z) (+ (-> t4-0 z) (* (-> t3-1 z) f0-2))))
+                             (f0-10 (+ (* f1-9 f1-9) (* f2-5 f2-5)))
+                             (f1-12 (-> t2-6 w))
+                             )
+                        (< f0-10 (* f1-12 f1-12))
+                        )
+                      )
+                     (else
+                       #t
+                       )
+                     )
+                   )
+                 )
+               )
+          cfg-17
+          :delay (empty-form)
+          )
+        )
+      (set! v0-0 v1-3)
+      (b! #t cfg-20 :delay (nop!))
+      (label cfg-17)
+      (+! v1-3 1)
+      (label cfg-18)
+      (b! (< v1-3 arg3) cfg-1)
+      )
+    (label cfg-20)
+    v0-0
+    )
+  )
+
+;; definition for function compute-dir-parm
+(defun compute-dir-parm ((arg0 vector) (arg1 vector) (arg2 vector))
+  (let ((a2-1 (the-as number (vector-dot arg0 arg2)))
+        (a3-1 #xffffffff80000000)
+        (v1-2 #x3f800000)
+        )
+    (* (the-as float (logior (logand (the-as uint a2-1) a3-1) v1-2)) (- 1.0 (vector-dot arg0 arg1)))
+    )
+  )
+
+;; definition for method 18 of type nav-control
+;; INFO: Used lq/sq
+(defmethod avoid-spheres-1! nav-control ((obj nav-control) (arg0 nav-avoid-spheres-params))
+  (local-vars (v1-28 int) (a0-29 int) (a1-3 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'nav-control-cfs-work)))
+      (set! (-> s5-0 in-dir quad) (-> arg0 travel quad))
+      (set! (-> s5-0 in-dir y) 0.0)
+      (let ((v1-1 (-> s5-0 in-dir)))
+        (let ((f0-1 1.0))
+          (.lvf vf1 (&-> v1-1 quad))
+          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (let ((a0-4 f0-1))
+            (.mov vf3 a0-4)
+            )
+          )
+        (.mul.x.vf acc vf0 vf2 :mask #b1000)
+        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-1 quad) vf1)
+        )
+      (set! (-> s5-0 travel-len) (vector-dot (-> s5-0 in-dir) (-> arg0 travel)))
+      (set! (-> s5-0 right-dir quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 right-dir x) (- (-> s5-0 in-dir z)))
+      (set! (-> s5-0 right-dir z) (-> s5-0 in-dir x))
+      (set! (-> s5-0 best-dir 0 quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 best-dir 1 quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 best-dir-angle 0) 0.0)
+      (set! (-> s5-0 best-dir-angle 1) 0.0)
+      (set! (-> s5-0 initial-ignore-mask) (the-as uint 0))
+      (set! (-> s5-0 i-inside-sphere) -1)
+      (set! (-> s5-0 inside-sphere-dist) 0.0)
+      (let ((f0-10 65536.0))
+        (set! (-> arg0 closest-sphere-dist2) (* f0-10 f0-10))
+        )
+      (dotimes (v1-10 (-> obj sphere-count))
+        (let ((a0-13 (-> obj sphere-array v1-10)))
+          (let ((a1-2 (-> arg0 current-pos))
+                (a2-0 a0-13)
+                )
+            (.lvf vf2 (&-> a1-2 quad))
+            (.lvf vf3 (&-> a2-0 quad))
+            )
+          (.sub.vf vf1 vf3 vf2)
+          (.mul.vf vf1 vf1 vf1)
+          (.add.z.vf vf1 vf1 vf1 :mask #b1)
+          (.mov a1-3 vf1)
+          (set! (-> s5-0 dist2) a1-3)
+          (let ((f0-14 (-> arg0 closest-sphere-dist2))
+                (f1-0 (-> s5-0 dist2))
+                (f2-0 (-> a0-13 r))
+                )
+            (set! (-> arg0 closest-sphere-dist2) (fmin f0-14 (- f1-0 (* f2-0 f2-0))))
+            )
+          (when (< (-> arg0 closest-sphere-dist2) 0.0)
+            (vector-! (the-as vector (-> s5-0 temp-dir)) (-> arg0 current-pos) (the-as vector a0-13))
+            (set! (-> s5-0 temp-dir 0 y) 0.0)
+            (if (< 0.0 (vector-dot (the-as vector (-> s5-0 temp-dir)) (-> s5-0 in-dir)))
+                (+! (-> s5-0 initial-ignore-mask) (ash 1 v1-10))
+                )
+            (set! (-> s5-0 inside-dist) (- (-> a0-13 r) (sqrtf (-> s5-0 dist2))))
+            (when (< (-> s5-0 inside-sphere-dist) (-> s5-0 inside-dist))
+              (set! (-> s5-0 i-inside-sphere) v1-10)
+              (set! (-> s5-0 inside-sphere-dist) (-> s5-0 inside-dist))
+              )
+            )
+          )
+        )
+      (set! (-> s5-0 i-first-sphere) (find-closest-circle-ray-intersection
+                                       (-> arg0 current-pos)
+                                       (-> s5-0 in-dir)
+                                       (-> s5-0 travel-len)
+                                       (-> obj sphere-count)
+                                       (-> obj sphere-array)
+                                       (the-as int (-> s5-0 initial-ignore-mask))
+                                       )
+            )
+      (let ((v1-13 -1))
+        (b! (!= (-> s5-0 i-first-sphere) v1-13) cfg-13 :delay (empty-form))
+        )
+      (set! (-> arg0 out-travel 0 quad) (-> arg0 travel quad))
+      (set! (-> arg0 out-travel 1 quad) (the-as uint128 0))
+      (set! (-> arg0 avoiding-sphere?) #f)
+      (b! #t cfg-43 :delay (nop!))
+      (label cfg-13)
+      (+! (-> s5-0 initial-ignore-mask) (ash 1 (-> s5-0 i-first-sphere)))
+      (let ((a1-17 (-> obj sphere-array (-> s5-0 i-first-sphere))))
+        (circle-tangent-directions
+          (-> arg0 current-pos)
+          a1-17
+          (the-as vector (-> s5-0 temp-dir))
+          (-> s5-0 temp-dir 1)
+          )
+        )
+      (dotimes (v1-20 2)
+        (let ((a0-28 (vector-dot (-> s5-0 right-dir) (-> s5-0 temp-dir v1-20))))
+          (shift-arith-right-32 a0-29 a0-28 31)
+          )
+        (let ((a0-30 (logand a0-29 1))
+              (f0-27 (- 1.0 (vector-dot (-> s5-0 in-dir) (-> s5-0 temp-dir v1-20))))
+              )
+          (set! (-> s5-0 best-dir a0-30 quad) (-> s5-0 temp-dir v1-20 quad))
+          (set! (-> s5-0 best-dir-angle a0-30) f0-27)
+          )
+        )
+      0
+      (set! (-> s5-0 sign) 1.0)
+      (let ((s3-0 0))
+        (b! #t cfg-34 :delay (nop!))
+        (label cfg-20)
+        (-> s5-0 i-first-sphere)
+        (set! (-> s5-0 dir-update) (the-as basic #t))
+        (set! (-> s5-0 ignore-mask) (-> s5-0 initial-ignore-mask))
+        (b! #t cfg-30 :delay (nop!))
+        (label cfg-21)
+        (+! (-> s5-0 ignore-mask) (ash 1 v1-28))
+        (circle-tangent-directions
+          (-> arg0 current-pos)
+          (-> obj sphere-array v1-28)
+          (the-as vector (-> s5-0 temp-dir))
+          (-> s5-0 temp-dir 1)
+          )
+        (set! (-> s5-0 dir-update) #f)
+        (dotimes (v1-30 2)
+          (let* ((f0-29 (-> s5-0 sign))
+                 (a1-31 (-> s5-0 temp-dir v1-30))
+                 (a0-39 (-> s5-0 in-dir))
+                 (a2-14 (-> s5-0 right-dir))
+                 (a3-7 (the-as number (vector-dot a1-31 a2-14)))
+                 (t0-1 #xffffffff80000000)
+                 (a2-16 #x3f800000)
+                 (f0-30 (* f0-29 (* (the-as float (logior (logand (the-as uint a3-7) (the-as uint t0-1)) a2-16))
+                                    (- 1.0 (vector-dot a1-31 a0-39))
+                                    )
+                           )
+                        )
+                 )
+            (when (< (-> s5-0 best-dir-angle s3-0) f0-30)
+              (set! (-> s5-0 best-dir s3-0 quad) (-> s5-0 temp-dir v1-30 quad))
+              (set! (-> s5-0 best-dir-angle s3-0) f0-30)
+              (set! (-> s5-0 dir-update) (the-as basic #t))
+              )
+            )
+          )
+        (label cfg-30)
+        (when (-> s5-0 dir-update)
+          (set! v1-28 (find-closest-circle-ray-intersection
+                        (-> arg0 current-pos)
+                        (-> s5-0 best-dir s3-0)
+                        (-> s5-0 travel-len)
+                        (-> obj sphere-count)
+                        (-> obj sphere-array)
+                        (the-as int (-> s5-0 ignore-mask))
+                        )
+                )
+          (b! (!= v1-28 -1) cfg-21 :delay (nop!))
+          )
+        (set! (-> s5-0 sign) (* -1.0 (-> s5-0 sign)))
+        (+! s3-0 1)
+        (label cfg-34)
+        (b! (< s3-0 2) cfg-20)
+        )
+      (when (!= (-> s5-0 i-inside-sphere) -1)
+        (let ((s4-1 (-> obj sphere-array (-> s5-0 i-inside-sphere))))
+          (vector-! (-> s5-0 away-dir) (-> arg0 current-pos) (the-as vector s4-1))
+          (set! (-> s5-0 away-dir y) 0.0)
+          (when (>= 40.96 (vector-length (-> s5-0 away-dir)))
+            (set! (-> s5-0 rand-angle) (* 65536.0 (rand-vu)))
+            (set! (-> s5-0 away-dir x) (cos (-> s5-0 rand-angle)))
+            (set! (-> s5-0 away-dir z) (sin (-> s5-0 rand-angle)))
+            )
+          (let ((v1-51 (-> s5-0 away-dir)))
+            (let ((f0-42 1.0))
+              (.lvf vf1 (&-> v1-51 quad))
+              (.mul.vf vf2 vf1 vf1 :mask #b111)
+              (let ((a0-60 f0-42))
+                (.mov vf3 a0-60)
+                )
+              )
+            (.mul.x.vf acc vf0 vf2 :mask #b1000)
+            (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+            (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+            (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+            (.wait.vf)
+            (.mul.vf vf1 vf1 Q :mask #b111)
+            (.nop.vf)
+            (.nop.vf)
+            (.nop.vf)
+            (.svf (&-> v1-51 quad) vf1)
+            )
+          (let ((f0-44 (/ (-> s5-0 inside-sphere-dist) (-> s4-1 r))))
+            (let ((v1-52 (-> s5-0 best-dir)))
+              (let ((a0-61 (-> s5-0 best-dir))
+                    (a1-39 (-> s5-0 away-dir))
+                    (f1-19 f0-44)
+                    )
+                (.lvf vf1 (&-> a0-61 0 quad))
+                (.lvf vf2 (&-> a1-39 quad))
+                (let ((a0-62 f1-19))
+                  (.mov vf4 a0-62)
+                  )
+                )
+              (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+              (.sub.vf vf2 vf2 vf1)
+              (.mul.x.vf vf2 vf2 vf4)
+              (.add.vf vf3 vf1 vf2 :mask #b111)
+              (.svf (&-> v1-52 0 quad) vf3)
+              )
+            (let ((v1-53 (-> s5-0 best-dir 1)))
+              (let ((a0-63 (-> s5-0 best-dir 1))
+                    (a1-40 (-> s5-0 away-dir))
+                    )
+                (.lvf vf1 (&-> a0-63 quad))
+                (.lvf vf2 (&-> a1-40 quad))
+                )
+              (let ((a0-64 f0-44))
+                (.mov vf4 a0-64)
+                )
+              (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+              (.sub.vf vf2 vf2 vf1)
+              (.mul.x.vf vf2 vf2 vf4)
+              (.add.vf vf3 vf1 vf2 :mask #b111)
+              (.svf (&-> v1-53 quad) vf3)
+              )
+            )
+          )
+        (let ((v1-54 (-> s5-0 best-dir)))
+          (let ((f0-45 1.0))
+            (.lvf vf1 (&-> v1-54 0 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((a0-66 f0-45))
+              (.mov vf3 a0-66)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> v1-54 0 quad) vf1)
+          )
+        (let ((v1-55 (-> s5-0 best-dir 1)))
+          (let ((f0-46 1.0))
+            (.lvf vf1 (&-> v1-55 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((a0-68 f0-46))
+              (.mov vf3 a0-68)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> v1-55 quad) vf1)
+          )
+        )
+      (vector-dot (-> s5-0 in-dir) (the-as vector (-> s5-0 best-dir)))
+      (vector-dot (-> s5-0 in-dir) (-> s5-0 best-dir 1))
+      (let* ((f0-52 (vector-dot (-> arg0 pref-dir) (the-as vector (-> s5-0 best-dir))))
+             (a1-41 (if (< (vector-dot (-> arg0 pref-dir) (-> s5-0 best-dir 1)) f0-52)
+                        0
+                        1
+                        )
+                    )
+             (v1-65 (- 1 a1-41))
+             )
+        (vector-float*! (the-as vector (-> arg0 out-travel)) (-> s5-0 best-dir a1-41) (-> s5-0 travel-len))
+        (vector-float*! (-> arg0 out-travel 1) (-> s5-0 best-dir v1-65) (-> s5-0 travel-len))
+        )
+      )
+    0
+    (set! (-> arg0 avoiding-sphere?) #t)
+    (label cfg-43)
+    (-> arg0 avoiding-sphere?)
+    )
+  )
+
+;; definition for method 19 of type nav-control
+;; INFO: Used lq/sq
+(defmethod avoid-spheres-2! nav-control ((obj nav-control) (arg0 nav-avoid-spheres-params))
+  (local-vars (a0-32 int) (a1-3 float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'nav-control-cfs-work)))
+      (set! (-> s5-0 in-dir quad) (-> arg0 travel quad))
+      (set! (-> s5-0 in-dir y) 0.0)
+      (let ((v1-1 (-> s5-0 in-dir)))
+        (let ((f0-1 1.0))
+          (.lvf vf1 (&-> v1-1 quad))
+          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (let ((a0-4 f0-1))
+            (.mov vf3 a0-4)
+            )
+          )
+        (.mul.x.vf acc vf0 vf2 :mask #b1000)
+        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-1 quad) vf1)
+        )
+      (set! (-> s5-0 travel-len) (vector-dot (-> s5-0 in-dir) (-> arg0 travel)))
+      (set! (-> s5-0 right-dir quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 right-dir x) (- (-> s5-0 in-dir z)))
+      (set! (-> s5-0 right-dir z) (-> s5-0 in-dir x))
+      (set! (-> s5-0 best-dir 0 quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 best-dir 1 quad) (-> s5-0 in-dir quad))
+      (set! (-> s5-0 best-dir-angle 0) 0.0)
+      (set! (-> s5-0 best-dir-angle 1) 0.0)
+      (set! (-> s5-0 initial-ignore-mask) (the-as uint 0))
+      (let ((f0-9 65536.0))
+        (set! (-> arg0 closest-sphere-dist2) (* f0-9 f0-9))
+        )
+      (dotimes (v1-9 (-> obj sphere-count))
+        (let ((a0-13 (-> obj sphere-array v1-9)))
+          (let ((a1-2 (-> arg0 current-pos))
+                (a2-0 a0-13)
+                )
+            (.lvf vf2 (&-> a1-2 quad))
+            (.lvf vf3 (&-> a2-0 quad))
+            )
+          (.sub.vf vf1 vf3 vf2)
+          (.mul.vf vf1 vf1 vf1)
+          (.add.z.vf vf1 vf1 vf1 :mask #b1)
+          (.mov a1-3 vf1)
+          (set! (-> s5-0 dist2) a1-3)
+          (let ((f0-13 (-> arg0 closest-sphere-dist2))
+                (f1-0 (-> s5-0 dist2))
+                (f2-0 (-> a0-13 r))
+                )
+            (set! (-> arg0 closest-sphere-dist2) (fmin f0-13 (- f1-0 (* f2-0 f2-0))))
+            )
+          (when (< (-> arg0 closest-sphere-dist2) 0.0)
+            (vector-! (the-as vector (-> s5-0 temp-dir)) (-> arg0 current-pos) (the-as vector a0-13))
+            (set! (-> s5-0 temp-dir 0 y) 0.0)
+            (if (< 0.0 (vector-dot (the-as vector (-> s5-0 temp-dir)) (-> s5-0 in-dir)))
+                (+! (-> s5-0 initial-ignore-mask) (ash 1 v1-9))
+                )
+            )
+          )
+        )
+      (set! (-> s5-0 i-first-sphere) (find-closest-circle-ray-intersection
+                                       (-> arg0 current-pos)
+                                       (-> s5-0 in-dir)
+                                       (-> s5-0 travel-len)
+                                       (-> obj sphere-count)
+                                       (-> obj sphere-array)
+                                       (the-as int (-> s5-0 initial-ignore-mask))
+                                       )
+            )
+      (let ((v1-12 -1))
+        (b! (!= (-> s5-0 i-first-sphere) v1-12) cfg-11 :delay (empty-form))
+        )
+      (set! (-> arg0 out-travel 0 quad) (-> arg0 travel quad))
+      (set! (-> arg0 out-travel 1 quad) (the-as uint128 0))
+      (set! (-> arg0 avoiding-sphere?) #f)
+      (b! #t cfg-21 :delay (nop!))
+      (label cfg-11)
+      (+! (-> s5-0 initial-ignore-mask) (ash 1 (-> s5-0 i-first-sphere)))
+      (let ((a1-15 (-> obj sphere-array (-> s5-0 i-first-sphere))))
+        (circle-tangent-directions
+          (-> arg0 current-pos)
+          a1-15
+          (the-as vector (-> s5-0 temp-dir))
+          (-> s5-0 temp-dir 1)
+          )
+        )
+      (dotimes (v1-19 2)
+        (let ((a0-31 (vector-dot (-> s5-0 right-dir) (-> s5-0 temp-dir v1-19))))
+          (shift-arith-right-32 a0-32 a0-31 31)
+          )
+        (let ((a0-33 (logand a0-32 1))
+              (f0-22 (- 1.0 (vector-dot (-> s5-0 in-dir) (-> s5-0 temp-dir v1-19))))
+              )
+          (set! (-> s5-0 best-dir a0-33 quad) (-> s5-0 temp-dir v1-19 quad))
+          (set! (-> s5-0 best-dir-angle a0-33) f0-22)
+          )
+        )
+      0
+      (vector-dot (-> s5-0 in-dir) (the-as vector (-> s5-0 best-dir)))
+      (vector-dot (-> s5-0 in-dir) (-> s5-0 best-dir 1))
+      (let* ((f0-28 (vector-dot (-> arg0 pref-dir) (the-as vector (-> s5-0 best-dir))))
+             (a1-25 (if (< (vector-dot (-> arg0 pref-dir) (-> s5-0 best-dir 1)) f0-28)
+                        0
+                        1
+                        )
+                    )
+             (v1-32 (- 1 a1-25))
+             )
+        (vector-float*! (the-as vector (-> arg0 out-travel)) (-> s5-0 best-dir a1-25) (-> s5-0 travel-len))
+        (vector-float*! (-> arg0 out-travel 1) (-> s5-0 best-dir v1-32) (-> s5-0 travel-len))
+        )
+      )
+    0
+    (set! (-> arg0 avoiding-sphere?) #t)
+    (label cfg-21)
+    (-> arg0 avoiding-sphere?)
+    )
+  )
+
+;; definition for method 21 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod clamp-vector-to-mesh-no-gaps nav-control ((obj nav-control) (arg0 vector) (arg1 nav-poly) (arg2 vector) (arg3 clamp-travel-vector-to-mesh-return-info))
+  (clamp-vector-to-mesh-no-gaps (-> obj state mesh) arg0 arg1 arg2 arg3)
+  0
+  (none)
+  )
+
+;; definition for method 19 of type nav-mesh
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 180 signed mismatch
+;; WARN: Stack slot offset 184 signed mismatch
+;; WARN: Stack slot offset 164 signed mismatch
+;; WARN: Stack slot offset 168 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod clamp-vector-to-mesh-no-gaps nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 nav-poly) (arg2 vector) (arg3 clamp-travel-vector-to-mesh-return-info))
+  (local-vars
+    (v1-12 symbol)
+    (sv-112 nav-ray)
+    (sv-116 vector)
+    (sv-120 symbol)
+    (sv-124 nav-mesh-work)
+    (sv-128 int)
+    (sv-136 int)
+    (sv-144 nav-mesh-work)
+    (sv-148 nav-poly)
+    (sv-152 uint)
+    (sv-156 (pointer int8))
+    (sv-160 (pointer int8))
+    (sv-164 float)
+    (sv-168 float)
+    (sv-172 vector)
+    (sv-176 vector)
+    (sv-180 float)
+    (sv-184 float)
+    (sv-188 uint)
+    (sv-192 vector)
+    (sv-196 vector)
+    (sv-200 float)
+    (sv-204 float)
+    (sv-208 float)
+    (sv-212 float)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> arg3 found-boundary) #f)
+    (set! (-> arg3 gap-poly) #f)
+    (set! sv-112 (new 'stack-no-clear 'nav-ray))
+    (set! sv-116 (new 'stack-no-clear 'vector))
+    (set! sv-120 (the-as symbol #f))
+    (set! sv-124 (-> obj work))
+    (vector-! sv-116 arg0 (-> obj bounds))
+    (set! (-> sv-112 current-poly) arg1)
+    (set! (-> sv-112 current-pos quad) (-> sv-116 quad))
+    (vector+! (-> sv-112 dest-pos) sv-116 arg2)
+    (let* ((t2-0 obj)
+           (v1-11 (-> sv-112 dest-pos))
+           (a1-4 (-> arg1 vertex-count))
+           (a2-1 (-> arg1 vertex))
+           (t1-4 (-> t2-0 work vert0-table))
+           (t2-2 (-> t2-0 work vert1-table))
+           )
+      (dotimes (t3-0 (the-as int a1-4))
+        (let* ((t4-3 (-> a2-1 (-> t1-4 t3-0)))
+               (t5-3 (-> a2-1 (-> t2-2 t3-0)))
+               (f0-1 (- (-> t4-3 z) (-> t5-3 z)))
+               (f1-2 (- (-> t5-3 x) (-> t4-3 x)))
+               (f2-2 (- (-> v1-11 x) (-> t4-3 x)))
+               (f3-2 (- (-> v1-11 z) (-> t4-3 z)))
+               (f0-3 (+ (* f2-2 f0-1) (* f3-2 f1-2)))
+               )
+          (when (< 0.0 f0-3)
+            (set! v1-12 #f)
+            (goto cfg-7)
+            )
+          )
+        )
+      )
+    (set! v1-12 #t)
+    (label cfg-7)
+    (b! v1-12 cfg-41 :delay (nop!))
+    (set! sv-128 0)
+    (let ((v1-16 sv-112))
+      (vector-! (-> v1-16 dir) (-> v1-16 dest-pos) (-> v1-16 current-pos))
+      (set! (-> v1-16 dir y) 0.0)
+      (let ((a1-6 (-> v1-16 dir)))
+        (let ((f0-5 1.0))
+          (.lvf vf1 (&-> a1-6 quad))
+          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (let ((a2-4 f0-5))
+            (.mov vf3 a2-4)
+            )
+          )
+        (.mul.x.vf acc vf0 vf2 :mask #b1000)
+        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> a1-6 quad) vf1)
+        )
+      (set! (-> v1-16 next-poly) #f)
+      (set! (-> v1-16 len) 0.0)
+      (set! (-> v1-16 last-edge) -1)
+      (set! (-> v1-16 terminated) #f)
+      (set! (-> v1-16 reached-dest) #f)
+      (set! (-> v1-16 hit-boundary) #f)
+      (set! (-> v1-16 hit-gap) #f)
+      (set! (-> v1-16 ignore) (the-as uint 3))
+      )
+    0
+    (until (or (>= sv-128 15) (-> sv-112 terminated))
+      (set! sv-128 (+ sv-128 1))
+      (let ((a1-9 obj)
+            (v1-20 sv-112)
+            )
+        (set! sv-136 -1)
+        (set! sv-144 (-> a1-9 work))
+        (set! sv-148 (-> v1-20 current-poly))
+        (set! sv-152 (-> v1-20 current-poly vertex-count))
+        (set! sv-156 (-> a1-9 work vert0-table))
+        (set! sv-160 (-> a1-9 work vert1-table))
+        (set! sv-164 (- (-> v1-20 dest-pos x) (-> v1-20 current-pos x)))
+        (set! sv-168 (- (-> v1-20 dest-pos z) (-> v1-20 current-pos z)))
+        (dotimes (a2-14 (the-as int sv-152))
+          (set! sv-172 (-> sv-148 vertex (-> sv-156 a2-14)))
+          (set! sv-176 (-> sv-148 vertex (-> sv-160 a2-14)))
+          (set! sv-180 (- (-> sv-172 z) (-> sv-176 z)))
+          (set! sv-184 (- (-> sv-176 x) (-> sv-172 x)))
+          (let ((f0-17 (+ (* sv-164 sv-180) (* sv-168 sv-184))))
+            (when (< 0.0 f0-17)
+              (let ((f1-15 (+ (* sv-180 (- (-> sv-172 x) (-> v1-20 current-pos x)))
+                              (* sv-184 (- (-> sv-172 z) (-> v1-20 current-pos z)))
+                              )
+                           )
+                    )
+                (when (< f1-15 f0-17)
+                  (set! sv-136 a2-14)
+                  (let ((f0-19 (fmax 0.0 (/ f1-15 f0-17))))
+                    (set! sv-164 (* sv-164 f0-19))
+                    (set! sv-168 (* sv-168 f0-19))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (let ((f0-23 (+ (* sv-164 (-> v1-20 dir x)) (* sv-168 (-> v1-20 dir z)))))
+          (+! (-> v1-20 len) f0-23)
+          )
+        0
+        (set! (-> v1-20 next-poly) #f)
+        (cond
+          ((= sv-136 -1)
+           (set! (-> v1-20 current-pos quad) (-> v1-20 dest-pos quad))
+           (set! (-> v1-20 reached-dest) #t)
+           (set! (-> v1-20 terminated) #t)
+           )
+          (else
+            (+! (-> v1-20 current-pos x) sv-164)
+            (+! (-> v1-20 current-pos z) sv-168)
+            (set! sv-188 (-> sv-148 adj-poly sv-136))
+            (if (!= sv-188 255)
+                (set! (-> v1-20 next-poly) (-> a1-9 poly-array sv-188))
+                )
+            (cond
+              ((and (-> v1-20 next-poly) (not (logtest? (-> v1-20 next-poly pat) (-> v1-20 ignore))))
+               (set! (-> v1-20 current-poly) (-> v1-20 next-poly))
+               )
+              (else
+                (set! (-> v1-20 last-edge) sv-136)
+                (if (-> v1-20 next-poly)
+                    (set! (-> v1-20 hit-gap) #t)
+                    (set! (-> v1-20 hit-boundary) #t)
+                    )
+                (set! (-> v1-20 terminated) #t)
+                )
+              )
+            )
+          )
+        )
+      0
+      )
+    (cond
+      ((or (-> sv-112 hit-boundary) (-> sv-112 hit-gap))
+       (set! sv-192 (-> sv-112 current-poly vertex (-> sv-124 vert0-table (-> sv-112 last-edge))))
+       (set! sv-196 (-> sv-112 current-poly vertex (-> sv-124 vert1-table (-> sv-112 last-edge))))
+       (set! sv-200 (- (-> sv-192 z) (-> sv-196 z)))
+       (set! sv-204 (- (-> sv-196 x) (-> sv-192 x)))
+       (set! sv-208 (-> arg2 x))
+       (set! sv-212 (-> arg2 z))
+       (let* ((f0-35 sv-200)
+              (f0-37 (* f0-35 f0-35))
+              (f1-27 sv-204)
+              (f0-39 (sqrtf (+ f0-37 (* f1-27 f1-27))))
+              (f0-41 (/ 1.0 f0-39))
+              )
+         (set! sv-200 (* sv-200 f0-41))
+         (set! sv-204 (* sv-204 f0-41))
+         )
+       (set! (-> arg3 found-boundary) #t)
+       (vector+! (-> arg3 intersection) (-> sv-112 current-pos) (-> obj bounds))
+       (set! (-> arg3 boundary-normal x) sv-200)
+       (set! (-> arg3 boundary-normal y) 0.0)
+       (set! (-> arg3 boundary-normal z) sv-204)
+       (set! (-> arg3 poly) (-> sv-112 current-poly))
+       (set! (-> arg3 edge) (-> sv-112 last-edge))
+       (vector+! (-> arg3 vert-0) sv-192 (-> obj bounds))
+       (vector+! (-> arg3 vert-1) sv-196 (-> obj bounds))
+       (set! (-> sv-112 dest-pos quad) (-> sv-112 current-pos quad))
+       (if (-> sv-112 hit-gap)
+           (set! (-> arg3 gap-poly) (-> sv-112 next-poly))
+           )
+       )
+      (else
+        )
+      )
+    (vector-! arg2 (-> sv-112 current-pos) sv-116)
+    0
+    (label cfg-41)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 21 of type nav-mesh
+;; WARN: Return type mismatch object vs none.
+;; WARN: Function (method 21 nav-mesh) has a return type of none, but the expression builder found a return statement.
+(defmethod find-adjacent-bounds-one nav-mesh ((obj nav-mesh) (arg0 vector) (arg1 nav-poly) (arg2 int) (arg3 int))
+  (local-vars (sv-16 nav-poly))
+  (if (zero? arg3)
+      (set! arg2 (the-as int (mod (the-as uint (+ arg2 1)) (-> arg1 vertex-count))))
+      )
+  (set! sv-16 arg1)
+  (let ((s2-0 (-> sv-16 vertex arg2))
+        (s3-0 sv-16)
+        (s1-0 100)
+        )
+    (while (begin (label cfg-21) (nonzero? s1-0))
+      (+! s1-0 -1)
+      (if (nonzero? arg3)
+          (set! arg2 (the-as int (mod (the-as uint (+ arg2 arg3 (-> s3-0 vertex-count))) (-> s3-0 vertex-count))))
+          )
+      (let ((v1-12 (-> s3-0 adj-poly arg2)))
+        (cond
+          ((= v1-12 255)
+           (if (zero? arg3)
+               (set! arg2 (the-as int (mod (the-as uint (+ arg2 1)) (-> s3-0 vertex-count))))
+               )
+           (vector+! arg0 (-> s3-0 vertex arg2) (-> obj bounds))
+           (return #f)
+           )
+          (else
+            (set! s3-0 (-> obj poly-array v1-12))
+            (when (= s3-0 sv-16)
+              (format 0 "ERROR: find-adjacent-bounds-one cur-poly = start-poly after step~%")
+              (return #f)
+              )
+            (dotimes (s0-0 (the-as int (-> s3-0 vertex-count)))
+              (when (vector= (-> s3-0 vertex s0-0) s2-0)
+                (set! arg2 s0-0)
+                (goto cfg-21)
+                )
+              )
+            (format 0 "ERROR: find-adjacent-bounds-one couldn't match vertex~%")
+            (return #f)
+            )
+          )
+        )
+      )
+    )
+  (format 0 "ERROR: find-adjacent-bounds-one took too many steps~%")
+  (none)
+  )
+
+;; definition for method 20 of type nav-mesh
+;; WARN: Return type mismatch int vs none.
+(defmethod set-normals-from-adjacent-bounds nav-mesh ((obj nav-mesh) (arg0 clamp-travel-vector-to-mesh-return-info))
+  (find-adjacent-bounds-one obj (-> arg0 vert-prev) (-> arg0 poly) (-> arg0 edge) -1)
+  (find-adjacent-bounds-one obj (-> arg0 vert-next) (-> arg0 poly) (-> arg0 edge) 0)
+  (vector-! (-> arg0 prev-normal) (-> arg0 vert-0) (-> arg0 vert-prev))
+  (vector-! (-> arg0 next-normal) (-> arg0 vert-next) (-> arg0 vert-1))
+  (vector-normalize! (-> arg0 prev-normal) 1.0)
+  (vector-normalize! (-> arg0 next-normal) 1.0)
+  (let ((f0-0 (-> arg0 prev-normal x)))
+    (set! (-> arg0 prev-normal x) (-> arg0 prev-normal z))
+    (set! (-> arg0 prev-normal z) f0-0)
+    )
+  (let ((f0-1 (-> arg0 next-normal x)))
+    (set! (-> arg0 next-normal x) (-> arg0 next-normal z))
+    (set! (-> arg0 next-normal z) f0-1)
+    )
+  (set! (-> arg0 prev-normal x) (- (-> arg0 prev-normal x)))
+  (set! (-> arg0 next-normal x) (- (-> arg0 next-normal x)))
+  0
+  (none)
+  )
+
+;; definition for method 18 of type nav-mesh
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 172 signed mismatch
+;; WARN: Stack slot offset 176 signed mismatch
+;; WARN: Stack slot offset 156 signed mismatch
+;; WARN: Stack slot offset 160 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod clamp-vector-to-mesh-cross-gaps nav-mesh ((obj nav-mesh)
+                                                   (arg0 vector)
+                                                   (arg1 nav-poly)
+                                                   (arg2 vector)
+                                                   (arg3 float)
+                                                   (arg4 symbol)
+                                                   (arg5 clamp-travel-vector-to-mesh-return-info)
+                                                   )
+  (local-vars
+    (v1-11 symbol)
+    (v1-22 symbol)
+    (sv-96 nav-ray)
+    (sv-100 symbol)
+    (sv-104 int)
+    (sv-112 nav-mesh-work)
+    (sv-120 int)
+    (sv-128 int)
+    (sv-136 nav-mesh-work)
+    (sv-140 nav-poly)
+    (sv-144 uint)
+    (sv-148 (pointer int8))
+    (sv-152 (pointer int8))
+    (sv-156 float)
+    (sv-160 float)
+    (sv-164 vector)
+    (sv-168 vector)
+    (sv-172 float)
+    (sv-176 float)
+    (sv-180 uint)
+    (sv-184 vector)
+    (sv-188 vector)
+    (sv-192 float)
+    (sv-196 float)
+    (sv-200 float)
+    (sv-204 float)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (when arg5
+      (set! (-> arg5 found-boundary) #f)
+      (set! (-> arg5 gap-poly) #f)
+      )
+    (set! sv-96 (new 'stack-no-clear 'nav-ray))
+    (set! sv-100 (the-as symbol #f))
+    (set! sv-104 0)
+    (set! sv-112 (-> obj work))
+    (set! (-> sv-96 current-poly) arg1)
+    (set! (-> sv-96 current-pos quad) (-> arg0 quad))
+    (vector+! (-> sv-96 dest-pos) arg0 arg2)
+    (let* ((t6-0 obj)
+           (t4-2 arg1)
+           (v1-10 (-> sv-96 dest-pos))
+           (t3-3 (-> t4-2 vertex-count))
+           (t4-3 (-> t4-2 vertex))
+           (t5-1 (-> t6-0 work vert0-table))
+           (t6-2 (-> t6-0 work vert1-table))
+           )
+      (dotimes (t7-0 (the-as int t3-3))
+        (let* ((t8-3 (-> t4-3 (-> t5-1 t7-0)))
+               (t9-3 (-> t4-3 (-> t6-2 t7-0)))
+               (f0-1 (- (-> t8-3 z) (-> t9-3 z)))
+               (f1-2 (- (-> t9-3 x) (-> t8-3 x)))
+               (f2-2 (- (-> v1-10 x) (-> t8-3 x)))
+               (f3-2 (- (-> v1-10 z) (-> t8-3 z)))
+               (f0-3 (+ (* f2-2 f0-1) (* f3-2 f1-2)))
+               )
+          (when (< 0.0 f0-3)
+            (set! v1-11 #f)
+            (goto cfg-9)
+            )
+          )
+        )
+      )
+    (set! v1-11 #t)
+    (label cfg-9)
+    (b! v1-11 cfg-62 :delay (nop!))
+    (until sv-100
+      (set! sv-120 0)
+      (let ((v1-15 sv-96))
+        (vector-! (-> v1-15 dir) (-> v1-15 dest-pos) (-> v1-15 current-pos))
+        (set! (-> v1-15 dir y) 0.0)
+        (let ((t3-5 (-> v1-15 dir)))
+          (let ((f0-5 1.0))
+            (.lvf vf1 (&-> t3-5 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((t4-6 f0-5))
+              (.mov vf3 t4-6)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> t3-5 quad) vf1)
+          )
+        (set! (-> v1-15 next-poly) #f)
+        (set! (-> v1-15 len) 0.0)
+        (set! (-> v1-15 last-edge) -1)
+        (set! (-> v1-15 terminated) #f)
+        (set! (-> v1-15 reached-dest) #f)
+        (set! (-> v1-15 hit-boundary) #f)
+        (set! (-> v1-15 hit-gap) #f)
+        (set! (-> v1-15 ignore) (the-as uint 3))
+        )
+      0
+      (until v1-22
+        (set! sv-120 (+ sv-120 1))
+        (let ((t3-8 obj)
+              (v1-19 sv-96)
+              )
+          (set! sv-128 -1)
+          (set! sv-136 (-> t3-8 work))
+          (set! sv-140 (-> v1-19 current-poly))
+          (set! sv-144 (-> v1-19 current-poly vertex-count))
+          (set! sv-148 (-> t3-8 work vert0-table))
+          (set! sv-152 (-> t3-8 work vert1-table))
+          (set! sv-156 (- (-> v1-19 dest-pos x) (-> v1-19 current-pos x)))
+          (set! sv-160 (- (-> v1-19 dest-pos z) (-> v1-19 current-pos z)))
+          (dotimes (t4-16 (the-as int sv-144))
+            (set! sv-164 (-> sv-140 vertex (-> sv-148 t4-16)))
+            (set! sv-168 (-> sv-140 vertex (-> sv-152 t4-16)))
+            (set! sv-172 (- (-> sv-164 z) (-> sv-168 z)))
+            (set! sv-176 (- (-> sv-168 x) (-> sv-164 x)))
+            (let ((f0-17 (+ (* sv-156 sv-172) (* sv-160 sv-176))))
+              (when (< 0.0 f0-17)
+                (let ((f1-15 (+ (* sv-172 (- (-> sv-164 x) (-> v1-19 current-pos x)))
+                                (* sv-176 (- (-> sv-164 z) (-> v1-19 current-pos z)))
+                                )
+                             )
+                      )
+                  (when (< f1-15 f0-17)
+                    (set! sv-128 t4-16)
+                    (let ((f0-19 (fmax 0.0 (/ f1-15 f0-17))))
+                      (set! sv-156 (* sv-156 f0-19))
+                      (set! sv-160 (* sv-160 f0-19))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (let ((f0-23 (+ (* sv-156 (-> v1-19 dir x)) (* sv-160 (-> v1-19 dir z)))))
+            (+! (-> v1-19 len) f0-23)
+            )
+          0
+          (set! (-> v1-19 next-poly) #f)
+          (cond
+            ((= sv-128 -1)
+             (set! (-> v1-19 current-pos quad) (-> v1-19 dest-pos quad))
+             (set! (-> v1-19 reached-dest) #t)
+             (set! (-> v1-19 terminated) #t)
+             )
+            (else
+              (+! (-> v1-19 current-pos x) sv-156)
+              (+! (-> v1-19 current-pos z) sv-160)
+              (set! sv-180 (-> sv-140 adj-poly sv-128))
+              (if (!= sv-180 255)
+                  (set! (-> v1-19 next-poly) (-> t3-8 poly-array sv-180))
+                  )
+              (cond
+                ((and (-> v1-19 next-poly) (not (logtest? (-> v1-19 next-poly pat) (-> v1-19 ignore))))
+                 (set! (-> v1-19 current-poly) (-> v1-19 next-poly))
+                 )
+                (else
+                  (set! (-> v1-19 last-edge) sv-128)
+                  (if (-> v1-19 next-poly)
+                      (set! (-> v1-19 hit-gap) #t)
+                      (set! (-> v1-19 hit-boundary) #t)
+                      )
+                  (set! (-> v1-19 terminated) #t)
+                  )
+                )
+              )
+            )
+          )
+        0
+        (set! v1-22 (or (>= sv-120 15) (or (>= (-> sv-96 len) (fmax 20480.0 arg3)) (-> sv-96 terminated))))
+        )
+      (cond
+        ((and (-> sv-96 hit-boundary) (and (< (-> sv-96 len) arg3) (!= (-> sv-96 last-edge) -1) (< sv-104 1)))
+         (set! sv-104 (+ sv-104 1))
+         (set! sv-184 (-> arg1 vertex (-> sv-112 vert0-table (-> sv-96 last-edge))))
+         (set! sv-188 (-> arg1 vertex (-> sv-112 vert1-table (-> sv-96 last-edge))))
+         (set! sv-192 (- (-> sv-184 z) (-> sv-188 z)))
+         (set! sv-196 (- (-> sv-188 x) (-> sv-184 x)))
+         (set! sv-200 (-> arg2 x))
+         (set! sv-204 (-> arg2 z))
+         (let* ((f0-37 sv-192)
+                (f0-39 (* f0-37 f0-37))
+                (f1-30 sv-196)
+                (f0-41 (sqrtf (+ f0-39 (* f1-30 f1-30))))
+                (f0-43 (/ 1.0 f0-41))
+                )
+           (set! sv-192 (* sv-192 f0-43))
+           (set! sv-196 (* sv-196 f0-43))
+           )
+         (when arg5
+           (set! (-> arg5 found-boundary) #t)
+           (vector+! (-> arg5 intersection) (-> sv-96 current-pos) (-> obj bounds))
+           (set! (-> arg5 boundary-normal x) sv-192)
+           (set! (-> arg5 boundary-normal y) 0.0)
+           (set! (-> arg5 boundary-normal z) sv-196)
+           (set! (-> arg5 poly) (-> sv-96 current-poly))
+           (set! (-> arg5 edge) (-> sv-96 last-edge))
+           (vector+! (-> arg5 vert-0) sv-184 (-> obj bounds))
+           (vector+! (-> arg5 vert-1) sv-188 (-> obj bounds))
+           )
+         (set! (-> sv-96 dest-pos quad) (-> sv-96 current-pos quad))
+         (cond
+           (arg4
+             (let ((f0-49 (* 1.01 (+ (* sv-192 sv-200) (* sv-196 sv-204)))))
+               (set! sv-200 (- sv-200 (* sv-192 f0-49)))
+               (set! sv-204 (- sv-204 (* sv-196 f0-49)))
+               )
+             (+! (-> sv-96 dest-pos x) sv-200)
+             (+! (-> sv-96 dest-pos z) sv-204)
+             )
+           (else
+             (set! sv-100 #t)
+             )
+           )
+         )
+        ((-> sv-96 hit-gap)
+         (if arg5
+             (set! (-> arg5 gap-poly) (-> sv-96 next-poly))
+             )
+         (set! sv-100 #t)
+         )
+        (else
+          (set! sv-100 #t)
+          )
+        )
+      )
+    (vector-! arg2 (-> sv-96 current-pos) arg0)
+    0
+    (label cfg-62)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 22 of type nav-control
+(defmethod find-first-sphere-and-update-avoid-params nav-control ((obj nav-control) (arg0 vector) (arg1 nav-avoid-spheres-params))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) (-> obj root-nav-sphere) (-> obj state mesh bounds)))
+          (f30-0 -1.0)
+          )
+      (let ((s3-0 -1))
+        (countdown (s1-0 (-> obj sphere-count))
+          (let* ((s0-0 (-> obj sphere-array s1-0))
+                 (f0-2 (ray-circle-intersect s2-1 arg0 s0-0 (+ -409.6 (-> s0-0 r))))
+                 )
+            (when (>= f0-2 0.0)
+              (let ((v1-5 (new 'stack-no-clear 'vector)))
+                (vector-! v1-5 (the-as vector s0-0) s2-1)
+                (when (>= (vector-dot v1-5 arg0) 0.0)
+                  (when (or (< f30-0 0.0) (< f0-2 f30-0))
+                    (set! f30-0 f0-2)
+                    (set! s3-0 s1-0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (when arg1
+          (set! (-> arg1 current-pos x) f30-0)
+          (when (>= f30-0 0.0)
+            (vector+float*! (-> arg1 travel) (-> obj root-nav-sphere) arg0 f30-0)
+            (let ((a0-9 (-> obj sphere-array s3-0))
+                  (v1-19 (new 'stack-no-clear 'vector))
+                  )
+              (vector+! v1-19 (the-as vector a0-9) (-> obj state mesh bounds))
+              (vector-! (-> arg1 pref-dir) (-> arg1 travel) v1-19)
+              )
+            (set! (-> arg1 pref-dir w) 1.0)
+            (let ((v1-21 (-> arg1 pref-dir)))
+              (let ((f0-6 1.0))
+                (.lvf vf1 (&-> v1-21 quad))
+                (.mul.vf vf2 vf1 vf1 :mask #b111)
+                (let ((a0-12 f0-6))
+                  (.mov vf3 a0-12)
+                  )
+                )
+              (.mul.x.vf acc vf0 vf2 :mask #b1000)
+              (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+              (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+              (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+              (.wait.vf)
+              (.mul.vf vf1 vf1 Q :mask #b111)
+              (.nop.vf)
+              (.nop.vf)
+              (.nop.vf)
+              (.svf (&-> v1-21 quad) vf1)
+              )
+            )
+          )
+        )
+      f30-0
+      )
+    )
+  )
+
+;; definition for method 24 of type nav-control
+(defmethod add-root-sphere-to-hash! nav-control ((obj nav-control) (arg0 vector) (arg1 int))
+  "Add our root sphere to the hash (if enabled with output-sphere-hash flag) at the given location."
+  (if (logtest? (-> obj flags) (nav-control-flag output-sphere-hash))
+      (add-sphere-with-mask-and-id
+        (-> obj state mesh sphere-hash)
+        arg0
+        (logand arg1 255)
+        (the-as int (-> obj root-sphere-id))
+        )
+      )
+  )
+
+;; definition for method 47 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! nav-state ((obj nav-state) (arg0 nav-control))
+  (set! (-> obj nav) arg0)
+  (set! (-> obj flags) (nav-state-flag))
+  (set! (-> obj current-poly) #f)
+  (set! (-> obj next-poly) #f)
+  (set! (-> obj target-poly) #f)
+  (set! (-> obj user-poly) #f)
+  0
+  (none)
+  )
+
+;; definition for method 7 of type nav-state
+(defmethod relocate nav-state ((obj nav-state) (arg0 int))
+  (break!)
+  (&+! (-> obj nav) arg0)
+  obj
+  )
+
+;; definition for method 12 of type nav-state
+;; INFO: Used lq/sq
+(defmethod get-velocity nav-state ((obj nav-state) (arg0 vector))
+  (set! (-> arg0 quad) (-> obj velocity quad))
+  arg0
+  )
+
+;; definition for method 14 of type nav-state
+;; INFO: Used lq/sq
+(defmethod get-heading nav-state ((obj nav-state) (arg0 vector))
+  (set! (-> arg0 quad) (-> obj heading quad))
+  arg0
+  )
+
+;; definition for method 15 of type nav-state
+;; INFO: Used lq/sq
+(defmethod get-target-post nav-state ((obj nav-state) (arg0 vector))
+  (set! (-> arg0 quad) (-> obj target-post quad))
+  arg0
+  )
+
+;; definition for method 19 of type nav-state
+(defmethod get-current-poly nav-state ((obj nav-state))
+  "@returns `current-poly`"
+  (-> obj current-poly)
+  )
+
+;; definition for method 16 of type nav-state
+(defmethod get-speed nav-state ((obj nav-state))
+  "@returns `speed`"
+  (-> obj speed)
+  )
+
+;; definition for method 17 of type nav-state
+(defmethod get-rotation-rate nav-state ((obj nav-state))
+  "@returns `rotation-rate`"
+  (-> obj rotation-rate)
+  )
+
+;; definition for method 13 of type nav-state
+;; INFO: Used lq/sq
+(defmethod get-travel nav-state ((obj nav-state) (arg0 vector))
+  (set! (-> arg0 quad) (-> obj travel quad))
+  arg0
+  )
+
+;; definition for method 44 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-velocity! nav-state ((obj nav-state) (velocity vector))
+  (set! (-> obj velocity quad) (-> velocity quad))
+  0
+  (none)
+  )
+
+;; definition for method 45 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-heading! nav-state ((obj nav-state) (arg0 vector))
+  (set! (-> obj heading quad) (-> arg0 quad))
+  0
+  (none)
+  )
+
+;; definition for method 46 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod set-speed! nav-state ((obj nav-state) (arg0 meters))
+  (set! (-> obj speed) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 42 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-target-post! nav-state ((obj nav-state) (arg0 vector))
+  (logclear! (-> obj flags) (nav-state-flag directional-mode))
+  (logior! (-> obj flags) (nav-state-flag target-poly-dirty))
+  (set! (-> obj target-post quad) (-> arg0 quad))
+  0
+  (none)
+  )
+
+;; definition for method 43 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-travel! nav-state ((obj nav-state) (arg0 vector))
+  (logior! (-> obj flags) (nav-state-flag directional-mode))
+  (set! (-> obj travel quad) (-> arg0 quad))
+  0
+  (none)
+  )
+
+;; definition for method 20 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod copy-nav-state! nav-state ((obj nav-state) (arg0 (pointer nav-state)))
+  "Copies the [[nav-state]] the given pointer points to into the current object"
+  (mem-copy! (the-as pointer obj) arg0 176)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-state-method-10 nav-state ((obj nav-state))
+  0
+  (none)
+  )
+
+;; definition for method 9 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw nav-state ((obj nav-state))
+  (let ((s5-0 (-> obj mesh)))
+    (if (-> obj next-poly)
+        (debug-draw-poly s5-0 (-> obj next-poly) *color-cyan*)
+        )
+    (if (-> obj target-poly)
+        (debug-draw-poly s5-0 (-> obj target-poly) *color-yellow*)
+        )
+    (if (-> obj current-poly)
+        (debug-draw-poly s5-0 (-> obj current-poly) *color-red*)
+        )
+    )
+  (add-debug-x #t (bucket-id debug-no-zbuf1) (-> obj target-post) *color-yellow*)
+  (add-debug-vector
+    #t
+    (bucket-id debug-no-zbuf1)
+    (-> obj current-pos)
+    (-> obj travel)
+    (meters 0.00024414062)
+    *color-white*
+    )
+  (let ((s5-1 (new 'stack-no-clear 'vector)))
+    0.0
+    (-> obj mesh work debug)
+    (set! (-> s5-1 quad) (-> obj current-pos quad))
+    (let ((f30-0 (-> s5-1 y)))
+      (set! (-> s5-1 y) (+ 2048.0 f30-0))
+      (add-debug-vector #t (bucket-id debug-no-zbuf1) s5-1 (-> obj heading) (meters 1) *color-yellow*)
+      (set! (-> s5-1 y) (+ 4096.0 f30-0))
+      )
+    )
+  0
+  (add-debug-x
+    #t
+    (bucket-id debug-no-zbuf1)
+    (vector+! (new 'stack-no-clear 'vector) (-> obj current-pos) (-> obj travel))
+    *color-white*
+    )
+  0
+  (none)
+  )
+
+;; definition for method 38 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod set-current-poly! nav-state ((obj nav-state) (arg0 nav-poly))
+  (set! (-> obj current-poly) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type nav-state
+(defmethod clamp-vector-to-mesh-cross-gaps nav-state ((obj nav-state) (arg0 vector))
+  (when (-> obj current-poly)
+    (clamp-vector-to-mesh-cross-gaps
+      (-> obj nav)
+      (-> obj current-pos)
+      (-> obj current-poly)
+      arg0
+      204.8
+      #f
+      (the-as clamp-travel-vector-to-mesh-return-info #f)
+      )
+    #t
+    )
+  )
+
+;; definition for method 40 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod do-navigation-to-destination nav-state ((obj nav-state) (arg0 vector))
+  (local-vars (v1-15 symbol))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (cond
+      ((-> obj current-poly)
+       (let ((s3-0 (-> obj mesh))
+             (s4-0 (new 'stack-no-clear 'nav-ray))
+             )
+         (let ((s2-0 0))
+           (set! (-> s4-0 current-poly) (-> obj current-poly))
+           (vector-! (-> s4-0 current-pos) (-> obj current-pos) (-> s3-0 bounds))
+           (vector-! (-> s4-0 dest-pos) arg0 (-> s3-0 bounds))
+           (b! (not (point-in-poly? s3-0 (-> obj current-poly) (-> s4-0 dest-pos))) cfg-3 :delay (empty-form))
+           (logior! (-> obj flags) (nav-state-flag in-mesh))
+           (set! (-> obj current-pos quad) (-> arg0 quad))
+           (b! #t cfg-17 :delay (nop!))
+           (label cfg-3)
+           (let ((v1-10 s4-0))
+             (vector-! (-> v1-10 dir) (-> v1-10 dest-pos) (-> v1-10 current-pos))
+             (set! (-> v1-10 dir y) 0.0)
+             (let ((a0-6 (-> v1-10 dir)))
+               (let ((f0-1 1.0))
+                 (.lvf vf1 (&-> a0-6 quad))
+                 (.mul.vf vf2 vf1 vf1 :mask #b111)
+                 (let ((a1-8 f0-1))
+                   (.mov vf3 a1-8)
+                   )
+                 )
+               (.mul.x.vf acc vf0 vf2 :mask #b1000)
+               (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+               (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+               (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+               (.wait.vf)
+               (.mul.vf vf1 vf1 Q :mask #b111)
+               (.nop.vf)
+               (.nop.vf)
+               (.nop.vf)
+               (.svf (&-> a0-6 quad) vf1)
+               )
+             (set! (-> v1-10 next-poly) #f)
+             (set! (-> v1-10 len) 0.0)
+             (set! (-> v1-10 last-edge) -1)
+             (set! (-> v1-10 terminated) #f)
+             (set! (-> v1-10 reached-dest) #f)
+             (set! (-> v1-10 hit-boundary) #f)
+             (set! (-> v1-10 hit-gap) #f)
+             (set! (-> v1-10 ignore) (the-as uint 3))
+             )
+           0
+           (set! (-> s4-0 ignore) (the-as uint 1))
+           (until v1-15
+             (+! s2-0 1)
+             (move-along-nav-ray! s3-0 s4-0)
+             (set! v1-15 (or (>= s2-0 15) (-> s4-0 terminated)))
+             )
+           )
+         (set! (-> obj current-poly) (-> s4-0 current-poly))
+         (when (-> s4-0 reached-dest)
+           (if (not (point-in-poly? s3-0 (-> obj current-poly) (-> s4-0 dest-pos)))
+               (set! (-> s4-0 reached-dest) #f)
+               )
+           )
+         (cond
+           ((-> s4-0 reached-dest)
+            (logior! (-> obj flags) (nav-state-flag in-mesh))
+            (set! (-> obj current-pos quad) (-> arg0 quad))
+            )
+           (else
+             (logclear! (-> obj flags) (nav-state-flag in-mesh))
+             (set! (-> obj current-pos quad) (-> arg0 quad))
+             (let ((s4-1 (new 'stack 'nav-find-poly-parms)))
+               (vector-! (-> s4-1 point) arg0 (-> obj mesh bounds))
+               (set! (-> s4-1 y-threshold) (-> obj nav nearest-y-threshold))
+               (set! (-> s4-1 ignore) (the-as uint 1))
+               (find-nearest-poly-to-point-local (-> obj mesh) s4-1)
+               (set! (-> obj current-poly) (-> s4-1 poly))
+               )
+             0
+             )
+           )
+         )
+       )
+      (else
+        (set! (-> obj current-pos quad) (-> arg0 quad))
+        (let ((s4-2 (new 'stack 'nav-find-poly-parms)))
+          (vector-! (-> s4-2 point) arg0 (-> obj mesh bounds))
+          (set! (-> s4-2 y-threshold) (-> obj nav nearest-y-threshold))
+          (set! (-> s4-2 ignore) (the-as uint 1))
+          (find-nearest-poly-to-point-local (-> obj mesh) s4-2)
+          (set! (-> obj current-poly) (-> s4-2 poly))
+          (logclear! (-> obj flags) (nav-state-flag in-mesh))
+          (if (-> s4-2 point-inside?)
+              (logior! (-> obj flags) (nav-state-flag in-mesh))
+              )
+          )
+        )
+      )
+    (label cfg-17)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 18 of type nav-state
+(defmethod try-projecting-to-current-poly nav-state ((obj nav-state) (arg0 vector) (arg1 object) (arg2 vector))
+  (cond
+    ((-> obj current-poly)
+     (let ((s5-0 (-> obj nav))
+           (v1-1 (-> obj current-poly))
+           (gp-0 arg0)
+           )
+       (let ((t1-0 arg1)
+             (a1-1 arg2)
+             )
+         (project-point-onto-plane-of-poly-local
+           (-> s5-0 state mesh)
+           v1-1
+           gp-0
+           (the-as vector t1-0)
+           (vector-! (new 'stack-no-clear 'vector) a1-1 (-> s5-0 state mesh bounds))
+           )
+         )
+       (vector+! gp-0 gp-0 (-> s5-0 state mesh bounds))
+       )
+     0
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition for method 20 of type nav-control
+;; WARN: Return type mismatch int vs none.
+(defmethod clamp-vector-to-mesh-cross-gaps nav-control ((obj nav-control)
+                                                      (arg0 vector)
+                                                      (arg1 nav-poly)
+                                                      (arg2 vector)
+                                                      (arg3 float)
+                                                      (arg4 symbol)
+                                                      (arg5 clamp-travel-vector-to-mesh-return-info)
+                                                      )
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector-! v1-0 arg0 (-> obj state mesh bounds))
+    (clamp-vector-to-mesh-cross-gaps (-> obj state mesh) v1-0 arg1 arg2 arg3 arg4 arg5)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type nav-control
+(defmethod cloest-point-on-mesh nav-control ((obj nav-control) (arg0 vector) (arg1 vector) (arg2 nav-poly))
+  (local-vars (sv-16 vector))
+  (set! sv-16 arg0)
+  (let ((gp-0 (new 'stack-no-clear 'nav-find-poly-parms)))
+    (set! (-> gp-0 poly) arg2)
+    (vector-! (-> gp-0 point) arg1 (-> obj state mesh bounds))
+    (when (or (not (-> gp-0 poly)) (not (point-in-poly? (-> obj state mesh) (-> gp-0 poly) (-> gp-0 point))))
+      (set! (-> gp-0 y-threshold) (-> obj nearest-y-threshold))
+      (set! (-> gp-0 ignore) (the-as uint 3))
+      (find-nearest-poly-to-point-local (-> obj state mesh) gp-0)
+      (when (-> gp-0 poly)
+        (project-point-into-poly-2d (-> obj state mesh) (-> gp-0 poly) sv-16 (-> gp-0 point))
+        (vector+! sv-16 sv-16 (-> obj state mesh bounds))
+        )
+      )
+    (-> gp-0 poly)
+    )
+  )
+
+;; definition for function vector-rotate-y-sincos!
+(defun vector-rotate-y-sincos! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-0 (-> arg1 x))
+        (f1-0 (-> arg1 z))
+        )
+    (set! (-> arg0 x) (+ (* arg3 f0-0) (* arg2 f1-0)))
+    (set! (-> arg0 y) (-> arg1 y))
+    (set! (-> arg0 z) (- (* arg3 f1-0) (* arg2 f0-0)))
+    )
+  )
+
+;; definition for method 39 of type nav-state
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 39 nav-state)" 39 nav-state)
+
+;; definition for method 50 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-state-method-50 nav-state ((obj nav-state))
+  0
+  (none)
+  )
+
+;; definition for function test-xz-point-on-line-segment?
+(defun test-xz-point-on-line-segment? ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (local-vars (v1-2 float) (v1-4 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (let* ((f0-0 arg3)
+           (f0-2 (* f0-0 f0-0))
+           )
+      (let ((v1-1 arg0)
+            (t0-0 arg1)
+            )
+        (.lvf vf2 (&-> v1-1 quad))
+        (.lvf vf3 (&-> t0-0 quad))
+        )
+      (.sub.vf vf1 vf3 vf2)
+      (.mul.vf vf1 vf1 vf1)
+      (.add.z.vf vf1 vf1 vf1 :mask #b1)
+      (.mov v1-2 vf1)
+      (let ((f1-0 v1-2))
+        (let ((v1-3 arg0)
+              (t0-1 arg2)
+              )
+          (.lvf vf2 (&-> v1-3 quad))
+          (.lvf vf3 (&-> t0-1 quad))
+          )
+        (.sub.vf vf1 vf3 vf2)
+        (.mul.vf vf1 vf1 vf1)
+        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+        (.mov v1-4 vf1)
+        (let ((v0-0 (>= f0-2 (fmin f1-0 v1-4))))
+          (when (not v0-0)
+            (let* ((f0-4 (- (-> arg2 x) (-> arg1 x)))
+                   (f1-4 (- (-> arg2 z) (-> arg1 z)))
+                   (f2-2 f0-4)
+                   (f2-4 (* f2-2 f2-2))
+                   (f3-0 f1-4)
+                   (f2-6 (sqrtf (+ f2-4 (* f3-0 f3-0))))
+                   (f3-3 f2-6)
+                   (f3-5 (/ 1.0 f3-3))
+                   (f5-0 (* f3-5 (- f1-4)))
+                   (f6-0 (* f3-5 f0-4))
+                   (f3-7 (- (-> arg0 x) (-> arg1 x)))
+                   (f4-4 (- (-> arg0 z) (-> arg1 z)))
+                   )
+              (when (>= arg3 (fabs (+ (* f3-7 f5-0) (* f4-4 f6-0))))
+                (let ((f0-6 (+ (* f3-7 f0-4) (* f4-4 f1-4))))
+                  (set! v0-0 (and (>= f0-6 0.0) (>= (* f2-6 f2-6) f0-6)))
+                  )
+                )
+              )
+            )
+          v0-0
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 51 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-route-portals nav-state ((obj nav-state))
+  (local-vars
+    (v1-117 float)
+    (sv-112 vector)
+    (sv-116 nav-route-portal)
+    (sv-120 (inline-array vector))
+    (sv-124 symbol)
+    )
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> obj virtual-current-poly) (-> obj current-poly))
+    (set! sv-112 (new 'stack-no-clear 'vector))
+    (set! sv-116 (new 'stack-no-clear 'nav-route-portal))
+    (set! sv-120 (new 'stack-no-clear 'inline-array 'vector 2))
+    (set! sv-124 (the-as symbol #f))
+    (vector-! (-> obj current-pos-local) (-> obj current-pos) (-> obj mesh bounds))
+    (set! (-> obj virtual-current-pos-local quad) (-> obj current-pos-local quad))
+    (set! (-> sv-116 next-poly) #f)
+    (when (not (logtest? (-> obj flags) (nav-state-flag directional-mode)))
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (let ((s4-0 (new 'stack-no-clear 'nav-find-poly-parms)))
+          (vector-! s5-0 (-> obj target-post) (-> obj mesh bounds))
+          (when (or (logtest? (-> obj flags) (nav-state-flag target-poly-dirty)) (not (-> obj target-poly)))
+            (set! (-> s4-0 point quad) (-> s5-0 quad))
+            (set! (-> s4-0 y-threshold) (-> obj nav nearest-y-threshold))
+            (set! (-> s4-0 ignore) (the-as uint 3))
+            (find-nearest-poly-to-point-local (-> obj mesh) s4-0)
+            (set! (-> obj target-poly) (-> s4-0 poly))
+            (if (not (-> obj target-poly))
+                (set! (-> obj target-poly) (-> obj current-poly))
+                )
+            (logclear! (-> obj flags) (nav-state-flag target-poly-dirty))
+            )
+          )
+        (project-point-into-poly-2d (-> obj mesh) (-> obj target-poly) sv-112 s5-0)
+        )
+      (set! (-> sv-112 y) (-> obj current-pos-local y))
+      (vector-! (-> obj travel) sv-112 (-> obj current-pos-local))
+      (set! (-> obj travel y) 0.0)
+      (let* ((v1-32 (-> obj travel))
+             (f0-6 (+ (* (-> v1-32 x) (-> v1-32 x)) (* (-> v1-32 z) (-> v1-32 z))))
+             (f1-3 4096.0)
+             )
+        (if (< f0-6 (* f1-3 f1-3))
+            (logior! (-> obj flags) (nav-state-flag at-target))
+            )
+        )
+      (get-route-portal (-> obj mesh) (-> obj current-poly) (-> obj target-poly) sv-116)
+      )
+    (cond
+      ((not (-> sv-116 next-poly))
+       (set! (-> obj next-poly) #f)
+       )
+      (else
+        (set! (-> obj next-poly) (-> sv-116 next-poly))
+        (set! (-> sv-120 0 quad) (-> sv-116 vertex 0 quad))
+        (set! (-> sv-120 1 quad) (-> sv-116 vertex 1 quad))
+        (set! sv-124 #t)
+        (while (and sv-124 (-> sv-116 next-poly) (test-xz-point-on-line-segment?
+                                                   (-> obj current-pos-local)
+                                                   (the-as vector (-> sv-116 vertex))
+                                                   (-> sv-116 vertex 1)
+                                                   409.59998
+                                                   )
+                    )
+          (when #t
+            #t
+            (vector-segment-distance-point!
+              (-> obj current-pos-local)
+              (the-as vector (-> sv-116 vertex))
+              (-> sv-116 vertex 1)
+              (-> obj virtual-current-pos-local)
+              )
+            (vector-! (-> obj travel) sv-112 (-> obj virtual-current-pos-local))
+            (set! (-> obj travel y) 0.0)
+            0
+            )
+          (set! (-> obj virtual-current-poly) (-> sv-116 next-poly))
+          (cond
+            ((get-route-portal (-> obj mesh) (-> sv-116 next-poly) (-> obj target-poly) sv-116)
+             (set! (-> obj next-poly) (-> sv-116 next-poly))
+             (set! (-> sv-120 0 quad) (-> sv-116 vertex 0 quad))
+             (set! (-> sv-120 1 quad) (-> sv-116 vertex 1 quad))
+             0
+             )
+            (else
+              (set! (-> obj next-poly) #f)
+              (set! sv-124 (the-as symbol #f))
+              )
+            )
+          )
+        )
+      )
+    (when sv-124
+      (let ((s5-1 (new 'stack-no-clear 'matrix)))
+        (vector-! (the-as vector (-> s5-1 vector)) (-> sv-120 1) (-> sv-120 0))
+        (vector-normalize! (the-as vector (-> s5-1 vector)) 409.6)
+        (vector+! (-> sv-120 0) (-> sv-120 0) (the-as vector (-> s5-1 vector)))
+        (vector-! (-> sv-120 1) (-> sv-120 1) (the-as vector (-> s5-1 vector)))
+        )
+      (when (not (ray-ccw-line-segment-intersection?
+                   (-> obj virtual-current-pos-local)
+                   (-> obj travel)
+                   (-> sv-120 0)
+                   (-> sv-120 1)
+                   )
+                 )
+        (let ((s5-2 -1))
+          (let* ((f0-8 (cos 8192.0))
+                 (f0-10 (* f0-8 f0-8))
+                 (v1-93 (new 'stack-no-clear 'vector))
+                 (a0-39 (-> obj travel))
+                 (f1-9 (+ (* (-> a0-39 x) (-> a0-39 x)) (* (-> a0-39 z) (-> a0-39 z))))
+                 )
+            (countdown (a0-41 2)
+              (vector-! v1-93 (-> sv-120 a0-41) (-> obj virtual-current-pos-local))
+              (let ((f2-5 (vector-dot (-> obj travel) v1-93)))
+                (when (< 0.0 f2-5)
+                  (let* ((f2-7 (* f2-5 f2-5))
+                         (a1-26 v1-93)
+                         (f2-8 (/ f2-7 (* f1-9 (+ (* (-> a1-26 x) (-> a1-26 x)) (* (-> a1-26 z) (-> a1-26 z))))))
+                         )
+                    (when (< f0-10 f2-8)
+                      (set! f0-10 f2-8)
+                      (set! s5-2 a0-41)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (when (= s5-2 -1)
+            (let ((f30-0 (the-as float #x7f800000))
+                  (s3-0 (new 'stack-no-clear 'nav-route-portal))
+                  (s4-1 (new 'stack-no-clear 'vector))
+                  )
+              (get-route-portal (-> obj mesh) (-> sv-116 next-poly) (-> obj target-poly) s3-0)
+              (cond
+                ((-> s3-0 next-poly)
+                 (vector+! s4-1 (the-as vector (-> s3-0 vertex)) (the-as vector (-> s3-0 vertex 1)))
+                 (vector-float*! s4-1 s4-1 0.5)
+                 )
+                (else
+                  (set! (-> s4-1 quad) (-> sv-112 quad))
+                  )
+                )
+              (countdown (s3-1 2)
+                (let* ((s2-0 (-> sv-120 s3-1))
+                       (f0-13 (+ (vector-vector-xz-distance-squared (-> obj virtual-current-pos-local) s2-0)
+                                 (vector-vector-xz-distance-squared s4-1 s2-0)
+                                 )
+                              )
+                       )
+                  (when (< f0-13 f30-0)
+                    (set! f30-0 f0-13)
+                    (set! s5-2 s3-1)
+                    )
+                  )
+                )
+              )
+            )
+          (vector-! (-> obj travel) (-> sv-120 s5-2) (-> obj virtual-current-pos-local))
+          )
+        (set! (-> obj travel y) 0.0)
+        )
+      )
+    (.lvf vf1 (&-> (-> obj travel) quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v1-117 vf1)
+    (let ((f0-15 v1-117)
+          (f1-10 (-> obj nav nav-cull-radius))
+          )
+      (if (< (* f1-10 f1-10) f0-15)
+          (vector-float*! (-> obj travel) (-> obj travel) (/ (-> obj nav nav-cull-radius) (sqrtf f0-15)))
+          )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 49 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 140 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 124 signed mismatch
+;; WARN: Stack slot offset 128 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-best-dir-use-existing-avoid-spheres nav-state ((obj nav-state) (arg0 nav-avoid-spheres-params))
+  (local-vars
+    (sv-96 int)
+    (sv-104 nav-mesh-work)
+    (sv-108 nav-poly)
+    (sv-112 uint)
+    (sv-116 (pointer int8))
+    (sv-120 (pointer int8))
+    (sv-124 float)
+    (sv-128 float)
+    (sv-132 vector)
+    (sv-136 vector)
+    (sv-140 float)
+    (sv-144 float)
+    (sv-148 uint)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (when (-> arg0 avoiding-sphere?)
+      (logior! (-> obj flags) (nav-state-flag avoiding-sphere))
+      (let ((f0-0 (-> arg0 closest-sphere-dist2))
+            (f1-0 512.0)
+            )
+        (if (< f0-0 (* f1-0 f1-0))
+            (logior! (-> obj flags) (nav-state-flag touching-sphere))
+            )
+        )
+      (set! (-> obj travel quad) (-> arg0 out-travel 0 quad))
+      (let ((v1-10 (new 'stack-no-clear 'nav-ray)))
+        (set! (-> v1-10 current-pos quad) (-> obj virtual-current-pos-local quad))
+        (set! (-> v1-10 current-poly) (-> obj virtual-current-poly))
+        (vector+! (-> v1-10 dest-pos) (-> obj virtual-current-pos-local) (-> obj travel))
+        (let ((a2-5 0))
+          (let ((a3-3 v1-10))
+            (vector-! (-> a3-3 dir) (-> a3-3 dest-pos) (-> a3-3 current-pos))
+            (set! (-> a3-3 dir y) 0.0)
+            (let ((t0-3 (-> a3-3 dir)))
+              (let ((f0-2 1.0))
+                (.lvf vf1 (&-> t0-3 quad))
+                (.mul.vf vf2 vf1 vf1 :mask #b111)
+                (let ((t1-2 f0-2))
+                  (.mov vf3 t1-2)
+                  )
+                )
+              (.mul.x.vf acc vf0 vf2 :mask #b1000)
+              (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+              (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+              (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+              (.wait.vf)
+              (.mul.vf vf1 vf1 Q :mask #b111)
+              (.nop.vf)
+              (.nop.vf)
+              (.nop.vf)
+              (.svf (&-> t0-3 quad) vf1)
+              )
+            (set! (-> a3-3 next-poly) #f)
+            (set! (-> a3-3 len) 0.0)
+            (set! (-> a3-3 last-edge) -1)
+            (set! (-> a3-3 terminated) #f)
+            (set! (-> a3-3 reached-dest) #f)
+            (set! (-> a3-3 hit-boundary) #f)
+            (set! (-> a3-3 hit-gap) #f)
+            (set! (-> a3-3 ignore) (the-as uint 3))
+            )
+          0
+          (until (or (>= a2-5 15) (-> v1-10 terminated))
+            (+! a2-5 1)
+            (let ((t0-6 (-> obj mesh))
+                  (a3-5 v1-10)
+                  )
+              (set! sv-96 -1)
+              (set! sv-104 (-> t0-6 work))
+              (set! sv-108 (-> a3-5 current-poly))
+              (set! sv-112 (-> a3-5 current-poly vertex-count))
+              (set! sv-116 (-> t0-6 work vert0-table))
+              (set! sv-120 (-> t0-6 work vert1-table))
+              (set! sv-124 (- (-> a3-5 dest-pos x) (-> a3-5 current-pos x)))
+              (set! sv-128 (- (-> a3-5 dest-pos z) (-> a3-5 current-pos z)))
+              (dotimes (t1-12 (the-as int sv-112))
+                (set! sv-132 (-> sv-108 vertex (-> sv-116 t1-12)))
+                (set! sv-136 (-> sv-108 vertex (-> sv-120 t1-12)))
+                (set! sv-140 (- (-> sv-132 z) (-> sv-136 z)))
+                (set! sv-144 (- (-> sv-136 x) (-> sv-132 x)))
+                (let ((f0-14 (+ (* sv-124 sv-140) (* sv-128 sv-144))))
+                  (when (< 0.0 f0-14)
+                    (let ((f1-13
+                            (+ (* sv-140 (- (-> sv-132 x) (-> a3-5 current-pos x))) (* sv-144 (- (-> sv-132 z) (-> a3-5 current-pos z))))
+                            )
+                          )
+                      (when (< f1-13 f0-14)
+                        (set! sv-96 t1-12)
+                        (let ((f0-16 (fmax 0.0 (/ f1-13 f0-14))))
+                          (set! sv-124 (* sv-124 f0-16))
+                          (set! sv-128 (* sv-128 f0-16))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              (let ((f0-20 (+ (* sv-124 (-> a3-5 dir x)) (* sv-128 (-> a3-5 dir z)))))
+                (+! (-> a3-5 len) f0-20)
+                )
+              0
+              (set! (-> a3-5 next-poly) #f)
+              (cond
+                ((= sv-96 -1)
+                 (set! (-> a3-5 current-pos quad) (-> a3-5 dest-pos quad))
+                 (set! (-> a3-5 reached-dest) #t)
+                 (set! (-> a3-5 terminated) #t)
+                 )
+                (else
+                  (+! (-> a3-5 current-pos x) sv-124)
+                  (+! (-> a3-5 current-pos z) sv-128)
+                  (set! sv-148 (-> sv-108 adj-poly sv-96))
+                  (if (!= sv-148 255)
+                      (set! (-> a3-5 next-poly) (-> t0-6 poly-array sv-148))
+                      )
+                  (cond
+                    ((and (-> a3-5 next-poly) (not (logtest? (-> a3-5 next-poly pat) (-> a3-5 ignore))))
+                     (set! (-> a3-5 current-poly) (-> a3-5 next-poly))
+                     )
+                    (else
+                      (set! (-> a3-5 last-edge) sv-96)
+                      (if (-> a3-5 next-poly)
+                          (set! (-> a3-5 hit-gap) #t)
+                          (set! (-> a3-5 hit-boundary) #t)
+                          )
+                      (set! (-> a3-5 terminated) #t)
+                      )
+                    )
+                  )
+                )
+              )
+            0
+            )
+          )
+        (cond
+          ((or (-> v1-10 reached-dest) (-> v1-10 hit-gap) (>= (-> v1-10 len) 4096.0))
+           (set! (-> obj travel quad) (-> arg0 out-travel 0 quad))
+           )
+          (else
+            (set! (-> obj travel quad) (-> arg0 out-travel 1 quad))
+            (logior! (-> obj flags) (nav-state-flag trapped-by-sphere))
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 52 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-best-dir-recompute-avoid-spheres-1 nav-state ((obj nav-state))
+  (local-vars
+    (sv-192 int)
+    (sv-200 nav-mesh-work)
+    (sv-204 nav-poly)
+    (sv-208 uint)
+    (sv-212 (pointer int8))
+    (sv-216 (pointer int8))
+    (sv-220 float)
+    (sv-224 float)
+    (sv-228 vector)
+    (sv-232 vector)
+    (sv-236 float)
+    (sv-240 float)
+    (sv-244 uint)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'nav-avoid-spheres-params)))
+      (set! (-> s5-0 current-pos quad) (-> obj virtual-current-pos-local quad))
+      (set! (-> s5-0 travel quad) (-> obj travel quad))
+      (set! (-> s5-0 pref-dir quad) (-> (if (logtest? (-> obj flags) (nav-state-flag trapped-by-sphere))
+                                            (-> obj heading)
+                                            (-> obj travel)
+                                            )
+                                        quad
+                                        )
+            )
+      (avoid-spheres-1! (-> obj nav) s5-0)
+      (when (-> s5-0 avoiding-sphere?)
+        (logior! (-> obj flags) (nav-state-flag avoiding-sphere))
+        (let ((f0-0 (-> s5-0 closest-sphere-dist2))
+              (f1-0 512.0)
+              )
+          (if (< f0-0 (* f1-0 f1-0))
+              (logior! (-> obj flags) (nav-state-flag touching-sphere))
+              )
+          )
+        (set! (-> obj travel quad) (-> s5-0 out-travel 0 quad))
+        (let ((v1-15 (new 'stack-no-clear 'nav-ray)))
+          (set! (-> v1-15 current-pos quad) (-> obj virtual-current-pos-local quad))
+          (set! (-> v1-15 current-poly) (-> obj virtual-current-poly))
+          (vector+! (-> v1-15 dest-pos) (-> obj virtual-current-pos-local) (-> obj travel))
+          (let ((a0-15 0))
+            (let ((a1-4 v1-15))
+              (vector-! (-> a1-4 dir) (-> a1-4 dest-pos) (-> a1-4 current-pos))
+              (set! (-> a1-4 dir y) 0.0)
+              (let ((a2-3 (-> a1-4 dir)))
+                (let ((f0-2 1.0))
+                  (.lvf vf1 (&-> a2-3 quad))
+                  (.mul.vf vf2 vf1 vf1 :mask #b111)
+                  (let ((a3-2 f0-2))
+                    (.mov vf3 a3-2)
+                    )
+                  )
+                (.mul.x.vf acc vf0 vf2 :mask #b1000)
+                (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+                (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+                (.wait.vf)
+                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.nop.vf)
+                (.nop.vf)
+                (.nop.vf)
+                (.svf (&-> a2-3 quad) vf1)
+                )
+              (set! (-> a1-4 next-poly) #f)
+              (set! (-> a1-4 len) 0.0)
+              (set! (-> a1-4 last-edge) -1)
+              (set! (-> a1-4 terminated) #f)
+              (set! (-> a1-4 reached-dest) #f)
+              (set! (-> a1-4 hit-boundary) #f)
+              (set! (-> a1-4 hit-gap) #f)
+              (set! (-> a1-4 ignore) (the-as uint 3))
+              )
+            0
+            (until (or (>= a0-15 15) (-> v1-15 terminated))
+              (+! a0-15 1)
+              (let ((a2-6 (-> obj mesh))
+                    (a1-6 v1-15)
+                    )
+                (set! sv-192 -1)
+                (set! sv-200 (-> a2-6 work))
+                (set! sv-204 (-> a1-6 current-poly))
+                (set! sv-208 (-> a1-6 current-poly vertex-count))
+                (set! sv-212 (-> a2-6 work vert0-table))
+                (set! sv-216 (-> a2-6 work vert1-table))
+                (set! sv-220 (- (-> a1-6 dest-pos x) (-> a1-6 current-pos x)))
+                (set! sv-224 (- (-> a1-6 dest-pos z) (-> a1-6 current-pos z)))
+                (dotimes (a3-12 (the-as int sv-208))
+                  (set! sv-228 (-> sv-204 vertex (-> sv-212 a3-12)))
+                  (set! sv-232 (-> sv-204 vertex (-> sv-216 a3-12)))
+                  (set! sv-236 (- (-> sv-228 z) (-> sv-232 z)))
+                  (set! sv-240 (- (-> sv-232 x) (-> sv-228 x)))
+                  (let ((f0-14 (+ (* sv-220 sv-236) (* sv-224 sv-240))))
+                    (when (< 0.0 f0-14)
+                      (let ((f1-13
+                              (+ (* sv-236 (- (-> sv-228 x) (-> a1-6 current-pos x))) (* sv-240 (- (-> sv-228 z) (-> a1-6 current-pos z))))
+                              )
+                            )
+                        (when (< f1-13 f0-14)
+                          (set! sv-192 a3-12)
+                          (let ((f0-16 (fmax 0.0 (/ f1-13 f0-14))))
+                            (set! sv-220 (* sv-220 f0-16))
+                            (set! sv-224 (* sv-224 f0-16))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (let ((f0-20 (+ (* sv-220 (-> a1-6 dir x)) (* sv-224 (-> a1-6 dir z)))))
+                  (+! (-> a1-6 len) f0-20)
+                  )
+                0
+                (set! (-> a1-6 next-poly) #f)
+                (cond
+                  ((= sv-192 -1)
+                   (set! (-> a1-6 current-pos quad) (-> a1-6 dest-pos quad))
+                   (set! (-> a1-6 reached-dest) #t)
+                   (set! (-> a1-6 terminated) #t)
+                   )
+                  (else
+                    (+! (-> a1-6 current-pos x) sv-220)
+                    (+! (-> a1-6 current-pos z) sv-224)
+                    (set! sv-244 (-> sv-204 adj-poly sv-192))
+                    (if (!= sv-244 255)
+                        (set! (-> a1-6 next-poly) (-> a2-6 poly-array sv-244))
+                        )
+                    (cond
+                      ((and (-> a1-6 next-poly) (not (logtest? (-> a1-6 next-poly pat) (-> a1-6 ignore))))
+                       (set! (-> a1-6 current-poly) (-> a1-6 next-poly))
+                       )
+                      (else
+                        (set! (-> a1-6 last-edge) sv-192)
+                        (if (-> a1-6 next-poly)
+                            (set! (-> a1-6 hit-gap) #t)
+                            (set! (-> a1-6 hit-boundary) #t)
+                            )
+                        (set! (-> a1-6 terminated) #t)
+                        )
+                      )
+                    )
+                  )
+                )
+              0
+              )
+            )
+          (cond
+            ((or (-> v1-15 reached-dest) (-> v1-15 hit-gap) (>= (-> v1-15 len) 4096.0))
+             (set! (-> obj travel quad) (-> s5-0 out-travel 0 quad))
+             )
+            (else
+              (set! (-> obj travel quad) (-> s5-0 out-travel 1 quad))
+              (logior! (-> obj flags) (nav-state-flag trapped-by-sphere))
+              )
+            )
+          )
+        )
+      )
+    0
+    0
+    (none)
+    )
+  )
+
+;; definition for method 53 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-within-poly nav-state ((obj nav-state))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> obj target-dir quad) (-> obj travel quad))
+    (let ((v1-1 (-> obj target-dir)))
+      (let ((f0-0 1.0))
+        (.lvf vf1 (&-> v1-1 quad))
+        (.mul.vf vf2 vf1 vf1 :mask #b111)
+        (let ((a0-4 f0-0))
+          (.mov vf3 a0-4)
+          )
+        )
+      (.mul.x.vf acc vf0 vf2 :mask #b1000)
+      (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+      (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+      (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+      (.wait.vf)
+      (.mul.vf vf1 vf1 Q :mask #b111)
+      (.nop.vf)
+      (.nop.vf)
+      (.nop.vf)
+      (.svf (&-> v1-1 quad) vf1)
+      )
+    (cond
+      ((logtest? (-> obj nav flags) (nav-control-flag limit-rotation-rate))
+       (let ((s5-0 (nav-state-method-39 obj)))
+         (let* ((f0-1 40.96)
+                (f0-3 (* f0-1 f0-1))
+                (v1-8 (-> obj travel))
+                )
+           (when (< f0-3 (+ (* (-> v1-8 x) (-> v1-8 x)) (* (-> v1-8 z) (-> v1-8 z))))
+             (set! (-> obj heading quad) (-> obj travel quad))
+             (set! (-> obj heading y) 0.0)
+             (let ((v1-12 (-> obj heading)))
+               (let ((f0-5 1.0))
+                 (.lvf vf1 (&-> v1-12 quad))
+                 (.mul.vf vf2 vf1 vf1 :mask #b111)
+                 (let ((a0-9 f0-5))
+                   (.mov vf3 a0-9)
+                   )
+                 )
+               (.mul.x.vf acc vf0 vf2 :mask #b1000)
+               (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+               (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+               (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+               (.wait.vf)
+               (.mul.vf vf1 vf1 Q :mask #b111)
+               (.nop.vf)
+               (.nop.vf)
+               (.nop.vf)
+               (.svf (&-> v1-12 quad) vf1)
+               )
+             )
+           )
+         (let ((f0-6
+                 (find-first-sphere-and-update-avoid-params (-> obj nav) (-> obj travel) (the-as nav-avoid-spheres-params #f))
+                 )
+               )
+           (when (>= f0-6 0.0)
+             (vector-float*! (-> obj travel) (-> obj travel) f0-6)
+             (let ((f0-7 (* f0-6 (-> obj nav nav-cull-radius))))
+               (if (and (not s5-0) (>= 40.96 f0-7))
+                   (logior! (-> obj flags) (nav-state-flag blocked))
+                   )
+               )
+             )
+           )
+         )
+       )
+      (else
+        (let* ((f0-8 40.96)
+               (f0-10 (* f0-8 f0-8))
+               (v1-26 (-> obj travel))
+               )
+          (when (< f0-10 (+ (* (-> v1-26 x) (-> v1-26 x)) (* (-> v1-26 z) (-> v1-26 z))))
+            (set! (-> obj heading quad) (-> obj travel quad))
+            (set! (-> obj heading y) 0.0)
+            (let ((v1-30 (-> obj heading)))
+              (let ((f0-12 1.0))
+                (.lvf vf1 (&-> v1-30 quad))
+                (.mul.vf vf2 vf1 vf1 :mask #b111)
+                (let ((a0-15 f0-12))
+                  (.mov vf3 a0-15)
+                  )
+                )
+              (.mul.x.vf acc vf0 vf2 :mask #b1000)
+              (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+              (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+              (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+              (.wait.vf)
+              (.mul.vf vf1 vf1 Q :mask #b111)
+              (.nop.vf)
+              (.nop.vf)
+              (.nop.vf)
+              (.svf (&-> v1-30 quad) vf1)
+              )
+            )
+          )
+        )
+      )
+    (if (not (logtest? (-> obj flags) (nav-state-flag touching-sphere)))
+        (logclear! (-> obj flags) (nav-state-flag trapped-by-sphere))
+        )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 54 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod clamp-travel-vector nav-state ((obj nav-state))
+  (let ((s5-0 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
+    (clamp-vector-to-mesh-cross-gaps
+      (-> obj mesh)
+      (-> obj virtual-current-pos-local)
+      (-> obj virtual-current-poly)
+      (-> obj travel)
+      (-> obj mesh work nav-poly-min-dist)
+      (not (or (logtest? (-> obj nav flags) (nav-control-flag no-redirect-in-clamp))
+               (logtest? (-> obj nav flags) (nav-control-flag limit-rotation-rate))
+               )
+           )
+      s5-0
+      )
+    (when (-> s5-0 gap-poly)
+      (set! (-> obj next-poly) (-> s5-0 gap-poly))
+      (let* ((v1-12 (-> obj travel))
+             (f0-4 (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z))))
+             (f1-3 1024.0)
+             )
+        (if (< f0-4 (* f1-3 f1-3))
+            (logior! (-> obj flags) (nav-state-flag at-gap))
+            )
+        )
+      )
+    )
+  (let ((v1-19 (new 'stack-no-clear 'vector)))
+    (vector-! v1-19 (-> obj virtual-current-pos-local) (-> obj current-pos-local))
+    (vector+! (-> obj travel) (-> obj travel) v1-19)
+    )
+  (set! (-> obj travel y) 0.0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 56 signed mismatch
+;; WARN: Stack slot offset 56 signed mismatch
+;; WARN: Stack slot offset 56 signed mismatch
+;; WARN: Stack slot offset 56 signed mismatch
+(defmethod plan-over-pat1-polys-using-route nav-state ((obj nav-state) (arg0 nav-gap-info))
+  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
+  (let ((a1-1 (-> obj next-poly)))
+    (when (logtest? (-> a1-1 pat) 1)
+      (while (and a1-1 (logtest? (-> a1-1 pat) 1))
+        (set! a1-1 (lookup-poly-on-route-to-target (-> obj mesh) a1-1 (-> obj target-poly)))
+        )
+      (when (and a1-1 (!= a1-1 (-> obj current-poly)))
+        (set! (-> arg0 poly) a1-1)
+        (-> obj mesh)
+        (let ((s3-0 (-> arg0 poly))
+              (s4-0 (-> arg0 dest))
+              )
+          (let ((s2-0 (-> obj current-pos-local)))
+            (set! sv-48 (new 'stack-no-clear 'vector))
+            (set! sv-52 (new 'stack-no-clear 'vector))
+            (set! sv-56 10000000000000000000000000000000000000.0)
+            (let* ((s1-0 (-> s3-0 vertex-count))
+                   (v1-13 (the-as int (+ s1-0 -1)))
+                   )
+              (dotimes (s0-0 (the-as int s1-0))
+                (let ((f0-1 (vector-segment-distance-point! s2-0 (-> s3-0 vertex v1-13) (-> s3-0 vertex s0-0) sv-48)))
+                  (when (< f0-1 sv-56)
+                    (set! sv-56 f0-1)
+                    (set! (-> sv-52 quad) (-> sv-48 quad))
+                    )
+                  )
+                (set! v1-13 s0-0)
+                )
+              )
+            )
+          (set! (-> s4-0 quad) (-> sv-52 quad))
+          )
+        (vector+! (-> arg0 dest) (-> arg0 dest) (-> obj mesh bounds))
+        #t
+        )
+      )
+    )
+  )
+
+;; definition for method 24 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod turn-and-navigate-to-destination nav-state ((obj nav-state))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> obj rotation-rate) (-> obj nav max-rotation-rate))
+    (if (< 0.0 (-> obj speed))
+        (set! (-> obj rotation-rate)
+              (fmin
+                (-> obj rotation-rate)
+                (* (/ (-> obj nav turning-acceleration) (-> obj speed)) (-> obj mesh work rad-to-deg))
+                )
+              )
+        )
+    (when (logtest? (-> obj nav flags) (nav-control-flag update-heading-from-facing))
+      (vector-z-quaternion! (-> obj heading) (-> obj nav shape quat))
+      (set! (-> obj heading y) 0.0)
+      (let ((v1-12 (-> obj heading)))
+        (let ((f0-5 1.0))
+          (.lvf vf1 (&-> v1-12 quad))
+          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (let ((a0-3 f0-5))
+            (.mov vf3 a0-3)
+            )
+          )
+        (.mul.x.vf acc vf0 vf2 :mask #b1000)
+        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+        (.wait.vf)
+        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.nop.vf)
+        (.nop.vf)
+        (.nop.vf)
+        (.svf (&-> v1-12 quad) vf1)
+        )
+      )
+    (let ((a1-1 (new 'stack-no-clear 'vector)))
+      (set! (-> a1-1 quad) (-> obj nav shape trans quad))
+      (if (or (not (-> obj current-poly))
+              (!= (-> obj current-pos x) (-> a1-1 x))
+              (!= (-> obj current-pos z) (-> a1-1 z))
+              )
+          (do-navigation-to-destination obj a1-1)
+          )
+      )
+    (logclear!
+      (-> obj flags)
+      (nav-state-flag blocked in-target-poly at-target avoiding-sphere touching-sphere at-gap)
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 25 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-route-portals-wrapper nav-state ((obj nav-state))
+  (navigate-using-route-portals obj)
+  0
+  (none)
+  )
+
+;; definition for method 26 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-best-dir-recompute-avoid-spheres-1-wrapper nav-state ((obj nav-state))
+  (navigate-using-best-dir-recompute-avoid-spheres-1 obj)
+  0
+  (none)
+  )
+
+;; definition for method 27 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-within-poly-wrapper nav-state ((obj nav-state))
+  (navigate-within-poly obj)
+  0
+  (none)
+  )
+
+;; definition for method 28 of type nav-state
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 192 signed mismatch
+;; WARN: Stack slot offset 200 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 196 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Stack slot offset 204 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod compute-travel-speed nav-state ((obj nav-state))
+  (local-vars (sv-192 float) (sv-196 float) (sv-200 float) (sv-204 float) (sv-224 vector))
+  (let ((s5-0 obj))
+    (let ((s4-0 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
+      (clamp-vector-to-mesh-cross-gaps
+        (-> s5-0 mesh)
+        (-> s5-0 virtual-current-pos-local)
+        (-> s5-0 virtual-current-poly)
+        (-> s5-0 travel)
+        (-> s5-0 mesh work nav-poly-min-dist)
+        (not (or (logtest? (-> s5-0 nav flags) (nav-control-flag no-redirect-in-clamp))
+                 (logtest? (-> s5-0 nav flags) (nav-control-flag limit-rotation-rate))
+                 )
+             )
+        s4-0
+        )
+      (when (-> s4-0 gap-poly)
+        (set! (-> s5-0 next-poly) (-> s4-0 gap-poly))
+        (let* ((v1-12 (-> s5-0 travel))
+               (f0-4 (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z))))
+               (f1-3 1024.0)
+               )
+          (if (< f0-4 (* f1-3 f1-3))
+              (logior! (-> s5-0 flags) (nav-state-flag at-gap))
+              )
+          )
+        )
+      )
+    (let ((v1-19 (new 'stack-no-clear 'vector)))
+      (vector-! v1-19 (-> s5-0 virtual-current-pos-local) (-> s5-0 current-pos-local))
+      (vector+! (-> s5-0 travel) (-> s5-0 travel) v1-19)
+      )
+    (set! (-> s5-0 travel y) 0.0)
+    )
+  0
+  (cond
+    ((logtest? (-> obj nav flags) (nav-control-flag use-momentum))
+     (set! sv-192 (-> obj nav target-speed))
+     (if (not (logtest? (-> obj nav flags) (nav-control-flag momentum-ignore-heading)))
+         (set! sv-192 (* sv-192 (fmax 0.0 (vector-dot (-> obj heading) (-> obj target-dir)))))
+         )
+     (set! sv-196 (- sv-192 (-> obj speed)))
+     (set! sv-200 (* (-> obj nav sec-per-frame) (-> obj nav acceleration)))
+     (set! sv-204 (fmin sv-200 (fabs sv-196)))
+     (if (< sv-196 0.0)
+         (set! (-> obj speed) (- (-> obj speed) sv-204))
+         (+! (-> obj speed) sv-204)
+         )
+     )
+    (else
+      (set! (-> obj speed) (-> obj nav target-speed))
+      )
+    )
+  (let* ((f0-22 (/ (vector-length (-> obj travel)) (-> obj nav sec-per-frame)))
+         (f1-18 (fmin (* (-> obj nav speed-scale) (-> obj speed)) f0-22))
+         )
+    (set! sv-224 (new 'stack-no-clear 'vector))
+    (when (< f0-22 (-> obj speed))
+      (set! (-> obj prev-speed) (-> obj speed))
+      (set! (-> obj speed) (/ f0-22 (-> obj nav speed-scale)))
+      )
+    (vector-normalize-copy! sv-224 (-> obj travel) f1-18)
+    )
+  (set! (-> obj velocity x) (-> sv-224 x))
+  (set! (-> obj velocity z) (-> sv-224 z))
+  0
+  (none)
+  )
+
+;; definition for method 34 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-v1! nav-state ((obj nav-state))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 obj))
+      (set! (-> s5-0 rotation-rate) (-> s5-0 nav max-rotation-rate))
+      (if (< 0.0 (-> s5-0 speed))
+          (set! (-> s5-0 rotation-rate)
+                (fmin
+                  (-> s5-0 rotation-rate)
+                  (* (/ (-> s5-0 nav turning-acceleration) (-> s5-0 speed)) (-> s5-0 mesh work rad-to-deg))
+                  )
+                )
+          )
+      (when (logtest? (-> s5-0 nav flags) (nav-control-flag update-heading-from-facing))
+        (vector-z-quaternion! (-> s5-0 heading) (-> s5-0 nav shape quat))
+        (set! (-> s5-0 heading y) 0.0)
+        (let ((v1-12 (-> s5-0 heading)))
+          (let ((f0-5 1.0))
+            (.lvf vf1 (&-> v1-12 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((a0-3 f0-5))
+              (.mov vf3 a0-3)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> v1-12 quad) vf1)
+          )
+        )
+      (let ((a1-1 (new 'stack-no-clear 'vector)))
+        (set! (-> a1-1 quad) (-> s5-0 nav shape trans quad))
+        (if (or (not (-> s5-0 current-poly))
+                (!= (-> s5-0 current-pos x) (-> a1-1 x))
+                (!= (-> s5-0 current-pos z) (-> a1-1 z))
+                )
+            (do-navigation-to-destination s5-0 a1-1)
+            )
+        )
+      (logclear!
+        (-> s5-0 flags)
+        (nav-state-flag blocked in-target-poly at-target avoiding-sphere touching-sphere at-gap)
+        )
+      )
+    0
+    (navigate-using-route-portals obj)
+    0
+    (let* ((v1-26 (-> obj nav))
+           (a0-13 (-> v1-26 state mesh sphere-hash sphere-array))
+           (a1-2 (-> v1-26 sphere-id-array))
+           (a2-1 (-> v1-26 state mesh bounds))
+           (a3-0 (-> v1-26 root-nav-sphere))
+           (t0-0 (-> v1-26 sphere-count))
+           )
+      (dotimes (t1-0 t0-0)
+        (let ((t3-0 (-> a0-13 (-> a1-2 t1-0)))
+              (t2-4 (-> v1-26 sphere-array t1-0))
+              )
+          (vector-! (the-as vector t2-4) (the-as vector t3-0) a2-1)
+          (set! (-> t2-4 r) (+ (-> t3-0 r) (-> a3-0 w)))
+          )
+        )
+      )
+    0
+    (navigate-using-best-dir-recompute-avoid-spheres-1 obj)
+    0
+    (navigate-within-poly obj)
+    0
+    (compute-travel-speed obj)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 35 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-target! nav-state ((obj nav-state))
+  (vector-reset! (-> obj target-dir))
+  0
+  (none)
+  )
+
+;; definition for method 36 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod add-offset-to-target! nav-state ((obj nav-state) (arg0 vector))
+  (vector+! (-> obj target-dir) (-> obj target-dir) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 29 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-state-method-29 nav-state ((obj nav-state))
+  0
+  (none)
+  )
+
+;; definition for method 30 of type nav-state
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-state-method-30 nav-state ((obj nav-state))
+  0
+  (none)
+  )
+
+;; definition for method 31 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 236 signed mismatch
+;; WARN: Stack slot offset 240 signed mismatch
+;; WARN: Stack slot offset 220 signed mismatch
+;; WARN: Stack slot offset 224 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-using-best-dir-recompute-avoid-spheres-2 nav-state ((obj nav-state))
+  (local-vars
+    (sv-192 int)
+    (sv-200 nav-mesh-work)
+    (sv-204 nav-poly)
+    (sv-208 uint)
+    (sv-212 (pointer int8))
+    (sv-216 (pointer int8))
+    (sv-220 float)
+    (sv-224 float)
+    (sv-228 vector)
+    (sv-232 vector)
+    (sv-236 float)
+    (sv-240 float)
+    (sv-244 uint)
+    )
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'nav-avoid-spheres-params)))
+      (set! (-> s5-0 current-pos quad) (-> obj virtual-current-pos-local quad))
+      (set! (-> s5-0 travel quad) (-> obj travel quad))
+      (set! (-> s5-0 pref-dir quad) (-> (if (logtest? (-> obj flags) (nav-state-flag trapped-by-sphere))
+                                            (-> obj heading)
+                                            (-> obj travel)
+                                            )
+                                        quad
+                                        )
+            )
+      (avoid-spheres-2! (-> obj nav) s5-0)
+      (let ((v1-5 obj))
+        (when (-> s5-0 avoiding-sphere?)
+          (logior! (-> v1-5 flags) (nav-state-flag avoiding-sphere))
+          (let ((f0-0 (-> s5-0 closest-sphere-dist2))
+                (f1-0 512.0)
+                )
+            (if (< f0-0 (* f1-0 f1-0))
+                (logior! (-> v1-5 flags) (nav-state-flag touching-sphere))
+                )
+            )
+          (set! (-> v1-5 travel quad) (-> s5-0 out-travel 0 quad))
+          (let ((a0-20 (new 'stack-no-clear 'nav-ray)))
+            (set! (-> a0-20 current-pos quad) (-> v1-5 virtual-current-pos-local quad))
+            (set! (-> a0-20 current-poly) (-> v1-5 virtual-current-poly))
+            (vector+! (-> a0-20 dest-pos) (-> v1-5 virtual-current-pos-local) (-> v1-5 travel))
+            (let ((a1-6 0))
+              (let ((a2-3 a0-20))
+                (vector-! (-> a2-3 dir) (-> a2-3 dest-pos) (-> a2-3 current-pos))
+                (set! (-> a2-3 dir y) 0.0)
+                (let ((a3-3 (-> a2-3 dir)))
+                  (let ((f0-2 1.0))
+                    (.lvf vf1 (&-> a3-3 quad))
+                    (.mul.vf vf2 vf1 vf1 :mask #b111)
+                    (let ((t0-2 f0-2))
+                      (.mov vf3 t0-2)
+                      )
+                    )
+                  (.mul.x.vf acc vf0 vf2 :mask #b1000)
+                  (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+                  (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                  (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+                  (.wait.vf)
+                  (.mul.vf vf1 vf1 Q :mask #b111)
+                  (.nop.vf)
+                  (.nop.vf)
+                  (.nop.vf)
+                  (.svf (&-> a3-3 quad) vf1)
+                  )
+                (set! (-> a2-3 next-poly) #f)
+                (set! (-> a2-3 len) 0.0)
+                (set! (-> a2-3 last-edge) -1)
+                (set! (-> a2-3 terminated) #f)
+                (set! (-> a2-3 reached-dest) #f)
+                (set! (-> a2-3 hit-boundary) #f)
+                (set! (-> a2-3 hit-gap) #f)
+                (set! (-> a2-3 ignore) (the-as uint 3))
+                )
+              0
+              (until (or (>= a1-6 15) (-> a0-20 terminated))
+                (+! a1-6 1)
+                (let ((a3-6 (-> v1-5 mesh))
+                      (a2-5 a0-20)
+                      )
+                  (set! sv-192 -1)
+                  (set! sv-200 (-> a3-6 work))
+                  (set! sv-204 (-> a2-5 current-poly))
+                  (set! sv-208 (-> a2-5 current-poly vertex-count))
+                  (set! sv-212 (-> a3-6 work vert0-table))
+                  (set! sv-216 (-> a3-6 work vert1-table))
+                  (set! sv-220 (- (-> a2-5 dest-pos x) (-> a2-5 current-pos x)))
+                  (set! sv-224 (- (-> a2-5 dest-pos z) (-> a2-5 current-pos z)))
+                  (dotimes (t0-12 (the-as int sv-208))
+                    (set! sv-228 (-> sv-204 vertex (-> sv-212 t0-12)))
+                    (set! sv-232 (-> sv-204 vertex (-> sv-216 t0-12)))
+                    (set! sv-236 (- (-> sv-228 z) (-> sv-232 z)))
+                    (set! sv-240 (- (-> sv-232 x) (-> sv-228 x)))
+                    (let ((f0-14 (+ (* sv-220 sv-236) (* sv-224 sv-240))))
+                      (when (< 0.0 f0-14)
+                        (let ((f1-13
+                                (+ (* sv-236 (- (-> sv-228 x) (-> a2-5 current-pos x))) (* sv-240 (- (-> sv-228 z) (-> a2-5 current-pos z))))
+                                )
+                              )
+                          (when (< f1-13 f0-14)
+                            (set! sv-192 t0-12)
+                            (let ((f0-16 (fmax 0.0 (/ f1-13 f0-14))))
+                              (set! sv-220 (* sv-220 f0-16))
+                              (set! sv-224 (* sv-224 f0-16))
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  (let ((f0-20 (+ (* sv-220 (-> a2-5 dir x)) (* sv-224 (-> a2-5 dir z)))))
+                    (+! (-> a2-5 len) f0-20)
+                    )
+                  0
+                  (set! (-> a2-5 next-poly) #f)
+                  (cond
+                    ((= sv-192 -1)
+                     (set! (-> a2-5 current-pos quad) (-> a2-5 dest-pos quad))
+                     (set! (-> a2-5 reached-dest) #t)
+                     (set! (-> a2-5 terminated) #t)
+                     )
+                    (else
+                      (+! (-> a2-5 current-pos x) sv-220)
+                      (+! (-> a2-5 current-pos z) sv-224)
+                      (set! sv-244 (-> sv-204 adj-poly sv-192))
+                      (if (!= sv-244 255)
+                          (set! (-> a2-5 next-poly) (-> a3-6 poly-array sv-244))
+                          )
+                      (cond
+                        ((and (-> a2-5 next-poly) (not (logtest? (-> a2-5 next-poly pat) (-> a2-5 ignore))))
+                         (set! (-> a2-5 current-poly) (-> a2-5 next-poly))
+                         )
+                        (else
+                          (set! (-> a2-5 last-edge) sv-192)
+                          (if (-> a2-5 next-poly)
+                              (set! (-> a2-5 hit-gap) #t)
+                              (set! (-> a2-5 hit-boundary) #t)
+                              )
+                          (set! (-> a2-5 terminated) #t)
+                          )
+                        )
+                      )
+                    )
+                  )
+                0
+                )
+              )
+            (cond
+              ((or (-> a0-20 reached-dest) (-> a0-20 hit-gap) (>= (-> a0-20 len) 4096.0))
+               (set! (-> v1-5 travel quad) (-> s5-0 out-travel 0 quad))
+               )
+              (else
+                (set! (-> v1-5 travel quad) (-> s5-0 out-travel 1 quad))
+                (logior! (-> v1-5 flags) (nav-state-flag trapped-by-sphere))
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (if (not (logtest? (-> obj flags) (nav-state-flag touching-sphere)))
+        (logclear! (-> obj flags) (nav-state-flag trapped-by-sphere))
+        )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 32 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-travel-dir-from-spheres nav-state ((obj nav-state))
+  (local-vars (v1-11 float) (v1-25 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'nav-control-cfs-work)))
+      (vector-reset! (-> s5-0 in-dir))
+      (set! (-> s5-0 best-dir 0 quad) (-> obj travel quad))
+      (set! (-> s5-0 best-dir 0 y) 0.0)
+      (vector-normalize! (the-as vector (-> s5-0 best-dir)) (-> obj nav target-speed))
+      (vector-! (-> s5-0 right-dir) (the-as vector (-> s5-0 best-dir)) (-> obj velocity))
+      (vector-float*! (-> s5-0 right-dir) (-> s5-0 right-dir) 4.0)
+      (vector+! (-> s5-0 in-dir) (-> s5-0 in-dir) (-> s5-0 right-dir))
+      (dotimes (s4-0 (-> obj nav sphere-count))
+        (let ((s3-0 (-> obj nav sphere-array s4-0)))
+          (vector-! (-> s5-0 right-dir) (-> obj current-pos-local) (the-as vector s3-0))
+          (.lvf vf1 (&-> (-> s5-0 right-dir) quad))
+          (.add.w.vf vf2 vf0 vf0 :mask #b1)
+          (.mul.vf vf1 vf1 vf1)
+          (.mul.x.vf acc vf2 vf1 :mask #b1)
+          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+          (.mov v1-11 vf1)
+          (let ((f30-0 v1-11))
+            (vector-normalize! (-> s5-0 right-dir) 2.0)
+            (let* ((f0-4 (+ (-> obj nav root-nav-sphere w) (-> s3-0 r)))
+                   (f1-1 (* f0-4 f0-4))
+                   (f0-7 (fmax 0.0 (/ (- f1-1 f30-0) f1-1)))
+                   )
+              (vector-float*! (-> s5-0 right-dir) (-> s5-0 right-dir) (* 81920.0 f0-7))
+              )
+            )
+          )
+        (vector+! (-> s5-0 in-dir) (-> s5-0 in-dir) (-> s5-0 right-dir))
+        )
+      (vector+! (-> obj target-dir) (-> obj target-dir) (-> s5-0 in-dir))
+      )
+    (set! (-> obj target-dir y) 0.0)
+    (vector+float*! (-> obj velocity) (-> obj velocity) (-> obj target-dir) (-> obj nav sec-per-frame))
+    (.lvf vf1 (&-> (-> obj velocity) quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v1-25 vf1)
+    (let ((f0-11 v1-25)
+          (f1-4 (-> obj nav target-speed))
+          )
+      (if (< (* f1-4 f1-4) f0-11)
+          (vector-float*! (-> obj velocity) (-> obj velocity) (/ (-> obj nav target-speed) (sqrtf f0-11)))
+          )
+      )
+    (vector-float*! (-> obj travel) (-> obj velocity) (-> obj nav sec-per-frame))
+    0
+    (none)
+    )
+  )
+
+;; definition for method 33 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod compute-speed-simple nav-state ((obj nav-state))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
+      (clamp-vector-to-mesh-cross-gaps
+        (-> obj mesh)
+        (-> obj virtual-current-pos-local)
+        (-> obj virtual-current-poly)
+        (-> obj travel)
+        (-> obj mesh work nav-poly-min-dist)
+        #t
+        s5-0
+        )
+      (if (-> s5-0 gap-poly)
+          (set! (-> obj next-poly) (-> s5-0 gap-poly))
+          )
+      )
+    (let* ((f0-1 40.96)
+           (f0-3 (* f0-1 f0-1))
+           (v1-9 (-> obj travel))
+           )
+      (when (< f0-3 (+ (* (-> v1-9 x) (-> v1-9 x)) (* (-> v1-9 z) (-> v1-9 z))))
+        (set! (-> obj heading quad) (-> obj travel quad))
+        (set! (-> obj heading y) 0.0)
+        (let ((v1-13 (-> obj heading)))
+          (let ((f0-5 1.0))
+            (.lvf vf1 (&-> v1-13 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((a0-5 f0-5))
+              (.mov vf3 a0-5)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> v1-13 quad) vf1)
+          )
+        )
+      )
+    (vector-float*! (-> obj velocity) (-> obj travel) (/ 1.0 (-> obj nav sec-per-frame)))
+    (set! (-> obj speed) (vector-length (-> obj velocity)))
+    (vector-reset! (-> obj target-dir))
+    0
+    (none)
+    )
+  )
+
+;; definition for method 37 of type nav-state
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod navigate-v2! nav-state ((obj nav-state))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 obj))
+      (set! (-> s5-0 rotation-rate) (-> s5-0 nav max-rotation-rate))
+      (if (< 0.0 (-> s5-0 speed))
+          (set! (-> s5-0 rotation-rate)
+                (fmin
+                  (-> s5-0 rotation-rate)
+                  (* (/ (-> s5-0 nav turning-acceleration) (-> s5-0 speed)) (-> s5-0 mesh work rad-to-deg))
+                  )
+                )
+          )
+      (when (logtest? (-> s5-0 nav flags) (nav-control-flag update-heading-from-facing))
+        (vector-z-quaternion! (-> s5-0 heading) (-> s5-0 nav shape quat))
+        (set! (-> s5-0 heading y) 0.0)
+        (let ((v1-12 (-> s5-0 heading)))
+          (let ((f0-5 1.0))
+            (.lvf vf1 (&-> v1-12 quad))
+            (.mul.vf vf2 vf1 vf1 :mask #b111)
+            (let ((a0-3 f0-5))
+              (.mov vf3 a0-3)
+              )
+            )
+          (.mul.x.vf acc vf0 vf2 :mask #b1000)
+          (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
+          (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+          (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
+          (.wait.vf)
+          (.mul.vf vf1 vf1 Q :mask #b111)
+          (.nop.vf)
+          (.nop.vf)
+          (.nop.vf)
+          (.svf (&-> v1-12 quad) vf1)
+          )
+        )
+      (let ((a1-1 (new 'stack-no-clear 'vector)))
+        (set! (-> a1-1 quad) (-> s5-0 nav shape trans quad))
+        (if (or (not (-> s5-0 current-poly))
+                (!= (-> s5-0 current-pos x) (-> a1-1 x))
+                (!= (-> s5-0 current-pos z) (-> a1-1 z))
+                )
+            (do-navigation-to-destination s5-0 a1-1)
+            )
+        )
+      (logclear!
+        (-> s5-0 flags)
+        (nav-state-flag blocked in-target-poly at-target avoiding-sphere touching-sphere at-gap)
+        )
+      )
+    0
+    (navigate-using-route-portals obj)
+    0
+    (let* ((v1-26 (-> obj nav))
+           (a0-13 (-> v1-26 state mesh sphere-hash sphere-array))
+           (a1-2 (-> v1-26 sphere-id-array))
+           (a2-1 (-> v1-26 state mesh bounds))
+           (a3-0 (-> v1-26 root-nav-sphere))
+           (t0-0 (-> v1-26 sphere-count))
+           )
+      (dotimes (t1-0 t0-0)
+        (let ((t3-0 (-> a0-13 (-> a1-2 t1-0)))
+              (t2-4 (-> v1-26 sphere-array t1-0))
+              )
+          (vector-! (the-as vector t2-4) (the-as vector t3-0) a2-1)
+          (set! (-> t2-4 r) (+ (-> t3-0 r) (-> a3-0 w)))
+          )
+        )
+      )
+    0
+    (navigate-using-best-dir-recompute-avoid-spheres-2 obj)
+    (update-travel-dir-from-spheres obj)
+    (compute-speed-simple obj)
+    0
+    (none)
+    )
+  )

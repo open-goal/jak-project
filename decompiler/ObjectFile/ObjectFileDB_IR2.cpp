@@ -29,8 +29,93 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
+#include "decompiler/types2/types2.h"
 
 namespace decompiler {
+
+void ObjectFileDB::process_object_file_data(
+    ObjectFileData& data,
+    const fs::path& output_dir,
+    const Config& config,
+    const std::unordered_set<std::string>& skip_functions,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
+  Timer file_timer;
+  ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
+  ir2_setup_labels(config, data);
+  ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
+  if (data.linked_data.functions_by_seg.size() == 3) {
+    enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
+    try {
+      run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+      step = DEFSTATE;
+      run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
+      step = DEFSKELGROUP;
+      run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+
+    } catch (const std::exception& e) {
+      switch (step) {
+        case DEFPART:
+          lg::error("Failed to find defpartgroups: {}", e.what());
+          break;
+        case DEFSTATE:
+          lg::error("Failed to find defstates: {}", e.what());
+          break;
+        case DEFSKELGROUP:
+          lg::error("Failed to find defskelgroups: {}", e.what());
+          break;
+      }
+    }
+  }
+  ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
+  ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
+
+  ir2_insert_anonymous_functions(DEBUG_SEGMENT, data);
+  ir2_insert_anonymous_functions(MAIN_SEGMENT, data);
+  ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
+
+  ir2_run_mips2c(config, data);
+
+  ir2_symbol_definition_map(data);
+
+  // TODO - insert the game_name into the import line automatically
+  // instead of `goal_src/jak1/import/something.gc`
+  // just `import/something.gc`
+  //
+  // Can be relative to the root of the source directory
+  const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
+  std::vector<std::string> imports;
+  if (imports_it != config.import_deps_by_file.end()) {
+    imports = imports_it->second;
+  }
+
+  if (!output_dir.string().empty()) {
+    ir2_write_results(output_dir, config, imports, data);
+  } else {
+    data.output_with_skips = ir2_final_out(data, imports, skip_functions);
+    data.full_output = ir2_final_out(data, imports, {});
+  }
+
+  if (!config.generate_all_types) {
+    // this frees ir2 memory, but means future passes can't look back on this function.
+    for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
+  } else {
+    for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
+      if (seg == TOP_LEVEL_SEGMENT) {
+        return;  // keep top-levels
+      }
+      if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
+          f.guessed_name.method_id == GOAL_INSPECT_METHOD) {
+        return;  // keep inspects
+      }
+      // otherwise free memory
+      f.ir2 = {};
+    });
+  }
+
+  lg::info("Done in {:.2f}ms", file_timer.getMs());
+}
 
 /*!
  * Main IR2 analysis pass.
@@ -40,6 +125,8 @@ namespace decompiler {
 void ObjectFileDB::analyze_functions_ir2(
     const fs::path& output_dir,
     const Config& config,
+    const std::optional<std::function<void(std::string)>> prefile_callback,
+    const std::optional<std::function<void()>> postfile_callback,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   int total_file_count = 0;
@@ -48,83 +135,14 @@ void ObjectFileDB::analyze_functions_ir2(
   }
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
-    Timer file_timer;
-    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
-    ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
-    ir2_setup_labels(config, data);
-    ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
-    if (data.linked_data.functions_by_seg.size() == 3) {
-      enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
-      try {
-        run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
-        step = DEFSTATE;
-        run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
-        step = DEFSKELGROUP;
-        run_defskelgroups(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
-
-      } catch (const std::exception& e) {
-        switch (step) {
-          case DEFPART:
-            lg::error("Failed to find defpartgroups: {}", e.what());
-            break;
-          case DEFSTATE:
-            lg::error("Failed to find defstates: {}", e.what());
-            break;
-          case DEFSKELGROUP:
-            lg::error("Failed to find defskelgroups: {}", e.what());
-            break;
-        }
-      }
+    if (prefile_callback) {
+      prefile_callback.value()(data.to_unique_name());
     }
-    ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config, data);
-    ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config, data);
-
-    ir2_insert_anonymous_functions(DEBUG_SEGMENT, data);
-    ir2_insert_anonymous_functions(MAIN_SEGMENT, data);
-    ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
-
-    ir2_run_mips2c(config, data);
-
-    ir2_symbol_definition_map(data);
-
-    // TODO - insert the game_name into the import line automatically
-    // instead of `goal_src/jak1/import/something.gc`
-    // just `import/something.gc`
-    //
-    // Can be relative to the root of the source directory
-    const auto& imports_it = config.import_deps_by_file.find(data.to_unique_name());
-    std::vector<std::string> imports;
-    if (imports_it != config.import_deps_by_file.end()) {
-      imports = imports_it->second;
+    lg::info("[{:3d}/{}]------ {}", file_idx++, total_file_count, data.to_unique_name());
+    process_object_file_data(data, output_dir, config, skip_functions, skip_states);
+    if (postfile_callback) {
+      postfile_callback.value()();
     }
-
-    if (!output_dir.string().empty()) {
-      ir2_write_results(output_dir, config, imports, data);
-    } else {
-      data.output_with_skips = ir2_final_out(data, imports, skip_functions);
-      data.full_output = ir2_final_out(data, imports, {});
-    }
-
-    if (!config.generate_all_types) {
-      // this frees ir2 memory, but means future passes can't look back on this function.
-      for_each_function_def_order_in_obj(data, [&](Function& f, int) { f.ir2 = {}; });
-    } else {
-      for_each_function_def_order_in_obj(data, [&](Function& f, int seg) {
-        if (seg == TOP_LEVEL_SEGMENT) {
-          return;  // keep top-levels
-        }
-        if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD &&
-            f.guessed_name.method_id == GOAL_INSPECT_METHOD) {
-          return;  // keep inspects
-        }
-        // otherwise free memory
-        f.ir2 = {};
-      });
-    }
-
-    fmt::print("Done in {:.2f}ms\n", file_timer.getMs());
   });
 
   lg::info("{}", stats.let.print());
@@ -157,6 +175,8 @@ void ObjectFileDB::ir2_do_segment_analysis_phase2(int seg,
   ir2_rewrite_inline_asm_instructions(seg, data);
 
   ir2_insert_lets(seg, data);
+
+  ir2_add_store_errors(seg, data);
 }
 
 void ObjectFileDB::ir2_setup_labels(const Config& config, ObjectFileData& data) {
@@ -171,7 +191,7 @@ void ObjectFileDB::ir2_setup_labels(const Config& config, ObjectFileData& data) 
           std::make_unique<LabelDB>(config_labels, data.linked_data.labels, dts);
       analyze_labels(data.linked_data.label_db.get(), &data.linked_data);
     } catch (const std::exception& e) {
-      lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
+      lg::die("Error parsing labels for {}: {}", data.to_unique_name(), e.what());
     }
   }
 }
@@ -264,15 +284,13 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
           func.type = TypeSpec("function");
         }
 
-        if (config.hacks.asm_functions_by_name.find(name) !=
-            config.hacks.asm_functions_by_name.end()) {
-          func.warnings.info("Flagged as asm by config");
-          func.suspected_asm = true;
-        }
-
         if (config.hacks.mips2c_functions_by_name.find(name) !=
             config.hacks.mips2c_functions_by_name.end()) {
           func.warnings.info("Flagged as mips2c by config");
+          func.suspected_asm = true;
+        } else if (config.hacks.asm_functions_by_name.find(name) !=
+                   config.hacks.asm_functions_by_name.end()) {
+          func.warnings.error("Flagged as asm by config");
           func.suspected_asm = true;
         }
       }
@@ -295,7 +313,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   lg::info("{:4d} global  {:.2f}%", total_named_global_functions,
            100.f * total_named_global_functions / total_functions);
   lg::info("{:4d} methods {:.2f}%", total_methods, 100.f * total_methods / total_functions);
-  lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
+  lg::info("{:4d} logins  {:.2f}%", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
@@ -538,10 +556,29 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
           func.ir2.env.set_art_group(obj_name + "-ag");
         }
 
-        if (run_type_analysis_ir2(ts, dts, func)) {
-          func.ir2.env.types_succeeded = true;
+        constexpr bool kForceNewTypes = false;
+        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
+          // use new types for jak 2 always
+          types2::Input in;
+          types2::Output out;
+          in.func = &func;
+          in.function_type = ts;
+          in.dts = &dts;
+          try {
+            types2::run(out, in);
+            func.ir2.env.set_types(out.block_init_types, out.op_end_types, *func.ir2.atomic_ops,
+                                   ts);
+          } catch (const std::exception& e) {
+            func.warnings.error("Type analysis failed: {}", e.what());
+          }
+          func.ir2.env.types_succeeded = out.succeeded;
         } else {
-          func.warnings.error("Type Propagation failed: Type analysis failed");
+          // old type pass
+          if (run_type_analysis_ir2(ts, dts, func)) {
+            func.ir2.env.types_succeeded = true;
+          } else {
+            func.warnings.error("Type analysis failed");
+          }
         }
       } else {
         lg::warn("Function {} didn't know its type", func.name());
@@ -589,7 +626,12 @@ void ObjectFileDB::ir2_register_usage_pass(int seg, ObjectFileData& data) {
           }
 
           lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
-          func.warnings.error("Function may read a register that is not set: {}", x.to_string());
+          if (x.to_string() == "f31") {
+            func.warnings.warning("Function may read a register that is not set: {}",
+                                  x.to_string());
+          } else {
+            func.warnings.error("Function may read a register that is not set: {}", x.to_string());
+          }
         }
       }
     }
@@ -673,6 +715,22 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
         lg::warn(err);
         func.warnings.error(err);
       }
+    }
+  });
+}
+
+void ObjectFileDB::ir2_add_store_errors(int seg, ObjectFileData& data) {
+  for_each_function_in_seg_in_obj(seg, data, [&](Function& func) {
+    if (func.ir2.expressions_succeeded && !func.warnings.has_errors()) {
+      // print warning about failed store, but only if decompilation passes without any major
+      // errors
+      func.ir2.top_form->apply([&](FormElement* f) {
+        auto as_store = dynamic_cast<StoreElement*>(f);
+        if (as_store) {
+          func.warnings.error("Failed store: {} at op {}", as_store->to_string(func.ir2.env),
+                              as_store->op()->op_id());
+        }
+      });
     }
   });
 }
@@ -868,13 +926,19 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += "; .function " + func.name() + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
+  if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    result += fmt::format("  ;internal_name: {}\n", func.state_handler_as_anon_func);
+  }
   if (func.warnings.has_warnings()) {
     result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
   }
 
+  /*
   if (func.ir2.env.has_local_vars()) {
     result += func.ir2.env.print_local_var_types(func.ir2.top_form);
   }
+   */
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;
   // print each instruction in the function.
@@ -1009,7 +1073,9 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.mips2c_output) {
+    result += ";;-*-MIPS2C-Start-*-\n";
     result += *func.mips2c_output;
+    result += ";;-*-MIPS2C-End-*-\n";
   }
 
   result += "\n";

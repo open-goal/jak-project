@@ -1,0 +1,84 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: mech-h.gc
+;; name in dgo: mech-h
+;; dgos: ENGINE, GAME
+
+;; DECOMP BEGINS
+
+(deftype mech-info (basic)
+  ((entity                basic                        :offset-assert   4)
+   (hud                   handle             1         :offset-assert   8)
+   (mech-trans            vector             :inline   :offset-assert  16)
+   (mech-quat             vector             :inline   :offset-assert  32)
+   (mech-scale            vector             :inline   :offset-assert  48)
+   (engine-sound-id       sound-id                     :offset-assert  64)
+   (engine-sound-volume   float                        :offset-assert  68)
+   (engine-sound-pitch    float                        :offset-assert  72)
+   (thrust-sound-id       sound-id                     :offset-assert  76)
+   (drag-sound-id         sound-id                     :offset-assert  80)
+   (whine-sound-id        sound-id                     :offset-assert  84)
+   (mech-start-time       time-frame                   :offset-assert  88)
+   (mech-time             time-frame                   :offset-assert  96)
+   (no-get-off-time       time-frame                   :offset-assert 104)
+   (stick-lock            basic                        :offset-assert 112)
+   (stick-off             basic                        :offset-assert 116)
+   (forward-vel           meters                       :offset-assert 120)
+   (jump-thrust           meters                       :offset-assert 124)
+   (jump-thrust-fuel      float                        :offset-assert 128)
+   (unstuck-time          time-frame                   :offset-assert 136)
+   (stuck-count           int32                        :offset-assert 144)
+   (back-touch-point      vector             :inline   :offset-assert 160)
+   (back-touch-trans      vector             :inline   :offset-assert 176)
+   (back-touch-time       time-frame                   :offset-assert 192)
+   (attack-id             uint32                       :offset-assert 200)
+   (shield-value          float                        :offset-assert 204)
+   (shield-max            float                        :offset-assert 208)
+   (walk-anim-leg         int32                        :offset-assert 212)
+   (state-impact?         symbol             1         :offset-assert 216)
+   (state-impact          impact-control     1 :inline :offset-assert 224)
+   (thruster-flame-width  meters                       :offset-assert 304)
+   (thruster-flame-length meters                       :offset-assert 308)
+   (thruster-local-pos    vector             2 :inline :offset-assert 320)
+   (exhaust-local-pos     vector             2 :inline :offset-assert 352)
+   (exhaust-local-dir     vector             2 :inline :offset-assert 384)
+   (smoke-local-pos       vector             2 :inline :offset-assert 416)
+   (smoke-local-vel       vector             2 :inline :offset-assert 448)
+   (particle-system-2d    basic                        :offset-assert 480)
+   (particle-system-3d    basic                        :offset-assert 484)
+   (part-thruster         basic                        :offset-assert 488)
+   (part-thruster-scale-x sp-field-init-spec           :offset-assert 492)
+   (part-thruster-scale-y sp-field-init-spec           :offset-assert 496)
+   (part-quat             quaternion                   :offset-assert 500)
+   (part-vel              vector                       :offset-assert 504)
+   )
+  :method-count-assert 9
+  :size-assert         #x1fc
+  :flag-assert         #x9000001fc
+  )
+
+
+(defskelgroup skel-mech mech mech-lod0-jg mech-mech-idle-ja
+              ((mech-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.5)
+              :shadow mech-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(define *mech-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :flags (shadow-flags disable-fade shdf03)
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
+                                           )
+                               )
+  )
+
+(defskelgroup skel-mech-explode mech mech-explode-lod0-jg mech-explode-idle-ja
+              ((mech-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4.5)
+              :origin-joint-index 3
+              )

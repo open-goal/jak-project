@@ -1,0 +1,10 @@
+("LPROTECT.DGO"
+ ("gun-buoy.o"
+  "protect.o"
+  "tpage-2869.go"
+  "gun-buoy-ag.go"
+  "transport-ag.go"
+  "seal-of-mar-ag.go"
+  "seal-of-mar-top-ag.go"
+  "lprotect.go"
+ ))

@@ -34,7 +34,9 @@
 */
 
 void setup_logging(bool verbose, std::string log_file) {
-  lg::set_file(log_file);
+  if (!log_file.empty()) {
+    lg::set_file(log_file, false, true);
+  }
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_flush_level(lg::level::debug);
@@ -66,8 +68,11 @@ int main(int argc, char** argv) {
   AppState appstate;
   LSPRouter lsp_router;
   appstate.verbose = verbose;
-  if (!logfile.empty()) {
+  try {
     setup_logging(appstate.verbose, logfile);
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
   }
   lsp_router.init_routes();
 
@@ -78,28 +83,40 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), _O_BINARY);
 #endif
 
-  char c;
-  MessageBuffer message_buffer;
-  while (std::cin.get(c)) {
-    message_buffer.handle_char(c);
+  try {
+    char c;
+    MessageBuffer message_buffer;
+    while (std::cin.get(c)) {
+      message_buffer.handle_char(c);
 
-    if (message_buffer.message_completed()) {
-      json body = message_buffer.body();
-      auto method_name = body["method"].get<std::string>();
-      lg::info(">>> Received message of method '{}'", method_name);
-      auto responses = lsp_router.route_message(message_buffer, appstate);
-      if (responses) {
-        for (const auto& response : responses.value()) {
-          std::cout << response.c_str() << std::flush;
-          if (appstate.verbose) {
-            lg::debug("<<< Sending message: {}", response);
-          } else {
-            lg::info("<<< Sending message of method '{}'", method_name);
+      if (message_buffer.message_completed()) {
+        json body = message_buffer.body();
+        // If the request doesn't have a 'method', then it's not a request
+        // skip it, but log it.  We don't depend on any requests from the client yet
+        // currently they are mostly just notifications
+        if (!body.contains("method")) {
+          lg::warn("Response received from client - {}", body.dump());
+          message_buffer.clear();
+          continue;
+        }
+        auto method_name = body["method"].get<std::string>();
+        lg::info(">>> Received message of method '{}'", method_name);
+        auto responses = lsp_router.route_message(message_buffer, appstate);
+        if (responses) {
+          for (const auto& response : responses.value()) {
+            std::cout << response.c_str() << std::flush;
+            if (appstate.verbose) {
+              lg::debug("<<< Sending message: {}", response);
+            } else {
+              lg::info("<<< Sending message of method '{}'", method_name);
+            }
           }
         }
+        message_buffer.clear();
       }
-      message_buffer.clear();
     }
+  } catch (std::exception& e) {
+    lg::error("Unexpected LSP Exception occured - {}", e.what());
   }
 
   return 0;

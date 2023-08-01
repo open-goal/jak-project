@@ -73,6 +73,14 @@ Matcher Matcher::cast(const std::string& type, Matcher value) {
   return m;
 }
 
+Matcher Matcher::cast_to_any(int type_out, Matcher value) {
+  Matcher m;
+  m.m_kind = Kind::CAST_TO_ANY;
+  m.m_string_out_id = type_out;
+  m.m_sub_matchers = {value};
+  return m;
+}
+
 Matcher Matcher::any(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY;
@@ -112,6 +120,13 @@ Matcher Matcher::any_symbol(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_SYMBOL;
   m.m_string_out_id = match_id;
+  return m;
+}
+
+Matcher Matcher::quoted_symbol(const std::string& name) {
+  Matcher m;
+  m.m_kind = Kind::QUOTED_SYMBOL;
+  m.m_str = name;
   return m;
 }
 
@@ -335,6 +350,15 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     } break;
 
+    case Kind::CAST_TO_ANY: {
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
+      if (as_cast) {
+        maps_out->strings[m_string_out_id] = as_cast->type().print();
+        return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
+      }
+      return false;
+    } break;
+
     case Kind::INT: {
       auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
@@ -441,6 +465,24 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
             maps_out->strings[m_string_out_id] = atom.get_str();
           }
           return true;
+        }
+      }
+      return false;
+    }
+
+    case Kind::QUOTED_SYMBOL: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_sym_ptr()) {
+          return as_simple_atom->atom().get_str() == m_str;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        const auto& atom = as_expr->expr().get_arg(0);
+        if (atom.is_sym_ptr()) {
+          return atom.get_str() == m_str;
         }
       }
       return false;

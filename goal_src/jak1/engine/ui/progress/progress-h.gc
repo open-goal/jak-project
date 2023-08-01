@@ -103,6 +103,16 @@
   (quit 34)
 
   ;; extra screens for pc port
+  ;; input options
+  (input-options)
+  (select-controller)
+  (controller-binds) ;; 0x25
+  (keyboard-binds)
+  (mouse-binds)
+  (controller-options)
+  (mouse-options)
+  (reassign-binds-options)
+
   (camera-options)
   (accessibility-options)
   (game-ps2-options)
@@ -123,6 +133,10 @@
   (memcard-disable-auto-save)
   (memcard-auto-save-disabled)
   (monitor)
+  (checkpoint-select)
+  (speedrun-options)
+  (speedrun-il-options)
+  (speedrun-cat-ext-options)
 
   ;; the last one!
   (max)
@@ -157,9 +171,13 @@
   (button-flava)
   (cheat-toggle)
   (monitor)
+  (controller)
+  (binding-assignment)
+  (confirmation)
   )
-    )
-  )
+
+    ) ;; end of PC_PORT = #t branch for enum initialization
+  ) ;; end of PC_PORT cond
 
 (defenum game-option-menu
   :type int32
@@ -197,7 +215,7 @@
 
 (deftype task-info-data (basic)
   ((task-id                  game-task      :offset-assert   4)
-   (task-name                game-text-id 4 :offset-assert   8)
+   (task-name                text-id 4 :offset-assert   8)
    (text-index-when-resolved int32          :offset-assert  24)
    )
   :method-count-assert 9
@@ -207,7 +225,7 @@
 
 
 (deftype level-tasks-info (basic)
-  ((level-name-id     game-text-id     :offset-assert   4)
+  ((level-name-id     text-id     :offset-assert   4)
    (text-group-index  int32            :offset-assert   8)
    (nb-of-tasks       int32            :offset-assert  12)
    (buzzer-task-index int32            :offset-assert  16)
@@ -218,19 +236,26 @@
   :flag-assert         #x900000034
   )
 
-
 (deftype game-option (basic)
-  ((option-type     game-option-type  :offset-assert   8)
-   (name            game-text-id      :offset-assert  16)
-   (scale           symbol            :offset-assert  20)
-   (param1          float             :offset-assert  24)
-   (param2          float             :offset-assert  28)
-   (param3          game-option-menu  :offset-assert  32)
-   (value-to-modify pointer           :offset-assert  36)
+  ((option-type            game-option-type        :offset-assert  8)
+   (name                   text-id                 :offset-assert 16)
+   (scale                  symbol                  :offset-assert 20)
+   (param1                 float                   :offset-assert 24)
+   (param2                 float                   :offset-assert 28)
+   (param3                 game-option-menu        :offset-assert 32)
+   (value-to-modify        pointer                 :offset-assert 36)
+   ;; fields below added in pc port
+   (option-disabled-func   (function symbol)       :offset-assert 40)
+   (name-override          string                  :offset-assert 44)
+   (on-change              (function object none)  :offset-assert 48)
+   (on-confirm             (function none)         :offset-assert 52)
+   (slider-step-size       float                   :offset-assert 56)
+   (slider-show-decimal?   symbol                  :offset-assert 60)
+   (bind-info              bind-assignment-info    :inline :offset-assert 64)
    )
   :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
+  :size-assert         #x54
+  :flag-assert         #x900000054
   )
 
 
@@ -295,11 +320,11 @@
   :size-assert         #x2dc
   :flag-assert         #x3b027002dc
   (:methods
-    (progress-dummy-14 (_type_) none 14) ;; unused
-    (progress-dummy-15 (_type_) none 15) ;; unused
-    (progress-dummy-16 (_type_) none 16) ;; unused
+    (progress-method-14 (_type_) none 14)
+    (progress-method-15 (_type_) none 15)
+    (progress-method-16 (_type_) none 16)
     (draw-progress (_type_) none 17)
-    (progress-dummy-18 () none 18) ;; unused
+    (progress-method-18 () none 18)
     (visible? (_type_) symbol 19)
     (hidden? (_type_) symbol 20)
     (adjust-sprites (_type_) none 21)
@@ -325,10 +350,10 @@
     (draw-memcard-auto-save-error (_type_ font-context) none 41)
     (draw-memcard-removed (_type_ font-context) none 42)
     (draw-memcard-error (_type_ font-context) none 43)
-    (progress-dummy-44 (_type_) none 44) ;; unused
+    (progress-method-44 (_type_) none 44)
     (push! (_type_) none 45)
     (pop! (_type_) none 46)
-    (progress-dummy-47 (_type_) none 47) ;; unused
+    (progress-method-47 (_type_) none 47)
     (enter! (_type_ progress-screen int) none 48)
     (draw-memcard-format (_type_ font-context) none 49)
     (draw-auto-save (_type_ font-context) none 50)

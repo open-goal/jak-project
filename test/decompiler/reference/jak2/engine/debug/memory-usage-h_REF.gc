@@ -1,0 +1,72 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition of type memory-usage-info
+(deftype memory-usage-info (structure)
+  ((name  string  :offset-assert   0)
+   (count int32   :offset-assert   4)
+   (used  int32   :offset-assert   8)
+   (total int32   :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type memory-usage-info
+(defmethod inspect memory-usage-info ((obj memory-usage-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'memory-usage-info)
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tcount: ~D~%" (-> obj count))
+  (format #t "~1Tused: ~D~%" (-> obj used))
+  (format #t "~1Ttotal: ~D~%" (-> obj total))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type memory-usage-block
+(deftype memory-usage-block (basic)
+  ((work-bsp basic                         :offset-assert   4)
+   (length   int32                         :offset-assert   8)
+   (data     memory-usage-info 112 :inline :offset-assert  16)
+   )
+  :method-count-assert 12
+  :size-assert         #x710
+  :flag-assert         #xc00000710
+  (:methods
+    (reset! (_type_) _type_ 9)
+    (calculate-total (_type_) int 10)
+    (print-mem-usage (_type_ level object) _type_ 11)
+    )
+  )
+
+;; definition for method 3 of type memory-usage-block
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect memory-usage-block ((obj memory-usage-block))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twork-bsp: ~A~%" (-> obj work-bsp))
+  (format #t "~1Tlength: ~D~%" (-> obj length))
+  (format #t "~1Tdata[112] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *mem-usage*, type memory-usage-block
+(define *mem-usage* (new 'debug 'memory-usage-block))
+
+;; definition for symbol *dma-mem-usage*, type memory-usage-block
+(define *dma-mem-usage* (new 'debug 'memory-usage-block))
+
+;; definition for symbol *temp-mem-usage*, type memory-usage-block
+(define *temp-mem-usage* (the-as memory-usage-block #f))

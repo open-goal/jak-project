@@ -5,5 +5,234 @@
 ;; name in dgo: collide-probe
 ;; dgos: ENGINE, GAME
 
+#|@file
+this file is unused in jak 2.
+a number of functions require a bunch of annoying casts/mips2c stuff, but are unused.
+|#
+
 ;; DECOMP BEGINS
+
+(defun creates-new-method? ((arg0 type) (arg1 int))
+  (let ((v1-1 (-> arg0 parent allocated-length)))
+    (-> arg0 allocated-length)
+    (>= arg1 (the-as int v1-1))
+    )
+  )
+
+(defun overrides-parent-method? ((arg0 type) (arg1 int))
+  (!= (-> arg0 method-table arg1) (-> arg0 parent method-table arg1))
+  )
+
+(defun describe-methods ((arg0 type))
+  (let ((s5-0 (-> arg0 allocated-length)))
+    (dotimes (s4-0 (the-as int s5-0))
+      (let ((s3-0 arg0))
+        (format #t "~3d:~%" s4-0)
+        (while (!= s3-0 basic)
+          (cond
+            ((creates-new-method? s3-0 s4-0)
+             (format #t "   created by ~s.~%" (symbol->string (-> s3-0 symbol)))
+             (set! s3-0 basic)
+             )
+            ((overrides-parent-method? s3-0 s4-0)
+             (format #t "   overridden by ~s.~%" (symbol->string (-> s3-0 symbol)))
+             (set! s3-0 (-> s3-0 parent))
+             )
+            (else
+              (set! s3-0 (-> s3-0 parent))
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defun indent-to ((arg0 int))
+  (dotimes (s5-0 arg0)
+    (format #t " ")
+    )
+  (none)
+  )
+(define-extern probe-traverse-draw-node (function draw-node int none))
+
+(defun probe-traverse-draw-node ((arg0 draw-node) (arg1 int))
+  (indent-to arg1)
+  (format
+    #t
+    "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
+    arg0
+    (-> arg0 child-count)
+    (-> arg0 flags)
+    (-> arg0 distance)
+    (-> arg0 child)
+    )
+  (cond
+    ((nonzero? (-> arg0 flags))
+     (let ((s4-0 (-> arg0 child)))
+       (dotimes (s3-0 (the-as int (-> arg0 child-count)))
+         (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1))
+         )
+       )
+     )
+    (else
+      )
+    )
+  0
+  (none)
+  )
+
+(defun probe-traverse-inline-array-node ((arg0 drawable-inline-array-node) (arg1 int))
+  (indent-to arg1)
+  (format #t "[~08x] drawable-inline-array-node: length = ~d~%" arg0 (-> arg0 length))
+  (let ((s4-0 (-> arg0 length)))
+    (dotimes (s3-0 s4-0)
+      (indent-to arg1)
+      (format #t "(~3d) ~a~%" s3-0 (-> arg0 data s3-0))
+      (if (= (-> arg0 data s3-0 type) draw-node)
+          (probe-traverse-draw-node (-> arg0 data s3-0) (+ arg1 1))
+          )
+      )
+    )
+  (none)
+  )
+
+(defun probe-traverse-collide-fragment ((arg0 drawable-tree-collide-fragment) (arg1 int))
+  (indent-to arg1)
+  (format #t "[~08x] drawable-tree-collide-fragment: length = ~d~%" arg0 (-> arg0 length))
+  (let ((s4-0 (-> arg0 length)))
+    (dotimes (s3-0 (+ s4-0 -1))
+      (indent-to arg1)
+      (if (= (-> arg0 data s3-0 type) drawable-inline-array-node)
+          (probe-traverse-inline-array-node (the-as drawable-inline-array-node (-> arg0 data s3-0)) (+ arg1 1))
+          (format #t "unknown: ~a~%" (-> arg0 data s3-0))
+          )
+      )
+    )
+  (none)
+  )
+
+(deftype collide-probe-stack-elem (structure)
+  ((child uint32  :offset-assert   0)
+   (count uint32  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype collide-probe-stack (structure)
+  ((data collide-probe-stack-elem 1024 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4000
+  :flag-assert         #x900004000
+  )
+
+
+(define *collide-probe-stack* (the-as collide-probe-stack (+ 4192 #x70000000)))
+
+(define collide-vu0-block (new 'static 'vu-function))
+
+;; definition for function collide-probe-node
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+(defun print-out ((arg0 int))
+  (format *stdcon* "~d~%" arg0)
+  )
+
+(defun collide-probe-instance-tie-collide-frags ()
+  0
+  (none)
+  )
+
+;; definition for function collide-probe-instance-tie
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function collide-probe-collide-fragment-tree-make-list
+;; ERROR: failed type prop at 6: Could not figure out load: (set! v1 (l.h (+ v1 2)))
+;; ERROR: Function may read a register that is not set: a2
+
+
+;; definition for function collide-probe-instance-tie-tree-make-list
+;; ERROR: failed type prop at 6: Could not figure out load: (set! v1 (l.h (+ v1 2)))
+;; WARN: Return type mismatch none vs int.
+;; ERROR: Function may read a register that is not set: a2
+
+
+;; definition for function collide-upload-vu0
+;; WARN: Return type mismatch int vs none.
+;; WARN: Failed store: (s.d! (+ a0-5 8) 0) at op 17
+
+
+;; definition for function collide-probe-make-list
+;; ERROR: failed type prop at 23: Could not figure out load: (set! a1 (l.h (+ v1 2)))
+;; WARN: Return type mismatch symbol vs none.
+;; ERROR: Function may read a register that is not set: a2
+
+
+(defun distc ((arg0 vector) (arg1 vector))
+  (let* ((f0-1 (- (-> arg0 x) (-> arg1 x)))
+         (f0-3 (* f0-1 f0-1))
+         (f1-2 (- (-> arg0 z) (-> arg1 z)))
+         )
+    (sqrtf (+ f0-3 (* f1-2 f1-2)))
+    )
+  )
+
+(defun interpolate ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f0-1 (- arg3 arg1))
+        (f1-2 (- arg4 arg2))
+        (f3-1 (- arg0 arg1))
+        )
+    (+ arg2 (/ (* f3-1 f1-2) f0-1))
+    )
+  )
+
+(defun misty-ambush-height ((arg0 vector))
+  (let* ((a1-0 (new 'static 'vector :x -808960.0 :y 111656.96 :z 3924992.0))
+         (f0-0 (distc arg0 a1-0))
+         )
+    (cond
+      ((< f0-0 52019.2)
+       111656.96
+       )
+      ((>= 58982.4 f0-0)
+       (interpolate f0-0 52019.2 111656.96 58982.4 116776.96)
+       )
+      ((>= 124436.48 f0-0)
+       (interpolate f0-0 58982.4 116776.96 124436.48 114688.0)
+       )
+      ((>= 219217.92 f0-0)
+       (interpolate f0-0 124436.48 114688.0 219217.92 113254.4)
+       )
+      (else
+        113254.4
+        )
+      )
+    )
+  )
+
+(defun misty-ambush-height-probe ((arg0 vector) (arg1 float))
+  (let ((f0-0 (misty-ambush-height arg0)))
+    (cond
+      ((< f0-0 (-> arg0 y))
+       (/ (- (-> arg0 y) f0-0) arg1)
+       )
+      (else
+        (format 0 "WARNING: ~%height = ~f, pos.y = ~f" (* 0.00024414062 f0-0) (* 0.00024414062 (-> arg0 y)))
+        -1.0
+        )
+      )
+    )
+  )
+
+(defun pke-collide-test ()
+  0
+  (none)
+  )
+
+
+
 

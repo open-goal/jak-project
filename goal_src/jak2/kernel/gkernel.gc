@@ -89,7 +89,9 @@
         )
 
 ;; the main execution stack that's not on the scratchpad
+;; (define *canary-1* (the-as (pointer uint64) (malloc 'global 8)))
 (define *dram-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
+;; (define *canary-2* (the-as (pointer uint64) (malloc 'global 8)))
 
 ;; DECOMP DEVIATION
 ;; the top of the stack.
@@ -119,6 +121,7 @@
   ;; use the same memory for the scratchpad stacks.
   ;; defining it as a separate thing so we can split them for debugging stack corruption easily.
   (define *fake-scratchpad-stack* *fake-scratchpad-data*)
+  ;; (define *canary-3* (the-as (pointer uint64) (malloc 'global 8)))
 
   (defmacro scratchpad-start ()
     "Get the start of the scratchpad. At least 64kB aligned."
@@ -197,7 +200,7 @@
   (let ((v0-0 (cond
                 ((-> parent-process top-thread)
                  ;; this is just a temporary thread, throw the thread on the bottom of the stack
-                 (the cpu-thread (&+ stack-top (- PROCESS_STACK_SIZE *gtype-basic-offset*)))
+                 (the cpu-thread (&+ stack-top (- PROCESS_STACK_SIZE) *gtype-basic-offset*))
                  )
                 (else
                   ;; this is the main thread, allocate it from the process heap.
@@ -503,6 +506,22 @@
     (.pop :color #f s1)
     (.pop :color #f s0)
     ;; return to the kernel function that called the user code
+    (.ret)
+    )
+  )
+
+(defmacro abandon-thread ()
+  ;; abandon this one too.
+  ;; NOTE - this is different from GOAL.
+  ;; GOAL installs this as the return address for this function and returns normally.
+  ;; but we don't because I don't have an easy way to find where to stick this.
+  ;; I can't see how this makes a difference, as all non-main threads seem
+  ;; temporary, but if this turns out to be false, we will need to change this.
+  `(rlet ((temp)
+        (off :reg r15 :type uint :reset-here #t))
+    (.mov temp return-from-thread) ;; could probably just call this...
+    (.add temp off)
+    (.push temp)
     (.ret)
     )
   )
@@ -1559,6 +1578,9 @@
   (execute-process-tree
     *active-pool*
     (lambda ((arg0 process))
+      ;; (+! (-> *canary-1*) 1)
+      ;; (+! (-> *canary-2*) 1)
+      ;; (+! (-> *canary-3*) 1)
       (let ((s5-0 *kernel-context*))
         (case (-> arg0 status)
           (('waiting-to-run 'suspended)
@@ -1580,9 +1602,12 @@
              )
 
            ;; run the trans function.
+          ;;  (format 0 "Trans | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
            (when (-> arg0 trans-hook)
              (let ((s4-0 (new 'process 'cpu-thread arg0 'trans 256 (-> arg0 main-thread stack-top))))
-               (reset-and-call s4-0 (-> arg0 trans-hook))
+               (with-pc-profiler "trans"
+                  (reset-and-call s4-0 (-> arg0 trans-hook))
+                  )
                (delete s4-0)
                )
              (when (= (-> arg0 status) 'dead) ;; handle deactivates in trans
@@ -1593,10 +1618,14 @@
              )
 
            ;; run the main thread!
+          ;;  (format 0 "Code | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
            (if (logtest? (-> arg0 mask) (process-mask sleep-code))
                (set! (-> arg0 status) 'suspended)
-               ((-> arg0 main-thread resume-hook) (-> arg0 main-thread))
+               (with-pc-profiler "code"
+                 ((-> arg0 main-thread resume-hook) (-> arg0 main-thread))
+                 )
                )
+          ;;  (format 0 "Finished Code | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
 
 
            (cond
@@ -1608,9 +1637,12 @@
              (else
                ;; run post.
                ;; NOTE: post always runs on the dram stack, so you can use ja-post and use the scratchpad for anims.
+              ;;  (format 0 "Post | Proc '~A' | C1: ~X C2: ~X C3: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*))
                (when (-> arg0 post-hook)
                  (let ((s4-1 (new 'process 'cpu-thread arg0 'post 256 *kernel-dram-stack*)))
-                   (reset-and-call s4-1 (-> arg0 post-hook))
+                   (with-pc-profiler "post"
+                     (reset-and-call s4-1 (-> arg0 post-hook))
+                     )
                    (delete s4-1)
                    )
                  (when (= (-> arg0 status) 'dead) ;; handle death in post
@@ -2162,6 +2194,10 @@
   The function will run until it attempts to change state. At the first attempt to change state,
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
+  (when (zero? func)
+    (format 0 "attempting to run nullptr function!~%")
+    (break!)
+    )
   (rlet ((pp :reg r13 :type process))
 
     (let ((param-array (new 'stack-no-clear 'array 'uint64 6))
@@ -2201,6 +2237,9 @@
              ;; we can shrink the heap now.
              (shrink-heap (the dead-pool-heap (-> pp pool)) pp)
              )
+           )
+          (('dead)
+           ;; died in init, this is fine.
            )
           (else
            (format 0 "GOT UNKNOWN INIT: ~A~%" (-> pp status))
@@ -2368,13 +2407,7 @@
         ;; then go back to the kernel dispatcher immediately.
         ((= (-> *kernel-context* current-process) obj)
          (set! (-> obj status) 'dead)
-         (let ((temp (the uint return-from-thread)))
-           (rlet ((off :reg r15 :type uint))
-                 (+! temp off)
-                 (.push temp)
-                 (.ret)
-                 )
-           )
+         (abandon-thread)
          )
         ;; if you deactivated yourself while initializing, we should go back to
         ;; the place where initialize was called in another process, not all the way back to the kernel.
@@ -2401,13 +2434,10 @@
 (kmemopen global "process-buffers")
 
 ;; set up the listener process to run functions sent from the REPL.
-(let ((v0-43 (new 'global 'process "listener" 2048)))
-  (set! *listener-process* v0-43)
-  (let ((gp-0 v0-43))
-    (set! (-> gp-0 status) 'ready)
-    (set! (-> gp-0 pid) 1)
-    (set! (-> gp-0 main-thread) (new 'process 'cpu-thread gp-0 'main 256 (&-> *dram-stack* 14336)))
-    )
+(let ((obj (define *listener-process* (new 'global 'process "listener" 2048))))
+  (set! (-> obj status) 'ready)
+  (set! (-> obj pid) 1)
+  (set! (-> obj main-thread) (new 'process 'cpu-thread obj 'main 256 *kernel-dram-stack*))
   )
 
 ;; an always dead process used as a placeholder
@@ -2429,7 +2459,7 @@
 (when *debug-segment*
   (define *debug-dead-pool* (new 'debug 'dead-pool-heap "*debug-dead-pool*" 768 #x100000))
   )
-(define *nk-dead-pool* (new 'global 'dead-pool-heap "*nk-dead-pool*" 768 #x181000))
+(define *nk-dead-pool* (new 'global 'dead-pool-heap "*nk-dead-pool*" PROCESS_HEAP_MAX PROCESS_HEAP_SIZE))
 ;; more special dead pools
 (define *default-dead-pool* (the-as dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the-as dead-pool *nk-dead-pool*))
@@ -2449,6 +2479,9 @@
 
 ;; categories within the active pool.
 (change-parent (define *display-pool* (new 'global 'process-tree "display-pool")) *active-pool*)
+(#when PC_PORT
+(change-parent (define *pc-pool* (new 'global 'process-tree "pc-pool")) *active-pool*)
+(set! (-> *pc-pool* mask) (process-mask freeze pause menu progress process-tree)))
 
 (change-parent (define *camera-pool* (new 'global 'process-tree "camera-pool")) *active-pool*)
 (set! (-> *camera-pool* mask) (process-mask freeze pause menu progress process-tree camera))

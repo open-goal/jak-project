@@ -284,11 +284,11 @@
         )
       )
     (.lvf vf9 (&-> arg1 dir1 levels quad))
-    (let ((a3-1 (make-u128 t1-1 v1-0)))
+    (let ((a3-1 (the uint128 (make-u128 t1-1 v1-0))))
       (.lvf vf6 (&-> arg1 dir2 color quad))
       (.pcpyud v1-1 v1-0 t1-1)
       (.lvf vf10 (&-> arg1 dir2 levels quad))
-      (let ((a2-2 (make-u128 (the-as int t0-1) a2-1)))
+      (let ((a2-2 (the uint128 (make-u128 (the-as int t0-1) a2-1))))
         (.lvf vf7 (&-> arg1 ambi color quad))
         (.mul.x.vf vf4 vf4 vf8)
         (.lvf vf11 (&-> arg1 ambi levels quad))
@@ -937,34 +937,269 @@
   `(set! (-> (the-as (pointer uint32) ,addr)) ,val)
   )
 
-(defun pc-draw-bones ((dc draw-control) (dma-buf pointer))
-  "Add a dma packet to tell the PC renderer which model we are renderering."
-  (let ((packet (the-as dma-packet dma-buf)))
+(defun pc-merc-blend-shape ((pd process-drawable) (blerc-weights-out (pointer float)))
+  "PC implementation to get blerc weights as floats and avoid the u16 rounding.
+  Returns #f if there is no blerc running, which means that we should use base positions.
+  If things work correctly, the original implementation would try to restore weights of 0
+  after the animation finishes - it leaves `blend-shape-valid` set after `blend-shape` is cleared
+  causing one more round of merc-blend-shape to run with hardcoded weights of 0.
+  "
+  (when (or (not (-> pd skel))
+            (zero? (-> pd skel))
+            )
+    (return #f)
+    )
+
+  (let* ((jc-channel (-> pd skel root-channel 0))
+         (anim (-> jc-channel frame-group))
+         (got-weights #f)
+         )
+    (when (and anim
+               (> (-> pd skel active-channels) 0)
+               (zero? (-> pd draw cur-lod))
+               (logtest? (-> pd skel status) (janim-status blerc))
+               )
+      (let ((shape-anim (-> anim blerc-data)))
+        (when shape-anim
+          (let* ((mctrl (-> pd draw mgeo))
+                 (num-targets (-> mctrl header blend-target-count))
+                 (frame-f (-> jc-channel frame-num))
+                 (frame-i (the int frame-f))
+                 (frame-1-data (&+ shape-anim (* (the-as uint frame-i) num-targets)))
+                 ;(a1-5 (new 'stack-no-clear 'array 'int16 128))
+                 )
+            (let ((a2-1 (-> mctrl header blend-target-count)))
+              (cond
+                ((< frame-i (+ (-> anim data 0 length) -1))
+                 (let* ((frame-2-data (&+ frame-1-data a2-1))
+                        (frame-2-mult (* 64.0 (- frame-f (the float frame-i))))
+                        (frame-1-mult (- 64.0 frame-2-mult))
+                        )
+                   (set! got-weights #t)
+                   (dotimes (i (the-as int a2-1))
+                     (set! (-> blerc-weights-out i)
+                           (+ (* (the float (- (-> frame-1-data i) 64)) frame-1-mult)
+                              (* (the float (- (-> frame-2-data i) 64)) frame-2-mult)
+                              )
+                           )
+                     )
+                   )
+                 )
+                (else
+                  (set! got-weights #t)
+                      (dotimes (a3-7 num-targets)
+                        (set! (-> blerc-weights-out a3-7) (the float (* (+ (-> (the-as (pointer uint8) (&+ frame-1-data a3-7))) -64) 64)))
+                        )
+                  )
+                )
+              )
+            )
+
+          )
+        )
+      )
+    got-weights
+    )
+  )
+
+;; name   (128 char, 8 qw)
+;; lights (7 qw x 1)
+;; matrix slot string (128 char, 8 qw)
+;; matrices (7 qw x N)
+;; flags    2 qw
+;; fades    (u32 x N), padding to qw aligned
+
+(defenum pc-merc-bits
+  :type uint8
+  :bitfield #t
+  (update-verts 0)
+  (disable-fog 1)
+  (pc-blerc 2)
+  )
+
+(deftype pc-merc-flags (structure)
+  ((enable-mask uint64)
+   (ignore-alpha-mask uint64)
+   (effect-count uint8)
+   (bit-flags pc-merc-bits)
+   )
+  )
+
+(defun draw-control-uses-water-bucket ((dc draw-control))
+  "Does this draw control use a water bucket?"
+  (let ((sg (-> dc sink-group)))
+    (dotimes (i 3)
+      (let ((lev (-> *level* level i)))
+        (when lev
+          (when (= sg (-> lev water-tex-foreground-sink-group))
+            (return #t)
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+(defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (update-verts symbol) (blercs (pointer float)))
+  (let ((start-packet (the-as dma-packet dma-buf))
+        (qwc-total 0))
     ;; merc draw asm will check this.
     (when (zero? (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc))
-      (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) packet)
+      (set! (-> (scratchpad-object terrain-context) work foreground bone-mem work next-merc) start-packet)
       )
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 10))
-    (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-    (set! dma-buf (the pointer (&+ packet 16)))
-    )
+    (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> start-packet vif0) (new 'static 'vif-tag))
+    (set! (-> start-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! dma-buf (the pointer (&+ start-packet 16)))
 
-  (let ((data-ptr (the-as (pointer uint128) dma-buf)))
-    (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
-    )
-  (&+! dma-buf (* 16 10))
+    ;; NAME: 128 char, 8 qw
+    (let ((data-ptr (the-as (pointer uint128) dma-buf)))
+      (charp<-string (the (pointer uint8) (&-> data-ptr 0)) (-> dc mgeo name))
+      )
+    (&+! dma-buf (* 16 8))
+    (+! qwc-total 8)
 
-  ;; merc linking needs this.
-  (let ((packet (the-as dma-packet dma-buf)))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
-    (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag))
-    (set! dma-buf (the pointer (&+ packet 16)))
-    )
+    ;; LIGHTS:
+    (quad-copy! dma-buf (the pointer (-> *merc-bucket-info* light)) 7)
+    (&+! dma-buf (* 16 7))
+    (+! qwc-total 7)
 
-  dma-buf
+    (let ((uses-water (draw-control-uses-water-bucket dc)))
+      ;; tell PC renderer if we're in a water bucket or not (has different settings.)
+      (set! (-> (the (pointer uint64) dma-buf)) (if uses-water 1 0))
+      (&+! dma-buf 16)
+      (+! qwc-total 1)
+      )
+    (let ((matrix-slot-string (the (pointer uint8) dma-buf)) ;; matrix slot list (so PC knows what order they come in)
+          (enable-mask 0)
+          (ignore-alpha-mask 0)
+          (matrix-out-idx 0)
+          )
+      (&+! dma-buf (* 16 8))
+      (+! qwc-total 8)
+      ;; flag of matrices we've already transferred and can de-dup
+      (let ((transferred-matrices (new 'stack-no-clear 'array 'uint8 128)))
+        (dotimes (i 128) (set! (-> transferred-matrices i) 0))
+
+        (let ((merc-ctrl (-> dc lod (-> dc cur-lod) geo)))
+
+          ;; loop to: grab matrices and populate flags
+          (dotimes (effect-idx (-> merc-ctrl header effect-count))
+            (when (zero? (-> *merc-bucket-info* effect effect-idx use-mercneric))
+              (logior! enable-mask (ash 1 effect-idx))
+              (when (nonzero? (-> *merc-bucket-info* effect effect-idx ignore-alpha))
+                (logior! ignore-alpha-mask (ash 1 effect-idx))
+                )
+              (let* ((effect (-> merc-ctrl effect effect-idx))
+                     (frag (-> effect frag-ctrl))
+                     )
+                (dotimes (frag-idx (-> effect frag-count))
+                  (dotimes (mat-xfer-idx (-> frag mat-xfer-count))
+                    (let ((mat-idx (-> frag mat-dest-data mat-xfer-idx matrix-number)))
+                      (if (>= mat-idx 128)
+                          (break!)
+                          )
+                      (when (zero? (-> transferred-matrices mat-idx))
+                        ;; transfer it!
+                        (set! (-> transferred-matrices mat-idx) 1)
+                        (set! (-> matrix-slot-string matrix-out-idx) mat-idx)
+                        (+! matrix-out-idx 1)
+                        (set! (-> (the (pointer pointer) dma-buf)) (&+ matrix-buf (* 128 mat-idx)))
+                        ;(quad-copy! dma-buf (&+ matrix-buf (* 128 mat-idx)) 7)
+                        (&+! dma-buf 16)
+                        (+! qwc-total 1)
+                        )
+                      )
+                    )
+                  (&+! frag (* 2 (-> frag mat-xfer-count)))
+                  (&+! frag (size-of merc-fragment-control))
+                  )
+                )
+              )
+            ) ;; end effect loop
+
+          ;; end matrix string
+          (while (< matrix-out-idx 128)
+            (set! (-> matrix-slot-string matrix-out-idx) #xff)
+            (+! matrix-out-idx 1)
+            )
+
+          ;; flags
+          (let ((flags (the (pc-merc-flags) dma-buf)))
+            (set! (-> flags effect-count) (-> merc-ctrl header effect-count))
+            (set! (-> flags bit-flags) (the pc-merc-bits 0))
+            (when update-verts
+              (if (= update-verts 'blerc)
+                  (logior! (-> flags bit-flags) (pc-merc-bits pc-blerc))
+                  (logior! (-> flags bit-flags) (pc-merc-bits update-verts))
+                  )
+              )
+            (set! (-> flags enable-mask) enable-mask)
+            (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
+            )
+          (&+! dma-buf (* 16 2))
+          (+! qwc-total 2)
+
+          ;; include blerc weights.
+          (when (= update-verts 'blerc)
+            (mem-copy! dma-buf blercs (* 40 4))
+            (&+! dma-buf (* 40 4))
+            (+! qwc-total 10)
+            )
+
+          ;; fades
+          (let ((fades (the (pointer uint32) dma-buf)))
+            (dotimes (i (-> merc-ctrl header effect-count))
+              (set! (-> fades i) (the-as uint (-> *merc-bucket-info* effect i color-fade)))
+              )
+            )
+          (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
+            (&+! dma-buf (* 16 num-fades))
+            (+! qwc-total num-fades)
+            )
+
+          ;; merc ptrs
+          (let ((merc-ptrs (the (pointer object) dma-buf)))
+            (dotimes (i (-> merc-ctrl header effect-count))
+              (set! (-> merc-ptrs i) (-> merc-ctrl effect i))
+              )
+            )
+          (let ((num-fades (/ (+ (-> merc-ctrl header effect-count) 3) 4)))
+            (&+! dma-buf (* 16 num-fades))
+            (+! qwc-total num-fades)
+            )
+
+          )
+        )
+      )
+
+    (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-total))
+
+    ;; merc linking needs this.
+    (let ((packet (the-as dma-packet dma-buf)))
+      (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 0))
+      (set! (-> packet vif0) (new 'static 'vif-tag))
+      (set! (-> packet vif1) (new 'static 'vif-tag))
+      (set! dma-buf (the pointer (&+ packet 16)))
+      )
+
+    dma-buf
+    )
   )
+
+;; when set, render some environment mapped stuff with jak 2's emerc.
+;; this is much faster, and does significantly speed up the game thread on finalboss.
+(define *emerc-hack* #t)
+
+;; when set, use merc for blerc instead of generic.
+(define *blerc-hack* #t)
+
+;; when true, uses the PC float blerc implementation.
+(define *use-fp-blerc* #t)
+
+(define *texscroll-force-generic* #f)
+(define *ripple-force-generic* #f)
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.
@@ -1178,6 +1413,9 @@
             (let ((geom (-> arg0 lod-set lod (-> arg0 cur-lod) geo))
                   ;; merc2 can't handle all cases of the original merc, so we add this fallback on PC.
                   (pc-force-mercneric #f)
+                  ;; if pc rendering code needs to update merc vertices
+                  (pc-merc-vtx-update #f)
+                  (blerc-weights (new 'stack-no-clear 'array 'float 40))
                   )
               ;; loop over effects, and set them up/pick renderers.
               (dotimes (effect-idx (the-as int (-> geom header effect-count)))
@@ -1189,9 +1427,10 @@
                          (v1-36 (the-as mei-texture-scroll (+ (the-as uint v1-35) (* (-> v1-35 texture-scroll-offset) 16))))
                          )
                     (when (< arg2 (-> v1-36 max-dist)) ;; in range to draw?
-                        ;; do scrolling. in PC, always use generic here because merc2 can't update texture coordinates
-                        (#when PC_PORT
-                          (set! pc-force-mercneric #t)
+                      ;; do scrolling.
+                      (if *texscroll-force-generic*
+                          (set! pc-force-mercneric #t) ;; use generic for texscroll
+                          (set! pc-merc-vtx-update #t) ;; use merc2 for texscroll
                           )
                         (texscroll-make-request (-> geom effect effect-idx))
                         )
@@ -1201,13 +1440,15 @@
                 ;; check if this effect uses "ripple"
                 (when (logtest? (-> geom effect effect-idx effect-bits) 4)
                   (when (-> arg0 ripple)
-                    ;; merc2 can't handle ripple, even if it's off.
-                    (#when PC_PORT
+                    ;; fall back to generic if there's a ripple query to respond to.
+                    (if (or *ripple-force-generic* (-> arg0 ripple query))
                       (set! pc-force-mercneric #t)
+                      (set! pc-merc-vtx-update #t)
                       )
                     (set! sv-144 (-> arg0 ripple))
                     (let* ((f1-4 (/ (- (-> sv-144 far-fade-dist) arg2) (- (-> sv-144 far-fade-dist) (-> sv-144 close-fade-dist))))
-                           (f1-6 (fmax 0.0 (fmin 1.0 f1-4)))
+                           (f1-6 (#if PC_PORT (if (and *pc-settings* (-> *pc-settings* force-envmap?)) 1.0 (fmax 0.0 (fmin 1.0 f1-4)))
+                                              (fmax 0.0 (fmin 1.0 f1-4))))
                            (f0-4 f1-6)
                            (f30-0 (* f1-6 (-> sv-144 global-scale)))
                            )
@@ -1250,9 +1491,29 @@
                          (jc (-> pd skel)))
                     (when (nonzero? jc)
                       (when (logtest? (-> jc status) (janim-status blerc))
-                        (set! pc-force-mercneric #t)
+                        (if *blerc-hack*
+                            (if *use-fp-blerc*
+                                (set! pc-merc-vtx-update 'blerc) ;; C++ blerc
+                                (set! pc-merc-vtx-update #t)     ;; GOAL blerc + merc
+                                )
+                            (set! pc-force-mercneric #t)         ;; GOAL blerc + generic
+                            )
                         )
                       )
+                    )
+
+                  (when (= pc-merc-vtx-update 'blerc)
+                    (unless
+                      (pc-merc-blend-shape (the process-drawable (-> arg0 process)) blerc-weights)
+                      (set! pc-merc-vtx-update #f)
+                      )
+                    )
+                  )
+
+                ;; additional in pc to make envmap fade 0 when envmap is not used
+                (let ((a0-36 (the-as object (-> *merc-bucket-info* effect effect-idx))))
+                  (dotimes (a2-15 4)
+                    (set! (-> (the-as (pointer int8) a0-36) a2-15) 0)
                     )
                   )
 
@@ -1267,22 +1528,6 @@
                    )
                   ((nonzero? (-> geom effect effect-idx envmap-usage))
                    ;; if we need envmap, set it up.
-
-                   ;; hack:
-                   ;; the game switches from mercneric to merc after the envmap is faded out.
-                   ;; this would normally be fine in the PC port too, but we want the eyes to remain
-                   ;; using mercneric (dynamic texture updates) in PC.
-                   ;; so we force mercneric on models with envmap and very few tris.
-                   ;; it seems to work so far... (flutflut has 134 triangles in the eye effect)
-                   (#when PC_PORT
-                     (when (and
-                             (< (-> geom effect effect-idx tri-count) 200)
-                             (-> geom header eye-ctrl)
-                             (nonzero? (-> geom header eye-ctrl))
-                             )
-                       (set! pc-force-mercneric #t)
-                       )
-                     )
                    (let* ((v1-83 (-> geom effect effect-idx extra-info))
                           ;; pointer to envmap tint data
                           (v1-84 (the-as structure (+ (the-as uint v1-83) (* (-> v1-83 envmap-tint-offset) 16))))
@@ -1321,10 +1566,20 @@
                               )
                             (set! (-> (the-as (pointer uint8) a0-36) 3) (the-as uint 0))
                             )
-                          ;; env mapping, so use mercneric.
-                          (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
-                          (set! used-mercneric 1)
-                          used-mercneric
+                          (cond
+                            ((and *emerc-hack* (not pc-force-mercneric))
+                              (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 0))
+                              (set! (-> *merc-bucket-info* effect effect-idx ignore-alpha) (the-as uint 1))
+                              (set! used-merc 1)
+                              )
+                            (else
+                              ;; env mapping, so use mercneric.
+                              (set! (-> *merc-bucket-info* effect effect-idx use-mercneric) (the-as uint 1))
+                              (set! used-mercneric 1)
+                              used-mercneric
+                              )
+                            )
+
                           )
                          (else
                            ;; no env map, don't use mercneric.
@@ -1399,12 +1654,12 @@
                         )
                       )
                     )
-                  (set! s2-0 (pc-draw-bones arg0 (the pointer s2-0)))
-                  (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
-                      (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
-                      (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))
-                      )
-                  (set! s2-0 (-> dma-buf base))
+                  (set! s2-0 (pc-merc-draw-request arg0 (the pointer s2-0) (the pointer matrix-data) pc-merc-vtx-update blerc-weights))
+                  ; (if (nonzero? (-> *merc-bucket-info* need-mercprime-if-merc))
+                  ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 32 17))
+                  ;     (set! (-> dma-buf base) (draw-bones-merc arg0 matrix-data s2-0 35 20))
+                  ;     )
+                  ; (set! s2-0 (-> dma-buf base))
                   )
                 )
               ) ;; end geom processing

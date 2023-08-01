@@ -28,8 +28,23 @@ struct EntityActor {
   size_t generate(DataObjectGenerator& gen) const;
 };
 
+struct EntityAmbient {
+  ResLump res_lump;
+  u32 aid = 0;
+  math::Vector4f trans;
+  u32 vis_id = 0;
+  math::Vector4f bsphere;
+  size_t generate(DataObjectGenerator& gen) const;
+};
+
 size_t generate_inline_array_actors(DataObjectGenerator& gen,
                                     const std::vector<EntityActor>& actors);
+
+size_t generate_inline_array_ambients(DataObjectGenerator& gen,
+                                      const std::vector<EntityAmbient>& ambients);
+void add_ambients_from_json(const nlohmann::json& json,
+                            std::vector<EntityAmbient>& ambient_list,
+                            u32 base_aid);
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,

@@ -10,6 +10,8 @@ namespace pretty_print {
 // string -> object (as a symbol)
 goos::Object to_symbol(const std::string& str);
 
+goos::Object new_string(const std::string& str);
+
 // list with a single symbol from a string
 goos::Object build_list(const std::string& str);
 

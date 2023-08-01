@@ -1,0 +1,2289 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: under-shoot-block.gc
+;; name in dgo: under-shoot-block
+;; dgos: UNB
+
+;; DECOMP BEGINS
+
+(deftype under-block-spawner (basic)
+  ((col            int8        :offset-assert   4)
+   (row            int8        :offset-assert   5)
+   (active-handle  handle      :offset-assert   8)
+   (waiting-handle handle      :offset-assert  16)
+   (exploded-time  time-frame  :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype under-block-slot (basic)
+  ((col int8  :offset-assert   4)
+   (row int8  :offset-assert   5)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+
+(deftype under-block-puzzle (basic)
+  ((auto-unlock?           symbol                              :offset-assert   4)
+   (cells-wide             int8                                :offset-assert   8)
+   (cells-tall             int8                                :offset-assert   9)
+   (last-block-id          int8                                :offset-assert  10)
+   (slot-mask              uint8                               :offset-assert  11)
+   (slot-mask-full         uint8                               :offset-assert  12)
+   (prev-special-attack-id uint32                              :offset-assert  16)
+   (orient-ry              float                               :offset-assert  20)
+   (spawners               (array under-block-spawner)         :offset-assert  24)
+   (slots                  (array under-block-slot)            :offset-assert  28)
+   (cells                  (pointer int32)                     :offset-assert  32)
+   (pulse-ops              (pointer int8)                      :offset-assert  36)
+   (origin                 vector                      :inline :offset-assert  48)
+   (local-to-world         matrix                      :inline :offset-assert  64)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+
+(define *under-block-puzzles*
+  (new 'static 'boxed-array :type under-block-puzzle
+    (new 'static 'under-block-puzzle
+      :auto-unlock? #t
+      :cells-wide 5
+      :cells-tall 8
+      :orient-ry 11286.756
+      :spawners (new 'static 'boxed-array :type under-block-spawner
+        (new 'static 'under-block-spawner :col 1 :row 2)
+        (new 'static 'under-block-spawner :col 2 :row 1)
+        )
+      :slots (new 'static 'boxed-array :type under-block-slot
+        (new 'static 'under-block-slot :col 1 :row 5)
+        (new 'static 'under-block-slot :col 3 :row 5)
+        )
+      :cells (new 'static 'array int32 12 0 0 0 0 0 0 0 0 0 0 0 0)
+      :pulse-ops (new 'static 'array int8 144
+        44
+        1
+        0
+        0
+        1
+        0
+        0
+        0
+        88
+        2
+        0
+        0
+        1
+        0
+        0
+        0
+        -124
+        3
+        0
+        0
+        1
+        0
+        0
+        0
+        -80
+        4
+        0
+        0
+        1
+        0
+        0
+        0
+        -36
+        5
+        0
+        0
+        1
+        0
+        0
+        0
+        -22
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        -38
+        7
+        0
+        0
+        1
+        0
+        0
+        0
+        -84
+        8
+        0
+        0
+        1
+        0
+        0
+        0
+        96
+        9
+        0
+        0
+        1
+        0
+        0
+        0
+        -10
+        9
+        0
+        0
+        1
+        0
+        0
+        0
+        #x6e
+        10
+        0
+        0
+        1
+        0
+        0
+        0
+        -56
+        10
+        0
+        0
+        1
+        0
+        0
+        0
+        4
+        11
+        0
+        0
+        1
+        0
+        0
+        0
+        34
+        11
+        0
+        0
+        1
+        0
+        0
+        0
+        64
+        11
+        0
+        0
+        1
+        0
+        0
+        0
+        94
+        11
+        0
+        0
+        1
+        0
+        0
+        0
+        #x7c
+        11
+        0
+        0
+        2
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        )
+      :origin (new 'static 'vector :x -472567.8 :y -274432.0 :z 8110768.0 :w 1.0)
+      )
+    (new 'static 'under-block-puzzle
+      :auto-unlock? #t
+      :cells-wide 6
+      :cells-tall 8
+      :orient-ry 11286.756
+      :spawners (new 'static 'boxed-array :type under-block-spawner (new 'static 'under-block-spawner :col 1 :row 2))
+      :slots (new 'static 'boxed-array :type under-block-slot (new 'static 'under-block-slot :col 3 :row 5))
+      :cells (new 'static 'array int32 12
+        -16843010
+        #xfefefe
+        -16843010
+        -16908034
+        #xfefefe
+        -16843010
+        #xfe
+        #xfefe00
+        -33554432
+        #xfe
+        -16843264
+        -16843010
+        )
+      :pulse-ops (new 'static 'array int8 112
+        44
+        1
+        0
+        0
+        1
+        0
+        0
+        0
+        58
+        2
+        0
+        0
+        1
+        0
+        0
+        0
+        42
+        3
+        0
+        0
+        1
+        0
+        0
+        0
+        -4
+        3
+        0
+        0
+        1
+        0
+        0
+        0
+        -80
+        4
+        0
+        0
+        1
+        0
+        0
+        0
+        70
+        5
+        0
+        0
+        1
+        0
+        0
+        0
+        -66
+        5
+        0
+        0
+        1
+        0
+        0
+        0
+        24
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        84
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        #x72
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        -112
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        -82
+        6
+        0
+        0
+        1
+        0
+        0
+        0
+        -52
+        6
+        0
+        0
+        2
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        )
+      :origin (new 'static 'vector :x -969931.2 :y -274432.0 :z 8208644.0 :w 1.0)
+      )
+    (new 'static 'under-block-puzzle
+      :auto-unlock? #f
+      :cells-wide 7
+      :cells-tall 6
+      :orient-ry 11286.756
+      :spawners (new 'static 'boxed-array :type under-block-spawner
+        (new 'static 'under-block-spawner :row 4)
+        (new 'static 'under-block-spawner :row 5)
+        )
+      :slots (new 'static 'boxed-array :type under-block-slot
+        (new 'static 'under-block-slot :col 5 :row 1)
+        (new 'static 'under-block-slot :col 5 :row 4)
+        )
+      :cells (new 'static 'array int32 12 #xff00 0 -16777216 0 0 0 0 0 #xff #xff 0 0)
+      :pulse-ops (new 'static 'array int8 208
+        44
+        1
+        0
+        0
+        1
+        0
+        0
+        0
+        88
+        2
+        0
+        0
+        1
+        0
+        0
+        0
+        -124
+        3
+        0
+        0
+        1
+        0
+        0
+        0
+        -80
+        4
+        0
+        0
+        1
+        0
+        0
+        0
+        -36
+        5
+        0
+        0
+        1
+        0
+        0
+        0
+        8
+        7
+        0
+        0
+        1
+        0
+        0
+        0
+        52
+        8
+        0
+        0
+        1
+        0
+        0
+        0
+        96
+        9
+        0
+        0
+        1
+        0
+        0
+        0
+        -116
+        10
+        0
+        0
+        1
+        0
+        0
+        0
+        -72
+        11
+        0
+        0
+        1
+        0
+        0
+        0
+        -28
+        12
+        0
+        0
+        1
+        0
+        0
+        0
+        16
+        14
+        0
+        0
+        1
+        0
+        0
+        0
+        60
+        15
+        0
+        0
+        1
+        0
+        0
+        0
+        74
+        16
+        0
+        0
+        1
+        0
+        0
+        0
+        58
+        17
+        0
+        0
+        1
+        0
+        0
+        0
+        12
+        18
+        0
+        0
+        1
+        0
+        0
+        0
+        -64
+        18
+        0
+        0
+        1
+        0
+        0
+        0
+        86
+        19
+        0
+        0
+        1
+        0
+        0
+        0
+        -50
+        19
+        0
+        0
+        1
+        0
+        0
+        0
+        40
+        20
+        0
+        0
+        1
+        0
+        0
+        0
+        100
+        20
+        0
+        0
+        1
+        0
+        0
+        0
+        -126
+        20
+        0
+        0
+        1
+        0
+        0
+        0
+        -96
+        20
+        0
+        0
+        1
+        0
+        0
+        0
+        -66
+        20
+        0
+        0
+        1
+        0
+        0
+        0
+        -36
+        20
+        0
+        0
+        2
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        )
+      :origin (new 'static 'vector :x -1120440.4 :y -290775.03 :z 8072909.0 :w 1.0)
+      )
+    )
+  )
+
+(defskelgroup skel-under-shoot-block under-shoot-block under-shoot-block-lod0-jg under-shoot-block-idle-ja
+              ((under-shoot-block-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.2)
+              )
+
+(defskelgroup skel-under-shoot-block-explode under-shoot-block under-shoot-block-explode-lod0-jg under-shoot-block-explode-idle-ja
+              ((under-shoot-block-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
+
+(define *under-shoot-block-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      )
+    :collide-spec #x1
+    )
+  )
+
+(deftype under-block (process-focusable)
+  ((puzzle             under-block-puzzle         :offset-assert 204)
+   (my-parent          (pointer process)          :offset-assert 208)
+   (prev-attack-id     uint32                     :offset-assert 212)
+   (spawner-id         int8                       :offset-assert 216)
+   (my-id              int8                       :offset-assert 217)
+   (col                int8                       :offset-assert 218)
+   (row                int8                       :offset-assert 219)
+   (prev-col           int8                       :offset-assert 220)
+   (prev-row           int8                       :offset-assert 221)
+   (move-dir-x         int8                       :offset-assert 222)
+   (move-dir-z         int8                       :offset-assert 223)
+   (pulse-op           int8                       :offset-assert 224)
+   (pulse-pc           int8                       :offset-assert 225)
+   (pulse-ctr          int8                       :offset-assert 226)
+   (flags              uint64                     :offset-assert 232)
+   (activated-time     time-frame                 :offset-assert 240)
+   (rot-axis           vector             :inline :offset-assert 256)
+   (away-from-focal-pt vector             :inline :offset-assert 272)
+   )
+  :heap-base #xa0
+  :method-count-assert 51
+  :size-assert         #x120
+  :flag-assert         #x3300a00120
+  (:methods
+    (waiting () _type_ :state 27)
+    (rise-up () _type_ :state 28)
+    (follow () _type_ :state 29)
+    (idle () _type_ :state 30)
+    (active () _type_ :state 31)
+    (flip () _type_ :state 32)
+    (rock () _type_ :state 33)
+    (sink-partially () _type_ :state 34)
+    (sunk-partially () _type_ :state 35)
+    (victory () _type_ :state 36)
+    (beaten () _type_ :state 37)
+    (fall () _type_ :state 38)
+    (explode () _type_ :state 39)
+    (die-fast () _type_ :state 40)
+    (under-block-method-41 (_type_ symbol) none 41)
+    (under-block-method-42 (_type_) none 42)
+    (under-block-method-43 (_type_ int int) symbol 43)
+    (under-block-method-44 (_type_) symbol 44)
+    (under-block-method-45 (_type_) none 45)
+    (under-block-method-46 (_type_ int int) none 46)
+    (under-block-method-47 (_type_ int int) int 47)
+    (under-block-method-48 (_type_ int int) symbol 48)
+    (under-block-method-49 (_type_ int int) symbol 49)
+    (under-block-method-50 (_type_) none 50)
+    )
+  )
+
+
+(deftype under-shoot-block (process-drawable)
+  ((puzzle        under-block-puzzle     :offset-assert 200)
+   (actor-group   (pointer actor-group)  :offset-assert 204)
+   (allow-unlock? symbol                 :offset-assert 208)
+   )
+  :heap-base #x60
+  :method-count-assert 29
+  :size-assert         #xd4
+  :flag-assert         #x1d006000d4
+  (:methods
+    (idle () _type_ :state 20)
+    (victory-locked () _type_ :state 21)
+    (victory () _type_ :state 22)
+    (beaten () _type_ :state 23)
+    (under-shoot-block-method-24 (_type_ int int) none 24)
+    (under-shoot-block-method-25 (_type_ int int float int) none 25)
+    (under-shoot-block-method-26 (_type_) none 26)
+    (under-shoot-block-method-27 (_type_ symbol) none 27)
+    (under-shoot-block-method-28 (_type_) int 28)
+    )
+  )
+
+
+(defbehavior under-block-event-handler under-block ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('track)
+     (cond
+       ((-> arg3 param 0)
+        (if (logtest? (-> self flags) 1)
+            #t
+            'abort
+            )
+        )
+       (else
+         (logtest? (-> self flags) 1)
+         )
+       )
+     )
+    (('attack)
+     (when (logtest? (-> self flags) 1)
+       (let ((gp-0 (the-as attack-info (-> arg3 param 1))))
+         (when (and (!= (-> gp-0 id) (-> self prev-attack-id)) (!= (-> gp-0 id) (-> self puzzle prev-special-attack-id)))
+           (let ((s5-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
+             (when (not (logtest? (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot) s5-0))
+               (if (< (+ 7372.8 (-> self root trans y)) (-> (target-pos 0) y))
+                   (return #f)
+                   )
+               )
+             (set! (-> self prev-attack-id) (-> gp-0 id))
+             (if (logtest? s5-0 (penetrate punch))
+                 (set! (-> self puzzle prev-special-attack-id) (-> gp-0 id))
+                 )
+             )
+           (when #t
+             (let ((s4-0 (new 'stack-no-clear 'vector))
+                   (s5-1 0)
+                   (gp-1 0)
+                   )
+               (vector-! s4-0 (-> self root trans) (target-pos 0))
+               (vector-rotate-around-y! s4-0 s4-0 (- (-> self puzzle orient-ry)))
+               (cond
+                 ((< (fabs (-> s4-0 z)) (fabs (-> s4-0 x)))
+                  (if (>= (-> s4-0 x) 0.0)
+                      (set! s5-1 1)
+                      (set! s5-1 -1)
+                      )
+                  )
+                 ((>= (-> s4-0 z) 0.0)
+                  (set! gp-1 1)
+                  )
+                 (else
+                   (set! gp-1 -1)
+                   )
+                 )
+               (cond
+                 ((under-block-method-43 self s5-1 gp-1)
+                  (set! (-> self move-dir-x) s5-1)
+                  (set! (-> self move-dir-z) gp-1)
+                  (under-block-method-48 self (+ (-> self col) s5-1) (+ (-> self row) gp-1))
+                  (logand! (-> self flags) -2)
+                  (if (zero? (-> self activated-time))
+                      (under-block-method-42 self)
+                      )
+                  (go-virtual flip)
+                  )
+                 ((under-block-method-49 self s5-1 gp-1)
+                  (set! (-> self move-dir-x) s5-1)
+                  (set! (-> self move-dir-z) gp-1)
+                  (logand! (-> self flags) -2)
+                  (go-virtual rock)
+                  )
+                 ((and (-> self next-state) (= (-> self next-state name) 'idle))
+                  (go-virtual active)
+                  )
+                 )
+               )
+             )
+           #t
+           )
+         )
+       )
+     )
+    (('rise-up)
+     (if (and (-> self next-state) (= (-> self next-state name) 'waiting))
+         (go-virtual rise-up)
+         )
+     )
+    (('sunk-partially)
+     (and (-> self next-state) (= (-> self next-state name) 'sunk-partially))
+     )
+    (('victory)
+     (if (and (-> self next-state) (= (-> self next-state name) 'sunk-partially))
+         (go-virtual victory)
+         )
+     )
+    (('die-fast)
+     (go-virtual die-fast)
+     )
+    )
+  )
+
+(defmethod under-block-method-48 under-block ((obj under-block) (arg0 int) (arg1 int))
+  (let ((v1-0 (-> obj puzzle)))
+    (when (and (>= arg0 0) (< arg0 (-> v1-0 cells-wide)) (>= arg1 0) (< arg1 (-> v1-0 cells-tall)))
+      (let* ((a1-1 (+ (* arg1 (-> v1-0 cells-wide)) arg0))
+             (a2-4 (-> (the-as (pointer int8) (&+ (-> v1-0 cells) a1-1))))
+             (a0-1 (-> obj my-id))
+             )
+        (when (or (zero? a2-4) (= a2-4 a0-1))
+          (set! (-> (the-as (pointer int8) (&+ (-> v1-0 cells) a1-1))) a0-1)
+          #t
+          )
+        )
+      )
+    )
+  )
+
+(defmethod under-block-method-46 under-block ((obj under-block) (arg0 int) (arg1 int))
+  (let ((v1-0 (-> obj puzzle)))
+    (when (and (>= arg0 0) (< arg0 (-> v1-0 cells-wide)) (>= arg1 0) (< arg1 (-> v1-0 cells-tall)))
+      (let ((a1-1 (+ (* arg1 (-> v1-0 cells-wide)) arg0)))
+        (when (= (-> (the-as (pointer int8) (&+ (-> v1-0 cells) a1-1))) (-> obj my-id))
+          (set! (-> (the-as (pointer int8) (&+ (-> v1-0 cells) a1-1))) 0)
+          0
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod under-block-method-47 under-block ((obj under-block) (arg0 int) (arg1 int))
+  (let ((v1-0 (-> obj puzzle))
+        (v0-0 -1)
+        )
+    (when (and (>= arg0 0) (< arg0 (-> v1-0 cells-wide)) (>= arg1 0) (< arg1 (-> v1-0 cells-tall)))
+      (let ((a0-7 (+ (* arg1 (-> v1-0 cells-wide)) arg0)))
+        (set! v0-0 (-> (the-as (pointer int8) (&+ (-> v1-0 cells) a0-7))))
+        )
+      )
+    v0-0
+    )
+  )
+
+(defmethod under-block-method-43 under-block ((obj under-block) (arg0 int) (arg1 int))
+  (let ((v1-3 (under-block-method-47 obj (+ (-> obj col) arg0) (+ (-> obj row) arg1))))
+    (or (zero? v1-3) (= v1-3 -2) (= v1-3 (-> obj my-id)))
+    )
+  )
+
+(defmethod under-block-method-49 under-block ((obj under-block) (arg0 int) (arg1 int))
+  (= (under-block-method-47 obj (+ (-> obj col) arg0) (+ (-> obj row) arg1)) -1)
+  )
+
+(defmethod under-block-method-44 under-block ((obj under-block))
+  (let ((v1-0 (-> obj puzzle))
+        (a2-0 (-> obj puzzle slots))
+        )
+    (countdown (a1-1 (-> a2-0 length))
+      (let ((a3-2 (-> a2-0 a1-1)))
+        (when (and (= (-> a3-2 col) (-> obj col)) (= (-> a3-2 row) (-> obj row)))
+          (logior! (-> v1-0 slot-mask) (ash 1 a1-1))
+          (return #t)
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod under-block-method-42 under-block ((obj under-block))
+  (set! (-> obj activated-time) (current-time))
+  (logior! (-> obj flags) 2)
+  (set! (-> obj pulse-pc) 0)
+  (set! (-> obj pulse-op) 0)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+;; WARN: Function (method 45 under-block) has a return type of none, but the expression builder found a return statement.
+(defmethod under-block-method-45 under-block ((obj under-block))
+  (let ((v1-0 (-> obj puzzle)))
+    (when (logtest? (-> obj flags) 2)
+      (cond
+        ((!= (-> v1-0 slot-mask) (-> v1-0 slot-mask-full))
+         (when (zero? (-> obj pulse-op))
+           (if (< (- (current-time) (-> obj activated-time))
+                  (the-as time-frame (-> (the-as (pointer uint32) (&+ (-> obj puzzle pulse-ops) (* (-> obj pulse-pc) 4)))))
+                  )
+               (return #f)
+               )
+           (set! (-> obj pulse-op)
+                 (the-as int (-> (the-as (pointer uint32) (&+ (-> obj puzzle pulse-ops) (* (+ (-> obj pulse-pc) 1) 4)))))
+                 )
+           (+! (-> obj pulse-pc) 2)
+           (case (-> obj pulse-op)
+             ((1)
+              (set! (-> obj pulse-ctr) 3)
+              (sound-play "und-block-flash")
+              )
+             ((2)
+              (go (method-of-object obj explode))
+              )
+             )
+           )
+         (case (-> obj pulse-op)
+           ((1)
+            (let ((v1-24 (-> obj pulse-ctr)))
+              (cond
+                ((= v1-24 3)
+                 (set-vector! (-> obj draw color-mult) 1.1 0.25 0.25 1.0)
+                 (+! (-> obj pulse-ctr) -1)
+                 )
+                ((or (= v1-24 2) (= v1-24 1))
+                 (set-vector! (-> obj draw color-mult) 1.0 1.0 1.0 1.0)
+                 (set-vector! (-> obj draw color-emissive) 1.0 1.0 1.0 1.0)
+                 (+! (-> obj pulse-ctr) -1)
+                 )
+                ((zero? v1-24)
+                 (set-vector! (-> obj draw color-mult) 1.0 1.0 1.0 1.0)
+                 (set-vector! (-> obj draw color-emissive) 0.0 0.0 0.0 1.0)
+                 (set! (-> obj pulse-op) 0)
+                 0
+                 )
+                )
+              )
+            )
+           )
+         )
+        (else
+          (logand! (-> obj flags) -3)
+          (set-vector! (-> obj draw color-mult) 1.0 1.0 1.0 1.0)
+          (set-vector! (-> obj draw color-emissive) 0.0 0.0 0.0 1.0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod under-block-method-41 under-block ((obj under-block) (arg0 symbol))
+  (let ((v1-1 (-> obj root root-prim)))
+    (case arg0
+      (('active)
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core collide-as) (collide-spec obstacle pusher))
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-as) (collide-spec))
+       0
+       )
+      (('fall)
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core collide-as) (collide-spec obstacle pusher))
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core collide-with) (collide-spec))
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-as) (collide-spec))
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-with) (collide-spec))
+       0
+       )
+      (('beaten)
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 0 prim-core collide-as) (collide-spec))
+       (set! (-> (the-as collide-shape-prim-group v1-1) child 1 prim-core collide-as) (collide-spec obstacle pusher))
+       )
+      )
+    )
+  (none)
+  )
+
+(defpartgroup group-shoot-block-explode
+  :id 497
+  :duration (seconds 2)
+  :flags (use-local-clock)
+  :bounds (static-bspherem 0 0 0 6)
+  :parts ((sp-item 2181 :flags (bit6) :period (seconds 3) :length (seconds 0.017))
+    (sp-item 2182 :flags (bit6) :period (seconds 3) :length (seconds 0.017))
+    (sp-item 2183 :period (seconds 3) :length (seconds 0.05))
+    (sp-item 2184 :fade-after (meters 60) :falloff-to (meters 60) :period (seconds 3) :length (seconds 0.167) :offset 20)
+    (sp-item 2185 :fade-after (meters 200) :falloff-to (meters 200) :period (seconds 3) :length (seconds 0.085) :offset 20)
+    (sp-item 2186 :fade-after (meters 150) :falloff-to (meters 150) :period (seconds 3) :length (seconds 0.067) :offset 30)
+    )
+  )
+
+(defpart 2186
+  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+    (:num 2.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360) :store)
+    (:scale-y (meters 0.8) (meters 0.2))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters 0.1) (meters 0.26666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -5.12)
+    (:fade-g -6.4)
+    (:fade-b -7.28)
+    (:fade-a -0.1254902)
+    (:friction 0.95)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.085))
+    (:next-launcher 2187)
+    (:conerot-x '*sp-temp*)
+    )
+  )
+
+(defpart 2185
+  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+    (:num 2.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.013333334) (meters 0.026666667))
+    (:scalevel-x (meters 0.01) (meters 0.26666668))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -5.12)
+    (:fade-g -6.4)
+    (:fade-b -7.28)
+    (:fade-a -0.1254902)
+    (:friction 0.93 0.06)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.085))
+    (:next-launcher 2187)
+    (:conerot-x (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 2187
+  :init-specs ((:scalevel-x (meters 0.016666668) (meters 0.016666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g 0.0)
+    (:fade-b 0.0)
+    (:fade-a -0.062068965 -0.72)
+    (:next-time (seconds 0.05) (seconds 0.047))
+    (:next-launcher 2188)
+    )
+  )
+
+(defpart 2188
+  :init-specs ((:fade-a -0.2))
+  )
+
+(defpart 2182
+  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 24.0)
+    (:scalevel-x (meters 0.13333334))
+    (:rotvel-z (degrees 0.3))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -2.1333334)
+    (:fade-b -4.266667)
+    (:fade-a 0.0)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 glow))
+    (:next-time (seconds 0.25))
+    (:next-launcher 2189)
+    )
+  )
+
+(defpart 2189
+  :init-specs ((:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.85333335)
+    (:fade-g -1.7066667)
+    (:fade-b -1.7066667)
+    (:fade-a -0.64)
+    )
+  )
+
+(defpart 2181
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 24.0)
+    (:scalevel-x (meters 0.5))
+    (:rotvel-z (degrees 0.3))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -4.266667)
+    (:fade-g -4.266667)
+    (:fade-b -4.266667)
+    (:fade-a 0.0)
+    (:timer (seconds 0.217))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:next-time (seconds 0.1))
+    (:next-launcher 2190)
+    )
+  )
+
+(defpart 2190
+  :init-specs ((:scalevel-x (meters -0.2857143))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -1.8285714)
+    (:fade-g -3.6571429)
+    (:fade-b -3.6571429)
+    (:fade-a -1.3714286)
+    )
+  )
+
+(defpart 2184
+  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+    (:num 12.0 2.0)
+    (:x (meters 0.25))
+    (:scale-x (meters 1) (meters 0.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 16.0 48.0)
+    (:vel-y (meters 0.083333336) (meters 0.083333336))
+    (:scalevel-x (meters 0.006666667) (meters 0.0016666667))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -3.1)
+    (:fade-b -0.1)
+    (:accel-y (meters -0.00016666666) (meters -0.00033333333))
+    (:friction 0.87)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 2191)
+    (:conerot-x (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 2191
+  :init-specs ((:scalevel-x (meters 0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.14444445)
+    (:fade-g -0.33333334)
+    (:fade-b -0.33333334)
+    (:next-time (seconds 0.15) (seconds 0.047))
+    (:next-launcher 2192)
+    )
+  )
+
+(defpart 2192
+  :init-specs ((:fade-r 0.0) (:fade-g -0.08695652) (:fade-a -0.18478261))
+  )
+
+(defpart 2183
+  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+    (:num 12.0 4.0)
+    (:x (meters 0) (meters 0.6))
+    (:scale-x (meters 2.5) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0 64.0)
+    (:g 96.0 32.0)
+    (:b 64.0 32.0)
+    (:a 0.0)
+    (:vel-y (meters 0.053333335) (meters 0.06666667))
+    (:scalevel-x (meters 0.033333335) (meters 0.02))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.64)
+    (:friction 0.84 0.06)
+    (:timer (seconds 2.367))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 2193)
+    (:conerot-x (degrees -1440) (degrees 2880))
+    )
+  )
+
+(defpart 2193
+  :init-specs ((:scalevel-x (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:next-time (seconds 0) (seconds 0.315))
+    (:next-launcher 2194)
+    )
+  )
+
+(defpart 2194
+  :init-specs ((:scalevel-x (meters 0)) (:scalevel-y :copy scalevel-x) (:fade-a -0.128))
+  )
+
+(defmethod under-block-method-50 under-block ((obj under-block))
+  (with-pp
+    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint (if (logtest? (-> obj flags) 4)
+                                                                    1
+                                                                    0
+                                                                    )
+                                                           )
+                     )
+                )
+          )
+      (when (logtest? (-> obj flags) 4)
+        (set! (-> s5-0 fountain-rand-transv-lo quad) (-> obj away-from-focal-pt quad))
+        (set! (-> s5-0 fountain-rand-transv-hi x) 24576.0)
+        (set! (-> s5-0 fountain-rand-transv-hi y) 49152.0)
+        (set! (-> s5-0 fountain-rand-transv-hi z) 10240.0)
+        (set! (-> s5-0 fountain-rand-transv-hi w) 18432.0)
+        )
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-under-shoot-block-explode" (the-as (pointer uint32) #f))
+        5
+        s5-0
+        *under-shoot-block-exploder-params*
+        :to obj
+        )
+      )
+    (if (>= 204800.0 (vector-vector-distance (target-pos 0) (-> obj root trans)))
+        (activate! *camera-smush-control* 409.6 37 210 1.0 0.995 (-> pp clock))
+        )
+    (let ((s5-2 (new 'stack-no-clear 'explosion-init-params)))
+      (set! (-> s5-2 spawn-point quad) (-> obj root trans quad))
+      (quaternion-copy! (-> s5-2 spawn-quat) (-> obj root quat))
+      (set! (-> s5-2 radius) 16384.0)
+      (set! (-> s5-2 group) (-> *part-group-id-table* 497))
+      (set! (-> s5-2 collide-with) (collide-spec jak bot player-list))
+      (set! (-> s5-2 penetrate-using) (penetrate explode))
+      (explosion-spawn obj explosion s5-2)
+      )
+    (none)
+    )
+  )
+
+(defstate waiting (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logand! (-> self flags) -2)
+    (none)
+    )
+  :code (the-as (function none :behavior under-block) sleep-code)
+  )
+
+(defstate rise-up (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :trans (the-as (function none :behavior under-block) rider-trans)
+  :code (behavior ()
+    (logand! (-> self flags) -2)
+    (while (not (under-block-method-48 self (-> self col) (-> self row)))
+      (suspend)
+      )
+    (under-block-method-41 self 'active)
+    (set! (-> self state-time) (current-time))
+    (sound-play "und-block-rise")
+    (let ((gp-1 (new 'stack-no-clear 'matrix)))
+      (set! (-> gp-1 vector 0 quad) (-> self root trans quad))
+      (set! (-> gp-1 vector 1 quad) (-> gp-1 vector 0 quad))
+      (+! (-> gp-1 vector 1 y) 16384.0)
+      (until (>= 409.6 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
+        (vector-seek-3d-smooth!
+          (-> self root trans)
+          (-> gp-1 vector 1)
+          (* 30720.0 (-> self clock seconds-per-frame))
+          0.25
+          )
+        (rider-post)
+        (suspend)
+        )
+      (set! (-> self root trans quad) (-> gp-1 vector 1 quad))
+      )
+    (rider-post)
+    (go-virtual idle)
+    (none)
+    )
+  )
+
+(defstate follow (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :trans (the-as (function none :behavior under-block) rider-trans)
+  :code (behavior ()
+    (logand! (-> self flags) -2)
+    (set! (-> self state-time) (current-time))
+    (let ((gp-0 (new 'stack-no-clear 'matrix)))
+      (set! (-> gp-0 vector 0 quad) (-> self root trans quad))
+      (set! (-> gp-0 vector 1 quad) (-> gp-0 vector 0 quad))
+      (+! (-> gp-0 vector 1 y) 16384.0)
+      (until (>= 409.6 (fabs (- (-> gp-0 vector 1 y) (-> self root trans y))))
+        (vector-seek-3d-smooth!
+          (-> self root trans)
+          (-> gp-0 vector 1)
+          (* 30720.0 (-> self clock seconds-per-frame))
+          0.25
+          )
+        (rider-post)
+        (suspend)
+        )
+      (set! (-> self root trans quad) (-> gp-0 vector 1 quad))
+      )
+    (rider-post)
+    (go-virtual waiting)
+    0
+    (none)
+    )
+  )
+
+(defstate idle (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logior! (-> self flags) 1)
+    (under-block-method-41 self 'active)
+    (none)
+    )
+  :code (the-as (function none :behavior under-block) sleep-code)
+  )
+
+(defstate active (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logior! (-> self flags) 1)
+    (under-block-method-41 self 'active)
+    (none)
+    )
+  :exit (behavior ()
+    (logand! (-> self flags) -2)
+    (none)
+    )
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (the-as (function none :behavior under-block) sleep-code)
+  )
+
+(defstate flip (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (set! (-> self prev-col) (-> self col))
+    (set! (-> self prev-row) (-> self row))
+    (+! (-> self col) (-> self move-dir-x))
+    (+! (-> self row) (-> self move-dir-z))
+    (under-block-method-48 self (-> self col) (-> self row))
+    (none)
+    )
+  :exit (behavior ()
+    (under-block-method-46 self (-> self prev-col) (-> self prev-row))
+    (none)
+    )
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (behavior ()
+    (local-vars (at-0 int))
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (sound-play "und-block-roll")
+      (let ((gp-1 (new 'stack-no-clear 'matrix)))
+        (set! (-> gp-1 vector 1 quad) (-> self root trans quad))
+        (set-vector!
+          (-> gp-1 vector 0)
+          (+ 8192.0 (* 16384.0 (the float (-> self col))))
+          8192.0
+          (+ 8192.0 (* 16384.0 (the float (-> self row))))
+          1.0
+          )
+        (vector-matrix*!
+          (the-as vector (-> gp-1 vector))
+          (the-as vector (-> gp-1 vector))
+          (-> self puzzle local-to-world)
+          )
+        (quaternion-copy! (the-as quaternion (-> gp-1 trans)) (-> self root quat))
+        (vector-! (-> self rot-axis) (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1))
+        (set! (-> self rot-axis y) 0.0)
+        (vector-normalize! (-> self rot-axis) 1.0)
+        (vector-rotate90-around-y! (-> self rot-axis) (-> self rot-axis))
+        (quaternion-vector-angle! (the-as quaternion (-> gp-1 vector 2)) (-> self rot-axis) -16384.0)
+        (quaternion*!
+          (the-as quaternion (-> gp-1 vector 2))
+          (the-as quaternion (-> gp-1 vector 2))
+          (the-as quaternion (-> gp-1 trans))
+          )
+        (set! (-> self state-time) (current-time))
+        (until #f
+          (let ((f30-0 (fmin 1.0 (* 0.022222223 (the float (- (current-time) (-> self state-time)))))))
+            (let ((s5-1 (-> self root)))
+              (set! (-> s5-1 transv quad) (-> s5-1 trans quad))
+              (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-0)
+              (set! (-> s5-1 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-0))) (-> s5-1 trans y)))
+              (vector-! (-> s5-1 transv) (-> s5-1 trans) (-> s5-1 transv))
+              (let ((v1-17 (-> s5-1 transv)))
+                (.lvf vf1 (&-> (-> s5-1 transv) quad))
+                (let ((f0-12 (-> self clock frames-per-second)))
+                  (.mov at-0 f0-12)
+                  )
+                (.mov vf2 at-0)
+                (.mov.vf vf1 vf0 :mask #b1000)
+                (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                (.svf (&-> v1-17 quad) vf1)
+                )
+              (quaternion-slerp!
+                (-> s5-1 quat)
+                (the-as quaternion (-> gp-1 trans))
+                (the-as quaternion (-> gp-1 vector 2))
+                f30-0
+                )
+              )
+            (transform-post)
+            (when (>= f30-0 1.0)
+              (cond
+                ((under-block-method-44 self)
+                 (go-virtual sink-partially)
+                 )
+                ((= (under-block-method-47 self (-> self col) (-> self row)) -2)
+                 (go-virtual fall)
+                 )
+                (else
+                  (go-virtual active)
+                  )
+                )
+              )
+            )
+          (suspend)
+          ;; WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
+          (init-vf0-vector)
+          )
+        )
+      #f
+      (none)
+      )
+    )
+  )
+
+(defstate rock (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (behavior ()
+    (sound-play "und-block-knock")
+    (let ((gp-1 (new 'stack-no-clear 'matrix)))
+      (let ((a1-1 (+ (-> self col) (-> self move-dir-x)))
+            (a0-4 (+ (-> self row) (-> self move-dir-z)))
+            )
+        (set! (-> gp-1 vector 1 quad) (-> self root trans quad))
+        (set-vector!
+          (-> gp-1 vector 0)
+          (+ 8192.0 (* 16384.0 (the float a1-1)))
+          8192.0
+          (+ 8192.0 (* 16384.0 (the float a0-4)))
+          1.0
+          )
+        )
+      (vector-matrix*!
+        (the-as vector (-> gp-1 vector))
+        (the-as vector (-> gp-1 vector))
+        (-> self puzzle local-to-world)
+        )
+      (quaternion-copy! (the-as quaternion (-> gp-1 trans)) (-> self root quat))
+      (vector-! (-> self rot-axis) (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1))
+      (set! (-> self rot-axis y) 0.0)
+      (vector-normalize! (-> self rot-axis) 1.0)
+      (vector-rotate90-around-y! (-> self rot-axis) (-> self rot-axis))
+      (quaternion-vector-angle! (the-as quaternion (-> gp-1 vector 2)) (-> self rot-axis) -16384.0)
+      (quaternion*!
+        (the-as quaternion (-> gp-1 vector 2))
+        (the-as quaternion (-> gp-1 vector 2))
+        (the-as quaternion (-> gp-1 trans))
+        )
+      (set! (-> self state-time) (current-time))
+      (until #f
+        (let ((f30-0 (fmin 1.0 (* 0.0074074073 (the float (- (current-time) (-> self state-time)))))))
+          (let ((s5-1 (-> self root)))
+            (set! (-> s5-1 transv quad) (-> s5-1 trans quad))
+            (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-0)
+            (set! (-> s5-1 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-0))) (-> s5-1 trans y)))
+            (quaternion-slerp!
+              (-> s5-1 quat)
+              (the-as quaternion (-> gp-1 trans))
+              (the-as quaternion (-> gp-1 vector 2))
+              f30-0
+              )
+            )
+          (transform-post)
+          (if (>= f30-0 0.15)
+              (goto cfg-5)
+              )
+          )
+        (suspend)
+        )
+      #f
+      (label cfg-5)
+      (set! (-> self state-time) (current-time))
+      (until #f
+        (let* ((f1-9 (fmin 1.0 (* 0.0074074073 (the float (- (current-time) (-> self state-time))))))
+               (s5-2 (-> self root))
+               (f30-1 (fmax 0.0 (- 0.15 f1-9)))
+               )
+          (set! (-> s5-2 transv quad) (-> s5-2 trans quad))
+          (vector-lerp! (-> s5-2 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-1)
+          (set! (-> s5-2 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-1))) (-> s5-2 trans y)))
+          (quaternion-slerp!
+            (-> s5-2 quat)
+            (the-as quaternion (-> gp-1 trans))
+            (the-as quaternion (-> gp-1 vector 2))
+            f30-1
+            )
+          (transform-post)
+          (if (= f30-1 0.0)
+              (go-virtual active)
+              )
+          )
+        (suspend)
+        )
+      )
+    #f
+    (none)
+    )
+  )
+
+(defstate sink-partially (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logand! (-> self flags) -2)
+    (none)
+    )
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (current-time))
+    (sound-play "und-block-lock")
+    (let ((gp-1 (new 'stack-no-clear 'matrix)))
+      (set! (-> gp-1 vector 0 quad) (-> self root trans quad))
+      (set! (-> gp-1 vector 1 quad) (-> gp-1 vector 0 quad))
+      (+! (-> gp-1 vector 1 y) -1228.8)
+      (until (>= 40.96 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
+        (vector-seek-3d-smooth!
+          (-> self root trans)
+          (-> gp-1 vector 1)
+          (* 8192.0 (-> self clock seconds-per-frame))
+          0.25
+          )
+        (transform-post)
+        (suspend)
+        )
+      )
+    (go-virtual sunk-partially)
+    (none)
+    )
+  )
+
+(defstate sunk-partially (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (the-as (function none :behavior under-block) sleep-code)
+  )
+
+(defstate victory (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (current-time))
+    (sound-play "und-block-sink")
+    (let ((gp-1 (new 'stack-no-clear 'matrix)))
+      (set! (-> gp-1 vector 0 quad) (-> self root trans quad))
+      (set! (-> gp-1 vector 1 quad) (-> gp-1 vector 0 quad))
+      (set! (-> gp-1 vector 1 y) (-> self puzzle origin y))
+      (+! (-> gp-1 vector 1 y) -8192.0)
+      (until (>= 40.96 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
+        (vector-seek-3d-smooth!
+          (-> self root trans)
+          (-> gp-1 vector 1)
+          (* 12288.0 (-> self clock seconds-per-frame))
+          0.25
+          )
+        (transform-post)
+        (suspend)
+        )
+      )
+    (go-virtual beaten)
+    (none)
+    )
+  )
+
+(defstate beaten (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logand! (-> self flags) -2)
+    (under-block-method-41 self 'beaten)
+    (none)
+    )
+  :code (the-as (function none :behavior under-block) sleep-code)
+  )
+
+(defstate fall (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logand! (-> self flags) -2)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (under-block-method-41 self 'fall)
+    (none)
+    )
+  :trans (behavior ()
+    (under-block-method-45 self)
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self state-time) (current-time))
+    (let ((gp-0 (new 'stack-no-clear 'quaternion))
+          (s5-0 (new 'stack-no-clear 'quaternion))
+          (f30-0 0.0)
+          )
+      (quaternion-copy! gp-0 (-> self root quat))
+      (while (< (- (current-time) (-> self state-time)) (seconds 1.25))
+        (+! f30-0 (* 65536.0 (-> self clock seconds-per-frame)))
+        (quaternion-vector-angle! s5-0 (-> self rot-axis) (- f30-0))
+        (quaternion*! (-> self root quat) s5-0 gp-0)
+        (suspend)
+        )
+      )
+    (go-virtual explode)
+    (none)
+    )
+  :post (behavior ()
+    (let ((gp-0 (-> self root)))
+      (set! (-> gp-0 transv y) (- (-> gp-0 transv y) (* 348160.0 (-> self clock seconds-per-frame))))
+      (let ((a2-0 (new 'stack-no-clear 'collide-query)))
+        (set! (-> a2-0 collide-with) (-> gp-0 root-prim prim-core collide-with))
+        (set! (-> a2-0 ignore-process0) self)
+        (set! (-> a2-0 ignore-process1) #f)
+        (set! (-> a2-0 ignore-pat) (-> gp-0 pat-ignore-mask))
+        (set! (-> a2-0 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide gp-0 (-> gp-0 transv) a2-0 (meters 0))
+        )
+      (when (and (logtest? (-> (the-as collide-shape-moving gp-0) status) (collide-status touch-surface))
+                 (>= (- (current-time) (-> self state-time)) (seconds 0.01))
+                 )
+        (logior! (-> self flags) 4)
+        (go-virtual explode)
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+(defstate explode (under-block)
+  :virtual #t
+  :event under-block-event-handler
+  :enter (behavior ()
+    (logand! (-> self flags) -2)
+    (under-block-method-46 self (-> self col) (-> self row))
+    (let ((v1-4 (-> self puzzle)))
+      (countdown (a0-3 (-> v1-4 slots length))
+        (let ((a1-3 (-> v1-4 slots a0-3)))
+          (if (and (= (-> a1-3 col) (-> self col)) (= (-> a1-3 row) (-> self row)))
+              (logclear! (-> v1-4 slot-mask) (ash 1 a0-3))
+              )
+          )
+        )
+      )
+    (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
+    (set-vector! (-> self draw color-emissive) 0.0 0.0 0.0 1.0)
+    (send-event (ppointer->process (-> self my-parent)) 'explode (-> self spawner-id))
+    (none)
+    )
+  :code (behavior ()
+    (sound-play "und-block-explo")
+    (under-block-method-50 self)
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-7 (-> self root root-prim)))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec))
+      )
+    0
+    (while (-> self child)
+      (suspend)
+      )
+    (none)
+    )
+  )
+
+(defstate die-fast (under-block)
+  :virtual #t
+  :code (the-as (function none :behavior under-block) nothing)
+  )
+
+;; WARN: Return type mismatch collide-status vs none.
+(defbehavior cshape-reaction-under-block under-block ((arg0 control-info) (arg1 collide-query) (arg2 vector))
+  (if (logtest? (cshape-reaction-just-move arg0 arg1 arg2) (collide-status touch-surface))
+      (set! (-> self away-from-focal-pt quad) (-> arg1 best-other-tri intersect quad))
+      )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior under-block-init-by-other under-block ((arg0 int) (arg1 int) (arg2 symbol) (arg3 (pointer process)))
+  (set! (-> self spawner-id) arg0)
+  (set! (-> self my-id) arg1)
+  (set! (-> self my-parent) arg3)
+  (let ((v1-0 arg3))
+    (set! (-> self puzzle)
+          (the-as under-block-puzzle (-> (the-as under-block (if v1-0
+                                                                 (the-as under-block (-> v1-0 0 self))
+                                                                 )
+                                                 )
+                                         focus-status
+                                         )
+                  )
+          )
+    )
+  (set! (-> self event-hook) under-block-event-handler)
+  (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction)
+          (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-under-block)
+          )
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec backgnd jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 13107.2)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-19 transform-index) 3)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 13107.2)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-21 transform-index) 3)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 13107.2)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec backgnd))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 6553.6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-26 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-26 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-26 prim-core collide-with))
+      )
+    (set! (-> self root) s4-0)
+    )
+  (cond
+    ((= arg2 'beaten)
+     (let ((v1-31 (-> self puzzle slots arg0)))
+       (set! (-> self col) (-> v1-31 col))
+       (set! (-> self row) (-> v1-31 row))
+       )
+     )
+    (else
+      (let ((v1-35 (-> self puzzle spawners arg0)))
+        (set! (-> self col) (-> v1-35 col))
+        (set! (-> self row) (-> v1-35 row))
+        )
+      )
+    )
+  (let ((s5-1 (-> self root)))
+    (set-vector!
+      (-> s5-1 trans)
+      (+ 8192.0 (* 16384.0 (the float (-> self col))))
+      8192.0
+      (+ 8192.0 (* 16384.0 (the float (-> self row))))
+      1.0
+      )
+    (vector-matrix*! (-> s5-1 trans) (-> s5-1 trans) (-> self puzzle local-to-world))
+    (case arg2
+      (('waiting 'beaten)
+       (+! (-> s5-1 trans y) -16384.0)
+       )
+      (('follow)
+       (+! (-> s5-1 trans y) -32768.0)
+       )
+      )
+    (matrix->quaternion (-> s5-1 quat) (-> self puzzle local-to-world))
+    (vector-identity! (-> s5-1 scale))
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-under-shoot-block" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (transform-post)
+  (logior! (-> self mask) (process-mask enemy))
+  (set! (-> self draw light-index) (the-as uint 30))
+  (cond
+    ((= arg2 'idle)
+     (under-block-method-48 self (-> self col) (-> self row))
+     (go-virtual idle)
+     )
+    ((= arg2 'beaten)
+     (go-virtual beaten)
+     )
+    ((= arg2 'follow)
+     (go-virtual follow)
+     )
+    (else
+      (go-virtual waiting)
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod under-shoot-block-method-25 under-shoot-block ((obj under-shoot-block) (arg0 int) (arg1 int) (arg2 float) (arg3 int))
+  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+    (set-vector! (-> gp-0 vector 0) -8192.0 0.0 -8192.0 1.0)
+    (set-vector! (-> gp-0 vector 1) -8192.0 0.0 8192.0 1.0)
+    (set-vector! (-> gp-0 vector 2) 8192.0 0.0 8192.0 1.0)
+    (set-vector! (-> gp-0 trans) 8192.0 0.0 -8192.0 1.0)
+    (vector-float*! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) arg2)
+    (vector-float*! (-> gp-0 vector 1) (-> gp-0 vector 1) arg2)
+    (vector-float*! (-> gp-0 vector 2) (-> gp-0 vector 2) arg2)
+    (vector-float*! (-> gp-0 trans) (-> gp-0 trans) arg2)
+    (let ((v1-12 (&+ gp-0 64)))
+      (set! (-> v1-12 vector 0 x) (+ 8192.0 (* 16384.0 (the float arg0))))
+      (set! (-> v1-12 vector 0 y) 0.0)
+      (set! (-> v1-12 vector 0 z) (+ 8192.0 (* 16384.0 (the float arg1))))
+      (set! (-> v1-12 vector 0 w) 1.0)
+      )
+    (vector+! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) (the-as vector (&+ gp-0 64)))
+    (vector+! (-> gp-0 vector 1) (-> gp-0 vector 1) (the-as vector (&+ gp-0 64)))
+    (vector+! (-> gp-0 vector 2) (-> gp-0 vector 2) (the-as vector (&+ gp-0 64)))
+    (vector+! (-> gp-0 trans) (-> gp-0 trans) (the-as vector (&+ gp-0 64)))
+    (let ((s4-0 (-> obj puzzle local-to-world)))
+      (vector-matrix*! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) s4-0)
+      (vector-matrix*! (-> gp-0 vector 1) (-> gp-0 vector 1) s4-0)
+      (vector-matrix*! (-> gp-0 vector 2) (-> gp-0 vector 2) s4-0)
+      (vector-matrix*! (-> gp-0 trans) (-> gp-0 trans) s4-0)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      (the-as vector (-> gp-0 vector))
+      (-> gp-0 vector 1)
+      (the-as rgba arg3)
+      #f
+      (the-as rgba -1)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      (-> gp-0 vector 1)
+      (-> gp-0 vector 2)
+      (the-as rgba arg3)
+      #f
+      (the-as rgba -1)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      (-> gp-0 vector 2)
+      (-> gp-0 trans)
+      (the-as rgba arg3)
+      #f
+      (the-as rgba -1)
+      )
+    (add-debug-line
+      #t
+      (bucket-id debug-no-zbuf1)
+      (-> gp-0 trans)
+      (the-as vector (-> gp-0 vector))
+      (the-as rgba arg3)
+      #f
+      (the-as rgba -1)
+      )
+    )
+  (none)
+  )
+
+(defmethod under-shoot-block-method-24 under-shoot-block ((obj under-shoot-block) (arg0 int) (arg1 int))
+  (local-vars (v1-11 symbol) (v1-20 symbol))
+  (let ((a0-1 (-> obj puzzle)))
+    (if (>= (-> (the-as (pointer int8) (&+ (-> a0-1 cells) (+ (* arg1 (-> a0-1 cells-wide)) arg0)))) 0)
+        (under-shoot-block-method-25 obj arg0 arg1 1.0 (the-as int (the-as uint #x80ffffff)))
+        (under-shoot-block-method-25 obj arg0 arg1 0.95 (shl #x8000 16))
+        )
+    )
+  (let ((v1-9 (-> obj puzzle spawners)))
+    (countdown (a0-7 (-> v1-9 length))
+      (let ((a1-5 (-> v1-9 a0-7)))
+        (when (and (= (-> a1-5 col) arg0) (= (-> a1-5 row) arg1))
+          (set! v1-11 #t)
+          (goto cfg-12)
+          )
+        )
+      )
+    )
+  (set! v1-11 #f)
+  (label cfg-12)
+  (if v1-11
+      (under-shoot-block-method-25 obj arg0 arg1 0.6 (the-as int (the-as uint #x8000ffff)))
+      )
+  (let ((v1-18 (-> obj puzzle slots)))
+    (countdown (a0-9 (-> v1-18 length))
+      (let ((a1-12 (-> v1-18 a0-9)))
+        (when (and (= (-> a1-12 col) arg0) (= (-> a1-12 row) arg1))
+          (set! v1-20 #t)
+          (goto cfg-23)
+          )
+        )
+      )
+    )
+  (set! v1-20 #f)
+  (label cfg-23)
+  (if v1-20
+      (under-shoot-block-method-25 obj arg0 arg1 0.6 (the-as int (the-as uint #x80ffff00)))
+      )
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod under-shoot-block-method-26 under-shoot-block ((obj under-shoot-block))
+  (countdown (s5-0 (-> obj puzzle cells-tall))
+    (countdown (s4-0 (-> obj puzzle cells-wide))
+      (under-shoot-block-method-24 obj s4-0 s5-0)
+      )
+    )
+  (none)
+  )
+
+(defmethod under-shoot-block-method-28 under-shoot-block ((obj under-shoot-block))
+  (let* ((v1-0 (-> obj puzzle))
+         (v0-0 (+ (-> v1-0 last-block-id) 1))
+         )
+    (if (or (< 127 v0-0) (<= v0-0 0))
+        (set! v0-0 1)
+        )
+    (set! (-> v1-0 last-block-id) v0-0)
+    v0-0
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod under-shoot-block-method-27 under-shoot-block ((obj under-shoot-block) (arg0 symbol))
+  (local-vars
+    (sv-16 process)
+    (sv-32 (function int int symbol (pointer process) none :behavior under-block))
+    (sv-48 int)
+    (sv-64 process)
+    (sv-80 (function int int symbol (pointer process) none :behavior under-block))
+    (sv-96 int)
+    (sv-112 process)
+    (sv-128 (function int int symbol (pointer process) none :behavior under-block))
+    (sv-144 int)
+    )
+  (let ((s4-0 (-> obj puzzle)))
+    (set! (-> s4-0 prev-special-attack-id) (the-as uint 0))
+    (set! (-> s4-0 slot-mask) (the-as uint 0))
+    (let ((v1-0 0))
+      (countdown (a0-2 (-> s4-0 slots length))
+        (set! v1-0 (logior v1-0 (ash 1 a0-2)))
+        )
+      (set! (-> s4-0 slot-mask-full) (the-as uint v1-0))
+      (if arg0
+          (set! (-> s4-0 slot-mask) (the-as uint v1-0))
+          )
+      )
+    (matrix-rotate-y! (-> s4-0 local-to-world) (-> s4-0 orient-ry))
+    (set! (-> s4-0 local-to-world trans quad) (-> s4-0 origin quad))
+    (set! (-> s4-0 local-to-world trans w) 1.0)
+    (let ((v1-3 (-> s4-0 cells)))
+      (countdown (a0-11 (* (-> s4-0 cells-wide) (-> s4-0 cells-tall)))
+        (when (> (-> (the-as (pointer int8) (&+ v1-3 a0-11))) 0)
+          (set! (-> (the-as (pointer int8) (&+ v1-3 a0-11))) 0)
+          0
+          )
+        )
+      )
+    (countdown (s3-0 (-> s4-0 spawners length))
+      (let ((s2-0 (-> s4-0 spawners s3-0)))
+        (set! (-> s2-0 exploded-time) 0)
+        (cond
+          (arg0
+            (let ((s1-0 (get-process *default-dead-pool* under-block #x4000)))
+              (set! (-> s2-0 active-handle)
+                    (ppointer->handle
+                      (when s1-0
+                        (let ((t9-2 (method-of-type under-block activate)))
+                          (t9-2 (the-as under-block s1-0) obj (symbol->string (-> under-block symbol)) (the-as pointer #x70004000))
+                          )
+                        (let ((s0-0 run-function-in-process))
+                          (set! sv-16 s1-0)
+                          (set! sv-32 under-block-init-by-other)
+                          (set! sv-48 s3-0)
+                          (let ((a3-1 (under-shoot-block-method-28 obj))
+                                (t0-0 'beaten)
+                                (t1-0 (process->ppointer obj))
+                                )
+                            ((the-as (function object object object object object object none) s0-0) sv-16 sv-32 sv-48 a3-1 t0-0 t1-0)
+                            )
+                          )
+                        (-> s1-0 ppointer)
+                        )
+                      )
+                    )
+              )
+            (set! (-> s2-0 waiting-handle) (the-as handle #f))
+            )
+          (else
+            (let ((s1-1 (get-process *default-dead-pool* under-block #x4000)))
+              (set! (-> s2-0 active-handle)
+                    (ppointer->handle
+                      (when s1-1
+                        (let ((t9-6 (method-of-type under-block activate)))
+                          (t9-6 (the-as under-block s1-1) obj (symbol->string (-> under-block symbol)) (the-as pointer #x70004000))
+                          )
+                        (let ((s0-1 run-function-in-process))
+                          (set! sv-64 s1-1)
+                          (set! sv-80 under-block-init-by-other)
+                          (set! sv-96 s3-0)
+                          (let ((a3-3 (under-shoot-block-method-28 obj))
+                                (t0-1 'idle)
+                                (t1-1 (process->ppointer obj))
+                                )
+                            ((the-as (function object object object object object object none) s0-1) sv-64 sv-80 sv-96 a3-3 t0-1 t1-1)
+                            )
+                          )
+                        (-> s1-1 ppointer)
+                        )
+                      )
+                    )
+              )
+            (let ((s1-2 (get-process *default-dead-pool* under-block #x4000)))
+              (set! (-> s2-0 waiting-handle)
+                    (ppointer->handle
+                      (when s1-2
+                        (let ((t9-10 (method-of-type under-block activate)))
+                          (t9-10 (the-as under-block s1-2) obj (symbol->string (-> under-block symbol)) (the-as pointer #x70004000))
+                          )
+                        (let ((s0-2 run-function-in-process))
+                          (set! sv-112 s1-2)
+                          (set! sv-128 under-block-init-by-other)
+                          (set! sv-144 s3-0)
+                          (let ((a3-5 (under-shoot-block-method-28 obj))
+                                (t0-2 'waiting)
+                                (t1-2 (process->ppointer obj))
+                                )
+                            ((the-as (function object object object object object object none) s0-2) sv-112 sv-128 sv-144 a3-5 t0-2 t1-2)
+                            )
+                          )
+                        (-> s1-2 ppointer)
+                        )
+                      )
+                    )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defbehavior under-shoot-block-event-handler under-shoot-block ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('explode)
+     (let ((v1-4 (-> self puzzle spawners (-> arg3 param 0))))
+       (set! (-> v1-4 active-handle) (the-as handle #f))
+       (set! v0-0 (current-time))
+       (set! (-> v1-4 exploded-time) (the-as time-frame v0-0))
+       )
+     v0-0
+     )
+    (('query)
+     (case (-> arg3 param 0)
+       (('beaten)
+        (and (-> self next-state) (let ((v1-8 (-> self next-state name)))
+                                    (or (= v1-8 'victory-locked) (= v1-8 'victory) (= v1-8 'beaten))
+                                    )
+             )
+        )
+       )
+     )
+    (('unlock)
+     (set! v0-0 #t)
+     (set! (-> self allow-unlock?) (the-as symbol v0-0))
+     v0-0
+     )
+    )
+  )
+
+(defstate idle (under-shoot-block)
+  :virtual #t
+  :event under-shoot-block-event-handler
+  :trans (behavior ()
+    (local-vars (sv-96 int))
+    (let ((gp-0 (-> self puzzle)))
+      (if (= (-> gp-0 slot-mask) (-> gp-0 slot-mask-full))
+          (go-virtual victory-locked)
+          )
+      (let ((gp-1 (-> gp-0 spawners)))
+        (countdown (s5-0 (-> gp-1 length))
+          (let ((s4-0 (-> gp-1 s5-0)))
+            (when (and (not (handle->process (-> s4-0 active-handle)))
+                       (>= (- (current-time) (-> s4-0 exploded-time)) (seconds 1))
+                       )
+              (set! (-> s4-0 active-handle) (-> s4-0 waiting-handle))
+              (let ((s3-0 (get-process *default-dead-pool* under-block #x4000)))
+                (set! (-> s4-0 waiting-handle)
+                      (ppointer->handle
+                        (when s3-0
+                          (let ((t9-2 (method-of-type under-block activate)))
+                            (t9-2 (the-as under-block s3-0) self (symbol->string (-> under-block symbol)) (the-as pointer #x70004000))
+                            )
+                          (let ((s2-0 run-function-in-process)
+                                (s1-0 s3-0)
+                                (s0-0 under-block-init-by-other)
+                                )
+                            (set! sv-96 s5-0)
+                            (let ((a3-1 (under-shoot-block-method-28 self))
+                                  (t0-0 'follow)
+                                  (t1-0 (process->ppointer self))
+                                  )
+                              ((the-as (function object object object object object object none) s2-0) s1-0 s0-0 sv-96 a3-1 t0-0 t1-0)
+                              )
+                            )
+                          (-> s3-0 ppointer)
+                          )
+                        )
+                      )
+                )
+              (send-event (handle->process (-> s4-0 active-handle)) 'rise-up)
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  )
+
+(defstate victory-locked (under-shoot-block)
+  :virtual #t
+  :event under-shoot-block-event-handler
+  :trans (behavior ()
+    (local-vars (v1-9 symbol))
+    (let ((gp-0 (-> self puzzle spawners)))
+      (countdown (s5-0 (-> gp-0 length))
+        (let ((v1-3 (-> gp-0 s5-0)))
+          (when (not (send-event (handle->process (-> v1-3 active-handle)) 'sunk-partially))
+            (set! v1-9 #f)
+            (goto cfg-13)
+            )
+          )
+        )
+      )
+    (set! v1-9 #t)
+    (label cfg-13)
+    (when v1-9
+      (if (-> self allow-unlock?)
+          (go-virtual victory)
+          )
+      )
+    (none)
+    )
+  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  )
+
+(defstate victory (under-shoot-block)
+  :virtual #t
+  :event under-shoot-block-event-handler
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (sound-play "und-block-chime")
+    (set! (-> self state-time) (current-time))
+    (until (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+      (suspend)
+      )
+    (let ((gp-1 (-> self puzzle spawners)))
+      (countdown (s5-1 (-> gp-1 length))
+        (let ((v1-10 (-> gp-1 s5-1)))
+          (send-event (handle->process (-> v1-10 active-handle)) 'victory)
+          )
+        )
+      )
+    (let ((v1-17 (-> self actor-group)))
+      (when v1-17
+        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-3 from) (process->ppointer self))
+          (set! (-> a1-3 num-params) 0)
+          (set! (-> a1-3 message) 'trigger)
+          (let ((t9-4 send-event-function)
+                (v1-19 (-> v1-17 0 data 1 actor))
+                )
+            (t9-4
+              (if v1-19
+                  (-> v1-19 extra process)
+                  )
+              a1-3
+              )
+            )
+          )
+        )
+      )
+    (go-virtual beaten)
+    (none)
+    )
+  )
+
+(defstate beaten (under-shoot-block)
+  :virtual #t
+  :event under-shoot-block-event-handler
+  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  )
+
+(defmethod deactivate under-shoot-block ((obj under-shoot-block))
+  (let ((s5-0 (-> obj puzzle spawners)))
+    (countdown (s4-0 (-> s5-0 length))
+      (let ((s3-0 (-> s5-0 s4-0)))
+        (send-event (handle->process (-> s3-0 active-handle)) 'die-fast)
+        (send-event (handle->process (-> s3-0 waiting-handle)) 'die-fast)
+        )
+      )
+    )
+  ((the-as (function process-drawable none) (find-parent-method under-shoot-block 10)) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! under-shoot-block ((obj under-shoot-block) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 res-tag))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (let ((s5-1 (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
+    (if (or (< (the-as int s5-1) 0) (>= (the-as int s5-1) (-> *under-block-puzzles* length)))
+        (go process-drawable-art-error "bad puzzle id")
+        )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((a0-7 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+      (if (and a0-7 (nonzero? (-> sv-16 elt-count)))
+          (set! (-> obj actor-group) (the-as (pointer actor-group) a0-7))
+          (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
+          )
+      )
+    (let ((v1-13 (-> *under-block-puzzles* s5-1)))
+      (set! (-> obj puzzle) v1-13)
+      (set! (-> obj allow-unlock?) (-> v1-13 auto-unlock?))
+      )
+    )
+  (let ((s5-2
+          (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+          )
+        )
+    (under-shoot-block-method-27 obj (the-as symbol s5-2))
+    (if s5-2
+        (go (method-of-object obj beaten))
+        (go (method-of-object obj idle))
+        )
+    )
+  (none)
+  )

@@ -2,18 +2,23 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 
-class Generic2 : public BucketRenderer {
+class Generic2 {
  public:
-  Generic2(const std::string& name,
-           BucketId my_id,
-           u32 num_verts = 200000,
-           u32 num_frags = 2000,
-           u32 num_adgif = 6000,
+  Generic2(ShaderLibrary& shaders,
+           u32 num_verts = 500000,
+           u32 num_frags = 10000,
+           u32 num_adgif = 10000,
            u32 num_buckets = 800);
   ~Generic2();
-  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
-  void draw_debug_window() override;
-  void init_shaders(ShaderLibrary& shaders) override;
+
+  enum class Mode { NORMAL, LIGHTNING, WARP };
+
+  void render_in_mode(DmaFollower& dma,
+                      SharedRenderState* render_state,
+                      ScopedProfilerNode& prof,
+                      Mode mode);
+
+  void draw_debug_window();
 
   struct Vertex {
     math::Vector<float, 3> xyz;
@@ -28,14 +33,16 @@ class Generic2 : public BucketRenderer {
   static_assert(sizeof(Vertex) == 32);
 
  private:
-  void determine_draw_modes();
+  void determine_draw_modes(bool enable_at, bool default_fog);
   void build_index_buffer();
   void link_adgifs_back_to_frags();
   void draws_to_buckets();
   void reset_buffers();
   void process_matrices();
-  void process_dma(DmaFollower& dma, u32 next_bucket);
-  void setup_draws();
+  void process_dma_jak1(DmaFollower& dma, u32 next_bucket);
+  void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
+  void process_dma_jak2(DmaFollower& dma, u32 next_bucket);
+  void setup_draws(bool enable_at, bool default_fog);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
                           ScopedProfilerNode& prof,
@@ -46,7 +53,7 @@ class Generic2 : public BucketRenderer {
   void final_vertex_update();
   bool handle_bucket_setup_dma(DmaFollower& dma, u32 next_bucket);
 
-  void opengl_setup();
+  void opengl_setup(ShaderLibrary& shaders);
   void opengl_cleanup();
   void opengl_bind_and_setup_proj(SharedRenderState* render_state);
   void setup_opengl_for_draw_mode(const DrawMode& draw_mode,
@@ -183,12 +190,6 @@ class Generic2 : public BucketRenderer {
     ASSERT(m_next_free_vert < m_verts.size());
   }
 
-  std::string m_debug;
-
-  struct Stats {
-    u32 dma_tags = 0;
-  } m_stats;
-
   static constexpr int ALPHA_MODE_COUNT = 7;
   bool m_alpha_draw_enable[ALPHA_MODE_COUNT] = {true, true, true, true, true, true, true};
 
@@ -199,5 +200,6 @@ class Generic2 : public BucketRenderer {
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
         hvdf_offset;
     GLuint gfx_hack_no_tex;
+    GLuint warp_sample_mode;
   } m_ogl;
 };

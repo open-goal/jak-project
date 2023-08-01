@@ -1,5 +1,6 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
+#include "common/util/json_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
@@ -8,7 +9,7 @@ void Compiler::save_repl_history() {
   m_repl->save_history();
 }
 
-void Compiler::print_to_repl(const std::string_view& str) {
+void Compiler::print_to_repl(const std::string& str) {
   m_repl->print_to_repl(str);
 }
 
@@ -72,7 +73,7 @@ std::vector<std::string> Compiler::run_test_from_file(const std::string& source_
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
+    lg::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     throw e;
   }
 }
@@ -98,7 +99,7 @@ std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
-    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
+    lg::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
     throw e;
   }
 }
@@ -163,6 +164,16 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
   if (!goos::get_va(rest, &err, &args)) {
     throw_compiler_error(form, err);
   }
+  return args;
+}
+
+/*!
+ * Parse arguments into a goos::Arguments format.
+ */
+goos::Arguments Compiler::get_va_no_named(const goos::Object& form, const goos::Object& rest) {
+  (void)form;
+  goos::Arguments args;
+  goos::get_va_no_named(rest, &args);
   return args;
 }
 

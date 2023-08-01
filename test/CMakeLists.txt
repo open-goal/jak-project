@@ -34,11 +34,12 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DataParser.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DisasmVifDecompile.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_VuDisasm.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/game/test_newpad.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/common/formatter/test_formatter.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
-        ${GOALC_TEST_CASES})
+        ${GOALC_TEST_CASES}
+        )
 
-target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis libzstd_static)
+target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis libzstd_static tree-sitter)
 
 if(WIN32)
   target_link_libraries(goalc-test mman)
@@ -51,7 +52,7 @@ if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
-                                 EXECUTABLE goalc-test --gtest_color=yes --gtest_brief=1
+                                 EXECUTABLE goalc-test --gtest_color=yes
                                  DEPENDENCIES goalc-test
                                  EXCLUDE "third-party/*" "/usr/include/*")
 endif()

@@ -1,0 +1,227 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bone-buffer
+(deftype bone-buffer (structure)
+  ((joint joint-anim-compressed-hdr 16 :inline :offset-assert   0)
+   (bone  bone                      16 :inline :offset-assert 1024)
+   (_pad  uint8                     2048       :offset-assert 2560)
+   )
+  :method-count-assert 9
+  :size-assert         #x1200
+  :flag-assert         #x900001200
+  )
+
+;; definition for method 3 of type bone-buffer
+(defmethod inspect bone-buffer ((obj bone-buffer))
+  (format #t "[~8x] ~A~%" obj 'bone-buffer)
+  (format #t "~Tjoint[16] @ #x~X~%" (-> obj joint))
+  (format #t "~Tbone[16] @ #x~X~%" (-> obj bone))
+  (format #t "~Toutput[16] @ #x~X~%" (-> obj _pad))
+  obj
+  )
+
+;; definition of type bone-layout
+(deftype bone-layout (structure)
+  ((joint  joint  2 :offset-assert   0)
+   (bone   bone   2 :offset-assert   8)
+   (data   uint16 8 :offset          0)
+   (output uint32 2 :offset-assert  16)
+   (cache  uint32 2 :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type bone-layout
+(defmethod inspect bone-layout ((obj bone-layout))
+  (format #t "[~8x] ~A~%" obj 'bone-layout)
+  (format #t "~Tdata[8] @ #x~X~%" (-> obj joint))
+  (format #t "~Tjoint[2] @ #x~X~%" (-> obj joint))
+  (format #t "~Tbone[2] @ #x~X~%" (-> obj bone))
+  (format #t "~Toutput[2] @ #x~X~%" (-> obj output))
+  (format #t "~Tcache[2] @ #x~X~%" (-> obj cache))
+  obj
+  )
+
+;; definition of type bone-regs
+(deftype bone-regs (structure)
+  ((joint-ptr (inline-array joint)  :offset-assert   0)
+   (bone-ptr  (inline-array bone)   :offset-assert   4)
+   (num-bones uint32                :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type bone-regs
+(defmethod inspect bone-regs ((obj bone-regs))
+  (format #t "[~8x] ~A~%" obj 'bone-regs)
+  (format #t "~Tjoint-ptr: #x~X~%" (-> obj joint-ptr))
+  (format #t "~Tbone-ptr: #x~X~%" (-> obj bone-ptr))
+  (format #t "~Tnum-bones: ~D~%" (-> obj num-bones))
+  obj
+  )
+
+;; definition of type bone-work
+(deftype bone-work (structure)
+  ((layout     bone-layout               :inline :offset-assert   0)
+   (bounds     sphere                    :inline :offset-assert  32)
+   (lights     vu-lights                 :inline :offset-assert  48)
+   (distance   vector                    :inline :offset-assert 160)
+   (next-tag   dma-packet                :inline :offset-assert 176)
+   (dma-buf    dma-buffer                        :offset-assert 192)
+   (sink-group dma-foreground-sink-group         :offset-assert 196)
+   (next-pris  dma-packet                        :offset-assert 200)
+   (next-merc  dma-packet                        :offset-assert 204)
+   (wait-count uint32                            :offset-assert 208)
+   (in-count   uint32                            :offset-assert 212)
+   (sp-size    uint32                            :offset-assert 216)
+   (sp-bufnum  uint32                            :offset-assert 220)
+   (regs       bone-regs                 :inline :offset-assert 224)
+   )
+  :method-count-assert 9
+  :size-assert         #xec
+  :flag-assert         #x9000000ec
+  )
+
+;; definition for method 3 of type bone-work
+(defmethod inspect bone-work ((obj bone-work))
+  (format #t "[~8x] ~A~%" obj 'bone-work)
+  (format #t "~Tlayout: #<bone-layout @ #x~X>~%" (-> obj layout))
+  (format #t "~Tbounds: #<sphere @ #x~X>~%" (-> obj bounds))
+  (format #t "~Tlights: #<vu-lights @ #x~X>~%" (-> obj lights))
+  (format #t "~Tdistance: #<vector @ #x~X>~%" (-> obj distance))
+  (format #t "~Tnext-tag: #<dma-packet @ #x~X>~%" (-> obj next-tag))
+  (format #t "~Tdma-buf: ~A~%" (-> obj dma-buf))
+  (format #t "~Tsink-group: ~A~%" (-> obj sink-group))
+  (format #t "~Tnext-pris: #<dma-packet @ #x~X>~%" (-> obj next-pris))
+  (format #t "~Tnext-merc: #<dma-packet @ #x~X>~%" (-> obj next-merc))
+  (format #t "~Twait-count: ~D~%" (-> obj wait-count))
+  (format #t "~Tin-count: ~D~%" (-> obj in-count))
+  (format #t "~Tsp-size: ~D~%" (-> obj sp-size))
+  (format #t "~Tsp-bufnum: ~D~%" (-> obj sp-bufnum))
+  (format #t "~Tregs: #<bone-regs @ #x~X>~%" (-> obj regs))
+  obj
+  )
+
+;; definition of type bone-debug
+(deftype bone-debug (structure)
+  ((time-ctr uint32     :offset-assert   0)
+   (timing   uint32 360 :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5a4
+  :flag-assert         #x9000005a4
+  )
+
+;; definition for method 3 of type bone-debug
+(defmethod inspect bone-debug ((obj bone-debug))
+  (format #t "[~8x] ~A~%" obj 'bone-debug)
+  (format #t "~Ttime-ctr: ~D~%" (-> obj time-ctr))
+  (format #t "~Ttiming[360] @ #x~X~%" (-> obj timing))
+  obj
+  )
+
+;; definition of type bone-memory
+(deftype bone-memory (structure)
+  ((work     bone-work   :inline   :offset-assert   0)
+   (buffer   bone-buffer 2 :inline :offset-assert 240)
+   (dma-list dma-packet  :inline   :offset        240)
+   )
+  :method-count-assert 9
+  :size-assert         #x24f0
+  :flag-assert         #x9000024f0
+  )
+
+;; definition for method 3 of type bone-memory
+(defmethod inspect bone-memory ((obj bone-memory))
+  (format #t "[~8x] ~A~%" obj 'bone-memory)
+  (format #t "~Twork: #<bone-work @ #x~X>~%" (-> obj work))
+  (format #t "~Tbuffer[2] @ #x~X~%" (-> obj buffer))
+  (format #t "~Tdma-list: #<dma-packet @ #x~X>~%" (-> obj buffer))
+  obj
+  )
+
+;; definition for function invalidate-cache-line
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 1]
+(defun invalidate-cache-line ((arg0 pointer))
+  (.sync.l)
+  (.cache dxwbin arg0 0)
+  (.sync.l)
+  (.cache dxwbin arg0 1)
+  (.sync.l)
+  0
+  )
+
+;; definition of type merc-globals
+(deftype merc-globals (structure)
+  ((first uint32                       :offset-assert   0)
+   (next  (pointer uint32)             :offset-assert   4)
+   (sink  generic-dma-foreground-sink  :offset-assert   8)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type merc-globals
+(defmethod inspect merc-globals ((obj merc-globals))
+  (format #t "[~8x] ~A~%" obj 'merc-globals)
+  (format #t "~Tfirst: #x~X~%" (-> obj first))
+  (format #t "~Tnext: #x~X~%" (-> obj next))
+  (format #t "~Tsink: ~A~%" (-> obj sink))
+  obj
+  )
+
+;; definition of type merc-global-array
+(deftype merc-global-array (structure)
+  ((count   uint32                 :offset-assert   0)
+   (globals merc-globals 8 :inline :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+;; definition for method 3 of type merc-global-array
+(defmethod inspect merc-global-array ((obj merc-global-array))
+  (format #t "[~8x] ~A~%" obj 'merc-global-array)
+  (format #t "~Tcount: ~D~%" (-> obj count))
+  (format #t "~Tglobals[8] @ #x~X~%" (-> obj globals))
+  obj
+  )
+
+;; definition for symbol *merc-globals*, type merc-globals
+(define *merc-globals* (the-as merc-globals #f))
+
+;; definition of type shadow-dma-packet
+(deftype shadow-dma-packet (structure)
+  ((tag      generic-merc-tag :inline :offset-assert   0)
+   (settings shadow-settings  :inline :offset-assert  16)
+   (geo-ref  dma-packet       :inline :offset-assert  96)
+   (mtx-ref  dma-packet       :inline :offset-assert 112)
+   (end-tag  dma-packet       :inline :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
+
+;; definition for method 3 of type shadow-dma-packet
+(defmethod inspect shadow-dma-packet ((obj shadow-dma-packet))
+  (format #t "[~8x] ~A~%" obj 'shadow-dma-packet)
+  (format #t "~Ttag: #<generic-merc-tag @ #x~X>~%" (-> obj tag))
+  (format #t "~Tsettings: #<shadow-settings @ #x~X>~%" (-> obj settings))
+  (format #t "~Tgeo-ref: #<dma-packet @ #x~X>~%" (-> obj geo-ref))
+  (format #t "~Tmtx-ref: #<dma-packet @ #x~X>~%" (-> obj mtx-ref))
+  (format #t "~Tend-tag: #<dma-packet @ #x~X>~%" (-> obj end-tag))
+  obj
+  )
+
+;; failed to figure out what this is:
+0

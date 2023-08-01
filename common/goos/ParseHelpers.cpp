@@ -39,6 +39,17 @@ bool get_va(const goos::Object& rest, std::string* err_string, goos::Arguments* 
   return true;
 }
 
+void get_va_no_named(const goos::Object& rest, goos::Arguments* result) {
+  goos::Arguments args;
+  // loop over forms in list
+  goos::Object current = rest;
+  while (!current.is_empty_list()) {
+    args.unnamed.push_back(current.as_pair()->car);
+    current = current.as_pair()->cdr;
+  }
+  *result = args;
+}
+
 bool va_check(
     const goos::Arguments& args,
     const std::vector<std::optional<goos::ObjectType>>& unnamed,
@@ -53,6 +64,7 @@ bool va_check(
 
   for (size_t i = 0; i < unnamed.size(); i++) {
     if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
+      // special case -- an empty list is a valid pair
       *err_string = fmt::format("Argument {} has type {} but {} was expected\nArgument is: {}", i,
                                 object_type_to_string(args.unnamed[i].type),
                                 object_type_to_string(unnamed[i].value()), args.unnamed[i].print());

@@ -1,0 +1,81 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dynamics
+(deftype dynamics (basic)
+  ((name           symbol         :offset-assert   4)
+   (gravity-max    meters         :offset-assert   8)
+   (gravity-length meters         :offset-assert  12)
+   (gravity        vector :inline :offset-assert  16)
+   (gravity-normal vector :inline :offset-assert  32)
+   (walk-distance  meters         :offset-assert  48)
+   (run-distance   meters         :offset-assert  52)
+   )
+  :method-count-assert 10
+  :size-assert         #x38
+  :flag-assert         #xa00000038
+  (:methods
+    (set-gravity-length (_type_ float) none 9)
+    )
+  )
+
+;; definition for method 3 of type dynamics
+(defmethod inspect dynamics ((obj dynamics))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tname: ~A~%" (-> obj name))
+  (format #t "~1Tgravity-max: (meters ~m)~%" (-> obj gravity-max))
+  (format #t "~1Tgravity-length: (meters ~m)~%" (-> obj gravity-length))
+  (format #t "~1Tgravity: ~`vector`P~%" (-> obj gravity))
+  (format #t "~1Tgravity-normal: ~`vector`P~%" (-> obj gravity-normal))
+  (format #t "~1Twalk-distance: (meters ~m)~%" (-> obj walk-distance))
+  (format #t "~1Trun-distance: (meters ~m)~%" (-> obj run-distance))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 9 of type dynamics
+;; WARN: Return type mismatch int vs none.
+(defmethod set-gravity-length dynamics ((obj dynamics) (arg0 float))
+  (set! (-> obj gravity-length) arg0)
+  (vector-float*! (-> obj gravity) (-> obj gravity-normal) arg0)
+  0
+  (none)
+  )
+
+;; definition for function time-to-apex
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (* 0.0033333334 arg1))))
+  )
+
+;; definition for function time-to-ground
+(defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
+  (let ((f0-0 0.0)
+        (v0-0 0)
+        )
+    (while (< (- arg2) f0-0)
+      (set! arg0 (- arg0 (* 0.0033333334 arg1)))
+      (+! f0-0 (* 0.0033333334 arg0))
+      (+! v0-0 1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for symbol *standard-dynamics*, type dynamics
+(define *standard-dynamics* (new 'static 'dynamics
+                              :name 'standard
+                              :gravity-max (meters 40)
+                              :gravity-length (meters 60)
+                              :gravity (new 'static 'vector :y 245760.0 :w 1.0)
+                              :gravity-normal (new 'static 'vector :y 1.0 :w 1.0)
+                              :walk-distance (meters 2)
+                              :run-distance (meters 5)
+                              )
+        )
+
+;; failed to figure out what this is:
+0

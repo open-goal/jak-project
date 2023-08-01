@@ -9,6 +9,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/jak1_tpage_dir.h"
+#include "game/graphics/texture/jak2_tpage_dir.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
@@ -109,6 +110,21 @@ void TexturePool::move_existing_to_vram(GpuTexture* tex, u32 slot_addr) {
   }
 }
 
+void TexturePool::update_gl_texture(GpuTexture* gpu_texture,
+                                    u32 new_w,
+                                    u32 new_h,
+                                    GLuint new_gl_texture) {
+  ASSERT(gpu_texture->gpu_textures.size() == 1);
+  gpu_texture->gpu_textures[0].gl = new_gl_texture;
+  gpu_texture->w = new_w;
+  gpu_texture->h = new_h;
+  for (int si : gpu_texture->slots) {
+    auto& slot = m_textures[si];
+    ASSERT(slot.source == gpu_texture);
+    slot.gpu_texture = new_gl_texture;
+  }
+}
+
 void TexturePool::refresh_links(GpuTexture& texture) {
   u64 tex_to_use =
       texture.is_placeholder ? m_placeholder_texture_id : texture.gpu_textures.front().gl;
@@ -135,11 +151,9 @@ void TexturePool::unload_texture(PcTextureId tex_id, u64 gpu_id) {
     ASSERT(false);
     return;
   }
-  if (tex->is_placeholder) {
-    fmt::print("trying to unload something that was already placholdered: {} {}\n",
-               get_debug_texture_name(tex_id), tex->gpu_textures.size());
-  }
-  ASSERT(!tex->is_placeholder);
+  ASSERT_MSG(!tex->is_placeholder,
+             fmt::format("trying to unload something that was already placholdered: {} {}\n",
+                         get_debug_texture_name(tex_id), tex->gpu_textures.size()));
   auto it = std::find_if(tex->gpu_textures.begin(), tex->gpu_textures.end(),
                          [&](const auto& a) { return a.gl == gpu_id; });
   ASSERT(it != tex->gpu_textures.end());
@@ -175,7 +189,11 @@ void GpuTexture::add_slot(u32 slot) {
  * We could store textures in the right format to begin with, or spread the conversion out over
  * multiple frames.
  */
-void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr) {
+void TexturePool::handle_upload_now(const u8* tpage,
+                                    int mode,
+                                    const u8* memory_base,
+                                    u32 s7_ptr,
+                                    bool debug) {
   std::unique_lock<std::mutex> lk(m_mutex);
   // extract the texture-page object. This is just a description of the page data.
   GoalTexturePage texture_page;
@@ -202,6 +220,12 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
   for (int tex_idx = 0; tex_idx < texture_page.length; tex_idx++) {
     GoalTexture tex;
     if (texture_page.try_copy_texture_description(&tex, tex_idx, memory_base, tpage, s7_ptr)) {
+      if (debug) {
+        fmt::print("Pool upload {} to {}\n",
+                   std::string(goal_string(texture_page.name_ptr, memory_base)) +
+                       goal_string(tex.name_ptr, memory_base),
+                   tex.dest[0]);
+      }
       // each texture may have multiple mip levels.
       for (int mip_idx = 0; mip_idx < tex.num_mips; mip_idx++) {
         if (has_segment[tex.segment_of_mip(mip_idx)]) {
@@ -221,11 +245,11 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
             } else {
               slot.source->remove_slot(tex.dest[mip_idx]);
               slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
-              ASSERT(slot.gpu_texture != (u64)-1);
+              ASSERT(slot.gpu_texture != (GLuint)-1);
             }
           } else {
             slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
-            ASSERT(slot.gpu_texture != (u64)-1);
+            ASSERT(slot.gpu_texture != (GLuint)-1);
           }
         }
       }
@@ -281,8 +305,23 @@ std::optional<u64> TexturePool::lookup_mt4hh(u32 location) {
   return {};
 }
 
-TexturePool::TexturePool()
-    : m_loaded_textures(get_jak1_tpage_dir()), m_id_to_name(get_jak1_tpage_dir()) {
+namespace {
+const std::vector<u32>& get_tpage_dir(GameVersion version) {
+  switch (version) {
+    case GameVersion::Jak1:
+      return get_jak1_tpage_dir();
+    case GameVersion::Jak2:
+      return get_jak2_tpage_dir();
+    default:
+      ASSERT(false);
+  }
+}
+}  // namespace
+
+TexturePool::TexturePool(GameVersion version)
+    : m_loaded_textures(get_tpage_dir(version)),
+      m_id_to_name(get_tpage_dir(version)),
+      m_tpage_dir_size(get_tpage_dir(version).size()) {
   m_placeholder_data.resize(16 * 16);
   u32 c0 = 0xa0303030;
   u32 c1 = 0xa0e0e0e0;
@@ -301,13 +340,14 @@ void TexturePool::draw_debug_window() {
   int total_displayed_textures = 0;
   int total_uploaded_textures = 0;
   ImGui::InputText("texture search", m_regex_input, sizeof(m_regex_input));
-  std::regex regex(m_regex_input[0] ? m_regex_input : ".*");
+  bool use_regex = m_regex_input[0];
+  std::regex regex(use_regex ? m_regex_input : ".*");
 
   for (size_t i = 0; i < m_textures.size(); i++) {
     auto& record = m_textures[i];
     total_textures++;
     if (record.source) {
-      if (std::regex_search(get_debug_texture_name(record.source->tex_id), regex)) {
+      if (!use_regex || std::regex_search(get_debug_texture_name(record.source->tex_id), regex)) {
         ImGui::PushID(id++);
         draw_debug_for_tex(get_debug_texture_name(record.source->tex_id), record.source, i);
         ImGui::PopID();
@@ -336,10 +376,10 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8, 0.8, 0.3, 1.0));
   }
-  if (ImGui::TreeNode(fmt::format("{} {}", name, slot).c_str())) {
+  if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
     if (!tex->is_placeholder) {
-      ImGui::Image((void*)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
+      ImGui::Image((void*)(u64)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
     } else {
       ImGui::Text("PLACEHOLDER");
     }
@@ -350,9 +390,16 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   ImGui::PopStyleColor();
 }
 
-PcTextureId TexturePool::allocate_pc_port_texture() {
+PcTextureId TexturePool::allocate_pc_port_texture(GameVersion version) {
   ASSERT(m_next_pc_texture_to_allocate < EXTRA_PC_PORT_TEXTURE_COUNT);
-  return PcTextureId(get_jak1_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
+  switch (version) {
+    case GameVersion::Jak1:
+      return PcTextureId(get_jak1_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
+    case GameVersion::Jak2:
+      return PcTextureId(get_jak2_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
+    default:
+      ASSERT_NOT_REACHED();
+  }
 }
 
 std::string TexturePool::get_debug_texture_name(PcTextureId id) {

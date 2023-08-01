@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "common/dma/gs.h"
-#include "common/log/log.h"
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
 
@@ -21,10 +20,12 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-  DirectRenderer(const std::string& name, BucketId my_id, int batch_size);
+  DirectRenderer(const std::string& name, int my_id, int batch_size);
+  void init_shaders(ShaderLibrary& sl) override;
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
-
+  virtual void pre_render() {}
+  virtual void post_render() {}
   /*!
    * Render directly from _VIF_ data.
    * You can optionally provide two vif tags that come in front of data.
@@ -67,30 +68,40 @@ class DirectRenderer : public BucketRenderer {
   }
 
   void set_mipmap(bool en) { m_debug_state.disable_mipmap = !en; }
-
- private:
-  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_pabe(u64 val);
-  void handle_clamp1(u64 val);
   void handle_prim(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_prim_packed(const u8* data,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof);
-  void handle_rgbaq(u64 val);
-  void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data,
                            SharedRenderState* render_state,
                            ScopedProfilerNode& prof);
+  void handle_xyz2_packed(const u8* data,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof);
+  void handle_prim_packed(const u8* data,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof);
   void handle_tex0_1_packed(const u8* data);
+  void handle_uv_packed(const u8* data);
+  void handle_rgbaq(u64 val);
+  void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+
+ protected:
+  virtual void handle_frame(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_scissor(u64 val);
+  void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_pabe(u64 val);
+  void handle_clamp1(u64 val);
   void handle_tex0_1(u64 val);
   void handle_tex1_1(u64 val);
-  void handle_texa(u64 val);
-
+  void handle_texa(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_xyoffset(u64 val);
+  void handle_bitbltbuf(u64 val);
+  void handle_trxpos(u64 val);
+  void handle_trxreg(u64 val);
+  void handle_trxdir(u64 dir, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_xyzf2_common(u32 x,
                            u32 y,
                            u32 z,
@@ -103,6 +114,7 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_blend();
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state, int unit);
+  bool m_offscreen_mode = false;
 
   struct TestState {
     void from_register(GsTest reg);
@@ -117,7 +129,7 @@ class DirectRenderer : public BucketRenderer {
     bool datm = false;
     bool zte = true;
     GsTest::ZTest ztst = GsTest::ZTest::GEQUAL;
-
+    bool write_rgb = true;
     bool depth_writes = true;
 
   } m_test_state;
@@ -148,6 +160,7 @@ class DirectRenderer : public BucketRenderer {
     bool use_uv = false;  // todo: might not require a gl state change
     bool ctxt = false;    // do they ever use ctxt2?
     bool fix = false;     // what does this even do?
+    u32 ta0 = 0;
   } m_prim_gl_state;
 
   static constexpr int TEXTURE_STATE_COUNT = 1;
@@ -158,7 +171,6 @@ class DirectRenderer : public BucketRenderer {
     bool using_mt4hh = false;
     bool tcc = false;
     bool decal = false;
-
     bool enable_tex_filt = true;
 
     struct ClampState {
@@ -203,7 +215,6 @@ class DirectRenderer : public BucketRenderer {
     int tri_strip_startup = 0;
 
     float Q = 1.0;
-
   } m_prim_building;
 
   struct Vertex {
@@ -214,7 +225,10 @@ class DirectRenderer : public BucketRenderer {
     u8 tcc;
     u8 decal;
     u8 fog_enable;
-    math::Vector<u8, 28> pad;
+    u8 use_uv;
+    math::Vector<u8, 11> __pad;
+    // this can be simplified to use gs coords, if needed
+    math::Vector<float, 4> scissor;
   };
   static_assert(sizeof(Vertex) == 64);
   static_assert(offsetof(Vertex, tex_unit) == 32);
@@ -224,17 +238,48 @@ class DirectRenderer : public BucketRenderer {
     std::vector<Vertex> vertices;
     int vert_count = 0;
     int max_verts = 0;
-
+    float x_off = 0;
+    float y_off = 0;
     // leave 6 free on the end so we always have room to flush one last primitive.
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 4>& vert,
               const math::Vector<float, 3>& stq,
+              const math::Vector<float, 4>& scissor,
               int unit,
               bool tcc,
               bool decal,
-              bool fog_enable);
+              bool fog_enable,
+              bool use_uv);
   } m_prim_buffer;
+
+  // the scissor state tends to be shared across buckets, so it is static here
+  static struct ScissorState {
+    u16 scax0 = 0, scay0 = 0;
+    u16 scax1 = 0, scay1 = 0;
+  } m_scissor;
+  // however the toggle for it is per-bucket
+  bool m_scissor_enable = false;
+
+  struct BufferBlitState {
+    // used to keep track of blit progress
+    u8 expect = 0;
+
+    // blit buffer source+dest settings
+    u16 sbp = 0, dbp = 0;
+    u8 sbw = 0, dbw = 0;
+    u8 spsm = 0, dpsm = 0;
+    // transfer pos
+    u16 ssax = 0, dsax = 0;
+    u16 ssay = 0, dsay = 0;
+    // transfer region
+    u16 width = 0, height = 0;
+    // transfer dir
+    u8 pixel_dir = 0;
+
+    // gif IMAGE transfer size
+    u16 qwc = 0;
+  } m_blit_buf_state;
 
   struct {
     GLuint vertex_buffer;
@@ -244,6 +289,11 @@ class DirectRenderer : public BucketRenderer {
     float color_mult = 1.0;
     float alpha_mult = 1.0;
   } m_ogl;
+
+  struct {
+    GLint alpha_min, alpha_max;
+    GLint normal_shader_id = -1;
+  } m_uniforms;
 
   struct {
     bool disable_texture = false;
@@ -261,6 +311,7 @@ class DirectRenderer : public BucketRenderer {
     int flush_from_tex_1 = 0;
     int flush_from_zbuf = 0;
     int flush_from_test = 0;
+    int flush_from_ta0 = 0;
     int flush_from_alpha = 0;
     int flush_from_clamp = 0;
     int flush_from_prim = 0;
@@ -269,6 +320,8 @@ class DirectRenderer : public BucketRenderer {
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
+  bool m_test_state_needs_double_draw = false;
+  float m_double_draw_aref = 0;
   bool m_blend_state_needs_gl_update = true;
 
   struct SpriteMode {

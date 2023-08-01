@@ -37,7 +37,7 @@
 
 (defmethod mem-usage tfragment ((obj tfragment) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a tfragment"
-  
+
   ;; seems like this flag does colors?
   (when (logtest? arg1 2)
     (+! (-> arg0 data 19 count) 1)
@@ -47,18 +47,18 @@
       )
     (return obj)
     )
-  
+
   (let ((s4-0 1))
     (set! (-> arg0 length) (max (-> arg0 length) (+ s4-0 8)))
     (set! (-> arg0 data s4-0 name) (symbol->string 'tfragment))
     (+! (-> arg0 data s4-0 count) 1)
-    
+
     ;; the size of the actual tfragment
     (let ((v1-22 (asize-of obj)))
       (+! (-> arg0 data s4-0 used) v1-22)
       (+! (-> arg0 data s4-0 total) (logand -16 (+ v1-22 15)))
       )
-    
+
     ;; the size of the "base" DMA
     (set! (-> arg0 data (+ s4-0 1) name) "tfragment-base")
     (+! (-> arg0 data (+ s4-0 1) count) 1)
@@ -66,7 +66,7 @@
       (+! (-> arg0 data (+ s4-0 1) used) v1-33)
       (+! (-> arg0 data (+ s4-0 1) total) v1-33)
       )
-    
+
     ;; the size of the "common" DMA
     (set! (-> arg0 data (+ s4-0 2) name) "tfragment-common")
     (+! (-> arg0 data (+ s4-0 2) count) 1)
@@ -74,7 +74,7 @@
       (+! (-> arg0 data (+ s4-0 2) used) v1-43)
       (+! (-> arg0 data (+ s4-0 2) total) v1-43)
       )
-    
+
     ;; the size of the "level0" DMA
     (set! (-> arg0 data (+ s4-0 3) name) "tfragment-level0")
     (when (nonzero? (-> obj num-level0-colors))
@@ -84,7 +84,7 @@
         (+! (-> arg0 data (+ s4-0 3) total) v1-55)
         )
       )
-    
+
     ;; The size of the "level0" DMA. Note that the dma chains can overlap, so this is a bit weird.
     (set! (-> arg0 data (+ s4-0 4) name) "tfragment-level1")
     (when (not (or (= (-> obj dma-level-1) (-> obj dma-common))
@@ -104,7 +104,7 @@
         (+! (-> arg0 data (+ s4-0 4) total) v1-70)
         )
       )
-    
+
     ;; colors
     (set! (-> arg0 data (+ s4-0 5) name) "tfragment-color")
     (+! (-> arg0 data (+ s4-0 5) count) 1)
@@ -117,11 +117,11 @@
       (+! (-> arg0 data (+ s4-0 5) used) v1-79)
       (+! (-> arg0 data (+ s4-0 5) total) (logand -16 (+ v1-79 15)))
       )
-    
+
     ;; debug (unused)
     (set! (-> arg0 data (+ s4-0 6) name) "tfragment-debug")
     )
-  
+
   obj
   )
 
@@ -322,12 +322,12 @@
 (defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
   "Add PC-port specific tfrag data"
   (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 16))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
     (set! (-> dma-buf base) (the pointer (&+ packet 16)))
     )
-  
+
   ;; first 4 quadwords are planes, then itimes
   (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
     (set! (-> data-ptr 0) (-> *math-camera* plane 0 quad))
@@ -349,9 +349,18 @@
       (set! (-> vec z) (-> *math-camera* fog-max))
       )
     (set! (-> data-ptr 14) (-> (math-camera-pos) quad))
-    (charp<-string (the (pointer uint8) (&-> data-ptr 15)) (symbol->string (-> lev nickname)))
+    (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
+    (set! (-> data-ptr 16) (-> *math-camera* camera-rot vector 1 quad))
+    (set! (-> data-ptr 17) (-> *math-camera* camera-rot vector 2 quad))
+    (set! (-> data-ptr 18) (-> *math-camera* camera-rot vector 3 quad))
+
+    (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
+    (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
+    (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
+    (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
+    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
     )
-  (&+! (-> dma-buf base) (* 16 16))
+  (&+! (-> dma-buf base) (* 16 24))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;

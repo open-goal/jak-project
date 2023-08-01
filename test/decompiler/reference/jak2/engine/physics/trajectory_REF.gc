@@ -1,0 +1,538 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type trajectory
+(defmethod compute-trans-at-time trajectory ((obj trajectory) (arg0 float) (arg1 vector))
+  (vector+float*! arg1 (-> obj initial-position) (-> obj initial-velocity) arg0)
+  (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> obj gravity)))
+  arg1
+  )
+
+;; definition for method 10 of type trajectory
+;; INFO: Used lq/sq
+(defmethod compute-transv-at-time trajectory ((obj trajectory) (arg0 float) (arg1 vector))
+  (set! (-> arg1 quad) (-> obj initial-velocity quad))
+  (+! (-> arg1 y) (* arg0 (-> obj gravity)))
+  arg1
+  )
+
+;; definition for method 11 of type trajectory
+(defmethod compute-time-until-apex trajectory ((obj trajectory))
+  (/ (- (-> obj initial-velocity y)) (-> obj gravity))
+  )
+
+;; definition for method 12 of type trajectory
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-from-to-duration! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (set! (-> obj initial-position quad) (-> arg0 quad))
+  (set! (-> obj gravity) arg3)
+  (set! (-> obj time) arg2)
+  (let ((f0-3 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
+    (vector-! (-> obj initial-velocity) arg1 arg0)
+    (vector-xz-normalize! (-> obj initial-velocity) f0-3)
+    )
+  (set! (-> obj initial-velocity y) (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* 0.5 arg2 (-> obj gravity))))
+  0
+  (none)
+  )
+
+;; definition for method 13 of type trajectory
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-from-to-xz-vel! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
+    (setup-from-to-duration! obj arg0 arg1 f0-1 arg3)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type trajectory
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-from-to-y-vel! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let* ((f0-0 arg2)
+         (f1-3 (- (* f0-0 f0-0) (* 2.0 (- (-> arg0 y) (-> arg1 y)) arg3)))
+         (f0-3 900.0)
+         )
+    (when (>= f1-3 0.0)
+      (let ((f0-4 (sqrtf f1-3)))
+        (set! f0-3 (fmax (/ (- (- arg2) f0-4) arg3) (/ (+ (- arg2) f0-4) arg3)))
+        )
+      )
+    (setup-from-to-duration! obj arg0 arg1 f0-3 arg3)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type trajectory
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-from-to-height! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let* ((f0-1 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
+         (f1-4 (* 2.0 (- (-> arg0 y) f0-1) arg3))
+         (f0-4 4096.0)
+         )
+    (if (< 0.0 f1-4)
+        (set! f0-4 (sqrtf f1-4))
+        )
+    (setup-from-to-y-vel! obj arg0 arg1 f0-4 arg3)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type trajectory
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 16 trajectory) has a return type of none, but the expression builder found a return statement.
+(defmethod setup-from-to-duration-and-height! trajectory ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (- (-> arg1 y) (-> arg0 y))))
+    (cond
+      ((= f0-1 0.0)
+       (let ((t9-0 (method-of-type trajectory setup-from-to-duration!))
+             (v1-2 arg2)
+             (f0-3 (* -8.0 arg3))
+             (f1-3 arg2)
+             )
+         (t9-0 obj arg0 arg1 v1-2 (/ f0-3 (* f1-3 f1-3)))
+         )
+       (return 0)
+       )
+      ((and (< 0.0 f0-1) (< 0.0 arg3) (< arg3 f0-1))
+       (set! arg3 f0-1)
+       )
+      ((and (< f0-1 0.0) (< arg3 0.0) (< f0-1 arg3))
+       (set! arg3 f0-1)
+       )
+      )
+    (let* ((f1-14 (/ (- arg3 f0-1) arg3))
+           (f0-6 -2.0)
+           (f1-18 (/ (- 1.0 f1-14) (- arg2 (* arg2 (sqrtf f1-14)))))
+           (f0-8 (* f0-6 (* f1-18 f1-18) arg3))
+           )
+      (setup-from-to-duration! obj arg0 arg1 arg2 f0-8)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type trajectory
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw trajectory ((obj trajectory))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 10)
+        )
+    (set! (-> s4-0 quad) (-> obj initial-position quad))
+    (dotimes (s2-0 s3-0)
+      (set! (-> s5-0 quad) (-> s4-0 quad))
+      (let ((f0-1 (* (-> obj time) (/ (+ 1.0 (the float s2-0)) (the float s3-0)))))
+        (compute-trans-at-time obj f0-1 s4-0)
+        )
+      (add-debug-line
+        #t
+        (bucket-id debug-no-zbuf1)
+        s5-0
+        s4-0
+        (new 'static 'rgba :r #xff :a #x80)
+        #f
+        (the-as rgba -1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type impact-control
+;; INFO: Used lq/sq
+(defmethod initialize impact-control ((obj impact-control) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 collide-spec))
+  (set! (-> obj start-time) (current-time))
+  (set! (-> obj process) (the-as (pointer process-drawable) (process->ppointer arg0)))
+  (set! (-> obj joint) arg1)
+  (set! (-> obj radius) arg2)
+  (set! (-> obj collide-with) (logclear arg3 (collide-spec water)))
+  (set! (-> obj trans 0 quad) (the-as uint128 0))
+  (set! (-> obj trans 1 quad) (the-as uint128 0))
+  obj
+  )
+
+;; definition for method 10 of type impact-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-from-cspace impact-control ((obj impact-control))
+  (when (>= (-> obj joint) 0)
+    (set! (-> obj trans 1 quad) (-> obj trans 0 quad))
+    (vector<-cspace! (the-as vector (-> obj trans)) (-> obj process 0 node-list data (-> obj joint)))
+    (vector-! (-> obj dir) (the-as vector (-> obj trans)) (-> obj trans 1))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type impact-control
+;; INFO: Used lq/sq
+(defmethod impact-control-method-11 impact-control ((obj impact-control) (arg0 collide-query) (arg1 process) (arg2 pat-surface))
+  (set! (-> arg0 start-pos quad) (-> obj trans 1 quad))
+  (set! (-> arg0 move-dist quad) (-> obj dir quad))
+  (let ((v1-2 (ppointer->process (-> obj process)))
+        (a0-6 arg0)
+        )
+    (set! (-> a0-6 radius) (-> obj radius))
+    (set! (-> a0-6 collide-with) (-> obj collide-with))
+    (set! (-> a0-6 ignore-process0) v1-2)
+    (set! (-> a0-6 ignore-process1) #f)
+    (set! (-> a0-6 ignore-pat) arg2)
+    (set! (-> a0-6 action-mask) (collide-action solid))
+    )
+  (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* arg0)))
+    (when (and arg1 (>= f30-0 0.0) (>= 0.0 (vector-dot (-> arg0 best-other-tri normal) (-> obj dir))))
+      (let* ((s3-0 (new 'stack-no-clear 'touching-shapes-entry))
+             (s2-0 (-> arg0 best-other-tri collide-ptr))
+             (v1-12 (if (type? s2-0 collide-shape-prim)
+                        (the-as collide-shape-prim s2-0)
+                        )
+                    )
+             )
+        (set! (-> s3-0 cshape1) #f)
+        (set! (-> s3-0 cshape2) (if v1-12
+                                    (-> v1-12 cshape)
+                                    )
+              )
+        (set! (-> s3-0 resolve-u) (the int f30-0))
+        (set! (-> s3-0 head) #f)
+        (send-event
+          arg1
+          'impact-control
+          :from (if v1-12
+              (-> v1-12 cshape process)
+              arg1
+              )
+          #f
+          s3-0
+          obj
+          arg0
+          )
+        )
+      )
+    f30-0
+    )
+  )
+
+;; definition for method 9 of type point-tracker
+;; INFO: Used lq/sq
+(defmethod initialize point-tracker ((obj point-tracker) (arg0 vector) (arg1 vector))
+  (set! (-> obj trans 0 quad) (-> arg0 quad))
+  (set! (-> obj trans 1 quad) (-> arg1 quad))
+  obj
+  )
+
+;; definition for method 10 of type point-tracker
+;; INFO: Used lq/sq
+(defmethod point-tracker-method-10 point-tracker ((obj point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (cond
+    ((>= 0.0 arg3)
+     (set! (-> arg0 quad) (-> arg1 quad))
+     )
+    ((>= arg3 1.0)
+     (set! (-> arg0 quad) (-> arg2 quad))
+     )
+    (else
+      (let ((a1-2 (vector+float*! arg0 arg2 (vector-! (new 'stack-no-clear 'vector) arg1 arg2) (- 1.0 arg3))))
+        (vector-lerp! arg0 a1-2 arg2 arg3)
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for method 11 of type point-tracker
+(defmethod point-tracker-method-11 point-tracker ((obj point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (with-pp
+    (let ((v1-1 (point-tracker-method-10 obj (new 'stack-no-clear 'vector) arg1 arg2 arg3)))
+      (vector-! arg0 v1-1 arg1)
+      )
+    (vector-float*! arg0 arg0 (-> pp clock frames-per-second))
+    arg0
+    )
+  )
+
+;; definition for method 13 of type combo-tracker
+(defmethod combo-tracker-method-13 combo-tracker ((obj combo-tracker) (arg0 handle) (arg1 vector) (arg2 float) (arg3 vector) (arg4 float))
+  (cond
+    ((send-event (handle->process arg0) 'combo)
+     (let ((gp-1 (handle->process arg0)))
+       (if (type? gp-1 process-focusable)
+           gp-1
+           )
+       )
+     )
+    (else
+      (let ((s1-0 (new 'stack-no-clear 'sphere))
+            (s2-1 ((method-of-type array new)
+                   (the-as symbol (new 'stack-no-clear 'array 'collide-shape 32))
+                   array
+                   collide-shape
+                   32
+                   )
+                  )
+            )
+        (sphere<-vector+r! s1-0 arg1 arg2)
+        (set! (-> s2-1 length) (fill-actor-list-for-sphere
+                                 *actor-hash*
+                                 s1-0
+                                 (the-as (pointer collide-shape) (-> s2-1 data))
+                                 (-> s2-1 allocated-length)
+                                 )
+              )
+        (let ((gp-2 (find-nearest-focusable
+                      (the-as (array collide-shape) s2-1)
+                      arg1
+                      arg2
+                      (if (= arg4 65536.0)
+                          (search-info-flag crate enemy combo)
+                          (search-info-flag crate enemy prefer-angle cull-angle combo)
+                          )
+                      (search-info-flag)
+                      arg3
+                      (the-as vector #f)
+                      arg4
+                      )
+                    )
+              )
+          (if (type? gp-2 process-focusable)
+              gp-2
+              )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type combo-tracker
+(defmethod combo-tracker-method-12 combo-tracker ((obj combo-tracker) (arg0 vector) (arg1 vector) (arg2 process) (arg3 time-frame))
+  (initialize obj arg0 arg1)
+  (set! (-> obj target) (process->handle arg2))
+  (set! (-> obj move-start-time) arg3)
+  obj
+  )
+
+;; definition for method 11 of type combo-tracker
+;; INFO: Used lq/sq
+(defmethod point-tracker-method-11 combo-tracker ((obj combo-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  (local-vars (at-0 int))
+  (with-pp
+    (rlet ((vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((v1-1 (point-tracker-method-10 obj (new 'stack-no-clear 'vector) arg1 arg2 arg3)))
+        (vector-! arg0 v1-1 arg1)
+        )
+      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) (process->ppointer pp))
+        (set! (-> a1-4 num-params) 0)
+        (set! (-> a1-4 message) 'nav-control)
+        (let* ((s3-0 (send-event-function (handle->process (-> obj target)) a1-4))
+               (s4-1 (if (type? s3-0 nav-control)
+                         s3-0
+                         )
+                     )
+               )
+          (when s4-1
+            (let ((a2-3 ((method-of-type nav-control find-poly-containing-point-1) (the-as nav-control s4-1) arg1)))
+              (if a2-3
+                  ((method-of-type nav-control clamp-vector-to-mesh-cross-gaps)
+                   (the-as nav-control s4-1)
+                   arg1
+                   a2-3
+                   arg0
+                   2048.0
+                   #f
+                   (the-as clamp-travel-vector-to-mesh-return-info #f)
+                   )
+                  (set! (-> arg0 quad) (the-as uint128 0))
+                  )
+              )
+            )
+          )
+        )
+      (let ((v1-12 arg0))
+        (.lvf vf1 (&-> arg0 quad))
+        (let ((f0-0 (-> pp clock frames-per-second)))
+          (.mov at-0 f0-0)
+          )
+        (.mov vf2 at-0)
+        (.mov.vf vf1 vf0 :mask #b1000)
+        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.svf (&-> v1-12 quad) vf1)
+        )
+      arg0
+      )
+    )
+  )
+
+;; definition for function traj2d-calc-initial-speed-using-tilt
+(defun traj2d-calc-initial-speed-using-tilt ((arg0 traj2d-params))
+  (let ((f0-4 (* (- (* (-> arg0 x) (tan (-> arg0 initial-tilt))) (-> arg0 y)) (/ 2.0 (-> arg0 gravity)))))
+    (cond
+      ((< 0.0 f0-4)
+       (set! (-> arg0 time) (sqrtf f0-4))
+       (set! (-> arg0 initial-speed) (/ (-> arg0 x) (* (-> arg0 time) (cos (-> arg0 initial-tilt)))))
+       #t
+       )
+      (else
+        (set! (-> arg0 time) 0.0)
+        (set! (-> arg0 initial-speed) 0.0)
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for function traj3d-calc-initial-velocity-using-tilt
+(defun traj3d-calc-initial-velocity-using-tilt ((arg0 traj3d-params))
+  (vector-! (-> arg0 diff) (-> arg0 dest) (-> arg0 src))
+  (let ((s5-0 (new 'stack-no-clear 'traj2d-params)))
+    (let ((v1-1 (-> arg0 diff)))
+      (set! (-> s5-0 x) (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
+      )
+    (set! (-> s5-0 y) (-> arg0 diff y))
+    (set! (-> s5-0 gravity) (-> arg0 gravity))
+    (set! (-> s5-0 initial-tilt) (-> arg0 initial-tilt))
+    (cond
+      ((traj2d-calc-initial-speed-using-tilt s5-0)
+       (set! (-> arg0 time) (-> s5-0 time))
+       (let* ((f26-0 (atan (-> arg0 diff x) (-> arg0 diff z)))
+              (f30-0 (-> arg0 initial-tilt))
+              (f24-0 (cos f30-0))
+              (f28-0 (-> s5-0 initial-speed))
+              )
+         (set! (-> arg0 initial-speed) f28-0)
+         (set! (-> arg0 initial-velocity x) (* f28-0 f24-0 (sin f26-0)))
+         (set! (-> arg0 initial-velocity z) (* f28-0 f24-0 (cos f26-0)))
+         (set! (-> arg0 initial-velocity y) (* f28-0 (sin f30-0)))
+         )
+       (set! (-> arg0 initial-velocity w) 1.0)
+       #t
+       )
+      (else
+        (set! (-> arg0 time) 0.0)
+        (set! (-> arg0 initial-speed) 0.0)
+        (vector-reset! (-> arg0 initial-velocity))
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for method 9 of type cubic-curve
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod cubic-curve-method-9 cubic-curve ((obj cubic-curve) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> obj mat quad 0) (-> arg0 quad))
+    (set! (-> obj mat vector 1 quad) (-> arg1 quad))
+    (let ((v1-2 (new 'stack-no-clear 'trajectory)))
+      (vector-! (-> v1-2 initial-velocity) arg2 arg0)
+      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) 3.0)
+      (let ((t1-7 (-> v1-2 initial-position)))
+        (let ((a1-3 (-> v1-2 initial-position)))
+          (let ((a3-2 arg1))
+            (let ((t2-1 -2.0))
+              (.mov vf7 t2-1)
+              )
+            (.lvf vf5 (&-> a3-2 quad))
+            )
+          (.lvf vf4 (&-> a1-3 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> t1-7 quad) vf6)
+        )
+      (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+      (set! (-> obj mat vector 2 quad) (-> v1-2 initial-position quad))
+      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) -2.0)
+      (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1)
+      (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+      (set! (-> obj mat trans quad) (-> v1-2 initial-position quad))
+      )
+    (dotimes (v1-5 4)
+      (set! (-> obj mat vector v1-5 w) 0.0)
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 10 of type cubic-curve
+(defmethod cubic-curve-method-10 cubic-curve ((obj cubic-curve) (arg0 vector) (arg1 float))
+  (let ((v1-0 (new 'stack-no-clear 'trajectory)))
+    (let ((f0-1 (* arg1 arg1)))
+      (set-vector! (-> v1-0 initial-position) 1.0 arg1 f0-1 (* f0-1 arg1))
+      )
+    (vector-matrix*! arg0 (-> v1-0 initial-position) (-> obj mat))
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for method 11 of type cubic-curve
+(defmethod cubic-curve-method-11 cubic-curve ((obj cubic-curve) (arg0 vector) (arg1 float))
+  (let ((v1-0 (new 'stack-no-clear 'trajectory)))
+    (set-vector! (-> v1-0 initial-position) 0.0 1.0 (* 2.0 arg1) (* 3.0 arg1 arg1))
+    (vector-matrix*! arg0 (-> v1-0 initial-position) (-> obj mat))
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for method 12 of type cubic-curve
+(defmethod cubic-curve-method-12 cubic-curve ((obj cubic-curve) (arg0 vector) (arg1 float))
+  (let ((v1-0 (new 'stack-no-clear 'trajectory)))
+    (set-vector! (-> v1-0 initial-position) 0.0 0.0 2.0 (* 6.0 arg1))
+    (vector-matrix*! arg0 (-> v1-0 initial-position) (-> obj mat))
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+;; definition for method 13 of type cubic-curve
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw-curve cubic-curve ((obj cubic-curve))
+  (let ((s5-0 (new 'stack-no-clear 'trajectory))
+        (s4-0 10)
+        )
+    (cubic-curve-method-10 obj (-> s5-0 initial-velocity) 0.0)
+    (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 initial-velocity) *color-red*)
+    (dotimes (s3-0 s4-0)
+      (set! (-> s5-0 initial-position quad) (-> s5-0 initial-velocity quad))
+      (let ((f0-2 (/ (+ 1.0 (the float s3-0)) (the float s4-0))))
+        (cubic-curve-method-10 obj (-> s5-0 initial-velocity) f0-2)
+        )
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 initial-velocity) *color-red*)
+      (add-debug-line
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> s5-0 initial-position)
+        (-> s5-0 initial-velocity)
+        *color-red*
+        #f
+        (the-as rgba -1)
+        )
+      )
+    )
+  0
+  (none)
+  )

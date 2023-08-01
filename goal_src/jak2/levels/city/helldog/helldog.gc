@@ -1,0 +1,648 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: helldog.gc
+;; name in dgo: helldog
+;; dgos: LHELLDOG
+
+(deftype mystery-traffic-object-spawn-params-2 (structure)
+  "(anon-function 5 helldog)"
+  ((params traffic-object-spawn-params :inline)
+   (vec vector :inline)
+   (something-else int64)
+   )
+  )
+
+;; og:update-with-merge
+
+;; DECOMP BEGINS
+
+(defmethod draw hud-helldog ((obj hud-helldog))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> obj sprites))
+    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    195
+    )
+  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -18 25)
+  ((method-of-type hud draw) obj)
+  0
+  (none)
+  )
+
+(defmethod update-values hud-helldog ((obj hud-helldog))
+  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) obj)
+  0
+  (none)
+  )
+
+(defmethod init-callback hud-helldog ((obj hud-helldog))
+  (set! (-> obj level) (level-get *level* 'ctywide))
+  (set! (-> obj gui-id)
+        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+        )
+  (logior! (-> obj flags) (hud-flags show))
+  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x5 :page #x679)))
+  (set! (-> obj sprites 0 scale-x) 1.2)
+  (set! (-> obj sprites 0 scale-y) 1.2)
+  (set! (-> obj sprites 0 flags) (the-as uint 4))
+  (alloc-string-if-needed obj 0)
+  (set! (-> obj strings 0 scale) 0.6)
+  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+(defskelgroup skel-helldog helldog helldog-lod0-jg helldog-idle-ja
+              ((helldog-lod0-mg (meters 20)) (helldog-lod1-mg (meters 40)) (helldog-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.6)
+              :shadow helldog-shadow-mg
+              )
+
+(define *helldog-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 20.0
+      :inv-mass 0.05
+      :linear-damping 0.995
+      :angular-damping 0.995
+      :bounce-factor 0.1
+      :friction-factor 0.05
+      :cm-offset-joint (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 6) (meters 3) (meters 7))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*helldog-constants*
+    :flags #xc
+    :object-type #x13
+    :guard-type #x5
+    :max-engine-thrust (meters 50)
+    :inv-max-engine-thrust 0.0000048828124
+    :engine-response-rate 60.0
+    :engine-intake-factor 1.5
+    :brake-factor 3.5
+    :turbo-boost-factor 1.0
+    :max-xz-speed (meters 40)
+    :ground-probe-distance (meters 4.5)
+    :cos-ground-effect-angle 0.42261824
+    :spring-lift-factor 0.3
+    :air-drag-factor 1.0
+    :steering-thruster-factor 5.0
+    :steering-thruster-max-gain 4.0
+    :steering-thruster-half-gain-speed (meters 15)
+    :tire-friction-factor 0.5
+    :tire-static-friction 0.55
+    :tire-dynamic-friction 0.4
+    :tire-dynamic-friction-speed (meters 2)
+    :tire-inv-max-friction-speed 0.000034877234
+    :airfoil-factor 1.0
+    :drag-force-factor 1.0
+    :speed-scrubbing-drag 10.0
+    :speed-limiting-drag 0.5
+    :pitch-control-factor 0.5
+    :roll-control-factor 1.0
+    :jump-thrust-factor 0.5
+    :buoyancy-factor 1.0
+    :player-weight 163840.0
+    :player-shift-x (meters 0.6)
+    :player-shift-z (meters 1)
+    :target-speed-offset (meters -2)
+    :turning-accel (meters 45)
+    :toughness-factor 1.0
+    :damage-factor 2.0
+    :camera-string-min-height (meters 4.5)
+    :camera-string-max-height (meters 4.5)
+    :camera-string-min-length (meters 5)
+    :camera-string-max-length (meters 12.5)
+    :camera-min-fov 15109.688
+    :camera-max-fov 17476.268
+    :camera-head-offset 8192.0
+    :camera-foot-offset 4096.0
+    :camera-air-max-angle-offset 5461.3335
+    :camera-max-lookaround-speed 40960.0
+    :seat-count 2
+    :section-count 4
+    :rider-stance #x1
+    :grab-rail-array #f
+    :seat-array (new 'static 'inline-array vehicle-seat-info 4
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x 5120.0 :y 819.2 :z 2457.6 :w (the-as float #x10000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x -5120.0 :y 819.2 :z 2457.6 :w (the-as float #x20000))
+        )
+      (new 'static 'vehicle-seat-info)
+      (new 'static 'vehicle-seat-info)
+      )
+    :rider-hand-offset (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2457.6 :y 409.6 :z 4710.4 :w 1.0)
+      (new 'static 'vector :x -2457.6 :y 409.6 :z 4710.4 :w 1.0)
+      )
+    :section-bike-front (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+      :damage-seg-count 3
+      )
+    :section-bike-rear (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+      :damage-seg-count 3
+      )
+    :section-car-front-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+      :damage-seg-count 3
+      )
+    :section-car-rear-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+      :damage-seg-count 3
+      )
+    :explosion #f
+    :engine-pitch-scale 0.25
+    :engine-pitch-mod-amp 0.025
+    :engine-sound-select #x8
+    :engine-sound (static-sound-name "vehicle-engine")
+    :thrust-sound (static-sound-name "bike-thrust")
+    :scrape-sound (static-sound-name "car-scrape-stn")
+    :glance-sound (static-sound-name "car-glance-stn")
+    :impact-sound (static-sound-name "car-impact-stn")
+    :extra-sound (static-sound-name "car-by-1")
+    :explosion-part #xa1
+    :headlight-count 3
+    :taillight-count 2
+    :thruster-flame-width (meters 0.6)
+    :thruster-flame-length (meters 2)
+    :thruster-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+      (new 'static 'vector :x -6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+      )
+    :exhaust-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+      (new 'static 'vector :x -6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+      )
+    :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+    :smoke-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+      (new 'static 'vector :x -2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+      )
+    :smoke-local-vel (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2048.0 :w 1.0)
+      (new 'static 'vector :x -2048.0 :w 1.0)
+      )
+    :headlight-local-pos (new 'static 'inline-array vector 3
+      (new 'static 'vector :x 5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+      (new 'static 'vector :x -5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+      (new 'static 'vector :y 6963.2 :z 6922.24 :w 1.0)
+      )
+    :taillight-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+      (new 'static 'vector :x -10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+      )
+    :lift-thruster-count 2
+    :roll-thruster-count 2
+    :steering-thruster-count 2
+    :stabilizer-count 4
+    :inv-lift-thruster-count 0.5
+    :lift-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 8192.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -12288.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      )
+    :roll-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x 6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x -6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+        )
+      )
+    :steering-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 5734.4 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -9830.4 :w 1.0)
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :stabilizer-array (new 'static 'inline-array vehicle-control-point 6
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 6144.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 0.5)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 2.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+        :normal (new 'static 'vector :y 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point)
+      (new 'static 'vehicle-control-point)
+      )
+    :engine-thrust-local-pos (new 'static 'vector :y 2048.0 :z -7782.4 :w 1.0)
+    :brake-local-pos (new 'static 'vector :z -5734.4 :w 1.0)
+    :color-option-count 1
+    :color-option-array (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+    )
+  )
+
+(define *helldog-front-turret-control-info* (new 'static 'turret-control-info
+                                              :joint-index 4
+                                              :barrel-count 1
+                                              :shot-speed 819200.0
+                                              :attack-range 286720.0
+                                              :rot-min (new 'static 'array float 2 -16384.0 -21845.334)
+                                              :rot-max (new 'static 'array float 2 0.0 21845.334)
+                                              :local-pos (new 'static 'vector :y -1433.6 :z 4096.0 :w 1.0)
+                                              :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                              :barrel-array (new 'static 'inline-array turret-barrel-info 4
+                                                (new 'static 'turret-barrel-info
+                                                  :local-pos (new 'static 'vector :y -1433.6 :z 4096.0 :w 1.0)
+                                                  :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                                  )
+                                                (new 'static 'turret-barrel-info)
+                                                (new 'static 'turret-barrel-info)
+                                                (new 'static 'turret-barrel-info)
+                                                )
+                                              )
+        )
+
+(define *helldog-top-turret-control-info* (new 'static 'turret-control-info
+                                            :joint-index #x6
+                                            :barrel-count 2
+                                            :shot-speed 819200.0
+                                            :attack-range 286720.0
+                                            :rot-min (new 'static 'array float 2 -1820.4445 -65536.0)
+                                            :rot-max (new 'static 'array float 2 1820.4445 65536.0)
+                                            :local-pos (new 'static 'vector :y -1433.6 :z 4096.0 :w 1.0)
+                                            :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                            :barrel-array (new 'static 'inline-array turret-barrel-info 4
+                                              (new 'static 'turret-barrel-info
+                                                :local-pos (new 'static 'vector :x 5734.4 :y -819.2 :z 6144.0 :w 1.0)
+                                                :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                                )
+                                              (new 'static 'turret-barrel-info
+                                                :local-pos (new 'static 'vector :x -5734.4 :y -819.2 :z 6144.0 :w 1.0)
+                                                :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                                )
+                                              (new 'static 'turret-barrel-info)
+                                              (new 'static 'turret-barrel-info)
+                                              )
+                                            )
+        )
+
+(deftype helldog (hellcat)
+  ((current-level level  :offset-assert 1080)
+   )
+  :heap-base #x3c0
+  :method-count-assert 159
+  :size-assert         #x43c
+  :flag-assert         #x9f03c0043c
+  )
+
+
+(defmethod init-skel-and-rigid-body helldog ((obj helldog))
+  (with-pp
+    (set! (-> pp level) (level-get *level* 'lhelldog))
+    (initialize-skeleton
+      obj
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-helldog" (the-as (pointer uint32) #f)))
+      (the-as pair 0)
+      )
+    (alloc-and-init-rigid-body-control obj *helldog-constants*)
+    (set-info (-> obj turret) *helldog-top-turret-control-info*)
+    (set! (-> obj turret guard-settings)
+          (the-as
+            traffic-guard-type-settings
+            (new 'static 'vector :y 0.125 :z (the-as float #x3c004b) :w 0.0000000000000000000000000000000000015517602)
+            )
+          )
+    (logior! (-> obj turret flags) (turret-flag no-rot-y-clamp))
+    (set! (-> obj turret-jm) (new 'process 'joint-mod-rotate-local obj (-> obj turret info joint-index) #t))
+    (set! (-> obj flags)
+          (the-as rigid-body-object-flag (logior (rigid-body-object-flag no-hijack) (-> obj flags)))
+          )
+    (if (not (-> obj minimap))
+        (set! (-> obj minimap) (add-icon! *minimap* obj (the-as uint 15) (the-as int #f) (the-as vector #t) 0))
+        )
+    0
+    (none)
+    )
+  )
+
+(defmethod vehicle-method-82 helldog ((obj helldog))
+  ((method-of-type vehicle vehicle-method-82) obj)
+  (none)
+  )
+
+(defmethod vehicle-method-120 helldog ((obj helldog))
+  (let ((t9-0 (method-of-type hellcat vehicle-method-120)))
+    (t9-0 obj)
+    )
+  (if (logtest? (-> obj controller flags) (vehicle-controller-flag attached))
+      (set! (-> obj current-level) (the-as level (-> obj controller branch dest-node level)))
+      (set! (-> obj current-level) #f)
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-128 helldog ((obj helldog))
+  (let ((t9-0 (method-of-type vehicle vehicle-method-128)))
+    (t9-0 obj)
+    )
+  (logior! (-> obj flags) (rigid-body-object-flag persistent))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-127 helldog ((obj helldog))
+  ((method-of-type vehicle vehicle-method-127) obj)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-129 helldog ((obj helldog))
+  (when (-> obj minimap)
+    (logior! (-> obj minimap flags) (minimap-flag fade-out))
+    (set! (-> obj minimap) #f)
+    )
+  ((method-of-type vehicle vehicle-method-129) obj)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-134 helldog ((obj helldog) (arg0 process))
+  "Stubbed"
+  (logior! (-> obj controller flags) (vehicle-controller-flag ignore-others))
+  (set! (-> obj controller target-speed-offset) 81920.0)
+  (let ((t9-0 (method-of-type vehicle-guard vehicle-method-134)))
+    (t9-0 obj arg0)
+    )
+  (vehicle-method-111 obj 2 (the-as target arg0))
+  (go (method-of-object obj hostile))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-108 helldog ((obj helldog))
+  (set! (-> obj flags)
+        (the-as rigid-body-object-flag (logior (rigid-body-object-flag persistent in-pursuit) (-> obj flags)))
+        )
+  (logior! (-> obj controller flags) (vehicle-controller-flag ignore-others))
+  0
+  (none)
+  )
+
+(defstate active (helldog)
+  :virtual #t
+  :enter (behavior ()
+    (vehicle-method-107 self)
+    (let ((t9-1 (-> (method-of-type hellcat active) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (none)
+    )
+  )
+
+(defstate hostile (helldog)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self ai-hook) (method-of-object self vehicle-method-93))
+    (none)
+    )
+  :trans (the-as (function none :behavior helldog) #f)
+  :code (the-as (function none :behavior helldog) sleep-code)
+  :post (behavior ()
+    (vehicle-guard-method-158 self)
+    (none)
+    )
+  )
+
+(defstate die (helldog)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    (none)
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_INIT_HOOK
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (change-parent self *traffic-manager*)
+      (set! (-> self end-pos quad) (-> (new 'static 'vector :x 4136960.0 :y 32768.0 :z 4677632.0 :w 1.0) quad))
+      (set-setting! 'minimap 'clear 0 32)
+      (set-setting! 'exclusive-task #f 0 (-> self node-info task))
+      (until (= (level-status *level* 'lwidea) 'active)
+        (suspend)
+        )
+      (if (task-node-closed? (game-task-node city-destroy-guard-vehicles-destroy))
+          (go-virtual complete)
+          )
+      (set! (-> self start-time) 0)
+      (set! (-> self max-count) 5)
+      (set! (-> self count) (-> self max-count))
+      (set-vector! (-> self data-vector 0) 3284992.0 73728.0 2019328.0 0.0)
+      (set-vector! (-> self data-vector 1) 4653056.0 69632.0 2519040.0 31857.777)
+      (set-vector! (-> self data-vector 2) 4366336.0 73728.0 323584.0 0.0)
+      (set-vector! (-> self data-vector 3) 2101248.0 73728.0 -114688.0 27852.8)
+      (set-vector! (-> self data-vector 4) 1687552.0 73728.0 -819200.0 2366.578)
+      (let ((gp-1 (new 'stack-no-clear 'mystery-traffic-object-spawn-params-2)))
+        (set! (-> gp-1 something-else) 0)
+        (set! (-> gp-1 params object-type) (traffic-type tt17))
+        (set! (-> gp-1 params behavior) (the-as uint 1))
+        (set! (-> gp-1 params id) (the-as uint 0))
+        (set! (-> gp-1 params nav-mesh) #f)
+        (set! (-> gp-1 params nav-branch) #f)
+        (set! (-> gp-1 params proc) #f)
+        (set! (-> gp-1 params handle) (the-as handle #f))
+        (set! (-> gp-1 params user-data) (the-as uint 0))
+        (set! (-> gp-1 params flags) (traffic-spawn-flags))
+        (set! (-> gp-1 params guard-type) (the-as uint 7))
+        (vector-reset! (-> gp-1 params velocity))
+        (vector-reset! (-> gp-1 params position))
+        (vector-reset! (-> gp-1 params velocity))
+        (countdown (s5-0 (-> self count))
+          (set! (-> gp-1 params id) (the-as uint (+ (-> gp-1 something-else) 122)))
+          (set! (-> gp-1 params position quad) (-> self data-vector (-> gp-1 something-else) quad))
+          (let ((f30-0 (-> gp-1 params position w)))
+            (set-vector! (-> gp-1 vec) (sin f30-0) 0.0 (cos f30-0) 1.0)
+            )
+          (set! (-> gp-1 params position w) 1.0)
+          (forward-up-nopitch->quaternion (-> gp-1 params rotation) (-> gp-1 vec) (new 'static 'vector :y 1.0 :w 1.0))
+          (let ((s4-1 (the-as helldog (vehicle-spawn self helldog (-> gp-1 params)))))
+            (when s4-1
+              (let ((v1-32 (-> gp-1 something-else)))
+                (set! (-> s4-1 current-level) (the-as level (cond
+                                                              ((zero? v1-32)
+                                                               'ctyindb
+                                                               )
+                                                              ((= v1-32 1)
+                                                               'ctyindb
+                                                               )
+                                                              ((= v1-32 2)
+                                                               'ctysluma
+                                                               )
+                                                              ((= v1-32 3)
+                                                               'ctyslumb
+                                                               )
+                                                              ((= v1-32 4)
+                                                               'ctyslumb
+                                                               )
+                                                              (else
+                                                                #f
+                                                                )
+                                                              )
+                                                      )
+                      )
+                )
+              (set! (-> self slave (-> gp-1 something-else)) (process->handle s4-1))
+              (send-event *traffic-manager* 'add-object (-> gp-1 params object-type) s4-1)
+              (+! (-> gp-1 something-else) 1)
+              )
+            (if (not s4-1)
+                (format 0 "failed to spawn helldog~%")
+                )
+            )
+          )
+        (send-event *traffic-manager* 'set-object-target-count (-> gp-1 params object-type) 0)
+        )
+      (send-event *traffic-manager* 'set-guard-target-count-range 5 0 0)
+      (set! (-> *game-info* counter) (the float (-> self max-count)))
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_CLEANUP_HOOK
+  (the-as (function object) (lambda :behavior task-manager () (none)))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_UPDATE_HOOK
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (let ((gp-0 0))
+        (dotimes (s5-0 (-> self max-count))
+          (let ((s4-0 (handle->process (-> self slave s5-0))))
+            (when (and s4-0 (not (logtest? (-> (the-as helldog s4-0) focus-status) (focus-status dead))))
+              (cond
+                ((or (not (-> (the-as helldog s4-0) current-level))
+                     (= (level-status *level* (the-as symbol (-> (the-as helldog s4-0) current-level))) 'active)
+                     )
+                 (when (focus-test? (the-as helldog s4-0) inactive)
+                   (let ((s3-0 (new 'stack 'traffic-object-spawn-params)))
+                     (set! (-> s3-0 object-type) (traffic-type tt17))
+                     (set! (-> s3-0 behavior) (the-as uint 2))
+                     (set! (-> s3-0 id) (the-as uint 0))
+                     (set! (-> s3-0 nav-mesh) #f)
+                     (set! (-> s3-0 nav-branch) #f)
+                     (set! (-> s3-0 proc) #f)
+                     (set! (-> s3-0 handle) (-> self slave s5-0))
+                     (set! (-> s3-0 user-data) (the-as uint 0))
+                     (set! (-> s3-0 flags) (traffic-spawn-flags trsflags-01))
+                     (set! (-> s3-0 guard-type) (the-as uint 7))
+                     (vector-reset! (-> s3-0 velocity))
+                     (set! (-> s3-0 position quad) (-> (the-as process-drawable s4-0) root trans quad))
+                     (quaternion-copy! (-> s3-0 rotation) (-> (the-as process-drawable s4-0) root quat))
+                     (activate-by-handle *traffic-engine* s3-0)
+                     )
+                   )
+                 )
+                (else
+                  (if (not (focus-test? (the-as helldog s4-0) inactive))
+                      (send-event s4-0 'traffic-off-force)
+                      )
+                  )
+                )
+              (+! gp-0 1)
+              )
+            )
+          )
+        (set! (-> self count) gp-0)
+        (set! (-> *game-info* counter) (the float gp-0))
+        (if (zero? gp-0)
+            (go-virtual complete)
+            )
+        )
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_CODE_HOOK
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-helldog :init hud-init-by-other :to self)))
+      (none)
+      )
+    )
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_FAIL_HOOK
+  (the-as (function object) (lambda :behavior task-manager () (none)))
+  )
+
+(set-subtask-hook!
+  *game-info*
+  (game-task-node city-destroy-guard-vehicles-destroy)
+  TASK_MANAGER_COMPLETE_HOOK
+  (the-as
+    (function object)
+    (lambda :behavior task-manager
+      ()
+      (task-node-close! (game-task-node city-destroy-guard-vehicles-destroy))
+      (talker-spawn-func (-> *talker-speech* 98) *entity-pool* (target-pos 0) (the-as region #f))
+      (while (let ((a0-3 (the-as process #f)))
+               (dotimes (v1-1 (-> self max-count))
+                 (set! a0-3 (the-as process (or a0-3 (handle->process (-> self slave v1-1)))))
+                 )
+               a0-3
+               )
+        (suspend)
+        )
+      (task-node-close! (game-task-node city-destroy-guard-vehicles-resolution))
+      (none)
+      )
+    )
+  )

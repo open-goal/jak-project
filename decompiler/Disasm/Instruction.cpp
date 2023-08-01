@@ -30,6 +30,8 @@ std::string InstructionAtom::to_string(const std::vector<DecompilerLabel>& label
       return "Q";
     case IMM_SYM:
       return sym;
+    case IMM_SYM_VAL_PTR:
+      return sym;
     case VF_FIELD:
       ASSERT(imm >= 0 && imm < 4);
       return fmt::format(".{}", "xyzw"[imm]);
@@ -79,9 +81,17 @@ void InstructionAtom::set_vu_q() {
 /*!
  * Make this atom a symbol.
  */
-void InstructionAtom::set_sym(std::string _sym) {
+void InstructionAtom::set_sym(const std::string& _sym) {
   kind = IMM_SYM;
-  sym = std::move(_sym);
+  sym = _sym;
+}
+
+/*!
+ * Make this atom a symbol value pointer.
+ */
+void InstructionAtom::set_sym_val_ptr(const std::string& _sym) {
+  kind = IMM_SYM_VAL_PTR;
+  sym = _sym;
 }
 
 /*!
@@ -129,15 +139,8 @@ int InstructionAtom::get_label() const {
  * Get as symbol, or error if not a symbol.
  */
 std::string InstructionAtom::get_sym() const {
-  ASSERT(kind == IMM_SYM);
+  ASSERT(kind == IMM_SYM || kind == IMM_SYM_VAL_PTR);
   return sym;
-}
-
-/*!
- * True if this atom is some sort of constant that doesn't involve linking.
- */
-bool InstructionAtom::is_link_or_label() const {
-  return kind == IMM_SYM || kind == LABEL;
 }
 
 bool InstructionAtom::operator==(const InstructionAtom& other) const {

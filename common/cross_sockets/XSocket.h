@@ -6,7 +6,8 @@
  */
 
 // clang-format off
-#ifdef __linux
+#include "common/common_types.h"
+#ifdef OS_POSIX
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -24,11 +25,13 @@
 const int TCP_SOCKET_LEVEL = SOL_TCP;
 #elif _WIN32
 const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
+#elif __APPLE__
+const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
 #endif
 
 int open_socket(int af, int type, int protocol);
 int connect_socket(int socket, sockaddr* addr, int nameLen);
-#ifdef __linux
+#ifdef OS_POSIX
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen);
 int select_and_accept_socket(int socket, sockaddr* addr, socklen_t* addrLen, int microSeconds);
 #elif _WIN32

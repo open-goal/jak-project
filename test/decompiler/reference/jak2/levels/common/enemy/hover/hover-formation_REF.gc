@@ -1,0 +1,768 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 12 of type hover-formation-control
+(defmethod is-formation-type-in-range hover-formation-control ((obj hover-formation-control))
+  (case (-> obj formation-type)
+    (((formation-type unknown-2) (formation-type unknown-3) (formation-type unknown-0))
+     #f
+     )
+    (else
+      #t
+      )
+    )
+  )
+
+;; definition for method 16 of type hover-formation-control
+(defmethod hover-formation-control-method-16 hover-formation-control ((obj hover-formation-control))
+  (let ((gp-0 (hover-formation-control-method-13 obj (new 'stack-no-clear 'vector)))
+        (s4-0 (cond
+                ((-> obj anchor-proc)
+                 (let ((s3-0 (handle->process (-> obj anchor-proc))))
+                   (if (type? s3-0 process-focusable)
+                       (the-as process-focusable s3-0)
+                       )
+                   )
+                 )
+                (else
+                  *target*
+                  )
+                )
+              )
+        )
+    (and s4-0
+         (< (vector-vector-distance gp-0 (get-trans s4-0 0)) (-> obj notice-dist))
+         (or (not (logtest? (-> obj flags) 1)) (< (- (-> gp-0 y) (-> (get-trans s4-0 0) y)) 16384.0))
+         )
+    )
+  )
+
+;; definition for method 9 of type hover-formation-control
+(defmethod set-anchor-proc hover-formation-control ((obj hover-formation-control) (arg0 handle))
+  (set! (-> obj anchor-proc) arg0)
+  0
+  )
+
+;; definition for method 13 of type hover-formation-control
+;; INFO: Used lq/sq
+(defmethod hover-formation-control-method-13 hover-formation-control ((obj hover-formation-control) (arg0 vector))
+  (with-pp
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer pp))
+      (set! (-> a1-1 num-params) 0)
+      (set! (-> a1-1 message) 'path)
+      (let* ((t9-0 send-event-function)
+             (v1-2 (-> obj entity))
+             (s5-0 (the-as path-control (t9-0
+                                          (if v1-2
+                                              (-> v1-2 extra process)
+                                              )
+                                          a1-1
+                                          )
+                           )
+                   )
+             (s3-0 (cond
+                     ((-> obj anchor-proc)
+                      (let ((s2-0 (handle->process (-> obj anchor-proc))))
+                        (if (type? s2-0 process-focusable)
+                            (the-as process-focusable s2-0)
+                            )
+                        )
+                      )
+                     (else
+                       *target*
+                       )
+                     )
+                   )
+             )
+        (cond
+          ((not s3-0)
+           (set! (-> arg0 quad) (-> obj center quad))
+           )
+          (s5-0
+            (let ((f0-0 (get-path-percentage-at-furthest-point s5-0 (get-trans s3-0 3))))
+              (get-point-at-percent-along-path! s5-0 arg0 f0-0 'interp)
+              )
+            (set! (-> arg0 y) (-> (get-trans s3-0 3) y))
+            )
+          (else
+            (set! (-> arg0 quad) (-> (get-trans s3-0 3) quad))
+            (set! (-> arg0 w) 1.0)
+            )
+          )
+        )
+      )
+    arg0
+    )
+  )
+
+;; definition for method 14 of type hover-formation-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-formation-control-method-14 hover-formation-control ((obj hover-formation-control))
+  (with-pp
+    (when (not (logtest? (-> obj flags) 4))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer pp))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'path)
+        (let* ((t9-0 send-event-function)
+               (v1-5 (-> obj entity))
+               (s5-0 (the-as path-control (t9-0
+                                            (if v1-5
+                                                (-> v1-5 extra process)
+                                                )
+                                            a1-0
+                                            )
+                             )
+                     )
+               (a0-7 (cond
+                       ((-> obj anchor-proc)
+                        (let ((s4-0 (handle->process (-> obj anchor-proc))))
+                          (if (type? s4-0 process-focusable)
+                              (the-as process-focusable s4-0)
+                              )
+                          )
+                        )
+                       (else
+                         *target*
+                         )
+                       )
+                     )
+               )
+          (cond
+            ((and s5-0 a0-7)
+             (let ((f30-1
+                     (fmin
+                       1.0
+                       (+ 0.1
+                          (get-path-percentage-at-furthest-point
+                            s5-0
+                            (hover-formation-control-method-13 obj (new 'stack-no-clear 'vector))
+                            )
+                          )
+                       )
+                     )
+                   )
+               (let ((s4-2 (new 'stack-no-clear 'vector)))
+                 (displacement-between-points-at-percent-normalized! s5-0 s4-2 f30-1)
+                 (forward-up-nopitch->inv-matrix (-> obj zone-to-world) s4-2 *up-vector*)
+                 )
+               (set! (-> obj zone-to-world trans quad)
+                     (-> (get-point-at-percent-along-path! s5-0 (new 'stack-no-clear 'vector) f30-1 'interp) quad)
+                     )
+               )
+             (matrix-inverse-of-rot-trans! (-> obj world-to-zone) (-> obj zone-to-world))
+             )
+            (a0-7
+              (let* ((a1-11
+                       (quaternion-slerp!
+                         (-> obj focus-quat)
+                         (-> obj focus-quat)
+                         (get-quat a0-7 2)
+                         (* 0.8 (-> pp clock seconds-per-frame))
+                         )
+                       )
+                     (a1-12 (vector-z-quaternion! (new 'stack-no-clear 'vector) a1-11))
+                     )
+                (forward-up-nopitch->inv-matrix (-> obj zone-to-world) a1-12 *up-vector*)
+                )
+              (set! (-> obj zone-to-world trans quad)
+                    (-> (hover-formation-control-method-13 obj (new 'stack-no-clear 'vector)) quad)
+                    )
+              (matrix-inverse-of-rot-trans! (-> obj world-to-zone) (-> obj zone-to-world))
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 15 of type hover-formation-control
+(defmethod hover-formation-control-method-15 hover-formation-control ((obj hover-formation-control) (arg0 vector) (arg1 vector))
+  (vector-matrix*!
+    arg0
+    (hover-formation-control-method-13 obj (new 'stack-no-clear 'vector))
+    (-> obj world-to-zone)
+    )
+  (vector+! arg0 arg0 arg1)
+  (vector-matrix*! arg0 arg0 (-> obj zone-to-world))
+  )
+
+;; definition for function odd?
+(defun odd? ((arg0 int))
+  (= (logand arg0 1) 1)
+  )
+
+;; definition for function even?
+(defun even? ((arg0 int))
+  (not (odd? arg0))
+  )
+
+;; definition of type gen-perms-context
+(deftype gen-perms-context (structure)
+  ((num           int32   :offset-assert   0)
+   (table         uint32  :offset-assert   4)
+   (iterate-count int32   :offset-assert   8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type gen-perms-context
+(defmethod inspect gen-perms-context ((obj gen-perms-context))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'gen-perms-context)
+  (format #t "~1Tnum: ~D~%" (-> obj num))
+  (format #t "~1Ttable: #x~X~%" (-> obj table))
+  (format #t "~1Titerate-count: ~D~%" (-> obj iterate-count))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function gen-perms
+;; INFO: Used lq/sq
+(defun gen-perms ((arg0 int)
+         (arg1 (function int int form-search-info uint))
+         (arg2 (function form-search-info float))
+         (arg3 form-search-info)
+         )
+  (local-vars (sv-80 int))
+  (let ((s2-0 (new 'stack-no-clear 'gen-perms-context)))
+    (dotimes (v1-0 arg0)
+      (set! (-> (the-as (pointer int32) (+ (the-as uint s2-0) (* v1-0 4)))) 0)
+      )
+    (arg2 arg3)
+    (let ((s1-0 1))
+      (while (< s1-0 arg0)
+        (cond
+          ((>= (-> (the-as (pointer int32) (+ (the-as uint s2-0) (* s1-0 4)))) s1-0)
+           (set! (-> (the-as (pointer int32) (+ (the-as uint s2-0) (* s1-0 4)))) 0)
+           0
+           )
+          (else
+            (let ((s0-0 arg1))
+              (set! sv-80 s1-0)
+              (let ((a1-1 (if (odd? s1-0)
+                              (-> (the-as (pointer int32) (+ (the-as uint s2-0) (* s1-0 4))))
+                              0
+                              )
+                          )
+                    (a2-1 arg3)
+                    )
+                (s0-0 sv-80 a1-1 a2-1)
+                )
+              )
+            (+! (-> (the-as (pointer int32) (+ (the-as uint s2-0) (* s1-0 4)))) 1)
+            (arg2 arg3)
+            (set! s1-0 0)
+            )
+          )
+        (+! s1-0 1)
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function test-gen-perms
+(defun test-gen-perms ((arg0 int))
+  (let ((gp-0 (new 'stack-no-clear 'gen-perms-context))
+        (s4-0 (new 'stack 'gen-perms-context))
+        )
+    (dotimes (v1-1 arg0)
+      (set! (-> (the-as (pointer int32) (+ (the-as uint gp-0) (* v1-1 4)))) v1-1)
+      )
+    (set! (-> s4-0 num) arg0)
+    (set! (-> s4-0 table) (the-as uint gp-0))
+    (set! (-> s4-0 iterate-count) 0)
+    (gen-perms
+      arg0
+      (the-as
+        (function int int form-search-info uint)
+        (lambda ((arg0 int) (arg1 int) (arg2 (pointer object)))
+          (let ((v0-0 (-> (the-as (pointer int32) (+ (the-as uint (-> arg2 1)) (* arg0 4))))))
+            (set! (-> (the-as (pointer int32) (+ (the-as uint (-> arg2 1)) (* arg0 4))))
+                  (-> (the-as (pointer int32) (+ (the-as uint (-> arg2 1)) (* arg1 4))))
+                  )
+            (set! (-> (the-as (pointer int32) (+ (the-as uint (-> arg2 1)) (* arg1 4)))) v0-0)
+            v0-0
+            )
+          )
+        )
+      (the-as
+        (function form-search-info float)
+        (lambda ((arg0 vector))
+          (format #t "(")
+          (dotimes (s5-0 (the-as int (-> arg0 x)))
+            (format #t "~d " (-> (the-as (pointer int32) (+ (the-as uint (-> arg0 y)) (* s5-0 4)))))
+            )
+          (format #t ")~%")
+          )
+        )
+      (the-as form-search-info s4-0)
+      )
+    (format #t "iterate-count: ~d~%" (-> s4-0 iterate-count))
+    )
+  )
+
+;; definition for method 10 of type hover-formation-control
+;; INFO: Used lq/sq
+;; WARN: disable def twice: 148. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod hover-formation-control-method-10 hover-formation-control ((obj hover-formation-control) (arg0 vector) (arg1 vector) (arg2 float))
+  (vector-rotate-y! arg0 arg1 arg2)
+  (cond
+    ((logtest? (-> obj flags) 2)
+     (let ((s2-0 (cond
+                   ((-> obj anchor-proc)
+                    (let ((s4-0 (handle->process (-> obj anchor-proc))))
+                      (if (type? s4-0 process-focusable)
+                          (the-as process-focusable s4-0)
+                          )
+                      )
+                    )
+                   (else
+                     *target*
+                     )
+                   )
+                 )
+           (s4-1 (hover-formation-control-method-15 obj (new 'stack-no-clear 'vector) arg0))
+           (s3-0 (new 'stack-no-clear 'vector))
+           )
+       (set! (-> s3-0 quad) (-> (if s2-0
+                                    (get-trans s2-0 3)
+                                    (-> obj center)
+                                    )
+                                quad
+                                )
+             )
+       (let ((s5-1 (new 'stack-no-clear 'collide-query))
+             (gp-1 (new 'stack-no-clear 'collide-query))
+             )
+         (let ((s2-1 (new 'stack-no-clear 'vector))
+               (f30-0 819.2)
+               )
+           (vector-normalize! (vector-! s2-1 s4-1 s3-0) 6144.0)
+           (vector+! s4-1 s4-1 s2-1)
+           (vector-normalize! (vector-! s2-1 s3-0 s4-1) (+ 204.8 f30-0))
+           (vector+! s3-0 s3-0 s2-1)
+           (set! (-> s5-1 start-pos quad) (-> s4-1 quad))
+           (vector-! (-> s5-1 move-dist) s3-0 (-> s5-1 start-pos))
+           (let ((f0-2 (vector-length (-> s5-1 move-dist))))
+             (if (< 81920.0 f0-2)
+                 (vector-float*! (-> s5-1 move-dist) (-> s5-1 move-dist) (/ 81920.0 f0-2))
+                 )
+             )
+           (set! (-> gp-1 start-pos quad) (-> s3-0 quad))
+           (vector-! (-> gp-1 move-dist) s4-1 (-> gp-1 start-pos))
+           (let ((f0-4 (vector-length (-> gp-1 move-dist))))
+             (if (< 81920.0 f0-4)
+                 (vector-float*! (-> gp-1 move-dist) (-> gp-1 move-dist) (/ 81920.0 f0-4))
+                 )
+             )
+           (let ((v1-32 s5-1))
+             (set! (-> v1-32 radius) f30-0)
+             (set! (-> v1-32 collide-with) (collide-spec backgnd))
+             (set! (-> v1-32 ignore-process0) #f)
+             (set! (-> v1-32 ignore-process1) #f)
+             (set! (-> v1-32 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+             (set! (-> v1-32 action-mask) (collide-action solid))
+             )
+           (let ((v1-33 gp-1))
+             (set! (-> v1-33 radius) f30-0)
+             (set! (-> v1-33 collide-with) (collide-spec backgnd))
+             (set! (-> v1-33 ignore-process0) #f)
+             (set! (-> v1-33 ignore-process1) #f)
+             (set! (-> v1-33 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+             (set! (-> v1-33 action-mask) (collide-action solid))
+             )
+           )
+         (and (< (fill-and-probe-using-line-sphere *collide-cache* s5-1) 0.0)
+              (< (fill-and-probe-using-line-sphere *collide-cache* gp-1) 0.0)
+              )
+         )
+       )
+     )
+    (else
+      #t
+      )
+    )
+  )
+
+;; definition for method 11 of type hover-formation-control
+;; INFO: Used lq/sq
+(defmethod hover-formation-control-method-11 hover-formation-control ((obj hover-formation-control))
+  (let ((s5-0 (-> obj search-info)))
+    (set! (-> s5-0 form) (the-as uint obj))
+    (let ((v1-0 (new 'stack-no-clear 'inline-array 'vector 16)))
+      (dotimes (a0-1 16)
+        (set! (-> v1-0 a0-1 quad) (the-as uint128 0))
+        )
+      (set! (-> s5-0 pos-table) v1-0)
+      )
+    (set! (-> s5-0 best-cost) -1.0)
+    (set! (-> s5-0 count) 0)
+    (dotimes (s4-0 16)
+      (let* ((s3-0 (handle->process (-> obj actor-table s4-0)))
+             (a0-8 (if (type? s3-0 process-focusable)
+                       (the-as process-focusable s3-0)
+                       )
+                   )
+             )
+        (cond
+          (a0-8
+            (set! (-> s5-0 actor-position s4-0 quad) (-> (get-trans a0-8 3) quad))
+            (set! (-> s5-0 actor-valid? s4-0) #t)
+            (+! (-> s5-0 count) 1)
+            )
+          (else
+            (set! (-> s5-0 actor-valid? s4-0) #f)
+            )
+          )
+        )
+      (set! (-> s5-0 index-table s4-0) (the-as uint s4-0))
+      (set! (-> s5-0 best-mapping s4-0) (the-as uint s4-0))
+      )
+    (let* ((f30-0 (-> obj rotation-inc))
+           (f28-0 f30-0)
+           (s3-2 (+ (the int (/ 65536.0 f30-0)) 1))
+           (s4-1 0)
+           )
+      (let ((s2-0 (new 'stack-no-clear 'vector)))
+        (when (hover-formation-control-method-10 obj s2-0 (-> obj offset) 0.0)
+          (set! (-> s5-0 pos-table s4-1 quad) (-> s2-0 quad))
+          (+! s4-1 1)
+          )
+        (let ((s1-0 0))
+          (while (not (or (>= s1-0 s3-2) (>= s4-1 (-> s5-0 count))))
+            (when (hover-formation-control-method-10 obj s2-0 (-> obj offset) f28-0)
+              (set! (-> s5-0 pos-table s4-1 quad) (-> s2-0 quad))
+              (+! s4-1 1)
+              )
+            (when (hover-formation-control-method-10 obj s2-0 (-> obj offset) (- f28-0))
+              (set! (-> s5-0 pos-table s4-1 quad) (-> s2-0 quad))
+              (+! s4-1 1)
+              )
+            (+! f28-0 f30-0)
+            (+! s1-0 1)
+            )
+          )
+        )
+      (when (> (- (-> s5-0 count) s4-1) 0)
+        (let ((f28-1 0.0))
+          (dotimes (s3-3 (- (-> s5-0 count) s4-1))
+            (vector-rotate-y! (-> s5-0 pos-table s3-3) (-> obj offset) f28-1)
+            (+! f28-1 (* (the float (+ s3-3 1)) f30-0))
+            (set! f30-0 (* -1.0 f30-0))
+            )
+          )
+        )
+      )
+    (dotimes (s4-2 (-> s5-0 count))
+      (hover-formation-control-method-15 obj (-> s5-0 dest-pos-table s4-2) (-> s5-0 pos-table s4-2))
+      )
+    (if (< 1 (-> s5-0 count))
+        (gen-perms
+          (-> s5-0 count)
+          (lambda ((arg0 int) (arg1 int) (arg2 form-search-info))
+            (let ((v0-0 (-> arg2 index-table arg0)))
+              (set! (-> arg2 index-table arg0) (-> arg2 index-table arg1))
+              (set! (-> arg2 index-table arg1) v0-0)
+              v0-0
+              )
+            )
+          (lambda ((arg0 form-search-info))
+            (let ((s5-0 0)
+                  (f30-0 0.0)
+                  )
+              (dotimes (s4-0 (-> arg0 count))
+                (when (-> arg0 actor-valid? s4-0)
+                  (+! f30-0
+                      (vector-vector-distance (-> arg0 actor-position s4-0) (-> arg0 dest-pos-table (-> arg0 index-table s5-0)))
+                      )
+                  (+! s5-0 1)
+                  )
+                )
+              (when (or (= (-> arg0 best-cost) -1.0) (< f30-0 (-> arg0 best-cost)))
+                (dotimes (v1-18 16)
+                  (set! (-> arg0 best-mapping v1-18) (-> arg0 index-table v1-18))
+                  )
+                (set! (-> arg0 best-cost) f30-0)
+                f30-0
+                )
+              )
+            )
+          s5-0
+          )
+        )
+    (let ((s4-3 0))
+      (dotimes (s3-4 16)
+        (let ((v1-71 (-> obj actor-table s3-4)))
+          (when v1-71
+            (send-event (handle->process v1-71) 'update-formation (-> s5-0 pos-table (-> s5-0 best-mapping s4-3)))
+            (+! s4-3 1)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 17 of type hover-formation-control
+(defmethod hover-formation-control-method-17 hover-formation-control ((obj hover-formation-control) (arg0 process))
+  (let ((v1-2 (process->handle arg0))
+        (a2-0 -1)
+        (a1-4 -1)
+        )
+    (dotimes (a3-0 16)
+      (when (= v1-2 (-> obj actor-table a3-0))
+        (set! a2-0 a3-0)
+        (goto cfg-17)
+        )
+      (if (and (not (-> obj actor-table a3-0)) (= a1-4 -1))
+          (set! a1-4 a3-0)
+          )
+      )
+    (label cfg-17)
+    (when (= a2-0 -1)
+      (cond
+        ((= a1-4 -1)
+         (format #t "ERROR!!! Too many actors in formation. Currently there is a maximum of ~M. ~%" 16)
+         )
+        (else
+          (when (!= a1-4 -1)
+            (set! (-> obj actor-table a1-4) (the-as handle v1-2))
+            (hover-formation-control-method-11 obj)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 18 of type hover-formation-control
+(defmethod hover-formation-control-method-18 hover-formation-control ((obj hover-formation-control) (arg0 process))
+  (let ((v1-2 (process->handle arg0)))
+    (dotimes (a1-4 16)
+      (when (= v1-2 (-> obj actor-table a1-4))
+        (set! (-> obj actor-table a1-4) (the-as handle #f))
+        (hover-formation-control-method-11 obj)
+        #t
+        (goto cfg-12)
+        )
+      )
+    )
+  (label cfg-12)
+  0
+  )
+
+;; definition for method 19 of type hover-formation-control
+(defmethod try-update-formation-type hover-formation-control ((obj hover-formation-control) (arg0 formation-type))
+  (when (!= (-> obj formation-type) arg0)
+    (set! (-> obj formation-type) arg0)
+    (hover-formation-control-method-11 obj)
+    )
+  0
+  )
+
+;; definition for method 0 of type hover-formation-control
+;; INFO: Used lq/sq
+(defmethod new hover-formation-control ((allocation symbol)
+                                      (type-to-make type)
+                                      (arg0 object)
+                                      (arg1 entity)
+                                      (arg2 float)
+                                      (arg3 vector)
+                                      (arg4 float)
+                                      (arg5 handle)
+                                      )
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 entity) arg1)
+    (set! (-> gp-0 anchor-proc) arg5)
+    (set! (-> gp-0 flags) (the-as uint 0))
+    (set! (-> gp-0 notice-dist) arg2)
+    (set! (-> gp-0 rotation-inc) arg4)
+    (set! (-> gp-0 offset quad) (-> arg3 quad))
+    (set! (-> gp-0 center quad) (-> gp-0 entity extra trans quad))
+    (quaternion-copy! (-> gp-0 focus-quat) *unity-quaternion*)
+    (let ((v1-5 (res-lump-value (-> gp-0 entity) 'options uint128 :time -1000000000.0)))
+      (if (logtest? (the-as int v1-5) 256)
+          (logior! (-> gp-0 flags) 1)
+          )
+      (if (logtest? #x20000 v1-5)
+          (logior! (-> gp-0 flags) 2)
+          )
+      )
+    (dotimes (v1-10 16)
+      (set! (-> gp-0 actor-table v1-10) (the-as handle #f))
+      )
+    (let ((f0-2 (res-lump-float (-> gp-0 entity) 'rotoffset)))
+      (matrix-rotate-y! (-> gp-0 zone-to-world) f0-2)
+      )
+    (set! (-> gp-0 zone-to-world trans quad) (-> gp-0 center quad))
+    (matrix-inverse-of-rot-trans! (-> gp-0 world-to-zone) (-> gp-0 zone-to-world))
+    (set! (-> gp-0 formation-type) (formation-type unknown-3))
+    gp-0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (hover-formation)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (local-vars (v0-0 object))
+    (the-as
+      object
+      (case event-type
+        (('join)
+         (hover-formation-control-method-17 (-> self formation) proc)
+         )
+        (('leave)
+         (hover-formation-control-method-18 (-> self formation) proc)
+         )
+        (('set-type)
+         (let ((a1-11 1))
+           (case (-> event param 0)
+             (('line)
+              (set! a1-11 0)
+              )
+             (('circle)
+              (set! a1-11 2)
+              )
+             (('semicircle)
+              (set! a1-11 3)
+              )
+             )
+           (try-update-formation-type (-> self formation) (the-as formation-type a1-11))
+           )
+         )
+        (('update-sphere)
+         (the-as
+           object
+           (hover-formation-control-method-20 (-> self formation) (process->handle proc) (-> event param 0))
+           )
+         )
+        (('get-formation)
+         (-> self formation)
+         )
+        (('set-los)
+         (cond
+           ((-> event param 0)
+            (set! v0-0 (logior (-> self formation flags) 2))
+            (set! (-> self formation flags) (the-as uint v0-0))
+            )
+           (else
+             (set! v0-0 (logand -3 (-> self formation flags)))
+             (set! (-> self formation flags) (the-as uint v0-0))
+             )
+           )
+         v0-0
+         )
+        (('path)
+         (if (not (logtest? (-> self path flags) (path-control-flag not-found)))
+             (-> self path)
+             )
+         )
+        )
+      )
+    )
+  :code (the-as (function none :behavior hover-formation) sleep-code)
+  :post (behavior ()
+    (set-anchor-proc (-> self formation) (process->handle *target*))
+    (hover-formation-control-method-14 (-> self formation))
+    (when (and (logtest? (-> self formation flags) 2)
+               (>= (- (current-time) (the-as int (-> self formation-timer))) (seconds 0.2))
+               )
+      (hover-formation-control-method-11 (-> self formation))
+      (set! (-> self formation-timer) (the-as uint (current-time)))
+      )
+    (if (not (logtest? (-> self path flags) (path-control-flag not-found)))
+        (debug-draw (-> self path))
+        )
+    (none)
+    )
+  )
+
+;; definition for method 7 of type hover-formation
+;; WARN: Return type mismatch basic vs hover-formation.
+(defmethod relocate hover-formation ((obj hover-formation) (arg0 int))
+  (if (nonzero? (-> obj formation))
+      (&+! (-> obj formation) arg0)
+      )
+  (if (nonzero? (-> obj path))
+      (&+! (-> obj path) arg0)
+      )
+  (the-as hover-formation ((the-as (function basic int basic) (find-parent-method hover-formation 7)) obj arg0))
+  )
+
+;; definition for method 15 of type hover-formation
+(defmethod hover-formation-method-15 hover-formation ((obj hover-formation) (arg0 vector) (arg1 vector))
+  0
+  )
+
+;; definition for method 11 of type hover-formation
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! hover-formation ((obj hover-formation) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-32 structure))
+  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (-> obj entity) #f))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (let* ((s5-0 (method-of-type hover-formation-control new))
+         (s4-0 'process)
+         (s3-0 hover-formation-control)
+         (s2-0 obj)
+         (v0-1 (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+         (s1-0 (if v0-1
+                   v0-1
+                   (-> obj entity)
+                   )
+               )
+         (s0-0 (res-lump-float (-> obj entity) 'notice-dist :default 225280.0))
+         )
+    (let ((t9-3 (method-of-type res-lump get-property-struct))
+          (a0-5 (-> obj entity))
+          (a1-4 'trans-offset)
+          (a2-3 'interp)
+          (a3-2 -1000000000.0)
+          (t0-2 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> t0-2 x) 0.0)
+      (set! (-> t0-2 y) 20480.0)
+      (set! (-> t0-2 z) 61440.0)
+      (set! (-> t0-2 w) 1.0)
+      (set! sv-32 (t9-3 a0-5 a1-4 a2-3 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*))
+      )
+    (let ((t2-4 (res-lump-float (-> obj entity) 'rotoffset :default 5461.3335))
+          (t3-0 #f)
+          )
+      (set! (-> obj formation) (s5-0 s4-0 s3-0 s2-0 s1-0 s0-0 (the-as vector sv-32) t2-4 (the-as handle t3-0)))
+      )
+    )
+  (set! (-> obj formation-timer) (the-as uint (current-time)))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (let ((t9-6 process-entity-status!)
+        (a0-9 obj)
+        (a1-7 8)
+        (a2-6 #t)
+        )
+    (t9-6 a0-9 (the-as entity-perm-status a1-7) a2-6)
+    (hover-formation-method-15 obj (the-as vector a1-7) (the-as vector a2-6))
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )

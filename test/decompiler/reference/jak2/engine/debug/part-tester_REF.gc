@@ -1,0 +1,137 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; failed to figure out what this is:
+(defpartgroup group-part-tester
+  :id 127
+  :flags (unk-4 unk-6)
+  :bounds (static-bspherem 0 0 0 640)
+  :rotate ((degrees 45) (degrees 0) (degrees 0))
+  :parts ((sp-item 209))
+  )
+
+;; definition of type part-tester
+(deftype part-tester (process)
+  ((root      trsqv                     :offset-assert 128)
+   (part      sparticle-launch-control  :offset-assert 132)
+   (old-group sparticle-launch-group    :offset-assert 136)
+   )
+  :heap-base #x10
+  :method-count-assert 14
+  :size-assert         #x8c
+  :flag-assert         #xe0010008c
+  (:states
+    part-tester-idle
+    )
+  )
+
+;; definition for method 3 of type part-tester
+(defmethod inspect part-tester ((obj part-tester))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Troot: ~A~%" (-> obj root))
+  (format #t "~2Tpart: ~A~%" (-> obj part))
+  (format #t "~2Told-group: ~A~%" (-> obj old-group))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *part-tester-name*, type string
+(define *part-tester-name* (the-as string #f))
+
+;; definition for method 10 of type part-tester
+(defmethod deactivate part-tester ((obj part-tester))
+  (if (nonzero? (-> obj part))
+      (kill-and-free-particles (-> obj part))
+      )
+  ((method-of-type process deactivate) obj)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate part-tester-idle (part-tester)
+  :code (behavior ()
+    (until #f
+      (let ((gp-0 (entity-by-name *part-tester-name*)))
+        (when gp-0
+          (let ((s5-0 (-> gp-0 extra process)))
+            (if (and s5-0 (type? s5-0 process-drawable) (nonzero? (-> (the-as process-drawable s5-0) root)))
+                (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))
+                (set! (-> self root trans quad) (-> gp-0 extra trans quad))
+                )
+            )
+          )
+        )
+      (add-debug-x
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> self root trans)
+        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+        )
+      (let ((gp-1 (-> *part-group-id-table* 127)))
+        (let ((s5-1 (-> self root trans)))
+          (when (!= gp-1 (-> self old-group))
+            (when (nonzero? (-> self part))
+              (kill-and-free-particles (-> self part))
+              (set! (-> self heap-cur) (&-> (-> self part) type))
+              )
+            (set! (-> self part) (create-launch-control gp-1 self))
+            )
+          (if (nonzero? (-> self part))
+              (spawn (-> self part) (cond
+                                      ((logtest? (-> gp-1 flags) (sp-group-flag screen-space))
+                                       *zero-vector*
+                                       )
+                                      (else
+                                        (empty)
+                                        s5-1
+                                        )
+                                      )
+                     )
+              )
+          )
+        (set! (-> self old-group) gp-1)
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; definition for function part-tester-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior part-tester-init-by-other process-drawable ((arg0 vector))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! *part-tester* (process->ppointer self))
+  (go part-tester-idle)
+  (none)
+  )
+
+;; definition (perm) for symbol *debug-part-dead-pool*, type dead-pool
+(define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 "*debug-part-dead-pool*"))
+
+;; definition for function start-part
+;; WARN: Return type mismatch (pointer process) vs none.
+(defun start-part ()
+  (kill-by-type part-tester *active-pool*)
+  (process-spawn
+    part-tester
+    (if *anim-tester*
+        (-> *anim-tester* 0 root trans)
+        (target-pos 0)
+        )
+    :from *debug-part-dead-pool*
+    )
+  (none)
+  )

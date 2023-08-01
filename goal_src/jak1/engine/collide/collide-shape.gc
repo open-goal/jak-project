@@ -5,6 +5,8 @@
 ;; name in dgo: collide-shape
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; The collide shape system is used to handle collision reactions.
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,7 +59,7 @@
           ;; reject if non-solid
           (b! (zero? a3-2) cfg-8 :delay (set! a2-2 (logand a2-1 8)))
           )
-        ;; reject if ca-3 on us fails (not sure what this means yet)
+        ;; reject if edgegrab-active on us fails (not sure what this means yet)
         (b! (nonzero? a2-2) cfg-8 :delay (set! v1-3 (logand v1-2 1)))
         )
       ;; reject if non-solid
@@ -911,8 +913,8 @@
       )
     )
 
-  ;; ca-9 gets set whenever you get on the zoomer. If we are on the zoomer, just go to "race-track"
-  (if (logtest? (-> obj root-prim prim-core action) (collide-action ca-9))
+  ;; racer gets set whenever you get on the zoomer. If we are on the zoomer, just go to "race-track"
+  (if (logtest? (-> obj root-prim prim-core action) (collide-action racer))
       (set! (-> obj surf) *race-track-surface*)
       )
 
@@ -932,8 +934,8 @@
        )
       (((pat-event burnup))
        ;; burnup (like fire canyon lava).
-       ;; only send if we don't have ca-9 (on zoomer)
-       (if (zero? (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) (collide-action ca-9)))
+       ;; only send if we don't have racer (on zoomer)
+       (if (zero? (logand (-> (the-as target (-> obj process)) control root-prim prim-core action) (collide-action racer)))
            (target-attack-up (the-as target (-> obj process)) 'attack-or-shove 'burnup)
            )
        )
@@ -1460,7 +1462,7 @@
     )
   )
 
-(defmethod dummy-58 collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+(defmethod collide-shape-moving-method-58 collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
   ;; not sure yet. moves shadow-pos, but possibly not trans.
   (integrate-no-collide! obj arg0)
   (let ((a1-1 (new 'stack-no-clear 'overlaps-others-params)))
@@ -1477,7 +1479,7 @@
 (defmethod move-to-tri! collide-shape-moving ((obj collide-shape-moving) (arg0 collide-tri-result) (arg1 vector))
   "Move us to tri arg0, at point arg1."
   (move-to-point! obj arg1)
-  (logior! (-> obj status) 7)
+  (logior! (-> obj status) (cshape-moving-flags onsurf onground tsurf))
   (let ((v1-4 (-> arg0 normal)))
     (set! (-> obj poly-normal quad) (-> v1-4 quad))
     (set! (-> obj surface-normal quad) (-> v1-4 quad))
@@ -1492,15 +1494,14 @@
   (none)
   )
 
-;; WARN: Stack slot offset 128 signed mismatch
 (defmethod integrate-for-enemy-with-move-to-ground! collide-shape-moving ((obj collide-shape-moving)
-                                                                          (arg0 vector)
-                                                                          (arg1 collide-kind)
-                                                                          (arg2 float)
-                                                                          (arg3 symbol)
-                                                                          (arg4 symbol)
-                                                                          (arg5 symbol)
-                                                                          )
+                                                                        (arg0 vector)
+                                                                        (arg1 collide-kind)
+                                                                        (arg2 float)
+                                                                        (arg3 symbol)
+                                                                        (arg4 symbol)
+                                                                        (arg5 symbol)
+                                                                        )
   "This is likely the main method for stepping an enemy.
    arg0: velocity
    arg1: ground collision
@@ -1654,7 +1655,7 @@
     ;; apply that. note that we scale the slopiness by arg1
     ;; (this is not really how things work.)
     (vector--float*! arg0 s4-0 a2-2 (cond
-                                      ((logtest? (-> obj status) 1)
+                                      ((logtest? (-> obj status) (cshape-moving-flags onsurf))
                                        (empty)
                                        arg1
                                        )
@@ -1805,7 +1806,7 @@
     )
   )
 
-;; WARN: Bad vector register dependency: vf31
+;; ERROR: Bad vector register dependency: vf31
 (defmethod add-to-bounding-box collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
   "Add a single prim to the bounding box. (just adds the bsphere)"
   (rlet ((vf1 :class vf)
@@ -2426,18 +2427,17 @@
     (bucket-id debug)
     (the-as vector (-> obj prim-core))
     (-> obj local-sphere w)
-    (the-as rgba (cond
-                   ((and (zero? (-> obj prim-core collide-as)) (zero? (-> obj collide-with)))
-                    #x40808080
-                    )
-                   ((logtest? (-> obj prim-core action) 1)
-                    #x4000ffff
-                    )
-                   (else
-                     #x400080ff
-                     )
-                   )
-            )
+    (cond
+      ((and (zero? (-> obj prim-core collide-as)) (zero? (-> obj collide-with)))
+       (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x40)
+       )
+      ((logtest? (-> obj prim-core action) (collide-action solid))
+       (new 'static 'rgba :r #xff :g #xff :a #x40)
+       )
+      (else
+        (new 'static 'rgba :r #xff :g #x80 :a #x40)
+        )
+      )
     )
   )
 
@@ -3268,7 +3268,7 @@
         (add-touching-prims a0-6 obj arg1 -1.0 (the-as collide-tri-result #f) (the-as collide-tri-result #f))
         )
       (label cfg-16)
-      (b! (zero? (logand (-> arg0 options) 1)) cfg-19 :delay (set! v1-26 (-> obj prim-core action)))
+      (b! (not (logtest? (-> arg0 options) 1)) cfg-19 :delay (set! v1-26 (-> obj prim-core action)))
       (let ((a0-7 (-> arg1 prim-core action)))
         (b! (logtest? (logand v1-26 (collide-action solid)) a0-7) cfg-19 :delay (nop!))
         )
@@ -3314,13 +3314,12 @@
         (the-as none 0)
         (label cfg-9)
         (b!
-          (not
-            (overlap-test
-              s3-0
-              (the-as collide-mesh-cache-tri (-> obj mesh-cache-tris))
-              (the-as vector (-> arg1 prim-core))
-              )
-            )
+          (not (overlap-test
+                 s3-0
+                 (the-as collide-mesh-cache-tri (-> obj mesh-cache-tris))
+                 (the-as vector (-> arg1 prim-core))
+                 )
+               )
           cfg-12
           )
         )
@@ -3342,7 +3341,7 @@
         (add-touching-prims a0-7 obj arg1 -1.0 (the-as collide-tri-result #f) (the-as collide-tri-result #f))
         )
       (label cfg-16)
-      (b! (zero? (logand (-> arg0 options) 1)) cfg-19 :delay (set! v1-26 (-> obj prim-core action)))
+      (b! (not (logtest? (-> arg0 options) 1)) cfg-19 :delay (set! v1-26 (-> obj prim-core action)))
       (let ((a0-8 (-> arg1 prim-core action)))
         (b! (logtest? (logand v1-26 (collide-action solid)) a0-8) cfg-19 :delay (nop!))
         )
@@ -3479,7 +3478,7 @@
     )
   )
 
-(defmethod dummy-41 collide-shape ((obj collide-shape) (arg0 attack-info) (arg1 float))
+(defmethod calc-shove-up collide-shape ((obj collide-shape) (arg0 attack-info) (arg1 float))
   (set! (-> arg0 shove-up) arg1)
   (let* ((s3-0 (-> obj process path))
          (s2-0 (-> s3-0 curve num-cverts))
@@ -3501,7 +3500,3 @@
     (vector-! (-> arg0 vector) s5-0 s4-0)
     )
   )
-
-
-
-

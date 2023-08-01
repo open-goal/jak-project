@@ -2,13 +2,15 @@
 
 #include <map>
 
+#include "common/log/log.h"
+
 constexpr float kClusterSize = 4096 * 40;  // 100 in-game meters
 constexpr float kMasterOffset = 12000 * 4096;
 
 std::pair<u64, u16> position_to_cluster_and_offset(float in) {
   in += kMasterOffset;
   if (in < 0) {
-    fmt::print("negative: {}\n", in);
+    lg::print("negative: {}\n", in);
   }
   ASSERT(in >= 0);
   int cluster_cell = (in / kClusterSize);

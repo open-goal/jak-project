@@ -1,11 +1,17 @@
 #include "Shrub.h"
 
-Shrub::Shrub(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+#include "common/log/log.h"
+
+Shrub::Shrub(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
 }
 
 Shrub::~Shrub() {
   discard_tree_cache();
+}
+
+void Shrub::init_shaders(ShaderLibrary& shaders) {
+  m_uniforms.decal = glGetUniformLocation(shaders[ShaderId::SHRUB].id(), "decal");
 }
 
 void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) {
@@ -17,8 +23,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   }
 
   auto data0 = dma.read_and_advance();
-  ASSERT(data0.vif1() == 0);
-  ASSERT(data0.vif0() == 0);
+  ASSERT(data0.vif1() == 0 || data0.vifcode1().kind == VifCode::Kind::NOP);
+  ASSERT(data0.vif0() == 0 || data0.vifcode0().kind == VifCode::Kind::NOP ||
+         data0.vifcode0().kind == VifCode::Kind::MARK);
   ASSERT(data0.size_bytes == 0);
 
   if (dma.current_tag().kind == DmaTag::Kind::CALL) {
@@ -27,6 +34,9 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
       dma.read_and_advance();
     }
     ASSERT(dma.current_tag_offset() == render_state->next_bucket);
+    return;
+  }
+  if (dma.current_tag_offset() == render_state->next_bucket) {
     return;
   }
 
@@ -40,22 +50,11 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   }
 
   TfragRenderSettings settings;
-  settings.hvdf_offset = m_pc_port_data.hvdf_off;
-  settings.fog = m_pc_port_data.fog;
+  settings.camera = m_pc_port_data.camera;
 
-  memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
 
-  for (int i = 0; i < 8; i++) {
-    settings.time_of_day_weights[i] =
-        2 * (0xff & m_pc_port_data.itimes[i / 2].data()[2 * (i % 2)]) / 127.f;
-  }
-
   update_render_state_from_pc_settings(render_state, m_pc_port_data);
-
-  for (int i = 0; i < 4; i++) {
-    settings.planes[i] = m_pc_port_data.planes[i];
-  }
 
   m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   render_all_trees(settings, render_state, prof);
@@ -161,13 +160,24 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   // make sure we have the level data.
   Timer tfrag3_setup_timer;
   auto lev_data = render_state->loader->get_tfrag3_level(level);
-  if (!lev_data || (m_has_level && lev_data->load_id != m_load_id)) {
+
+  if (!lev_data) {
+    // not loaded
     m_has_level = false;
     m_textures = nullptr;
     m_level_name = "";
     discard_tree_cache();
     return false;
   }
+
+  if (m_has_level && lev_data->load_id != m_load_id) {
+    m_has_level = false;
+    m_textures = nullptr;
+    m_level_name = "";
+    discard_tree_cache();
+    return setup_for_level(level, render_state);
+  }
+
   m_textures = &lev_data->textures;
   m_load_id = lev_data->load_id;
 
@@ -180,7 +190,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
   }
 
   if (tfrag3_setup_timer.getMs() > 5) {
-    fmt::print("Shrub setup: {:.1f}ms\n", tfrag3_setup_timer.getMs());
+    lg::info("Shrub setup: {:.1f}ms", tfrag3_setup_timer.getMs());
   }
 
   return m_has_level;
@@ -223,7 +233,15 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  interp_time_of_day_fast(settings.time_of_day_weights, tree.tod_cache, m_color_result.data());
+#ifndef __aarch64__
+  if (m_use_fast_time_of_day) {
+    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
+  } else {
+    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
+  }
+#else
+  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+#endif
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;
@@ -281,6 +299,8 @@ void Shrub::render_tree(int idx,
       glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
       last_texture = draw.tree_tex_id;
     }
+
+    glUniform1i(m_uniforms.decal, draw.mode.get_decal() ? 1 : 0);
 
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::SHRUB);
 

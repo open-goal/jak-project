@@ -1,0 +1,11 @@
+("LTRNTESS.DGO"
+ ("tess-ltrntess+0-ag.go"
+  "tpage-1764.go"
+  "tpage-3254.go"
+  "daxter-highres-ag.go"
+  "jak-highres-ag.go"
+  "torn-highres-ag.go"
+  "tess-highres-ag.go"
+  "particleman-ag.go"
+  "ltrntess.go"
+ ))

@@ -1,0 +1,897 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 17 of type bigmap
+(defmethod bigmap-method-17 bigmap ((obj bigmap) (arg0 vector))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> obj offset quad))
+    (.add.z.vf vf1 vf0 vf1 :mask #b10)
+    (.sub.vf vf1 vf1 vf2)
+    (.mul.w.vf vf1 vf1 vf2)
+    (.ftoi.vf vf1 vf1)
+    (.svf (&-> obj pos quad) vf1)
+    0
+    )
+  )
+
+;; definition for method 18 of type bigmap
+;; INFO: Used lq/sq
+(defmethod bigmap-method-18 bigmap ((obj bigmap))
+  (let ((s5-0 (-> obj compressed-masks (-> obj mask-index))))
+    (set! (-> obj compressed-masks (-> obj mask-index)) (the-as (pointer int8) #f))
+    (cond
+      (s5-0
+        (let* ((a0-2 (unpack-comp-rle (the-as (pointer int8) (-> obj bit-mask data)) s5-0))
+               (v1-7 (&- a0-2 (the-as uint s5-0)))
+               )
+          (let ((a1-3 (+ (- (the-as int s5-0)) (-> obj compressed-data) (-> obj compressed-next-index))))
+            (dotimes (a2-2 a1-3)
+              (set! (-> s5-0 a2-2) (the-as int (-> (the-as (pointer uint8) (&+ a0-2 a2-2)))))
+              )
+            )
+          (dotimes (a0-5 20)
+            (let ((a1-6 (-> obj compressed-masks a0-5)))
+              (if (and a1-6 (>= (the-as int a1-6) (the-as int s5-0)))
+                  (set! (-> obj compressed-masks a0-5) (&- a1-6 (the-as uint v1-7)))
+                  )
+              )
+            )
+          (set! (-> obj compressed-next-index) (- (-> obj compressed-next-index) (the-as uint v1-7)))
+          )
+        )
+      (else
+        (let ((v1-10 (-> obj bit-mask data)))
+          (dotimes (a0-9 416)
+            (set! (-> (the-as (pointer int128) (&+ v1-10 (* a0-9 16)))) 0)
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 19 of type bigmap
+(defmethod bigmap-method-19 bigmap ((obj bigmap))
+  (let* ((s5-0 (+ (-> obj compressed-next-index) 0 (-> obj compressed-data)))
+         (v1-4
+           (pack-comp-rle
+             (the-as (pointer uint8) s5-0)
+             (-> obj bit-mask data)
+             6656
+             (the-as int (- #x8000 (the-as int (-> obj compressed-next-index))))
+             )
+           )
+         )
+    (set! (-> obj compressed-masks (-> obj mask-index)) (the-as (pointer int8) s5-0))
+    (set! (-> obj compressed-next-index) (the-as uint (+ (-> obj compressed-next-index) (the-as uint v1-4))))
+    )
+  (set! (-> obj max-next-index)
+        (the-as uint (max (the-as int (-> obj max-next-index)) (the-as int (-> obj compressed-next-index))))
+        )
+  0
+  )
+
+;; definition for symbol *circle-mask-1x1-meter*, type (array uint32)
+(define *circle-mask-1x1-meter* (new 'static 'boxed-array :type uint32
+                                  #xff000
+                                  #x7ffe00
+                                  #x1ffff80
+                                  #x3ffffc0
+                                  #x7ffffe0
+                                  #xffffff0
+                                  #x1ffffff8
+                                  #x3ffffffc
+                                  #x3ffffffc
+                                  #x7ffffffe
+                                  #x7ffffffe
+                                  #x7ffffffe
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #xffffffff
+                                  #x7ffffffe
+                                  #x7ffffffe
+                                  #x7ffffffe
+                                  #x3ffffffc
+                                  #x3ffffffc
+                                  #x1ffffff8
+                                  #xffffff0
+                                  #x7ffffe0
+                                  #x3ffffc0
+                                  #x1ffff80
+                                  #x7ffe00
+                                  #xff000
+                                  )
+        )
+
+;; definition for symbol *circle-mask-2x2-meters*, type (array uint16)
+(define *circle-mask-2x2-meters* (new 'static 'boxed-array :type uint16
+                                   #x7e0
+                                   #x1ff8
+                                   #x3ffc
+                                   #x7ffe
+                                   #x7ffe
+                                   #xffff
+                                   #xffff
+                                   #xffff
+                                   #xffff
+                                   #xffff
+                                   #xffff
+                                   #x7ffe
+                                   #x7ffe
+                                   #x3ffc
+                                   #x1ff8
+                                   #x7e0
+                                   )
+        )
+
+;; definition for method 20 of type bigmap
+(defmethod bigmap-method-20 bigmap ((obj bigmap))
+  (let ((v1-4 (-> obj layer-mask data (+ (* (-> obj pos y) 128) (/ (-> obj pos x) 2)))))
+    (if (not (logtest? (-> obj pos x) 1))
+        (set! (-> obj layer-mask-enable) (shr v1-4 4))
+        (set! (-> obj layer-mask-enable) (logand v1-4 15))
+        )
+    )
+  0
+  )
+
+;; definition for method 21 of type bigmap
+(defmethod bigmap-method-21 bigmap ((obj bigmap) (arg0 int) (arg1 int))
+  (local-vars (v1-3 uint))
+  (let* ((v1-1 (+ (* arg1 128) (/ arg0 2)))
+         (a3-3 (-> obj layer-mask data v1-1))
+         )
+    (if (not (logtest? v1-1 1))
+        (set! v1-3 (shr a3-3 4))
+        (set! v1-3 (logand a3-3 15))
+        )
+    )
+  (when (= (-> obj layer-mask-enable) v1-3)
+    (let ((v1-5 (+ (* arg1 32) (/ arg0 8)))
+          (a0-1 (-> obj bit-mask))
+          (a2-2 (logand arg0 7))
+          )
+      (logior! (-> a0-1 data v1-5) (ash 1 a2-2))
+      )
+    )
+  0
+  )
+
+;; definition for symbol *image-mask-table*, type (pointer int64)
+(define *image-mask-table* (new 'static 'array int64 16
+                             0
+                             #x8080
+                             #x80800000
+                             #x80808080
+                             #x808000000000
+                             #x808000008080
+                             #x808080800000
+                             #x808080808080
+                             -9187343239835811840
+                             -9187343239835778944
+                             -9187343237679939584
+                             -9187343237679906688
+                             -9187201952591642624
+                             -9187201952591609728
+                             -9187201950435770368
+                             -9187201950435737472
+                             )
+        )
+
+;; definition for method 23 of type bigmap
+;; WARN: Return type mismatch int vs none.
+(defmethod bigmap-method-23 bigmap ((obj bigmap))
+  (let* ((v1-0 (the-as object (-> obj bit-mask)))
+         (a1-0 *image-mask-table*)
+         (a0-2 (the-as object (-> obj bigmap-image art-group)))
+         (a0-3 (the-as (pointer int64) (+ (+ #x34000 (-> (the-as (pointer uint32) a0-2) 1) 16) (the-as uint a0-2))))
+         )
+    (dotimes (a2-3 208)
+      (dotimes (a3-1 32)
+        (let ((t0-0 (-> (the-as (pointer uint8) v1-0) 0)))
+          (when (nonzero? t0-0)
+            (let* ((t2-0 (shr t0-0 4))
+                   (t1-1 (logand t0-0 15))
+                   (t0-3 (-> a1-0 t2-0))
+                   )
+              (let ((t1-4 (-> a1-0 t1-1)))
+                (logior! (-> a0-3 0) t1-4)
+                (logior! (-> a0-3 64) t1-4)
+                )
+              (logior! (-> a0-3 1) t0-3)
+              (logior! (-> a0-3 65) t0-3)
+              )
+            )
+          )
+        (set! v1-0 (&-> (the-as (pointer uint8) v1-0) 1))
+        (set! a0-3 (&-> a0-3 2))
+        )
+      (set! a0-3 (&-> a0-3 64))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 22 of type bigmap
+;; WARN: Return type mismatch int vs none.
+(defmethod bigmap-method-22 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
+  (local-vars (sv-16 int))
+  (set! sv-16 arg2)
+  (dma-buffer-add-gs-set arg0
+                         (bitbltbuf (new 'static 'gs-bitbltbuf :dpsm (the-as int arg5) :dbp sv-16 :dbw (/ arg3 64)))
+                         (trxpos (new 'static 'gs-trxpos))
+                         (trxreg (new 'static 'gs-trxreg :rrw arg3 :rrh arg4))
+                         (trxdir (new 'static 'gs-trxdir))
+                         )
+  (dma-buffer-add-ref-texture arg0 arg1 arg3 arg4 arg5)
+  0
+  (none)
+  )
+
+;; definition for method 26 of type bigmap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs none.
+(defmethod bigmap-method-26 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((v1-0 (-> arg0 base)))
+    (set! (-> (the-as (pointer uint128) v1-0) 0) (-> obj sprite-tmpl dma-vif quad))
+    (set! (-> (the-as (pointer uint128) v1-0) 1) (-> obj sprite-tmpl quad 1))
+    (set! (-> (the-as (pointer uint128) v1-0) 2) (-> obj color quad))
+    (set-vector! (the-as vector4w (&+ v1-0 48)) 0 0 0 0)
+    (set-vector! (the-as vector4w (&+ v1-0 64)) (* arg1 16) (* arg2 16) #xfffff0 0)
+    (set-vector! (the-as vector4w (&+ v1-0 80)) 8192 3328 0 0)
+    (set-vector! (the-as vector4w (&+ v1-0 96)) (* arg3 16) (* arg4 16) #xfffff0 0)
+    )
+  (&+! (-> arg0 base) 112)
+  (none)
+  )
+
+;; definition for method 24 of type bigmap
+(defmethod bigmap-method-24 bigmap ((obj bigmap) (arg0 dma-buffer))
+  (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
+    (let ((v1-1 (-> s4-0 0))
+          (s3-0 (-> s4-0 1))
+          )
+      (bigmap-method-22 obj arg0 (+ (+ v1-1 16) (the-as uint s4-0)) 0 16 16 (gs-psm ct32))
+      (dma-buffer-add-gs-set arg0 (texflush 1))
+      (bigmap-method-22 obj arg0 (+ (+ s3-0 16) (the-as uint s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    (dma-buffer-add-gs-set arg0
+                           (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
+                           (tex1-1 (new 'static 'gs-tex1))
+                           (texflush 1)
+                           )
+    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (let ((v1-16 (+ #x1a000 (-> s4-0 1))))
+      (bigmap-method-22 obj arg0 (+ (+ v1-16 16) (the-as uint s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    (dma-buffer-add-gs-set arg0 (texflush 0))
+    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+    (let ((v1-25 (+ (-> s4-0 0) 1024))
+          (s3-1 (+ #x34000 (-> s4-0 1)))
+          )
+      (bigmap-method-22 obj arg0 (+ (+ v1-25 16) (the-as uint s4-0)) 0 16 16 (gs-psm ct32))
+      (bigmap-method-22 obj arg0 (+ (+ s3-1 16) (the-as uint s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    (dma-buffer-add-gs-set arg0
+                           (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :tcc #x1 :cld #x1))
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                           (texflush 1)
+                           )
+    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (let ((v1-37 (+ #x4e000 (-> s4-0 1))))
+      (bigmap-method-22 obj arg0 (+ (+ v1-37 16) (the-as uint s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    )
+  (dma-buffer-add-gs-set arg0 (texflush 1))
+  (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+  (none)
+  )
+
+;; definition for method 25 of type bigmap
+(defmethod bigmap-method-25 bigmap ((obj bigmap) (arg0 dma-buffer))
+  (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
+    (bigmap-method-22 obj arg0 (+ (+ (-> s4-0 0) 16) (the-as uint s4-0)) 0 16 16 (gs-psm ct32))
+    (dma-buffer-add-gs-set arg0 (texflush 0))
+    (let ((v1-10 (+ (* (the int (-> obj scroll y)) 512) (-> s4-0 1))))
+      (bigmap-method-22 obj arg0 (+ (+ v1-10 16) (the-as int s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    (dma-buffer-add-gs-set arg0
+                           (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
+                           (tex1-1 (new 'static 'gs-tex1))
+                           (texflush 1)
+                           )
+    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (let ((v1-21 (+ (* (+ (the int (-> obj scroll y)) 208) 512) (-> s4-0 1))))
+      (bigmap-method-22 obj arg0 (+ (+ v1-21 16) (the-as int s4-0)) 8 512 208 (gs-psm mt8))
+      )
+    )
+  (dma-buffer-add-gs-set arg0 (texflush 1))
+  (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+  (none)
+  )
+
+;; definition for method 27 of type bigmap
+;; INFO: Used lq/sq
+(defmethod bigmap-method-27 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (cond
+      ((= (-> arg1 position) #t)
+       (let* ((s3-0 (handle->process (-> arg1 handle)))
+              (v1-4 (if (type? s3-0 process-drawable)
+                        (the-as process-drawable s3-0)
+                        )
+                    )
+              )
+         (if (and v1-4 (nonzero? (-> v1-4 root)))
+             (set! (-> arg1 last-world-pos quad) (-> v1-4 root trans quad))
+             )
+         )
+       )
+      ((and (= (logand (the-as int (-> arg1 position)) 7) 4)
+            (= (-> (the-as basic (-> arg1 position)) type) entity-actor)
+            )
+       (let* ((v1-14 (the-as entity-actor (-> arg1 position)))
+              (s3-1 (if v1-14
+                        (-> v1-14 extra process)
+                        )
+                    )
+              (a0-13 (if (type? s3-1 process-drawable)
+                         (the-as process-drawable s3-1)
+                         )
+                     )
+              )
+         (if a0-13
+             (set! (-> arg1 last-world-pos quad) (-> a0-13 root trans quad))
+             (set! (-> arg1 last-world-pos quad) (-> (the-as entity-actor (-> arg1 position)) extra trans quad))
+             )
+         )
+       )
+      (else
+        (set! (-> arg1 last-world-pos quad) (-> (the-as vector (-> arg1 position)) quad))
+        )
+      )
+    (let ((f0-0 (-> arg1 class scale))
+          (a1-5 (-> arg1 class color))
+          (a3-0 (new 'stack-no-clear 'vector4w))
+          (a2-1 (new-stack-vector0))
+          (a0-23 (new-stack-vector0))
+          (v1-21 (new-stack-vector0))
+          )
+      (let ((f1-0 (-> *video-params* relative-x-scale)))
+        (-> arg1 class)
+        (.lvf vf1 (&-> arg1 last-world-pos quad))
+        (.lvf vf2 (&-> obj draw-offset quad))
+        (.add.z.vf vf1 vf0 vf1 :mask #b10)
+        (.sub.vf vf1 vf1 vf2)
+        (.mul.w.vf vf1 vf1 vf2)
+        (.ftoi.vf vf1 vf1)
+        (.svf (&-> a3-0 quad) vf1)
+        (if (logtest? (-> arg1 class flags) (minimap-flag goal))
+            (set! (-> arg1 class icon-xy x) (the-as uint (mod (the int (-> obj goal-time)) 6)))
+            )
+        (if (-> *blit-displays-work* horizontal-flip-flag)
+            (set! f1-0 (- f1-0))
+            )
+        (set! (-> a2-1 x) (+ (the float (-> obj x0)) (* 2.0 f1-0 (the float (-> a3-0 x)))))
+        (set! (-> a2-1 y) (- (the float (+ (* (-> a3-0 y) 2) 1840)) (-> obj scroll y)))
+        (let ((f1-2 (* 20.0 f1-0 f0-0))
+              (f0-1 (* 20.0 f0-0))
+              )
+          (set! (-> a0-23 x) (the float (the int (- (-> a2-1 x) (* 0.5 f1-2)))))
+          (set! (-> a0-23 y) (the float (the int (- (-> a2-1 y) (* 0.5 f0-1)))))
+          (set! (-> v1-21 x) (+ (-> a0-23 x) f1-2))
+          (set! (-> v1-21 y) (+ (-> a0-23 y) f0-1))
+          )
+        )
+      (let* ((t1-2 (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8))
+             (t2-0 (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8))
+             (a2-8 (+ t1-2 312))
+             (a3-11 (+ t2-0 312))
+             (t0-15 (-> arg0 base))
+             )
+        (set! (-> (the-as (pointer uint128) t0-15) 0) (-> obj sprite-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) t0-15) 1) (-> obj sprite-tmpl quad 1))
+        (set-vector!
+          (the-as vector4w (&+ t0-15 32))
+          (the-as int (-> a1-5 r))
+          (the-as int (-> a1-5 g))
+          (the-as int (-> a1-5 b))
+          128
+          )
+        (set-vector! (the-as vector4w (&+ t0-15 48)) t1-2 t2-0 0 0)
+        (set-vector!
+          (the-as vector4w (&+ t0-15 64))
+          (the int (* 16.0 (-> a0-23 x)))
+          (the int (* 16.0 (-> a0-23 y)))
+          #xffffff
+          0
+          )
+        (set-vector! (the-as vector4w (&+ t0-15 80)) a2-8 a3-11 0 0)
+        (set-vector!
+          (the-as vector4w (&+ t0-15 96))
+          (the int (* 16.0 (-> v1-21 x)))
+          (the int (* 16.0 (-> v1-21 y)))
+          #xffffff
+          0
+          )
+        )
+      )
+    (&+! (-> arg0 base) 112)
+    0
+    )
+  )
+
+;; definition for method 9 of type bigmap
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize bigmap ((obj bigmap))
+  (set! (-> obj bigmap-index) (the-as uint 20))
+  (set-pending-file (-> obj bigmap-image) (the-as string #f) 0 (process->handle *dproc*) 0.0)
+  (set! (-> obj compressed-next-index) (the-as uint 0))
+  (set! (-> obj max-next-index) (the-as uint 0))
+  (dotimes (v1-5 20)
+    (set! (-> obj compressed-masks v1-5) (the-as (pointer int8) #f))
+    )
+  (set! (-> obj mask-index) (the-as uint 20))
+  (set! (-> obj layer-index) (the-as uint 20))
+  (set! (-> obj layer-mask-enable) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type bigmap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update bigmap ((obj bigmap))
+  (let ((v1-1 (level-get-target-inside *level*)))
+    (if v1-1
+        (set! (-> obj bigmap-index) (the-as uint (-> v1-1 info bigmap-id)))
+        )
+    )
+  (cond
+    ((-> obj drawing-flag)
+     (cond
+       ((= (-> *blit-displays-work* count-down) 1)
+        (set-pending-file
+          (-> obj bigmap-image)
+          "world-map"
+          (the-as int (-> obj load-index))
+          (process->handle *dproc*)
+          0.0
+          )
+        (set-pending-file (-> obj tpage) "progress-minimap" 0 (process->handle *dproc*) 0.0)
+        (set! (-> obj loading-flag) #t)
+        )
+       (else
+         (update (-> obj bigmap-image))
+         (update (-> obj tpage))
+         (when (and (-> obj loading-flag)
+                    (= (file-status (-> obj bigmap-image) "world-map" (the-as int (-> obj load-index))) 'active)
+                    (= (file-status (-> obj tpage) "progress-minimap" 0) 'active)
+                    (not (load-in-progress? *level*))
+                    )
+           (if (!= (-> obj bigmap-index) 20)
+               (bigmap-method-23 obj)
+               )
+           (let ((s5-0 (-> *level* loading-level))
+                 (s4-0 (-> *texture-pool* allocate-func))
+                 (s3-0 (-> *texture-relocate-later* memcpy))
+                 )
+             (set! (-> *texture-pool* allocate-func) texture-page-common-boot-allocate)
+             (set! (-> *level* loading-level) #f)
+             (set! (-> *texture-relocate-later* memcpy) #f)
+             (set! (-> obj progress-minimap)
+                   (the-as
+                     texture-page
+                     (link (-> obj tpage buf) (-> obj tpage load-file data) (-> obj tpage len) (-> obj tpage heap) 4)
+                     )
+                   )
+             (set! (-> *level* loading-level) s5-0)
+             (set! (-> *texture-pool* allocate-func) s4-0)
+             (set! (-> *texture-relocate-later* memcpy) s3-0)
+             )
+           (set! (-> obj loading-flag) #f)
+           )
+         )
+       )
+     )
+    ((!= (-> obj bigmap-index) 20)
+     (set! (-> obj offset quad) (-> *bigmap-info-array* data (-> obj mask-index) quad))
+     (when (!= (-> obj bigmap-index) (-> obj mask-index))
+       (if (!= (-> obj mask-index) 20)
+           (bigmap-method-19 obj)
+           )
+       (set! (-> obj mask-index) (-> obj bigmap-index))
+       (bigmap-method-18 obj)
+       )
+     (when (!= (-> obj bigmap-index) (-> obj layer-index))
+       (set! (-> obj layer-index) (-> obj bigmap-index))
+       (unpack-comp-rle
+         (the-as (pointer int8) (-> obj layer-mask data))
+         (the-as (pointer int8) (-> obj compressed-layers data (-> obj layer-index)))
+         )
+       )
+     (bigmap-method-17 obj (target-pos 0))
+     (bigmap-method-20 obj)
+     (cond
+       ((-> obj recording-flag)
+        (when (-> obj fill-flag)
+          (let ((a1-9 (-> obj pos x))
+                (a2-5 (-> obj pos y))
+                )
+            (if (and (>= a1-9 0) (< a1-9 256) (>= a2-5 0) (< a2-5 208))
+                (bigmap-method-21 obj a1-9 a2-5)
+                )
+            )
+          )
+        )
+       (else
+         (let* ((f0-1 (* 131072.0 (-> obj offset w)))
+                (f30-0 (* f0-1 f0-1))
+                (s4-2 (the int (* 131072.0 (-> obj offset w))))
+                (s5-2 (- s4-2))
+                )
+           (while (>= s4-2 s5-2)
+             (let* ((f0-7 (the float s5-2))
+                    (s2-0 (the int (sqrtf (- f30-0 (* f0-7 f0-7)))))
+                    (s3-1 (- s2-0))
+                    )
+               (while (>= s2-0 s3-1)
+                 (let ((a1-10 (+ (-> obj pos x) s3-1))
+                       (a2-6 (+ (-> obj pos y) s5-2))
+                       )
+                   (if (and (>= a1-10 0) (< a1-10 256) (>= a2-6 0) (< a2-6 208))
+                       (bigmap-method-21 obj a1-10 a2-6)
+                       )
+                   )
+                 (+! s3-1 1)
+                 )
+               )
+             (+! s5-2 1)
+             )
+           )
+         )
+       )
+     )
+    (else
+      (set-vector! (-> obj offset) -2621440.0 -4456448.0 16384.0 0.000030517578)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type bigmap
+;; INFO: Used lq/sq
+(defmethod bigmap-method-11 bigmap ((obj bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+  (local-vars (sv-96 pointer) (sv-100 texture) (sv-104 matrix) (sv-112 int))
+  (with-pp
+    (when (and (= (file-status (-> obj bigmap-image) "world-map" (the-as int (-> obj load-index))) 'active)
+               (not (-> obj loading-flag))
+               )
+      (let ((f0-0 (-> *video-params* relative-x-scale)))
+        (cond
+          ((-> *blit-displays-work* horizontal-flip-flag)
+           (set! (-> obj x0) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
+           (set! (-> obj x1) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
+           )
+          (else
+            (set! (-> obj x0) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
+            (set! (-> obj x1) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
+            )
+          )
+        )
+      (set! (-> obj y0) arg1)
+      (set! (-> obj y1) arg3)
+      (set! (-> obj y2) (/ (+ arg1 arg3) 2))
+      (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id tex-all-map)
+                                   )
+        (dma-buffer-add-gs-set s4-1
+                               (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                               (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                               (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                               )
+        (if (= (-> obj bigmap-index) 20)
+            (bigmap-method-25 obj s4-1)
+            (bigmap-method-24 obj s4-1)
+            )
+        )
+      (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id tex-all-map)
+                                   )
+        (when (= (-> obj y0) 1840)
+          (let ((s2-1 (-> s4-2 base))
+                (s3-1 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x15 :page #xc93)))
+                )
+            (when s3-1
+              (set! (-> (the-as (pointer uint128) s2-1) 0) (-> obj adgif-tmpl dma-vif quad))
+              (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
+              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s3-1)
+              (&+! (-> s4-2 base) 112)
+              )
+            (if (not s3-1)
+                (format 0 "ERROR: bigmap: mini-map-icons texture is #f~%")
+                )
+            )
+          (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list))))
+            (while s3-2
+              (let ((a2-3 (the-as connection-minimap s3-2)))
+                (when (logtest? (-> a2-3 class flags) (minimap-flag bigmap))
+                  (cond
+                    ((= (-> obj bigmap-index) 20)
+                     (bigmap-method-27 obj s4-2 a2-3)
+                     )
+                    (else
+                      (if (not (logtest? (-> a2-3 class flags) (minimap-flag city-only)))
+                          (bigmap-method-27 obj s4-2 a2-3)
+                          )
+                      )
+                    )
+                  )
+                )
+              (set! s3-2 (-> s3-2 next))
+              )
+            )
+          (let ((s3-3 (new 'stack-no-clear 'vector))
+                (f30-0 (-> *video-params* relative-x-scale))
+                )
+            (vector-z-quaternion! s3-3 (-> *target* control quat))
+            (vector-xz-normalize! s3-3 -1.0)
+            (set! (-> s3-3 y) 0.0)
+            (set! (-> s3-3 w) 0.0)
+            (set! sv-96 (-> s4-2 base))
+            (set! sv-100 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
+            (set! sv-104 (new 'stack-no-clear 'matrix))
+            (set! sv-112 (the int (* 56.0 f30-0)))
+            (when sv-100
+              (bigmap-method-17 obj (target-pos 0))
+              (if (-> *blit-displays-work* horizontal-flip-flag)
+                  (set! f30-0 (- f30-0))
+                  )
+              (set-vector! (-> (the-as matrix sv-104) vector 0) (* (-> s3-3 z) f30-0) 0.0 (- (-> s3-3 x)) 0.0)
+              (set-vector! (-> (the-as matrix sv-104) vector 1) 0.0 1.0 0.0 0.0)
+              (set-vector! (-> (the-as matrix sv-104) vector 2) (* (-> s3-3 x) f30-0) 0.0 (-> s3-3 z) 1.0)
+              (set-vector!
+                (-> (the-as matrix sv-104) trans)
+                (+ (the float (-> obj x0)) (* 2.0 f30-0 (the float (-> obj pos x))))
+                0.0
+                (- (the float (+ (* (-> obj pos y) 2) 1840)) (-> obj scroll y))
+                1.0
+                )
+              (set-vector! (-> obj corner 0) 0.0 0.0 -7.0 1.0)
+              (set-vector! (-> obj corner 1) 7.0 0.0 0.0 1.0)
+              (set-vector! (-> obj corner 2) -7.0 0.0 0.0 1.0)
+              (set-vector! (-> obj corner 3) 0.0 0.0 7.0 1.0)
+              (vector-matrix*! (the-as vector (-> obj corner)) (the-as vector (-> obj corner)) sv-104)
+              (vector-matrix*! (-> obj corner 1) (-> obj corner 1) sv-104)
+              (vector-matrix*! (-> obj corner 2) (-> obj corner 2) sv-104)
+              (vector-matrix*! (-> obj corner 3) (-> obj corner 3) sv-104)
+              (let ((v1-101 (-> obj adgif-tmpl dma-vif quad)))
+                (set! (-> (the-as (pointer uint128) sv-96)) v1-101)
+                )
+              (let ((v1-102 (-> obj adgif-tmpl quad 1)))
+                (set! (-> (the-as (pointer uint128) sv-96) 1) v1-102)
+                )
+              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ sv-96 32)) sv-100)
+              (let ((v1-104 (-> obj draw-tmpl dma-vif quad)))
+                (set! (-> (the-as (pointer uint128) sv-96) 7) v1-104)
+                )
+              (let ((v1-105 (-> obj draw-tmpl quad 1)))
+                (set! (-> (the-as (pointer uint128) sv-96) 8) v1-105)
+                )
+              (set-vector! (the-as vector4w (&+ sv-96 144)) 0 255 255 128)
+              (set-vector! (the-as vector4w (&+ sv-96 160)) 0 0 0 0)
+              (set-vector!
+                (the-as vector4w (&+ sv-96 176))
+                (the int (* 16.0 (-> obj corner 0 x)))
+                (the int (* 16.0 (-> obj corner 0 z)))
+                #xffffff
+                0
+                )
+              (set-vector! (the-as vector4w (&+ sv-96 192)) 256 0 0 0)
+              (set-vector!
+                (the-as vector4w (&+ sv-96 208))
+                (the int (* 16.0 (-> obj corner 1 x)))
+                (the int (* 16.0 (-> obj corner 1 z)))
+                #xffffff
+                0
+                )
+              (set-vector! (the-as vector4w (&+ sv-96 224)) 0 256 0 0)
+              (set-vector!
+                (the-as vector4w (&+ sv-96 240))
+                (the int (* 16.0 (-> obj corner 2 x)))
+                (the int (* 16.0 (-> obj corner 2 z)))
+                #xffffff
+                0
+                )
+              (set-vector! (the-as vector4w (&+ sv-96 256)) 256 256 0 0)
+              (set-vector!
+                (the-as vector4w (&+ sv-96 272))
+                (the int (* 16.0 (-> obj corner 3 x)))
+                (the int (* 16.0 (-> obj corner 3 z)))
+                #xffffff
+                0
+                )
+              (&+! (-> s4-2 base) 288)
+              )
+            )
+          )
+        )
+      (+! (-> obj goal-time) (* 16.0 (-> pp clock seconds-per-frame)))
+      (set-dirty-mask! (-> *level* default-level) 4 #x1a400 0)
+      )
+    0
+    )
+  )
+
+;; definition for method 12 of type bigmap
+;; INFO: Used lq/sq
+(defmethod bigmap-method-12 bigmap ((obj bigmap))
+  (cond
+    ((= (-> obj bigmap-index) 20)
+     (let* ((v1-2 (-> *cpad-list* cpads 0))
+            (f1-0 (analog-input (the-as int (-> v1-2 lefty)) 128.0 32.0 110.0 4.0))
+            )
+       (set! (-> obj scroll y) (fmax 0.0 (fmin 416.0 (+ (-> obj scroll y) f1-0))))
+       )
+     )
+    (else
+      (set! (-> obj scroll quad) (the-as uint128 0))
+      0
+      )
+    )
+  0
+  )
+
+;; definition for method 13 of type bigmap
+(defmethod bigmap-method-13 bigmap ((obj bigmap))
+  (when (!= (-> obj mask-index) 20)
+    (bigmap-method-19 obj)
+    (set! (-> obj mask-index) (the-as uint 20))
+    )
+  0
+  )
+
+;; definition for method 14 of type bigmap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defmethod bigmap-method-14 bigmap ((obj bigmap))
+  (set! (-> obj bigmap-index) (the-as uint (-> (level-get-target-inside *level*) info bigmap-id)))
+  (cond
+    ((= (-> obj bigmap-index) 20)
+     (bigmap-method-17 obj (target-pos 0))
+     (set! (-> obj scroll y) (the float (max 0 (+ (* (-> obj pos y) 2) -208))))
+     (set-vector! (-> obj draw-offset) -2621440.0 -4456448.0 16384.0 0.000030517578)
+     (cond
+       ((logtest? (game-feature pass-red) (-> *game-info* features))
+        (cond
+          ((and (logtest? (game-feature pass-green) (-> *game-info* features))
+                (logtest? (game-feature pass-yellow) (-> *game-info* features))
+                )
+           (set! (-> obj load-index) (the-as uint 24))
+           )
+          ((logtest? (game-feature pass-green) (-> *game-info* features))
+           (set! (-> obj load-index) (the-as uint 23))
+           )
+          ((logtest? (game-feature pass-yellow) (-> *game-info* features))
+           (set! (-> obj load-index) (the-as uint 22))
+           )
+          (else
+            (set! (-> obj load-index) (the-as uint 21))
+            )
+          )
+        )
+       (else
+         (set! (-> obj load-index) (the-as uint 20))
+         )
+       )
+     )
+    (else
+      (set! (-> obj scroll y) 0.0)
+      (set! (-> obj draw-offset quad) (-> *bigmap-info-array* data (-> obj bigmap-index) quad))
+      (set! (-> obj load-index) (-> obj bigmap-index))
+      )
+    )
+  (set! (-> obj drawing-flag) #t)
+  (none)
+  )
+
+;; definition for method 15 of type bigmap
+(defmethod bigmap-method-15 bigmap ((obj bigmap))
+  (set-pending-file
+    (-> obj bigmap-image)
+    (the-as string #f)
+    (the-as int (-> obj bigmap-index))
+    (process->handle *dproc*)
+    0.0
+    )
+  (set-pending-file (-> obj tpage) (the-as string #f) 0 (process->handle *dproc*) 0.0)
+  (let ((v1-8 #f))
+    (while (not v1-8)
+      (update (-> obj bigmap-image))
+      (update (-> obj tpage))
+      (set! v1-8 (and (= (-> obj bigmap-image status) 'inactive) (= (-> obj tpage status) 'inactive)))
+      )
+    )
+  (when (-> obj progress-minimap)
+    (unload-page *texture-pool* (-> obj progress-minimap))
+    (set! (-> *level* default-level texture-page 3) (the-as texture-page 0))
+    (set! (-> obj progress-minimap) #f)
+    )
+  (set! (-> obj drawing-flag) #f)
+  (set! (-> obj loading-flag) #f)
+  0
+  )
+
+;; definition for symbol *map-save-ptr*, type (pointer uint64)
+(define *map-save-ptr* (the-as (pointer uint64) #f))
+
+;; definition for method 16 of type bigmap
+(defmethod dump-to-file bigmap ((obj bigmap))
+  (if (not *map-save-ptr*)
+      (set! *map-save-ptr* (the-as (pointer uint64) (malloc 'debug #xd0000)))
+      )
+  (let ((v1-3 (the-as (pointer uint8) (-> obj bit-mask)))
+        (a0-2 *map-save-ptr*)
+        )
+    (dotimes (a1-1 208)
+      (dotimes (a2-0 32)
+        (let ((a3-0 (-> v1-3 0)))
+          (dotimes (t0-0 8)
+            (cond
+              ((not (logtest? a3-0 (ash 1 t0-0)))
+               (set! (-> a0-2 0) (the-as uint 0))
+               (set! (-> a0-2 256) (the-as uint 0))
+               0
+               )
+              (else
+                (set! (-> a0-2 0) (the-as uint #x8080808080808080))
+                (set! (-> a0-2 256) (the-as uint #x8080808080808080))
+                )
+              )
+            (set! a0-2 (&-> a0-2 1))
+            )
+          )
+        (set! v1-3 (&-> v1-3 1))
+        )
+      (set! a0-2 (&-> a0-2 256))
+      )
+    )
+  (level-get-target-inside *level*)
+  (let ((gp-1 512)
+        (s5-0 416)
+        )
+    (set! (-> *image-name* data 0) (the-as uint 0))
+    (format *image-name* "final/mapsave/tombb-map.raw")
+    (format 0 "writing ~s~%" *image-name*)
+    (let ((s4-0 (new 'stack 'file-stream *image-name* 'write)))
+      (file-stream-write s4-0 *map-save-ptr* (the-as uint (* (* s5-0 gp-1) 4)))
+      (file-stream-close s4-0)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "bigmap")
+
+;; definition for symbol *bigmap*, type bigmap
+(define *bigmap* (new 'global 'bigmap))
+
+;; failed to figure out what this is:
+(kmemclose)

@@ -7,3 +7,689 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch int vs drawable-region-prim.
+(defmethod mem-usage drawable-region-prim ((obj drawable-region-prim) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 50 (-> arg0 length)))
+  (set! (-> arg0 data 49 name) "region")
+  (+! (-> arg0 data 49 count) 1)
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 49 used) v1-6)
+    (+! (-> arg0 data 49 total) (logand -16 (+ v1-6 15)))
+    )
+  (mem-usage (-> obj region) arg0 (logior arg1 128))
+  (the-as drawable-region-prim 0)
+  )
+
+;; WARN: Return type mismatch int vs drawable-inline-array-region-prim.
+(defmethod mem-usage drawable-inline-array-region-prim ((obj drawable-inline-array-region-prim) (arg0 memory-usage-block) (arg1 int))
+  (set! (-> arg0 length) (max 1 (-> arg0 length)))
+  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
+  (+! (-> arg0 data 0 count) 1)
+  (let ((v1-7 32))
+    (+! (-> arg0 data 0 used) v1-7)
+    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
+    )
+  (dotimes (s3-0 (-> obj length))
+    (mem-usage (-> obj data s3-0) arg0 arg1)
+    )
+  (the-as drawable-inline-array-region-prim 0)
+  )
+
+(defmethod draw drawable-tree-region-prim ((obj drawable-tree-region-prim) (arg0 drawable-tree-region-prim) (arg1 display-frame))
+  0
+  (none)
+  )
+
+(defmethod unpack-vis drawable-tree-region-prim ((obj drawable-tree-region-prim) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  arg1
+  )
+
+(defmethod collect-regions drawable-region-prim ((obj drawable-region-prim) (area-of-interest sphere) (_count int) (region-list region-prim-list))
+  "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
+@param area-of-interest The area defined by a sphere that we care about overlaps
+@param _count The amount of [[drawable]]s in the object to enumerate through
+@param! region-list Stores the overlapping regions and a count for how many were found
+@returns none"
+  (dotimes (count _count)
+    (when (spheres-overlap? area-of-interest (the-as sphere (-> obj bsphere)))
+      (set! (-> region-list items (-> region-list num-items)) obj)
+      (+! (-> region-list num-items) 1)
+      )
+    (&+! obj 32)
+    )
+  0
+  (none)
+  )
+
+(defmethod collect-regions drawable-inline-array-region-prim ((obj drawable-inline-array-region-prim) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
+@param area-of-interest The area defined by a sphere that we care about overlaps
+@param _count The amount of [[drawable]]s in the object to enumerate through
+@param! region-list Stores the overlapping regions and a count for how many were found
+@returns none"
+  (collect-regions (the-as drawable-region-prim (-> obj data)) arg0 (-> obj length) arg2)
+  0
+  (none)
+  )
+
+(defmethod collect-regions drawable-tree-region-prim ((obj drawable-tree-region-prim) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
+@param area-of-interest The area defined by a sphere that we care about overlaps
+@param _count The amount of [[drawable]]s in the object to enumerate through
+@param! region-list Stores the overlapping regions and a count for how many were found
+@returns none"
+  (collect-regions (-> obj data2 0) arg0 (-> obj length) arg2)
+  0
+  (none)
+  )
+
+(defmethod debug-draw-region drawable-region-prim ((obj drawable-region-prim) (arg0 int))
+  (local-vars (sv-32 vector2h) (sv-36 vector))
+  (set! sv-32 (new 'stack 'vector2h))
+  (set! sv-36 (-> obj bsphere))
+  (add-debug-x #t (bucket-id debug-no-zbuf1) sv-36 (new 'static 'rgba :r #xff :g #xff :a #x80))
+  (when (nonzero? (-> obj region))
+    (let ((s5-0 add-debug-text-3d)
+          (s4-0 #t)
+          (s3-0 (bucket-id debug-no-zbuf1))
+          )
+      (format (clear *temp-string*) "region-~D~%" (-> obj region id))
+      (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* sv-36 (font-color white) sv-32)
+      )
+    (+! (-> sv-32 y) 8)
+    (let ((s5-1 (-> obj region on-enter)))
+      (when s5-1
+        (let ((s4-1 add-debug-text-3d)
+              (s3-1 #t)
+              (s2-1 (bucket-id debug-no-zbuf1))
+              )
+          (format (clear *temp-string*) "(on-enter ~S)" s5-1)
+          (s4-1 s3-1 (the-as bucket-id s2-1) *temp-string* sv-36 (font-color white) sv-32)
+          )
+        (+! (-> sv-32 y) 8)
+        )
+      )
+    (let ((s5-2 (-> obj region on-inside)))
+      (when s5-2
+        (let ((s4-2 add-debug-text-3d)
+              (s3-2 #t)
+              (s2-2 (bucket-id debug-no-zbuf1))
+              )
+          (format (clear *temp-string*) "(on-inside ~S)" s5-2)
+          (s4-2 s3-2 (the-as bucket-id s2-2) *temp-string* sv-36 (font-color white) sv-32)
+          )
+        (+! (-> sv-32 y) 8)
+        )
+      )
+    (let ((gp-1 (-> obj region on-exit)))
+      (when gp-1
+        (let ((s5-3 add-debug-text-3d)
+              (s4-3 #t)
+              (s3-3 (bucket-id debug-no-zbuf1))
+              )
+          (format (clear *temp-string*) "(on-exit ~S)" gp-1)
+          (s5-3 s4-3 (the-as bucket-id s3-3) *temp-string* sv-36 (font-color white) sv-32)
+          )
+        (+! (-> sv-32 y) 8)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod track-region drawable-region-prim ((obj drawable-region-prim) (arg0 region-prim-area))
+  "TODO"
+  #f
+  )
+
+(defmethod within-area? drawable-region-prim ((obj drawable-region-prim) (arg0 region-prim-area))
+  "@returns Whether or not the object overlaps with the provided [[region-prim-area]]'s extent"
+  #f
+  )
+
+;; WARN: Function (method 9 region-prim-area) has a return type of none, but the expression builder found a return statement.
+(defmethod track-entered-region! region-prim-area ((obj region-prim-area) (region-sphere drawable-region-sphere))
+  "Enumerates through the objects `region-enter-list`, if we find the provided `region`, do nothing and exit
+otherwise, add the [[drawable-region-sphere]] to `region-enter-prim-list` and increment `region-enter-count`
+
+@param region-sphere Defines the region in question
+@returns nothing"
+  (let ((regions-entered (-> obj region-enter-count)))
+    (let ((region (-> region-sphere region)))
+      (countdown (idx regions-entered)
+        (if (= (-> obj region-enter-list idx) region)
+            (return #f)
+            )
+        )
+      (set! (-> obj region-enter-list regions-entered) (the-as region-prim-area region))
+      )
+    (set! (-> obj region-enter-prim-list regions-entered) region-sphere)
+    (set! (-> obj region-enter-count) (+ regions-entered 1))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Function (method 10 region-prim-area) has a return type of none, but the expression builder found a return statement.
+(defmethod track-exited-region! region-prim-area ((obj region-prim-area) (arg0 drawable-region-sphere))
+  "Enumerates through the objects `region-exit-list`, if we find the provided `region`, do nothing and exit
+otherwise, add the [[drawable-region-sphere]] to `region-exit-prim-list` and increment `region-exit-count`
+
+@param region-sphere Defines the region in question
+@returns nothing"
+  (let ((regions-exited (-> obj region-exit-count)))
+    (let ((region (-> arg0 region)))
+      (countdown (idx regions-exited)
+        (if (= (-> obj region-exit-list idx) region)
+            (return #f)
+            )
+        )
+      (set! (-> obj region-exit-list regions-exited) (the-as region-prim-area region))
+      )
+    (set! (-> obj region-exit-prim-list regions-exited) arg0)
+    (set! (-> obj region-exit-count) (+ regions-exited 1))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Function (method 11 region-prim-area) has a return type of none, but the expression builder found a return statement.
+(defmethod track-inside-region! region-prim-area ((obj region-prim-area) (arg0 drawable-region-sphere))
+  "Enumerates through the objects `region-inside-list`, if we find the provided `region`, do nothing and exit
+otherwise, add the [[drawable-region-sphere]] to `region-inside-prim-list` and increment `region-inside-count`
+
+@param region-sphere Defines the region in question
+@returns nothing"
+  (let ((regions-inside (-> obj region-inside-count)))
+    (let ((region (-> arg0 region)))
+      (countdown (idx regions-inside)
+        (if (= (-> obj region-inside-list idx) region)
+            (return #f)
+            )
+        )
+      (set! (-> obj region-inside-list regions-inside) (the-as region-prim-area region))
+      )
+    (set! (-> obj region-inside-prim-list regions-inside) arg0)
+    (set! (-> obj region-inside-count) (+ regions-inside 1))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Function (method 12 region-prim-area) has a return type of none, but the expression builder found a return statement.
+(defmethod track-start-region! region-prim-area ((obj region-prim-area) (arg0 drawable-region-sphere))
+  "Enumerates through the objects `region-start-list`, if we find the provided `region`, do nothing and exit
+otherwise, add the [[drawable-region-sphere]] to `region-start-prim-list` and increment `region-start-count`
+
+@param region-sphere Defines the region in question
+@returns nothing"
+  (let ((regions-started (-> obj region-start-count)))
+    (let ((region (-> arg0 region)))
+      (countdown (idx regions-started)
+        (if (= (-> obj region-start-list idx) region)
+            (return #f)
+            )
+        )
+      (set! (-> obj region-start-list regions-started) (the-as region-prim-area region))
+      )
+    (set! (-> obj region-start-prim-list regions-started) arg0)
+    (set! (-> obj region-start-count) (+ regions-started 1))
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw-region drawable-region-sphere ((obj drawable-region-sphere) (arg0 int))
+  (let ((t9-0 (method-of-type drawable-region-prim debug-draw-region)))
+    (t9-0 obj arg0)
+    )
+  (let ((a2-0 (-> obj bsphere)))
+    (add-debug-sphere #t (bucket-id debug2) a2-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x80))
+    )
+  0
+  (none)
+  )
+
+(defmethod track-region drawable-region-sphere ((obj drawable-region-sphere) (area region-prim-area))
+  "TODO"
+  (-> obj region)
+  (let ((area-of-interest (-> obj bsphere)))
+    (if (< 0.0 (ray-sphere-intersect (-> area pos) (-> area ray) area-of-interest (-> area-of-interest w)))
+        (track-entered-region! area obj)
+        )
+    (if (< 0.0 (ray-sphere-intersect
+                 (-> area unknown-vector-uiyb1)
+                 (-> area unknown-vector-t3edh)
+                 area-of-interest
+                 (-> area-of-interest w)
+                 )
+           )
+        (track-exited-region! area obj)
+        )
+    (if (spheres-overlap? (the-as sphere (-> area pos)) (the-as sphere area-of-interest))
+        (track-start-region! area obj)
+        )
+    (when (spheres-overlap? (the-as sphere (-> area unknown-vector-uiyb1)) (the-as sphere area-of-interest))
+      (track-inside-region! area obj)
+      #t
+      )
+    )
+  )
+
+(defmethod within-area? drawable-region-sphere ((obj drawable-region-sphere) (area region-prim-area))
+  "@returns Whether or not the object overlaps with the provided [[region-prim-area]]'s extent"
+  (spheres-overlap? (the-as sphere (-> area pos)) (the-as sphere (-> obj bsphere)))
+  )
+
+(defmethod debug-draw-region drawable-region-face ((obj drawable-region-face) (arg0 int))
+  (when (zero? arg0)
+    (let ((t9-0 (method-of-type drawable-region-prim debug-draw-region)))
+      (t9-0 obj arg0)
+      )
+    )
+  (let ((s5-0 (-> obj bsphere)))
+    (add-debug-vector
+      #t
+      (bucket-id debug-no-zbuf1)
+      s5-0
+      (-> obj data normal)
+      (meters 2)
+      (new 'static 'rgba :r #xff :g #xff :a #x80)
+      )
+    (add-debug-sphere #t (bucket-id debug2) s5-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x30))
+    )
+  (add-debug-bound
+    (bucket-id debug2)
+    (-> obj data points)
+    (the-as int (-> obj data num-points))
+    (new 'static 'rgba :r #xff :g #xff :a #x80)
+    (new 'static 'rgba :r #xff :a #x80)
+    0
+    )
+  0
+  (none)
+  )
+
+(defmethod track-region drawable-region-face ((obj drawable-region-face) (arg0 region-prim-area))
+  "TODO"
+  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 object))
+  (-> obj region)
+  (let* ((s4-0 (-> obj data))
+         (v1-1 (-> s4-0 normal))
+         (a0-3 (>= 0.0 (- (vector-dot (-> arg0 pos) v1-1) (-> v1-1 w))))
+         (s3-0 (>= 0.0 (- (vector-dot (-> arg0 unknown-vector-uiyb1) v1-1) (-> v1-1 w))))
+         )
+    (when (!= a0-3 s3-0)
+      (when (nonzero? (-> s4-0 num-points))
+        (set! sv-48 (new 'stack-no-clear 'vector))
+        (set! sv-52 (new 'stack-no-clear 'vector))
+        (set! sv-56 (the-as (inline-array vector) (-> s4-0 points)))
+        (ray-plane-intersect
+          sv-48
+          sv-52
+          (-> arg0 pos)
+          (-> arg0 ray)
+          (-> (the-as (inline-array vector) sv-56) 0)
+          (-> (the-as (inline-array vector) sv-56) 1)
+          (-> (the-as (inline-array vector) sv-56) 2)
+          )
+        (let ((s4-1 (-> s4-0 num-points))
+              (s2-0 0)
+              (s1-0 (vector-negate! (new 'stack-no-clear 'vector) sv-52))
+              )
+          (while (< (+ s2-0 2) (the-as int s4-1))
+            (if (the-as
+                  (inline-array vector)
+                  (or (point-in-triangle-cross
+                        sv-48
+                        sv-52
+                        (-> (the-as (inline-array vector) sv-56) 0)
+                        (-> (the-as (inline-array vector) sv-56) 1)
+                        (-> (the-as (inline-array vector) sv-56) 2)
+                        )
+                      (the-as (inline-array vector) (point-in-triangle-cross
+                                                      sv-48
+                                                      s1-0
+                                                      (-> (the-as (inline-array vector) sv-56) 0)
+                                                      (-> (the-as (inline-array vector) sv-56) 1)
+                                                      (-> (the-as (inline-array vector) sv-56) 2)
+                                                      )
+                              )
+                      )
+                  )
+                (goto cfg-17)
+                )
+            (+! s2-0 1)
+            (set! sv-56 (-> (the-as (inline-array vector) sv-56) 1))
+            )
+          )
+        (set! s3-0 s3-0)
+        (goto cfg-20)
+        )
+      (label cfg-17)
+      (if s3-0
+          (track-entered-region! arg0 (the-as drawable-region-sphere obj))
+          (track-exited-region! arg0 (the-as drawable-region-sphere obj))
+          )
+      )
+    (label cfg-20)
+    s3-0
+    )
+  )
+
+(defmethod debug-draw-region drawable-region-volume ((obj drawable-region-volume) (arg0 int))
+  (let ((t9-0 (method-of-type drawable-region-prim debug-draw-region)))
+    (t9-0 obj arg0)
+    )
+  (let* ((s5-0 (-> obj faces length))
+         (s4-0 0)
+         (a0-3 (the-as object (+ (+ (* s4-0 32) 16) (the-as int (-> obj faces)))))
+         )
+    (while (< s4-0 s5-0)
+      (debug-draw-region (the-as drawable-region-face a0-3) 1)
+      (+! s4-0 1)
+      (set! a0-3 (+ (+ (* s4-0 32) 16) (the-as int (-> obj faces))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod track-region drawable-region-volume ((obj drawable-region-volume) (area region-prim-area))
+  "TODO"
+  (if (within-area? obj area)
+      (track-start-region! area (the-as drawable-region-sphere obj))
+      )
+  (let* ((s4-0 (-> obj faces length))
+         (s3-0 0)
+         (a0-4 (the-as object (+ (+ (* s3-0 32) 16) (the-as int (-> obj faces)))))
+         )
+    (while (< s3-0 s4-0)
+      (if (not (track-region (the-as drawable-region-face a0-4) area))
+          (return #f)
+          )
+      (+! s3-0 1)
+      (set! a0-4 (+ (+ (* s3-0 32) 16) (the-as int (-> obj faces))))
+      )
+    )
+  (track-inside-region! area (the-as drawable-region-sphere obj))
+  #t
+  )
+
+(defmethod within-area? drawable-region-volume ((obj drawable-region-volume) (arg0 region-prim-area))
+  "@returns Whether or not the object overlaps with the provided [[region-prim-area]]'s extent"
+  (let* ((v1-1 (-> obj faces length))
+         (a2-0 0)
+         (a3-2 (the-as object (+ (+ (* a2-0 32) 16) (the-as int (-> obj faces)))))
+         )
+    (while (< a2-0 v1-1)
+      (let ((a3-4 (-> (the-as drawable-region-face a3-2) data normal)))
+        (if (< 0.0 (- (vector-dot (-> arg0 pos) a3-4) (-> a3-4 w)))
+            (return #f)
+            )
+        )
+      (+! a2-0 1)
+      (set! a3-2 (+ (+ (* a2-0 32) 16) (the-as int (-> obj faces))))
+      )
+    )
+  #t
+  )
+
+(defmethod drawable-tree-region-prim-method-17 drawable-tree-region-prim ((obj drawable-tree-region-prim) (arg0 vector))
+  (sphere<-vector+r! (the-as sphere (-> (the-as region-prim-area (scratchpad-object region-prim-area)) pos)) arg0 0.0)
+  (let* ((s5-0 (-> obj data2 (+ (-> obj length) -1) length))
+         (s4-0 0)
+         (a0-8 (the-as object (+ (+ (* s4-0 32) 32) (the-as int (-> obj data2 (+ (-> obj length) -1))))))
+         )
+    (while (< s4-0 s5-0)
+      (if (within-area? (the-as drawable-region-prim a0-8) (scratchpad-object region-prim-area))
+          (return #t)
+          )
+      (+! s4-0 1)
+      (set! a0-8 (+ (+ (* s4-0 32) 32) (the-as int (-> obj data2 (+ (-> obj length) -1)))))
+      )
+    )
+  #f
+  )
+
+;; WARN: Return type mismatch int vs symbol.
+(defmethod region-method-9 region ((obj region) (arg0 vector))
+  (local-vars (sv-16 int) (sv-32 int))
+  (sphere<-vector+r! (the-as sphere (-> (the-as region-prim-area (scratchpad-object region-prim-area)) pos)) arg0 0.0)
+  (dotimes (s5-0 (-> *level* length))
+    (let ((s4-0 (-> *level* level s5-0)))
+      (when (= (-> s4-0 status) 'active)
+        (when (nonzero? (-> s4-0 bsp region-trees))
+          (let* ((s3-0 (-> s4-0 bsp region-trees length))
+                 (s2-0 0)
+                 (s1-0 (-> s4-0 bsp region-trees s2-0))
+                 )
+            (while (< s2-0 s3-0)
+              (let ((s0-0 (-> s1-0 data2 (+ (-> s1-0 length) -1) length)))
+                (set! sv-16 0)
+                (set! sv-32 (+ (+ (* sv-16 32) 32) (the-as int (-> s1-0 data2 (+ (-> s1-0 length) -1)))))
+                (while (< sv-16 s0-0)
+                  (if (and (= (-> (the-as drawable-region-prim sv-32) region) obj)
+                           (within-area?
+                             (the-as drawable-region-prim sv-32)
+                             (the-as region-prim-area (-> (the-as region-prim-area (scratchpad-object region-prim-area)) region-prim-list))
+                             )
+                           )
+                      (return (the-as symbol sv-32))
+                      )
+                  (set! sv-16 (+ sv-16 1))
+                  (set! sv-32 (+ (+ (* sv-16 32) 32) (the-as int (-> s1-0 data2 (+ (-> s1-0 length) -1)))))
+                  )
+                )
+              (+! s2-0 1)
+              (set! s1-0 (-> s4-0 bsp region-trees s2-0))
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as symbol #f)
+  )
+
+(defmethod debug-print drawable-tree-region-prim ((obj drawable-tree-region-prim) (arg0 vector) (arg1 object))
+  (sphere<-vector+r! (the-as sphere (+ 1296 (scratchpad-object int))) arg0 0.0)
+  (let* ((s4-0 (-> obj data2 (+ (-> obj length) -1) length))
+         (s3-0 0)
+         (s2-0 (the-as object (+ (+ (* s3-0 32) 32) (the-as int (-> obj data2 (+ (-> obj length) -1))))))
+         )
+    (while (< s3-0 s4-0)
+      (if (within-area? (the-as drawable-region-prim s2-0) (the-as region-prim-area (+ (scratchpad-object int) 0)))
+          (format
+            arg1
+            "    splitbox-~D ~A~%"
+            (-> (the-as drawable-region-prim s2-0) id)
+            (the-as drawable-region-prim s2-0)
+            )
+          )
+      (+! s3-0 1)
+      (set! s2-0 (+ (+ (* s3-0 32) 32) (the-as int (-> obj data2 (+ (-> obj length) -1)))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun region-tree-execute ((arg0 symbol) (arg1 vector) (arg2 vector))
+  (local-vars (sv-32 vector))
+  (set! sv-32 (vector-average! (new 'stack-no-clear 'vector) arg1 arg2))
+  (set! (-> sv-32 w) (* 0.5 (vector-vector-distance arg1 arg2)))
+  (set! (-> (scratchpad-object region-prim-area) region-prim-list num-items) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-enter-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-exit-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-inside-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-start-count) 0)
+  (sphere<-vector+r! (the-as sphere (-> (scratchpad-object region-prim-area) pos)) arg1 0.0)
+  (sphere<-vector+r! (the-as sphere (-> (scratchpad-object region-prim-area) unknown-vector-uiyb1)) arg2 0.0)
+  (vector-! (the-as vector (-> (scratchpad-object region-prim-area) ray)) arg2 arg1)
+  (vector-! (the-as vector (-> (scratchpad-object region-prim-area) unknown-vector-t3edh)) arg1 arg2)
+  (dotimes (s5-1 (-> *level* length))
+    (let ((v1-17 (-> *level* level s5-1)))
+      (when (= (-> v1-17 status) 'active)
+        (let ((s4-1 (-> v1-17 bsp region-trees)))
+          (when (nonzero? s4-1)
+            (let* ((s3-0 (-> s4-1 length))
+                   (s2-0 0)
+                   (a0-14 (-> s4-1 s2-0))
+                   )
+              (while (< s2-0 s3-0)
+                (if (= (-> a0-14 name) arg0)
+                    (collect-regions a0-14 (the-as sphere sv-32) 0 (-> (scratchpad-object region-prim-area) region-prim-list))
+                    )
+                (+! s2-0 1)
+                (set! a0-14 (-> s4-1 s2-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    (countdown (gp-1 (-> (scratchpad-object region-prim-area) region-prim-list num-items))
+      (track-region
+        (-> (scratchpad-object region-prim-area) region-prim-list items gp-1)
+        (the-as region-prim-area (-> (scratchpad-object region-prim-area) region-prim-list))
+        )
+      )
+    )
+  (let ((gp-2 (-> (scratchpad-object region-prim-area) region-enter-count)))
+    (while (begin (label cfg-22) (nonzero? gp-2))
+      (+! gp-2 -1)
+      (let* ((a2-5 (-> (scratchpad-object region-prim-area) region-enter-list gp-2))
+             (s5-2 (-> a2-5 region-prim-list items 0))
+             )
+        (when s5-2
+          (countdown (v1-47 (-> (scratchpad-object region-prim-area) region-start-count))
+            (if (= a2-5 (-> (scratchpad-object region-prim-area) region-start-list v1-47))
+                (goto cfg-22)
+                )
+            )
+          (script-eval
+            (the-as pair s5-2)
+            :key a2-5
+            :vector (-> (scratchpad-object region-prim-area) region-enter-prim-list gp-2 bsphere)
+            )
+          )
+        )
+      )
+    )
+  (let ((gp-3 (-> (scratchpad-object region-prim-area) region-exit-count)))
+    (while (begin (label cfg-31) (nonzero? gp-3))
+      (+! gp-3 -1)
+      (let* ((a2-6 (-> (scratchpad-object region-prim-area) region-exit-list gp-3))
+             (s5-3 (-> a2-6 region-prim-list items 2))
+             )
+        (when s5-3
+          (countdown (v1-64 (-> (scratchpad-object region-prim-area) region-inside-count))
+            (if (= a2-6 (-> (scratchpad-object region-prim-area) region-inside-list v1-64))
+                (goto cfg-31)
+                )
+            )
+          (script-eval
+            (the-as pair s5-3)
+            :key a2-6
+            :vector (-> (scratchpad-object region-prim-area) region-exit-prim-list gp-3 bsphere)
+            )
+          )
+        )
+      )
+    )
+  (countdown (gp-4 (-> (scratchpad-object region-prim-area) region-inside-count))
+    (let* ((a2-7 (-> (scratchpad-object region-prim-area) region-inside-list gp-4))
+           (s5-4 (-> a2-7 region-prim-list items 1))
+           )
+      (if s5-4
+          (script-eval
+            (the-as pair s5-4)
+            :key a2-7
+            :vector (-> (scratchpad-object region-prim-area) region-inside-prim-list gp-4 bsphere)
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defun region-execute ()
+  (set! (-> *level* camera-pos 1 quad) (-> *level* camera-pos 0 quad))
+  (set! (-> *level* camera-pos 0 quad) (-> (camera-pos) quad))
+  (set! (-> *level* target-pos 1 quad) (-> *level* target-pos 0 quad))
+  (set! (-> *level* target-pos 0 quad) (-> (target-pos 0) quad))
+  (when (and *execute-regions* (-> *setting-control* user-current region-mode) (not (paused?)))
+    (region-tree-execute 'camera (-> *level* camera-pos 1) (the-as vector (-> *level* camera-pos)))
+    (region-tree-execute 'target (-> *level* target-pos 1) (the-as vector (-> *level* target-pos)))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs drawable-region-prim.
+(defun region-prim-lookup-by-id ((arg0 int) (arg1 symbol) (arg2 symbol))
+  (let ((v1-0 -1))
+    (dotimes (a3-0 (-> *level* length))
+      (let ((t0-3 (-> *level* level a3-0)))
+        (when (= (-> t0-3 status) 'active)
+          (when (nonzero? (-> t0-3 bsp region-trees))
+            (let* ((t1-8 (-> t0-3 bsp region-trees length))
+                   (t2-1 0)
+                   (t3-2 (-> t0-3 bsp region-trees t2-1))
+                   )
+              (while (< t2-1 t1-8)
+                (when (or (not arg1) (= (-> t3-2 name) arg1))
+                  (let* ((t4-10 (-> t3-2 data2 (+ (-> t3-2 length) -1) length))
+                         (t5-0 0)
+                         (t6-2 (the-as object (+ (+ (* t5-0 32) 32) (the-as int (-> t3-2 data2 (+ (-> t3-2 length) -1))))))
+                         )
+                    (while (< t5-0 t4-10)
+                      (when (= (-> (the-as drawable-region-prim t6-2) region id) arg0)
+                        (+! v1-0 1)
+                        (if (= v1-0 arg2)
+                            (return (the-as drawable-region-prim t6-2))
+                            )
+                        )
+                      (+! t5-0 1)
+                      (set! t6-2 (+ (+ (* t5-0 32) 32) (the-as int (-> t3-2 data2 (+ (-> t3-2 length) -1)))))
+                      )
+                    )
+                  )
+                (+! t2-1 1)
+                (set! t3-2 (-> t0-3 bsp region-trees t2-1))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as drawable-region-prim #f)
+  )
+
+(defun region-lookup-by-id ((arg0 int))
+  (dotimes (v1-0 (-> *level* length))
+    (let ((a1-3 (-> *level* level v1-0)))
+      (when (= (-> a1-3 status) 'active)
+        (when (nonzero? (-> a1-3 bsp region-array))
+          (let* ((a2-8 (-> a1-3 bsp region-array length))
+                 (a3-1 0)
+                 (t0-2 (-> a1-3 bsp region-array data a3-1))
+                 )
+            (while (< a3-1 a2-8)
+              (if (= (-> t0-2 id) arg0)
+                  (return t0-2)
+                  )
+              (+! a3-1 1)
+              (set! t0-2 (-> a1-3 bsp region-array data a3-1))
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as region #f)
+  )

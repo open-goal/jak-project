@@ -327,7 +327,7 @@
         )
     (let ((s5-1 format)
           (s4-0 "~C~C~C")
-          (a2-0 (if (and arg0 (zero? (logand (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
+          (a2-0 (if (and arg0 (not (logtest? (-> *kernel-context* prevent-from-run) (-> arg0 mask))) (run-logic? arg0))
                     114
                     32
                     )
@@ -373,7 +373,6 @@
   )
 
 ;; definition for method 2 of type process
-;; INFO: this function exists in multiple non-identical object files
 (defmethod print process ((obj process))
   (format #t "#<~A ~S ~A :state ~S :flags " (-> obj type) (-> obj name) (-> obj status) (if (-> obj state)
                                                                                             (-> obj state name)
@@ -900,11 +899,10 @@
                      )
                    )
                   ((or (= arg0 'full) (-> s0-0 extra process))
-                   (add-debug-x #t (bucket-id debug-no-zbuf) s1-0 (the-as rgba (if (-> s0-0 extra process)
-                                                                                   (the-as uint #x8080ff80)
-                                                                                   (the-as uint #x800000ff)
-                                                                                   )
-                                                                          )
+                   (add-debug-x #t (bucket-id debug-no-zbuf) s1-0 (if (-> s0-0 extra process)
+                                                                      (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
+                                                                      (new 'static 'rgba :r #xff :a #x80)
+                                                                      )
                                 )
                    (set! sv-192 add-debug-text-3d)
                    (set! sv-208 #t)
@@ -1001,22 +999,20 @@
               (s4-2 (-> (the-as process-drawable s5-2) root trans))
               )
           (when s3-2
-            (add-debug-x #t (bucket-id debug-no-zbuf) s4-2 (the-as rgba (if (-> s3-2 extra process)
-                                                                            (the-as uint #x8080ff80)
-                                                                            (the-as uint #x800000ff)
-                                                                            )
-                                                                   )
+            (add-debug-x #t (bucket-id debug-no-zbuf) s4-2 (if (-> s3-2 extra process)
+                                                               (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80)
+                                                               (new 'static 'rgba :r #xff :a #x80)
+                                                               )
                          )
             (add-debug-text-3d
               #t
               (bucket-id debug-no-zbuf)
               (res-lump-struct s3-2 'name string)
               s4-2
-              (the-as font-color (if (logtest? (-> s3-2 extra perm status) (entity-perm-status bit-0 bit-1))
-                                     1
-                                     1
-                                     )
-                      )
+              (if (logtest? (-> s3-2 extra perm status) (entity-perm-status bit-0 bit-1))
+                  (font-color white)
+                  (font-color white)
+                  )
               (new 'static 'vector2h :y 8)
               )
             (add-debug-text-3d
@@ -1036,10 +1032,10 @@
             (debug-draw (-> (the-as process-drawable s5-2) nav))
             )
         (if (nonzero? (-> (the-as process-drawable s5-2) path))
-            (dummy-9 (-> (the-as process-drawable s5-2) path))
+            (debug-draw (-> (the-as process-drawable s5-2) path))
             )
         (if (nonzero? (-> (the-as process-drawable s5-2) vol))
-            (dummy-9 (-> (the-as process-drawable s5-2) vol))
+            (init! (-> (the-as process-drawable s5-2) vol))
             )
         )
       (if (and (the-as process-drawable s5-2)
@@ -1072,11 +1068,10 @@
                   (bucket-id debug-no-zbuf)
                   (the-as vector (&+ v0-35 0))
                   (the-as vector (&+ v0-35 16))
-                  (the-as rgba (if (is-object-visible? (-> s5-3 extra level) a1-31)
-                                   (the-as uint #x80808000)
-                                   (the-as uint #x80800080)
-                                   )
-                          )
+                  (if (is-object-visible? (-> s5-3 extra level) a1-31)
+                      (new 'static 'rgba :g #x80 :b #x80 :a #x80)
+                      (new 'static 'rgba :r #x80 :b #x80 :a #x80)
+                      )
                   )
                 )
             )
@@ -1095,10 +1090,10 @@
                                                  (debug-draw (-> arg0 nav))
                                                  )
                                              (if (nonzero? (-> arg0 path))
-                                                 (dummy-9 (-> arg0 path))
+                                                 (debug-draw (-> arg0 path))
                                                  )
                                              (if (nonzero? (-> arg0 vol))
-                                                 (dummy-9 (-> arg0 vol))
+                                                 (init! (-> arg0 vol))
                                                  )
                                              )
                                            (none)
@@ -1168,11 +1163,10 @@
                   (bucket-id debug)
                   (the-as vector (-> s3-4 data s2-4))
                   (the-as vector (+ (the-as uint (-> s3-4 data 0 max)) (* s2-4 32)))
-                  (the-as rgba (if (zero? (-> s4-4 index))
-                                   (the-as uint #x80808000)
-                                   (the-as uint #x808080ff)
-                                   )
-                          )
+                  (if (zero? (-> s4-4 index))
+                      (new 'static 'rgba :g #x80 :b #x80 :a #x80)
+                      (new 'static 'rgba :r #xff :g #x80 :b #x80 :a #x80)
+                      )
                   )
                 )
               )
@@ -1503,7 +1497,7 @@
                  )
       )
     )
-  (when (zero? (logand (-> obj status) (entity-perm-status user-set-from-cstage)))
+  (when (not (logtest? (-> obj status) (entity-perm-status user-set-from-cstage)))
     (set! (-> obj user-uint64) (the-as uint 0))
     0
     )
@@ -1594,7 +1588,7 @@
 
 ;; definition for method 12 of type process-drawable
 (defmethod run-logic? process-drawable ((obj process-drawable))
-  (or (zero? (logand (-> obj mask) (process-mask actor-pause)))
+  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
               (vector-vector-distance (-> obj root trans) (math-camera-pos))
               )
@@ -1606,7 +1600,7 @@
 
 ;; definition for method 9 of type entity-links
 (defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and (zero? (logand (-> obj perm status) (entity-perm-status bit-0 dead)))
+  (and (not (logtest? (-> obj perm status) (entity-perm-status bit-0 dead)))
        (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )
@@ -1665,7 +1659,7 @@
                         )
                       )
                      (else
-                       (if (and (-> v1-44 process) (zero? (logand (-> v1-44 perm status) (entity-perm-status bit-3))))
+                       (if (and (-> v1-44 process) (not (logtest? (-> v1-44 perm status) (entity-perm-status bit-3))))
                            (kill! (-> v1-44 entity))
                            )
                        )
@@ -1688,7 +1682,7 @@
                         )
                       )
                      (else
-                       (when (and (-> s0-0 process) (zero? (logand (-> s0-0 perm status) (entity-perm-status bit-3))))
+                       (when (and (-> s0-0 process) (not (logtest? (-> s0-0 perm status) (entity-perm-status bit-3))))
                          (kill! (-> s0-0 entity))
                          (set! sv-24 (+ sv-24 1))
                          )
@@ -1718,7 +1712,7 @@
                          )
                        )
                      (else
-                       (if (and (-> v1-84 process) (zero? (logand (-> v1-84 perm status) (entity-perm-status bit-3))))
+                       (if (and (-> v1-84 process) (not (logtest? (-> v1-84 perm status) (entity-perm-status bit-3))))
                            (kill! (-> v1-84 entity))
                            )
                        )
@@ -1735,7 +1729,7 @@
                  (let ((s1-1 (-> s4-5 data s2-3)))
                    (cond
                      ((and (< (vector-vector-distance (-> s1-1 trans) sv-16) (-> *ACTOR-bank* birth-dist))
-                           (zero? (logand (-> s1-1 perm status) (entity-perm-status bit-9 bit-10)))
+                           (not (logtest? (-> s1-1 perm status) (entity-perm-status bit-9 bit-10)))
                            )
                       (when (not (or (-> s1-1 process) (logtest? (-> s1-1 perm status) (entity-perm-status bit-0 dead))))
                         (birth! (-> s1-1 entity))
@@ -1746,7 +1740,7 @@
                         )
                       )
                      (else
-                       (if (and (-> s1-1 process) (zero? (logand (-> s1-1 perm status) (entity-perm-status bit-3))))
+                       (if (and (-> s1-1 process) (not (logtest? (-> s1-1 perm status) (entity-perm-status bit-3))))
                            (kill! (-> s1-1 entity))
                            )
                        )
@@ -1765,7 +1759,7 @@
                     (set! sv-32 (-> s3-5 data s1-2))
                     (cond
                       ((and (is-object-visible? s4-2 (-> sv-32 vis-id))
-                            (zero? (logand (-> sv-32 perm status) (entity-perm-status bit-9 bit-10)))
+                            (not (logtest? (-> sv-32 perm status) (entity-perm-status bit-9 bit-10)))
                             )
                        (when (not (or (-> sv-32 process) (logtest? (-> sv-32 perm status) (entity-perm-status bit-0 dead)) s0-1))
                          (birth! (-> sv-32 entity))
@@ -1784,7 +1778,7 @@
                          )
                        )
                       (else
-                        (when (and (-> sv-32 process) (zero? (logand (-> sv-32 perm status) (entity-perm-status bit-3))))
+                        (when (and (-> sv-32 process) (not (logtest? (-> sv-32 perm status) (entity-perm-status bit-3))))
                           (kill! (-> sv-32 entity))
                           (set! sv-24 (+ sv-24 1))
                           )
@@ -1844,7 +1838,7 @@
 
 ;; definition for method 30 of type entity-actor
 ;; INFO: Return type mismatch entity-perm-status vs none.
-(defmethod dummy-30 entity-actor ((obj entity-actor) (arg0 entity-perm-status) (arg1 symbol))
+(defmethod set-or-clear-status! entity-actor ((obj entity-actor) (arg0 entity-perm-status) (arg1 symbol))
   (let ((v1-0 (-> obj extra)))
     (if arg1
         (logior! (-> v1-0 perm status) arg0)
@@ -1875,8 +1869,6 @@
 
 ;; definition (debug) for function entity-speed-test
 ;; INFO: Return type mismatch entity vs none.
-;; ERROR: Unsupported inline assembly instruction kind - [mtc0 Count, r0]
-;; ERROR: Unsupported inline assembly instruction kind - [sync.p]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s4, Count]
 (defun-debug entity-speed-test ((arg0 string))
   (local-vars (s4-0 int))
@@ -1886,7 +1878,7 @@
       (reset-actors 'debug)
       0
       (disable-irq)
-      (.mtc0 Count r0)
+      (.mtc0 Count 0)
       (.sync.p)
       (birth! gp-0)
       (.mfc0 s4-0 Count)

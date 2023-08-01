@@ -67,6 +67,13 @@ struct FunctionName {
 
   bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
 
+  bool is_handler() const {
+    return kind == FunctionKind::NV_STATE || kind == FunctionKind::V_STATE;
+  }
+  bool is_handler(StateHandler shk) const { return is_handler() && handler_kind == shk; }
+
+  bool is_event_handler() const { return is_handler(StateHandler::EVENT); }
+
   void set_as_top_level(const std::string& object_file_name) {
     kind = FunctionKind::TOP_LEVEL_INIT;
     object_name = object_file_name;
@@ -118,6 +125,7 @@ class Function {
   int end_word = -1;  // not inclusive, but does include padding.
 
   FunctionName guessed_name;
+  std::string state_handler_as_anon_func;
 
   bool suspected_asm = false;
   bool is_inspect_method = false;

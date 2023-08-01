@@ -1,0 +1,266 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 19 of type bounding-box
+(defmethod inside-xyz? bounding-box ((obj bounding-box) (arg0 vector))
+  (and (< (-> obj min x) (-> arg0 x))
+       (< (-> obj min y) (-> arg0 y))
+       (< (-> obj min z) (-> arg0 z))
+       (< (-> arg0 x) (-> obj max x))
+       (< (-> arg0 y) (-> obj max y))
+       (< (-> arg0 z) (-> obj max z))
+       )
+  )
+
+;; definition for method 20 of type bounding-box
+(defmethod inside-xz? bounding-box ((obj bounding-box) (arg0 vector))
+  (and (< (-> obj min x) (-> arg0 x))
+       (< (-> obj min z) (-> arg0 z))
+       (< (-> arg0 x) (-> obj max x))
+       (< (-> arg0 z) (-> obj max z))
+       )
+  )
+
+;; definition for function box-vector-enside?
+(defun box-vector-enside? ((arg0 bounding-box) (arg1 vector))
+  (and (< (-> arg0 min x) (-> arg1 x))
+       (< (-> arg0 min y) (-> arg1 y))
+       (< (-> arg0 min z) (-> arg1 z))
+       (< (-> arg1 x) (-> arg0 max x))
+       (< (-> arg1 y) (-> arg0 max y))
+       (< (-> arg1 z) (-> arg0 max z))
+       )
+  )
+
+;; definition for function box-vector-inside?
+(defun box-vector-inside? ((arg0 bounding-box) (arg1 vector))
+  (and (>= (-> arg1 x) (-> arg0 min x))
+       (>= (-> arg1 y) (-> arg0 min y))
+       (>= (-> arg1 z) (-> arg0 min z))
+       (>= (-> arg0 max x) (-> arg1 x))
+       (>= (-> arg0 max y) (-> arg1 y))
+       (>= (-> arg0 max z) (-> arg1 z))
+       )
+  )
+
+;; definition for method 13 of type bounding-box
+;; WARN: Return type mismatch int vs none.
+(defmethod set-from-point-offset! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf3 (&-> arg1 quad))
+    (.lvf vf4 (&-> arg0 quad))
+    (.add.vf vf5 vf4 vf3)
+    (.min.vf vf1 vf4 vf5)
+    (.max.vf vf2 vf4 vf5)
+    (.mov.vf vf1 vf0 :mask #b1000)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.svf (&-> obj min quad) vf1)
+    (.svf (&-> obj max quad) vf2)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 11 of type bounding-box
+;; WARN: Return type mismatch int vs none.
+(defmethod add-point! bounding-box ((obj bounding-box) (arg0 vector))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (.lvf vf1 (&-> obj min quad))
+    (.lvf vf2 (&-> obj max quad))
+    (.lvf vf3 (&-> arg0 quad))
+    (.min.vf vf1 vf1 vf3)
+    (.max.vf vf2 vf2 vf3)
+    (.svf (&-> obj min quad) vf1)
+    (.svf (&-> obj max quad) vf2)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 10 of type bounding-box
+(defmethod add-box! bounding-box ((obj bounding-box) (arg0 bounding-box))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (.lvf vf1 (&-> obj min quad))
+    (.lvf vf2 (&-> obj max quad))
+    (.lvf vf3 (&-> arg0 min quad))
+    (.lvf vf4 (&-> arg0 max quad))
+    (.min.vf vf1 vf1 vf3)
+    (.max.vf vf2 vf2 vf4)
+    (.svf (&-> obj min quad) vf1)
+    (.svf (&-> obj max quad) vf2)
+    0
+    )
+  )
+
+;; definition for method 15 of type bounding-box
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod set-to-point! bounding-box ((obj bounding-box) (arg0 vector))
+  (set! (-> obj min quad) (-> arg0 quad))
+  (set! (-> obj max quad) (-> arg0 quad))
+  0
+  (none)
+  )
+
+;; definition for method 14 of type bounding-box
+(defmethod set-from-point-offset-pad! bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector) (arg2 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf4 (&-> arg1 quad))
+    (.lvf vf5 (&-> arg0 quad))
+    (.mov vf1 arg2)
+    (.add.vf vf6 vf5 vf4)
+    (.min.vf vf2 vf5 vf6)
+    (.max.vf vf3 vf5 vf6)
+    (.add.x.vf vf3 vf3 vf1 :mask #b111)
+    (.sub.x.vf vf2 vf2 vf1 :mask #b111)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.svf (&-> obj min quad) vf2)
+    (.svf (&-> obj max quad) vf3)
+    0
+    )
+  )
+
+;; definition for method 16 of type bounding-box
+;; WARN: Return type mismatch int vs none.
+(defmethod set-from-sphere! bounding-box ((obj bounding-box) (arg0 sphere))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.sub.w.vf vf2 vf1 vf1 :mask #b111)
+    (.add.w.vf vf3 vf1 vf1 :mask #b111)
+    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.svf (&-> obj min quad) vf2)
+    (.svf (&-> obj max quad) vf3)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 17 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 9 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 18 of type bounding-box
+(defmethod get-bounding-sphere bounding-box ((obj bounding-box) (arg0 vector))
+  (let* ((a1-2 (vector-! (new 'stack-no-clear 'vector) (-> obj max) (-> obj min)))
+         (a0-3 (vector-float*! (new 'stack-no-clear 'vector) a1-2 0.5))
+         )
+    (vector+! arg0 (-> obj min) a0-3)
+    (set! (-> arg0 w) (vector-length a0-3))
+    )
+  arg0
+  )
+
+;; definition of type liang-barsky-line-clip-params
+(deftype liang-barsky-line-clip-params (structure)
+  ((te float  :offset-assert   0)
+   (tl float  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type liang-barsky-line-clip-params
+(defmethod inspect liang-barsky-line-clip-params ((obj liang-barsky-line-clip-params))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'liang-barsky-line-clip-params)
+  (format #t "~1Tte: ~f~%" (-> obj te))
+  (format #t "~1Ttl: ~f~%" (-> obj tl))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function liang-barsky-line-clipt
+(defun liang-barsky-line-clipt ((arg0 liang-barsky-line-clip-params) (arg1 float) (arg2 float))
+  (cond
+    ((< 0.0 arg1)
+     (let ((f0-2 (/ arg2 arg1)))
+       (if (< (-> arg0 tl) f0-2)
+           (return #f)
+           )
+       (if (< (-> arg0 te) f0-2)
+           (set! (-> arg0 te) f0-2)
+           )
+       )
+     )
+    ((< arg1 0.0)
+     (let ((f0-5 (/ arg2 arg1)))
+       (if (< f0-5 (-> arg0 te))
+           (return #f)
+           )
+       (if (< f0-5 (-> arg0 tl))
+           (set! (-> arg0 tl) f0-5)
+           )
+       )
+     )
+    (else
+      (if (< 0.0 arg2)
+          (return #f)
+          )
+      )
+    )
+  #t
+  )
+
+;; definition for method 12 of type bounding-box
+;; WARN: disable def twice: 23. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod intersects-line-segment? bounding-box ((obj bounding-box) (arg0 vector) (arg1 vector))
+  (let ((f28-0 (- (-> arg1 x) (-> arg0 x)))
+        (f30-0 (- (-> arg1 z) (-> arg0 z)))
+        )
+    (cond
+      ((and (= f28-0 0.0) (= f30-0 0.0))
+       (let ((f1-2 (-> arg0 x))
+             (f0-4 (-> arg0 z))
+             )
+         (and (>= f1-2 (-> obj min x)) (>= (-> obj max x) f1-2) (>= f0-4 (-> obj min z)) (>= (-> obj max z) f0-4))
+         )
+       )
+      (else
+        (let ((s4-0 (new 'stack-no-clear 'liang-barsky-line-clip-params)))
+          (set! (-> s4-0 te) 0.0)
+          (set! (-> s4-0 tl) 1.0)
+          (and (liang-barsky-line-clipt s4-0 f28-0 (- (-> obj min x) (-> arg0 x)))
+               (liang-barsky-line-clipt s4-0 (- f28-0) (- (-> arg0 x) (-> obj max x)))
+               (liang-barsky-line-clipt s4-0 f30-0 (- (-> obj min z) (-> arg0 z)))
+               (liang-barsky-line-clipt s4-0 (- f30-0) (- (-> arg0 z) (-> obj max z)))
+               )
+          )
+        )
+      )
+    )
+  )

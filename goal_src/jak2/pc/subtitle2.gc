@@ -1,0 +1,882 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Code for subtitles for the PC port. A PC actor pool is provided, and the subtitle2 process lives there.
+  Jak 2 has subtitles, but only for cutscenes and only for the actual spoken text.
+  The subtitle process automatically looks for currently-playing audio in the gui control.
+  It looks for specific channels there, NOT including the movie or subtitle channel.
+
+  This updated subtitle system has a few different features than the Jak 1 subtitle system:
+  - you can have multiple playing subtitles at once. Additional subtitles are rendered above the older ones,
+    just like real subtitles. This goes for both multiple subtitles within the same scene, and also multiple scenes
+    playing at once.
+  - it can "merge" with the pre-existing subtitle system. Some code in scene.gc is changed to redirect subtitles
+    to here to do that.
+  - you supply the start AND end times as opposed to just the start time.
+  - the speaker names are color-coded.
+  Note that subtitle images are NOT supported with this! Merge mode will also NOT work with subtitle images.
+
+  Similarly to the generic text file, only one subtitles text file is loaded at once, stored in a specific
+  heap.
+
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defconstant PC_SUBTITLE_Y_RECALC -99.0)
+
+(defconstant PC_SUBTITLE_DISABLE_MOVIE_MODE #f)
+
+(defconstant PC_SUB_DBG_Y 60)
+(defconstant PC_SUB_DBG_CHECK_GROUP_SIZE 64)
+(defglobalconstant PC_SUBTITLE_DEBUG #f)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  access subtitle heap
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod get-speaker subtitle2-text-info ((obj subtitle2-text-info) (speaker pc-subtitle2-speaker))
+  "get the translated string for that speaker"
+  (if (and (> speaker (pc-subtitle2-speaker none)) (< speaker (-> obj speaker-length)))
+      (-> obj speaker-names speaker)
+      (the string #f))
+  )
+
+(defmethod get-scene-by-name subtitle2-text-info ((obj subtitle2-text-info) (name string))
+  "get a subtitle scene info with the corresponding name. #f = none found"
+
+  ;; invalid name so return invalid scene.
+  (if (not name)
+      (return (the subtitle2-scene #f)))
+  
+  ;; bounds checking
+  (when (> (length name) (-> *vag-temp-string* allocated-length))
+      (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
+
+  ;; uppercase the string so we have a consistent name format
+  (string-upcase name *vag-temp-string*)
+  (dotimes (i (length obj))
+    ;; bounds checking
+    (when (> (length (-> obj data i name)) (-> *vag-temp-string-2* allocated-length))
+        (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
+    ;; name and kind matches, return that!
+    (string-upcase (-> obj data i name) *vag-temp-string-2*)
+    (when (string= *vag-temp-string-2* *vag-temp-string*)
+      (return (-> obj data i)))
+    )
+
+  (the subtitle2-scene #f))
+
+
+(defmethod get-line-at-pos subtitle2-scene ((obj subtitle2-scene) (pos float) (index int))
+  "return the subtitle line at that position. #f = none found
+   index is which line to return, since you can have multiple lines that cover the same position."
+   
+  (let ((found 0))
+
+      (dotimes (i (length obj))
+        (when (and (>= pos (-> obj lines i start-frame))
+                   (< pos (-> obj lines i end-frame)))
+          (when (= found index)
+            (return (-> obj lines i)))
+          (1+! found)
+          )))
+  
+  (the subtitle2-line #f))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  loading files
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun load-subtitle2-text-info ((txt-name string) (curr-text symbol) (heap kheap))
+  "load a subtitles text file onto a heap.
+   txt-name = file name suffix
+   curr-text = a symbol to a subtitle2-text-info to link the file to
+   heap = the text heap to load the file onto"
+
+  (let ((heap-sym-heap (the-as subtitle2-text-info (-> curr-text value)))
+        (lang (-> *setting-control* user-current subtitle-language))
+        (load-status 0)
+        (heap-free (&- (-> heap top) (the-as uint (-> heap base)))))
+
+    ;; current text has nothing loaded, or language doesn't match.
+    (when (or (= heap-sym-heap #f)
+              (!= (-> heap-sym-heap lang) lang))
+      ;; so reload.
+
+      ;; reset the text heap.
+      (kheap-reset heap)
+
+      ;; try to load load...
+      (while (not (str-load (string-format "~D~S.TXT" lang txt-name) -1 (logand -64 (&+ (-> heap current) 63)) (&- (-> heap top) (-> heap current))))
+          (return 0)
+          )
+      ;; load succeeded. check status.
+
+      (label retry)
+      (let ((status (str-load-status (the-as (pointer int32) (& load-status)))))
+        (when (= status 'error)
+          (format 0 "Error loading subtitle2~%")
+          (return 0)
+          (goto loaded)
+          )
+        (cond
+          ((>= load-status (+ heap-free -300))
+           (format 0 "Game subtitle2 heap overrun!~%")
+           (return 0)
+           )
+          ((= status 'busy)
+           ;; still loading.
+           (goto retry)
+           )
+          )
+        )
+      (label loaded)
+
+      ;; link the text file!
+      (let ((new-mem (logand -64 (&+ (-> heap current) 63))))
+          (flush-cache 0)
+          (set! (-> curr-text value) (link new-mem (-> (string-format "~D~S.TXT" lang txt-name) data) load-status heap 0))
+          )
+      ;; if linking failed just make the text invalid.
+      (if (<= (the-as int (-> curr-text value)) 0)
+          (set! (-> curr-text value) (the-as object #f))
+          )
+      ))
+  0)
+
+(defun load-level-subtitle2-files ((idx int))
+  "Load the subtitle2 files needed for level idx.
+   This function made more sense back when text files were split up, but in the end they put everything
+   in a single text group and file."
+
+  ;; just load common.
+  (if (or *level-text-file-load-flag* (>= idx 0))
+      (load-subtitle2-text-info PC_SUBTITLE_FILE_NAME '*subtitle2-text* *subtitle2-text-heap*)
+      )
+
+  (none))
+
+
+(defmacro reload-subtitles ()
+  "rebuild and reload subtitles."
+  `(begin
+      (asm-text-file subtitle-v2 :files ("game/assets/jak2/game_subtitle.gp"))
+      (if *subtitle2-text*
+          (+! (-> *subtitle2-text* lang) 1))
+      (load-level-subtitle2-files 0)))
+
+(defmacro reload-text ()
+  "rebuild and reload text."
+  `(begin
+      (mng)
+      (if *common-text*
+          (+! (-> *common-text* language-id) 1))
+      (load-level-text-files 0)))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  subtitle2 queue
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun subtitle-channel? ((ch gui-channel))
+  "can this gui channel be checked for subtitles?"
+  (and (>= ch (gui-channel jak)) (<= ch (gui-channel krew)))
+  )
+
+(defun valid-subtitle-gui? ((gui gui-connection))
+  "is this gui connection valid for checking subtitles?"
+  (and gui  (nonzero? (-> gui id))
+            (subtitle-channel? (-> gui channel))
+            (or (= (-> gui action) (gui-action playing))
+                (= (-> gui action) (gui-action play)))
+            (let ((status (get-status *gui-control* (-> gui id))))
+            (or (= status (gui-status ready))
+                (= status (gui-status active)))))
+  )
+
+(defun subtitle-bump-up? ()
+  "should subtitles be moved up?"
+  ;; have a query or message up?
+  (or (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel query) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel message) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* (the string #f) (gui-channel notice-low) (gui-action none))))
+      (= (gui-status active) (get-status *gui-control* (lookup-gui-connection-id *gui-control* "hud-race-final-stats" (gui-channel hud-middle-right) (gui-action none))))
+      )
+  )
+
+
+(defmethod clear-line subtitle2-queue-element ((obj subtitle2-queue-element))
+  "make this queue element invalid"
+
+  (set! (-> obj gui) #f)
+  (set! (-> obj id) (new 'static 'sound-id))
+  0)
+
+(defmethod clear-queue subtitle2 ((obj subtitle2))
+  "mark all slots in the gui queue as available"
+
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (clear-line (-> obj queue i)))
+  0)
+
+(defmethod update-gui-connections subtitle2 ((obj subtitle2))
+  "mark all inactive slots in the gui queue as available"
+
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+
+    (let ((gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel none) (the string #f) (-> obj queue i id))))
+
+      (if (not (valid-subtitle-gui? gui))
+          (clear-line (-> obj queue i)))))
+  0)
+
+(defmethod gui-queued? subtitle2 ((obj subtitle2) (gui gui-connection))
+  "return #t is the gui is in the queue"
+
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (if (= (-> gui id) (-> obj queue i id))
+        (return #t)))
+  #f)
+
+(defmethod get-empty-queue subtitle2 ((obj subtitle2))
+  "return the first available gui queue slot"
+
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (if (not (-> obj queue i gui))
+        (return i)))
+  (format #t "ran out of subtitle queue slots!")
+  0
+  )
+
+(defmethod add-to-queue subtitle2 ((obj subtitle2) (gui gui-connection))
+  "add a gui connection to the first empty queue slot available"
+
+  (let ((slot (get-empty-queue obj)))
+      (set! (-> obj queue slot id) (-> gui id))
+      (set! (-> obj queue slot gui) gui))
+  gui)
+
+
+(defmethod set-params! subtitle2-line-queue-element ((obj subtitle2-line-queue-element) (line subtitle2-line) (y float))
+  "set the parameters for this line queue element"
+
+  (set! (-> obj line) line)
+  (set! (-> obj y) y)
+  0)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  subtitle2 process and drawing!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun set-speaker-color ((speaker pc-subtitle2-speaker))
+  "set the color for the speaker font color"
+  (let ((spk-col (-> *subtitle2-speaker-color-table* speaker)))
+    (set-font-color (font-color progress-selected) 0  (new 'static 'rgba :r (-> spk-col r))
+                                                      (new 'static 'rgba :r (-> spk-col g))
+                                                      (new 'static 'rgba :r (-> spk-col b)))
+    (set-font-color (font-color progress-selected) 1  (new 'static 'rgba :r (-> spk-col r))
+                                                      (new 'static 'rgba :r (-> spk-col g))
+                                                      (new 'static 'rgba :r (-> spk-col b))))
+  speaker)
+
+
+(defmethod get-active-subtitles subtitle2 ((obj subtitle2))
+  "collect active subtitles and add them to the queue
+   if a gui connection is already in the queue,
+   it will stay in the same slot when it was first added"
+
+  ;; todo
+  (-> *gui-control* engine)
+  (let ((current (-> *gui-control* engine alive-list-end prev0)))
+    (-> *gui-control* engine)
+    (let ((next (-> current prev0)))
+      (while (!= current (-> *gui-control* engine alive-list))
+        (let ((gui-conn (the gui-connection current)))
+          (when (and  (valid-subtitle-gui? gui-conn)
+                      (not (gui-queued? obj gui-conn)))
+
+            (add-to-queue obj gui-conn)
+            )
+          )
+        (set! current next)
+        (-> *gui-control* engine)
+        (set! next (-> next prev0))
+        )
+      )
+    )
+  0)
+
+
+(defmethod subtitle-format subtitle2 ((obj subtitle2) (line subtitle2-line))
+  "format the string for a subtitle line to *temp-string*"
+
+  (when (subtitle2-flags? line merge)
+    (if (and (-> obj movie-mode?) (< 0 (length (-> obj movie-line))))
+        (set! (-> line text) (-> obj movie-line))
+        (return (the string #f))))
+
+  (cond
+    ((= (pc-subtitle2-speaker none) (-> line speaker))
+     ;; there's no speaker so who cares.
+     (string-format "~S" (-> line text)))
+    ((or (= #t (-> *pc-settings* subtitle-speaker?))
+         (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (subtitle2-flags? line offscreen)))
+     ;; there is a speaker and we do want it.
+     ;; we use color 33 which gets set at runtime to any color we want
+     (string-format "~33L~S:~0L ~S" (get-speaker *subtitle2-text* (-> line speaker)) (-> line text)))
+    (else
+     (string-format "~S" (-> line text)))
+    )
+  *temp-string*)
+
+(defbehavior current-subtitle2-pos subtitle2 ((id sound-id))
+  "get the str position for this sound id in a 30/sec measurement"
+  (if (and (-> self movie-mode?) (= id (-> self movie-gui id)))
+      (return (-> self movie-pos)))
+  (let ((pos (the float (current-str-pos id))))
+    (if (< pos 0.0) -1.0 (/ pos (/ 1024.0 30)))))
+
+
+(defbehavior setup-subtitle2-font subtitle2 ((font font-context))
+  "setup a font and parameters for the subtitle2 subtitles."
+
+  ;; set font settings.
+  (if (!= (language-enum japanese) (-> *setting-control* user-current subtitle-language))
+      (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale)))
+      (set-scale! font (* 0.5 (-> *SUBTITLE2-bank* scale) 1.2)))
+  (set-width! font (the int (* (-> *SUBTITLE2-bank* width) 0.91 512)))
+  (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
+                    (the int (* (if (-> self have-message?) 0.524 0.698) 416)))
+  (set-height! font (the int (* (-> *SUBTITLE2-bank* lines) 44)))
+  
+  ;; if we have the minimap, set the right border to 74.4% of screen width. shrink if larger than that.
+  ;; TODO scale this with aspect.
+  (when (and (-> self have-minimap?)
+             (< (get-screen-x 0.744) (+ (-> font width) (-> font origin x))))
+    (let ((new-width (- (get-screen-x 0.744) (-> font origin x))))
+      (set-scale! font (* (-> font scale) (/ (the float new-width) (-> font width))))
+      (set-width! font new-width)))
+  )
+
+
+(defmethod draw-subtitles subtitle2 ((self subtitle2))
+  "do the subtitle drawing"
+  
+  ;; check the gui queue for lines to add to the line queue
+  (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1)))
+        (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines 1) (-> self lines 0)))
+
+        (find-line (lambda ((queue subtitle2-line-queue) (line subtitle2-line))
+                       (dotimes (i PC_SUBTITLE_MAX_LINES)
+                         (if (= line (-> queue elts i line))
+                             (return i)))
+                       -1)))
+  (logxor! (-> self line-queue-idx) 1)
+  ;; clear the queue we're writing to first
+  (dotimes (i PC_SUBTITLE_MAX_LINES)
+    (set-params! (-> line-queue elts i) (the subtitle2-line #f) PC_SUBTITLE_Y_RECALC)
+    )
+
+  ;; we won't be able to render any subtitles with no text loaded.
+  (when (not *subtitle2-text*)
+      (false! (-> self have-subtitles?))
+      (return 0))
+
+  ;; font has already been set up in movie mode
+  (unless (-> self movie-mode?)
+    ;; set up our font to the initial parameters
+    (let ((map-gui (lookup-gui-connection *gui-control* (the process #f) (gui-channel hud-lower-right) "hud-map" (new 'static 'sound-id))))
+      (set! (-> self have-message?) (or (subtitle-bump-up?) (and (-> self have-message?) (-> self have-subtitles?))))
+      (set! (-> self have-minimap?) (and  (logtest? (minimap-flag minimap) (-> *setting-control* user-current minimap))
+                                          (!= map-gui #f)
+                                          (!= (gui-status pending) (get-status *gui-control* (-> map-gui id)))
+                                          (!= (gui-action hidden) (-> map-gui action))))
+      )
+    (setup-subtitle2-font (-> self font)))
+
+  ;; do two passes - on the first one we add lines that were already being used,
+  ;; on the second pass we add new lines
+  (dotimes (q 2)
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (when (-> self queue i gui)
+      (let ((pos (current-subtitle2-pos (-> self queue i id))))
+        (when (and (zero? q) *debug-segment*)
+            (format *stdcon0* "subtitle pos: ~3L~D~0L (~S)~%" (the int pos) (-> self queue i gui name)))
+
+        (let ((scene (get-scene-by-name *subtitle2-text* (-> self queue i gui name))))
+        (when scene
+          (dotimes (ii PC_SUBTITLE_QUEUE_MAX_LINES)
+            (awhen (get-line-at-pos scene pos ii)
+              (case q
+                ((0)
+                  (let ((index-in-old (find-line line-queue-old it)))
+                    (when (!= -1 index-in-old)
+                        ;; this line exists in the previous frame, put it in the new queue at the same spot
+                        (set-params! (-> line-queue elts index-in-old) it (-> line-queue-old elts index-in-old y)))))
+                ((1)
+                  (when (= -1 (find-line line-queue it))
+                    ;; line not in the queue. find empty spot.
+                    (let ((index-empty (find-line line-queue (the subtitle2-line #f))))
+                        (if (!= -1 index-empty)
+                            (set-params! (-> line-queue elts index-empty) it PC_SUBTITLE_Y_RECALC)))
+                    ))
+                )
+              )
+            ))
+          )
+        )
+      )
+    ))
+
+  (let ((cur-y (-> self font origin y)) ;; the current y for the text
+        (start-y (-> self font origin y)) ;; the starting y for the text
+        (last-height 0.0) ;; the height of the previous subtitle
+        (this-height 0.0) ;; the height of the current subtitle
+        (lines-done 0)
+        (subtitles-drawn? #f)
+        )
+
+  (dotimes (i PC_SUBTITLE_QUEUE_MAX_LINES)
+    (when (and (-> line-queue elts i line) (subtitle-format self (-> line-queue elts i line)))
+
+      (set! this-height (print-game-text *temp-string* (-> self font) #t 44 (bucket-id debug-no-zbuf2)))
+
+      ;; push subtitle up since we are not the first one
+      (when (nonzero? lines-done)
+        (-! cur-y (/ last-height 2))
+        (-! cur-y (/ this-height 2))
+        )
+
+      ;; set the current y, it shall not be lower than the previous line!
+      (if (= (-> line-queue elts i y) PC_SUBTITLE_Y_RECALC)
+          (set! (-> line-queue elts i y) (- start-y cur-y))
+          (set! cur-y (min cur-y (- start-y (-> line-queue elts i y)))))
+      (set! (-> self font origin y) cur-y)
+
+      ;; check if we should actually draw subtitles and do it
+      (when (and (-> *setting-control* user-current subtitle) (or *gui-kick-str* (= *master-mode* 'game)))
+        (set-action! *gui-control* (gui-action play) (-> self gui-id)
+                    (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
+
+        (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
+            (true! subtitles-drawn?)
+            (protect (*display-text-box*)
+            (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+            (set-speaker-color (-> line-queue elts i line speaker))
+            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
+        )
+
+      ;; save this for later usage
+      (set! last-height this-height)
+      (1+! lines-done)
+      )
+    )
+  
+  (set! (-> self have-subtitles?) subtitles-drawn?)
+  (when (not (-> self have-subtitles?))
+    (set-action! *gui-control* (gui-action hidden) (-> self gui-id)
+                (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f)))
+
+  (set! (-> self font origin y) start-y)))
+  
+  0)
+
+(when *debug-segment*
+(defmethod debug-print-queue subtitle2 ((self subtitle2))
+  "print the queue to *stdcon0*"
+  
+  (format *stdcon0* "q: ~%")
+  (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
+    (if (-> self queue i gui)
+        (format *stdcon0* "~D: ~S ~3L~D~0L ~D ~`gui-connection`P~%" i
+                                                                   (-> self queue i gui name)
+                                                                   (the int (current-subtitle2-pos (-> self queue i id)))
+                                                                   (-> self queue i id)
+                                                                   (-> self queue i gui))))
+
+  (format *stdcon0* "l: ~%")
+  (let ((line-queue (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1))))
+      (dotimes (i PC_SUBTITLE_MAX_LINES)
+        (format *stdcon0* "~D: ~D ~S~%" i (the int (-> line-queue elts i y)) (aif (-> line-queue elts i line) (-> it text)))))
+
+  0)
+
+(defmethod debug-print-speakers subtitle2 ((self subtitle2))
+  "print all speakers onscreen"
+  
+  (if (not *subtitle2-text*)
+      (return 0))
+
+  (let ((font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large)))
+        (col-wid (/ 512.0 3)))
+  (set-width! font (the int col-wid))
+  (set-height! font 44)
+  (set-scale! font 0.5)
+
+  (dotimes (i (-> *subtitle2-text* speaker-length))
+    (set-speaker-color (the pc-subtitle2-speaker i))
+    (+! (-> font origin y) (print-game-text (string-format "~33L~S" (get-speaker *subtitle2-text* (the pc-subtitle2-speaker i)))
+                                            font #f 44 (bucket-id debug-no-zbuf2)))
+    (when (< 416.0 (-> font origin y))
+        (set! (-> font origin y) 0.0)
+        (+! (-> font origin x) col-wid))
+    ))
+
+  0)
+)
+
+(defmethod start-gui subtitle2 ((self subtitle2))
+  "start gui queueing"
+  (set! (-> self gui-id) (add-process *gui-control* self (gui-channel subtitle-pc) (gui-action hidden) "subtitle2" (meters 20) 0))
+  )
+
+(defmethod stop-gui subtitle2 ((self subtitle2))
+  "stop gui queueing"
+  (set-action! *gui-control* (gui-action stop) (-> self gui-id)
+                             (gui-channel none)
+                             (gui-action none)
+                             (the-as string #f)
+                             (the-as (function gui-connection symbol) #f)
+                             (the-as process #f))
+  (set! (-> self gui-id) (new 'static 'sound-id))
+  )
+
+(defstate subtitle2-process (subtitle2)
+
+  :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
+    (case msg
+      (('movie 'movie-no-subtitle)
+        ;; we are receiving parameters for a movie subtitle!
+        (when (not *subtitle2-text*)
+            (format 0 "movie subtitle: no text loaded~%")
+            (return #f))
+
+        (set! (-> self movie-gui) (lookup-gui-connection *gui-control* (the process #f) (gui-channel art-load) (the-as string (-> block param 0)) (new 'static 'sound-id)))
+        (when (not (-> self movie-gui))
+            (format 0 "movie subtitle: no gui found~%")
+            (return #f))
+
+        (set! (-> self movie-mode?) #t)
+        (set! (-> self movie-pos) (the-as float (-> block param 2)))
+
+        (when (!= msg 'movie-no-subtitle)
+          (copyn-charp<-string  (-> self movie-line data) (the-as string (-> block param 1))
+                                (-> self movie-line allocated-length))
+          (set! (-> self have-message?) #f)
+          (set! (-> self have-minimap?) #f)
+          (set! (-> self have-subtitles?) #f)
+          (setup-subtitle2-font (-> self font))
+          ;; we're gonna use the same font as the movie subtitles
+          (set-origin! (-> self font) 20 290)
+          (set-width! (-> self font) 465)
+          (set-height! (-> self font) 70)
+          (set-scale! (-> self font) 0.5)
+
+          (when (= (-> *setting-control* user-current subtitle-language) (language-enum korean))
+            (set-scale! (-> self font) 0.6))
+          )
+        #t)
+      )
+    )
+
+  :code (behavior ()
+    (loop
+      (suspend))
+    )
+
+  :trans (behavior ()
+    (when *debug-segment*
+        (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 r3))
+            (cpad-clear! 0 r3)
+            (set! (-> self cheat-backup) *cheat-mode*)
+            (set! *cheat-mode* 'camera)
+            (set-master-mode 'pause)
+            (go subtitle2-debug)
+            )
+        )
+
+    (load-level-subtitle2-files 0)
+
+    ;; get subtitles
+    (cond
+      ((not (-> self movie-mode?))
+        ;; get rid of invalid gui entries
+        (update-gui-connections self)
+        ;; queue up valid ones
+        (get-active-subtitles self)
+        )
+      ((-> self movie-gui)
+        ;; wipe the queue
+        (clear-queue self)
+        ;; queue up the movie gui - this is the only one we want in movie mode
+        (add-to-queue self (-> self movie-gui))
+        )
+      (else
+        ;; something weird happened
+        (if *debug-segment*
+            (format #t "bad movie gui~%"))
+        (set! (-> self movie-mode?) #f)
+        (clear-queue self))
+      )
+
+    (none))
+
+  :post (behavior ()
+
+    (draw-subtitles self)
+    
+    (when *debug-segment*
+      (if *display-subtitle-speakers*
+          (debug-print-speakers self))
+      (if PC_SUBTITLE_DEBUG
+          (debug-print-queue self))
+      )
+    
+    (when (-> self movie-mode?)
+      (set! (-> self movie-gui) #f)
+      (set! (-> self movie-mode?) #f)
+      (clear (-> self movie-line))
+      )
+    0)
+
+  )
+
+
+(defstate subtitle2-debug (subtitle2)
+
+    :trans (behavior ()
+
+      (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                    (bucket-id debug-no-zbuf2))
+
+        (draw-string-xy "~3LSUBTITLE DEBUG!~0L"     buf 14 (+ PC_SUB_DBG_Y (* 0 15)) (font-color default) (font-flags shadow kerning))
+        (draw-string-xy "L3+R3: exit"               buf 14 (+ PC_SUB_DBG_Y (* 1 15)) (font-color default) (font-flags shadow kerning))
+        (if (!= 'pause *master-mode*)
+            (draw-string-xy "Pause the game to continue" buf 14 (+ PC_SUB_DBG_Y (* 2 15)) (font-color default) (font-flags shadow kerning)))
+
+      (when (= 'pause *master-mode*)
+        ;(draw-string-xy "L3+X: debug lines"         buf 14 (+ PC_SUB_DBG_Y (* 2 15)) (font-color default) (font-flags shadow kerning))
+        ;(draw-string-xy "L3+Triangle: debug box"    buf 14 (+ PC_SUB_DBG_Y (* 3 15)) (font-color default) (font-flags shadow kerning))
+
+        (cond
+          ((or (not *subtitle2-text*) (zero? (-> *subtitle2-text* length)))
+            (draw-string-xy "NO SUBTITLES LOADED!!!" buf 14 (+ PC_SUB_DBG_Y (* 10 15)) (font-color red) (font-flags shadow kerning))
+            (load-level-subtitle2-files 0)
+            (set! (-> self current-debug-scene) 0)
+            (set! (-> self current-debug-line) 0)
+            )
+          (else
+
+            (cond
+              ((cpad-pressed? 0 square)
+                (true! (-> self checking-lines?))
+                )
+              ((cpad-pressed? 0 left)
+                (if (> (-> self current-debug-line) 0)
+                    (1-! (-> self current-debug-line)))
+                )
+              ((cpad-pressed? 0 right)
+                (if (< (-> self current-debug-line) (1- (-> *subtitle2-text* data (-> self current-debug-scene) length)))
+                    (1+! (-> self current-debug-line)))
+                )
+              ((or (cpad-pressed? 0 up) (and (cpad-hold? 0 l2) (cpad-hold? 0 up)))
+                (when (> (-> self current-debug-scene) 0)
+                    (1-! (-> self current-debug-scene))
+                    (set! (-> self current-debug-line) 0))
+                )
+              ((or (cpad-pressed? 0 down) (and (cpad-hold? 0 l2) (cpad-hold? 0 down)))
+                (when (< (-> self current-debug-scene) (1- (-> *subtitle2-text* length)))
+                    (1+! (-> self current-debug-scene))
+                    (set! (-> self current-debug-line) 0))
+                )
+              )
+
+          (let ((cur-scene (-> *subtitle2-text* data (-> self current-debug-scene))))
+            (if (nonzero? (-> cur-scene length))
+                (set! (-> self current-debug-subtitle) (-> *subtitle2-text* data (-> self current-debug-scene) lines (-> self current-debug-line)))
+                (set! (-> self current-debug-subtitle) #f))
+
+            (draw-string-xy "Up/down: Pick scene"            buf 14 (+ PC_SUB_DBG_Y (* 4 15)) (font-color default) (font-flags shadow kerning))
+            (draw-string-xy "L2+Up/down: Pick scene (fast)"  buf 14 (+ PC_SUB_DBG_Y (* 5 15)) (font-color default) (font-flags shadow kerning))
+            (draw-string-xy "Left/right: Pick line"          buf 14 (+ PC_SUB_DBG_Y (* 6 15)) (font-color default) (font-flags shadow kerning))
+            (draw-string-xy "Square: Check all line heights" buf 14 (+ PC_SUB_DBG_Y (* 7 15)) (font-color default) (font-flags shadow kerning))
+            (draw-string-xy (string-format "Scene: ~D/~D (~S)" (1+ (-> self current-debug-scene)) (-> *subtitle2-text* length) (-> cur-scene name))
+                            buf 14 (+ PC_SUB_DBG_Y (* 8 15)) (font-color default) (font-flags shadow kerning))
+            (draw-string-xy (string-format "Line: ~D/~D" (1+ (-> self current-debug-line)) (-> cur-scene length))
+                            buf 14 (+ PC_SUB_DBG_Y (* 9 15)) (font-color default) (font-flags shadow kerning))
+            )
+
+            )
+          )
+        ))
+
+      (when (-> self checking-lines?)
+          (false! (-> self checking-lines?))
+          (go subtitle2-debug-checking-lines)
+          )
+      (when (and (cpad-hold? 0 l3) (cpad-pressed? 0 r3))
+          (cpad-clear! 0 r3)
+          (set! *cheat-mode* (-> self cheat-backup))
+          (set-master-mode 'game)
+          (go subtitle2-process)
+          )
+
+      (none))
+
+    :code (-> subtitle2-process code)
+    :post (behavior ()
+      (set! (-> self movie-mode?) #f)
+      (set! (-> self have-message?) #f)
+      (set! (-> self have-minimap?) #f)
+      (set! (-> self have-subtitles?) #f)
+      (setup-subtitle2-font (-> self font))
+      (when (-> self current-debug-subtitle)
+        (set-speaker-color (-> self current-debug-subtitle speaker))
+        (print-game-text (subtitle-format self (-> self current-debug-subtitle)) (-> self font) #f 44 (bucket-id debug-no-zbuf2))
+        )
+      0)
+
+    )
+
+(defstate subtitle2-debug-checking-lines (subtitle2)
+
+    :trans (behavior ()
+      (set! (-> self movie-mode?) #f)
+      (set! (-> self have-message?) #f)
+      (set! (-> self have-minimap?) #f)
+      (set! (-> self have-subtitles?) #f)
+      (setup-subtitle2-font (-> self font))
+      (none))
+
+    :code (behavior ()
+      (protect ((-> *pc-settings* subtitle-speaker?))
+      (set! (-> *pc-settings* subtitle-speaker?) #t)
+      (let ((lines-so-far 0)
+            (lines-this-frame 0)
+            (bad-lines 0))
+        (dotimes (i (length *subtitle2-text*))
+          (dotimes (ii (length (-> *subtitle2-text* data i)))
+            (when (= lines-this-frame PC_SUB_DBG_CHECK_GROUP_SIZE)
+                (set! lines-this-frame 0)
+                (suspend))
+
+            (1+! lines-this-frame)
+            (set! (-> self current-debug-subtitle) (-> *subtitle2-text* data i lines ii))
+            (set-speaker-color (-> self current-debug-subtitle speaker))
+            (when (< (* (-> *SUBTITLE2-bank* lines) 22) (print-game-text (subtitle-format self (-> self current-debug-subtitle)) (-> self font) #f 44 (bucket-id debug-no-zbuf2)))
+                (format 0  "ERROR: LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
+                (format #t "ERROR: LINE ~D IN SCENE ~D IS TOO LARGE!~%" (1+ ii) (1+ i))
+                (1+! bad-lines)
+                )
+            )
+          )
+        (suspend)
+        (if (> bad-lines 0)
+            (format 0 "error: ~D bad lines detected.~%" bad-lines)
+            (format 0 "no bad lines detected!~%" bad-lines))
+        ))
+      (go subtitle2-debug)
+      )
+    :post (behavior ()
+      (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                   (bucket-id debug2))
+        (draw-string-xy "Checking for bad lines... See console for info" buf 14 PC_SUB_DBG_Y (font-color red) (font-flags shadow kerning))
+        )
+      (draw-debug-text-box (-> self font))
+      0)
+
+    )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helper functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod deactivate subtitle2 ((self subtitle2))
+
+  (stop-gui self)
+  ;; not sure this works...
+  (if (= (ppointer->process *subtitle2*) self)
+      (set! *subtitle2* #f))
+
+  ((method-of-type process deactivate) self)
+  (none)
+  )
+
+(defbehavior subtitle2-init-by-other subtitle2 ()
+  "external initializer for subtitle2 process"
+
+  (process-mask-clear! (-> self mask) menu)
+
+  (set! (-> self font) (new 'process 'font-context *font-default-matrix*
+                            0 0 0.0 (font-color default) (font-flags shadow kerning left middle large)))
+  (clear-queue self)
+  (dotimes (i PC_SUBTITLE_MAX_LINES)
+    (set! (-> self lines 0 elts i line) #f)
+    (set! (-> self lines 0 elts i y) PC_SUBTITLE_Y_RECALC)
+    (set! (-> self lines 1 elts i line) #f)
+    (set! (-> self lines 1 elts i y) PC_SUBTITLE_Y_RECALC)
+    )
+
+  (set! (-> self have-message?) #f)
+  (set! (-> self have-minimap?) #f)
+  (set! (-> self have-subtitles?) #f)
+
+  (set! (-> self movie-mode?) #f)
+  (set! (-> self movie-line) (new 'process 'string (+ 7 (* 15 16)) (the string #f)))
+
+  (set! (-> self current-debug-scene) 0)
+  (set! (-> self current-debug-line) 0)
+  (set! (-> self current-debug-subtitle) #f)
+  (set! (-> self checking-lines?) #f)
+
+  (start-gui self)
+
+  (go subtitle2-process)
+  )
+
+
+(defun subtitle2-stop ()
+  "kill the subtitle2 process"
+
+  (if *subtitle2*
+      (deactivate (ppointer->process *subtitle2*)))
+  *subtitle2*)
+
+(defun subtitle2-start ()
+  "start the subtitle2 process"
+
+  ;; fill the subtitle speaker table
+  (set-subtitle-speaker-colors)
+
+  (if *subtitle2*
+      (subtitle2-stop))
+
+  (set! *subtitle2* (process-spawn subtitle2 :from *pc-dead-pool* :to *pc-pool*))
+  )
+
+;; start the subtitle2 process when this file loads.
+(subtitle2-start)
+
+
+

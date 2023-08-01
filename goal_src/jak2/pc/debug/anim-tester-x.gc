@@ -1,0 +1,691 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Code for the PC port anim tester. It's like their original anim tester tool, but actually functional, and with
+  different features.
+
+ |#
+
+;; debug-only file!
+(declare-file (debug))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;------------------------
+;;  settings
+;;;------------------------
+
+
+(deftype atx-item (basic)
+  ((next atx-item :offset-assert 4)
+   (text string)
+
+   (extra basic)
+   (group art-group       :overlay-at extra)
+   (jgeo art-joint-geo    :overlay-at extra)
+   (janim art-joint-anim  :overlay-at extra)
+   (mgeo merc-ctrl        :overlay-at extra)
+   )
+  (:methods
+    (new (symbol type string basic) _type_ 0)
+    )
+  )
+
+(defmethod new atx-item ((allocation symbol) (type-to-make type) (text string) (extra basic))
+  "make a new atx-item"
+
+  (let ((obj (object-new allocation type-to-make (the int (-> type-to-make size)))))
+    (set! (-> obj next) #f)
+    (set! (-> obj text) text)
+    (set! (-> obj extra) extra)
+
+    obj)
+  )
+
+(deftype atx-list (structure)
+  ((head atx-item :offset-assert 0)
+   (tail atx-item)
+   (selection int16)
+   (offset int16)
+   (func (function atx-item object))
+   )
+  )
+
+
+(defenum atx-flags
+  :bitfield #t
+  :type int32
+  (eye)
+  (blerc)
+  (show-joints)
+  )
+
+(deftype anim-tester-x-settings (structure)
+  (
+   (speed float)
+   (frame-num float)
+   (mode symbol)
+   (flags atx-flags)
+   (list-ctrl atx-list :inline)
+   )
+  )
+
+(define *ATX-settings* (new 'static 'anim-tester-x-settings :speed 1.0
+                                                            :mode 'loop
+                                                            :flags (atx-flags)))
+
+
+(deftype atx-item-art-group (atx-item)
+  ((ja-list atx-list :inline)
+   (jg-list atx-list :inline)
+   (mg-list atx-list :inline)
+   )
+  (:methods
+    (new (symbol type string art-group) _type_ 0)
+    )
+  )
+
+;;;----------------------------------
+;;  process
+;;;----------------------------------
+
+
+(defenum atx-edit-mode
+  :type uint8
+  (none)
+  (art-group)
+  (anim)
+  (mgeo)
+  (jgeo)
+  )
+
+
+(deftype anim-tester-x (process-drawable)
+  (
+   (edit-mode atx-edit-mode)
+   (cur-list atx-list)
+   (selected-art-group atx-item-art-group)
+
+   (cur-art-group art-group)
+   (cur-joint-geo art-joint-geo)
+   (cur-mesh-geo merc-ctrl)
+   (cur-joint-anim art-joint-anim)
+   )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; list functions and macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro do-atx-list (bindings &rest body)
+  "iterate through an atx-list."
+  (with-gensyms (next)
+    `(let ((,(car bindings) (-> ,(cadr bindings) head)))
+        (while ,(car bindings)
+          (let ((,next (-> ,(car bindings) next)))
+
+            ,@body
+
+            (set! ,(car bindings) ,next)
+            )
+          )
+        )
+    )
+  )
+
+(defun atx-list-init! ((lst atx-list))
+  "initialize an atx-list"
+  (set! (-> lst head) #f)
+  (set! (-> lst tail) #f)
+  (set! (-> lst selection) 0)
+  (set! (-> lst offset) 0)
+  (set! (-> lst func) (the (function atx-item object) nothing))
+  lst)
+
+(defun atx-list-size ((lst atx-list))
+  "return size of an atx-list"
+  (let ((items 0))
+      (do-atx-list (item lst) (1+! items))
+      items)
+  )
+
+(defun atx-list-append ((lst atx-list) (item atx-item))
+  "append an item to a list. returns the added item."
+
+  (if (not (-> lst head)) (set! (-> lst head) item))
+  (if (-> lst tail) (set! (-> lst tail next) item))
+  (set! (-> lst tail) item)
+  item)
+
+(defun atx-list-remove ((lst atx-list) (item atx-item))
+  "remove an item from a list. removes all instances of that item. but it's weird if you have multiple..."
+
+  (cond
+    ((= (-> lst head) item)
+      (set! (-> lst head) (-> item next))
+      (if (= (-> lst tail) item)
+          (set! (-> lst tail) #f)
+          )
+      )
+    (else
+      (let ((last (the atx-item #f))
+            (i 0))
+        (do-atx-list (it lst)
+          (when (= it item)
+              (if (>= (-> lst selection) i)
+                  (1-! (-> lst selection)))
+              (set! (-> last next) (-> it next))
+              (set! it last)
+              )
+          (set! last it)
+          )
+        )
+      )
+    )
+  0)
+
+(defun atx-list-remove-by-object ((lst atx-list) (obj basic))
+  "remove all items with a specific object from a list."
+
+  (do-atx-list (it lst)
+    (if (= (-> it extra) obj)
+        (atx-list-remove lst it)
+        )
+    )
+  0)
+
+(defun atx-list-get-by-index ((lst atx-list) (idx int))
+  "get an item by its index."
+
+  (let ((items 0))
+      (do-atx-list (item lst)
+          (if (= items idx)
+              (return item))
+          (1+! items))
+      items)
+  (the atx-item #f))
+
+(defun atx-list-get-by-name ((lst atx-list) (name string))
+  "get an item by its index."
+
+  (do-atx-list (item lst)
+      (if (string= (-> item text) name)
+          (return item))
+      )
+  (the atx-item #f))
+
+
+(defmacro atx-interface-square-to-menu ()
+  `(when (cpad-pressed? 0 square)
+      (cpad-clear! 0 square)
+      ;; (true! *camera-read-buttons*)
+      (logclear! (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
+      (set! (-> self edit-mode) (atx-edit-mode none))
+      (set! (-> *debug-menu-context* is-hidden) #f)
+      )
+  )
+
+(defun atx-list-interface ((lst atx-list) (title string) (warning string) (sel-obj basic))
+  "run interface and draw an atx-list"
+
+  (let ((items-drawn (-> lst offset))
+        (i 0)
+        (color (font-color menu))
+        (text-len (the draw-string-result 0)))
+
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                 (bucket-id debug-no-zbuf1))
+
+       (when (nonzero? (length title))
+           (set! text-len (draw-string-xy title buf 9 (+ 28 4 (* items-drawn 14)) (font-color menu) (font-flags shadow kerning)))
+           (1+! items-drawn)
+           )
+
+       (do-atx-list (item lst)
+       (let ((selected? (= i (-> lst selection))))
+
+          (set! color (if (= (-> item extra) sel-obj) (font-color green) (font-color menu)))
+
+          (let ((this-len (draw-string-xy (-> item group name) buf 21 (+ 28 4 (* items-drawn 14)) color (font-flags shadow kerning))))
+            (if (> this-len text-len)
+              (set! text-len this-len)))
+
+          (if selected?
+             (draw-string-xy ">" buf 9 (+ 28 4 (* items-drawn 14)) color (font-flags shadow kerning)))
+
+          (1+! items-drawn)
+          (1+! i)
+
+          ))
+
+       (when (not (-> lst head))
+           (draw-string-xy warning buf 21 (+ 28 4 14) (font-color red) (font-flags shadow kerning))
+           (1+! items-drawn))
+
+         )
+
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                 (bucket-id debug2))
+
+
+       (draw-sprite2d-xy buf 6 (+ 28 (* (-> lst offset) 14))
+                             (+ 6 14 14 (the int text-len)) (+ 14 (* 14 (- items-drawn (-> lst offset))))
+                             (static-rgba 0 0 0 64))
+
+         )
+    )
+
+  (when (-> lst head)
+      (if (cpad-pressed? 0 down)
+          (+! (-> lst selection) 1))
+      (if (cpad-pressed? 0 right)
+          (+! (-> lst selection) 5))
+      (if (cpad-pressed? 0 up)
+          (-! (-> lst selection) 1))
+      (if (cpad-pressed? 0 left)
+          (-! (-> lst selection) 5))
+      (if (< (-> lst selection) 0)
+          (set! (-> lst selection) (1- (atx-list-size lst))))
+      (if (>= (-> lst selection) (atx-list-size lst))
+          (set! (-> lst selection) 0))
+      (if (cpad-pressed? 0 x)
+          ((-> lst func) (atx-list-get-by-index lst (-> lst selection)))
+          )
+
+      (when (< 16 (+ (-> lst selection) (-> lst offset)))
+          (set! (-> lst offset) (- 16 (-> lst selection)))
+          )
+      (when (< (+ (-> lst selection) (-> lst offset)) 0)
+          (set! (-> lst offset) (- 0 (-> lst selection)))
+          )
+      )
+  0)
+
+
+(defbehavior atx-list-art-group-func anim-tester-x ((item atx-item-art-group))
+
+  (if (not (and (type-type? (-> item type) atx-item-art-group)
+                (-> item group)
+                (-> item ja-list head)
+                (-> item jg-list head)
+                (-> item mg-list head)
+                ))
+      (return #f))
+
+  (set! (-> self selected-art-group) item)
+  (set! (-> self edit-mode) (atx-edit-mode anim))
+  (set! (-> self cur-art-group) (-> item group))
+  (set! (-> self cur-joint-anim) (-> item ja-list head janim))
+  (set! (-> self cur-joint-geo) (-> item jg-list head jgeo))
+  (set! (-> self cur-mesh-geo) (-> item mg-list head mgeo))
+  (ja-no-eval :frame-num 0.0)
+  0)
+
+(defbehavior atx-list-joint-anim-func anim-tester-x ((item atx-item))
+
+  (if (not (-> item janim))
+      (return #f))
+  (set! (-> self cur-joint-anim) (-> item janim))
+  (ja-no-eval :frame-num 0.0)
+  0)
+(defbehavior atx-list-joint-geo-func anim-tester-x ((item atx-item))
+
+  (if (not (-> item janim))
+      (return #f))
+  (set! (-> self cur-joint-geo) (-> item jgeo))
+  0)
+(defbehavior atx-list-mesh-geo-func anim-tester-x ((item atx-item))
+
+  (if (not (-> item janim))
+      (return #f))
+  (set! (-> self cur-mesh-geo) (-> item mgeo))
+  0)
+
+
+
+(defmethod new atx-item-art-group ((allocation symbol) (type-to-make type) (text string) (ag art-group))
+  "make a new atx-item"
+
+  (let ((obj (object-new allocation type-to-make (the int (-> type-to-make size)))))
+    (set! (-> obj next) #f)
+    (set! (-> obj text) text)
+    (set! (-> obj group) ag)
+
+    (atx-list-init! (-> obj ja-list))
+    (atx-list-init! (-> obj jg-list))
+    (atx-list-init! (-> obj mg-list))
+    (set! (-> obj ja-list func) atx-list-joint-anim-func)
+    (set! (-> obj jg-list func) atx-list-joint-geo-func)
+    (set! (-> obj mg-list func) atx-list-mesh-geo-func)
+
+    obj)
+  )
+
+
+
+;;;----------------------------------------------
+;;  globals
+;;;----------------------------------------------
+
+;; initialize the lists in the static defs
+(atx-list-init! (-> *ATX-settings* list-ctrl))
+(set! (-> *ATX-settings* list-ctrl func) atx-list-art-group-func)
+
+;; the actual process.
+(define-perm *atx* (pointer anim-tester-x) #f)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  states
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+(defbehavior anim-tester-x-reset anim-tester-x ()
+  "reset the anim tester to default settings"
+
+  (format #t "resetting anim tester~%")
+  (set! (-> self edit-mode) (atx-edit-mode none))
+  (set! (-> self selected-art-group) #f)
+  (set! (-> self cur-art-group) #f)
+  (set! (-> self cur-joint-anim) #f)
+  (set! (-> self cur-joint-geo) #f)
+  (set! (-> self cur-mesh-geo) #f)
+  0)
+
+
+(defbehavior clean-art-groups anim-tester-x ()
+  "purge possible invalid art groups automatically."
+  (do-atx-list (it (-> *ATX-settings* list-ctrl))
+      (when (!= (-> it group type) art-group)
+          (when (= it (-> self selected-art-group))
+              (anim-tester-x-reset)
+              )
+          (atx-list-remove (-> *ATX-settings* list-ctrl) it)
+          )
+      )
+  )
+
+
+(defbehavior anim-tester-x-interface anim-tester-x ()
+  "UI controls for anim tester"
+
+  (set! (-> *debug-menu-context* is-hidden) #t)
+  (set! (-> self cur-list) #f)
+
+  (case (-> self edit-mode)
+    (((atx-edit-mode none))
+      (set! (-> *debug-menu-context* is-hidden) #f))
+    (((atx-edit-mode art-group))
+      (set! (-> self cur-list) (-> *ATX-settings* list-ctrl))
+      (atx-list-interface (-> self cur-list) "---- pick art group ----" "Add an art group with atx-add-group" (-> self cur-art-group))
+      (atx-interface-square-to-menu)
+      )
+    (((atx-edit-mode anim))
+      (set! (-> self cur-list) (-> self selected-art-group ja-list))
+      (atx-list-interface (-> self cur-list) "---- pick anim ----" "" (-> self cur-joint-anim))
+      (atx-interface-square-to-menu)
+      )
+    (((atx-edit-mode jgeo))
+      (set! (-> self cur-list) (-> self selected-art-group jg-list))
+      (atx-list-interface (-> self cur-list) "---- pick skeleton ----" "" (-> self cur-joint-geo))
+      (atx-interface-square-to-menu)
+      )
+    (((atx-edit-mode mgeo))
+      (set! (-> self cur-list) (-> self selected-art-group mg-list))
+      (atx-list-interface (-> self cur-list) "---- pick mesh ----" "" (-> self cur-mesh-geo))
+      (atx-interface-square-to-menu)
+      )
+    )
+
+  0)
+
+(defstate anim-tester-x-process (anim-tester-x)
+
+  :trans (behavior ()
+    (clean-art-groups)
+
+    (if (= *master-mode* 'menu)
+        (anim-tester-x-interface)
+        ;; (set! *camera-read-buttons* #t)
+        (logclear! (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
+        )
+    (when (!= *master-mode* 'menu)
+      (add-debug-x #t (bucket-id debug-no-zbuf1) (-> self root trans) *color-white*)
+      )
+    (none))
+
+  :code (behavior ()
+
+    (loop
+
+      (when (and (-> self cur-joint-geo) (!= (-> self cur-joint-geo) (-> self draw jgeo)))
+          (process-disconnect self)
+          (set! (-> self draw art-group) (-> self cur-art-group))
+          (set! (-> self draw cur-lod) -1)
+          (set! (-> self draw jgeo) (-> self cur-joint-geo))
+          ;; (set! (-> self draw sink-group) (-> *level* default-level foreground-sink-group 1))
+          (set! (-> self draw lod-set lod 0 geo) (-> self cur-mesh-geo))
+          (set! (-> self draw lod-set lod 0 dist) (meters 999999))
+          (set! (-> self draw bounds w) (meters 10))
+          (set! (-> self draw data-format) (draw-control-data-format merc))
+          (vector-copy! (-> self draw color-mult) (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+          (vector-copy! (-> self draw color-emissive) (new 'static 'vector))
+          ;; (set! (-> self draw secondary-interp) 0.0)
+          (set! (-> self draw shadow) #f)
+          (set! (-> self draw shadow-ctrl) #f)
+          (set! (-> self draw ripple) #f)
+          (set! (-> self draw level-index) (the-as uint 2))
+          ;; (set! (-> self node-list) (make-nodes-from-jg (-> self draw jgeo) *default-skel-template* 'debug))
+          (set! (-> self node-list) (setup-cspace-and-add (-> self draw) (-> self draw jgeo) 'debug))
+          (if (not (-> self skel effect))
+              (set! (-> self skel effect) (new 'process 'effect-control self)))
+          ;; (fill-skeleton-cache self)
+          (lod-set! (-> self draw) 0)
+          (ja-channel-set! 0)
+          )
+
+      (cond
+        ((-> self cur-joint-geo)
+          (if (> 1 (-> self skel active-channels))
+              (ja-channel-set! 1))
+          (set! (-> self draw lod-set lod 0 geo) (-> self cur-mesh-geo))
+          (ja-no-eval :group! (-> self cur-joint-anim))
+          (when (!= *master-mode* 'menu)
+            (case (-> *ATX-settings* mode)
+              (('loop)
+                (ja :num! (loop! (-> *ATX-settings* speed)))
+                )
+              (('identity)
+                (ja :num! (identity (-> *ATX-settings* frame-num)))
+                )
+              (('seek)
+                (ja :num! (seek! max (-> *ATX-settings* speed)))
+                )
+              )
+            )
+          (compute-alignment! (-> self align))
+          (align! (-> self align) (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
+                  1.0 1.0 1.0)
+          )
+        (else
+          (if (!= *master-mode* 'menu)
+              (format *stdcon* "~%~%no art selected~%")
+              )
+          )
+        )
+
+      (suspend))
+    )
+
+  :post (behavior ()
+    (when (-> self cur-joint-geo)
+        (ja-post)
+        (when (!= *master-mode* 'menu)
+            ;; (when (logtest? (-> *ATX-settings* flags) (atx-flags show-joints))
+            ;;   (draw-joint-spheres self)
+            ;;   )
+            (format *stdcon* "~%~%")
+            (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
+            )
+        )
+    )
+
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helper functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defbehavior anim-tester-x-init-by-other anim-tester-x ()
+  "external initializer for anim-tester-x process"
+
+  (logclear! (-> self mask) (process-mask menu))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self draw) (new 'process 'draw-control self #f))
+  (set! (-> self draw dma-add-func) dma-add-process-drawable)
+  (set! (-> self skel) (new 'process 'joint-control 24)) ;; allocate 24 anim channels
+  (set! (-> self align) (new 'process 'align-control self))
+  (quaternion-identity! (-> self root quat))
+  (vector-identity! (-> self root scale))
+  (position-in-front-of-camera! (-> self root trans) (meters 10) (meters 1))
+  (anim-tester-x-reset)
+  (go anim-tester-x-process)
+  (none)
+  )
+
+
+(defun atx-stop ()
+  "kill the anim tester process"
+
+  (kill-by-type anim-tester-x *default-pool*)
+  (set! *atx* (the (pointer anim-tester-x) #f)))
+
+(defun atx-start ()
+  "start the anim tester process"
+
+  (when *atx*
+    (atx-stop)
+    )
+
+  (if *target*
+      (stop 'play))
+  (set! *atx* (process-spawn anim-tester-x :from *pc-dead-pool*))
+  ;; (set! *camera-orbit-target* *atx*)
+  (send-event *camera* 'change-state cam-free-floating 0)
+  )
+
+
+(defun atx-add-new-art-group ((ag art-group))
+
+  (let ((ag-item (the atx-item-art-group (atx-list-append (-> *ATX-settings* list-ctrl)
+                                                          (new 'debug 'atx-item-art-group (-> ag name) ag)))))
+    (dotimes (i (-> ag length))
+      (when (-> ag data i)
+        (case (-> ag data i type)
+          ((art-joint-geo)  (atx-list-append (-> ag-item jg-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+          ((merc-ctrl)      (atx-list-append (-> ag-item mg-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+          ((art-joint-anim) (atx-list-append (-> ag-item ja-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+          )
+        )
+      )
+    ag-item)
+  )
+
+(defun atx-add-group ((name string) (level-name symbol))
+
+  (protect ((-> *level* log-in-level-bsp))
+  (set! (-> *level* log-in-level-bsp) (aif (level-get *level* level-name) (-> it bsp)))
+  (let ((ag (load-to-heap-by-name (-> *level* default-level art-group) name #t debug 0)))
+    (cond
+      (ag
+        (if (not *atx*) (atx-start))
+
+        (atx-add-new-art-group ag)
+        )
+      (else
+        (format #t "ERROR: no art-group ~A~%" name)
+        )
+      )
+    ))
+  0)
+
+(defun atx-append-group ((append-to string) (name string) (level-name symbol))
+
+  (protect ((-> *level* log-in-level-bsp))
+  (set! (-> *level* log-in-level-bsp) (aif (level-get *level* level-name) (-> it bsp)))
+  (let ((ag (load-to-heap-by-name (-> *level* default-level art-group) name #t debug 0)))
+    (cond
+      (ag
+        (if (not *atx*) (atx-start))
+
+        (let ((ag-item (the atx-item-art-group (atx-list-get-by-name (-> *ATX-settings* list-ctrl) append-to))))
+          (when (not ag-item)
+              (format #t "ERROR: art-group ~A not loaded~%" append-to)
+              (return #f)
+              )
+          (dotimes (i (-> ag length))
+            (when (-> ag data i)
+              (case (-> ag data i type)
+                ((art-joint-geo)  (atx-list-append (-> ag-item jg-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+                ((merc-ctrl)      (atx-list-append (-> ag-item mg-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+                ((art-joint-anim) (atx-list-append (-> ag-item ja-list) (new 'debug 'atx-item (-> ag name) (-> ag data i))))
+                )
+              )
+            ))
+        )
+      (else
+        (format #t "ERROR: no art-group ~A~%" name)
+        )
+      )
+    ))
+  0)
+
+(defun atx-add-level-group ()
+
+  (if (not *atx*) (atx-start))
+
+  (do-atx-list (item (-> *ATX-settings* list-ctrl))
+    (dotimes (i (-> *level* length))
+      (when (and (>= (-> item group) (-> *level* level i heap base)) (< (-> item group) (-> *level* level i heap top)))
+        (atx-list-remove (-> *ATX-settings* list-ctrl) item)
+        (set! i (-> *level* length))
+        ))
+    )
+  (dotimes (i (-> *level* length))
+    (doarray (ag (-> *level* level i art-group data-array))
+        (atx-add-new-art-group (the art-group ag))
+        )
+    )
+  )
+
+(defun atx-add-common-group ()
+
+  (if (not *atx*) (atx-start))
+  (doarray (ag (-> *level* level (-> *level* length) art-group data-array))
+      (atx-add-new-art-group (the art-group ag))
+      )
+  )
+
+
+

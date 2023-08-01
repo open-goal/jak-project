@@ -34,7 +34,7 @@ bool CompilerTool::run(const ToolInput& task, const PathMap& /*path_map*/) {
     options.write = true;
     m_compiler->asm_file(options);
   } catch (std::exception& e) {
-    fmt::print("Compilation failed: {}\n", e.what());
+    lg::print("Compilation failed: {}\n", e.what());
     return false;
   }
   return true;
@@ -51,21 +51,28 @@ DgoDescription parse_desc_file(const std::string& filename, goos::Reader& reader
   DgoDescription desc;
   auto& first = dgo.as_pair()->car;
   desc.dgo_name = first.as_string()->data;
-  auto& dgo_rest = dgo.as_pair()->cdr;
+  auto& dgo_rest = dgo.as_pair()->cdr.as_pair()->car;
 
   for_each_in_list(dgo_rest, [&](const goos::Object& entry) {
-    goos::Arguments e_arg;
-    std::string err;
-    if (!goos::get_va(entry, &err, &e_arg)) {
-      throw std::runtime_error(fmt::format("Invalid DGO description: {}\n", err));
+    if (!entry.is_string()) {
+      throw std::runtime_error(fmt::format("Invalid file name for DGO: {}\n", entry.print()));
     }
 
-    if (!goos::va_check(e_arg, {goos::ObjectType::STRING, goos::ObjectType::STRING}, {}, &err)) {
-      throw std::runtime_error(fmt::format("Invalid DGO description: {}\n", err));
-    }
     DgoDescription::DgoEntry o;
-    o.file_name = e_arg.unnamed.at(0).as_string()->data;
-    o.name_in_dgo = e_arg.unnamed.at(1).as_string()->data;
+    const auto& file_name = entry.as_string()->data;
+    // automatically deduce dgo name
+    // (not really a fan of how this is written...)
+    if (file_name.length() > 2 && file_name.substr(file_name.length() - 2, 2) == ".o") {
+      // ends with .o so it's a code file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 2);
+    } else if (file_name.length() > 6 && file_name.substr(file_name.length() - 6, 6) == "-ag.go") {
+      // ends with -ag.go so it's an art group file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 6);
+    } else if (file_name.length() > 3 && file_name.substr(file_name.length() - 3, 3) == ".go") {
+      // ends with .go so it's a generic data file
+      o.name_in_dgo = file_name.substr(0, file_name.length() - 3);
+    }
+    o.file_name = file_name;
     desc.entries.push_back(o);
   });
   return desc;
@@ -135,21 +142,22 @@ bool TextTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   }
 
   std::vector<std::string> deps;
-  open_text_project("text", task.input.at(0), deps);
-  for (auto& dep : deps) {
-    dep = path_map.apply_remaps(dep);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("text", task.input.at(0), files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.file_path));
   }
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
 bool TextTool::run(const ToolInput& task, const PathMap& path_map) {
   GameTextDB db;
-  std::vector<std::string> inputs;
-  open_text_project("text", task.input.at(0), inputs);
-  for (auto& in : inputs) {
-    in = path_map.apply_remaps(in);
+  std::vector<GameTextDefinitionFile> files;
+  open_text_project("text", task.input.at(0), files);
+  for (auto& file : files) {
+    file.file_path = path_map.apply_remaps(file.file_path);
   }
-  compile_game_text(inputs, db, path_map.output_prefix);
+  compile_game_text(files, db, path_map.output_prefix);
   return true;
 }
 
@@ -159,31 +167,80 @@ bool GroupTool::run(const ToolInput&, const PathMap& /*path_map*/) {
   return true;
 }
 
+void enumerate_subtitle_project_files(const std::string& tool_name,
+                                      const std::string& file_path,
+                                      const PathMap& path_map,
+                                      std::vector<GameSubtitleDefinitionFile>& files,
+                                      std::vector<std::string>& deps) {
+  open_subtitle_project(tool_name, file_path, files);
+  for (auto& file : files) {
+    deps.push_back(path_map.apply_remaps(file.lines_path));
+    deps.push_back(path_map.apply_remaps(file.meta_path));
+    if (file.lines_base_path) {
+      deps.push_back(path_map.apply_remaps(file.lines_base_path.value()));
+    }
+    if (file.meta_base_path) {
+      deps.push_back(path_map.apply_remaps(file.meta_base_path.value()));
+    }
+  }
+}
+
+void run_subtitle_project_files(const std::string& tool_name,
+                                const std::string& file_path,
+                                const PathMap& path_map,
+                                std::vector<GameSubtitleDefinitionFile>& files) {
+  open_subtitle_project(tool_name, file_path, files);
+  for (auto& file : files) {
+    file.lines_path = path_map.apply_remaps(file.lines_path);
+    file.meta_path = path_map.apply_remaps(file.meta_path);
+    if (file.lines_base_path) {
+      file.lines_base_path = path_map.apply_remaps(file.lines_base_path.value());
+    }
+    if (file.meta_base_path) {
+      file.meta_base_path = path_map.apply_remaps(file.meta_base_path.value());
+    }
+  }
+}
+
 SubtitleTool::SubtitleTool() : Tool("subtitle") {}
 
 bool SubtitleTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   if (task.input.size() != 1) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-
+  std::vector<GameSubtitleDefinitionFile> files;
   std::vector<std::string> deps;
-  open_text_project("subtitle", task.input.at(0), deps);
-  for (auto& dep : deps) {
-    dep = path_map.apply_remaps(dep);
-  }
+  enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
 bool SubtitleTool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
-  db.m_subtitle_groups = std::make_unique<GameSubtitleGroups>();
-  db.m_subtitle_groups->hydrate_from_asset_file();
-  std::vector<std::string> inputs;
-  open_text_project("subtitle", task.input.at(0), inputs);
-  for (auto& in : inputs) {
-    in = path_map.apply_remaps(in);
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V1;
+  std::vector<GameSubtitleDefinitionFile> files;
+  run_subtitle_project_files(name(), task.input.at(0), path_map, files);
+  compile_game_subtitles(files, db, path_map.output_prefix);
+  return true;
+}
+
+SubtitleV2Tool::SubtitleV2Tool() : Tool("subtitle-v2") {}
+
+bool SubtitleV2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  compile_game_subtitle(inputs, db, path_map.output_prefix);
+  std::vector<GameSubtitleDefinitionFile> files;
+  std::vector<std::string> deps;
+  enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
+  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
+}
+
+bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
+  GameSubtitleDB db;
+  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
+  std::vector<GameSubtitleDefinitionFile> files;
+  run_subtitle_project_files(name(), task.input.at(0), path_map, files);
+  compile_game_subtitles(files, db, path_map.output_prefix);
   return true;
 }
 

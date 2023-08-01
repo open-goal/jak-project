@@ -1,12 +1,20 @@
 #include "kmachine.h"
 
+#include <bitset>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
+#include "common/util/string_util.h"
 
+#include "game/external/discord_jak2.h"
+#include "game/graphics/display.h"
+#include "game/graphics/jak2_texture_remap.h"
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kboot.h"
@@ -28,7 +36,7 @@
 #include "game/kernel/jak2/kmalloc.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
-#include "game/kernel/svnrev.h"
+#include "game/overlord/jak2/iso.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -50,7 +58,7 @@ void InitParms(int argc, const char* const* argv) {
     DiskBoot = 1;
     isodrv = fakeiso;
     modsrc = 0;
-    reboot = 0;
+    reboot_iop = 0;
     DebugSegment = 0;
     MasterDebug = 0;
   }
@@ -65,7 +73,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cd mode\n");
       isodrv = iso_cd;  // use the actual DVD drive for data files
       modsrc = 1;       // use the DVD drive data for IOP modules
-      reboot = 1;       // Reboot the IOP (load new IOP runtime)
+      reboot_iop = 1;   // Reboot the IOP (load new IOP runtime)
     }
 
     // the "cddata" uses the DVD drive for everything but IOP modules.
@@ -73,7 +81,7 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: cddata mode\n");
       isodrv = iso_cd;  // tell IOP to use actual DVD drive for data files
       modsrc = 0;       // don't use DVD drive for IOP modules
-      reboot = 0;       // no need to reboot the IOP
+      reboot_iop = 0;   // no need to reboot the IOP
     }
 
     if (arg == "-demo") {
@@ -98,14 +106,14 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: deviso mode\n");
       isodrv = deviso;  // IOP deviso mode
       modsrc = 2;       // now 2 for Jak 2
-      reboot = 0;
+      reboot_iop = 0;
     }
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
     if (arg == "-fakeiso") {
       Msg(6, "dkernel: fakeiso mode\n");
       isodrv = fakeiso;  // IOP fakeeiso mode
       modsrc = 0;        // no IOP module loading (there's no DVD to load from!)
-      reboot = 0;
+      reboot_iop = 0;
     }
 
     // the "boot" mode is used to set GOAL up for running the game in retail mode
@@ -150,17 +158,17 @@ void InitParms(int argc, const char* const* argv) {
     // new for jak 2
     if (arg == "-user") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: user %s\n", levelName.c_str());
-      kstrcpy(DebugBootUser, levelName.c_str());
+      std::string userName = argv[i];
+      Msg(6, "dkernel: user %s\n", userName.c_str());
+      kstrcpy(DebugBootUser, userName.c_str());
     }
 
     // new for jak 2
     if (arg == "-art") {
       i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: art-group %s\n", levelName.c_str());
-      kstrcpy(DebugBootArtGroup, levelName.c_str());
+      std::string artGroupName = argv[i];
+      Msg(6, "dkernel: art-group %s\n", artGroupName.c_str());
+      kstrcpy(DebugBootArtGroup, artGroupName.c_str());
       kstrcpy(DebugBootMessage, "art-group");
     }
 
@@ -184,11 +192,11 @@ void InitIOP() {
   sceSifInitRpc(0);
 
   // init cd if we need it
-  if (((isodrv == iso_cd) || (modsrc == 1)) || (reboot == 1)) {
+  if (((isodrv == iso_cd) || (modsrc == 1)) || (reboot_iop == 1)) {
     InitCD();
   }
 
-  if (reboot == 0) {
+  if (reboot_iop == 0) {
     // iop with dev kernel
     printf("Rebooting IOP...\n");
     while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp271.img")) {
@@ -353,6 +361,7 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
+AutoSplitterBlock gAutoSplitterBlock;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -392,7 +401,10 @@ int InitMachine() {
   InitRPC();
   reset_output();
   clear_print();
+
+  prof().begin_event("init-heap-and-symbol");
   auto status = InitHeapAndSymbol();
+  prof().end_event();
   if (status >= 0) {
     printf("InitListenerConnect\n");
     InitListenerConnect();
@@ -424,9 +436,64 @@ int ShutdownMachine() {
   return 0;
 }
 
-Ptr<MouseInfo> MouseGetData(Ptr<MouseInfo> mouse) {
-  // stubbed out in the actual game
-  return mouse;
+u32 MouseGetData(u32 _mouse) {
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
+
+  mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->status = 1;
+  // Contrary to the name, this is a 16bitfield
+  // where:
+  // 0 = left button
+  // 1 = right button
+  // 2 = middle button
+  mouse->button0 = 0;
+
+  s32 xpos = 0;
+  s32 ypos = 0;
+  if (Display::GetMainDisplay()) {
+    std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+    const auto mouse_button_status =
+        Display::GetMainDisplay()->get_input_manager()->get_mouse_button_status();
+    mouse->button0 |= (mouse_button_status.left ? 1 : 0);
+    mouse->button0 |= (mouse_button_status.right ? 2 : 0);
+    mouse->button0 |= (mouse_button_status.middle ? 4 : 0);
+  }
+
+  // NOTE - ignoring speed and setting position directly
+  // the game assumes resolutions, so this makes it a lot easier to make it actually
+  // line up with the mouse cursor
+
+  // TODO - probably factor in scaling as well
+  auto win_width = 0;
+  auto win_height = 0;
+  auto game_width = 0;
+  auto game_height = 0;
+  if (Display::GetMainDisplay()) {
+    win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
+    win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+    game_width = Display::GetMainDisplay()->get_display_manager()->get_window_game_width();
+    game_height = Display::GetMainDisplay()->get_display_manager()->get_window_game_height();
+  }
+  xpos -= (win_width - game_width) / 2;
+  ypos -= (win_height - game_height) / 2;
+
+  // These are used to calculate the speed at which to move the mouse to it's new coordinates
+  // zero'd out so they are ignored and don't impact the position we are about to set
+  mouse->deltax = 0;
+  mouse->deltay = 0;
+  // These positions will get capped to:
+  // - [-256.0, 256.0] for width
+  // - [-208.0, 208.0] for height
+  // (then 208 or 256 is always added to them to get the final screen coordinate)
+  // So just normalize the actual window's values to this range
+  double width_per = xpos / double(game_width);
+  double height_per = ypos / double(game_height);
+  mouse->posx = (512.0 * width_per) - 256.0;
+  mouse->posy = (416.0 * height_per) - 208.0;
+  // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
+  return _mouse;
 }
 
 /*!
@@ -457,98 +524,223 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   return fs;
 }
 
+/*!
+ * PC port functions START
+ */
+
+void update_discord_rpc(u32 discord_info) {
+  if (gDiscordRpcEnabled) {
+    DiscordRichPresence rpc;
+    char state[128];
+    char large_image_key[128];
+    char large_image_text[128];
+    char small_image_key[128];
+    char small_image_text[128];
+    auto info = discord_info ? Ptr<DiscordInfo>(discord_info).c() : NULL;
+    if (info) {
+      // Get the data from GOAL
+      int orbs = (int)info->orb_count;
+      int gems = (int)info->gem_count;
+      // convert encodings
+      std::string status = get_font_bank(GameTextVersion::JAK2)
+                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
+
+      // get rid of special encodings like <COLOR_WHITE>
+      std::regex r("<.*?>");
+      while (std::regex_search(status, r)) {
+        status = std::regex_replace(status, r, "");
+      }
+
+      char* level = Ptr<String>(info->level).c()->data();
+      auto cutscene = Ptr<Symbol4<u32>>(info->cutscene)->value();
+      float time = info->time_of_day;
+      float percent_completed = info->percent_completed;
+      std::bitset<32> focus_status;
+      focus_status = info->focus_status;
+      char* task = Ptr<String>(info->task).c()->data();
+
+      // Construct the DiscordRPC Object
+      const char* full_level_name =
+          get_full_level_name(level_names, level_name_remap, Ptr<String>(info->level).c()->data());
+      memset(&rpc, 0, sizeof(rpc));
+      // if we have an active task, set the mission specific image for it
+      // also small hack to prevent oracle image from showing up while inside levels
+      // like hideout, onintent, etc.
+      if (strcmp(task, "unknown") != 0 && strcmp(task, "city-oracle") != 0) {
+        strcpy(large_image_key, task);
+      } else {
+        // if we are in an outdoors level, use the picture for the corresponding time of day
+        if (!indoors(indoor_levels, level)) {
+          char level_with_tod[128];
+          strcpy(level_with_tod, level);
+          strcat(level_with_tod, "-");
+          strcat(level_with_tod, time_of_day_str(time));
+          strcpy(large_image_key, level_with_tod);
+        } else {
+          strcpy(large_image_key, level);
+        }
+      }
+      strcpy(large_image_text, full_level_name);
+      if (!strcmp(full_level_name, "unknown")) {
+        strcpy(large_image_key, full_level_name);
+        strcpy(large_image_text, level);
+      }
+      rpc.largeImageKey = large_image_key;
+      if (cutscene != offset_of_s7()) {
+        strcpy(state, "Watching a cutscene");
+        // temporarily move these counters to the large image tooltip during a cutscene
+        strcat(large_image_text,
+               fmt::format(" | {:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                           std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
+                   .c_str());
+      } else {
+        strcpy(state, fmt::format("{:.0f}% | Orbs: {} | Gems: {} | {}", percent_completed,
+                                  std::to_string(orbs), std::to_string(gems), get_time_of_day(time))
+                          .c_str());
+      }
+      rpc.largeImageText = large_image_text;
+      rpc.state = state;
+      // check for any special conditions to display for the small image
+      if (FOCUS_TEST(focus_status, FocusStatus::Board)) {
+        strcpy(small_image_key, "focus-status-board");
+        strcpy(small_image_text, "On the JET-Board");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Mech)) {
+        strcpy(small_image_key, "focus-status-mech");
+        strcpy(small_image_text, "In the Titan Suit");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Pilot)) {
+        strcpy(small_image_key, "focus-status-pilot");
+        strcpy(small_image_text, "Driving a Zoomer");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Indax)) {
+        strcpy(small_image_key, "focus-status-indax");
+        strcpy(small_image_text, "Playing as Daxter");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Dark)) {
+        strcpy(small_image_key, "focus-status-dark");
+        strcpy(small_image_text, "Dark Jak");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Disable) &&
+                 FOCUS_TEST(focus_status, FocusStatus::Grabbed)) {
+        // being in a turret sets disable and grabbed flags
+        strcpy(small_image_key, "focus-status-turret");
+        strcpy(small_image_text, "In a Gunpod");
+      } else if (FOCUS_TEST(focus_status, FocusStatus::Gun)) {
+        strcpy(small_image_key, "focus-status-gun");
+        strcpy(small_image_text, "Using a Gun");
+      } else {
+        strcpy(small_image_key, "");
+        strcpy(small_image_text, "");
+      }
+      rpc.smallImageKey = small_image_key;
+      rpc.smallImageText = small_image_text;
+      rpc.startTimestamp = gStartTime;
+      rpc.details = status.c_str();
+      rpc.partySize = 0;
+      rpc.partyMax = 0;
+      Discord_UpdatePresence(&rpc);
+    }
+  } else {
+    Discord_ClearPresence();
+  }
+}
+
+void pc_set_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_levels(levels);
+}
+
+void init_autosplit_struct() {
+  gAutoSplitterBlock.pointer_to_symbol =
+      (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
+}
+
+u32 alloc_vagdir_names(u32 heap_sym) {
+  auto alloced_heap = (Ptr<u64>)alloc_heap_memory(heap_sym, gVagDir.count * 8 + 8);
+  if (alloced_heap.offset) {
+    *alloced_heap = gVagDir.count;
+    // use entry -1 to get the amount
+    alloced_heap = alloced_heap + 8;
+    for (size_t i = 0; i < gVagDir.count; ++i) {
+      char vagname_temp[9];
+      memcpy(vagname_temp, gVagDir.vag[i].name, 8);
+      for (int j = 0; j < 8; ++j) {
+        vagname_temp[j] = tolower(vagname_temp[j]);
+      }
+      vagname_temp[8] = 0;
+      u64 vagname_val;
+      memcpy(&vagname_val, vagname_temp, 8);
+      *(alloced_heap + i * 8) = vagname_val;
+    }
+    return alloced_heap.offset;
+  }
+  return s7.offset;
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
+  init_common_pc_port_functions(
+      make_function_symbol_from_c,
+      [](const char* name) {
+        const auto result = intern_from_c(name);
+        InternFromCInfo info{};
+        info.offset = result.offset;
+        return info;
+      },
+      make_string_from_c);
 
-  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
-  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
-  // make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
-  // make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
-  // make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
-  // make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
-  // make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
-
-  // pad stuff
-  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
-  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
-  make_function_symbol_from_c("pc-pad-input-pad-set", (void*)Pad::input_mode_pad_set);
-  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
-  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
-  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
-
-  // os stuff
-  // make_function_symbol_from_c("pc-get-os", (void*)get_os);
-  make_function_symbol_from_c("pc-get-window-size", (void*)get_window_size);
-  make_function_symbol_from_c("pc-get-window-scale", (void*)get_window_scale);
-  // make_function_symbol_from_c("pc-get-fullscreen", (void*)get_fullscreen);
-  make_function_symbol_from_c("pc-get-screen-size", (void*)get_screen_size);
-  make_function_symbol_from_c("pc-get-screen-rate", (void*)get_screen_rate);
-  make_function_symbol_from_c("pc-get-screen-vmode-count", (void*)get_screen_vmode_count);
-  make_function_symbol_from_c("pc-set-window-size", (void*)Gfx::set_window_size);
-  // make_function_symbol_from_c("pc-set-fullscreen", (void*)set_fullscreen);
-  make_function_symbol_from_c("pc-set-frame-rate", (void*)set_frame_rate);
-  make_function_symbol_from_c("pc-set-vsync", (void*)set_vsync);
-  make_function_symbol_from_c("pc-set-window-lock", (void*)set_window_lock);
-
-  // graphics things
-  make_function_symbol_from_c("pc-set-letterbox", (void*)Gfx::set_letterbox);
-  make_function_symbol_from_c("pc-renderer-tree-set-lod", (void*)Gfx::SetLod);
-  make_function_symbol_from_c("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);
-  make_function_symbol_from_c("pc-set-collision-mask", (void*)set_collision_mask);
-  make_function_symbol_from_c("pc-get-collision-mask", (void*)get_collision_mask);
-  make_function_symbol_from_c("pc-set-collision-wireframe", (void*)set_collision_wireframe);
-  make_function_symbol_from_c("pc-set-collision", (void*)set_collision);
-
-  // file related functions
-  make_function_symbol_from_c("pc-filepath-exists?", (void*)filepath_exists);
-  make_function_symbol_from_c("pc-mkdir-file-path", (void*)mkdir_path);
+  make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
+  make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
 
   // discord rich presence
-  // make_function_symbol_from_c("pc-discord-rpc-set", (void*)set_discord_rpc);
-  // make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
+  make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
-  // profiler
-  make_function_symbol_from_c("pc-prof", (void*)prof_event);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
+  // debugging tools
+  make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
   intern_from_c("*pc-user-dir-base-path*")->value() =
       make_string_from_c(user_dir_path.string().c_str());
-  // TODO - we will eventually need a better way to know what game we are playing
-  auto settings_path = file_util::get_user_settings_dir();
+  auto settings_path = file_util::get_user_settings_dir(g_game_version);
   intern_from_c("*pc-settings-folder*")->value() =
       make_string_from_c(settings_path.string().c_str());
-  intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(GIT_VERSION);
+  intern_from_c("*pc-settings-built-sha*")->value() = make_string_from_c(build_revision().c_str());
 }
 
-void PutDisplayEnv(u32 /*ptr*/) {
-  ASSERT(false);
+/*!
+ * PC port functions END
+ */
+
+void PutDisplayEnv(u32 alp) {
+  // we can mostly ignore this, except for one value that sets the 'blackout' amount.
+  auto* renderer = Gfx::GetCurrentRenderer();
+  if (renderer) {
+    renderer->set_pmode_alp(alp / 255.f);
+  }
 }
 
-u32 sceGsSyncV(u32 /*mode*/) {
-  // stub, jak2 probably works differently here
-  ASSERT(false);
-  return 0;
-  /*
+u32 sceGsSyncV(u32 mode) {
   ASSERT(mode == 0);
-  VBlank_Handler();
+  // VBlank_Handler(); meh...
+  if (vblank_interrupt_handler && MasterExit == RuntimeExitStatus::RUNNING) {
+    call_goal(Ptr<Function>(vblank_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+  }
+
   return Gfx::vsync();
-   */
 }
 
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
-  // stub, jak2 probably works differently here
   ASSERT(mode == 0 && timeout == 0);
-  ASSERT(false);
-  return 0;
-  // return Gfx::sync_path();
+  return Gfx::sync_path();
 }
 
 void aybabtu() {}
@@ -601,9 +793,16 @@ void InitMachineScheme() {
   intern_from_c("*kernel-boot-art-group*")->value() = make_string_from_c(DebugBootArtGroup);
   if (DiskBoot) {
     *EnableMethodSet = *EnableMethodSet + 1;
-    load_and_link_dgo_from_c("game", kglobalheap,
-                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                             0x400000, true);
+    {
+      auto p = scoped_prof("load-game-dgo");
+      //      load_and_link_dgo_from_c("game", kglobalheap,
+      //                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE |
+      //                               LINK_FLAG_PRINT_LOGIN, 0x400000, true);
+      load_and_link_dgo_from_c_fast(
+          "game", kglobalheap, LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+          0x400000);
+    }
+
     *EnableMethodSet = *EnableMethodSet + -1;
     using namespace jak2_symbols;
     kernel_packages->value() =
@@ -613,11 +812,49 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("art"), kernel_packages->value());
     kernel_packages->value() =
-        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
+        new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
     printf("calling play-boot!\n");
+    auto p = scoped_prof("play-boot-func");
     call_goal_function_by_name("play-boot");  // new function for jak2!
   }
+}
+
+sqlite::SQLiteDatabase sql_db;
+
+void initialize_sql_db() {
+  // If the DB has already been initialized, no-op
+  if (sql_db.is_open()) {
+    return;
+  }
+  // In the original environment, they relied on a database already being setup with the correct
+  // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
+  // that here!
+
+  fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
+  file_util::create_dir_if_needed_for_file(db_path);
+
+  // Attempt to open the database
+  const auto opened = sql_db.open_db(db_path.string());
+  (void)opened;
+
+  fs::path schema_file =
+      file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" / "editable-schema.sql";
+  if (!file_util::file_exists(schema_file.string())) {
+    lg::error("Unable to locate SQL Schema file at {}", schema_file.string());
+    return;
+  }
+
+  const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
+  // TODO - error check
+}
+
+sqlite::GenericResponse run_sql_query(const std::string& query) {
+  if (!sql_db.is_open()) {
+    // TODO - error
+    return sqlite::GenericResponse();
+  }
+  return sql_db.run_query(query);
 }
 
 }  // namespace jak2

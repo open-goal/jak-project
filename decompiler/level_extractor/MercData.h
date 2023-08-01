@@ -1,15 +1,23 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "common/common_types.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
+
+struct MercEyeCtrl {
+  s8 eye_slot;
+  // there's more...
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+};
 
 /*!
  * per-ctrl information. the first qw is uploaded to vu1
@@ -41,7 +49,7 @@ struct MercCtrlHeader {
   u16 cross_copy_count;
   u16 num_verts;
   float longest_edge;
-  // todo (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
+  std::optional<MercEyeCtrl> eye_ctrl;
   u32 masks[3];
   // (dummy-bytes            uint8       48 :offset 32)
   u32 envmap_tint;
@@ -56,7 +64,7 @@ struct MercCtrlHeader {
   u8 use_translucent;
   u8 display_this_fragment;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   std::string print() const;
 };
 
@@ -161,13 +169,56 @@ struct MercFragment {
   std::string print() const;
 };
 
+struct MercBlendCtrl {
+  u8 blend_vtx_count;  // total number of vertices
+
+  // if a fragment is not influenced by a target, the offsets would be zero, and these offset
+  // aren't stored. The format works like this:
+  // if bt_index[tgt_idx] == 0:
+  //   the target doesn't influence this vertex
+  // else:
+  //   the bt_index[tgt_idx] group of offsets is for tgt_idx.
+
+  // All the nonzero entries of bt_index are increasing.
+
+  // For example:
+  // 0, 0, 1, 0, 2, 3
+  // indicates that this blend fragment is used in targets 2, 4, and 5.
+  // group 1 is the offsets for target 2, group 2 for 4, and group 3 for 5.
+
+  // the group 0 offsets are actually the vertex base position, and should be treated as
+  // unsigned. All other offsets are signed offsets.
+
+  u8 nonzero_index_count;  // number of nonzeros in the bt_index table
+
+  // which groups correspond to which targets (see comment above)
+  // the length of this array is always the number of blend targets for the effect.
+  std::vector<u8> bt_index;
+  TypedRef from_ref(TypedRef tr, const DecompilerTypeSystem& dts, int blend_target_count);
+};
+
+struct MercBlendData {
+  std::vector<u8> u8_data;
+  Ref from_ref(Ref ref, int num_bytes);
+};
+
+struct MercExtraInfo {
+  std::optional<MercShader> shader;
+};
+
+constexpr int kTextureScrollEffectBit = 1;
+constexpr int kTransEffectBit = 2;   // true in 1 and 2
+constexpr int kRippleEffectBit = 4;  // true in jak 1 and jak 2
+
 struct MercEffect {
   //((frag-geo         merc-fragment          :offset-assert 0) ;; ?
   std::vector<MercFragment> frag_geo;
   // (frag-ctrl        merc-fragment-control  :offset-assert 4)
   std::vector<MercFragmentControl> frag_ctrl;
   // (blend-data       merc-blend-data        :offset-assert 8) ??
+  std::vector<MercBlendData> blend_data;
   // (blend-ctrl       merc-blend-ctrl        :offset-assert 12) ??
+  std::vector<MercBlendCtrl> blend_ctrl;
   // (dummy0           uint8                  :offset-assert 16) ??
   u8 effect_bits;
   u16 frag_count;
@@ -175,8 +226,11 @@ struct MercEffect {
   u16 tri_count;
   u16 dvert_count;
   // (dummy1           uint8                  :offset-assert 26) ??
-  u8 envmap_usage;
+  u8 envmap_or_effect_usage;
   // (extra-info       merc-extra-info        :offset-assert 28) ??
+  MercExtraInfo extra_info;
+
+  u8 texture_index = -1;  // jak 2 only
 
   void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, const MercCtrlHeader& main_control);
   std::string print();
@@ -188,7 +242,7 @@ struct MercCtrl {
   MercCtrlHeader header;
   std::vector<MercEffect> effects;
 
-  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts);
+  void from_ref(TypedRef tr, const DecompilerTypeSystem& dts, GameVersion version);
   std::string print();
 };
 }  // namespace decompiler

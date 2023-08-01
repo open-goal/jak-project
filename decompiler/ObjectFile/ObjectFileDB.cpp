@@ -16,6 +16,7 @@
 
 #include "common/link_types.h"
 #include "common/log/log.h"
+#include "common/texture/texture_slots.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
@@ -29,6 +30,7 @@
 #include "decompiler/data/StrFileReader.h"
 #include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
+#include "decompiler/data/game_subs.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/tpage.h"
 
@@ -117,8 +119,9 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
                            const fs::path& obj_file_name_map_file,
                            const std::vector<fs::path>& object_files,
                            const std::vector<fs::path>& str_files,
+                           const std::vector<fs::path>& str_tex_files,
                            const Config& config)
-    : dts(config.game_version) {
+    : dts(config.game_version), m_version(config.game_version) {
   Timer timer;
 
   lg::info("-Loading types...");
@@ -150,7 +153,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     auto name = obj_filename_to_name(obj.string());
     if (auto it = config.object_patches.find(name); it != config.object_patches.end()) {
       // print the file CRC
-      fmt::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
+      lg::print("CRC for {} is: 0x{:X}\n", name, crc32(data.data(), data.size()));
       // write patch file if necessary
       if (config.write_patches) {
         // this is the "target" file we want to patch to
@@ -204,22 +207,37 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
     add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
   }
 
-  lg::info("-Loading {} streaming object files...", str_files.size());
-  for (auto& obj : str_files) {
-    StrFileReader reader(obj);
-    // name from the file name
-    std::string base_name = obj_filename_to_name(obj.string());
-    // name from inside the file (this does a lot of sanity checking)
-    auto obj_name = reader.get_full_name(base_name + ".STR");
-    for (int i = 0; i < reader.chunk_count(); i++) {
-      // append the chunk ID to the full name
-      std::string name = obj_name + fmt::format("+{}", i);
-      auto& data = reader.get_chunk(i);
-      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
+  if (config.read_spools) {
+    lg::info("-Loading {} streaming object files...", str_files.size());
+    for (auto& obj : str_files) {
+      StrFileReader reader(obj, version());
+      // name from the file name
+      std::string base_name = obj_filename_to_name(obj.string());
+      // name from inside the file (this does a lot of sanity checking)
+      auto obj_name = reader.get_full_name(base_name + ".STR");
+      for (int i = 0; i < reader.chunk_count(); i++) {
+        // append the chunk ID to the full name
+        std::string name = obj_name + fmt::format("+{}", i);
+        auto& data = reader.get_chunk(i);
+        add_obj_from_dgo(name, name, data.data(), data.size(), "ALLSPOOL", config, obj_name);
+      }
     }
   }
 
-  lg::info("ObjectFileDB Initialized\n");
+  if (!str_tex_files.empty()) {
+    lg::info("-Loading {} streaming texture files...", str_tex_files.size());
+    for (auto& obj : str_tex_files) {
+      StrFileReader reader(obj, version());
+      // name from the file name
+      std::string base_name = obj_filename_to_name(obj.string());
+      ASSERT(reader.chunk_count() == 1);
+      auto name = reader.get_texture_name();
+      add_obj_from_dgo(name, name, reader.get_chunk(0).data(), reader.get_chunk(0).size(),
+                       "TEXSPOOL", config, name);
+    }
+  }
+
+  lg::info("ObjectFileDB Initialized");
   if (obj_files_by_name.empty()) {
     lg::error(
         "No object files have been added. Check that there are input files and the allowed_objects "
@@ -313,6 +331,55 @@ void ObjectFileDB::get_objs_from_dgo(const fs::path& filename, const Config& con
 }
 
 /*!
+ * Are two object files the same?
+ * Unfortunately they seemed to have a memory bug in their art-group generator, so there's some
+ * uninitialized padding bytes.
+ */
+bool are_objects_the_same(const std::string& obj_name,
+                          size_t size_a,
+                          const u8* a,
+                          size_t size_b,
+                          const u8* b) {
+  if (size_a != size_b) {
+    return false;
+  }
+
+  // if they are byte-for-byte the same, it's a match
+  if (!memcmp(a, b, size_a)) {
+    return true;
+  }
+
+  // if it's an art group...
+  if (obj_name.size() > 3 && !obj_name.compare(obj_name.length() - 3, 3, "-ag")) {
+    // count up the number of differing bytes, and the location of the first one.
+    size_t first_diff = 0;
+    size_t last_diff = 0;
+    int num_diffs = 0;
+    bool found_first_diff = false;
+    for (size_t i = 0; i < size_a; i++) {
+      if (a[i] != b[i]) {
+        num_diffs++;
+        last_diff = i;
+        if (!found_first_diff) {
+          first_diff = i;
+          found_first_diff = true;
+        }
+      }
+    }
+
+    // find the gap between "code" (really data here) and link table. This has up to 15 bytes of
+    // uninitialized memory.
+    const auto* header = (const LinkHeaderV4*)a;
+    int link_data_offset = header->code_size + sizeof(LinkHeaderV4);
+    int start_off_diff_from_code_end = link_data_offset - (int)first_diff;
+    if (num_diffs < 16 && start_off_diff_from_code_end < 16 && (int)last_diff < link_data_offset) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/*!
  * Add an object file to the ObjectFileDB
  */
 void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
@@ -320,7 +387,8 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const uint8_t* obj_data,
                                     uint32_t obj_size,
                                     const std::string& dgo_name,
-                                    const Config& config) {
+                                    const Config& config,
+                                    const std::string& cut_name) {
   if (config.banned_objects.find(obj_name) != config.banned_objects.end()) {
     return;
   }
@@ -337,10 +405,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   bool duplicated = false;
   // first, check to see if we already got it...
   for (auto& e : obj_files_by_name[obj_name]) {
-    if (e.data.size() == obj_size && e.record.hash == hash) {
-      // just to make sure we don't have a hash collision.
-      ASSERT(!memcmp(obj_data, e.data.data(), obj_size));
-
+    if (are_objects_the_same(obj_name, e.data.size(), e.data.data(), obj_size, obj_data)) {
       // already got it!
       e.reference_count++;
       auto& rec = e.record;
@@ -359,7 +424,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   }
 
   // nope, have to add a new one.
-  ObjectFileData data;
+  ObjectFileData data(config.game_version);
   data.data.resize(obj_size);
   memcpy(data.data.data(), obj_data, obj_size);
   data.record.hash = hash;
@@ -369,6 +434,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
     // if this is the first time we've seen this object file name, add it in the order.
     obj_file_order.push_back(obj_name);
   }
+  data.base_name_from_chunk = cut_name;
   data.record.version = obj_files_by_name[obj_name].size();
   data.name_in_dgo = name_in_dgo;
   data.obj_version = version;
@@ -443,9 +509,10 @@ std::string ObjectFileDB::generate_obj_listing(const std::unordered_set<std::str
   for (auto& obj_file : obj_file_order) {
     for (auto& x : obj_files_by_name.at(obj_file)) {
       std::string dgos = "[";
-      for (auto& y : x.dgo_names) {
-        ASSERT(y.length() >= 5);
-        std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
+      for (auto& name : x.dgo_names) {
+        ASSERT(name.length() >= 5);
+        std::string new_str =
+            (name == "NO-XGO" || name == "ALLSPOOL") ? name : name.substr(0, name.length() - 4);
         dgos += "\"" + new_str + "\", ";
       }
       dgos.pop_back();
@@ -496,7 +563,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -511,7 +578,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms", process_label_timer.getMs());
 }
 
 /*!
@@ -617,7 +684,7 @@ void ObjectFileDB::find_code(const Config& config) {
   auto total_ops = combined_stats.code_bytes / 4;
   lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
            100.f * (float)combined_stats.decoded_ops / total_ops);
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
 /*!
@@ -643,10 +710,12 @@ void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
   file_util::write_text_file(file_name, all_scripts);
 
   lg::info("Found scripts:");
-  lg::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info(" Total {:.3f} ms", timer.getMs());
 }
 
-std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& output_path) {
+std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
+                                         const fs::path& output_path,
+                                         const Config& cfg) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -654,10 +723,25 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
   u64 total_px = 0;
   Timer timer;
 
+  std::vector<std::string> animated_slots;
+  switch (m_version) {
+    case GameVersion::Jak1:  // no animated
+      break;
+    case GameVersion::Jak2:
+      animated_slots = jak2_animated_texture_slots();
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  for (size_t i = 0; i < animated_slots.size(); i++) {
+    tex_db.animated_tex_output_to_anim_slot[animated_slots[i]] = i;
+  }
+
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data, tex_db, output_path);
+      auto statistics = process_tpage(data, tex_db, output_path, cfg.animated_textures);
       total += statistics.total_textures;
       success += statistics.successful_textures;
       total_px += statistics.num_px;
@@ -679,35 +763,92 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db, const fs::path& outp
   return result;
 }
 
-std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
-  lg::info("- Finding game text...");
-  std::string text_string = "COMMON";
-  Timer timer;
-  int file_count = 0;
-  int string_count = 0;
-  int char_count = 0;
-  std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
+std::string ObjectFileDB::process_all_spool_subtitles(const Config& cfg,
+                                                      const fs::path& image_out) {
+  try {
+    lg::info("- Finding spool subtitles...");
+    Timer timer;
+    int obj_count = 0;
+    int string_count = 0;
+    int image_count = 0;
+    int subs_count = 0;
+    std::unordered_map<std::string, std::vector<SpoolSubtitleRange>> all_subs;
 
-  for_each_obj([&](ObjectFileData& data) {
-    if (data.name_in_dgo.substr(1) == text_string) {
-      file_count++;
-      auto statistics = process_game_text(data, cfg.text_version);
-      string_count += statistics.total_text;
-      char_count += statistics.total_chars;
-      if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
-        ASSERT(false);
+    for_each_obj_in_dgo("ALLSPOOL", [&](ObjectFileData& data) {
+      int this_string_count = 0;
+      int this_image_count = 0;
+      obj_count++;
+      auto this_spool_subs = process_spool_subtitles(data, cfg.text_version);
+      if (!this_spool_subs.empty()) {
+        for (auto& s : this_spool_subs) {
+          subs_count++;
+          for (int i = 0; i < 8; ++i) {
+            if (s.message[i].kind == SpoolSubtitleMessage::Kind::IMAGE) {
+              this_image_count++;
+            } else if (s.message[i].kind == SpoolSubtitleMessage::Kind::STRING) {
+              this_string_count++;
+            }
+          }
+        }
+        auto& spool_subs = all_subs[data.base_name_from_chunk];
+        for (auto& x : this_spool_subs) {
+          bool skip = false;
+          for (auto& other : spool_subs) {
+            skip |= other == x;
+          }
+          if (!skip) {
+            all_subs[data.base_name_from_chunk].push_back(x);
+            image_count += this_image_count;
+            string_count += this_string_count;
+          }
+        }
       }
-      text_by_language_by_id[statistics.language] = std::move(statistics.text);
-    }
-  });
+    });
 
-  lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
-           string_count, char_count, timer.getMs());
+    lg::info("Processed {} subtitles in {} spool objects ({} strings, {} images) in {:.2f} ms",
+             subs_count, obj_count, string_count, image_count, timer.getMs());
 
-  if (text_by_language_by_id.empty()) {
+    return write_spool_subtitles(cfg.text_version, image_out, all_subs);
+  } catch (std::runtime_error& e) {
+    lg::warn("Error when extracting spool subtitles: {}", e.what());
     return {};
   }
-  return write_game_text(cfg.text_version, text_by_language_by_id);
+}
+
+std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
+  try {
+    lg::info("- Finding game text...");
+    std::string text_string = "COMMON";
+    Timer timer;
+    int file_count = 0;
+    int string_count = 0;
+    int char_count = 0;
+    std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
+
+    for_each_obj([&](ObjectFileData& data) {
+      if (data.name_in_dgo.substr(1) == text_string) {
+        file_count++;
+        auto statistics = process_game_text(data, cfg.text_version);
+        string_count += statistics.total_text;
+        char_count += statistics.total_chars;
+        if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
+          ASSERT(false);
+        }
+        text_by_language_by_id[statistics.language] = std::move(statistics.text);
+      }
+    });
+
+    lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
+             string_count, char_count, timer.getMs());
+
+    if (text_by_language_by_id.empty()) {
+      return {};
+    }
+    return write_game_text(cfg.text_version, text_by_language_by_id);
+  } catch (std::runtime_error& e) {
+    lg::warn("Error when extracting game text: {}", e.what());
+    return {};
+  }
 }
 
 std::string ObjectFileDB::process_game_count_file() {
@@ -736,10 +877,10 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
-      // fmt::print("art-group {}:\n", obj.to_unique_name());
+      // lg::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
-      // fmt::print("  length: {}\n", length);
+      // lg::print("  length: {}\n", length);
       std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
@@ -767,7 +908,7 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
         art_group_elts[i] = unique_name;
-        // fmt::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // lg::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
       }
       db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
@@ -790,7 +931,7 @@ void ObjectFileDB::extract_art_info() {
     }
   });
 
-  lg::info("Processed art groups: in {:.2f} ms\n", timer.getMs());
+  lg::info("Processed art groups: in {:.2f} ms", timer.getMs());
 }
 
 /*!
@@ -817,7 +958,7 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
     file_util::write_text_file(filename, result);
   }
 
-  lg::info("Written art group info: in {:.2f} ms\n", timer.getMs());
+  lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
 
 void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {

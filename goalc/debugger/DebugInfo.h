@@ -14,6 +14,11 @@
 
 class FunctionEnv;
 
+namespace goos {
+class Object;
+class HeapObject;
+}  // namespace goos
+
 /*!
  * FunctionDebugInfo stores per-function debugging information.
  * For now, it is pretty basic, but it will eventually contain stuff like stack frame info
@@ -26,8 +31,10 @@ struct FunctionDebugInfo {
   std::string name;
   std::string obj_name;
 
-  std::shared_ptr<FunctionEnv> function;
   std::vector<InstructionInfo> instructions;  // contains mapping to IRs
+
+  std::vector<std::shared_ptr<goos::HeapObject>> code_sources;
+  std::vector<std::string> ir_strings;
 
   // the actual bytes in the object file.
   std::vector<u8> generated_code;

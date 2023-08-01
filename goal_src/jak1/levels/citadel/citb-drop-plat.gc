@@ -49,8 +49,8 @@
   :size-assert         #xe1
   :flag-assert         #x16008000e1
   (:methods
-    (TODO-RENAME-20 (_type_) none 20)
-    (dummy-21 (_type_) none 21)
+    (drop-plat-method-20 (_type_) none 20)
+    (drop-plat-method-21 (_type_) none 21)
     )
   (:states
     drop-plat-die
@@ -63,8 +63,8 @@
 
 
 (defstate drop-plat-idle (drop-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('drop)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go drop-plat-drop)
@@ -108,8 +108,8 @@
   )
 
 (defstate drop-plat-spawn (drop-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('drop)
        (go drop-plat-die)
        )
@@ -138,8 +138,8 @@
   )
 
 (defstate drop-plat-rise (drop-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('drop)
        (go drop-plat-drop)
        )
@@ -240,7 +240,7 @@
     )
   )
 
-(defmethod TODO-RENAME-20 drop-plat ((obj drop-plat))
+(defmethod drop-plat-method-20 drop-plat ((obj drop-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -251,7 +251,7 @@
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid ca-1))
+      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
@@ -265,7 +265,7 @@
   (none)
   )
 
-(defmethod dummy-21 drop-plat ((obj drop-plat))
+(defmethod drop-plat-method-21 drop-plat ((obj drop-plat))
   (case (-> obj color)
     ((1)
      (initialize-skeleton obj *citb-drop-plat-red-sg* '())
@@ -310,11 +310,11 @@
   (set! (-> self color) arg3)
   (set! (-> self delay) arg1)
   (set! (-> self duration) arg2)
-  (TODO-RENAME-20 self)
+  (drop-plat-method-20 self)
   (set! (-> self root-override trans quad) (-> arg0 quad))
   (vector-identity! (-> self root-override scale))
   (quaternion-copy! (-> self root-override quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
-  (dummy-21 self)
+  (drop-plat-method-21 self)
   (go drop-plat-spawn)
   (none)
   )
@@ -459,8 +459,8 @@
   )
 
 (defstate citb-drop-plat-idle (citb-drop-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go citb-drop-plat-active)
        )
@@ -476,21 +476,19 @@
   )
 
 (defstate citb-drop-plat-active (citb-drop-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (cond
-                       ((= v1-0 'player-stepped)
-                        (when (>= (- (-> *display* base-frame-counter) (-> self drop-time)) (seconds 0.2))
-                          (set! (-> self drop-time) (-> *display* base-frame-counter))
-                          (citb-drop-plat-drop-children (the-as int (-> arg3 param 0)))
-                          )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('player-stepped)
+                      (when (>= (- (-> *display* base-frame-counter) (-> self drop-time)) (seconds 0.2))
+                        (set! (-> self drop-time) (-> *display* base-frame-counter))
+                        (the-as object (citb-drop-plat-drop-children (the-as int (-> event param 0))))
                         )
-                       ((= v1-0 'trigger)
-                        (go citb-drop-plat-idle)
-                        )
-                       )
-              )
-      )
+                      )
+                     (('trigger)
+                      (go citb-drop-plat-idle)
+                      )
+                     )
+            )
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -546,7 +544,3 @@
   (go citb-drop-plat-idle)
   (none)
   )
-
-
-
-

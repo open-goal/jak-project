@@ -25,7 +25,7 @@ namespace decompiler {
  */
 class LinkedObjectFile {
  public:
-  LinkedObjectFile() = default;
+  LinkedObjectFile(GameVersion version) : version(version){};
   void set_segment_count(int n_segs);
   void push_back_word_to_segment(uint32_t word, int segment);
   int get_label_id_for(int seg, int offset);
@@ -41,7 +41,10 @@ class LinkedObjectFile {
                         int source_offset,
                         const char* name,
                         LinkedWord::Kind kind);
-  void symbol_link_offset(int source_segment, int source_offset, const char* name);
+  void symbol_link_offset(int source_segment,
+                          int source_offset,
+                          const char* name,
+                          bool subtract_one);
   Function& get_function_at_label(int label_id);
   Function* try_get_function_at_label(int label_id);
   Function* try_get_function_at_label(const DecompilerLabel& label);
@@ -136,6 +139,8 @@ class LinkedObjectFile {
   std::vector<DecompilerLabel> labels;
 
   std::unique_ptr<LabelDB> label_db;
+
+  GameVersion version;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);

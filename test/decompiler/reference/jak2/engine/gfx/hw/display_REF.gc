@@ -1,0 +1,356 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function get-current-time
+(defun get-current-time ()
+  (-> *display* base-clock frame-counter)
+  )
+
+;; definition for function get-integral-current-time
+(defun get-integral-current-time ()
+  (-> *display* base-clock integral-frame-counter)
+  )
+
+;; definition for method 9 of type display
+(defmethod set-time-ratios display ((obj display) (arg0 float))
+  (set! (-> obj dog-ratio) (fmin 4.0 arg0))
+  (case (get-video-mode)
+    (('pal)
+     (set! (-> obj time-factor) 6.0)
+     )
+    (else
+      (set! (-> obj time-factor) 5.0)
+      )
+    )
+  (-> obj dog-ratio)
+  )
+
+;; definition for function set-display
+(defun set-display ((arg0 display))
+  (dotimes (s5-0 13)
+    (set! (-> arg0 clock s5-0) (new 'global 'clock s5-0))
+    )
+  (set! (-> arg0 base-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 game-clock mask) (process-mask freeze pause menu progress movie))
+  (set! (-> arg0 total-game-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 frame-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 target-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 camera-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 entity-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 part-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 bg-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user0-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> *listener-process* clock) (-> arg0 real-clock))
+  (set! (-> *active-pool* clock) (-> arg0 real-clock))
+  (set! (-> *display-pool* clock) (-> arg0 real-clock))
+  (set! (-> *camera-pool* clock) (-> arg0 camera-clock))
+  (set! (-> *target-pool* clock) (-> arg0 target-clock))
+  (set! (-> *mid-pool* clock) (-> arg0 real-clock))
+  (set! (-> *pusher-pool* clock) (-> arg0 entity-clock))
+  (set! (-> *entity-pool* clock) (-> arg0 entity-clock))
+  (set! (-> *bg-pool* clock) (-> arg0 bg-clock))
+  (set! (-> *default-pool* clock) (-> arg0 base-clock))
+  arg0
+  )
+
+;; definition for function allocate-dma-buffers
+(defun allocate-dma-buffers ((arg0 display))
+  (when (zero? (-> arg0 frames 0 calc-buf))
+    (set! (-> arg0 frames 0 calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 1 calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer #x140000))
+    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer #x140000))
+    (when *debug-segment*
+      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer #x800000))
+      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer #x800000))
+      )
+    )
+  arg0
+  )
+
+;; definition for symbol *font-context*, type font-context
+(define *font-context*
+  (new 'global 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+  )
+
+;; definition for function draw-sprite2d-xy
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-sprite2d-xy ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba))
+  (let* ((t2-1 (new 'stack 'draw-context arg1 arg2 arg3 arg4 arg5))
+         (a1-3 (max 1792 (min 2304 (+ (-> t2-1 orgx) 1792))))
+         (a0-5 (max 1840 (min 2256 (+ (-> t2-1 orgy) 1840))))
+         (t1-2 (-> t2-1 width))
+         (a2-4 (-> t2-1 height))
+         (v1-6 (-> arg0 base))
+         )
+    (let* ((a3-2 arg0)
+           (t0-2 (the-as object (-> a3-2 base)))
+           )
+      (set! (-> (the-as dma-packet t0-2) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t0-2) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t0-2) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a3-2 base) (&+ (the-as pointer t0-2) 16))
+      )
+    (let* ((a3-3 arg0)
+           (t0-4 (the-as object (-> a3-3 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t0-4) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x4)
+            )
+      (set! (-> (the-as gs-gif-tag t0-4) regs)
+            (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+            )
+      (set! (-> a3-3 base) (&+ (the-as pointer t0-4) 16))
+      )
+    (let* ((a3-4 arg0)
+           (t0-6 (-> a3-4 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t0-6) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+      (set! (-> (the-as (pointer gs-rgbaq) t0-6) 1) (the-as gs-rgbaq (-> t2-1 color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) t0-6) 2) (new 'static 'gs-xyzf :z #x3fffff :y (* a0-5 16) :x (* a1-3 16)))
+      (set! (-> (the-as (pointer gs-xyzf) t0-6) 3) (new 'static 'gs-xyzf
+                                                     :z #x3fffff
+                                                     :y (* (max 1840 (min 2256 (+ a0-5 a2-4))) 16)
+                                                     :x (* (max 1792 (min 2304 (+ a1-3 t1-2))) 16)
+                                                     )
+            )
+      (set! (-> a3-4 base) (&+ t0-6 32))
+      )
+    (let ((a0-14 (/ (the-as int (+ (- -16 (the-as int v1-6)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a0-14)
+         (logior! (-> (the-as (pointer uint64) v1-6) 0) (shr (shl a0-14 48) 48))
+         (logior! (-> (the-as (pointer uint64) v1-6) 1) (shl (shr (shl a0-14 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-6)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function draw-sprite2d-xy-absolute
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-sprite2d-xy-absolute ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba))
+  (let ((t2-0 (+ arg1 1792))
+        (a1-1 (+ arg2 1840))
+        (v1-0 (-> arg0 base))
+        )
+    (let* ((a2-1 arg0)
+           (t3-0 (the-as object (-> a2-1 base)))
+           )
+      (set! (-> (the-as dma-packet t3-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t3-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t3-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a2-1 base) (&+ (the-as pointer t3-0) 16))
+      )
+    (let* ((a2-2 arg0)
+           (t3-2 (the-as object (-> a2-2 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t3-2) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x4)
+            )
+      (set! (-> (the-as gs-gif-tag t3-2) regs)
+            (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+            )
+      (set! (-> a2-2 base) (&+ (the-as pointer t3-2) 16))
+      )
+    (let* ((a2-3 arg0)
+           (t3-4 (-> a2-3 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t3-4) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+      (set! (-> (the-as (pointer gs-rgbaq) t3-4) 1) (the-as gs-rgbaq arg5))
+      (set! (-> (the-as (pointer gs-xyzf) t3-4) 2) (new 'static 'gs-xyzf :z #x3fffff :y (* a1-1 16) :x (* t2-0 16)))
+      (set! (-> (the-as (pointer gs-xyzf) t3-4) 3)
+            (new 'static 'gs-xyzf :z #x3fffff :y (* (+ a1-1 arg4) 16) :x (* (+ t2-0 arg3) 16))
+            )
+      (set! (-> a2-3 base) (&+ t3-4 32))
+      )
+    (let ((a1-10 (/ (the-as int (+ (- -16 (the-as int v1-0)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a1-10)
+         (set! (-> (the-as (pointer uint64) v1-0) 0)
+               (logior (-> (the-as (pointer uint64) v1-0)) (shr (shl a1-10 48) 48))
+               )
+         (logior! (-> (the-as (pointer uint64) v1-0) 1) (shl (shr (shl a1-10 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function draw-quad2d
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-quad2d ((arg0 dma-buffer) (arg1 draw-context))
+  (let ((a3-1 (max 1792 (min 2304 (+ (-> arg1 orgx) 1792))))
+        (a2-3 (max 1840 (min 2256 (+ (-> arg1 orgy) 1840))))
+        (t3-0 (-> arg1 width))
+        (t0-2 (-> arg1 height))
+        (v1-4 (-> arg0 base))
+        )
+    (let* ((t1-0 arg0)
+           (t2-0 (the-as object (-> t1-0 base)))
+           )
+      (set! (-> (the-as dma-packet t2-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t2-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t2-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> t1-0 base) (&+ (the-as pointer t2-0) 16))
+      )
+    (let* ((t1-1 arg0)
+           (t2-2 (the-as object (-> t1-1 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t2-2) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x9)
+            )
+      (set! (-> (the-as gs-gif-tag t2-2) regs) (new 'static 'gif-tag-regs
+                                                 :regs1 (gif-reg-id rgbaq)
+                                                 :regs2 (gif-reg-id xyzf2)
+                                                 :regs3 (gif-reg-id rgbaq)
+                                                 :regs4 (gif-reg-id xyzf2)
+                                                 :regs5 (gif-reg-id rgbaq)
+                                                 :regs6 (gif-reg-id xyzf2)
+                                                 :regs7 (gif-reg-id rgbaq)
+                                                 :regs8 (gif-reg-id xyzf2)
+                                                 )
+            )
+      (set! (-> t1-1 base) (&+ (the-as pointer t2-2) 16))
+      )
+    (let* ((t1-2 arg0)
+           (t2-4 (-> t1-2 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t2-4) 0)
+            (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 1) (the-as gs-rgbaq (-> arg1 color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 2) (new 'static 'gs-xyzf :y (* a2-3 16) :x (* a3-1 16)))
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 3) (the-as gs-rgbaq (-> arg1 color 1)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 4)
+            (new 'static 'gs-xyzf :y (* a2-3 16) :x (* (max 1792 (min 2304 (+ a3-1 t3-0))) 16))
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 5) (the-as gs-rgbaq (-> arg1 color 2)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 6)
+            (new 'static 'gs-xyzf :y (* (max 1840 (min 2256 (+ a2-3 t0-2))) 16) :x (* a3-1 16))
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 7) (the-as gs-rgbaq (-> arg1 color 3)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 8) (new 'static 'gs-xyzf
+                                                     :y (* (max 1840 (min 2256 (+ a2-3 t0-2))) 16)
+                                                     :x (* (max 1792 (min 2304 (+ a3-1 t3-0))) 16)
+                                                     )
+            )
+      (set! (-> (the-as (pointer uint64) t2-4) 9) (the-as uint 0))
+      (set! (-> t1-2 base) (&+ t2-4 80))
+      )
+    (let ((a1-11 (/ (the-as int (+ (- -16 (the-as int v1-4)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a1-11)
+         (set! (-> (the-as (pointer uint64) v1-4) 0)
+               (logior (-> (the-as (pointer uint64) v1-4)) (shr (shl a1-11 48) 48))
+               )
+         (logior! (-> (the-as (pointer uint64) v1-4) 1) (shl (shr (shl a1-11 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-4)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function screen-gradient
+(defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
+  (let ((a1-2 (new 'stack 'draw-context 0 0 512 416 (new 'static 'rgba))))
+    (set! (-> a1-2 color 0) arg1)
+    (set! (-> a1-2 color 1) arg2)
+    (set! (-> a1-2 color 2) arg3)
+    (set! (-> a1-2 color 3) arg4)
+    (draw-quad2d arg0 a1-2)
+    )
+  (none)
+  )
+
+;; definition for function vif1-handler-debug
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function vif1-handler
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; failed to figure out what this is:
+(install-handler 5 (if *debug-segment*
+                       vif1-handler-debug
+                       vif1-handler
+                       )
+                 )
+
+;; definition for function vblank-handler
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function set-display-gs-state
+;; ERROR: Failed store: (s.w! (+ t3-0 8) t4-1) at op 7
+(defun set-display-gs-state ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
+  (let ((t2-0 (/ (+ arg2 63) 64)))
+    (dma-buffer-add-gs-set-flusha arg0
+                                  (scissor-1 (new 'static 'gs-scissor :scax1 (+ arg2 -1) :scay1 (+ arg3 -1)))
+                                  (xyoffset-1 (new 'static 'gs-xy-offset))
+                                  (frame-1 (new 'static 'gs-frame :fbp arg1 :fbw t2-0 :psm arg5 :fbmsk arg4))
+                                  (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                                  (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+                                  (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+                                  (texflush 0)
+                                  )
+    )
+  arg0
+  )
+
+;; definition for function set-display-gs-state-offset
+;; ERROR: Failed store: (s.w! (+ t5-0 8) t6-1) at op 7
+(defun set-display-gs-state-offset ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int) (arg6 int) (arg7 int))
+  (let ((t4-0 (/ (+ arg2 63) 64)))
+    (dma-buffer-add-gs-set-flusha arg0
+                                  (scissor-1 (new 'static 'gs-scissor :scax1 (+ arg2 -1) :scay1 (+ arg3 -1)))
+                                  (xyoffset-1 (new 'static 'gs-xy-offset :ofx (* arg6 16) :ofy (* arg7 16)))
+                                  (frame-1 (new 'static 'gs-frame :fbp arg1 :fbw t4-0 :psm arg5 :fbmsk arg4))
+                                  (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                                  (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+                                  (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+                                  (texflush 0)
+                                  )
+    )
+  arg0
+  )
+
+;; definition for function reset-display-gs-state
+;; ERROR: Failed store: (s.w! (+ a2-0 8) a3-1) at op 5
+(defun reset-display-gs-state ((arg0 display) (arg1 dma-buffer))
+  (dma-buffer-add-gs-set-flusha arg1
+                                (scissor-1 (new 'static 'gs-scissor :scax1 #x1ff :scay1 #x19f))
+                                (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy #x7300))
+                                (frame-1 (new 'static 'gs-frame :fbp #x198 :fbw #x8))
+                                (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal)))
+                                (texa (new 'static 'gs-texa :ta1 #x80))
+                                (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                                (texflush 0)
+                                )
+  arg0
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "dma-buffers")
+
+;; definition for symbol *vu0-dma-list*, type dma-buffer
+(define *vu0-dma-list* (new 'global 'dma-buffer 4096))
+
+;; definition for symbol *display*, type display
+(define *display* (new 'global 'display 0 512 416 2 49))
+
+;; failed to figure out what this is:
+(allocate-dma-buffers *display*)
+
+;; failed to figure out what this is:
+(kmemclose)

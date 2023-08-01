@@ -24,6 +24,7 @@ void extract_shrub(const level_tools::shrub_types::DrawableTreeInstanceShrub* tr
                    const TextureDB& tex_db,
                    const std::vector<std::pair<int, int>>& expected_missing_textures,
                    tfrag3::Level& out,
-                   bool dump_level);
+                   bool dump_level,
+                   GameVersion version);
 
 }  // namespace decompiler

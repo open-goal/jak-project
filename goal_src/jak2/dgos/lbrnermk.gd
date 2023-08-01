@@ -1,0 +1,10 @@
+("LBRNERMK.DGO"
+ ("metalkor-texture.o"
+  "tpage-2558.go"
+  "tpage-2801.go"
+  "tpage-3267.go"
+  "errol-highres-ag.go"
+  "baron-highres-ag.go"
+  "metalkor-head-ag.go"
+  "lbrnermk.go"
+ ))

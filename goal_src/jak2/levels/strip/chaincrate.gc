@@ -7,3 +7,359 @@
 
 ;; DECOMP BEGINS
 
+(defpartgroup group-chain-crate-cable-sparks
+  :id 238
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1127 :fade-after (meters 100)))
+  )
+
+(defpart 1127
+  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+    (:num 5.0 5.0)
+    (:scale-x (meters 2.5))
+    (:rot-x 4)
+    (:scale-y (meters 0.1))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:omega (degrees 0.07875))
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:fade-g -0.85 -1.7)
+    (:fade-b -8.0)
+    (:fade-a -0.21333334 -0.21333334)
+    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
+    (:friction 0.97)
+    (:timer (seconds 0.167) (seconds 0.497))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:conerot-x (degrees 0) (degrees 80))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defpartgroup group-chain-crate-guide-sparks
+  :id 239
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 1128 :fade-after (meters 100)))
+  )
+
+(defpart 1128
+  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+    (:num 2.0 2 3.0)
+    (:scale-x (meters 2.5))
+    (:rot-x 4)
+    (:scale-y (meters 0.1))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:omega (degrees 0.07875))
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:fade-g -0.85 -1.7)
+    (:fade-b -8.0)
+    (:fade-a -0.21333334 -0.21333334)
+    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
+    (:friction 0.97)
+    (:timer (seconds 0.167) (seconds 0.497))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:conerot-x (degrees 0) (degrees 80))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defskelgroup skel-strip-chain-crate strip-chain-crate strip-chain-crate-lod0-jg strip-chain-crate-idle-ja
+              ((strip-chain-crate-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -16.5 0 19)
+              :longest-edge (meters 23.3238)
+              :origin-joint-index 3
+              )
+
+(deftype strip-chain-crate-slave (process-drawable)
+  ((part2            sparticle-launch-control  :offset-assert 200)
+   (path-u           float                     :offset-assert 204)
+   (path-speed       float                     :offset-assert 208)
+   (guide-sound-mask uint32                    :offset-assert 212)
+   (guide-num        int8                      :offset-assert 216)
+   )
+  :heap-base #x60
+  :method-count-assert 23
+  :size-assert         #xd9
+  :flag-assert         #x17006000d9
+  (:methods
+    (die-fast () _type_ :state 20)
+    (moving () _type_ :state 21)
+    (strip-chain-crate-slave-method-22 (_type_) none 22)
+    )
+  )
+
+
+(define *strip-chain-crate-guides* (new 'static 'vector4s-3 :data (new 'static 'array float 12
+                                                                    0.0827
+                                                                    0.1351
+                                                                    0.2022
+                                                                    0.2655
+                                                                    0.6085
+                                                                    0.6169
+                                                                    0.6955
+                                                                    0.7531
+                                                                    0.8589
+                                                                    0.9175
+                                                                    100.0
+                                                                    101.0
+                                                                    )
+                                                            )
+        )
+
+;; WARN: Return type mismatch rgbaf vs none.
+(defmethod strip-chain-crate-slave-method-22 strip-chain-crate-slave ((obj strip-chain-crate-slave))
+  (let ((f0-0 (-> obj path-u)))
+    (cond
+      ((>= 0.09 f0-0)
+       (let ((f0-1 (* 11.111111 f0-0)))
+         (set-vector! (-> obj draw color-mult) f0-1 f0-1 f0-1 1.0)
+         )
+       )
+      ((>= f0-0 0.87)
+       (let ((f0-5 (- 1.0 (* 7.692308 (+ -0.87 f0-0)))))
+         (set-vector! (-> obj draw color-mult) f0-5 f0-5 f0-5 1.0)
+         )
+       )
+      )
+    )
+  (none)
+  )
+
+(defstate moving (strip-chain-crate-slave)
+  :virtual #t
+  :trans (behavior ()
+    (if (>= (-> self path-u) 1.0)
+        (go-virtual die-fast)
+        )
+    (rider-trans)
+    (let ((f30-0 (fmin 1.0 (+ (-> self path-u) (* (-> self path-speed) (-> self clock seconds-per-frame))))))
+      (set! (-> self path-u) f30-0)
+      (strip-chain-crate-slave-method-22 self)
+      (let ((a0-1 (* (-> self guide-num) 2))
+            (v1-10 *strip-chain-crate-guides*)
+            )
+        (while (< (-> v1-10 data (+ a0-1 1)) f30-0)
+          (+! a0-1 2)
+          )
+        (set! (-> self guide-num) (/ a0-1 2))
+        (cond
+          ((and (>= f30-0 (-> v1-10 data a0-1)) (>= (-> v1-10 data (+ a0-1 1)) f30-0))
+           (let ((v1-13 (-> self guide-sound-mask))
+                 (a0-5 (ash 1 (-> self guide-num)))
+                 )
+             (when (not (logtest? v1-13 a0-5))
+               (set! (-> self guide-sound-mask) (logior v1-13 a0-5))
+               (sound-play "crate-guide")
+               )
+             )
+           (if (zero? (rand-vu-int-count 4))
+               (spawn (-> self part2) (-> self root trans))
+               )
+           )
+          (else
+            (if (zero? (rand-vu-int-count 45))
+                (spawn (-> self part) (-> self root trans))
+                )
+            )
+          )
+        )
+      (get-point-at-percent-along-path! (-> self path) (-> self root trans) f30-0 'interp)
+      (set! (-> self root trans y) (-> self root trans y))
+      (let ((gp-1 (new 'stack-no-clear 'vector)))
+        (displacement-between-points-at-percent-normalized! (-> self path) gp-1 f30-0)
+        (seek-toward-heading-vec! (-> self root) gp-1 6371.5557 (seconds 0.1))
+        )
+      )
+    (update-trans! (-> self sound) (-> self root trans))
+    (update! (-> self sound))
+    (none)
+    )
+  :code (the-as (function none :behavior strip-chain-crate-slave) sleep-code)
+  :post (the-as (function none :behavior strip-chain-crate-slave) rider-post)
+  )
+
+(defstate die-fast (strip-chain-crate-slave)
+  :virtual #t
+  :code (the-as (function none :behavior strip-chain-crate-slave) nothing)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior strip-chain-crate-slave-init-by-other strip-chain-crate-slave ((arg0 float) (arg1 float))
+  (set! (-> self path-u) arg0)
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable pull-rider-can-collide))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -67584.0 0.0 77824.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> self root) s5-0)
+    )
+  (process-drawable-from-entity! self (-> self entity))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-strip-chain-crate" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 238) self))
+  (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 239) self))
+  (set! (-> self path) (new 'process 'curve-control self 'path -1000000000.0))
+  (logior! (-> self path flags) (path-control-flag display draw-line draw-point draw-text))
+  (let ((f0-7 (total-distance (-> self path))))
+    (set! (-> self path-speed) (/ arg1 f0-7))
+    )
+  (get-point-in-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
+  (set! (-> self root trans y) (-> self root trans y))
+  (let ((gp-1 (new 'stack-no-clear 'vector)))
+    (displacement-between-points-at-percent-normalized! (-> self path) gp-1 (-> self path-u))
+    (set-heading-vec! (-> self root) gp-1)
+    )
+  (set! (-> self sound)
+        (new 'process 'ambient-sound (static-sound-spec "crate-loop" :fo-max 100) (-> self root trans))
+        )
+  (ja-channel-push! 1 0)
+  (ja :group! (-> self draw art-group data 2) :num! min)
+  (transform-post)
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (strip-chain-crate-slave-method-22 self)
+  (go-virtual moving)
+  (none)
+  )
+
+(defmethod deactivate strip-chain-crate-slave ((obj strip-chain-crate-slave))
+  (if (nonzero? (-> obj part2))
+      (kill-and-free-particles (-> obj part2))
+      )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+;; WARN: Return type mismatch process-drawable vs strip-chain-crate-slave.
+(defmethod relocate strip-chain-crate-slave ((obj strip-chain-crate-slave) (arg0 int))
+  (if (nonzero? (-> obj part2))
+      (&+! (-> obj part2) arg0)
+      )
+  (the-as strip-chain-crate-slave ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+(deftype strip-chain-crate (process-drawable)
+  ((spawn-pos       vector     :inline :offset-assert 208)
+   (next-spawn-time time-frame         :offset-assert 224)
+   (spawn-delay     uint32             :offset-assert 232)
+   (spawn-offset    uint32             :offset-assert 236)
+   (dist-apart      float              :offset-assert 240)
+   (crate-speed     float              :offset-assert 244)
+   )
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #xf8
+  :flag-assert         #x16008000f8
+  (:methods
+    (idle () _type_ :state 20)
+    (strip-chain-crate-method-21 (_type_) none 21)
+    )
+  )
+
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod strip-chain-crate-method-21 strip-chain-crate ((obj strip-chain-crate))
+  (let ((f30-0 (total-distance (-> obj path)))
+        (f28-0
+          (* (/ (the float
+                     (mod (the-as uint (+ (current-time) (the-as time-frame (-> obj spawn-offset)))) (-> obj spawn-delay))
+                     )
+                (the float (-> obj spawn-delay))
+                )
+             (-> obj dist-apart)
+             )
+          )
+        )
+    (while (>= f30-0 f28-0)
+      (let ((f26-0 (/ f28-0 f30-0)))
+        (process-spawn strip-chain-crate-slave f26-0 (-> obj crate-speed) :to obj)
+        )
+      (+! f28-0 (-> obj dist-apart))
+      )
+    )
+  (none)
+  )
+
+(defstate idle (strip-chain-crate)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (when (>= (current-time) (-> self next-spawn-time))
+        (process-spawn strip-chain-crate-slave 0 (-> self crate-speed) :to self)
+        (+! (-> self next-spawn-time) (the-as time-frame (-> self spawn-delay)))
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! strip-chain-crate ((obj strip-chain-crate) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (local-vars (sv-16 int))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
+  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (let ((f28-0 53248.0)
+        (f26-0 131072.0)
+        (f30-0 0.0)
+        )
+    (set! sv-16 0)
+    (let ((v1-8 (res-lump-data arg0 'speed (pointer float) :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+      (when v1-8
+        (set! f28-0 (-> v1-8 0))
+        (set! f26-0 (-> v1-8 1))
+        (set! f30-0 (-> v1-8 2))
+        )
+      )
+    (set! (-> obj crate-speed) f28-0)
+    (set! (-> obj dist-apart) f26-0)
+    (set! (-> obj spawn-delay) (the-as uint (the int (* 300.0 (/ f26-0 f28-0)))))
+    (set! (-> obj spawn-offset) (the-as uint (the int (* f30-0 (the float (-> obj spawn-delay))))))
+    )
+  (set! (-> obj next-spawn-time)
+        (+ (current-time)
+           (the-as
+             time-frame
+             (- (-> obj spawn-delay)
+                (mod (the-as uint (+ (current-time) (the-as time-frame (-> obj spawn-offset)))) (-> obj spawn-delay))
+                )
+             )
+           )
+        )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (strip-chain-crate-method-21 obj)
+  (go (method-of-object obj idle))
+  (none)
+  )

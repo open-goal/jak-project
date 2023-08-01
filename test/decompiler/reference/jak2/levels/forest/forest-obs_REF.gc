@@ -1,0 +1,1108 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *forest-protect-battle*, type (array hover-enemy-battle-command)
+(define *forest-protect-battle*
+  (new 'static 'boxed-array :type hover-enemy-battle-command
+    (new 'static 'hover-enemy-battle-command :command 'wait :time (seconds 20))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 30))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 25))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :time (seconds 20))
+    (new 'static 'hover-enemy-battle-command :command 'spawn :wave #x2 :time (seconds 20))
+    )
+  )
+
+;; definition of type forest-hover-manager
+(deftype forest-hover-manager (hover-enemy-manager)
+  ((transport-actor entity-actor 2 :offset-assert 168)
+   )
+  :heap-base #x30
+  :method-count-assert 19
+  :size-assert         #xb0
+  :flag-assert         #x13003000b0
+  )
+
+;; definition for method 3 of type forest-hover-manager
+(defmethod inspect forest-hover-manager ((obj forest-hover-manager))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hover-enemy-manager inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Ttransport-actor[2] @ #x~X~%" (-> obj transport-actor))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 11 of type forest-hover-manager
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! forest-hover-manager ((obj forest-hover-manager) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj entity) arg0)
+  (hover-enemy-manager-init! obj *forest-protect-battle*)
+  (set! (-> obj transport-actor 0) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> obj transport-actor 1) (entity-actor-lookup arg0 'alt-actor 1))
+  (let ((t9-3 (method-of-type hover-formation-control new))
+        (a0-4 'process)
+        (a1-4 hover-formation-control)
+        (a2-2 obj)
+        (t0-0 122880.0)
+        (t1-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> t1-0 x) 0.0)
+    (set! (-> t1-0 y) 24576.0)
+    (set! (-> t1-0 z) 61440.0)
+    (set! (-> t1-0 w) 1.0)
+    (let ((a3-0 arg0))
+      (set! (-> obj formation) (t9-3 a0-4 a1-4 a2-2 a3-0 t0-0 t1-0 5461.3335 (the-as handle #f)))
+      (let ((v1-8 (logior (-> obj formation flags) 4))
+            (a0-5 (-> obj formation))
+            )
+        (set! (-> a0-5 flags) v1-8)
+        (go (method-of-object obj spawning) a0-5 (the-as object a1-4) (the-as process a2-2) (the-as pointer a3-0))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type forest-youngsamos
+(deftype forest-youngsamos (process-focusable)
+  ((root                collide-shape-moving         :override)
+   (init-quat           quaternion           :inline :offset-assert 208)
+   (desired-pos         vector               :inline :offset-assert 224)
+   (hit-dir             vector               :inline :offset-assert 240)
+   (hit-points          float                        :offset-assert 256)
+   (incoming-attack-id  uint32                       :offset-assert 260)
+   (falling?            basic                        :offset-assert 264)
+   (focus-disable-timer uint64                       :offset-assert 272)
+   (hud                 handle                       :offset-assert 280)
+   (sound-id            sound-id                     :offset-assert 288)
+   )
+  :heap-base #xb0
+  :method-count-assert 31
+  :size-assert         #x124
+  :flag-assert         #x1f00b00124
+  (:methods
+    (idle () _type_ :state 27)
+    (hit () _type_ :state 28)
+    (die () _type_ :state 29)
+    (dormant () _type_ :state 30)
+    )
+  )
+
+;; definition for method 3 of type forest-youngsamos
+(defmethod inspect forest-youngsamos ((obj forest-youngsamos))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
+  (format #t "~2Tdesired-pos: #<vector @ #x~X>~%" (-> obj desired-pos))
+  (format #t "~2Thit-dir: #<vector @ #x~X>~%" (-> obj hit-dir))
+  (format #t "~2Thit-points: ~f~%" (-> obj hit-points))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> obj incoming-attack-id))
+  (format #t "~2Tfalling?: ~A~%" (-> obj falling?))
+  (format #t "~2Tfocus-disable-timer: ~D~%" (-> obj focus-disable-timer))
+  (format #t "~2Thud: ~D~%" (-> obj hud))
+  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-forest-youngsamos youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-idle-ja
+              ((youngsamos-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow youngsamos-highres-shadow-mg
+              )
+
+;; definition for function forest-youngsamos-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior forest-youngsamos-post forest-youngsamos ()
+  (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+    (find-ground (-> self root) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+    )
+  (let ((v1-3 (vector-! (new 'stack-no-clear 'vector) (-> self desired-pos) (-> self root trans))))
+    (let ((a0-3 (-> self root transv)))
+      (if (not (-> self falling?))
+          (vector+float*! a0-3 a0-3 v1-3 (* 3.0 (-> self clock seconds-per-frame)))
+          )
+      )
+    (vector-float*! (-> self root transv) (-> self root transv) 0.975)
+    (let ((gp-1 (vector-float*! (new 'stack-no-clear 'vector) v1-3 0.000024414063))
+          (s4-0 (-> self init-quat))
+          (s5-0 (-> self root quat))
+          )
+      (vector-inv-orient-by-quat! gp-1 gp-1 s4-0)
+      (quaternion-rotate-local-z! s5-0 s4-0 (* 8192.0 (-> gp-1 x)))
+      (quaternion-rotate-local-x! s5-0 s5-0 (* -8192.0 (-> gp-1 z)))
+      )
+    )
+  (if (-> self falling?)
+      (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 1.0))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+      )
+  (let ((gp-4 (-> self root)))
+    (let ((a2-7 (new 'stack-no-clear 'collide-query)))
+      (set! (-> a2-7 collide-with) (-> gp-4 root-prim prim-core collide-with))
+      (set! (-> a2-7 ignore-process0) self)
+      (set! (-> a2-7 ignore-process1) #f)
+      (set! (-> a2-7 ignore-pat) (-> gp-4 pat-ignore-mask))
+      (set! (-> a2-7 action-mask) (collide-action solid))
+      (fill-cache-integrate-and-collide gp-4 (-> gp-4 transv) a2-7 (meters 0))
+      )
+    (when (logtest? (-> gp-4 status) (collide-status touch-surface))
+      (let ((f0-9 (fmax 0.0 (+ 1.0 (* -11.999999 (-> self clock seconds-per-frame))))))
+        (vector-float*! (-> gp-4 transv) (-> gp-4 transv) f0-9)
+        )
+      )
+    )
+  (when (and (nonzero? (-> self focus-disable-timer))
+             (< (the-as time-frame (-> self focus-disable-timer)) (current-time))
+             )
+    (logclear! (-> self focus-status) (focus-status disable))
+    (set! (-> self focus-disable-timer) (the-as uint 0))
+    0
+    )
+  (let ((a0-20 *target*))
+    (when (and a0-20 (< 614400.0 (vector-vector-distance (get-trans a0-20 0) (-> self root trans))))
+      (let ((a1-19 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-19 from) (process->ppointer self))
+        (set! (-> a1-19 num-params) 0)
+        (set! (-> a1-19 message) 'fail)
+        (let ((t9-11 send-event-function)
+              (v1-45 (-> *game-info* sub-task-list (game-task-node forest-protect-resolution)))
+              )
+          (t9-11
+            (handle->process (if (-> v1-45 info)
+                                 (-> v1-45 info manager)
+                                 (the-as handle #f)
+                                 )
+                             )
+            a1-19
+            )
+          )
+        )
+      (go-virtual dormant)
+      )
+    )
+  (set! (-> *game-info* bot-health 0) (* 0.11111111 (-> self hit-points)))
+  (transform-post)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (forest-youngsamos)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('touched)
+       (send-event proc 'touch (-> event param 0))
+       )
+      (('attack)
+       (let ((s4-0 *target*)
+             (s3-0 proc)
+             )
+         (when (!= (if (type? s3-0 process-focusable)
+                       (the-as process-focusable s3-0)
+                       )
+                   s4-0
+                   )
+           (let ((s5-1 (the-as attack-info (-> event param 1))))
+             (case (-> s5-1 mode)
+               (('eco-red 'eco-yellow 'eco-blue 'eco-dark)
+                #f
+                )
+               (else
+                 (when (!= (-> s5-1 id) (-> self incoming-attack-id))
+                   (set! (-> self incoming-attack-id) (-> s5-1 id))
+                   (let ((v1-10 (if (type? proc process-focusable)
+                                    (the-as process-focusable proc)
+                                    )
+                                )
+                         )
+                     (cond
+                       (v1-10
+                         (vector-! (-> self hit-dir) (-> self root trans) (-> v1-10 root trans))
+                         (vector-normalize! (-> self hit-dir) 1.0)
+                         )
+                       ((logtest? (attack-info-mask attacker-velocity) (-> s5-1 mask))
+                        (vector-normalize-copy! (-> self hit-dir) (-> s5-1 attacker-velocity) 1.0)
+                        )
+                       (else
+                         (vector-reset! (-> self hit-dir))
+                         )
+                       )
+                     )
+                   (+! (-> self hit-points) -1.0)
+                   (if (>= 0.0 (-> self hit-points))
+                       (go-virtual die)
+                       (go-virtual hit)
+                       )
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+      (('die-fast)
+       (cleanup-for-death self)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self falling?) #f)
+    (send-event (handle->process (-> self hud)) 'force-show)
+    (none)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 11)
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 11)) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (sound-play "samos-hover" :id (-> self sound-id))
+    (forest-youngsamos-post)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hit (forest-youngsamos)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('die-fast)
+       (cleanup-for-death self)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (sound-play "samos-impact")
+    (set! (-> self falling?) (the-as basic #t))
+    (logior! (-> self focus-status) (focus-status disable))
+    (set! (-> self focus-disable-timer) (the-as uint (+ (current-time) (seconds 3.5))))
+    (none)
+    )
+  :code (behavior ()
+    (set! (-> self root transv quad) (-> self hit-dir quad))
+    (let ((f30-0 (rand-vu-float-range 0.0 1.0))
+          (gp-0 (-> self root transv))
+          )
+      (vector-float*! gp-0 gp-0 (lerp 24576.0 65536.0 f30-0))
+      (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
+      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((v1-5 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> self hit-dir) (-> self root quat))))
+      (cond
+        ((< (-> v1-5 x) (-> v1-5 z))
+         (ja-no-eval :group! (-> self draw art-group data 12)
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 12)) frames num-frames) -1)))
+                     :frame-num 0.0
+                     )
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        ((< (-> v1-5 x) 0.0)
+         (ja-no-eval :group! (-> self draw art-group data 13)
+                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 13)) frames num-frames) -1)))
+                     :frame-num 0.0
+                     )
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        (else
+          (ja-no-eval :group! (-> self draw art-group data 14)
+                      :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 14)) frames num-frames) -1)))
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      )
+    (go-virtual idle)
+    (none)
+    )
+  :post forest-youngsamos-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (forest-youngsamos)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('die-fast)
+       (cleanup-for-death self)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self falling?) (the-as basic #t))
+    (none)
+    )
+  :code (behavior ()
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-10))
+    (send-event *camera* 'change-target self)
+    (set! (-> self root transv quad) (-> self hit-dir quad))
+    (let ((f30-0 (rand-vu-float-range 0.0 1.0))
+          (gp-0 (-> self root transv))
+          )
+      (vector-float*! gp-0 gp-0 (lerp 24576.0 65536.0 f30-0))
+      (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
+      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 15)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! (-> self draw art-group data 16)
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)))
+                :frame-num 0.0
+                )
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-10 from) (process->ppointer self))
+      (set! (-> a1-10 num-params) 0)
+      (set! (-> a1-10 message) 'fail)
+      (let ((t9-12 send-event-function)
+            (v1-62 (-> *game-info* sub-task-list (game-task-node forest-protect-resolution)))
+            )
+        (t9-12
+          (handle->process (if (-> v1-62 info)
+                               (-> v1-62 info manager)
+                               (the-as handle #f)
+                               )
+                           )
+          a1-10
+          )
+        )
+      )
+    (let ((gp-1 (current-time)))
+      (until (>= (- (current-time) gp-1) (seconds 2))
+        (suspend)
+        )
+      )
+    (send-event *camera* 'change-target #f)
+    (cleanup-for-death self)
+    (none)
+    )
+  :post forest-youngsamos-post
+  )
+
+;; failed to figure out what this is:
+(defstate dormant (forest-youngsamos)
+  :virtual #t
+  :code (the-as (function none :behavior forest-youngsamos) sleep-code)
+  )
+
+;; definition for function forest-youngsamos-bounce-reaction
+;; INFO: Used lq/sq
+(defun forest-youngsamos-bounce-reaction ((arg0 control-info) (arg1 collide-query) (arg2 vector) (arg3 vector))
+  (let ((s3-0 (new 'static 'array int32 4 0 0 0 0)))
+    (let ((t9-0 (method-of-type array new))
+          (a0-1 (new 'stack-no-clear 'array 'sound-name 2))
+          (a1-1 array)
+          (a2-1 sound-name)
+          (a3-1 2)
+          )
+      (make-u128 #x316c6c (the-as uint #x61662d736f6d6173))
+      (make-u128 #x326c6c (the-as uint #x61662d736f6d6173))
+      (let ((v1-3 (the-as (array sound-name) (t9-0 (the-as symbol a0-1) a1-1 a2-1 a3-1))))
+        (sound-play-by-name (-> v1-3 (-> s3-0 0)) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
+        )
+      )
+    (+! (-> s3-0 0) 1)
+    )
+  (cshape-reaction-update-state arg0 arg1 arg3)
+  (let ((f30-0 (vector-dot arg3 (-> arg0 surface-normal)))
+        (s2-1 (new 'stack-no-clear 'vector))
+        )
+    (vector-float*! s2-1 (-> arg0 surface-normal) (* f30-0 (rand-vu-float-range 1.6 2.2)))
+    (vector-! arg2 arg3 s2-1)
+    )
+  (-> arg0 status)
+  )
+
+;; definition for method 10 of type forest-youngsamos
+(defmethod deactivate forest-youngsamos ((obj forest-youngsamos))
+  (if (valid? (-> obj hud) (the-as type #f) "" #t 0)
+      (send-event (handle->process (-> obj hud)) 'hide-and-die)
+      )
+  (sound-stop (-> obj sound-id))
+  ((the-as (function process-focusable none) (find-parent-method forest-youngsamos 10)) obj)
+  (none)
+  )
+
+;; definition for method 11 of type forest-youngsamos
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! forest-youngsamos ((obj forest-youngsamos) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) forest-youngsamos-bounce-reaction)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate jak-yellow-shot jak-red-shot jak-blue-shot jak-dark-shot))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec bot camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec backgnd jak obstacle player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s3-0 local-sphere) 0.0 4505.6 0.0 5734.4)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec bot camera-blocker))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec backgnd jak obstacle player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 2457.6 0.0 2457.6)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec bot camera-blocker))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec backgnd jak obstacle player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-15 local-sphere) 0.0 4505.6 0.0 2457.6)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec bot camera-blocker))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec backgnd jak obstacle player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-17 local-sphere) 0.0 6553.6 0.0 2457.6)
+      )
+    (set! (-> s4-0 nav-radius) 6144.0)
+    (let ((v1-19 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> obj root) s4-0)
+    )
+  (set! (-> obj entity) arg0)
+  (process-drawable-from-entity! obj (-> obj entity))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-forest-youngsamos" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-entity-status! obj (entity-perm-status no-kill) #t)
+  (set! (-> obj desired-pos quad) (-> obj root trans quad))
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (+! (-> obj desired-pos y) 8192.0)
+  (vector-reset! (-> obj hit-dir))
+  (set! (-> obj hit-points) 9.0)
+  (set! (-> obj incoming-attack-id) (the-as uint -1))
+  (vector-reset! (-> obj root transv))
+  (set! (-> obj focus-disable-timer) (the-as uint 0))
+  (set! (-> obj hud) (ppointer->handle (process-spawn hud-samos-young :init hud-init-by-other :to obj)))
+  (set! (-> obj sound-id) (new-sound-id))
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 494) obj))
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node forest-protect-resolution)
+  TASK_MANAGER_INIT_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set-setting! 'airlock #f 0.0 0)
+    (set-setting! 'sound-mode #f 0.0 1)
+    (set-setting! 'sound-excitement 'abs 0.8 0)
+    (set-setting! 'extra-bank '((forest2 forest4) (forest3 forest5)) 0.0 0)
+    (speech-table-set! *speech-control* (speech-type speech-type-6) (new 'static 'speech-type-info
+                                                                      :min-delay (seconds 4)
+                                                                      :max-delay (seconds 8)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg001"
+                                                                        "kg002"
+                                                                        "kg004"
+                                                                        "kg006"
+                                                                        "kg001a"
+                                                                        "kg013"
+                                                                        "kg016"
+                                                                        "kg018"
+                                                                        "kg019"
+                                                                        "kg023"
+                                                                        "kg024"
+                                                                        "kg002a"
+                                                                        "kg004a"
+                                                                        "kg078a"
+                                                                        "kg079a"
+                                                                        "kg080a"
+                                                                        "kg081a"
+                                                                        "kg004a"
+                                                                        "kg082a"
+                                                                        "kg083a"
+                                                                        "kg084a"
+                                                                        "kg085a"
+                                                                        "kg086a"
+                                                                        "kg087a"
+                                                                        "kg088a"
+                                                                        "kg091a"
+                                                                        "kg023a"
+                                                                        "kg006a"
+                                                                        "kg092a"
+                                                                        "kg093a"
+                                                                        "kg094a"
+                                                                        "kg095a"
+                                                                        "kg103a"
+                                                                        "kg104a"
+                                                                        "kg112a"
+                                                                        "kg024a"
+                                                                        "kg134"
+                                                                        "kg136"
+                                                                        "kg137"
+                                                                        "kg138"
+                                                                        "kg139"
+                                                                        "kg140"
+                                                                        "kg141"
+                                                                        "kg130"
+                                                                        "kg135"
+                                                                        "kg156"
+                                                                        "kg157"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-9) (new 'static 'speech-type-info
+                                                                      :priority 9
+                                                                      :max-delay (seconds 1)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg133"
+                                                                        "kg137"
+                                                                        "kg142"
+                                                                        "kg144"
+                                                                        "kg145"
+                                                                        "kg146"
+                                                                        "kg147"
+                                                                        "kg148"
+                                                                        "kg149"
+                                                                        "kg150"
+                                                                        "kg138"
+                                                                        "kg151"
+                                                                        "kg152"
+                                                                        "kg153"
+                                                                        "kg154"
+                                                                        "kg155"
+                                                                        "kg159"
+                                                                        "kg163"
+                                                                        "kg164"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-10) (new 'static 'speech-type-info
+                                                                       :priority 10
+                                                                       :max-delay (seconds 1)
+                                                                       :list (new 'static 'boxed-array :type string
+                                                                         "kg165"
+                                                                         "kg166"
+                                                                         "kg167"
+                                                                         "kg168"
+                                                                         "kg169"
+                                                                         "kg170"
+                                                                         "kg171"
+                                                                         "kg172"
+                                                                         "kg173"
+                                                                         "kg174"
+                                                                         "kg175"
+                                                                         "kg176"
+                                                                         )
+                                                                       )
+                       )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node forest-protect-resolution)
+  TASK_MANAGER_UPDATE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (if (!= (level-status *level* 'forestb) 'active)
+        (go-virtual fail)
+        )
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node forest-protect-resolution)
+  TASK_MANAGER_CODE_HOOK
+  (lambda :behavior task-manager
+    ()
+    (set! (-> self start-time) (current-time))
+    (let ((gp-0 (current-time)))
+      (until (>= (- (current-time) gp-0) (seconds 0.5))
+        (suspend)
+        )
+      )
+    (let ((s5-0 (entity-by-name "transport-level-1"))
+          (gp-1 (entity-by-name "transport-level-2"))
+          )
+      (let ((s4-0 (entity-by-name "forest-hover-manager-1")))
+        (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-0 from) (process->ppointer self))
+          (set! (-> a1-0 num-params) 1)
+          (set! (-> a1-0 message) 'spawn-time)
+          (set! (-> a1-0 param 0) (the-as uint 150))
+          (let ((t9-3 send-event-function)
+                (v1-11 s5-0)
+                )
+            (t9-3
+              (if v1-11
+                  (-> v1-11 extra process)
+                  )
+              a1-0
+              )
+            )
+          )
+        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-1 from) (process->ppointer self))
+          (set! (-> a1-1 num-params) 1)
+          (set! (-> a1-1 message) 'spawn-time)
+          (set! (-> a1-1 param 0) (the-as uint 150))
+          (let ((t9-4 send-event-function)
+                (v1-18 gp-1)
+                )
+            (t9-4
+              (if v1-18
+                  (-> v1-18 extra process)
+                  )
+              a1-1
+              )
+            )
+          )
+        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-2 from) (process->ppointer self))
+          (set! (-> a1-2 num-params) 1)
+          (set! (-> a1-2 message) 'guards-alive)
+          (set! (-> a1-2 param 0) (the-as uint 0))
+          (let ((t9-5 send-event-function)
+                (v1-24 s5-0)
+                )
+            (t9-5
+              (if v1-24
+                  (-> v1-24 extra process)
+                  )
+              a1-2
+              )
+            )
+          )
+        (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-3 from) (process->ppointer self))
+          (set! (-> a1-3 num-params) 1)
+          (set! (-> a1-3 message) 'guards-alive)
+          (set! (-> a1-3 param 0) (the-as uint 3))
+          (let ((t9-6 send-event-function)
+                (v1-31 gp-1)
+                )
+            (t9-6
+              (if v1-31
+                  (-> v1-31 extra process)
+                  )
+              a1-3
+              )
+            )
+          )
+        (let ((s3-0 (current-time)))
+          (until (>= (- (current-time) s3-0) (seconds 15))
+            (suspend)
+            )
+          )
+        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-4 from) (process->ppointer self))
+          (set! (-> a1-4 num-params) 1)
+          (set! (-> a1-4 message) 'guards-alive)
+          (set! (-> a1-4 param 0) (the-as uint 3))
+          (let ((t9-7 send-event-function)
+                (v1-43 s5-0)
+                )
+            (t9-7
+              (if v1-43
+                  (-> v1-43 extra process)
+                  )
+              a1-4
+              )
+            )
+          )
+        (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-5 from) (process->ppointer self))
+          (set! (-> a1-5 num-params) 1)
+          (set! (-> a1-5 message) 'guards-alive)
+          (set! (-> a1-5 param 0) (the-as uint 0))
+          (let ((t9-8 send-event-function)
+                (v1-49 gp-1)
+                )
+            (t9-8
+              (if v1-49
+                  (-> v1-49 extra process)
+                  )
+              a1-5
+              )
+            )
+          )
+        (dotimes (s3-1 3)
+          (let ((s2-0 (current-time)))
+            (until (>= (- (current-time) s2-0) (seconds 10))
+              (suspend)
+              )
+            )
+          (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-6 from) (process->ppointer self))
+            (set! (-> a1-6 num-params) 1)
+            (set! (-> a1-6 message) 'guards-alive)
+            (set! (-> a1-6 param 0) (the-as uint 0))
+            (let ((t9-9 send-event-function)
+                  (v1-60 s5-0)
+                  )
+              (t9-9
+                (if v1-60
+                    (-> v1-60 extra process)
+                    )
+                a1-6
+                )
+              )
+            )
+          (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-7 from) (process->ppointer self))
+            (set! (-> a1-7 num-params) 1)
+            (set! (-> a1-7 message) 'guards-alive)
+            (set! (-> a1-7 param 0) (the-as uint 4))
+            (let ((t9-10 send-event-function)
+                  (v1-67 gp-1)
+                  )
+              (t9-10
+                (if v1-67
+                    (-> v1-67 extra process)
+                    )
+                a1-7
+                )
+              )
+            )
+          (let ((s2-1 (current-time)))
+            (until (>= (- (current-time) s2-1) (seconds 10))
+              (suspend)
+              )
+            )
+          (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-8 from) (process->ppointer self))
+            (set! (-> a1-8 num-params) 1)
+            (set! (-> a1-8 message) 'guards-alive)
+            (set! (-> a1-8 param 0) (the-as uint 4))
+            (let ((t9-11 send-event-function)
+                  (v1-79 s5-0)
+                  )
+              (t9-11
+                (if v1-79
+                    (-> v1-79 extra process)
+                    )
+                a1-8
+                )
+              )
+            )
+          (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-9 from) (process->ppointer self))
+            (set! (-> a1-9 num-params) 1)
+            (set! (-> a1-9 message) 'guards-alive)
+            (set! (-> a1-9 param 0) (the-as uint 0))
+            (let ((t9-12 send-event-function)
+                  (v1-85 gp-1)
+                  )
+              (t9-12
+                (if v1-85
+                    (-> v1-85 extra process)
+                    )
+                a1-9
+                )
+              )
+            )
+          )
+        (let ((s3-2 (current-time)))
+          (until (>= (- (current-time) s3-2) (seconds 10))
+            (suspend)
+            )
+          )
+        (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-10 from) (process->ppointer self))
+          (set! (-> a1-10 num-params) 1)
+          (set! (-> a1-10 message) 'guards-alive)
+          (set! (-> a1-10 param 0) (the-as uint 2))
+          (let ((t9-13 send-event-function)
+                (v1-99 s5-0)
+                )
+            (t9-13
+              (if v1-99
+                  (-> v1-99 extra process)
+                  )
+              a1-10
+              )
+            )
+          )
+        (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-11 from) (process->ppointer self))
+          (set! (-> a1-11 num-params) 1)
+          (set! (-> a1-11 message) 'guards-alive)
+          (set! (-> a1-11 param 0) (the-as uint 2))
+          (let ((t9-14 send-event-function)
+                (v1-106 gp-1)
+                )
+            (t9-14
+              (if v1-106
+                  (-> v1-106 extra process)
+                  )
+              a1-11
+              )
+            )
+          )
+        (let ((s3-3 (current-time)))
+          (until (>= (- (current-time) s3-3) (seconds 10))
+            (suspend)
+            )
+          )
+        (dotimes (s3-4 10)
+          (let ((v1-114 s4-0))
+            (if (not (if v1-114
+                         (-> v1-114 extra process)
+                         )
+                     )
+                (goto cfg-74)
+                )
+            )
+          (let ((s2-2 (current-time)))
+            (until (>= (- (current-time) s2-2) (seconds 1))
+              (suspend)
+              )
+            )
+          )
+        (label cfg-74)
+        (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-12 from) (process->ppointer self))
+          (set! (-> a1-12 num-params) 0)
+          (set! (-> a1-12 message) 'stop-spawning)
+          (let ((t9-15 send-event-function)
+                (v1-128 s5-0)
+                )
+            (t9-15
+              (if v1-128
+                  (-> v1-128 extra process)
+                  )
+              a1-12
+              )
+            )
+          )
+        (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-13 from) (process->ppointer self))
+          (set! (-> a1-13 num-params) 0)
+          (set! (-> a1-13 message) 'stop-spawning)
+          (let ((t9-16 send-event-function)
+                (v1-133 gp-1)
+                )
+            (t9-16
+              (if v1-133
+                  (-> v1-133 extra process)
+                  )
+              a1-13
+              )
+            )
+          )
+        (while (let ((v1-141 s4-0))
+                 (or (if v1-141
+                         (-> v1-141 extra process)
+                         )
+                     (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+                       (set! (-> a1-14 from) (process->ppointer self))
+                       (set! (-> a1-14 num-params) 0)
+                       (set! (-> a1-14 message) 'guards-alive-count)
+                       (let ((t9-17 send-event-function)
+                             (v1-146 s5-0)
+                             )
+                         (> (the-as uint (t9-17
+                                           (if v1-146
+                                               (-> v1-146 extra process)
+                                               )
+                                           a1-14
+                                           )
+                                    )
+                            0
+                            )
+                         )
+                       )
+                     (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+                       (set! (-> a1-15 from) (process->ppointer self))
+                       (set! (-> a1-15 num-params) 0)
+                       (set! (-> a1-15 message) 'guards-alive-count)
+                       (let ((t9-18 send-event-function)
+                             (v1-151 gp-1)
+                             )
+                         (> (the-as uint (t9-18
+                                           (if v1-151
+                                               (-> v1-151 extra process)
+                                               )
+                                           a1-15
+                                           )
+                                    )
+                            0
+                            )
+                         )
+                       )
+                     )
+                 )
+          (let ((s3-5 (current-time)))
+            (until (>= (- (current-time) s3-5) (seconds 1))
+              (suspend)
+              )
+            )
+          )
+        )
+      (let ((s4-1 (current-time)))
+        (until (>= (- (current-time) s4-1) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (set-setting! 'entity-name "camera-260" 0.0 0)
+      (set-setting! 'process-mask 'set 0.0 (process-mask movie enemy))
+      (process-grab? *target* #f)
+      (let ((s4-2 (current-time)))
+        (until (>= (- (current-time) s4-2) (seconds 0.5))
+          (suspend)
+          )
+        )
+      (send-event
+        (if s5-0
+            (-> s5-0 extra process)
+            )
+        'leave
+        )
+      (let ((s5-1 (current-time)))
+        (until (>= (- (current-time) s5-1) (seconds 0.2))
+          (suspend)
+          )
+        )
+      (send-event
+        (if gp-1
+            (-> gp-1 extra process)
+            )
+        'leave
+        )
+      )
+    (let ((gp-2 (current-time)))
+      (until (>= (- (current-time) gp-2) (seconds 3))
+        (suspend)
+        )
+      )
+    (remove-setting! 'entity-name)
+    (remove-setting! 'process-mask)
+    (process-release? *target*)
+    (let ((gp-3 (current-time)))
+      (until (>= (- (current-time) gp-3) (seconds 3))
+        (suspend)
+        )
+      )
+    (go-virtual complete)
+    (while *target*
+      (suspend)
+      )
+    (go-virtual fail)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(set-subtask-hook!
+  *game-info*
+  (game-task-node forest-protect-resolution)
+  TASK_MANAGER_CLEANUP_HOOK
+  (lambda :behavior task-manager
+    ()
+    (let ((a0-1 (process-by-name "transport-level-1" *active-pool*)))
+      (if a0-1
+          (send-event a0-1 'leave)
+          )
+      )
+    (let ((a0-3 (process-by-name "transport-level-2" *active-pool*)))
+      (if a0-3
+          (send-event a0-3 'leave)
+          )
+      )
+    (speech-control-method-9 *speech-control*)
+    (none)
+    )
+  )
+
+;; definition for function forest-login
+;; WARN: Return type mismatch int vs none.
+(defun forest-login ()
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  (nav-network-method-9 *nav-network*)
+  0
+  (none)
+  )
+
+;; definition for function forest-deactivate
+;; WARN: Return type mismatch int vs none.
+(defun forest-deactivate ()
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )
+
+;; definition for function forest-activate
+;; WARN: Return type mismatch int vs none.
+(defun forest-activate ((arg0 level))
+  (nav-network-method-10 *nav-network* arg0 *forest-adjacency*)
+  0
+  (none)
+  )

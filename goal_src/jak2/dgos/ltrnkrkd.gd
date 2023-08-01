@@ -1,0 +1,9 @@
+("LTRNKRKD.DGO"
+ ("kid-ltrnkrkd+0-ag.go"
+  "tpage-1773.go"
+  "tpage-3253.go"
+  "kor-highres-ag.go"
+  "torn-highres-ag.go"
+  "kid-highres-ag.go"
+  "ltrnkrkd.go"
+ ))

@@ -3,6 +3,10 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "kmachine.h"
+
+#include "common/goal_constants.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 
 #include "game/kernel/common/kdsnetm.h"
@@ -45,7 +49,7 @@ void InitListener() {
   kernel_dispatcher = intern_from_c("kernel-dispatcher");
   sync_dispatcher = intern_from_c("sync-dispatcher");
   kernel_packages = intern_from_c("*kernel-packages*");
-  print_column = intern_from_c("*print-column*").cast<u32>();
+  print_column = intern_from_c("*print-column*").cast<u32>();  // this is wrong
   ListenerLinkBlock->value() = s7.offset;
   ListenerFunction->value() = s7.offset;
   KernelFunction->value() = s7.offset;
@@ -69,7 +73,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // just flush any pending stuff.
       ClearPending();
       break;
-    case LTT_MSG_INSEPCT:
+    case LTT_MSG_INSPECT:
       inspect_object(atoi(msg.c()));
       ClearPending();
       break;
@@ -111,43 +115,99 @@ void ProcessListenerMessage(Ptr<char> msg) {
   SendAck();
 }
 
+// (deftype sql-result (basic)
+struct SQLResult {
+  // (len int32 :offset-assert 4)
+  s32 len;
+  // (allocated-length  uint32 :offset-assert 8)
+  u32 allocated_length;
+  // (error  symbol :offset-assert 12)
+  u32 error;
+  // (data   string :dynamic :offset-assert 16)
+  // don't be fooled by the [1] here, it can hold as many as we allocate when calling `new`
+  Ptr<String> data[1];
+};
+
 int sql_query_sync(Ptr<String> string_in) {
   if (!MasterDebug) {
     // not debugging, no sql results.
     return s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
   } else {
-    // clear old result
+    /* Original code, disabled
+      // output sql query to the compiler
+      output_sql_query(string_in->data());
+      // clear pending listener stuff, so we don't run it again.
+      ListenerFunction->value() = s7.offset;
+      ListenerStatus = 1;
+      ClearPending();
+      SendAck();
+    */
+
+    const std::string query_str = string_in->data();
+    lg::debug("[SQL] Query '{}'", query_str);
+
+    // ensure the DB is initialized
+    initialize_sql_db();
+
+    // clear global
     SqlResult->value() = s7.offset;
-    // output sql query to the compiler
-    output_sql_query(string_in->data());
-    // clear pending listener stuff, so we don't run it again.
-    ListenerFunction->value() = s7.offset;
-    ListenerStatus = 1;
-    ClearPending();
-    SendAck();
 
     kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
 
-    // didn't we just set these to false?
-    if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
-      do {
-        KernelDispatch(sync_dispatcher->value());
-        SendAck();
-        if (SqlResult->value() != s7.offset) {
-          break;
+    const auto& result = run_sql_query(query_str);
+    // TODO - check for errors
+
+    auto sym = find_symbol_from_c("sql-result");
+    if (sym.offset) {
+      Ptr<Type> type = Ptr<Type>(sym->value());
+      auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
+                                                     GOAL_NEW_METHOD, type.offset, 1);
+
+      // TODO - can their sql-result type not return multiple rows and the data is just the columns?
+      // or do they make assumptions and iterate the data like a 2d flattened array
+      SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
+
+      int num_values = 0;
+      for (const auto& row : result.rows) {
+        num_values += row.size();
+        for (const auto& val : row) {
+          new_result->data[0] = Ptr<String>(make_debug_string_from_c(val.data()));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // ?
-        /*
-        iVar2 = 99999;
-        do {
-          bVar1 = iVar2 != 0;
-          iVar2 = iVar2 + -1;
-        } while (bVar1);
-         */
-      } while (SqlResult->value() == s7.offset);
+      }
+      new_result->len = num_values;
+
+      // TODO - possible values here (when to set them?)
+      // 'error = the default, fairly obvious
+      // 'select = the result of a select
+      new_result->error = intern_from_c("select").offset;
+
+      kdebugheap->top.offset += 0x4000;
+
+      // Store the result in the convienant debugging global (stores last query resp)
+      SqlResult->value() = new_result_ptr;
+      return new_result_ptr;
     }
-    kdebugheap->top.offset += 0x4000;
-    return SqlResult->value();
+
+    return s7.offset;
+
+    /* Original code, disabled
+      // didn't we just set these to false?
+      if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
+        do {
+          KernelDispatch(sync_dispatcher->value());
+          SendAck();
+          if (SqlResult->value() != s7.offset) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          iVar2 = 99999;
+          do {
+            bVar1 = iVar2 != 0;
+            iVar2 = iVar2 + -1;
+          } while (bVar1);
+        } while (SqlResult->value() == s7.offset);
+      }
+    */
   }
 }
 

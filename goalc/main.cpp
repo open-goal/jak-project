@@ -1,11 +1,14 @@
 #include <cstdio>
 #include <regex>
 
-#include "common/goos/ReplUtils.h"
 #include "common/log/log.h"
-#include "common/nrepl/ReplServer.h"
+#include "common/repl/nrepl/ReplServer.h"
+#include "common/repl/util.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/util/diff.h"
+#include "common/util/string_util.h"
+#include "common/util/unicode_util.h"
+#include "common/versions/versions.h"
 
 #include "goalc/compiler/Compiler.h"
 
@@ -14,7 +17,7 @@
 #include "third-party/fmt/core.h"
 
 void setup_logging() {
-  lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
+  lg::set_file(file_util::get_file_path({"log", "compiler.log"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
@@ -22,84 +25,111 @@ void setup_logging() {
 }
 
 int main(int argc, char** argv) {
-  bool auto_listen = false;
-  bool auto_debug = false;
+  ArgumentGuard u8_guard(argc, argv);
+
   bool auto_find_user = false;
   std::string cmd = "";
-  std::string startup_cmd = "";
   std::string username = "#f";
   std::string game = "jak1";
-  int nrepl_port = 8181;
+  int nrepl_port = -1;
+  fs::path project_path_override;
 
+  // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
+  // TODO - auto-find the user if there is only one folder within `user/`
   CLI::App app{"OpenGOAL Compiler / REPL"};
-  app.add_option("-c,--cmd", cmd, "Specify a command to run");
-  app.add_option("--startup-cmd", startup_cmd,
-                 "Specify a command to run and keep the REPL open afterwards");
+  app.add_option("-c,--cmd", cmd, "Specify a command to run, no REPL is launched in this mode");
   app.add_option("-u,--user", username,
                  "Specify the username to use for your user profile in 'goal_src/user/'");
-  app.add_option("-p,--port", nrepl_port, "Specify the nREPL port.  Defaults to 8181");
-  app.add_flag("--auto-lt", auto_listen,
-               "Attempt to automatically connect to the listener on startup");
-  app.add_flag("--auto-dbg", auto_debug,
-               "Attempt to automatically connect to the debugger on startup");
+  app.add_option("-p,--port", nrepl_port,
+                 "Specify the nREPL port.  Defaults to 8181 for Jak 1 and 8182 for Jak 2");
   app.add_flag("--user-auto", auto_find_user,
-               "Attempt to automatically deduce the user, overrides '-user'");
+               "Attempt to automatically deduce the user, overrides '--user'");
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
+  app.add_option("--proj-path", project_path_override,
+                 "Specify the location of the 'data/' folder");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
-  if (!file_util::setup_project_path(std::nullopt)) {
-    return 1;
-  }
-
   GameVersion game_version = game_name_to_version(game);
-
-  if (auto_find_user) {
-    username = "#f";
-    std::regex allowed_chars("[0-9a-zA-Z\\-\\.\\!\\?<>]");
-    try {
-      auto text = std::make_shared<goos::FileText>(
-          file_util::get_file_path({"goal_src", "user", "user.txt"}), "goal_src/user/user.txt");
-      goos::TextStream ts(text);
-      ts.seek_past_whitespace_and_comments();
-      std::string found_username;
-      while (ts.text_remains()) {
-        auto character = ts.read();
-        if (!std::regex_match(std::string(1, character), allowed_chars)) {
-          break;
-        }
-        found_username.push_back(character);
-      }
-      if (!found_username.empty()) {
-        username = found_username;
-      }
-    } catch (std::exception& e) {
-      printf("error opening user desc file: %s\n", e.what());
+  if (nrepl_port == -1) {
+    switch (game_version) {
+      default:
+      case GameVersion::Jak1:
+        nrepl_port = 8181;
+        break;
+      case GameVersion::Jak2:
+        nrepl_port = 8182;
+        break;
     }
   }
 
-  setup_logging();
+  if (!project_path_override.empty()) {
+    if (!fs::exists(project_path_override)) {
+      lg::error("Error: project path override '{}' does not exist", project_path_override.string());
+      return 1;
+    }
+    if (!file_util::setup_project_path(project_path_override)) {
+      lg::error("Could not setup project path!");
+      return 1;
+    }
+  } else if (!file_util::setup_project_path(std::nullopt)) {
+    return 1;
+  }
+
+  try {
+    setup_logging();
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
-  // Init REPL
-  ReplStatus status = ReplStatus::WANT_RELOAD;
+  // Figure out the username
+  if (auto_find_user) {
+    username = REPL::find_repl_username();
+  }
+  // Load the user's startup file
+  auto startup_file = REPL::load_user_startup_file(username, game_version);
+  // Load the user's REPL config
+  auto repl_config = REPL::load_repl_config(username, game_version);
+
+  // Init Compiler
+  std::unique_ptr<Compiler> compiler;
+  std::mutex compiler_mutex;
+  // if a command is provided on the command line, no REPL just run the compiler on it
+  try {
+    if (!cmd.empty()) {
+      compiler = std::make_unique<Compiler>(game_version);
+      compiler->run_front_end_on_string(cmd);
+      return 0;
+    }
+  } catch (std::exception& e) {
+    lg::error("Compiler Fatal Error: {}", e.what());
+    return 1;
+  }
+
+  // Otherwise, start the REPL normally
+  ReplStatus status = ReplStatus::OK;
+  std::function<void()> repl_startup_func = [&]() {
+    // Run automatic forms if applicable
+    std::lock_guard<std::mutex> lock(compiler_mutex);
+    for (const auto& cmd : startup_file.run_before_listen) {
+      status = compiler->handle_repl_string(cmd);
+    }
+  };
+
+  // Initialize nREPL server socket
   std::function<bool()> shutdown_callback = [&]() { return status == ReplStatus::WANT_EXIT; };
   ReplServer repl_server(shutdown_callback, nrepl_port);
   bool repl_server_ok = repl_server.init_server();
   std::thread nrepl_thread;
   // the compiler may throw an exception if it fails to load its standard library.
   try {
-    std::unique_ptr<Compiler> compiler;
-    // TODO - allow passing in an iso_data override
-    std::mutex compiler_mutex;
-    // if a command is provided on the command line, no REPL just run the compiler on it
-    if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>(game_version);
-      compiler->run_front_end_on_string(cmd);
-      return 0;
-    }
-    // Start nREPL Server
+    compiler = std::make_unique<Compiler>(
+        game_version, std::make_optional(repl_config), username,
+        std::make_unique<REPL::Wrapper>(username, repl_config, startup_file));
+    // Start nREPL Server if it spun up successfully
     if (repl_server_ok) {
       nrepl_thread = std::thread([&]() {
         while (!shutdown_callback()) {
@@ -114,32 +144,22 @@ int main(int argc, char** argv) {
         }
       });
     }
-    // Run automatic forms if applicable
-    if (auto_debug || auto_listen) {
-      std::lock_guard<std::mutex> lock(compiler_mutex);
-      status = compiler->handle_repl_string("(lt)");
-    }
-    if (auto_debug) {
-      std::lock_guard<std::mutex> lock(compiler_mutex);
-      status = compiler->handle_repl_string("(dbg) (:cont)");
-    }
+    repl_startup_func();
+
     // Poll Terminal
     while (status != ReplStatus::WANT_EXIT) {
       if (status == ReplStatus::WANT_RELOAD) {
-        fmt::print("Reloading compiler...\n");
+        lg::info("Reloading compiler...");
         std::lock_guard<std::mutex> lock(compiler_mutex);
         if (compiler) {
           compiler->save_repl_history();
         }
-        compiler =
-            std::make_unique<Compiler>(game_version, username, std::make_unique<ReplWrapper>());
-        if (!startup_cmd.empty()) {
-          compiler->handle_repl_string(startup_cmd);
-          // reset to prevent re-executing on manual reload
-          startup_cmd = "";
-        }
+        compiler = std::make_unique<Compiler>(
+            game_version, std::make_optional(repl_config), username,
+            std::make_unique<REPL::Wrapper>(username, repl_config, startup_file));
         status = ReplStatus::OK;
       }
+      // process user input
       std::string input_from_stdin = compiler->get_repl_input();
       if (!input_from_stdin.empty()) {
         // lock, while we compile
@@ -148,9 +168,11 @@ int main(int argc, char** argv) {
       }
     }
   } catch (std::exception& e) {
-    fmt::print(stderr, "Compiler Fatal Error: {}\n", e.what());
+    lg::error("Compiler Fatal Error: {}", e.what());
     status = ReplStatus::WANT_EXIT;
   }
+
+  // TODO - investigate why there is such a delay when exitting
 
   // Cleanup
   if (repl_server_ok) {

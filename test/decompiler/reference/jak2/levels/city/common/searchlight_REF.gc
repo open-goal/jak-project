@@ -1,0 +1,127 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type searchlight
+(deftype searchlight (process-drawable)
+  ((sync sync-eased :inline :offset-assert 200)
+   )
+  :heap-base #x80
+  :method-count-assert 21
+  :size-assert         #xf4
+  :flag-assert         #x15008000f4
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
+
+;; definition for method 3 of type searchlight
+(defmethod inspect searchlight ((obj searchlight))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 obj)
+    )
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-searchlight searchlight searchlight-lod0-jg searchlight-idle-ja
+              ((searchlight-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 60 0 120)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (searchlight)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (let ((gp-1 (quaternion-vector-angle!
+                    (new 'stack-no-clear 'quaternion)
+                    (new 'static 'vector :z 1.0 :w 1.0)
+                    (+ -4004.9778 (* 8192.0 (get-norm! (-> self sync) 0)))
+                    )
+                  )
+            (s5-2 (quaternion-axis-angle!
+                    (new 'stack-no-clear 'quaternion)
+                    0.0
+                    1.0
+                    0.0
+                    (vector-y-angle (-> (math-camera-matrix) vector 2))
+                    )
+                  )
+            )
+        (let ((f0-3 (calc-fade-from-fog (-> self root trans))))
+          (set-vector! (-> self draw color-emissive) f0-3 f0-3 f0-3 1.0)
+          )
+        (quaternion-normalize! (quaternion*! (-> self root quat) s5-2 gp-1))
+        )
+      (when (rand-vu-percent? 0.05)
+        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-4 from) (process->ppointer self))
+          (set! (-> a1-4 num-params) 0)
+          (set! (-> a1-4 message) 'hour)
+          (let ((v1-13 (send-event-function (ppointer->process *time-of-day*) a1-4)))
+            (if (and v1-13 (>= (the-as int v1-13) 7) (>= 18 (the-as int v1-13)))
+                (logior! (-> self draw status) (draw-control-status no-draw))
+                (logclear! (-> self draw status) (draw-control-status no-draw))
+                )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (none)
+    )
+  :post (the-as (function none :behavior searchlight) ja-post)
+  )
+
+;; definition for method 11 of type searchlight
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! searchlight ((obj searchlight) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-searchlight" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> obj draw status) (draw-control-status disable-fog))
+  (set! (-> obj root scale y) (rand-vu-float-range 1.8 2.0))
+  (set-vector! (-> obj draw color-mult) 0.0 0.0 0.0 0.0)
+  (let ((s4-1 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-12 0))
+      (if #t
+          (set! v1-12 (logior v1-12 1))
+          )
+      (set! (-> s4-1 sync-type) 'sync-eased)
+      (set! (-> s4-1 sync-flags) (the-as sync-flags v1-12))
+      )
+    (set! (-> s4-1 period) (the-as uint (rand-vu-int-range 3000 6000)))
+    (set! (-> s4-1 entity) arg0)
+    (set! (-> s4-1 percent) 0.0)
+    (set! (-> s4-1 ease-in) 0.15)
+    (set! (-> s4-1 ease-out) 0.15)
+    (set! (-> s4-1 pause-in) 0.0)
+    (set! (-> s4-1 pause-out) 0.0)
+    (initialize! (-> obj sync) s4-1)
+    )
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+
+
+

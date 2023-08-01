@@ -86,7 +86,7 @@
   obj
   )
 
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 game-text-id) (arg1 symbol))
+(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
   "Look up text by ID.  Will return the string.
    If the ID can't be found, and arg1 is #t, it will return #f,
    otherwise the temp string UNKNOWN ID <id number>"
@@ -113,7 +113,15 @@
           (the-as string #f)
           )
          (else
-          (string-format "UNKNOWN ID ~D" arg0)
+          ;; First, look up the id in the fallback
+          (#if PC_PORT
+            (if *fallback-text-lookup?*
+              (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
+               (if (!= fallback-result #f)
+                 fallback-result
+                 (string-format "UNKNOWN ID ~D" arg0)))
+              (string-format "UNKNOWN ID ~D" arg0))
+            (string-format "UNKNOWN ID ~D" arg0))
           )
          )
        )
@@ -150,9 +158,106 @@
   (set! load-status 0)
   (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
   ;; english -> UK english in PAL
-  (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
-      (set! lang (language-enum uk-english))
+  ;; PC port note : no longer necessary.
+  (#unless PC_PORT
+    (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
+        (set! lang (language-enum uk-english))
+        )
+    )
+
+  ;; only load if we actually need to
+  (when (or (= heap-sym-heap #f) ;; nothing loaded
+            (!= (-> heap-sym-heap language-id) (the-as uint lang)) ;; loaded, but wrong lang
+            (not (string= (-> heap-sym-heap group-name) txt-name)) ;; loaded, but wrong group
+            )
+
+    ;; clear the heap!
+    (let ((v1-16 heap))
+      (set! (-> v1-16 current) (-> v1-16 base))
       )
+    (b! #t cfg-14)
+    (label cfg-13)
+    (load-dbg "Strange error during text load.~%")
+    (set! v0-2 0)
+    (b! #t cfg-27)
+    (label cfg-14)
+
+    ;; call str-load to start loading the TXT file to the heap
+    (let ((s3-0 str-load))
+      (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+      ;; this branch is super weird.
+      (b! (not (s3-0
+                *temp-string*
+                -1
+                (logand -64 (&+ (-> heap current) 63))
+                (&- (-> heap top) (the-as uint (-> heap current)))
+                )
+               )
+          cfg-13
+          )
+      )
+
+    ;; loop to wait until loading is complete
+    (label cfg-16)
+    (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
+      (cond
+        ((= v1-20 'error)
+         (format 0 "Error loading text~%")
+         (return 0)
+         )
+        ((>= load-status (+ heap-free -300))
+         (format 0 "Game text heap overrun!~%")
+         (return 0)
+         )
+        ((= v1-20 'busy)
+         (begin
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (goto cfg-16)
+          )
+         )
+        )
+      )
+
+    ;; loading is done. now we link.
+    (let ((s2-1 (logand -64 (&+ (-> heap current) 63))))
+      (flush-cache 0)
+      (let ((s3-1 link))
+        (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+        (set! (-> curr-text value)
+         (s3-1 s2-1 (-> *temp-string* data) load-status heap 0)
+         )
+        )
+      )
+
+    ;; linking error occured?
+    (if (<= (the-as int (-> curr-text value)) 0)
+        (set! (-> curr-text value) (the-as object #f))
+        )
+    )
+  (set! v0-2 0)
+  (label cfg-27)
+
+  v0-2
+  )
+
+(defun load-fallback-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
+  "Largely duplication of `load-game-text-info` but is hardcoded to load english (language 0)"
+  (local-vars
+   (v0-2 int)
+   (heap-sym-heap game-text-info)
+   (lang language-enum)
+   (load-status int)
+   (heap-free int)
+   )
+  (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
+  (set! lang (language-enum english))
+  (set! load-status 0)
+  (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
 
   ;; only load if we actually need to
   (when (or (= heap-sym-heap #f) ;; nothing loaded
@@ -239,9 +344,11 @@
    This function made more sense back when text files were split up, but in the end they put everything
    in a single text group and file."
 
-  (if (or *level-text-file-load-flag* (>= arg0 0))
-      (load-game-text-info "common" '*common-text* *common-text-heap*)
-      )
+  (when (or *level-text-file-load-flag* (>= arg0 0))
+   (load-game-text-info "common" '*common-text* *common-text-heap*)
+   (#when PC_PORT
+    (load-fallback-game-text-info "common" '*fallback-text* *fallback-text-heap*))
+    )
   (none)
   )
 
@@ -358,7 +465,7 @@
   (none)
   )
 
-(defun print-game-text ((str string) (font-ctxt font-context) (opaque symbol) (alpha int) (line-height int))
+(defun print-game-text ((str string) (font-ctxt font-context) (no-draw symbol) (alpha int) (line-height int))
   "Print text. Not worth commenting until we get stack variables in lets, I think"
   (local-vars
    (sv-112 float)
@@ -512,7 +619,7 @@
               (if (nonzero? (-> *game-text-line* data 0))
                   (set! sv-168 (+ sv-168 1))
                   )
-              (when (not opaque)
+              (when (not no-draw)
                 (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
                        (s2-1 (-> s1-1 base))
                        )
@@ -561,8 +668,8 @@
       (set! (-> *video-parms* relative-y-scale) sv-124)
       (set! (-> *video-parms* relative-x-scale-reciprical) sv-128)
       (set! (-> *video-parms* relative-y-scale-reciprical) sv-132)
-      (with-pc
-        (if (and *debug-segment* (-> *pc-settings* display-text-box))
+      (#when PC_PORT
+        (if (and *debug-segment* *display-text-box*)
           (draw-debug-text-box font-ctxt)))
       (if (> sv-168 0)
           (* sv-164 (the float sv-168))
@@ -580,10 +687,5 @@
 (defun enable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #t)
   (none)
-  )
-
-;; added
-(defun-debug game-text-id->string ((text game-text-id))
-  (enum->string game-text-id text)
   )
 

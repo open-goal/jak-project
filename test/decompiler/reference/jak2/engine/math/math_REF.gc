@@ -1,0 +1,669 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function truncate
+(defun truncate ((arg0 float))
+  (the float (the int arg0))
+  )
+
+;; definition for function floor
+(defun floor ((arg0 float))
+  (let ((f0-3 (the float (the int arg0))))
+    (if (or (>= arg0 0.0) (= arg0 f0-3))
+        f0-3
+        (+ -1.0 f0-3)
+        )
+    )
+  )
+
+;; definition for function ceil
+(defun ceil ((arg0 float))
+  (let ((f0-3 (the float (the int arg0))))
+    (if (or (>= 0.0 arg0) (= arg0 f0-3))
+        f0-3
+        (+ 1.0 f0-3)
+        )
+    )
+  )
+
+;; definition for function integral?
+(defun integral? ((arg0 float))
+  (= (the float (the int arg0)) arg0)
+  )
+
+;; definition for function fractional-part
+(defun fractional-part ((arg0 float))
+  (- arg0 (the float (the int arg0)))
+  )
+
+;; definition for function sawtooth-wave
+(defun sawtooth-wave ((arg0 float))
+  (let ((f0-2 (- arg0 (the float (the int arg0)))))
+    (if (< f0-2 0.0)
+        (set! f0-2 (+ 1.0 f0-2))
+        )
+    f0-2
+    )
+  )
+
+;; definition for function triangle-wave
+(defun triangle-wave ((arg0 float))
+  (let* ((f0-1 (* 0.25 (+ -1.0 arg0)))
+         (f0-3 (- f0-1 (the float (the int f0-1))))
+         )
+    (if (< f0-3 0.0)
+        (set! f0-3 (+ 1.0 f0-3))
+        )
+    (+ -1.0 (fabs (+ -2.0 (* 4.0 f0-3))))
+    )
+  )
+
+;; definition for function log-x-plus-1-order9
+(defun log-x-plus-1-order9 ((arg0 float))
+  (* arg0
+     (+ 1.0
+        (* arg0
+           (+ -0.5
+              (* arg0
+                 (+ 0.33333334
+                    (* arg0
+                       (+ -0.25
+                          (* arg0 (+ 0.2 (* arg0 (+ -0.16666666 (* arg0 (+ 0.14285715 (* arg0 (+ -0.125 (* 0.11111111 arg0)))))))))
+                          )
+                       )
+                    )
+                 )
+              )
+           )
+        )
+     )
+  )
+
+;; definition for function logf
+(defun logf ((arg0 float))
+  (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
+        (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
+        )
+    (when (< (the-as float (gpr->fpr (the-as int a0-2))) 0.70710677)
+      (set! a0-2 (+ (the-as float (gpr->fpr (the-as int a0-2))) (the-as float (gpr->fpr (the-as int a0-2)))))
+      (set! v1-1 (the-as int (+ (the-as uint v1-1) -1)))
+      )
+    (let ((f0-5 (+ -1.0 (the-as float (gpr->fpr a0-2)))))
+      (+ (* f0-5
+            (+ 1.0
+               (* f0-5
+                  (+ -0.5
+                     (* f0-5
+                        (+ 0.33333334
+                           (* f0-5
+                              (+ -0.25
+                                 (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
+                                 )
+                              )
+                           )
+                        )
+                     )
+                  )
+               )
+            )
+         (* 0.6931472 (the float v1-1))
+         )
+      )
+    )
+  )
+
+;; definition for function log2f
+(defun log2f ((arg0 float))
+  (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
+        (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
+        )
+    (when (< (the-as float (gpr->fpr (the-as int a0-2))) 0.70710677)
+      (set! a0-2 (+ (the-as float (gpr->fpr (the-as int a0-2))) (the-as float (gpr->fpr (the-as int a0-2)))))
+      (set! v1-1 (the-as int (+ (the-as uint v1-1) -1)))
+      )
+    (let* ((f0-5 (+ -1.0 (the-as float (gpr->fpr a0-2))))
+           (f0-7
+             (* f0-5
+                (+ 1.0
+                   (* f0-5
+                      (+ -0.5
+                         (* f0-5
+                            (+ 0.33333334
+                               (* f0-5
+                                  (+ -0.25
+                                     (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
+                                     )
+                                  )
+                               )
+                            )
+                         )
+                      )
+                   )
+                )
+             )
+           )
+      (+ (* 1.442695 f0-7) (the float v1-1))
+      )
+    )
+  )
+
+;; definition of type float-type
+(deftype float-type (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for symbol exp-slead, type (pointer float)
+(define exp-slead (new 'static 'array float 32
+                    1.0
+                    1.0218964
+                    1.0442734
+                    1.0671387
+                    1.0905075
+                    1.1143799
+                    1.1387863
+                    1.1637192
+                    1.1892014
+                    1.2152405
+                    1.2418518
+                    1.2690506
+                    1.2968369
+                    1.3252335
+                    1.354248
+                    1.3839035
+                    1.4142075
+                    1.4451752
+                    1.4768219
+                    1.5091629
+                    1.5422058
+                    1.5759735
+                    1.6104889
+                    1.645752
+                    1.6817856
+                    1.7186127
+                    1.7562485
+                    1.7947083
+                    1.8340073
+                    1.8741608
+                    1.9151993
+                    1.9571381
+                    )
+        )
+
+;; definition for symbol exp-strail, type (pointer float)
+(define exp-strail (new 'static 'array float 32
+                     0.0
+                     0.0000007863494
+                     0.00000040596257
+                     0.0000017288019
+                     0.00000022534104
+                     0.0000068597833
+                     0.0000023188388
+                     0.0000056815315
+                     0.0000057600223
+                     0.0000068814647
+                     0.000006005433
+                     0.0000003590472
+                     0.0000027016238
+                     0.000003183687
+                     0.000007500062
+                     0.000006378546
+                     0.000006103877
+                     0.0000056360786
+                     0.0000042465254
+                     0.0000015247614
+                     0.000005014861
+                     0.000007334366
+                     0.0000014403477
+                     0.000003525029
+                     0.000007247011
+                     0.000006627224
+                     0.0000036862523
+                     0.00000082304996
+                     0.0000008232258
+                     0.0000068675085
+                     0.000007281612
+                     0.000006062652
+                     )
+        )
+
+;; definition for function exp
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function pow
+(defun pow ((arg0 float) (arg1 float))
+  (exp (* arg1 (logf arg0)))
+  )
+
+;; definition for function print-exp
+;; WARN: Return type mismatch int vs none.
+(defun print-exp ((arg0 float))
+  (let* ((f30-1 (floor (/ (logf (fabs arg0)) (logf 10.0))))
+         (f0-4 (pow 10.0 f30-1))
+         )
+    (format #t "~fe~d" (/ arg0 f0-4) (the int f30-1))
+    )
+  0
+  (none)
+  )
+
+;; definition of type rgba
+(deftype rgba (uint32)
+  ((r uint8 :offset   0 :size   8)
+   (g uint8 :offset   8 :size   8)
+   (b uint8 :offset  16 :size   8)
+   (a uint8 :offset  24 :size   8)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition of type xyzw
+(deftype xyzw (uint128)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition of type xyzwh
+(deftype xyzwh (uint128)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for function print-time
+;; WARN: Return type mismatch int vs none.
+(defun print-time ((arg0 object) (arg1 time-frame))
+  0
+  0
+  0
+  (let* ((f0-1 (* 0.0033333334 (the float arg1)))
+         (a2-0 (the int (* 0.016666668 f0-1)))
+         (f0-2 (- f0-1 (* 60.0 (the float a2-0))))
+         (a3-0 (the int f0-2))
+         (f0-3 (- f0-2 (the float a3-0)))
+         (t0-0 (the int (* 1000.0 f0-3)))
+         )
+    (format arg0 "~d:~2,'0,d:~3,'0,d" a2-0 a3-0 t0-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function log2
+;; WARN: Return type mismatch uint vs int.
+(defun log2 ((arg0 int))
+  (the-as int (+ (sar (the-as int (the float arg0)) 23) -127))
+  )
+
+;; definition for function seek
+(defun seek ((arg0 float) (arg1 float) (arg2 float))
+  (let ((f2-0 (- arg1 arg0)))
+    (cond
+      ((>= arg2 (fabs f2-0))
+       arg1
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+;; definition for function seek-ease
+(defun seek-ease ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f2-0 (- arg1 arg0)))
+    (when (>= arg3 (fabs f2-0))
+      (set! arg2 (* arg2 (- 1.0 (/ (- arg3 (fabs f2-0)) arg3))))
+      (if (< arg2 arg4)
+          (set! arg2 arg4)
+          )
+      )
+    (cond
+      ((>= arg2 (fabs f2-0))
+       arg1
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+;; definition for function seek-ease-in-out
+(defun seek-ease-in-out ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float) (arg5 float) (arg6 float))
+  (let ((f2-0 (- arg2 arg0)))
+    (let ((f4-1 (- arg0 arg1)))
+      (when (>= arg4 (fabs f4-1))
+        (set! arg3 (* arg3 (- 1.0 (/ (- arg4 (fabs f4-1)) arg4))))
+        (if (< arg3 arg6)
+            (set! arg3 arg6)
+            )
+        )
+      )
+    (when (>= arg5 (fabs f2-0))
+      (set! arg3 (* arg3 (- 1.0 (/ (- arg5 (fabs f2-0)) arg5))))
+      (if (< arg3 arg6)
+          (set! arg3 arg6)
+          )
+      )
+    (cond
+      ((>= arg3 (fabs f2-0))
+       arg2
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg3)
+       )
+      (else
+        (- arg0 arg3)
+        )
+      )
+    )
+  )
+
+;; definition for function lerp
+(defun lerp ((arg0 float) (arg1 float) (arg2 float))
+  (+ arg0 (* arg2 (- arg1 arg0)))
+  )
+
+;; definition (debug) for function lerp-scale-old
+(defun-debug lerp-scale-old ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f0-1 (fmax 0.0 (fmin 1.0 (/ (- arg2 arg3) (- arg4 arg3))))))
+    (+ (* (- 1.0 f0-1) arg0) (* f0-1 arg1))
+    )
+  )
+
+;; definition for function lerp-scale
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f2]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f1, f3]
+(defun lerp-scale ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (local-vars (f0-2 float))
+  (let* ((v1-0 1.0)
+         (f1-0 0.0)
+         (f0-0 v1-0)
+         (f4-0 arg2)
+         (f2-0 arg3)
+         (f3-0 arg4)
+         (f1-2 (fmin (fmax (/ (- f4-0 f2-0) (- f3-0 f2-0)) f1-0) f0-0))
+         (f0-1 (- f0-0 f1-2))
+         (f2-3 arg0)
+         (f3-1 arg1)
+         )
+    (.mula.s f0-1 f2-3)
+    (.madd.s f0-2 f1-2 f3-1)
+    )
+  f0-2
+  )
+
+;; definition for function lerp-clamp
+(defun lerp-clamp ((arg0 float) (arg1 float) (arg2 float))
+  (cond
+    ((>= 0.0 arg2)
+     arg0
+     )
+    ((>= arg2 1.0)
+     arg1
+     )
+    (else
+      (+ (* (- 1.0 arg2) arg0) (* arg2 arg1))
+      )
+    )
+  )
+
+;; definition for function seekl
+(defun seekl ((arg0 int) (arg1 int) (arg2 int))
+  (let* ((v1-0 (- arg1 arg0))
+         (a3-0 (abs v1-0))
+         )
+    (cond
+      ((>= arg2 a3-0)
+       arg1
+       )
+      ((>= v1-0 0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+;; definition for function rand-vu-init
+;; WARN: Return type mismatch int vs float.
+;; ERROR: Unsupported inline assembly instruction kind - [ctc2.i vi_R, a0]
+;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v0, vi_R]
+(defun rand-vu-init ((arg0 float))
+  (local-vars (v0-0 int))
+  (.ctc2.i vi_R arg0)
+  (.cfc2.i v0-0 vi_R)
+  (the-as float v0-0)
+  )
+
+;; failed to figure out what this is:
+(rand-vu-init 1.418091)
+
+;; definition for function rand-vu
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRGET]
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRXOR]
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRNEXT]
+(defun rand-vu ()
+  (local-vars (v0-0 float))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (TODO.VRGET vf1)
+    (.sqrt.vf Q vf1 :ftf #b0)
+    (.add.vf vf2 vf0 Q :mask #b1)
+    (TODO.VRXOR vf2)
+    (TODO.VRNEXT vf1)
+    (.sub.w.vf vf1 vf1 vf0)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function rand-vu-nostep
+;; ERROR: Inline assembly instruction marked with TODO - [TODO.VRGET]
+(defun rand-vu-nostep ()
+  (local-vars (v0-0 float))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         )
+    (init-vf0-vector)
+    (TODO.VRGET vf1)
+    (.sub.w.vf vf1 vf1 vf0)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function rand-vu-float-range
+(defun rand-vu-float-range ((arg0 float) (arg1 float))
+  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  )
+
+;; definition for function rand-vu-percent?
+(defun rand-vu-percent? ((arg0 float))
+  (>= arg0 (rand-vu))
+  )
+
+;; definition for function rand-vu-int-range
+(defun rand-vu-int-range ((arg0 int) (arg1 int))
+  (if (< arg0 arg1)
+      (set! arg1 (+ arg1 1))
+      (set! arg0 (+ arg0 1))
+      )
+  (let ((f0-4 (rand-vu-float-range (the float arg0) (the float arg1))))
+    (if (< f0-4 0.0)
+        (set! f0-4 (+ -1.0 f0-4))
+        )
+    (the int f0-4)
+    )
+  )
+
+;; definition for function rand-vu-int-count
+(defun rand-vu-int-count ((arg0 int))
+  (the int (* (rand-vu) (the float arg0)))
+  )
+
+;; definition for function rand-vu-int-count-excluding
+;; WARN: new jak 2 until loop case, check carefully
+(defun rand-vu-int-count-excluding ((arg0 int) (arg1 int))
+  (let ((s4-0 0)
+        (s5-0 0)
+        )
+    (let ((v1-0 1))
+      (while (nonzero? arg0)
+        (+! arg0 -1)
+        (if (not (logtest? arg1 v1-0))
+            (+! s4-0 1)
+            )
+        (set! v1-0 (* v1-0 2))
+        )
+      )
+    (when (> s4-0 0)
+      (let ((v1-4 (the int (* (rand-vu) (the float s4-0))))
+            (a0-1 1)
+            )
+        (until #f
+          (while (logtest? arg1 a0-1)
+            (nop!)
+            (nop!)
+            (+! s5-0 1)
+            (set! a0-1 (* a0-1 2))
+            )
+          (if (zero? v1-4)
+              (goto cfg-14)
+              )
+          (+! v1-4 -1)
+          (+! s5-0 1)
+          (set! a0-1 (* a0-1 2))
+          )
+        )
+      #f
+      )
+    (label cfg-14)
+    s5-0
+    )
+  )
+
+;; definition for function rand-vu-int-range-exclude
+;; WARN: new jak 2 until loop case, check carefully
+(defun rand-vu-int-range-exclude ((arg0 int) (arg1 int) (arg2 int))
+  (until #f
+    (let ((v1-0 (rand-vu-int-range arg0 arg1)))
+      (if (!= v1-0 arg2)
+          (return v1-0)
+          )
+      )
+    )
+  (the-as int #f)
+  )
+
+;; definition of type random-generator
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type random-generator
+(defmethod inspect random-generator ((obj random-generator))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tseed: ~D~%" (-> obj seed))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for symbol *random-generator*, type random-generator
+(define *random-generator* (new 'global 'random-generator))
+
+;; failed to figure out what this is:
+(set! (-> *random-generator* seed) (the-as uint #x666edd1e))
+
+;; definition for function rand-uint31-gen
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function cube-root
+(defun cube-root ((arg0 float))
+  (cond
+    ((!= arg0 0.0)
+     (let* ((v1-0 arg0)
+            (a1-2 (+ (logand (shr (the-as int v1-0) 23) 255) -127))
+            (f0-1
+              (the-as
+                number
+                (gpr->fpr
+                  (logior (logand (the-as uint #x807fffff) (the-as uint v1-0)) (shl (+ (/ (the-as int a1-2) 3) 127) 23))
+                  )
+                )
+              )
+            )
+       (dotimes (v1-3 6)
+         (set! f0-1 (- (the-as float f0-1)
+                       (/ (- (* (the-as float (* (the-as float f0-1) (the-as float f0-1))) (the-as float f0-1)) arg0)
+                          (* 3.0 (the-as float f0-1) (the-as float f0-1))
+                          )
+                       )
+               )
+         )
+       (the-as float f0-1)
+       )
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+;; definition for function int-noise
+(defun int-noise ((arg0 int))
+  (let ((v1-1 (logxor (shl arg0 13) arg0)))
+    (- 1.0 (* 0.0000000009313226
+              (the float (logand #x7fffffff (+ #x5208dd0d (* v1-1 (+ #xc0ae5 (* (* #x3d73 v1-1) v1-1))))))
+              )
+       )
+    )
+  )
+
+;; definition for function smooth-step
+(defun smooth-step ((arg0 float))
+  (cond
+    ((>= 0.0 arg0)
+     0.0
+     )
+    ((>= arg0 1.0)
+     1.0
+     )
+    (else
+      (* arg0 arg0 (+ 3.0 (* -2.0 arg0)))
+      )
+    )
+  )
+
+;; definition for function smooth-interp
+(defun smooth-interp ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (+ arg0 (* (- arg1 arg0) (smooth-step (/ (- arg2 arg3) (- arg4 arg3)))))
+  )

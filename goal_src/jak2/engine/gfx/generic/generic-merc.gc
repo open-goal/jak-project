@@ -7,3 +7,129 @@
 
 ;; DECOMP BEGINS
 
+(define mercneric-vu0-block (new 'static 'vu-function))
+
+(deftype invinitdata (structure)
+  ((count     uint8   :offset-assert   0)
+   (init-data uint8   :offset-assert   1)
+   (init-addr uint16  :offset-assert   2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(define *inv-init-table* (new 'static 'inline-array invinitdata 8
+                           (new 'static 'invinitdata :count #x48 :init-addr #x1)
+                           (new 'static 'invinitdata :count #x43 :init-data #xc :init-addr #x11)
+                           (new 'static 'invinitdata :count #x3d :init-data #x18 :init-addr #x21)
+                           (new 'static 'invinitdata :count #x38 :init-data #x22 :init-addr #xe0)
+                           (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
+                           (new 'static 'invinitdata :count #x33 :init-data #x30 :init-addr #xf1)
+                           (new 'static 'invinitdata :count #x2e :init-data #x3a :init-addr #x190)
+                           (new 'static 'invinitdata :count #x2d :init-data #x3c :init-addr #x191)
+                           )
+        )
+
+
+;; definition for function generic-merc-init-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-init-asm (function none))
+
+;; definition for function mercneric-matrix-asm
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function mercneric-shader-asm
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function mercneric-bittable-asm
+;; ERROR: function has no type analysis. Cannot decompile.
+
+;; definition for function mercneric-convert
+;; INFO: function output is handled by mips2c
+(def-mips2c mercneric-convert function)
+
+;; definition for function high-speed-reject
+;; INFO: function output is handled by mips2c
+(def-mips2c high-speed-reject function)
+
+;; definition for function generic-translucent
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-translucent (function gsf-buffer none))
+
+;; definition for function generic-merc-query
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-query function)
+
+;; definition for function generic-merc-death
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-death function)
+
+;; definition for function generic-merc-execute-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-execute-asm function)
+
+;; definition for function generic-merc-do-chain
+;; INFO: function output is handled by mips2c
+(def-mips2c generic-merc-do-chain (function mercneric-chain dma-buffer pointer))
+
+
+(defun generic-merc-execute-all ((arg0 dma-buffer))
+  "Run EE processing on all generic merc chains."
+  (let ((s4-0 (-> *foreground* foreground-grid))
+        (gp-0 (-> *display* frames (-> *display* on-screen) global-buf base))
+        )
+
+    (with-profiler 'generic-merc *profile-generic-merc-color*
+      ;; reset profiling
+      (reset! (-> *perf-stats* data (perf-stat-bucket mercneric)))
+      (set! (-> (scratchpad-object generic-work) saves to-vu0-waits) (the-as uint 0))
+      (set! (-> (scratchpad-object generic-work) saves to-spr-waits) (the-as uint 0))
+      (set! (-> (scratchpad-object generic-work) saves from-spr-waits) (the-as uint 0))
+      (flush-cache 0)
+
+      ;; init generic
+      (generic-initialize-without-sync (-> *math-camera* perspective) *default-lights*)
+      (generic-merc-init-asm)
+      (set! (-> (scratchpad-object generic-work) in-buf merc shadow write-limit) (the-as int (&+ (-> arg0 end) -262144)))
+
+      ;; loop over grid of chains (levels x textures) and do the chain.
+      (dotimes (s3-1 7)
+        (dotimes (s2-1 7)
+          (generic-merc-do-chain (-> s4-0 level-buckets s3-1 data s2-1 mercneric) arg0)
+          )
+        )
+
+      ;; do separate warp chain
+      (generic-merc-do-chain (-> s4-0 warp-chain) arg0)
+
+      ;; finish profiling
+      (read! (-> *perf-stats* data (perf-stat-bucket mercneric)))
+      (update-wait-stats
+        (-> *perf-stats* data 38)
+        (-> (scratchpad-object generic-work) saves to-vu0-waits)
+        (-> (scratchpad-object generic-work) saves to-spr-waits)
+        (-> (scratchpad-object generic-work) saves from-spr-waits)
+        )
+      )
+
+    ;; update dma memory usage stats.
+    (let ((v1-66 *dma-mem-usage*))
+      (when (nonzero? v1-66)
+        (set! (-> v1-66 length) (max 90 (-> v1-66 length)))
+        (set! (-> v1-66 data 89 name) "pris-generic")
+        (+! (-> v1-66 data 89 count) 1)
+        (+! (-> v1-66 data 89 used)
+            (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint gp-0))
+            )
+        (set! (-> v1-66 data 89 total) (-> v1-66 data 89 used))
+        )
+      )
+    )
+  (none)
+  )
+
+
+
+

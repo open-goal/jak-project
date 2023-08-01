@@ -296,6 +296,8 @@ std::vector<std::string> SplitString(const ::std::string& str, char delimiter = 
 }
 
 }  // namespace
+
+namespace google_diff {
 std::string diff_strings(const std::string& lhs, const std::string& rhs) {
   if (!lhs.empty() && !rhs.empty()) {
     const std::vector<std::string> lhs_lines = SplitString(lhs);
@@ -310,3 +312,4 @@ std::string diff_strings(const std::string& lhs, const std::string& rhs) {
 std::vector<std::string> split_string(const ::std::string& str, char delimiter) {
   return SplitString(str, delimiter);
 }
+}  // namespace google_diff

@@ -13,15 +13,25 @@
 (cond
   ;; extractor can override everything by providing *use-iso-data-path*
   (*use-iso-data-path*
-    (map-path! "$ISO" (string-append *iso-data* "/")))
+   (map-path! "$ISO" (string-append *iso-data* "/")))
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$ISO" (string-append "iso_data/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak2
   (#t
-    (map-path! "$ISO" "iso_data/jak2/")))
+   (map-path! "$ISO" "iso_data/jak2/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Inputs from decompiler
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(map-path! "$DECOMP" "decompiler_out/jak2/")
+(cond
+  ;; if the user's repl-config has a game version folder, use that
+  ((> (string-length (get-game-version-folder)) 0)
+   (map-path! "$DECOMP" (string-append "decompiler_out/" (get-game-version-folder) "/")))
+  ;; otherwise, default to jak2
+  (#t
+   (map-path! "$DECOMP" "decompiler_out/jak2/")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Output
@@ -49,515 +59,332 @@
 (define *all-vag* '())
 (define *all-gc* '())
 
-;;;;;;;;;;;;;;;;;;;;;;;
-;; Build system macros
-;;;;;;;;;;;;;;;;;;;;;;;
+(define *file-entry-map* (make-string-hash-table))
 
-(defun gc-file->o-file (filename)
-  "Get the name of the object file for the given GOAL (*.gc) source file."
-  (string-append "$OUT/obj/" (stem filename) ".o")
-  )
-
-(defmacro goal-src (src-file &rest deps)
-  "Add a GOAL source file with the given dependencies"
-  `(let ((output-file ,(gc-file->o-file src-file)))
-    (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak2/" src-file)
-     ;; use goal compiler
-     :tool 'goalc
-     ;; will output the obj file
-     :out (list output-file)
-     ;; dependencies are the obj files
-     :dep '(,@(apply gc-file->o-file deps))
-     )
-    )
-  )
-
-(defun make-src-sequence-elt (current previous prefix)
-  "Helper for goal-src-sequence"
-  `(let ((output-file ,(gc-file->o-file current)))
-    (set! *all-gc* (cons output-file *all-gc*))
-    (defstep :in ,(string-append "goal_src/jak2/" prefix current)
-     :tool 'goalc
-     :out (list output-file)
-     :dep '(,(gc-file->o-file previous))
-     )
-    )
-  )
-
-(defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
-  "Add a sequence of GOAL files (each depending on the previous) in the given directory,
-   with all depending on the given deps."
-  (let* ((first-thing `(goal-src ,(string-append prefix (first sequence)) ,@deps))
-         (result (cons first-thing '()))
-         (iter result))
-
-    (let ((prev (first sequence))
-          (in-iter (rest sequence)))
-
-      (while (not (null? in-iter))
-        ;; (fmt #t "{} dep on {}\n" (first in-iter) prev)
-        (let ((next (make-src-sequence-elt (first in-iter) prev prefix)))
-          (set-cdr! iter (cons next '()))
-          (set! iter (cdr iter))
-          )
-
-        (set! prev (car in-iter))
-        (set! in-iter (cdr in-iter))
-        )
-      )
-
-    `(begin ,@result)
-    )
-  )
-
-(defun cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in $OUT/iso) and input name (in goal_src/jak2/dgos)"
-  (let ((out-name (string-append "$OUT/iso/" output-name)))
-    (defstep :in (string-append "goal_src/jak2/dgos/" desc-file-name)
-      :tool 'dgo
-      :out `(,out-name)
-      )
-    (set! *all-cgos* (cons out-name *all-cgos*))
-    )
-  )
-
-(defmacro group (name &rest stuff)
-  `(defstep :in ""
-     :tool 'group
-     :out '(,(string-append "GROUP:" name))
-     :dep '(,@stuff))
-  )
-
-(defun group-list (name stuff)
-  (defstep :in ""
-     :tool 'group
-     :out `(,(string-append "GROUP:" name))
-     :dep stuff)
-  )
+;; Load required macros
+(load-file "goal_src/jak2/lib/project-lib.gp")
+(set-gsrc-folder! "goal_src/jak2")
 
 ;;;;;;;;;;;;;;;;;
 ;; GOAL Kernel
 ;;;;;;;;;;;;;;;;;
 
-;; These are set up with proper dependencies
+(cgo-file "kernel.gd" '())
 
-(goal-src "kernel/gcommon.gc")
-(goal-src "kernel/gstring-h.gc")
-(goal-src "kernel/gkernel-h.gc"
-  "gcommon"
-  "gstring-h")
-(goal-src "kernel/gkernel.gc"
-  "gkernel-h")
-(goal-src "kernel/pskernel.gc"
-  "gcommon"
-  "gkernel-h")
-(goal-src "kernel/gstring.gc"
-  "gcommon"
-  "gstring-h")
-(goal-src "kernel/dgo-h.gc")
-(goal-src "kernel/gstate.gc"
-  "gkernel")
+;;;;;;;;;;;;;;;;;;;;;
+;; misc files
+;;;;;;;;;;;;;;;;;;;;;
 
-(cgo "KERNEL.CGO" "kernel.gd")
+;; the VAGDIR file
+(defstep :in "$ISO/VAG/VAGDIR.AYB"
+  :tool 'copy
+  :out '("$OUT/iso/VAGDIR.AYB"))
 
-;;;;;;;;;;;;;
-;; engine
-;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;; DGOs
+;;;;;;;;;;;;;;;;;;;;;
 
-(goal-src-sequence
-  "engine/"
-  :deps
-  ("$OUT/obj/gcommon.o"
-    "$OUT/obj/gstate.o"
-    "$OUT/obj/gstring.o"
-    "$OUT/obj/gkernel.o"
-    )
-"util/types-h.gc"
-"ps2/vu1-macros.gc"
-"math/math.gc"
-"math/vector-h.gc"
-"physics/gravity-h.gc"
-"geometry/bounding-box-h.gc"
-"math/matrix-h.gc"
-"math/quaternion-h.gc"
-"math/euler-h.gc"
-"math/transform-h.gc"
-"geometry/geometry-h.gc"
-"math/trigonometry-h.gc"
-"math/transformq-h.gc"
-"geometry/bounding-box.gc"
-"math/matrix.gc"
-"math/transform.gc"
-"math/quaternion.gc"
-"math/euler.gc"
-"math/trigonometry.gc"
-"sound/gsound-h.gc"
-"ps2/timer-h.gc"
-"ps2/vif-h.gc"
-"dma/dma-h.gc"
-"gfx/hw/video-h.gc"
-"gfx/vu1-user-h.gc"
-"util/profile-h.gc"
-"dma/dma.gc"
-"dma/dma-buffer.gc"
-"dma/dma-bucket.gc"
-"dma/dma-disasm.gc"
-"ps2/pad.gc"
-"gfx/hw/gs.gc"
-"gfx/hw/display-h.gc"
-"geometry/geometry.gc"
-"ps2/timer.gc"
-"math/vector.gc"
-"load/file-io.gc"
-"load/loader-h.gc"
-"gfx/texture/texture-h.gc"
-"gfx/texture/texture-anim-h.gc"
-"gfx/lights-h.gc"
-"gfx/mood/mood-h.gc"
-"level/level-h.gc"
-"util/capture-h.gc"
-"gfx/math-camera-h.gc"
-"gfx/math-camera.gc"
-"gfx/font-h.gc"
-"load/decomp-h.gc"
-"util/profile.gc"
-"gfx/hw/display.gc"
-"engine/connect.gc"
-"ui/text-id-h.gc"
-"ui/text-h.gc"
-"camera/camera-defs-h.gc"
-)
+(defstep :in "$DECOMP/textures/tpage-dir.txt"
+  :tool 'tpage-dir
+  :out '("$OUT/obj/dir-tpages.go")
+  )
+(hash-table-set! *file-entry-map* "dir-tpages.go" #f)
 
-(goal-src-sequence
-  "levels/"
-  :deps ("$OUT/obj/camera-defs-h.o")
-  "city/common/trail-h.gc"
+(cgo-file "game.gd" '("$OUT/obj/gcommon.o" "$OUT/obj/gstate.o" "$OUT/obj/gstring.o" "$OUT/obj/gkernel.o"))
+
+;; note: some of these dependencies are slightly wrong because cgo-file doesn't really handle
+;; the case of a .o appearing in multiple dgos. But, if we depend on the last item in both lists, it
+;; works out.
+
+(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu-pc.o"))
+;; city
+(cgo-file "cwi.gd" common-dep)
+(cgo-file "lwidea.gd" common-dep)
+(cgo-file "lwideb.gd" common-dep)
+(cgo-file "lwidec.gd" common-dep)
+(cgo-file "ctykora.gd" common-dep)
+(cgo-file "cta.gd" common-dep)
+(cgo-file "ctb.gd" common-dep)
+(cgo-file "ctc.gd" common-dep)
+(cgo-file "cia.gd" common-dep)
+(cgo-file "cib.gd" common-dep)
+(cgo-file "cpo.gd" common-dep)
+(cgo-file "ljakdax.gd" common-dep)
+(cgo-file "cpa.gd" common-dep)
+(cgo-file "cga.gd" common-dep)
+(cgo-file "cgb.gd" common-dep)
+(cgo-file "cgc.gd" common-dep)
+(cgo-file "sta.gd" common-dep)
+(cgo-file "cma.gd" common-dep)
+(cgo-file "cmb.gd" common-dep)
+(cgo-file "ctyasha.gd" common-dep)
+(cgo-file "cfa.gd" common-dep)
+(cgo-file "cfb.gd" common-dep)
+(cgo-file "hiphog.gd" common-dep)
+(cgo-file "hideout.gd" common-dep)
+(cgo-file "gga.gd" common-dep)
+(cgo-file "onintent.gd" common-dep)
+(cgo-file "vin.gd" common-dep)
+(cgo-file "garage.gd" common-dep)
+(cgo-file "kiosk.gd" common-dep)
+(cgo-file "oracle.gd" common-dep)
+(cgo-file "stadblmp.gd" common-dep)
+;; city borrow
+(cgo-file "lbbush.gd" common-dep)
+(cgo-file "lmeetbrt.gd" common-dep)
+(cgo-file "lpower.gd" common-dep)
+(cgo-file "lshuttle.gd" common-dep)
+(cgo-file "lkiddoge.gd" common-dep)
+(cgo-file "lbombbot.gd" common-dep)
+(cgo-file "lerlchal.gd" common-dep)
+(cgo-file "lprotect.gd" common-dep)
+(cgo-file "lpackage.gd" common-dep)
+(cgo-file "lportrun.gd" common-dep)
+(cgo-file "lhelldog.gd" common-dep)
+(cgo-file "lsack.gd" common-dep)
+(cgo-file "lprtrace.gd" common-dep)
+;; other borrow
+(cgo-file "ltentout.gd" common-dep)
+(cgo-file "ltentob.gd" common-dep)
+(cgo-file "lkeirift.gd" common-dep)
+(cgo-file "lgarcsta.gd" common-dep)
+(cgo-file "lwhack.gd" common-dep)
+;; title
+(cgo-file "title.gd" common-dep)
+;; intro
+(cgo-file "vi1.gd" common-dep)
+(cgo-file "introcst.gd" common-dep)
+(cgo-file "lintcstb.gd" common-dep)
+(cgo-file "lcitylow.gd" common-dep)
+;; stadium
+(cgo-file "ska.gd" common-dep)
+(cgo-file "stb.gd" common-dep)
+(cgo-file "stc.gd" common-dep)
+(cgo-file "std.gd" common-dep)
+(cgo-file "lracelit.gd" common-dep)
+(cgo-file "lracebf.gd" common-dep)
+(cgo-file "lracecf.gd" common-dep)
+(cgo-file "lracedf.gd" common-dep)
+(cgo-file "lracebb.gd" common-dep)
+(cgo-file "lracecb.gd" common-dep)
+(cgo-file "lracedb.gd" common-dep)
+(cgo-file "lwidesta.gd" common-dep)
+;; fortress
+(cgo-file "pri.gd" common-dep)
+(cgo-file "ldjakbrn.gd" common-dep)
+(cgo-file "lprsncst.gd" common-dep)
+(cgo-file "fea.gd" common-dep)
+(cgo-file "feb.gd" common-dep)
+(cgo-file "fda.gd" common-dep)
+(cgo-file "fdb.gd" common-dep)
+(cgo-file "fordumpc.gd" common-dep)
+(cgo-file "fordumpd.gd" common-dep)
+(cgo-file "fra.gd" common-dep)
+(cgo-file "frb.gd" common-dep)
+;; ruins
+(cgo-file "rui.gd" common-dep)
+(cgo-file "sag.gd" common-dep)
+;; atoll
+(cgo-file "ato.gd" common-dep)
+(cgo-file "ate.gd" common-dep)
+;; sewer
+(cgo-file "sew.gd" common-dep)
+(cgo-file "seb.gd" common-dep)
+(cgo-file "swe.gd" common-dep)
+(cgo-file "swb.gd" common-dep)
+;; mountain
+(cgo-file "mtn.gd" common-dep)
+(cgo-file "mtx.gd" common-dep)
+(cgo-file "mcn.gd" common-dep)
+;; tomb
+(cgo-file "toa.gd" common-dep)
+(cgo-file "tob.gd" common-dep)
+(cgo-file "toc.gd" common-dep)
+(cgo-file "tod.gd" common-dep)
+(cgo-file "toe.gd" common-dep)
+(cgo-file "tbo.gd" common-dep)
+(cgo-file "tombext.gd" common-dep)
+;; drill
+(cgo-file "dri.gd" common-dep)
+(cgo-file "drb.gd" common-dep)
+(cgo-file "dmi.gd" common-dep)
+(cgo-file "drillmtn.gd" common-dep)
+;; palace
+(cgo-file "pas.gd" common-dep)
+(cgo-file "pac.gd" common-dep)
+(cgo-file "par.gd" common-dep)
+(cgo-file "thr.gd" common-dep)
+(cgo-file "palboss.gd" common-dep)
+(cgo-file "pae.gd" common-dep)
+(cgo-file "palout.gd" common-dep)
+(cgo-file "lbrnermk.gd" common-dep)
+;; strip
+(cgo-file "str.gd" common-dep)
+;; castle
+(cgo-file "cap.gd" common-dep)
+(cgo-file "cas.gd" common-dep)
+(cgo-file "cab.gd" common-dep)
+(cgo-file "casext.gd" common-dep)
+(cgo-file "cascity.gd" common-dep)
+;; dig
+(cgo-file "dg1.gd" common-dep)
+(cgo-file "d3a.gd" common-dep)
+(cgo-file "d3b.gd" common-dep)
+;; forest
+(cgo-file "for.gd" common-dep)
+(cgo-file "fob.gd" common-dep)
+;; under
+(cgo-file "und.gd" common-dep)
+(cgo-file "unb.gd" common-dep)
+;; consite
+(cgo-file "coa.gd" common-dep)
+(cgo-file "cob.gd" common-dep)
+;; nest
+(cgo-file "nes.gd" common-dep)
+(cgo-file "neb.gd" common-dep)
+(cgo-file "nestt.gd" common-dep)
+;; outro
+(cgo-file "outrocst.gd" common-dep)
+(cgo-file "loutcstb.gd" common-dep)
+(cgo-file "lthrnout.gd" common-dep)
+(cgo-file "lhipout.gd" common-dep)
+(cgo-file "portwall.gd" common-dep)
+;; demo
+(cgo-file "demo.gd" common-dep)
+;; test
+(cgo-file "halfpipe.gd" common-dep)
+;; scene borrow packages
+(cgo-file "lerltess.gd" common-dep)
+(cgo-file "lsamergd.gd" common-dep)
+(cgo-file "lysamsam.gd" common-dep)
+(cgo-file "lsmysbrt.gd" common-dep)
+(cgo-file "ltrnysam.gd" common-dep)
+(cgo-file "lashthrn.gd" common-dep)
+(cgo-file "lcguard.gd" common-dep)
+(cgo-file "ljkdxash.gd" common-dep)
+(cgo-file "lerrol.gd" common-dep)
+(cgo-file "lashgrd.gd" common-dep)
+(cgo-file "ltess.gd" common-dep)
+(cgo-file "ltrnkrkd.gd" common-dep)
+(cgo-file "ltrntess.gd" common-dep)
+(cgo-file "lguard.gd" common-dep)
+(cgo-file "lerbrngd.gd" common-dep)
+(cgo-file "lyskdcd.gd" common-dep)
+
+;; test levels from the ps3 version
+(when USE_PS3_LEVELS
+  (cgo-file "skatepar.gd" common-dep)
+  (cgo-file "4aaron.gd" common-dep)
+  (cgo-file "4pal01.gd" common-dep)
+  (cgo-file "bsbs.gd" common-dep)
+  (cgo-file "chartest.gd" common-dep)
+  (cgo-file "ctyfence.gd" common-dep)
+  (cgo-file "dptest.gd" common-dep)
+  (cgo-file "eitest.gd" common-dep)
+  (cgo-file "island1.gd" common-dep)
+  (cgo-file "miketest.gd" common-dep)
+  (cgo-file "stadocc.gd" common-dep)
+  (cgo-file "tatetest.gd" common-dep)
+  (cgo-file "teststdc.gd" common-dep)
+  (cgo-file "teststdd.gd" common-dep)
+  (cgo-file "tobytest.gd" common-dep)
+  (cgo-file "wasall.gd" common-dep)
   )
 
-(goal-src-sequence
-  "engine/"
-  :deps
-  ("$OUT/obj/trail-h.o")
-"ui/minimap-h.gc"
-"ui/bigmap-h.gc"
-"game/settings-h.gc"
-"util/capture.gc"
-"debug/memory-usage-h.gc"
-"gfx/blit-displays-h.gc"
-"gfx/texture/texture.gc"
-"game/main-h.gc"
-"anim/mspace-h.gc"
-"draw/drawable-h.gc"
-"draw/drawable-group-h.gc"
-"draw/drawable-inline-array-h.gc"
-"draw/draw-node-h.gc"
-"draw/drawable-tree-h.gc"
-"draw/drawable-actor-h.gc"
-"level/region-h.gc"
-"ai/traffic-h.gc"
-"game/task/game-task-h.gc"
-"game/task/task-control-h.gc"
-"gfx/generic/generic-h.gc"
-"gfx/sky/sky-h.gc"
-"gfx/ocean/ocean-h.gc"
-"gfx/ocean/ocean-trans-tables.gc"
-"gfx/ocean/ocean-tables.gc"
-"gfx/ocean/ocean-frames.gc"
-"gfx/mood/time-of-day-h.gc"
-"data/art-h.gc"
-"gfx/generic/generic-vu1-h.gc"
-"gfx/merc/merc-h.gc"
-"gfx/merc/generic-merc-h.gc"
-"gfx/tie/generic-tie-h.gc"
-"gfx/generic/generic-work-h.gc"
-"gfx/foreground/shadow-cpu-h.gc"
-"gfx/foreground/shadow-vu1-h.gc"
-"ps2/memcard-h.gc"
-"game/game-info-h.gc"
-"ui/gui-h.gc"
-"ambient/ambient-h.gc"
-"sound/speech-h.gc"
-"gfx/background/wind-h.gc"
-"gfx/background/prototype-h.gc"
-"anim/joint-h.gc"
-"gfx/foreground/bones-h.gc"
-"gfx/foreground/foreground-h.gc"
-"engine/engines.gc"
-"gfx/lightning-h.gc"
-"entity/res-h.gc"
-"entity/res.gc"
-"gfx/lights.gc"
-"physics/dynamics-h.gc"
-"target/surface-h.gc"
-"collide/pat-h.gc"
-"game/fact-h.gc"
-"anim/aligner-h.gc"
-"game/penetrate-h.gc"
-"game/game-h.gc"
-"util/script-h.gc"
-"scene/scene-h.gc"
-"util/sync-info-h.gc"
-"camera/pov-camera-h.gc"
-"util/smush-control-h.gc"
-"debug/debug-h.gc"
-"anim/joint-mod-h.gc"
-"collide/collide-func-h.gc"
-"collide/collide-mesh-h.gc"
-"collide/collide-shape-h.gc"
-"common_objs/generic-obs-h.gc"
-"physics/trajectory-h.gc"
-"collide/collide-target-h.gc"
-"collide/collide-touch-h.gc"
-"collide/collide-edge-grab-h.gc"
-"process-drawable/process-drawable-h.gc"
-"process-drawable/process-focusable.gc"
-"process-drawable/process-taskable-h.gc"
-"process-drawable/focus.gc"
-"game/effect-control-h.gc"
-"collide/collide-frag-h.gc"
-"spatial-hash/collide-hash-h.gc"
-"physics/chain-physics-h.gc"
-"common_objs/projectile-h.gc"
-"collide/find-nearest-h.gc"
-"target/target-h.gc"
-"debug/stats-h.gc"
-"level/bsp-h.gc"
-"collide/collide-cache-h.gc"
-"collide/collide-h.gc"
-"gfx/shrub/shrubbery-h.gc"
-"gfx/tie/tie-h.gc"
-"gfx/tfrag/tfrag-h.gc"
-"gfx/background/background-h.gc"
-"gfx/background/subdivide-h.gc"
-"entity/entity-h.gc"
-"gfx/sprite/sprite-h.gc"
-"gfx/sprite/simple-sprite-h.gc"
-"gfx/foreground/eye-h.gc"
-"gfx/sprite/particles/sparticle-launcher-h.gc"
-"gfx/sprite/particles/sparticle-h.gc"
-"entity/actor-link-h.gc"
-"camera/camera-h.gc"
-"camera/cam-debug-h.gc"
-"camera/cam-interface-h.gc"
-"camera/cam-update-h.gc"
-"ui/hud-h.gc"
-"ui/progress/progress-h.gc"
-"ps2/rpc-h.gc"
-"geometry/path-h.gc"
-"nav/nav-mesh-h.gc"
-"nav/nav-control-h.gc"
-"spatial-hash/spatial-hash-h.gc"
-"spatial-hash/actor-hash-h.gc"
-"load/load-dgo.gc"
-"load/ramdisk.gc"
-"sound/gsound.gc"
-"math/transformq.gc"
-"collide/collide-func.gc"
-"anim/joint.gc"
-"anim/joint-mod.gc"
-"physics/chain-physics.gc"
-"geometry/cylinder.gc"
-"gfx/background/wind-work.gc"
-"gfx/background/wind.gc"
-"level/bsp.gc"
-"gfx/background/subdivide.gc"
-"gfx/sprite/sprite.gc"
-"gfx/sprite/sprite-distort.gc"
-"gfx/sprite/sprite-glow.gc"
-"debug/debug-sphere.gc"
-"debug/debug.gc"
-"debug/history.gc"
-"gfx/merc/merc-vu1.gc"
-"gfx/merc/emerc-vu1.gc"
-"gfx/merc/merc-blend-shape.gc"
-"gfx/merc/merc.gc"
-"gfx/merc/emerc.gc"
-"gfx/foreground/ripple.gc"
-"gfx/foreground/bones.gc"
-"gfx/foreground/debug-foreground.gc"
-"gfx/foreground/foreground.gc"
-"gfx/generic/generic-vu0.gc"
-"gfx/generic/generic-vu1.gc"
-"gfx/generic/generic-effect.gc"
-"gfx/generic/generic-merc.gc"
-"gfx/generic/generic-tie.gc"
-"gfx/foreground/shadow-cpu.gc"
-"gfx/foreground/shadow-vu1.gc"
-"gfx/warp.gc"
-"gfx/texture/texture-anim.gc"
-"gfx/texture/texture-anim-funcs.gc"
-"gfx/texture/texture-anim-tables.gc"
-"gfx/blit-displays.gc"
-"data/font-data.gc"
-"gfx/font.gc"
-"load/decomp.gc"
-"gfx/background/background.gc"
-"draw/draw-node.gc"
-"gfx/shrub/shrubbery.gc"
-"gfx/shrub/shrub-work.gc"
-"gfx/tfrag/tfrag-near.gc"
-"gfx/tfrag/tfrag.gc"
-"gfx/tfrag/tfrag-methods.gc"
-"gfx/tfrag/tfrag-work.gc"
-"gfx/tie/tie.gc"
-"gfx/tie/etie-vu1.gc"
-"gfx/tie/etie-near-vu1.gc"
-"gfx/tie/tie-near.gc"
-"gfx/tie/tie-work.gc"
-"gfx/tie/tie-methods.gc"
-"util/sync-info.gc"
-"physics/trajectory.gc"
-"gfx/sprite/particles/sparticle-launcher.gc"
-"gfx/sprite/particles/sparticle.gc"
-"entity/entity-table.gc"
-"load/loader.gc"
-"game/game-info.gc"
-"game/task/game-task.gc"
-"game/game-save.gc"
-"game/settings.gc"
-"gfx/mood/mood-tables.gc"
-"gfx/mood/mood-tables2.gc"
-"gfx/mood/mood.gc"
-"gfx/mood/mood-funcs.gc"
-"gfx/mood/mood-funcs2.gc"
-"gfx/mood/weather-part.gc"
-"gfx/mood/time-of-day.gc"
-"gfx/sky/sky-data.gc"
-"gfx/sky/sky-tng.gc"
-"load/load-state.gc"
-"level/level-info.gc"
-"level/level.gc"
-"ui/text.gc"
-"spatial-hash/collide-hash.gc"
-"collide/collide-probe.gc"
-"collide/collide-frag.gc"
-"collide/collide-mesh.gc"
-"collide/collide-touch.gc"
-"collide/collide-edge-grab.gc"
-"collide/collide-shape.gc"
-"collide/collide-shape-rider.gc"
-"collide/collide.gc"
-"collide/collide-planes.gc"
-"spatial-hash/spatial-hash.gc"
-"spatial-hash/actor-hash.gc"
-"gfx/merc/merc-death.gc"
-"common_objs/water-flow.gc"
-"common_objs/water-h.gc"
-"camera/camera.gc"
-"camera/cam-interface.gc"
-"camera/cam-master.gc"
-"camera/cam-states.gc"
-"camera/cam-states-dbg.gc"
-"camera/cam-combiner.gc"
-"camera/cam-update.gc"
-"geometry/vol-h.gc"
-"camera/cam-layout.gc"
-"camera/cam-debug.gc"
-"camera/cam-start.gc"
-"process-drawable/process-drawable.gc"
-"ambient/ambient.gc"
-"sound/speech.gc"
-"level/region.gc"
-"anim/fma-sphere.gc"
-"util/script.gc"
-"common_objs/generic-obs.gc"
-"gfx/lightning.gc"
-"target/mech_suit/carry-h.gc"
-"game/pilot-h.gc"
-"target/gun/gun-h.gc"
-"target/board/board-h.gc"
-"target/darkjak-h.gc"
-"target/target-util.gc"
-"target/target-part.gc"
-"target/gun/gun-part.gc"
-"target/collide-reaction-target.gc"
-"target/logic-target.gc"
-"target/sidekick.gc"
-"common_objs/voicebox.gc"
-"common_objs/collectables-part.gc"
-"debug/debug-part.gc"
-"collide/find-nearest.gc"
-"game/task/task-arrow.gc"
-"common_objs/projectile.gc"
-"target/target-handler.gc"
-"target/target-anim.gc"
-"target/target.gc"
-"target/target2.gc"
-"target/target-swim.gc"
-"target/target-carry.gc"
-"target/target-darkjak.gc"
-"target/target-death.gc"
-"target/target-gun.gc"
-"target/gun/gun-util.gc"
-"target/gun/gun-blue-shot.gc"
-"target/gun/gun-yellow-shot.gc"
-"target/gun/gun-red-shot.gc"
-"target/gun/gun-dark-shot.gc"
-"target/gun/gun-states.gc"
-"target/board/board-util.gc"
-"target/board/target-board.gc"
-"target/board/board-part.gc"
-"target/board/board-states.gc"
-"target/mech_suit/mech-h.gc"
-"debug/menu.gc"
-"draw/drawable.gc"
-"draw/drawable-group.gc"
-"draw/drawable-inline-array.gc"
-"draw/drawable-tree.gc"
-"gfx/background/prototype.gc"
-"collide/main-collide.gc"
-"gfx/hw/video.gc"
-"game/main.gc"
-"collide/collide-cache.gc"
-"collide/collide-debug.gc"
-"entity/relocate.gc"
-"debug/memory-usage.gc"
-"entity/entity.gc"
-"geometry/path.gc"
-"geometry/vol.gc"
-"nav/nav-mesh.gc"
-"nav/nav-control.gc"
-"anim/aligner.gc"
-"common_objs/water.gc"
-"common_objs/collectables.gc"
-"game/task/task-control.gc"
-"scene/scene.gc"
-"camera/pov-camera.gc"
-"common_objs/powerups.gc"
-"common_objs/crates.gc"
-"ui/hud.gc"
-"ui/hud-classes.gc"
-"ui/progress/progress-static.gc"
-"ui/progress/progress.gc"
-"ui/progress/progress-draw.gc"
-"gfx/ocean/ocean.gc"
-"gfx/ocean/ocean-vu0.gc"
-"gfx/ocean/ocean-texture.gc"
-"gfx/ocean/ocean-mid.gc"
-"gfx/ocean/ocean-transition.gc"
-"gfx/ocean/ocean-near.gc"
-"ui/minimap.gc"
-"ui/bigmap-data.gc"
-"ui/bigmap.gc"
-"gfx/foreground/eye.gc"
-"util/glist-h.gc"
-"util/glist.gc"
-"debug/anim-tester.gc"
-"debug/viewer.gc"
-"debug/part-tester.gc"
-"debug/editable-h.gc"
-"debug/editable.gc"
-"debug/editable-player.gc"
-"debug/nav/mysql-nav-graph.gc"
-"debug/nav/nav-graph-editor.gc"
-"debug/sampler.gc"
-"debug/default-menu.gc"
+;;;;;;;;;;;;;;;;;;;;;
+;; ANIMATIONS
+;;;;;;;;;;;;;;;;;;;;;
 
+(copy-strs "AT1INT" "AT1RES" "AT2INTRO" "AT3INTRO" "ATSA"
+  "ATSARA" "ATSARB" "ATSB" "ATSC" "ATSD" "ATSE" "ATSINTRO"
+  "ATSTANK" "BACONSIT" "BASQUID" "BAWIDOW" "CAATIN" "CAATOUT"
+  "CAIIINTR" "CAIIRES" "CAKBFINT" "CAKBFRES" "CASEXPLO" "CIADOFF"
+  "CIATICAS" "CIATINES" "CIATOUT" "CIC1RIA" "CIC1RIB" "CIC1RRES"
+  "CIC2RINT" "CIC2RRES" "CIC3RINT" "CIC3RRES" "CIDGVINT" "CIDSINTR"
+  "CIDSRES" "CIECINTR" "CIECRES" "CIEKINTR" "CIGDGUN" "CIGHOVER"
+  "CIGYGUN" "CIHKINTR" "CIHKRESO" "CIIDINTR" "CIIHCINT" "CIIHCRES"
+  "CIITINTR" "CIITRES" "CIKCINTR" "CIKCRES" "CIKDINTR" "CIMBINTR"
+  "CIMBRES" "CIOINTRO" "CIOL0" "CIOL1" "CIOL2" "CIOL3" "CIPHOVER"
+  "CIPOGINT" "CIPOGRES" "CIPSINTR" "CISBBINT" "CISLINTR" "CISOPINT"
+  "CISUINTR" "CIWAMINT" "CIWAMRES" "COFBRES" "CRINTRO" "CRVICTOR"
+  "DAMOLE" "DEDINTRO" "DESCREEN" "DIDEXPLO" "DIFTINTR" "DIFTRES"
+  "DIKDSINT" "DRBSBREA" "DRCBREAK" "DRDCTINT" "DRDSINTR" "DRKMHINT"
+  "DRTEXPLO" "DRW1" "DRW2" "ECINTRO" "ECVICTOR" "FO2INTRO" "FOBUARA"
+  "FOBUARB" "FOCMHINT" "FOFA" "FOFB" "FOHCMHIN" "FOPSIA" "FOPSIB"
+  "FOPSRES" "FOSFIA" "FOSFRES" "GRMANIMS" "INCSQUAR" "INPRISON"
+  "INSHUT" "INVORTEX" "JAA1" "JAA2" "JAA3" "JAA4" "JAA5" "JAA6"
+  "JAA7" "JABOARD" "JACARRY" "JAD1" "JAD2" "JAD3" "JAD4" "JAD5"
+  "JADARK" "JADON" "JADUMMY" "JAFLUT" "JAGUN" "JAICE" "JAINDAX"
+  "JAMECH" "JAPEGASU" "JAPIDAX" "JAPILOT" "JAPOLE" "JARACER" "JASWIM"
+  "JATUBE" "JATURRET" "KEANIM" "KEGARAGE" "KILTRNKR" "KILYSKDC"
+  "KINESTB" "KITOMBD" "KRDRES" "MOFINTRO" "MOGRES" "MOLRES" "MOSRES"
+  "MTAR1" "MTPBRA" "MTSPRA" "MTSPRB" "MTSPRC" "NEATIN" "NEATOUT"
+  "NEBBRES" "NEKBFIB" "NEKBFMID" "ONGAME" "OUHIPHOG" "OUNEST"
+  "OUPALACE" "OUPORT" "PABRES" "PAOWRB" "PAOWRES" "PASIRES"
+  "PRMINIMA" "RHW1" "RHW2" "RUB1" "RUBW1" "RUBW2" "RUBW3"
+  "RUBW4" "RUBW5" "RUBW6" "RUDPA1" "RUDPB1" "RUDPC1" "RUGTHRES"
+  "RUPC1" "RUPC2" "RUPC3" "RUSINTRO" "RUSVICTO" "RUTINTRO"
+  "RUTVICTO" "SALSAMER" "SCBOOK" "SE1INTRO" "SE1RES" "SE2INTRO"
+  "SEBUSINT" "SEBUSRES" "SEC1" "SEDRES" "SEHOSEHE" "SESGRUNT"
+  "SEW1" "SEW2" "TELHIPHO" "TELTRNTE" "TELWHACK" "TESCENE" "TIDINTRO"
+  "TOBBA" "TOBBB" "TOBINTRO" "TOBOPEN" "TOBRES" "TOBSTART" "TOFTINTR"
+  "TOSC0" "TOSC1" "TOSC2" "TOSSCARE" "TOTURRET" "TOUPOLES" "TOUSTART"
+  "TOUWATER" "UNBD1" "UNBD2" "UNBD3" "UNBD4" "UNCONE" "UNCTHREE" "UNCTWO"
+  "UNFSRES" "UNGSORES" "VIRESCUE" "VIRINTRO" "WOMAP" "YOFOREST" "YOLTRNYS"
+  "YOLYSAMS" "YOLYSKDC" "YOONINTE" "YOTOMBD")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; MUSIC
+;;;;;;;;;;;;;;;;;;;;;
+
+(copy-vag-files "ENG" "FRE" "GER" "ITA" "JAP" "KOR" "SPA")
+
+(copy-sbk-files
+  "ASHTAN1" "ASHTAN2" "ATOLL1" "ATOLL2" "ATOLL3" "ATOLL4"
+  "BBUSH1" "BOARD" "BOMBBOT1" "CASBOSS1" "CASBOSS2" "CASBOSS3"
+  "CASTLE1" "CASTLE2" "CASTLE3" "COMMON" "COMMONJ" "CONSITE1"
+  "CONSITE2" "CONSITE3" "CTYFARM1" "CTYWIDE1" "CTYWIDE2" "CTYWIDE3"
+  "CTYWIDE4" "CTYWIDE5" "DEMO1" "DIG1" "DIG2" "DIG3" "DIG4" "DIG5"
+  "DIG6" "DIG7" "DIG8" "DRILL1" "DRILL2" "DRILL3" "DRILL4" "DRILL5"
+  "DRILL6" "DRILL7" "DRILL8" "EMPTY0" "EMPTY1" "EMPTY2" "ERLCHAL1"
+  "ESCKID1" "FORDUMP1" "FORDUMP2" "FOREST1" "FOREST2" "FOREST3"
+  "FOREST4" "FOREST5" "FOREXIT1" "FOREXIT2" "FORRESC1" "FORRESC2"
+  "GUN" "GUNGAME1" "HELLDOG1" "HIDEOUT1" "HIPHOG1" "INTRO1" "INTRO2"
+  "INTRO3" "MECH" "MECHWAT" "MEETBRT1" "MENU1" "MOUNT1" "MOUNT2"
+  "MOUNT3" "NEST1" "NEST2" "NEST3" "NEST4" "NEST5" "NEST6" "ONIN1"
+  "ONIN2" "ORACLE1" "OUTRO1" "PALCAB1" "PALCAB2" "PALCAB3" "PALENT1"
+  "PALENT2" "PALENT3" "PALROOF1" "PALROOF2" "PALROOF3" "PORTRUN1"
+  "PROTECT1" "RUINS1" "RUINS2" "RUINS3" "SACK1" "SEWER1" "SEWER2"
+  "SEWER3" "SEWER4" "SEWER5" "SEWER6" "SKATE1" "STADIUM1" "STRIP1"
+  "STRIP2" "STRIP3" "TOMB1" "TOMB2" "TOMB3" "TOMB4" "TOMB5" "TOMB6"
+  "TOMB7" "TOMB8" "TOMB9" "UNDER1" "UNDER2" "UNDER3" "UNDER4" "UNDER5" "VINROOM1")
+
+(copy-mus-files
+  "ATOLL" "BATTLE" "CITY1" "CREDITS" "DANGER" "DANGER1" "DANGER2"
+  "DANGER3" "DANGER4" "DANGER6" "DANGER7" "DANGER9" "DANGER10"
+  "DANGER11" "DIG" "FOREST" "FORTRESS" "MOUNTAIN" "PALCAB" "RACE"
+  "RUINS" "SEWER" "STRIP" "TOMB" "TWEAKVAL")
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Text
+;;;;;;;;;;;;;;;;;;;;;
+
+(defstep :in "game/assets/jak2/game_text.gp"
+  :tool 'text
+  :out '("$OUT/iso/0COMMON.TXT"
+         "$OUT/iso/1COMMON.TXT"
+         "$OUT/iso/2COMMON.TXT"
+         "$OUT/iso/3COMMON.TXT"
+         "$OUT/iso/4COMMON.TXT"
+         "$OUT/iso/5COMMON.TXT"
+         "$OUT/iso/6COMMON.TXT"
+         "$OUT/iso/7COMMON.TXT")
   )
 
-(cgo "ENGINE.CGO" "engine.gd")
-
+(defstep :in "game/assets/jak2/game_subtitle.gp"
+  :tool 'subtitle-v2
+  :out '("$OUT/iso/0SUBTI2.TXT")
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ISO Group
@@ -565,7 +392,18 @@
 ;; the iso group is a group of files built by the "(mi)" command.
 
 (group-list "iso"
- `(,@(reverse *all-vis*)
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
+   "$OUT/iso/TWEAKVAL.MUS"
+   "$OUT/iso/VAGDIR.AYB"
+   ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
    ,@(reverse *all-mus*)
@@ -573,7 +411,30 @@
    ,@(reverse *all-cgos*))
  )
 
+(group-list "text"
+ `("$OUT/iso/0COMMON.TXT"
+   "$OUT/iso/1COMMON.TXT"
+   "$OUT/iso/2COMMON.TXT"
+   "$OUT/iso/3COMMON.TXT"
+   "$OUT/iso/4COMMON.TXT"
+   "$OUT/iso/5COMMON.TXT"
+   "$OUT/iso/6COMMON.TXT"
+   "$OUT/iso/7COMMON.TXT"
+   "$OUT/iso/0SUBTI2.TXT"
+   )
+ )
+
 ;; used for the type consistency test.
 (group-list "all-code"
   `(,@(reverse *all-gc*))
   )
+
+(group "engine"
+       "$OUT/iso/0COMMON.TXT"
+       "$OUT/iso/0SUBTI2.TXT"
+       "$OUT/iso/KERNEL.CGO"
+       "$OUT/iso/GAME.CGO"
+       "$OUT/iso/VAGDIR.AYB"
+       "$OUT/iso/VAGWAD.ENG"
+       )
+

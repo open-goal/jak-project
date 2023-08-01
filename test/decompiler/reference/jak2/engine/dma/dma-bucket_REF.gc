@@ -1,0 +1,63 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function dma-buffer-add-buckets
+;; WARN: Return type mismatch pointer vs (inline-array dma-bucket).
+(defun dma-buffer-add-buckets ((arg0 dma-buffer) (arg1 int))
+  (let ((v0-0 (-> arg0 base)))
+    (let ((v1-0 (the-as object v0-0)))
+      (dotimes (a2-0 arg1)
+        (set! (-> (the-as dma-bucket v1-0) tag)
+              (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer v1-0) 16)))
+              )
+        (set! (-> (the-as dma-bucket v1-0) last) (the-as (pointer dma-tag) v1-0))
+        (set! v1-0 (&+ (the-as pointer v1-0) 16))
+        )
+      (set! (-> arg0 base) (the-as pointer v1-0))
+      )
+    (the-as (inline-array dma-bucket) v0-0)
+    )
+  )
+
+;; definition for function dma-buffer-patch-buckets
+;; WARN: Return type mismatch object vs (inline-array dma-bucket).
+(defun dma-buffer-patch-buckets ((arg0 (inline-array dma-bucket)) (arg1 int))
+  (when (nonzero? arg0)
+    (dotimes (v1-1 arg1)
+      (cond
+        ((= (the-as object arg0) (-> arg0 0 last))
+         (set! (-> arg0 0 tag) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+         (set! (-> arg0 0 clear) (the-as uint 0))
+         0
+         )
+        (else
+          (set! (-> arg0 0 last 0 addr) (the-as int (-> arg0 1)))
+          (cond
+            ((or *display-profile* *stats-profile-bars*)
+             (set! (-> (the-as dma-packet arg0) vif0) (new 'static 'vif-tag :cmd (vif-cmd mark) :imm v1-1))
+             (set! (-> (the-as dma-packet arg0) vif1) (new 'static 'vif-tag :irq #x1))
+             )
+            (else
+              (set! (-> arg0 0 clear) (the-as uint 0))
+              0
+              )
+            )
+          )
+        )
+      (set! arg0 (the-as (inline-array dma-bucket) (-> arg0 1)))
+      )
+    )
+  (the-as (inline-array dma-bucket) arg0)
+  )
+
+;; definition for function dma-bucket-insert-tag
+(defun dma-bucket-insert-tag ((arg0 (inline-array dma-bucket)) (arg1 bucket-id) (arg2 pointer) (arg3 (pointer dma-tag)))
+  (let ((v1-1 (-> arg0 arg1)))
+    (set! (-> (the-as dma-bucket (-> v1-1 last)) next) (the-as uint arg2))
+    (set! (-> v1-1 last) arg3)
+    )
+  arg2
+  )
+
+;; failed to figure out what this is:
+0

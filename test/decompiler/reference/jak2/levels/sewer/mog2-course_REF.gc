@@ -1,0 +1,1852 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mog-sewer
+(deftype mog-sewer (mog)
+  ()
+  :heap-base #x380
+  :method-count-assert 246
+  :size-assert         #x400
+  :flag-assert         #xf603800400
+  )
+
+;; definition for method 3 of type mog-sewer
+(defmethod inspect mog-sewer ((obj mog-sewer))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type mog inspect)))
+    (t9-0 obj)
+    )
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 116 of type mog-sewer
+(defmethod go-idle mog-sewer ((obj mog-sewer))
+  (cond
+    ((task-node-closed? (game-task-node sewer-escort-resolution))
+     (cleanup-for-death obj)
+     (go (method-of-object obj die-fast))
+     )
+    (else
+      (ruffian-method-240 obj)
+      )
+    )
+  (none)
+  )
+
+;; definition for symbol *mog2-course*, type ruffian-course
+(define *mog2-course*
+  (new 'static 'ruffian-course
+    :course-id #x3
+    :speech-count #x11
+    :spot-count #x35
+    :attack-player-speeches (new 'static 'bot-speech-list
+      :flags #x2
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 0 1 2 14 15 16)
+      )
+    :default-check-too-far #f
+    :waypoints (new 'static 'boxed-array :type bot-waypoint
+      (new 'static 'bot-waypoint
+        :waypoint-id 1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (clear-speech-flags! arg0)
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 0.0)
+          (let ((v1-5 (-> arg0 root root-prim)))
+            (set! (-> v1-5 prim-core collide-as) (collide-spec))
+            (set! (-> v1-5 prim-core collide-with) (collide-spec))
+            )
+          0
+          (move-to-point! (-> arg0 root) (the-as vector (-> arg0 ruf-course spots 0)))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 0 quad))
+          (set! (-> arg0 focus-mode) 1)
+          (let ((v1-16 (-> arg0 actor-group 0 data 1 actor)))
+            (set! (-> arg0 poi-handle) (process->handle (if v1-16
+                                                            (-> v1-16 extra process)
+                                                            )
+                                                        )
+                  )
+            )
+          (let ((v1-22 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-22 bytes 5) 1)
+            (set! (-> v1-22 bytes 6) 0)
+            (set! (-> v1-22 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-22) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (< 1 (-> arg1 waypoint-request))
+                                                               (let* ((v1-4 (-> arg1 actor-group 0 data 0 actor))
+                                                                      (a0-2 (if v1-4
+                                                                                (-> v1-4 extra process)
+                                                                                )
+                                                                            )
+                                                                      )
+                                                                 (when a0-2
+                                                                   (set! (-> arg1 master-handle) (process->handle a0-2))
+                                                                   (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                   (go-to-waypoint! arg1 2 #f)
+                                                                   (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                   #t
+                                                                   )
+                                                                 )
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update (lambda ((arg0 mog-sewer))
+          (let ((v1-3 (-> arg0 actor-group 0 data 1 actor)))
+            (set! (-> arg0 poi-handle) (process->handle (if v1-3
+                                                            (-> v1-3 extra process)
+                                                            )
+                                                        )
+                  )
+            )
+          (none)
+          )
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 2
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (-> arg0 root root-prim)))
+            (set! (-> v1-1 prim-core collide-as) (-> arg0 root backup-collide-as))
+            (set! (-> v1-1 prim-core collide-with) (-> arg0 root backup-collide-with))
+            )
+          (let ((v1-5 (-> arg0 actor-group 0 data 1 actor)))
+            (set! (-> arg0 poi-handle) (process->handle (if v1-5
+                                                            (-> v1-5 extra process)
+                                                            )
+                                                        )
+                  )
+            )
+          (let ((v1-11 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-11 bytes 5) 1)
+            (set! (-> v1-11 bytes 6) 0)
+            (set! (-> v1-11 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-11) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 3)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 3 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 3
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 focus-mode) 0)
+          (clear-poi-and-focus! arg0)
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 0)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-3) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 5)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 5 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 5
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 1)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (or (< (-> arg1 spot center x) (-> arg1 root trans x))
+                                (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (let ((v1-9 (-> arg1 actor-group 0 data 3 actor)))
+                          (if v1-9
+                              (-> v1-9 extra process)
+                              )
+                          )
+                        (let* ((v1-14 (-> arg1 actor-group 0 data 3 actor))
+                               (a0-5 (if v1-14
+                                         (-> v1-14 extra process)
+                                         )
+                                     )
+                               )
+                          (if (or (not a0-5) (let ((s5-0 7))
+                                               (< s5-0 (the-as int (send-event a0-5 'query 'waypoint)))
+                                               )
+                                  )
+                              (go-to-waypoint! arg1 7 #f)
+                              (go-to-waypoint! arg1 6 #f)
+                              )
+                          )
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 6
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 2)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (let ((v1-3 (-> arg1 actor-group 0 data 3 actor)))
+                        (if v1-3
+                            (-> v1-3 extra process)
+                            )
+                        )
+                      (let* ((v1-8 (-> arg1 actor-group 0 data 3 actor))
+                             (a0-3 (if v1-8
+                                       (-> v1-8 extra process)
+                                       )
+                                   )
+                             )
+                        (when (or (not a0-3) (let ((s5-0 7))
+                                               (< s5-0 (the-as int (send-event a0-3 'query 'waypoint)))
+                                               )
+                                  )
+                          (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                          (go-to-waypoint! arg1 7 #f)
+                          (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                          #t
+                          )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 7
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 3)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 8 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 8
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 4)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (and (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                 (-> arg1 next-state)
+                                 (let ((v1-5 (-> arg1 next-state name)))
+                                   (or (= v1-5 'waiting-idle) (= v1-5 'scared-idle))
+                                   )
+                                 )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 9 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 9
+        :nav-mesh-index 1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 1 quad))
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 4)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-2) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 11)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 10 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 10
+        :nav-mesh-index 1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-choose-jump arg0)))
+            (set! (-> v1-1 bytes 5) 2)
+            (set! (-> v1-1 bytes 6) 5)
+            (set! (-> v1-1 bytes 7) 6)
+            (set! (-> v1-1 bytes 10) 7)
+            (set! (-> v1-1 bytes 11) 8)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-choose-jump v1-1) check-done)
+                  (the-as
+                    (function ruft-choose-jump ruffian symbol)
+                    (lambda ((arg0 ai-task-control) (arg1 mog-sewer))
+                      (when (or (ai-task-control-method-12 arg0 arg1)
+                                (< (-> arg1 root trans y) (+ -3072.0 (-> arg1 ruf-course spots 5 center y)))
+                                )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 11 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      (none)
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 11
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-3 (-> arg0 actor-group 0 data 1 actor)))
+            (set! (-> arg0 poi-handle) (process->handle (if v1-3
+                                                            (-> v1-3 extra process)
+                                                            )
+                                                        )
+                  )
+            )
+          (let ((v1-9 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-9 bytes 5) 1)
+            (set! (-> v1-9 bytes 6) 9)
+            (set! (-> v1-9 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-9) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 16)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 14 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 14
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 waypoint-time0) (current-time))
+          (logior! (-> arg0 bot-flags) (bot-flags bf19))
+          (clear-poi-and-focus! arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 204800.0)
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-12 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-12 bytes 5) 1)
+            (set! (-> v1-12 bytes 6) 9)
+            (set! (-> v1-12 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-12) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2))
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 16 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 16
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 10)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (cond
+                                                               ((>= (-> arg1 waypoint-request) 20)
+                                                                (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                (go-to-waypoint! arg1 18 #f)
+                                                                (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                #t
+                                                                )
+                                                               ((>= (-> arg1 waypoint-request) 17)
+                                                                (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                                (go-to-waypoint! arg1 17 #f)
+                                                                (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                                #t
+                                                                )
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 17
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 11)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 20)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 18 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 18
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 204800.0)
+          (set! (-> arg0 min-speed) 14336.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 1 quad))
+          (let ((v1-9 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-9 bytes 5) 1)
+            (set! (-> v1-9 bytes 6) 12)
+            (set! (-> v1-9 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-9) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 19 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 19
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 2 quad))
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 13)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-2) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (cond
+                        ((>= (-> arg1 waypoint-request) 22)
+                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                         (go-to-waypoint! arg1 22 #f)
+                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                         #t
+                         )
+                        ((outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                         (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                         (go-to-waypoint! arg1 20 #f)
+                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                         #t
+                         )
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 20
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 2 quad))
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 13)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-2) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 22)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 22 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 22
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (logior! (-> arg0 bot-flags) (bot-flags bf19))
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 14)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-5) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 23)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 23 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 23
+        :nav-mesh-index 2
+        :skip-to 34
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 24576.0)
+          (let ((v1-7 (-> arg0 actor-group 0 data 1 actor)))
+            (set! (-> arg0 poi-handle) (process->handle (if v1-7
+                                                            (-> v1-7 extra process)
+                                                            )
+                                                        )
+                  )
+            )
+          (let ((v1-13 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-13 bytes 5) 1)
+            (set! (-> v1-13 bytes 6) 15)
+            (set! (-> v1-13 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-13) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 24)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 24 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 mog-sewer))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (send-event arg0 'move-trans (-> arg0 ruf-course spots 14))
+          (let ((v1-10 (-> arg0 root root-prim)))
+            (set! (-> v1-10 prim-core collide-as) (-> arg0 root backup-collide-as))
+            (set! (-> v1-10 prim-core collide-with) (-> arg0 root backup-collide-with))
+            )
+          (set! (-> arg0 focus-mode) 0)
+          (clear-poi-and-focus! arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (let ((v1-18 (-> arg0 actor-group 0 data 0 actor)))
+            (set! (-> arg0 master-handle) (process->handle (if v1-18
+                                                               (-> v1-18 extra process)
+                                                               )
+                                                           )
+                  )
+            )
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 24
+        :nav-mesh-index 2
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (clear-poi-and-focus! arg0)
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 16)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-5) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 26)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 26 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 26
+        :nav-mesh-index 3
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 3 quad))
+          (clear-poi-and-focus! arg0)
+          (let ((v1-6 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-6 bytes 5) 1)
+            (set! (-> v1-6 bytes 6) 17)
+            (set! (-> v1-6 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-6) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 27)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 27 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 27
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (logior! (-> arg0 bot-flags) (bot-flags bf19))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 491520.0)
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-8 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-8 bytes 5) 1)
+            (set! (-> v1-8 bytes 6) 17)
+            (set! (-> v1-8 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-8) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 28)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 28 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 28
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 18)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 34)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 30 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 30
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 204800.0)
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 4 quad))
+          (let ((v1-9 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-9 bytes 5) 1)
+            (set! (-> v1-9 bytes 6) 19)
+            (set! (-> v1-9 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-9) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 31 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 31
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 20)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 32 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 32
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 21)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 33 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 33
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 5 quad))
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 22)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-2) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 34 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 34
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 6 quad))
+          (let ((v1-2 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-2 bytes 5) 1)
+            (set! (-> v1-2 bytes 6) 23)
+            (set! (-> v1-2 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-2) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 35)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 35 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 mog-sewer))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (send-event arg0 'move-trans (-> arg0 ruf-course spots 23))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (logior! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 notice-enemy-dist) 204800.0)
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (set! (-> arg0 focus-mode) 0)
+          (clear-poi-and-focus! arg0)
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 35
+        :nav-mesh-index 4
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 23)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 37)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 36 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 36
+        :nav-mesh-index 5
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-choose-jump arg0)))
+            (set! (-> v1-1 bytes 5) 3)
+            (set! (-> v1-1 bytes 6) 24)
+            (set! (-> v1-1 bytes 7) 25)
+            (set! (-> v1-1 bytes 8) 26)
+            (set! (-> v1-1 bytes 10) 27)
+            (set! (-> v1-1 bytes 11) 28)
+            (set! (-> v1-1 bytes 12) 29)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-choose-jump v1-1) check-done)
+                  (the-as
+                    (function ruft-choose-jump ruffian symbol)
+                    (lambda ((arg0 ai-task-control) (arg1 mog-sewer))
+                      (when (or (ai-task-control-method-12 arg0 arg1)
+                                (< (-> arg1 root trans y) (+ -3072.0 (-> arg1 ruf-course spots 24 center y)))
+                                )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 37 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 37
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (logior! (-> arg0 enemy-flags) (enemy-flag trackable-backup enable-on-hostile))
+          (logior! (-> arg0 bot-flags) (bot-flags bf19))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (let ((v1-7 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-7 bytes 5) 1)
+            (set! (-> v1-7 bytes 6) 30)
+            (set! (-> v1-7 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-7) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 38 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 38
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 follow-dir quad) (-> *hal2-course* dirs 7 quad))
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-4 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-4 bytes 5) 1)
+            (set! (-> v1-4 bytes 6) 31)
+            (set! (-> v1-4 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-4) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 39 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 39
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 32)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 40 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 40
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 33)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 42)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 42 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 42
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (set! (-> arg0 min-speed) 24576.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 34)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-5) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (if (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                          (logior! (-> arg1 bot-flags) (bot-flags bf19))
+                          )
+                      (when (and (>= (-> arg1 waypoint-request) 44)
+                                 (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                 )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 45 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 45
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 35)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-5) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 46 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 46
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 36)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 47 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 47
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 37)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (if (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                          (logior! (-> arg1 bot-flags) (bot-flags bf19))
+                          )
+                      (when (and (>= (-> arg1 waypoint-request) 48)
+                                 (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                                 )
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 49 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 49
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 38)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-3) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 50 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 50
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 39)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 51 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 51
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 40)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 52 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 52
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 41)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 53 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 53
+        :nav-mesh-index -1
+        :skip-to 54
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 42)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 54 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 54
+        :nav-mesh-index 5
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 43)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 58)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 58 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here (lambda ((arg0 mog-sewer))
+          (ai-task-control-method-12 (-> arg0 ai-ctrl) arg0)
+          (send-event arg0 'move-trans (-> arg0 ruf-course spots 44))
+          (logclear! (-> arg0 focus-status) (focus-status disable))
+          (set! (-> arg0 min-speed) 32768.0)
+          (set! (-> arg0 max-speed) 32768.0)
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (none)
+          )
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 58
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (set! (-> arg0 focus-mode) 0)
+          (clear-poi-and-focus! arg0)
+          (logior! (-> arg0 bot-flags) (bot-flags bf19))
+          (let ((v1-5 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-5 bytes 5) 1)
+            (set! (-> v1-5 bytes 6) 45)
+            (set! (-> v1-5 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-5) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer)) (when (>= (-> arg1 waypoint-request) 59)
+                                                               (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                                                               (go-to-waypoint! arg1 60 #f)
+                                                               (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                                                               #t
+                                                               )
+                            )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 60
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 46)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 61 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 61
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 47)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 62 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 62
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 48)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 63 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 63
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 49)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 64 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 64
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 50)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 65 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 65
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (logclear! (-> arg0 bot-flags) (bot-flags bf19))
+          (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-3 bytes 5) 1)
+            (set! (-> v1-3 bytes 6) 51)
+            (set! (-> v1-3 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-3) check-done)
+                  (the-as
+                    (function ruft-wait-spot ruffian symbol)
+                    (lambda ((arg0 object) (arg1 mog-sewer))
+                      (when (outside-spot-radius? arg1 (the-as bot-spot #f) (the-as vector #f) #f)
+                        (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
+                        (go-to-waypoint! arg1 66 #f)
+                        (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
+                        #t
+                        )
+                      )
+                    )
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      (new 'static 'bot-waypoint
+        :waypoint-id 66
+        :nav-mesh-index -1
+        :skip-to -1
+        :on-set (lambda ((arg0 mog-sewer))
+          (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) ruft-wait-spot arg0)))
+            (set! (-> v1-1 bytes 5) 1)
+            (set! (-> v1-1 bytes 6) 52)
+            (set! (-> v1-1 bytes 4) -1)
+            (set! (-> (the-as ruft-wait-spot v1-1) check-done)
+                  (the-as (function ruft-wait-spot ruffian symbol) (lambda () #f))
+                  )
+            )
+          (none)
+          )
+        :on-update #f
+        :on-skipping-here #f
+        :check-too-far #f
+        )
+      )
+    :speeches (new 'static 'inline-array bot-speech-info 17
+      (new 'static 'bot-speech-info :flags (speech-flags sf11) :hold-time #x5a :slave-id -1 :name "hal145")
+      (new 'static 'bot-speech-info :flags (speech-flags sf08 sf11) :hold-time #x5a :slave-id -1 :name "hal146")
+      (new 'static 'bot-speech-info :flags (speech-flags sf11) :hold-time #x5a :slave-id -1 :name "hal147")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal088")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal136")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal137")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal139")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal138")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal023")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf06) :hold-time #x5a :slave-id -1 :name "hal140")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf06) :hold-time #x5a :slave-id -1 :name "hal141")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf06) :hold-time #x5a :slave-id -1 :name "hal142")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "hal144")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01 sf08) :hold-time #x5a :slave-id -1 :name "hal135")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "hal148")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "hal149")
+      (new 'static 'bot-speech-info :flags (speech-flags sf01) :hold-time #x5a :slave-id -1 :name "hal150")
+      )
+    :speech-tunings (new 'static 'inline-array bot-speech-tuning 1
+      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x8c :fo-curve 11 :trans? #t)
+      )
+    :spots (new 'static 'inline-array bot-spot 53
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4627374.0 :y -207216.64 :z 2092523.5 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4827259.0 :y -207216.64 :z 2096414.8 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4862812.0 :y -206929.92 :z 2091089.9 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4900208.5 :y -211435.52 :z 2130493.5 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4922614.0 :y -213032.95 :z 2115420.2 :w 9216.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4909465.5 :y -260751.36 :z 2100961.2 :w 7168.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4941783.0 :y -260751.36 :z 2134835.2 :w 7168.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4904673.5 :y -272056.3 :z 2094776.4 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4948623.5 :y -272056.3 :z 2136596.5 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4946043.0 :y -270376.97 :z 2062868.5 :w 20480.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4961812.5 :y -272056.3 :z 2149089.2 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4971643.0 :y -273326.1 :z 1914101.8 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4935844.0 :y -272138.25 :z 1895751.6 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4738416.5 :y -273858.56 :z 1901404.1 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4759183.5 :y -273858.56 :z 1946173.5 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4703314.0 :y -273817.6 :z 1734533.1 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4769669.0 :y -273817.6 :z 1674526.8 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4715110.5 :y -257720.31 :z 1492459.5 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4690166.0 :y -258990.08 :z 1520312.4 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4719657.0 :y -254607.36 :z 1413161.0 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4766269.5 :y -248709.12 :z 1354465.2 :w 16384.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4822098.0 :y -241254.4 :z 1300725.8 :w 12288.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4895990.0 :y -236544.0 :z 1319321.6 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4908687.5 :y -237568.0 :z 1393705.0 :w 8192.0))
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4911472.5 :y -353198.1 :z 1381580.8 :w 6144.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4902338.5 :y -353198.1 :z 1380556.8 :w 6144.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4892795.0 :y -353198.1 :z 1381621.8 :w 6144.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4910407.5 :y -363806.72 :z 1370726.4 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4899512.5 :y -363806.72 :z 1370071.0 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot
+        :center (new 'static 'vector :x 4885995.5 :y -363806.72 :z 1369907.2 :w 4096.0)
+        :blocked-xz-dist 8192.0
+        )
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4857856.0 :y -363806.72 :z 1413529.6 :w 8192.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4858265.5 :y -363806.72 :z 1414062.1 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 4913725.5 :y -363806.72 :z 1476280.4 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5189796.0 :y -372899.84 :z 1474560.0 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5479629.0 :y -363929.6 :z 1461575.6 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5579653.0 :y -363929.6 :z 1495040.0 :w 20480.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5604679.5 :y -363929.6 :z 1617428.5 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5605458.0 :y -363929.6 :z 1667850.2 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5613854.5 :y -363929.6 :z 1715814.4 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5568143.5 :y -363929.6 :z 1802076.1 :w 20480.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5608571.0 :y -363929.6 :z 1845698.5 :w 18432.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5811364.0 :y -363929.6 :z 1853440.0 :w 51200.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5794119.5 :y -373432.3 :z 1982709.8 :w 47104.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5568389.0 :y -363929.6 :z 2012528.6 :w 14336.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5798666.0 :y -363929.6 :z 1860198.4 :w 4096.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5575106.5 :y -363929.6 :z 1949737.0 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5662105.5 :y -363929.6 :z 2038988.8 :w 10240.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5696553.0 :y -361758.72 :z 2097438.8 :w 22528.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5733867.5 :y -363929.6 :z 2178621.5 :w 24576.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5743984.5 :y -363192.3 :z 2255093.8 :w 22528.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5708022.0 :y -363642.88 :z 2328535.0 :w 24576.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5633597.5 :y -363929.6 :z 2420162.5 :w 24576.0))
+      (new 'static 'bot-spot :center (new 'static 'vector :x 5611438.0 :y -363929.6 :z 2479349.8 :w 10240.0))
+      )
+    :ouch-speeches (new 'static 'bot-speech-list-shuffle
+      :flags #xa
+      :last-local-index -1
+      :speech-indexes (new 'static 'boxed-array :type int16 3 4 5 6 7 8 9 10 11 12 13)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *bot-course-table* course 3) *mog2-course*)

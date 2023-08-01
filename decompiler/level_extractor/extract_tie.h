@@ -14,5 +14,6 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  const std::vector<level_tools::TextureRemap>& tex_map,
                  const TextureDB& tex_db,
                  tfrag3::Level& out,
-                 bool dump_level);
+                 bool dump_level,
+                 GameVersion version);
 }

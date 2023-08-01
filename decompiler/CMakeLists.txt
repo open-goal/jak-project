@@ -69,6 +69,9 @@ add_library(
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
 
+        types2/ForwardProp.cpp
+        types2/types2.cpp
+
         util/config_parsers.cpp
         util/data_decompile.cpp
         util/DataParser.cpp
@@ -76,6 +79,7 @@ add_library(
         util/goal_data_reader.cpp
         util/sparticle_decompile.cpp
         util/TP_Type.cpp
+        util/type_utils.cpp
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp

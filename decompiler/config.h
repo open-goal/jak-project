@@ -8,7 +8,7 @@
 
 #include "common/common_types.h"
 #include "common/util/FileUtil.h"
-#include "common/versions.h"
+#include "common/versions/versions.h"
 
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/data/game_text.h"
@@ -97,6 +97,7 @@ struct Config {
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
+  std::vector<std::string> str_texture_file_names;
 
   std::string audio_dir_file_name;
   std::vector<std::string> streamed_audio_file_names;
@@ -112,9 +113,13 @@ struct Config {
   bool process_game_text = false;
   bool process_game_count = false;
   bool process_art_groups = false;
+  bool process_subtitle_text = false;
+  bool process_subtitle_images = false;
+  bool dump_art_group_info = false;
   bool rip_levels = false;
   bool extract_collision = false;
   bool find_functions = false;
+  bool read_spools = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
@@ -155,6 +160,9 @@ struct Config {
 
   std::unordered_map<std::string, int> bad_format_strings;
 
+  std::unordered_set<std::string> animated_textures;
+  std::unordered_set<int> common_tpages;
+
   std::vector<std::string> levels_to_extract;
   bool levels_extract;
 
@@ -162,11 +170,13 @@ struct Config {
 
   std::unordered_map<std::string, std::string> art_groups_by_file;
   std::unordered_map<std::string, std::string> art_groups_by_function;
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info_dump;
 
   std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };
 
 Config read_config_file(const fs::path& path_to_config_file,
+                        const std::string& config_game_version,
                         const std::string& override_json = "{}");
 
 }  // namespace decompiler

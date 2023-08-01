@@ -1,0 +1,205 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file runs the game-specific version of the pckernel.
+  See pckernel-common.gc for the bulk of the pckernel.
+
+ |#
+
+(define-extern get-active-mission-description (function discord-info string))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod set-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol) (value symbol))
+  (case setting
+    (('video-mode)
+      (set! (-> *setting-control* user-current video-mode) #f)
+      (set! (-> *setting-control* user-default video-mode) value)
+      )
+    (('aspect-ratio)
+      (set! (-> *setting-control* user-default aspect-ratio) value)
+      )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
+    )
+  )
+
+(defmethod get-game-setting pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* user-default video-mode)
+      )
+    (('aspect-ratio)
+      (-> *setting-control* user-default aspect-ratio)
+      )
+    (else
+      (format #t "unknown setting  ~A to get-game-setting" setting)
+      #f)
+    )
+  )
+
+(defmethod set-game-language! pc-settings-jak2 ((obj pc-settings-jak2) (lang language-enum))
+  (set! (-> *setting-control* user-default language) lang)
+  )
+
+(defmethod get-game-language pc-settings-jak2 ((obj pc-settings-jak2))
+  (get-current-language)
+  )
+
+
+(defun real-movie? ()
+  "are we in an actual cutscene and should letterbox the view?"
+  (and (!= #f *scene-player*) (nonzero? movie?) (movie?)))
+
+(defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
+  "update discord rpc module"
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info task) "unknown")
+    (set! (-> info status) (get-active-mission-description info))
+    ;; grab the name of the level we're in
+    (cond
+      ((or (aif (level-get *level* 'title) (= (-> it status) 'active))
+           (and *progress-process*
+                (= 'title (-> *progress-process* 0 state-stack 0))))
+        ;; in title screen.
+        (set! (-> info level) (symbol->string 'title))
+        (set! (-> info status) "In title screen"))
+      (else
+        (set! (-> info level) (aif (-> *load-state* vis-nick) (symbol->string it) "unknown")))
+      )
+    (set! (-> info cutscene?) (real-movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
+    ;; TODO - wrapping in `with-profiler` causes an error, fix it
+    (pc-discord-rpc-update info)
+    )
+  (none))
+
+(defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
+  "update speedrun module"
+  (when (-> *pc-settings* speedrunner-mode?)
+    (speedrun-mode-update))
+  (none))
+
+(defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
+  "update the graphics hacks used for the progress menu. ugh."
+
+  (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
+  (set! (-> (get-video-params) relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
+  )
+
+
+(defmethod eligible-for-fast-elevator? pc-settings-jak2 ((obj pc-settings-jak2) (proc process))
+  "is this a valid process for a fast elevator?"
+  (and (-> obj fast-elevator?) (not (or (string= (-> proc name) "drill-lift-1")
+                                        (string= (-> proc name) "drill-lift-2"))))
+  )
+
+(defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
+  "return the current speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      *airlock-speed*
+      1.0))
+
+(defmethod get-airlock-close-speed pc-settings-jak2 ((obj pc-settings-jak2))
+  "return the current closing speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      *airlock-close-speed*
+      1.0))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file I/O
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod handle-input-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+  "handle the text parsing input for the 'settings' group"
+
+  ((method-of-type pc-settings handle-input-settings) obj file)
+  (case-str *pc-temp-string*
+    (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
+    (("fast-airlock?") (set! (-> obj fast-airlock?) (file-stream-read-symbol file)))
+    (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
+    (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
+    (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
+    )
+  0)
+
+(defmethod handle-output-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+  "handle the text writing output for the 'settings' group"
+  
+  ((method-of-type pc-settings handle-output-settings) obj file)
+  (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
+  (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
+  (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
+  (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
+  (format file "  (text-language ~D)~%" (-> obj text-language))
+  0)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-once *pc-settings* (new 'global 'pc-settings-jak2))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                                     (bucket-id debug-no-zbuf1))
+          (draw-string-xy *pc-settings-built-sha*
+                          buf
+                          512 14
+                          (font-color flat-yellow)
+                          (font-flags right shadow kerning))))
+
+
+
+(defun print-level-types ((lev level))
+  "print the level-type linked list for a level"
+  (format #t "print-level-types for ~A~%" (-> lev nickname))
+  (let ((cur-type (-> lev level-type)))
+    (while (and cur-type (nonzero? cur-type) (= type (-> cur-type type)))
+      (format #t "~A~%" cur-type)
+      (set! cur-type (the type (-> cur-type method-table 8))))
+    (format #t "~%"))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; progress adjustments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant CENTER_X (/ 512 2))
+
+(defun adjust-game-x-centered ((origin int) (x float))
+  "given an x position ranging from [0, 512) adjust for aspect ratio towards the origin point specified
+   such that it does not get stretched away with the framebuffer"
+  (+ origin (* (- x origin) (-> *pc-settings* aspect-ratio-reciprocal))))
+
+(defmacro adjust-game-x (x)
+  `(adjust-game-x-centered CENTER_X ,x))
+

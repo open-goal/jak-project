@@ -1,0 +1,850 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type joint-mod
+(deftype joint-mod (basic)
+  ((mode                    joint-mod-mode           :offset-assert   4)
+   (process                 process-drawable         :offset-assert   8)
+   (joint                   cspace                   :offset-assert  12)
+   (target                  vector           :inline :offset-assert  16)
+   (twist                   vector           :inline :offset-assert  32)
+   (twist-max               vector           :inline :offset-assert  48)
+   (extra-twist             degrees                  :offset         40)
+   (track-mode              track-mode               :offset         44)
+   (loock-at-count          uint16                   :offset         46)
+   (twist-range-x           meters                   :offset         56)
+   (twist-range-y           meters                   :offset         60)
+   (twist-speed-x           float                    :offset         64)
+   (twist-speed-y           float                    :offset         68)
+   (twist-min-x             float                    :offset         72)
+   (twist-min-y             float                    :offset         76)
+   (trans                   vector           :inline :offset-assert  80)
+   (shmushy-old             float                    :offset         80)
+   (smushy-off              float                    :offset         84)
+   (smushyv                 float                    :offset         88)
+   (quat                    quaternion       :inline :offset-assert  96)
+   (scale                   vector           :inline :offset-assert 112)
+   (notice-time             time-frame               :offset-assert 128)
+   (flex-blend              float                    :offset-assert 136)
+   (blend                   float                    :offset-assert 140)
+   (max-dist                meters                   :offset-assert 144)
+   (ignore-angle            degrees                  :offset-assert 148)
+   (up                      uint8                    :offset-assert 152)
+   (nose                    uint8                    :offset-assert 153)
+   (ear                     uint8                    :offset-assert 154)
+   (base-joint              uint8                    :offset-assert 155)
+   (base-nose               uint8                    :offset-assert 156)
+   (shutting-down?          symbol                   :offset-assert 160)
+   (parented-scale?         symbol                   :offset-assert 164)
+   (polar-internal-tilt-max float                    :offset-assert 168)
+   (polar-internal-radius   float                    :offset-assert 172)
+   (polar-external-tilt-max float                    :offset-assert 176)
+   (polar-external-radius   float                    :offset-assert 180)
+   )
+  :method-count-assert 16
+  :size-assert         #xb8
+  :flag-assert         #x10000000b8
+  (:methods
+    (new (symbol type joint-mod-mode process-drawable int) _type_ 0)
+    (mode-set! (_type_ joint-mod-mode) none 9)
+    (target-set! (_type_ vector) none 10)
+    (look-at! (_type_ vector symbol process) none :behavior process 11)
+    (reset-blend! (_type_) _type_ 12)
+    (twist-set! (_type_ float float float) vector 13)
+    (trs-set! (_type_ vector quaternion vector) none 14)
+    (shut-down (_type_) none 15)
+    )
+  )
+
+;; definition for method 3 of type joint-mod
+(defmethod inspect joint-mod ((obj joint-mod))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-18)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tmode: ~D~%" (-> obj mode))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Tjoint: #<cspace @ #x~X>~%" (-> obj joint))
+  (format #t "~1Ttarget: ~`vector`P~%" (-> obj target))
+  (format #t "~1Ttwist: ~`vector`P~%" (-> obj twist))
+  (format #t "~1Ttwist-max: ~`vector`P~%" (-> obj twist-max))
+  (format #t "~1Textra-twist: (deg ~r)~%" (-> obj twist z))
+  (format #t "~1Ttrack-mode: #x~X : (track-mode " (-> obj track-mode))
+  (let ((s5-0 (-> obj track-mode)))
+    (if (= (logand s5-0 (track-mode track-on)) (track-mode track-on))
+        (format #t "track-on ")
+        )
+    (if (= (logand s5-0 (track-mode no-rotate)) (track-mode no-rotate))
+        (format #t "no-rotate ")
+        )
+    (if (= (logand s5-0 (track-mode lock-on)) (track-mode lock-on))
+        (format #t "lock-on ")
+        )
+    (if (= (logand s5-0 (track-mode no-scale)) (track-mode no-scale))
+        (format #t "no-scale ")
+        )
+    (if (= (logand s5-0 (track-mode track-x)) (track-mode track-x))
+        (format #t "track-x ")
+        )
+    (if (= (logand s5-0 (track-mode track-y)) (track-mode track-y))
+        (format #t "track-y ")
+        )
+    (if (= (logand s5-0 (track-mode no-trans)) (track-mode no-trans))
+        (format #t "no-trans ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tlook-at-count: ~D~%" (-> obj loock-at-count))
+  (format #t "~1Ttwist-range-x: (meters ~m)~%" (-> obj twist-max z))
+  (format #t "~1Ttwist-range-y: (meters ~m)~%" (-> obj twist-max w))
+  (format #t "~1Ttwist-speed-x: ~f~%" (-> obj twist-speed-x))
+  (format #t "~1Ttwist-speed-y: ~f~%" (-> obj twist-speed-y))
+  (format #t "~1Ttwist-min-x: ~f~%" (-> obj twist-min-x))
+  (format #t "~1Ttwist-min-y: ~f~%" (-> obj twist-min-y))
+  (format #t "~1Ttrans: ~`vector`P~%" (-> obj trans))
+  (format #t "~1Tsmushy-old: ~f~%" (-> obj trans x))
+  (format #t "~1Tsmushy-off: ~f~%" (-> obj trans y))
+  (format #t "~1Tsmushyv: ~f~%" (-> obj trans z))
+  (format #t "~1Tquat: ~`quaternion`P~%" (-> obj quat))
+  (format #t "~1Tscale: ~`vector`P~%" (-> obj scale))
+  (format #t "~1Tnotice-time: ~D~%" (-> obj notice-time))
+  (format #t "~1Tflex-blend: ~f~%" (-> obj flex-blend))
+  (format #t "~1Tblend: ~f~%" (-> obj blend))
+  (format #t "~1Tmax-dist: (meters ~m)~%" (-> obj max-dist))
+  (format #t "~1Tignore-angle: (deg ~r)~%" (-> obj ignore-angle))
+  (format #t "~1Tup: ~D~%" (-> obj up))
+  (format #t "~1Tnose: ~D~%" (-> obj nose))
+  (format #t "~1Tear: ~D~%" (-> obj ear))
+  (format #t "~1Tbase-joint: ~D~%" (-> obj base-joint))
+  (format #t "~1Tbase-nose: ~D~%" (-> obj base-nose))
+  (format #t "~1Tshutting-down?: ~A~%" (-> obj shutting-down?))
+  (format #t "~1Tparented-scale?: ~A~%" (-> obj parented-scale?))
+  (format #t "~1Tpolar-internal-tilt-max: ~f~%" (-> obj polar-internal-tilt-max))
+  (format #t "~1Tpolar-internal-radius: ~f~%" (-> obj polar-internal-radius))
+  (format #t "~1Tpolar-external-tilt-max: ~f~%" (-> obj polar-external-tilt-max))
+  (format #t "~1Tpolar-external-radius: ~f~%" (-> obj polar-external-radius))
+  (label cfg-18)
+  obj
+  )
+
+;; definition of type try-to-look-at-info
+(deftype try-to-look-at-info (basic)
+  ((who  handle  :offset-assert   8)
+   (horz float   :offset-assert  16)
+   (vert float   :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type try-to-look-at-info
+(defmethod inspect try-to-look-at-info ((obj try-to-look-at-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Twho: ~D~%" (-> obj who))
+  (format #t "~1Thorz: ~f~%" (-> obj horz))
+  (format #t "~1Tvert: ~f~%" (-> obj vert))
+  (label cfg-4)
+  obj
+  )
+
+;; definition (debug) for function joint-mod-debug-draw
+;; WARN: Return type mismatch int vs none.
+(defun-debug joint-mod-debug-draw ((arg0 joint-mod))
+  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> arg0 joint bone transform) (meters 2))
+  0
+  (none)
+  )
+
+;; definition for method 12 of type joint-mod
+(defmethod reset-blend! joint-mod ((obj joint-mod))
+  (set! (-> obj blend) 0.0)
+  obj
+  )
+
+;; definition for symbol *joint-axis-vectors*, type (inline-array vector)
+(define *joint-axis-vectors* (new 'static 'inline-array vector 6
+                               (new 'static 'vector :x 1.0 :w 1.0)
+                               (new 'static 'vector :y 1.0 :w 1.0)
+                               (new 'static 'vector :z 1.0 :w 1.0)
+                               (new 'static 'vector :x -1.0 :w 1.0)
+                               (new 'static 'vector :y -1.0 :w 1.0)
+                               (new 'static 'vector :z -1.0 :w 1.0)
+                               )
+        )
+
+;; definition of type joint-mod-wheel
+(deftype joint-mod-wheel (basic)
+  ((last-position vector           :inline :offset-assert  16)
+   (angle         float                    :offset-assert  32)
+   (process       process-drawable         :offset-assert  36)
+   (wheel-radius  float                    :offset-assert  40)
+   (wheel-axis    int8                     :offset-assert  44)
+   )
+  :method-count-assert 9
+  :size-assert         #x2d
+  :flag-assert         #x90000002d
+  (:methods
+    (new (symbol type process-drawable int float int) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-wheel
+(defmethod inspect joint-mod-wheel ((obj joint-mod-wheel))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tlast-position: #<vector @ #x~X>~%" (-> obj last-position))
+  (format #t "~1Tangle: ~f~%" (-> obj angle))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Twheel-radius: ~f~%" (-> obj wheel-radius))
+  (format #t "~1Twheel-axis: ~D~%" (-> obj wheel-axis))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-wheel-callback
+;; INFO: Used lq/sq
+(defun joint-mod-wheel-callback ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
+    (let ((v1-1 (-> s4-0 process root))
+          (s1-0 (new-stack-vector0))
+          (s3-0 (new-stack-vector0))
+          (s2-0 (new-stack-vector0))
+          )
+      0.0
+      0.0
+      (vector-z-quaternion! s2-0 (-> v1-1 quat))
+      (vector<-cspace! s1-0 arg0)
+      (vector-! s3-0 s1-0 (-> s4-0 last-position))
+      (set! (-> s4-0 last-position quad) (-> s1-0 quad))
+      (let* ((f0-3 (vector-dot s2-0 s3-0))
+             (f1-0 65536.0)
+             (f2-1 (* 6.28318 (-> s4-0 wheel-radius)))
+             (f0-4 (* f1-0 (/ 1.0 f2-1) f0-3))
+             )
+        (+! (-> s4-0 angle) f0-4)
+        )
+      )
+    (quaternion-vector-angle! (-> arg1 quat) (-> *joint-axis-vectors* (-> s4-0 wheel-axis)) (-> s4-0 angle))
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-wheel
+(defmethod new joint-mod-wheel ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 process) arg0)
+    (set! (-> v0-0 wheel-radius) arg2)
+    (set! (-> v0-0 wheel-axis) arg3)
+    (set! (-> v0-0 angle) 0.0)
+    (set-vector! (-> v0-0 last-position) 0.0 0.0 0.0 1.0)
+    (let ((a0-3 (-> arg0 node-list data arg1)))
+      (set! (-> a0-3 param0) joint-mod-wheel-callback)
+      (set! (-> a0-3 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-set-local
+(deftype joint-mod-set-local (basic)
+  ((transform       transformq :inline :offset-assert  16)
+   (set-rotation    symbol             :offset-assert  64)
+   (set-scale       symbol             :offset-assert  68)
+   (set-translation symbol             :offset-assert  72)
+   (enable          symbol             :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  (:methods
+    (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-set-local
+(defmethod inspect joint-mod-set-local ((obj joint-mod-set-local))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttransform: #<transformq @ #x~X>~%" (-> obj transform))
+  (format #t "~1Tset-rotation: ~A~%" (-> obj set-rotation))
+  (format #t "~1Tset-scale: ~A~%" (-> obj set-scale))
+  (format #t "~1Tset-translation: ~A~%" (-> obj set-translation))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-set-local-callback
+;; INFO: Used lq/sq
+(defun joint-mod-set-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as joint-mod-set-local (-> arg0 param1))))
+    (cond
+      ((-> v1-0 enable)
+       (if (not (-> v1-0 set-translation))
+           (set! (-> v1-0 transform trans quad) (-> arg1 trans quad))
+           )
+       (if (not (-> v1-0 set-rotation))
+           (set! (-> v1-0 transform quat quad) (-> arg1 quat quad))
+           )
+       (if (not (-> v1-0 set-scale))
+           (set! (-> v1-0 transform scale quad) (-> arg1 scale quad))
+           )
+       (cspace<-parented-transformq-joint! arg0 (-> v1-0 transform))
+       )
+      (else
+        (cspace<-parented-transformq-joint! arg0 arg1)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-set-local
+;; INFO: Used lq/sq
+(defmethod new joint-mod-set-local ((allocation symbol)
+                                  (type-to-make type)
+                                  (arg0 process-drawable)
+                                  (arg1 int)
+                                  (arg2 symbol)
+                                  (arg3 symbol)
+                                  (arg4 symbol)
+                                  )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 set-translation) arg2)
+    (set! (-> v0-0 set-rotation) arg3)
+    (set! (-> v0-0 set-scale) arg4)
+    (set! (-> v0-0 enable) #t)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((a0-8 (-> arg0 node-list data arg1)))
+      (set! (-> a0-8 param0) joint-mod-set-local-callback)
+      (set! (-> a0-8 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-add-local
+(deftype joint-mod-add-local (basic)
+  ((transform       transformq :inline :offset-assert  16)
+   (add-rotation    symbol             :offset-assert  64)
+   (add-scale       symbol             :offset-assert  68)
+   (add-translation symbol             :offset-assert  72)
+   (enable          symbol             :offset-assert  76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  (:methods
+    (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-add-local
+(defmethod inspect joint-mod-add-local ((obj joint-mod-add-local))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttransform: #<transformq @ #x~X>~%" (-> obj transform))
+  (format #t "~1Tadd-rotation: ~A~%" (-> obj add-rotation))
+  (format #t "~1Tadd-scale: ~A~%" (-> obj add-scale))
+  (format #t "~1Tadd-translation: ~A~%" (-> obj add-translation))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-add-local-callback
+(defun joint-mod-add-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
+    (when (-> s4-0 enable)
+      (if (-> s4-0 add-translation)
+          (vector+! (-> arg1 trans) (-> arg1 trans) (the-as vector (-> s4-0 transform)))
+          )
+      (if (-> s4-0 add-rotation)
+          (quaternion-normalize! (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> s4-0 transform quat)))
+          )
+      (if (-> s4-0 add-scale)
+          (vector+! (-> arg1 scale) (-> arg1 scale) (-> s4-0 transform scale))
+          )
+      )
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-add-local
+;; INFO: Used lq/sq
+(defmethod new joint-mod-add-local ((allocation symbol)
+                                  (type-to-make type)
+                                  (arg0 process-drawable)
+                                  (arg1 int)
+                                  (arg2 symbol)
+                                  (arg3 symbol)
+                                  (arg4 symbol)
+                                  )
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 add-translation) arg2)
+    (set! (-> gp-0 add-rotation) arg3)
+    (set! (-> gp-0 add-scale) arg4)
+    (set! (-> gp-0 enable) #t)
+    (set! (-> gp-0 transform trans quad) (-> *null-vector* quad))
+    (quaternion-copy! (-> gp-0 transform quat) *unity-quaternion*)
+    (set! (-> gp-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((a0-7 (-> arg0 node-list data arg1)))
+      (set! (-> a0-7 param0) joint-mod-add-local-callback)
+      (set! (-> a0-7 param1) gp-0)
+      )
+    gp-0
+    )
+  )
+
+;; definition of type joint-mod-set-world
+(deftype joint-mod-set-world (basic)
+  ((transform  transformq :inline :offset-assert  16)
+   (node-index int32              :offset-assert  64)
+   (enable     symbol             :offset-assert  68)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  (:methods
+    (new (symbol type process-drawable int symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-set-world
+(defmethod inspect joint-mod-set-world ((obj joint-mod-set-world))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttransform: #<transformq @ #x~X>~%" (-> obj transform))
+  (format #t "~1Tnode-index: ~D~%" (-> obj node-index))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-set-world-callback
+(defun joint-mod-set-world-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as joint-mod-set-world (-> arg0 param1))))
+    (if (-> v1-0 enable)
+        (cspace<-transformq! arg0 (-> v1-0 transform))
+        (cspace<-parented-transformq-joint! arg0 arg1)
+        )
+    )
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-set-world
+;; INFO: Used lq/sq
+(defmethod new joint-mod-set-world ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 node-index) arg1)
+    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((a0-8 (-> arg0 node-list data arg1)))
+      (set! (-> a0-8 param0) joint-mod-set-world-callback)
+      (set! (-> a0-8 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-blend-local
+(deftype joint-mod-blend-local (basic)
+  ((transform       transformq :inline :offset-assert  16)
+   (blend-transform transformq :inline :offset-assert  64)
+   (node-index      int32              :offset-assert 112)
+   (blend           float              :offset-assert 116)
+   (enable          symbol             :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x7c
+  :flag-assert         #x90000007c
+  (:methods
+    (new (symbol type process-drawable int symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-blend-local
+(defmethod inspect joint-mod-blend-local ((obj joint-mod-blend-local))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttransform: #<transformq @ #x~X>~%" (-> obj transform))
+  (format #t "~1Tblend-transform: #<transformq @ #x~X>~%" (-> obj blend-transform))
+  (format #t "~1Tnode-index: ~D~%" (-> obj node-index))
+  (format #t "~1Tblend: ~f~%" (-> obj blend))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-blend-local-callback
+(defun joint-mod-blend-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
+    (cond
+      ((-> gp-0 enable)
+       (vector-lerp!
+         (the-as vector (-> gp-0 blend-transform))
+         (-> arg1 trans)
+         (the-as vector (-> gp-0 transform))
+         (-> gp-0 blend)
+         )
+       (vector-lerp! (-> gp-0 blend-transform scale) (-> arg1 scale) (-> gp-0 transform scale) (-> gp-0 blend))
+       (quaternion-slerp! (-> gp-0 blend-transform quat) (-> arg1 quat) (-> gp-0 transform quat) (-> gp-0 blend))
+       (cspace<-parented-transformq-joint! arg0 (-> gp-0 blend-transform))
+       )
+      (else
+        (cspace<-parented-transformq-joint! arg0 arg1)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-blend-local
+;; INFO: Used lq/sq
+(defmethod new joint-mod-blend-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 node-index) arg1)
+    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 blend) 0.0)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((a0-8 (-> arg0 node-list data arg1)))
+      (set! (-> a0-8 param0) joint-mod-blend-local-callback)
+      (set! (-> a0-8 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-spinner
+(deftype joint-mod-spinner (basic)
+  ((spin-axis vector :inline :offset-assert  16)
+   (angle     float          :offset-assert  32)
+   (spin-rate float          :offset-assert  36)
+   (enable    symbol         :offset-assert  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  (:methods
+    (new (symbol type process-drawable int vector float) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-spinner
+(defmethod inspect joint-mod-spinner ((obj joint-mod-spinner))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tspin-axis: #<vector @ #x~X>~%" (-> obj spin-axis))
+  (format #t "~1Tangle: ~f~%" (-> obj angle))
+  (format #t "~1Tspin-rate: ~f~%" (-> obj spin-rate))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-spinner-callback
+(defun joint-mod-spinner-callback ((arg0 cspace) (arg1 transformq))
+  (with-pp
+    (let ((gp-0 (the-as joint-mod-spinner (-> arg0 param1))))
+      (when (-> gp-0 enable)
+        (let ((f30-0
+                (the float
+                     (sar (shl (the int (+ (-> gp-0 angle) (* (-> gp-0 spin-rate) (-> pp clock seconds-per-frame)))) 48) 48)
+                     )
+                )
+              )
+          (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
+          (set! (-> gp-0 angle) f30-0)
+          )
+        )
+      )
+    (cspace<-parented-transformq-joint! arg0 arg1)
+    (none)
+    )
+  )
+
+;; definition for method 0 of type joint-mod-spinner
+;; INFO: Used lq/sq
+(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 vector) (arg3 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 spin-axis quad) (-> arg2 quad))
+    (set! (-> v0-0 spin-rate) arg3)
+    (set! (-> v0-0 enable) #t)
+    (set! (-> v0-0 angle) 0.0)
+    (let ((a0-3 (-> arg0 node-list data arg1)))
+      (set! (-> a0-3 param0) joint-mod-spinner-callback)
+      (set! (-> a0-3 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-blend-world
+(deftype joint-mod-blend-world (basic)
+  ((transform       transformq            :inline :offset-assert  16)
+   (blend-transform transformq            :inline :offset-assert  64)
+   (blend-flags     joint-mod-blend-flags         :offset-assert 112)
+   (node-index      int32                         :offset-assert 116)
+   (blend           float                         :offset-assert 120)
+   (enable          symbol                        :offset-assert 124)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  (:methods
+    (new (symbol type process-drawable int symbol float) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-blend-world
+(defmethod inspect joint-mod-blend-world ((obj joint-mod-blend-world))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Ttransform: #<transformq @ #x~X>~%" (-> obj transform))
+  (format #t "~1Tblend-transform: #<transformq @ #x~X>~%" (-> obj blend-transform))
+  (format #t "~1Tblend-flags: ~D~%" (-> obj blend-flags))
+  (format #t "~1Tnode-index: ~D~%" (-> obj node-index))
+  (format #t "~1Tblend: ~f~%" (-> obj blend))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-blend-world-callback
+(defun joint-mod-blend-world-callback ((arg0 cspace) (arg1 transformq))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (the-as joint-mod-blend-world (-> arg0 param1))))
+      (cond
+        ((-> gp-0 enable)
+         (let ((f30-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags trans))
+                          (-> gp-0 blend)
+                          0.0
+                          )
+                      )
+               (f28-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags scale))
+                          (-> gp-0 blend)
+                          0.0
+                          )
+                      )
+               (f26-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags rotation))
+                          (-> gp-0 blend)
+                          0.0
+                          )
+                      )
+               (s0-0 (new 'stack-no-clear 'matrix))
+               (s2-0 (new 'stack-no-clear 'matrix))
+               (s3-0 (new 'stack-no-clear 'quaternion))
+               )
+           (let ((s1-0 (new 'stack-no-clear 'vector)))
+             (if (= (-> arg0 parent bone scale w) 0.0)
+                 (matrix<-transformq! s0-0 arg1)
+                 (matrix<-parented-transformq! s0-0 arg1 (-> arg0 parent bone scale))
+                 )
+             (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
+             (set-vector!
+               s1-0
+               (vector-length (the-as vector (-> s2-0 vector)))
+               (vector-length (-> s2-0 vector 1))
+               (vector-length (-> s2-0 vector 2))
+               1.0
+               )
+             (let ((v1-19 (-> gp-0 blend-transform scale)))
+               (let ((a0-11 (-> arg1 scale)))
+                 (.lvf vf4 (&-> s1-0 quad))
+                 (.lvf vf5 (&-> a0-11 quad))
+                 )
+               (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+               (.mul.vf vf6 vf4 vf5 :mask #b111)
+               (.svf (&-> v1-19 quad) vf6)
+               )
+             )
+           (vector-lerp!
+             (the-as vector (-> gp-0 blend-transform))
+             (-> s2-0 trans)
+             (the-as vector (-> gp-0 transform))
+             f30-0
+             )
+           (vector-lerp! (-> gp-0 blend-transform scale) (-> gp-0 blend-transform scale) (-> gp-0 transform scale) f28-0)
+           (quaternion-slerp!
+             (-> gp-0 blend-transform quat)
+             (matrix->quaternion s3-0 s2-0)
+             (-> gp-0 transform quat)
+             f26-0
+             )
+           )
+         (cspace<-transformq! arg0 (-> gp-0 blend-transform))
+         )
+        (else
+          (cspace<-parented-transformq-joint! arg0 arg1)
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 0 of type joint-mod-blend-world
+;; INFO: Used lq/sq
+(defmethod new joint-mod-blend-world ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 node-index) arg1)
+    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 blend) arg3)
+    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform quat quad) (-> *null-vector* quad))
+    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
+    (let ((a0-8 (-> arg0 node-list data arg1)))
+      (set! (-> a0-8 param0) joint-mod-blend-world-callback)
+      (set! (-> a0-8 param1) v0-0)
+      )
+    v0-0
+    )
+  )
+
+;; definition of type joint-mod-rotate-local
+(deftype joint-mod-rotate-local (basic)
+  ((enable   symbol             :offset-assert   4)
+   (rotation quaternion :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  (:methods
+    (new (symbol type process-drawable int symbol) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-rotate-local
+(defmethod inspect joint-mod-rotate-local ((obj joint-mod-rotate-local))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tenable: ~A~%" (-> obj enable))
+  (format #t "~1Trotation: #<quaternion @ #x~X>~%" (-> obj rotation))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function joint-mod-rotate-local-callback
+(defun joint-mod-rotate-local-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as joint-mod-rotate-local (-> arg0 param1))))
+    (new 'stack-no-clear 'vector)
+    (if (-> v1-0 enable)
+        (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> v1-0 rotation))
+        )
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
+  )
+
+;; definition for method 0 of type joint-mod-rotate-local
+(defmethod new joint-mod-rotate-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 enable) arg2)
+    (quaternion-set! (-> gp-0 rotation) 0.0 0.0 0.0 1.0)
+    (let ((a0-3 (-> arg0 node-list data arg1)))
+      (set! (-> a0-3 param0) joint-mod-rotate-local-callback)
+      (set! (-> a0-3 param1) gp-0)
+      )
+    gp-0
+    )
+  )
+
+;; definition of type joint-mod-ik
+(deftype joint-mod-ik (basic)
+  ((flags                  joint-mod-ik-flags                                          :offset-assert   4)
+   (process                process-drawable                                            :offset-assert   8)
+   (hand-dist              float                                                       :offset-assert  12)
+   (handle-pos             vector                                              :inline :offset-assert  16)
+   (elbow-pole-vector-axis uint32                                                      :offset-assert  32)
+   (elbow-rotation-axis    uint32                                                      :offset-assert  36)
+   (user-position          vector                                              :inline :offset-assert  48)
+   (user-normal            vector                                              :inline :offset-assert  64)
+   (user-blend             float                                                       :offset-assert  80)
+   (user-float             float                                                       :offset-assert  84)
+   (callback               (function joint-mod-ik matrix matrix vector object)         :offset-assert  88)
+   (shoulder-matrix-no-ik  matrix                                              :inline :offset-assert  96)
+   (elbow-matrix-no-ik     matrix                                              :inline :offset-assert 160)
+   (blend                  float                                                       :offset-assert 224)
+   (blend-interp           float                                                       :offset-assert 228)
+   )
+  :method-count-assert 11
+  :size-assert         #xe8
+  :flag-assert         #xb000000e8
+  (:methods
+    (new (symbol type process-drawable int float) _type_ 0)
+    (handle-copy! (_type_ vector) none 9)
+    (enable-set! (_type_ symbol) none 10)
+    )
+  )
+
+;; definition for method 3 of type joint-mod-ik
+(defmethod inspect joint-mod-ik ((obj joint-mod-ik))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~1Tflags: ~D~%" (-> obj flags))
+  (format #t "~1Tprocess: ~A~%" (-> obj process))
+  (format #t "~1Thand-dist: ~f~%" (-> obj hand-dist))
+  (format #t "~1Thandle-pos: #<vector @ #x~X>~%" (-> obj handle-pos))
+  (format #t "~1Telbow-pole-vector-axis: ~D~%" (-> obj elbow-pole-vector-axis))
+  (format #t "~1Telbow-rotation-axis: ~D~%" (-> obj elbow-rotation-axis))
+  (format #t "~1Tuser-position: #<vector @ #x~X>~%" (-> obj user-position))
+  (format #t "~1Tuser-normal: #<vector @ #x~X>~%" (-> obj user-normal))
+  (format #t "~1Tuser-blend: ~f~%" (-> obj user-blend))
+  (format #t "~1Tuser-float: ~f~%" (-> obj user-float))
+  (format #t "~1Tcallback: ~A~%" (-> obj callback))
+  (format #t "~1Tshoulder-matrix-no-ik: #<matrix @ #x~X>~%" (-> obj shoulder-matrix-no-ik))
+  (format #t "~1Telbow-matrix-no-ik: #<matrix @ #x~X>~%" (-> obj elbow-matrix-no-ik))
+  (format #t "~1Tblend: ~f~%" (-> obj blend))
+  (format #t "~1Tblend-interp: ~f~%" (-> obj blend-interp))
+  (label cfg-4)
+  obj
+  )
+
+;; failed to figure out what this is:
+0

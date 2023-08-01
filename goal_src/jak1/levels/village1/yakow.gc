@@ -138,46 +138,44 @@
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 52]
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 54]
 (defbehavior yakow-default-event-handler yakow ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (cond
-                     ((= v1-0 'touch)
-                      (let* ((s4-0 arg0)
-                             (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
-                                       s4-0
-                                       )
-                                   )
-                             )
-                        (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
-                          (do-push-aways! (-> self root-override))
-                          (send-shove-back
-                            (-> self root-override)
-                            arg0
-                            (the-as touching-shapes-entry (-> arg3 param 0))
-                            0.7
-                            6144.0
-                            16384.0
-                            )
-                          )
-                        )
-                      )
-                     ((= v1-0 'attack)
-                      (let ((v1-9 (-> arg3 param 2)))
-                        (cond
-                          ((!= v1-9 (-> self player-attack-id))
-                           (set! (-> self player-attack-id) (the-as int v1-9))
-                           (if (-> self vulnerable)
-                               (go yakow-kicked)
-                               )
+  (the-as object (case arg2
+                   (('touch)
+                    (let* ((s4-0 arg0)
+                           (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
+                                     s4-0
+                                     )
+                                 )
                            )
-                          (else
-                            'push
-                            )
+                      (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
+                        (do-push-aways! (-> self root-override))
+                        (send-shove-back
+                          (-> self root-override)
+                          arg0
+                          (the-as touching-shapes-entry (-> arg3 param 0))
+                          0.7
+                          6144.0
+                          16384.0
                           )
                         )
                       )
-                     )
-            )
-    )
+                    )
+                   (('attack)
+                    (let ((v1-9 (-> arg3 param 2)))
+                      (cond
+                        ((!= v1-9 (-> self player-attack-id))
+                         (set! (-> self player-attack-id) (the-as int v1-9))
+                         (if (-> self vulnerable)
+                             (go yakow-kicked)
+                             )
+                         )
+                        (else
+                          'push
+                          )
+                        )
+                      )
+                    )
+                   )
+          )
   )
 
 yakow-default-event-handler
@@ -215,13 +213,13 @@ yakow-default-event-handler
                          )
                 (suspend)
                 )
-              (level-hint-spawn
-                (game-text-id village1-yakow-resolution)
-                "sksp018a"
-                (the-as entity #f)
-                *entity-pool*
-                (game-task none)
-                )
+          (level-hint-spawn
+            (text-id village1-yakow-resolution)
+            "sksp018a"
+            (the-as entity #f)
+            *entity-pool*
+            (game-task none)
+            )
               (none)
               )
             :to self
@@ -252,7 +250,7 @@ yakow-default-event-handler
   )
 
 (defbehavior yakow-post yakow ()
-  (dummy-11 (-> self nav) (-> self nav target-pos))
+  (nav-control-method-11 (-> self nav) (-> self nav target-pos))
   (set! (-> self rotating) #f)
   (let ((f30-0 0.0))
     (when (< 40.96 (vector-length (-> self nav travel)))
@@ -309,7 +307,7 @@ yakow-default-event-handler
           )
     )
   (set! (-> self travel-speed) (fmin (-> self travel-speed) (-> self final-speed)))
-  (dummy-10 (-> self water))
+  (water-control-method-10 (-> self water))
   (when (and (logtest? (-> self nav current-poly pat) 2)
              (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
              )
@@ -330,7 +328,7 @@ yakow-default-event-handler
     (set! (-> gp-1 y) 0.0)
     (set! (-> self nav travel quad) (-> gp-1 quad))
     (vector-normalize! (-> self nav travel) 409600.0)
-    (dummy-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
+    (nav-control-method-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
     (when (not (-> self enable-turn-around))
       (set! (-> gp-1 quad) (-> self nav travel quad))
       (let ((f30-0 (vector-length gp-1)))
@@ -341,7 +339,7 @@ yakow-default-event-handler
         )
       (set! (-> self nav travel quad) (-> s5-1 quad))
       (vector-normalize! (-> self nav travel) 409600.0)
-      (dummy-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
+      (nav-control-method-24 (-> self nav) 204.8 (the-as clip-travel-vector-to-mesh-return-info #f))
       (vector-length (-> self nav travel))
       )
     )
@@ -479,10 +477,10 @@ yakow-default-event-handler
     (loop
       (cond
         ((rand-vu-percent? 0.2)
-         (dummy-10 (-> self skel effect) 'yakow-1 0.0 -1)
+         (effect-control-method-10 (-> self skel effect) 'yakow-1 0.0 -1)
          )
         ((rand-vu-percent? 0.2)
-         (dummy-10 (-> self skel effect) 'yakow-2 0.0 -1)
+         (effect-control-method-10 (-> self skel effect) 'yakow-2 0.0 -1)
          )
         )
       (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
@@ -562,7 +560,7 @@ yakow-default-event-handler
     )
   :code (the-as (function vector none :behavior yakow) yakow-blend-walk-run)
   :post (behavior ()
-    (dummy-19
+    (nav-control-method-19
       (-> self nav)
       (-> self nav target-pos)
       (-> self root-override)
@@ -782,7 +780,7 @@ yakow-default-event-handler
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid ca-10 ca-11))
+      (set! (-> s3-0 prim-core action) (collide-action solid attackable attackable-unused))
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 10240.0)
       (set-root-prim! s4-0 s3-0)
@@ -836,7 +834,3 @@ yakow-default-event-handler
     )
   (none)
   )
-
-
-
-

@@ -1,7 +1,11 @@
 #pragma once
 #include <cfloat>
 
-#include "immintrin.h"
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
+#include <immintrin.h>
+#endif
 
 #include "common/common_types.h"
 #include "common/math/Vector.h"
@@ -27,6 +31,8 @@ enum class Mask {
 };
 
 #ifdef __linux__
+#define REALLY_INLINE __attribute__((always_inline))
+#elif __APPLE__
 #define REALLY_INLINE __attribute__((always_inline))
 #else
 #define REALLY_INLINE __forceinline
@@ -93,6 +99,13 @@ struct alignas(16) Vf {
     data[1] = 0;
     data[2] = 0;
     data[3] = 0;
+  }
+
+  void set_u32s(u32 xx, u32 yy, u32 zz, u32 ww) {
+    memcpy(&data[0], &xx, 4);
+    memcpy(&data[1], &yy, 4);
+    memcpy(&data[2], &zz, 4);
+    memcpy(&data[3], &ww, 4);
   }
 
   u16 x_as_u16() const {
@@ -453,6 +466,10 @@ struct alignas(16) Vf {
 
 struct alignas(16) Accumulator {
   float data[4];
+
+  std::string print() const {
+    return fmt::format("{} {} {} {}", data[0], data[1], data[2], data[3]);
+  }
 
   void adda(Mask mask, const Vf& a, float b) {
     for (int i = 0; i < 4; i++) {

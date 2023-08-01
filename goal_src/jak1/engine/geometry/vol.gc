@@ -18,18 +18,7 @@
     )
   )
 
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-;; WARN: Stack slot offset 148 signed mismatch
-(defmethod dummy-9 plane-volume ((obj plane-volume) (arg0 symbol) (arg1 vector-array) (arg2 vector-array))
+(defmethod init-vol! plane-volume ((obj plane-volume) (arg0 symbol) (arg1 vector-array) (arg2 vector-array))
   (local-vars
     (sv-144 vector)
     (sv-148 float)
@@ -161,10 +150,7 @@
             (set! (-> arg2 data (-> arg2 length) quad) (-> s1-0 quad))
             (set! (-> arg2 data (+ (-> arg2 length) 1) quad) (-> s2-0 s3-0 quad))
             (+! (-> arg2 length) 2)
-            (let ((v1-112 (+ (-> obj normal-count) 2)))
-              (set! (-> obj normal-count) v1-112)
-              v1-112
-              )
+            (set! (-> obj normal-count) (+ (-> obj normal-count) 2))
             )
           )
         )
@@ -206,7 +192,7 @@
   (none)
   )
 
-(defmethod dummy-11 plane-volume ((obj plane-volume) (arg0 vector) (arg1 float))
+(defmethod point-in-vol? plane-volume ((obj plane-volume) (arg0 vector) (arg1 float))
   (dotimes (v1-0 (-> obj num-planes))
     (if (< arg1 (- (vector-dot arg0 (the-as vector (-> obj plane v1-0))) (the-as float (-> obj plane v1-0 w))))
         (return #f)
@@ -215,7 +201,7 @@
   #t
   )
 
-(defmethod dummy-9 vol-control ((obj vol-control))
+(defmethod init! vol-control ((obj vol-control))
   (with-pp
     (let ((a0-1 obj))
       (when (and (and *display-vol-marks* (logtest? (-> a0-1 flags) 1)) (logtest? (-> obj flags) 2))
@@ -237,10 +223,10 @@
           (set! (-> obj debug-point length) 0)
           (set! (-> obj debug-normal length) 0)
           (dotimes (s5-1 (-> obj pos-vol-count))
-            (dummy-9 (-> obj pos-vol s5-1) 'vol (-> obj debug-point) (-> obj debug-normal))
+            (init-vol! (-> obj pos-vol s5-1) 'vol (-> obj debug-point) (-> obj debug-normal))
             )
           (dotimes (s5-2 (-> obj neg-vol-count))
-            (dummy-9 (-> obj neg-vol s5-2) 'vol (-> obj debug-point) (-> obj debug-normal))
+            (init-vol! (-> obj neg-vol s5-2) 'vol (-> obj debug-point) (-> obj debug-normal))
             )
           )
         (dotimes (s5-3 (-> obj pos-vol-count))
@@ -255,20 +241,16 @@
     )
   )
 
-(defmethod dummy-10 vol-control ((obj vol-control) (arg0 vector))
+(defmethod point-in-vol? vol-control ((obj vol-control) (arg0 vector))
   (dotimes (s4-0 (-> obj neg-vol-count))
-    (if (dummy-11 (-> obj neg-vol s4-0) arg0 0.0)
+    (if (point-in-vol? (-> obj neg-vol s4-0) arg0 0.0)
         (return #f)
         )
     )
   (dotimes (s4-1 (-> obj pos-vol-count))
-    (if (dummy-11 (-> obj pos-vol s4-1) arg0 0.0)
+    (if (point-in-vol? (-> obj pos-vol s4-1) arg0 0.0)
         (return #t)
         )
     )
   #f
   )
-
-
-
-

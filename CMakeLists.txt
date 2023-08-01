@@ -22,6 +22,13 @@ else()
     set(BUILD_SHARED_LIBS ON)
 endif()
 
+# For clangd
+if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
+    configure_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" 
+        "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
+endif()
+
 # Setup compiler flags
 # TODO - consider moving most of the configuration into presets
 # - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
@@ -38,13 +45,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
-        -O3")
+        -O3 \
+        -D_CRT_SECURE_NO_WARNINGS")
 
     # Increase stack size for windows, who's default is too low
     if(WIN32)
         # Increase the reserved stack size for all threads to 16MB
         # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-        # TODO - test with add_link_options instead
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /STACK:16000000")
     else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g -Wextra")
@@ -56,7 +63,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     endif()
 
     if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-        # TODO - test with add_link_options instead
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /debug")
     endif()
 
@@ -94,6 +100,34 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     endif()
     set(THIRDPARTY_IGNORED_WARNINGS "-w")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    message(STATUS "AppleClang detected - Setting Defaults")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} \
+        -march=native \
+        -Wall \
+        -Winit-self \
+        -ggdb \
+        -Wextra \
+        -Wno-cast-align \
+        -Wcast-qual \
+        -Wdisabled-optimization \
+        -Wformat \
+        -Wextra \
+        -Wmissing-include-dirs \
+        -Woverloaded-virtual \
+        -Wredundant-decls \
+        -Wshadow \
+        -Wsign-promo \
+        -fdiagnostics-color=always"
+        )
+
+    # additional c++ flags for release mode for our projects
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    endif()
+    set(THIRDPARTY_IGNORED_WARNINGS "-w")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-stack_size -Wl,0x20000000")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "MSVC detected - Setting Defaults")
 
@@ -122,8 +156,6 @@ if(WIN32)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-    set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION 7.1.7600.0.30514) # win7.1, supports xp
-    message("Windows SDK version: ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 endif()
 
 # Code Coverage
@@ -145,6 +177,22 @@ include_directories(SYSTEM third-party/inja)
 
 # build repl library
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
+
+# SQLite - Jak 2/3's built in editor
+add_definitions(-DHAVE_USLEEP=1)
+add_definitions(-DSQLITE_THREADSAFE=1)
+add_definitions(-DSQLITE_ENABLE_JSON1)
+add_definitions(-DSQLITE_ENABLE_RTREE)
+add_subdirectory(third-party/sqlite3)
+
+# build tree-sitter parser
+include_directories(third-party/tree-sitter/tree-sitter/lib/include)
+include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
+add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
+
+# native OS dialogs for error messages
+add_subdirectory(third-party/libtinyfiledialogs)
+
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build common library
@@ -162,13 +210,15 @@ add_subdirectory(lsp)
 # build libco
 add_subdirectory(third-party/libco)
 
-# build glfw library
-add_subdirectory(third-party/glfw EXCLUDE_FROM_ALL)
 add_subdirectory(third-party/zstd EXCLUDE_FROM_ALL)
+
+# build SDL
+include(SDLOptions)
+add_subdirectory(third-party/SDL EXCLUDE_FROM_ALL)
 
 # build imgui
 include_directories(third-party/glad/include)
-include_directories(third-party/glfw/include)
+include_directories(third-party/SDL/include)
 add_subdirectory(third-party/imgui EXCLUDE_FROM_ALL)
 string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 

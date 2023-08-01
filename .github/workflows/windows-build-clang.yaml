@@ -9,13 +9,17 @@ on:
       cachePrefix:
         required: true
         type: string
+      uploadArtifacts:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
     name: Clang
     runs-on: windows-2022
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
       BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
@@ -29,10 +33,17 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install NASM
-        run: choco install ${{ github.workspace }}/third-party/nasm/nasm.2.15.05.nupkg
+        # TODO - Simplify this with just the first command once choco 2.0 rolls out everywhere
+        run: |
+          $chocoVersion = choco --version
+          if ($chocoVersion.StartsWith("2.")) {
+            choco install nasm --source="${{ github.workspace }}/third-party/nasm"
+          } else {
+            choco install ${{ github.workspace }}/third-party/nasm/old/nasm.2.15.05.nupkg
+          }
 
       - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v1.3.0
+        uses: mikehardy/buildcache-action@v2.1.0
         with:
           cache_key: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
 
@@ -44,16 +55,17 @@ jobs:
 
       - name: Build Project
         shell: cmd
-        run: cmake --build build -j 2
+        run: cmake --build build --parallel %NUMBER_OF_PROCESSORS%
 
       - name: Run Tests
         timeout-minutes: 10
         env:
           GTEST_OUTPUT: "xml:opengoal-test-report.xml"
-        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=1 --gtest_filter="-*MANUAL_TEST*"
+        run: ./build/bin/goalc-test.exe --gtest_color=yes --gtest_brief=0 --gtest_filter="-*MANUAL_TEST*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
+        if: ${{ inputs.uploadArtifacts }}
         with:
           name: opengoal-windows-${{ inputs.cachePrefix }}
           if-no-files-found: error

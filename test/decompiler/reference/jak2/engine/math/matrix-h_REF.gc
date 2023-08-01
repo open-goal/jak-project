@@ -1,0 +1,101 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type matrix
+(deftype matrix (structure)
+  ((data   float   16        :offset-assert   0)
+   (vector vector  4 :inline :offset          0)
+   (quad   uint128 4         :offset          0)
+   (trans  vector  :inline   :offset         48)
+   )
+  :method-count-assert 10
+  :size-assert         #x40
+  :flag-assert         #xa00000040
+  (:methods
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none 9)
+    )
+  )
+
+;; definition for method 3 of type matrix
+(defmethod inspect matrix ((obj matrix))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'matrix)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tvector[4] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tquad[4] @ #x~X~%" (-> obj vector))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> obj trans))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type matrix3
+(deftype matrix3 (structure)
+  ((data   float   12        :offset-assert   0)
+   (vector vector  3 :inline :offset          0)
+   (quad   uint128 3         :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type matrix3
+(defmethod inspect matrix3 ((obj matrix3))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'matrix3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> obj vector))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> obj vector))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type matrix4h
+(deftype matrix4h (structure)
+  ((data     int16    16        :offset-assert   0)
+   (vector4h vector4h 4 :inline :offset          0)
+   (long     int64    4         :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type matrix4h
+(defmethod inspect matrix4h ((obj matrix4h))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'matrix4h)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> obj data))
+  (format #t "~1Tvector4h[4] @ #x~X~%" (-> obj data))
+  (format #t "~1Tlong[4] @ #x~X~%" (-> obj data))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function matrix-copy!
+;; INFO: Used lq/sq
+(defun matrix-copy! ((arg0 matrix) (arg1 matrix))
+  (let ((v1-0 (-> arg1 quad 0))
+        (a2-0 (-> arg1 quad 1))
+        (a3-0 (-> arg1 quad 2))
+        (a1-1 (-> arg1 trans quad))
+        )
+    (set! (-> arg0 quad 0) v1-0)
+    (set! (-> arg0 quad 1) a2-0)
+    (set! (-> arg0 quad 2) a3-0)
+    (set! (-> arg0 trans quad) a1-1)
+    )
+  arg0
+  )
+
+;; failed to figure out what this is:
+0

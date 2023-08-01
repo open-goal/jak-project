@@ -1,0 +1,131 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type smush-control
+(deftype smush-control (structure)
+  ((start-time  time-frame  :offset-assert   0)
+   (period      float       :offset-assert   8)
+   (duration    float       :offset-assert  12)
+   (amp         float       :offset-assert  16)
+   (damp-amp    float       :offset-assert  20)
+   (damp-period float       :offset-assert  24)
+   (ticks       float       :offset-assert  28)
+   )
+  :pack-me
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  (:methods
+    (set-zero! (_type_) _type_ 9)
+    (update! (_type_) float 10)
+    (get-no-update (_type_) float 11)
+    (activate! (_type_ float int int float float clock) _type_ 12)
+    (nonzero-amplitude? (_type_) symbol 13)
+    (die-on-next-update! (_type_) _type_ 14)
+    )
+  )
+
+;; definition for method 3 of type smush-control
+(defmethod inspect smush-control ((obj smush-control))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'smush-control)
+  (format #t "~1Tstart-time: ~D~%" (-> obj start-time))
+  (format #t "~1Tperiod: ~f~%" (-> obj period))
+  (format #t "~1Tduration: ~f~%" (-> obj duration))
+  (format #t "~1Tamp: ~f~%" (-> obj amp))
+  (format #t "~1Tdamp-amp: ~f~%" (-> obj damp-amp))
+  (format #t "~1Tdamp-period: ~f~%" (-> obj damp-period))
+  (format #t "~1Tticks: ~f~%" (-> obj ticks))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for method 13 of type smush-control
+(defmethod nonzero-amplitude? smush-control ((obj smush-control))
+  (!= (-> obj amp) 0.0)
+  )
+
+;; definition for method 9 of type smush-control
+(defmethod set-zero! smush-control ((obj smush-control))
+  (set! (-> obj period) 0.0)
+  (set! (-> obj duration) 0.0)
+  (set! (-> obj amp) 0.0)
+  (set! (-> obj damp-amp) 0.0)
+  (set! (-> obj damp-period) 0.0)
+  (set! (-> obj ticks) 0.0)
+  obj
+  )
+
+;; definition for method 10 of type smush-control
+(defmethod update! smush-control ((obj smush-control))
+  (cond
+    ((!= (-> obj amp) 0.0)
+     (let* ((f30-0 (the float (- (current-time) (-> obj start-time))))
+            (f0-2 (-> obj period))
+            (f28-0 (- f30-0 (* (the float (the int (/ f30-0 f0-2))) f0-2)))
+            )
+       (when (>= (- f30-0 (-> obj ticks)) (-> obj period))
+         (set! (-> obj amp) (* (-> obj amp) (-> obj damp-amp)))
+         (set! (-> obj period) (* (-> obj period) (-> obj damp-period)))
+         (set! (-> obj ticks) f30-0)
+         (if (< (-> obj damp-period) 0.0)
+             (set-zero! obj)
+             )
+         )
+       (if (>= f30-0 (-> obj duration))
+           (set-zero! obj)
+           )
+       (* (sin (/ (* 65536.0 f28-0) (-> obj period)))
+          (* (-> obj amp) (/ (- (-> obj duration) f30-0) (-> obj duration)))
+          )
+       )
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+;; definition for method 11 of type smush-control
+(defmethod get-no-update smush-control ((obj smush-control))
+  (cond
+    ((!= (-> obj amp) 0.0)
+     (let* ((f30-0 (the float (- (current-time) (-> obj start-time))))
+            (f0-2 (-> obj period))
+            (f0-4 (- f30-0 (* (the float (the int (/ f30-0 f0-2))) f0-2)))
+            )
+       (* (sin (/ (* 65536.0 f0-4) (-> obj period)))
+          (* (-> obj amp) (/ (- (-> obj duration) f30-0) (-> obj duration)))
+          )
+       )
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+;; definition for method 14 of type smush-control
+(defmethod die-on-next-update! smush-control ((obj smush-control))
+  (if (!= (-> obj amp) 0.0)
+      (set! (-> obj damp-period) -1.0)
+      )
+  obj
+  )
+
+;; definition for method 12 of type smush-control
+(defmethod activate! smush-control ((obj smush-control) (arg0 float) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 clock))
+  (when (>= (fabs (* 0.2 (-> obj amp))) (fabs (get-no-update obj)))
+    (set! (-> obj amp) arg0)
+    (set! (-> obj period) (the float arg1))
+    (set! (-> obj duration) (the float arg2))
+    (set! (-> obj damp-amp) arg3)
+    (set! (-> obj damp-period) arg4)
+    (set! (-> obj ticks) 0.0)
+    (set! (-> obj start-time) (-> arg5 frame-counter))
+    )
+  obj
+  )

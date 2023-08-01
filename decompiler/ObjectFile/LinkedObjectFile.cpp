@@ -189,11 +189,14 @@ void LinkedObjectFile::symbol_link_word(int source_segment,
  * Add link information that a word's lower 16 bits are the offset of the given symbol relative to
  * the symbol table register.
  */
-void LinkedObjectFile::symbol_link_offset(int source_segment, int source_offset, const char* name) {
+void LinkedObjectFile::symbol_link_offset(int source_segment,
+                                          int source_offset,
+                                          const char* name,
+                                          bool subtract_one) {
   ASSERT((source_offset % 4) == 0);
   auto& word = words_by_seg.at(source_segment).at(source_offset / 4);
   ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
-  word.set_to_symbol(LinkedWord::SYM_OFFSET, name);
+  word.set_to_symbol(subtract_one ? LinkedWord::SYM_VAL_OFFSET : LinkedWord::SYM_OFFSET, name);
 }
 
 /*!
@@ -273,6 +276,10 @@ std::string LinkedObjectFile::print_words() {
 
       auto& word = words_by_seg[seg][i];
       append_word_to_string(result, word);
+
+      if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "string") {
+        result += "; " + get_goal_string(seg, i) + "\n";
+      }
     }
   }
 
@@ -311,6 +318,9 @@ void LinkedObjectFile::append_word_to_string(std::string& dest, const LinkedWord
       break;
     case LinkedWord::SYM_OFFSET:
       sprintf(buff, "    .sym-off 0x%x %s\n", word.data >> 16, word.symbol_name().c_str());
+      break;
+    case LinkedWord::SYM_VAL_OFFSET:
+      sprintf(buff, "    .sym-val-off 0x%x %s\n", word.data >> 16, word.symbol_name().c_str());
       break;
     default:
       throw std::runtime_error("nyi");
@@ -904,8 +914,25 @@ bool LinkedObjectFile::is_string(int seg, int byte_idx) const {
   if (type_tag_ptr < 0 || size_t(type_tag_ptr) >= words_by_seg.at(seg).size() * 4) {
     return false;
   }
-  auto& type_word = words_by_seg.at(seg).at(type_tag_ptr / 4);
-  return type_word.kind() == LinkedWord::TYPE_PTR && type_word.symbol_name() == "string";
+  int type_word_idx = type_tag_ptr / 4;
+  auto& type_word = words_by_seg.at(seg).at(type_word_idx);
+  if (type_word.kind() == LinkedWord::TYPE_PTR && type_word.symbol_name() == "string") {
+    // could be a string basic
+    // check if we're not right after a zero-length string array.
+    if (type_word_idx >= 3) {
+      auto& arr_type_word = words_by_seg.at(seg).at(type_word_idx - 3);
+      auto& arr_len_word = words_by_seg.at(seg).at(type_word_idx - 2);
+      auto& arr_alen_word = words_by_seg.at(seg).at(type_word_idx - 1);
+      if (arr_type_word.kind() == LinkedWord::TYPE_PTR && arr_type_word.symbol_name() == "array" &&
+          arr_len_word.kind() == LinkedWord::PLAIN_DATA && arr_len_word.data == 0 &&
+          arr_alen_word.kind() == LinkedWord::PLAIN_DATA && arr_alen_word.data == 0) {
+        return false;
+      }
+    }
+    // seems good.
+    return true;
+  }
+  return false;
 }
 
 /*!

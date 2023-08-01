@@ -1,0 +1,165 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mc-handle
+(deftype mc-handle (int32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition of type mc-file-info
+(deftype mc-file-info (structure)
+  ((present               int32     :offset-assert   0)
+   (blind-data            float  16 :offset          4)
+   (blind-data-int8       int8   64 :offset          4)
+   (level-index           int32     :offset          4)
+   (gem-count             float     :offset          8)
+   (skill-count           float     :offset         12)
+   (completion-percentage float     :offset         16)
+   (minute                uint8     :offset         24)
+   (hour                  uint8     :offset         25)
+   (week                  uint8     :offset         26)
+   (day                   uint8     :offset         27)
+   (month                 uint8     :offset         28)
+   (year                  uint8     :offset         29)
+   (game-time0            uint32    :offset         36)
+   (game-time1            uint32    :offset         40)
+   (secrets               uint32    :offset         44)
+   (features              uint32    :offset         48)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+;; definition for method 3 of type mc-file-info
+(defmethod inspect mc-file-info ((obj mc-file-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mc-file-info)
+  (format #t "~1Tpresent: ~D~%" (-> obj present))
+  (format #t "~1Tblind-data[16] @ #x~X~%" (-> obj blind-data))
+  (format #t "~1Tblind-data-int8[64] @ #x~X~%" (-> obj blind-data))
+  (format #t "~1Tlevel-index: ~D~%" (-> obj level-index))
+  (format #t "~1Tgem-count: ~f~%" (-> obj gem-count))
+  (format #t "~1Tskill-count: ~f~%" (-> obj skill-count))
+  (format #t "~1Tcompletion-percentage: ~f~%" (-> obj completion-percentage))
+  (format #t "~1Tminute: #x~X~%" (-> obj minute))
+  (format #t "~1Thour: #x~X~%" (-> obj hour))
+  (format #t "~1Tweek: #x~X~%" (-> obj week))
+  (format #t "~1Tday: #x~X~%" (-> obj day))
+  (format #t "~1Tmonth: #x~X~%" (-> obj month))
+  (format #t "~1Tyear: #x~X~%" (-> obj year))
+  (format #t "~1Tgame-time0: ~D~%" (-> obj game-time0))
+  (format #t "~1Tgame-time1: ~D~%" (-> obj game-time1))
+  (format #t "~1Tsecrets: #x~X~%" (-> obj secrets))
+  (format #t "~1Tfeatures: #x~X~%" (-> obj features))
+  (label cfg-4)
+  obj
+  )
+
+;; definition of type mc-slot-info
+(deftype mc-slot-info (structure)
+  ((handle       int32                  :offset-assert   0)
+   (known        int32                  :offset-assert   4)
+   (formatted    int32                  :offset-assert   8)
+   (inited       int32                  :offset-assert  12)
+   (last-file    int32                  :offset-assert  16)
+   (mem-required int32                  :offset-assert  20)
+   (mem-actual   int32                  :offset-assert  24)
+   (file         mc-file-info 4 :inline :offset-assert  28)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x12c
+  :flag-assert         #x90000012c
+  )
+
+;; definition for method 3 of type mc-slot-info
+(defmethod inspect mc-slot-info ((obj mc-slot-info))
+  (when (not obj)
+    (set! obj obj)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" obj 'mc-slot-info)
+  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "~1Tknown: ~D~%" (-> obj known))
+  (format #t "~1Tformatted: ~D~%" (-> obj formatted))
+  (format #t "~1Tinited: ~D~%" (-> obj inited))
+  (format #t "~1Tlast-file: ~D~%" (-> obj last-file))
+  (format #t "~1Tmem-required: ~D~%" (-> obj mem-required))
+  (format #t "~1Tmem-actual: ~D~%" (-> obj mem-actual))
+  (format #t "~1Tfile[4] @ #x~X~%" (-> obj file))
+  (label cfg-4)
+  obj
+  )
+
+;; definition for function mc-sync
+(defun mc-sync ()
+  (let ((v0-0 0))
+    (while (zero? v0-0)
+      (mc-run)
+      (set! v0-0 (the-as int (mc-check-result)))
+      )
+    v0-0
+    )
+  )
+
+;; definition for function show-mc-info
+;; WARN: Return type mismatch int vs none.
+(defun show-mc-info ((arg0 dma-buffer))
+  (let ((s5-0 (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (s4-0 2)
+      (mc-get-slot-info s4-0 s5-0)
+      (cond
+        ((zero? (-> s5-0 known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" s4-0)
+         *temp-string*
+         )
+        ((zero? (-> s5-0 handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" s4-0)
+         *temp-string*
+         )
+        ((zero? (-> s5-0 formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" s4-0 (-> s5-0 handle))
+         *temp-string*
+         )
+        ((zero? (-> s5-0 inited))
+         (format
+           (clear *temp-string*)
+           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+           s4-0
+           (-> s5-0 handle)
+           (-> s5-0 mem-required)
+           (-> s5-0 mem-actual)
+           )
+         *temp-string*
+         )
+        (else
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " s4-0 (-> s5-0 handle))
+          *temp-string*
+          (format
+            *temp-string*
+            "SAVES ~D ~D ~D ~D : LAST ~D~%"
+            (-> s5-0 file 0 present)
+            (-> s5-0 file 1 present)
+            (-> s5-0 file 2 present)
+            (-> s5-0 file 3 present)
+            (-> s5-0 last-file)
+            )
+          )
+        )
+      (draw-string-xy *temp-string* arg0 32 (+ (* 12 s4-0) 8) (font-color red) (font-flags shadow))
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

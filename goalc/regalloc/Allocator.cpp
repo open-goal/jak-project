@@ -7,6 +7,8 @@
 
 #include <stdexcept>
 
+#include "common/log/log.h"
+
 #include "goalc/regalloc/allocator_interface.h"
 
 #include "third-party/fmt/core.h"
@@ -136,7 +138,7 @@ void do_constrained_alloc(RegAllocCache* cache, const AllocationInput& in, bool 
   for (auto& constr : in.constraints) {
     auto var_id = constr.ireg.id;
     if (trace_debug) {
-      fmt::print("[RA] Apply constraint {}\n", constr.to_string());
+      lg::print("[RA] Apply constraint {}\n", constr.to_string());
     }
     if (constr.contrain_everywhere) {
       cache->live_ranges.at(var_id).constrain_everywhere(constr.desired_register);
@@ -156,18 +158,18 @@ bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in) {
       auto& lr = cache->live_ranges.at(constr.ireg.id);
       for (int i = lr.min; i <= lr.max; i++) {
         if (!lr.conflicts_at(i, constr.desired_register)) {
-          fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                     constr.ireg.to_string(), constr.desired_register.print(),
-                     cache->live_ranges.at(constr.ireg.id).get(i).to_string());
+          lg::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
+                    constr.ireg.to_string(), constr.desired_register.print(),
+                    cache->live_ranges.at(constr.ireg.id).get(i).to_string());
           ok = false;
         }
       }
     } else {
       if (!cache->live_ranges.at(constr.ireg.id)
                .conflicts_at(constr.instr_idx, constr.desired_register)) {
-        fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                   constr.ireg.to_string(), constr.desired_register.print(),
-                   cache->live_ranges.at(constr.ireg.id).get(constr.instr_idx).to_string());
+        lg::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
+                  constr.ireg.to_string(), constr.desired_register.print(),
+                  cache->live_ranges.at(constr.ireg.id).get(constr.instr_idx).to_string());
         ok = false;
       }
     }
@@ -187,7 +189,7 @@ bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in) {
           auto& ass2 = lr2.get(i);
           if (ass1.occupies_same_reg(ass2)) {
             // todo, this error won't be helpful
-            fmt::print(
+            lg::print(
                 "[RegAlloc Error] Cannot satisfy constraints at instruction {} due to constraints "
                 "on {} and {}\n",
                 i, lr1.var, lr2.var);
@@ -719,10 +721,10 @@ namespace {
  * Print out the state of the RegAllocCache after doing analysis.
  */
 void print_analysis(const AllocationInput& in, RegAllocCache* cache) {
-  fmt::print("[RegAlloc] Basic Blocks\n");
-  fmt::print("-----------------------------------------------------------------\n");
+  lg::print("[RegAlloc] Basic Blocks\n");
+  lg::print("-----------------------------------------------------------------\n");
   for (auto& b : cache->control_flow.basic_blocks) {
-    fmt::print("{}\n", b.print(in.instructions));
+    lg::print("{}\n", b.print(in.instructions));
   }
 
   printf("[RegAlloc] Alive Info\n");
@@ -797,14 +799,14 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   // constraint.
   if (!check_constrained_alloc(&cache, input)) {
     result.ok = false;
-    fmt::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
+    lg::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
     return result;
   }
 
   // do the allocations!
   if (!run_allocator(&cache, input, input.debug_settings.allocate_log_level)) {
     result.ok = false;
-    fmt::print("[RegAlloc Error] Register allocation has failed.\n");
+    lg::print("[RegAlloc Error] Register allocation has failed.\n");
     return result;
   }
 
