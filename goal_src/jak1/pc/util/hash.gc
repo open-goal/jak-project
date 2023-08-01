@@ -1,0 +1,241 @@
+;;;;;;;;;;;;;;;;;;;;;;
+;; Hashing Functions
+;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant CRC_POLY #x04c11db7)
+;; Could predefine this and only allocate memory when init is called
+(define *crc-table* (new 'global 'boxed-array uint32 #x100))
+(defun crc32-init ()
+  "Initialize the CRC32 table"
+  (dotimes (i #x100)
+    (let ((n (the uint32 (shl i 24))))
+      (dotimes (j 8)
+        (set! n (if (!= 0 (logand n #x80000000)) (logxor (shl n 1) CRC_POLY) (shl n 1))))
+      (set! (-> *crc-table* i) n))
+    )
+  )
+
+(defun crc32 ((data (pointer uint8)) (size int))
+  "Take the CRC32 hash of some data"
+  (let ((crc (the uint32 0)))
+    (dotimes (i size)
+      (set! crc (logxor (-> *crc-table* (shr crc 24)) (logior (shl crc 8) (-> data 0))))
+      (&+! data 1))
+    crc)
+  )
+
+(defmacro murmur-32-scramble (k-in)
+  `(let ((k ,k-in))
+     (*! k #xcc9e2d51)
+     (set! k (logior (shl k 15) (shr k 17)))
+     (*! k #x1b873593)
+     k)
+  )
+
+(defun murmur3-32 ((key (pointer uint8)) (len int) (seed uint))
+  "Take the murmur3-32 hash of some data. The seed allows for a different hash set given the same input.
+   https://en.wikipedia.org/wiki/MurmurHash#Algorithm"
+  (let ((h seed)
+        (k (the uint32 0))
+        (i (shr len 2)) ;; Initialized to number of remaining 4-byte chunks
+        )
+
+    ;; Read each 4-byte chunk
+    (while (!= i 0) (1-! i)
+      ;; Copy this 4 byte chunk into a 32-bit int
+      (logior! k (shl (-> key 3) 24))
+      (logior! k (shl (-> key 2) 16))
+      (logior! k (shl (-> key 1)  8))
+      (logior! k (-> key))
+
+      ;; Move our data forward to the next 4-byte chunk
+      (&+! key (the uint (size-of uint32)))
+
+      ;; Scramble and shift
+      (logxor! h (murmur-32-scramble k))
+      (set! h (logior (shl h 13) (shr h 19)))
+      (set! h (+ (* h 5) #xe6546b64))
+      )
+
+    ;; Read the rest
+    (set! k (the uint32 0))
+    (set! i (logand len 3))
+    (while (!= i 0)
+      (set! k (shl k 8))
+      (logior! k (-> key (- i 1)))
+      (1-! i)
+      )
+
+    ;; Final scramble and shift
+    (logxor! h (murmur-32-scramble k))
+    (logxor! h len)
+    (logxor! h (shr h 16))
+    (*! h #x85ebca6b)
+    (logxor! h (shr h 13))
+    (*! h #xc2b2ae35)
+    (logxor! h (shr h 16))
+    h)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Hash Table Implementation
+;;
+;; This is a naive hash table
+;; - assumes the key has a data field to hash, would need to add a hash method to types
+;; - static size after initialization
+;; - no collision resolution; it will overwrite
+;; - assumes key size of 8 unless specified to avoid calculating
+;; size and 8 works well with murmur3
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro hash-truncate (value &key (size 8) &key (seed (the uint 62)))
+  "Take the murmur3-32 hash and truncate. Intended to keep the backing array of a hash table small.
+   Note that this increases the chance of collision."
+  `(logand (murmur3-32 ,value ,size ,seed) #xFF)
+  )
+
+(defmacro new-hash-table (&key (type basic) &key (size 66))
+  "This is just an alias for a boxed array of the given type with a default type and size"
+  `(new 'global 'boxed-array ,type ,size)
+  )
+
+(defmacro get-hash (table key &key (key-size 8) &key (seed (the uint 62)))
+  `(-> ,table (hash-truncate (-> ,key data) :size ,key-size :seed ,seed))
+  )
+
+(defmacro set-hash! (table key &key (key-size 8) &key (seed (the uint 62)) value)
+  `(set! (-> ,table (hash-truncate (-> ,key data) :size ,key-size :seed ,seed)) ,value)
+  )
+
+
+;;;;;;;;;;;;;;;;;;
+;; Example usage
+;;;;;;;;;;;;;;;;;;
+;; (let ((table (new-hash-table)))
+;;   (set-hash! table "banana" "cat")
+;;   (set-hash! table "apple" "dog")
+
+;;   ;; prints "banana: cat, apple: dog"
+;;   (format #t "banana: ~S, apple: ~S\n" (get-hash table "banana") (get-hash table "apple"))
+;;   )
+;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Jump Table Implementation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; This is intended to replace (case)
+;; when the keys are all integers. It trades
+;; memory based on the highest key and in return
+;; it avoids all of the branch comparisons
+(defmacro defjumptable (table &rest cases)
+  "Builds a boxed-array of lambdas at startup where the size is the highest key and the index is the key for use as a jump table.
+   Note: The keys must all be integers."
+  `(begin
+    (let ((highest-value -9999))
+      ,@(apply (lambda (case)
+                 `(when (>= ,(car case) highest-value)
+                    (when (= ,(car case) highest-value)
+                      (format #t "[WARNING] Duplicate case in jump-table!\n")
+                      )
+                    (set! highest-value ,(car case))))
+               cases)
+      (define ,table (new 'global 'boxed-array function highest-value))
+      ,@(apply (lambda (case)
+                 `(set! (-> ,table ,(car case)) (lambda (,@(cadr case)) ,@(cddr case))))
+               cases))
+    )
+  )
+
+(defmacro jump-to (table key &key (typespec ()) &rest args)
+  "Calls the lambda stored in the jump-table at the given key with the provided arguments"
+  `((the (function ,@typespec none) (-> ,table ,key)) ,@args)
+  )
+
+;;;;;;;;;;;;;;;;;;
+;; Example usage
+;;;;;;;;;;;;;;;;;;
+;; (defjumptable *test-table*
+;;   (0 ((value int))
+;;      (format #t "case 0, value ~D\n" value)
+;;      )
+;;   (1 ((value int))
+;;      (format #t "case 1, value: ~D\n" value)
+;;      )
+;;   )
+;;
+;; prints "case 1, value: 32"
+;; (jump-to *test-table* 1 :typespec (int) 32)
+;;;;;;;;;;;;;;;;;;
+
+;; This is intended to improve the performance
+;; of large (case) statements of symbols, like
+;; might be used in process :event hooks
+
+;; It uses additional memory and must compute
+;; the hash, but scales O(1) with the number of cases
+;;
+;; It is naive and assumes no collisions.
+;; If keys collide, it will warn and a
+;; different seed should be provided. This
+;; could be improved to recompute automatically
+;;
+;; It assumes a static symbol length of 8 for
+;; performance with murmur3 so that it fits within 2 chunks
+;; and doesn't have to calculate the symbol length
+;;
+;; It truncates the hash to 3 bytes to minimize memory use,
+;; but this increases the chance of collision
+;;
+;; In my testing, this starts to outperform (case) when > ~20 cases
+
+(defmacro defjumptablesymb (table &rest cases)
+  "Builds a global boxed-array of lambdas at compile time where the size is the highest value provided, and the index is the switch-case key for use as a jump table"
+  `(begin
+    (let ((highest-value -9999))
+      ,@(apply (lambda (case)
+                 `(let ((hash (the int (hash-truncate (-> (symbol->string ,(car case)) data))))
+                        )
+                    (when (>= hash highest-value)
+                      (when (= hash highest-value)
+                        (format #t "[WARNING] Hash collision generating jump table!\n"))
+                      (set! highest-value hash)
+                      )
+                    )
+                 )
+               cases)
+      (define ,table (new 'global 'boxed-array function highest-value))
+      ,@(apply (lambda (case)
+                 ;; Converts the symbol to a string by adding the string offset and then
+                 `(set! (-> ,table (hash-truncate (-> (symbol->string ,(car case)) data)))
+                        (lambda (,@(cadr case)) ,@(cddr case)))
+                 )
+               cases)
+      )
+    )
+  )
+
+(defmacro jump-to-sym (table key &key (typespec ()) &rest args)
+  "Calls the lambda stored in the jump-table at the hash of the given key
+   with provided typespec and arguments"
+  `((the (function ,@typespec none) (-> ,table (hash-truncate (-> (symbol->string ,key) data)))) ,@args)
+  )
+
+;;;;;;;;;;;;;;;;;;
+;; Example usage
+;;;;;;;;;;;;;;;;;;
+;; (defjumptablesymb *test-symbol-table*
+;;   ('jump ((value int))
+;;      (format #t "jumpin, value ~D\n" value)
+;;      )
+;;   ('flop ((value int))
+;;      (format #t "floppin, value: ~D\n" value)
+;;      )
+;;   )
+;;
+;; prints "floppin, value: 32"
+;; (jump-to-sym *test-symbol-table* 'flop :typespec (int) 32)
+;;;;;;;;;;;;;;;;;;
+
+
