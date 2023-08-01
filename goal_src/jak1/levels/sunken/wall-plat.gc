@@ -39,8 +39,8 @@
               )
 
 (defstate wall-plat-retracted (wall-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('trigger)
        (go wall-plat-extending)
        )
@@ -60,14 +60,14 @@
   )
 
 (defstate wall-plat-extending (wall-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 1.5))
-                       #f
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      #f
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (sound-play "wall-plat")
@@ -94,8 +94,8 @@
   )
 
 (defstate wall-plat-extended (wall-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
       (('untrigger)
        (go wall-plat-retracting)
        )
@@ -114,14 +114,14 @@
   )
 
 (defstate wall-plat-retracting (wall-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 1.5))
-                       #f
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      #f
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (sound-play "wall-plat")
@@ -147,14 +147,14 @@
   )
 
 (defstate wall-plat-sync-idle (wall-plat)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'touch)
-                       (send-event arg0 'no-look-around (seconds 1.5))
-                       #f
-                       )
-              )
-      )
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object (case event-type
+                     (('touch)
+                      (send-event proc 'no-look-around (seconds 1.5))
+                      #f
+                      )
+                     )
+            )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -201,7 +201,7 @@
 
 (defmethod init-from-entity! wall-plat ((obj wall-plat) (arg0 entity-actor))
   (set! (-> obj extended-amount) 0.0)
-  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
+  (logior! (-> obj mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -258,7 +258,3 @@
     )
   (none)
   )
-
-
-
-

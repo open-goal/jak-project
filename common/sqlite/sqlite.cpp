@@ -34,7 +34,7 @@ sqlite::GenericResponse sqlite::SQLiteDatabase::run_query(const std::string& sql
 
   const auto rc = sqlite3_exec(
       m_db.value().get(), sql.data(),
-      [](void* data, int argc, char** argv, char** azColName) {
+      [](void* data, int argc, char** argv, char** /*azColName*/) {
         GenericResponse* resp = static_cast<GenericResponse*>(data);
         std::vector<std::string> row = {};
         for (int i = 0; i < argc; i++) {

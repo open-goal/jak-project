@@ -66,8 +66,7 @@ GameController::GameController(int sdl_device_id,
 void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
-                                   std::optional<InputBindAssignmentMeta>& bind_assignment,
-                                   bool ignore_inputs) {
+                                   std::optional<InputBindAssignmentMeta>& bind_assignment) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     if ((int)event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||

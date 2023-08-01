@@ -50,21 +50,11 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   }
 
   TfragRenderSettings settings;
-  settings.hvdf_offset = m_pc_port_data.hvdf_off;
-  settings.fog = m_pc_port_data.fog;
+  settings.camera = m_pc_port_data.camera;
 
-  memcpy(settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   settings.tree_idx = 0;
 
-  for (int i = 0; i < 4; i++) {
-    settings.itimes[i] = m_pc_port_data.itimes[i];
-  }
-
   update_render_state_from_pc_settings(render_state, m_pc_port_data);
-
-  for (int i = 0; i < 4; i++) {
-    settings.planes[i] = m_pc_port_data.planes[i];
-  }
 
   m_has_level = setup_for_level(m_pc_port_data.level_name, render_state);
   render_all_trees(settings, render_state, prof);
@@ -243,7 +233,15 @@ void Shrub::render_tree(int idx,
   }
 
   Timer interp_timer;
-  interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
+#ifndef __aarch64__
+  if (m_use_fast_time_of_day) {
+    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
+  } else {
+    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
+  }
+#else
+  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+#endif
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;

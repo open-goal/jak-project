@@ -1,0 +1,308 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: vinroom-obs.gc
+;; name in dgo: vinroom-obs
+;; dgos: VIN
+
+;; DECOMP BEGINS
+
+(deftype vin-turbine (process-drawable)
+  ((dont-draw-outside? symbol         :offset-assert 200)
+   (lightning-timer    uint64         :offset-assert 208)
+   (outside-plane      plane  :inline :offset-assert 224)
+   (lightning-plane    plane  :inline :offset-assert 240)
+   )
+  :heap-base #x80
+  :method-count-assert 22
+  :size-assert         #x100
+  :flag-assert         #x1600800100
+  (:methods
+    (idle () _type_ :state 20)
+    (dormant () _type_ :state 21)
+    )
+  )
+
+
+(defpart 1245
+  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+    (:num 1.0)
+    (:scale-x (meters 60))
+    (:rot-x (degrees 11.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 64.0 64.0)
+    (:g 128.0 64.0)
+    (:b 255.0)
+    (:a 32.0)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 1638.4)
+    (:next-time (seconds 0.017))
+    (:next-launcher 167)
+    )
+  )
+
+(defpart 1246
+  :init-specs ((:scale-x (meters 60))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 64.0 64.0)
+    (:g 128.0 64.0)
+    (:b 255.0)
+    (:a 24.0 32.0)
+    (:next-time (seconds 0.017))
+    (:next-launcher 167)
+    )
+  )
+
+(set! (-> *lightning-spec-id-table* 17) (new 'static 'lightning-spec
+                                          :name "lightning-turbine"
+                                          :flags (lightning-spec-flags lsf2)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :fade-time 120.0
+                                          :texture (new 'static 'texture-id :index #x83 :page #xc)
+                                          :reduction 0.42
+                                          :num-points 16
+                                          :box-size 12288.0
+                                          :merge-factor 0.5
+                                          :merge-count 4
+                                          :radius 2048.0
+                                          :duration 300.0
+                                          :sound #f
+                                          )
+      )
+
+(defskelgroup skel-vin-turbine vin-turbine vin-turbine-lod0-jg vin-turbine-idle-ja
+              ((vin-turbine-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
+
+(defstate dormant (vin-turbine)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :exit (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (none)
+    )
+  :trans (behavior ()
+    (if (>= (vector4-dot (the-as vector (-> self outside-plane)) (math-camera-pos)) 0.0)
+        (go-virtual idle)
+        )
+    (none)
+    )
+  :code (the-as (function none :behavior vin-turbine) sleep-code)
+  )
+
+(defstate idle (vin-turbine)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (-> self dont-draw-outside?)
+             (< (vector4-dot (the-as vector (-> self outside-plane)) (math-camera-pos)) 0.0)
+             )
+        (go-virtual dormant)
+        )
+    (none)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group)
+                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    (none)
+    )
+  :post (behavior ()
+    (when (and (or (not (-> self dont-draw-outside?))
+                   (>= (vector4-dot (the-as vector (-> self lightning-plane)) (math-camera-pos)) 0.0)
+                   )
+               (< (the-as time-frame (-> self lightning-timer)) (current-time))
+               )
+      (let ((s4-0 (new 'stack-no-clear 'matrix))
+            (s3-1
+              (vector-rotate-x! (new 'stack-no-clear 'vector) *y-vector* (* 182.04445 (rand-vu-float-range 10.0 40.0)))
+              )
+            (gp-2 (new 'stack-no-clear 'vector))
+            (s5-1 (new 'stack-no-clear 'collide-query))
+            )
+        (if (rand-vu-percent? 0.5)
+            (vector-negate! s3-1 s3-1)
+            )
+        (vector-rotate-y! s3-1 s3-1 (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+        (vector+float*! gp-2 (-> self root trans) s3-1 15564.8)
+        (set! (-> s5-1 start-pos quad) (-> gp-2 quad))
+        (set-vector!
+          (-> s5-1 move-dist)
+          (rand-vu-float-range -4551.1113 4551.1113)
+          0.0
+          (rand-vu-float-range -910.2222 910.2222)
+          1.0
+          )
+        (matrix-rotate-zyx! s4-0 (-> s5-1 move-dist))
+        (let ((s4-1 (vector-rotate*! (new 'stack-no-clear 'vector) s3-1 s4-0)))
+          (vector-normalize! s4-1 6144.0)
+          (vector+! (-> s5-1 start-pos) (-> s5-1 start-pos) s4-1)
+          (vector-normalize-copy! (-> s5-1 move-dist) s4-1 81920.0)
+          )
+        (let ((v1-17 s5-1))
+          (set! (-> v1-17 radius) 409.6)
+          (set! (-> v1-17 collide-with) (collide-spec backgnd))
+          (set! (-> v1-17 ignore-process0) self)
+          (set! (-> v1-17 ignore-process1) #f)
+          (set! (-> v1-17 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+          (set! (-> v1-17 action-mask) (collide-action solid))
+          )
+        (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-1) 0.0)
+          (set! (-> self lightning-timer)
+                (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.1 0.4)))))
+                )
+          (let ((s4-3 (new 'stack-no-clear 'vector)))
+            (set! (-> s4-3 quad) (-> s5-1 best-other-tri intersect quad))
+            (when (< 8192.0 (vector-vector-distance gp-2 s4-3))
+              (let ((s3-2 (process-spawn
+                            lightning-tracker
+                            :init lightning-tracker-init
+                            (-> *lightning-spec-id-table* 17)
+                            0
+                            #f
+                            self
+                            gp-2
+                            s4-3
+                            :to self
+                            )
+                          )
+                    (v1-36 (get-field-spec-by-id (-> *part-id-table* 1245) (sp-field-id spt-timer)))
+                    )
+                (if v1-36
+                    (set! (-> v1-36 initial-valuef) (the-as float (-> (the-as lightning-tracker (-> s3-2 0)) duration)))
+                    )
+                )
+              (let ((t9-20 sp-launch-particles-var)
+                    (a0-33 *sp-particle-system-2d*)
+                    (a1-21 (-> *part-id-table* 1245))
+                    (a2-10 *launch-matrix*)
+                    )
+                (set! (-> a2-10 trans quad) (-> s4-3 quad))
+                (t9-20 a0-33 a1-21 a2-10 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                )
+              )
+            )
+          )
+        )
+      )
+    (ja-post)
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! vin-turbine ((obj vin-turbine) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-vin-turbine" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> obj outside-plane) 0.707 0.0 0.707 -6377922.5)
+  (set! (-> obj lightning-plane quad) (-> obj outside-plane quad))
+  (set! (-> obj lightning-plane w) -6419865.5)
+  (set! (-> obj dont-draw-outside?)
+        (nonzero? (res-lump-value (-> obj entity) 'extra-id uint128 :time -1000000000.0))
+        )
+  (set! (-> obj lightning-timer) (the-as uint 0))
+  (if (and (-> obj dont-draw-outside?)
+           (< (vector4-dot (the-as vector (-> obj outside-plane)) (math-camera-pos)) 0.0)
+           )
+      (go (method-of-object obj dormant))
+      (go (method-of-object obj idle))
+      )
+  (none)
+  )
+
+(defskelgroup skel-vin-door vin-door vin-door-lod0-jg vin-door-idle-ja
+              ((vin-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 6)
+              )
+
+(deftype vin-door (com-airlock)
+  ()
+  :heap-base #x100
+  :method-count-assert 28
+  :size-assert         #x174
+  :flag-assert         #x1c01000174
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! vin-door ((obj vin-door) (arg0 entity-actor))
+  "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
+This commonly includes things such as:
+- stack size
+- collision information
+- loading the skeleton group / bones
+- sounds"
+  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 12288.0 0.0 24576.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 4)
+      (set-vector! (-> v1-8 local-sphere) 8192.0 16384.0 0.0 20480.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 5)
+      (set-vector! (-> v1-10 local-sphere) -8192.0 16384.0 0.0 20480.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> obj root) s5-0)
+    )
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-vin-door" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! obj)
+  (set! (-> obj sound-open-loop) (static-sound-spec "wood-door-open"))
+  (set! (-> obj sound-open-stop) (static-sound-spec "wood-open-hit"))
+  (set! (-> obj sound-close-loop) (static-sound-spec "wood-door-close"))
+  (set! (-> obj sound-close-stop) (static-sound-spec "wood-close-hit"))
+  (set! (-> obj door-radius) 12288.0)
+  (go (method-of-object obj close) #t)
+  (none)
+  )

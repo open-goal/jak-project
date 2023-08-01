@@ -37,7 +37,7 @@
            (vf2 :class vf)
            )
       (init-vf0-vector)
-      (let ((s5-0 (-> arg0 root-override)))
+      (let ((s5-0 (-> arg0 root)))
         (let ((s3-0 (new 'stack-no-clear 'collide-query))
               (s2-0 (-> s5-0 root-prim))
               (s4-0 (new 'stack-no-clear 'vector))
@@ -53,7 +53,7 @@
             (when a0-2
               (let ((s1-1 (new 'stack-no-clear 'vector)))
                 (set! (-> s1-1 quad) (-> (get-trans a0-2 0) quad))
-                (set! (-> s1-1 y) (+ 8192.0 (-> s1-1 y)))
+                (+! (-> s1-1 y) 8192.0)
                 (vector-! s4-0 s1-1 (-> s5-0 trans))
                 )
               (vector-normalize! s4-0 f30-0)
@@ -93,7 +93,7 @@
             )
           )
         (when (logtest? (-> s5-0 status) (collide-status touch-surface))
-          (if (logtest? (-> arg0 root-override status) (collide-status touch-actor))
+          (if (logtest? (-> arg0 root status) (collide-status touch-actor))
               (set! (-> arg0 hit-actor?) #t)
               )
           (go (method-of-object arg0 impact))
@@ -143,9 +143,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0
@@ -155,14 +155,14 @@
 (defmethod init-proj-settings! gun-buoy-shot ((obj gun-buoy-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> obj hit-actor?) #f)
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'explode)
   (set! (-> obj max-speed) 737280.0)
   (set! (-> obj move) gun-buoy-shot-move)
   (set! (-> obj timeout) (seconds 2.78))
   (set! (-> obj damage) 1024.0)
-  (set! (-> obj options) (logior (projectile-options deal-damage ignore-impact) (-> obj options)))
-  (set-gravity-length (-> obj root-override dynam) 573440.0)
+  (logior! (-> obj options) (projectile-options deal-damage ignore-impact))
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (none)
   )
 
@@ -260,7 +260,7 @@
     :walk-travel-speed (meters 6)
     :walk-acceleration (meters 10)
     :walk-turning-acceleration (meters 20)
-    :maximum-rotation-rate (degrees 2160.0)
+    :maximum-rotation-rate (degrees 2160)
     :notice-nav-radius (meters 4)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -331,7 +331,7 @@
           (cond
             ((logtest? (-> self flags) 1)
              (cloest-point-on-mesh (-> self nav) s5-0 s5-0 (the-as nav-poly #f))
-             (let ((v1-14 (-> self root-override2 trans)))
+             (let ((v1-14 (-> self root trans)))
                (vector-length (vector-! (new 'stack-no-clear 'vector) v1-14 s5-0))
                )
              (let ((v1-17 (-> self nav state)))
@@ -343,7 +343,7 @@
              )
             (else
               (let ((v1-21 (-> self nav state))
-                    (a0-16 (-> self root-override2 trans))
+                    (a0-16 (-> self root trans))
                     )
                 (logclear! (-> v1-21 flags) (nav-state-flag directional-mode))
                 (logior! (-> v1-21 flags) (nav-state-flag target-poly-dirty))
@@ -359,8 +359,8 @@
             (s5-1 (-> self aim-dir))
             )
         (let ((s4-1 (new 'stack-no-clear 'vector)))
-          (set! (-> s3-0 quad) (-> self root-override2 trans quad))
-          (set! (-> s3-0 y) (+ 4096.0 (-> s3-0 y)))
+          (set! (-> s3-0 quad) (-> self root trans quad))
+          (+! (-> s3-0 y) 4096.0)
           (vector-! s4-1 (get-trans (the-as process-focusable gp-0) 3) s3-0)
           (vector-normalize! s4-1 1.0)
           (vector-lerp! s5-1 s5-1 s4-1 0.99)
@@ -373,15 +373,15 @@
       )
     )
   (let ((s5-2 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-2 quad) (-> self root-override2 trans quad))
+    (set! (-> s5-2 quad) (-> self root trans quad))
     (let ((gp-1 (new 'stack 'water-info)))
-      (water-info-init! (-> self root-override2) gp-1 (collide-action solid semi-solid))
+      (water-info-init! (-> self root) gp-1 (collide-action solid semi-solid))
       (get-height *ocean* s5-2 #t)
       (seek! (-> self y-final) (+ -3276.8 (-> gp-1 trans y)) (* 3276.8 (-> self clock seconds-per-frame)))
       )
     )
   0
-  (set! (-> self root-override2 trans y) (+ (-> self y-final) (-> self y-offset) (-> self y-bob)))
+  (set! (-> self root trans y) (+ (-> self y-final) (-> self y-offset) (-> self y-bob)))
   (nav-enemy-method-176 self)
   0
   (none)
@@ -398,9 +398,9 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self root-override2 trans quad) (-> self start-pos quad))
-    (set! (-> self flags) (logand -3 (-> self flags)))
-    (set! (-> self flags) (logand -5 (-> self flags)))
+    (set! (-> self root trans quad) (-> self start-pos quad))
+    (logand! (-> self flags) -3)
+    (logand! (-> self flags) -5)
     (none)
     )
   :trans (behavior ()
@@ -408,7 +408,7 @@
                (< 2 (the-as int (-> self focus aware)))
                (-> *setting-control* user-current gun-buoy)
                )
-      (if (logtest? (-> self fact-info-override enemy-options) (enemy-option user0))
+      (if (logtest? (-> self fact enemy-options) (enemy-option user0))
           (logior! (-> self flags) 4)
           )
       (go-ambush self)
@@ -430,12 +430,12 @@
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
           )
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-2 enemy-flags))))
-      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info-override callback-info))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
       )
     0
     (nav-enemy-method-166 self)
     (logior! (-> self flags) 1)
-    (set! (-> self water flags) (logior (water-flags touch-water) (-> self water flags)))
+    (logior! (-> self water flags) (water-flags touch-water))
     (let* ((gp-0 *target*)
            (s3-0 (if (type? gp-0 process-focusable)
                      gp-0
@@ -462,9 +462,9 @@
               (set! (-> s5-0 y) -819.2)
               (let ((s3-2 (vector+! (new 'stack-no-clear 'vector) s4-0 s5-0)))
                 (cloest-point-on-mesh (-> self nav) s3-2 s3-2 (the-as nav-poly #f))
-                (set! (-> self root-override2 trans quad) (-> s3-2 quad))
+                (set! (-> self root trans quad) (-> s3-2 quad))
                 )
-              (set! (-> self y-final) (-> self root-override2 trans y))
+              (set! (-> self y-final) (-> self root trans y))
               (set! (-> self y-offset) (if gp-2
                                            -36864.0
                                            -81920.0
@@ -483,7 +483,7 @@
               )
             )
           0
-          (vector-reset! (-> self root-override2 transv))
+          (vector-reset! (-> self root transv))
           )
         (else
           (go-virtual dormant-aware)
@@ -517,7 +517,7 @@
           )
     (let ((f30-0 (- 1.0 (fabs (* 0.000012207031 (-> self y-offset))))))
       (let ((f0-7 (* f30-0 f30-0)))
-        (set-vector! (-> self root-override2 scale) f30-0 f30-0 f30-0 1.0)
+        (set-vector! (-> self root scale) f30-0 f30-0 f30-0 1.0)
         (let ((t9-1 vector-lerp!)
               (a0-2 (-> self draw color-mult))
               (a1-1 (new 'stack-no-clear 'vector))
@@ -539,7 +539,7 @@
 (defstate exit-ambush (gun-buoy)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self flags) (logand -2 (-> self flags)))
+    (logand! (-> self flags) -2)
     (none)
     )
   :exit (behavior ()
@@ -557,7 +557,7 @@
     (seek! (-> self y-offset) -81920.0 (* 49152.0 (-> self clock seconds-per-frame)))
     (let ((f30-0 (- 1.0 (fabs (* 0.000012207031 (-> self y-offset))))))
       (let ((f0-5 (* f30-0 f30-0)))
-        (set-vector! (-> self root-override2 scale) f30-0 f30-0 f30-0 1.0)
+        (set-vector! (-> self root scale) f30-0 f30-0 f30-0 1.0)
         (let ((t9-1 vector-lerp!)
               (a0-2 (-> self draw color-mult))
               (a1-1 (new 'stack-no-clear 'vector))
@@ -601,13 +601,10 @@
             (set! f30-0 (* 2.0 f30-0))
             )
         )
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override notice-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
                   :num! (seek!
                     (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override notice-anim)))
-                                frames
-                                num-frames
-                                )
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
                             -1
                             )
                          )
@@ -783,7 +780,7 @@
           (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-4 enemy-flags))))
           )
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-4 enemy-flags))))
-      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info-override callback-info))
+      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info callback-info))
       )
     0
     (let ((v1-7 self))
@@ -928,7 +925,7 @@
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (with-pp
-    (-> obj root-override2)
+    (-> obj root)
     (let* ((s4-0 *target*)
            (s5-0 (if (type? s4-0 process-focusable)
                      s4-0
@@ -958,9 +955,7 @@
           (let* ((f30-2 1.1)
                  (v1-10 (get-transv s5-0))
                  (f30-3 (* f30-2 (sqrtf (+ (* (-> v1-10 x) (-> v1-10 x)) (* (-> v1-10 z) (-> v1-10 z))))))
-                 (f0-8
-                   (vector-length (vector-! (new 'stack-no-clear 'vector) (get-trans s5-0 0) (-> obj root-override2 trans)))
-                   )
+                 (f0-8 (vector-length (vector-! (new 'stack-no-clear 'vector) (get-trans s5-0 0) (-> obj root trans))))
                  (f0-10 (fabs (+ -81920.0 f0-8)))
                  (f1-7 (-> obj nav target-speed))
                  (f0-11 (fmax f30-3 f0-10))
@@ -990,7 +985,7 @@
             )
       )
     (water-control-method-10 (-> obj water))
-    (update-trans! (-> obj sound) (-> obj root-override2 trans))
+    (update-trans! (-> obj sound) (-> obj root trans))
     (update! (-> obj sound))
     ((method-of-type nav-enemy track-target!) obj)
     0
@@ -1026,11 +1021,11 @@
   (the-as
     symbol
     (when arg1
-      (let ((s4-0 (-> obj root-override2))
+      (let ((s4-0 (-> obj root))
             (f30-0 (-> arg1 y))
-            (f28-0 (-> obj root-override2 trans y))
+            (f28-0 (-> obj root trans y))
             )
-        (-> obj fact-info-override)
+        (-> obj fact)
         (let ((v1-10
                 (or (not (and (-> obj next-state) (= (-> obj next-state name) 'dormant-aware)))
                     (let ((s2-0 arg0))
@@ -1041,7 +1036,7 @@
                          (let ((v1-12 arg0))
                            (and v1-12
                                 (or (focus-test? v1-12 on-water under-water)
-                                    (= (-> (the-as collide-shape-moving (-> v1-12 root-override)) ground-pat material) (pat-material waterbottom))
+                                    (= (-> (the-as collide-shape-moving (-> v1-12 root)) ground-pat material) (pat-material waterbottom))
                                     )
                                 )
                            )
@@ -1056,7 +1051,7 @@
               )
           (and v1-10
                (begin
-                 (set! f30-1 (-> obj enemy-info-override notice-nav-radius))
+                 (set! f30-1 (-> obj enemy-info notice-nav-radius))
                  (set! v1-19 (if (type? arg0 target)
                                  arg0
                                  )
@@ -1065,7 +1060,7 @@
                  )
                (and (and v1-19
                          (or (focus-test? v1-19 on-water under-water)
-                             (= (-> (the-as collide-shape-moving (-> v1-19 root-override)) ground-pat material) (pat-material waterbottom))
+                             (= (-> (the-as collide-shape-moving (-> v1-19 root)) ground-pat material) (pat-material waterbottom))
                              )
                          )
                     (let ((f0-2 f30-1))
@@ -1089,7 +1084,7 @@
         )
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (set! (-> s5-0 quad) (-> (get-trans arg0 0) quad))
-      (set! (-> s5-0 y) (+ 8192.0 (-> s5-0 y)))
+      (+! (-> s5-0 y) 8192.0)
       (set! (-> s4-0 ent) (-> obj entity))
       (set! (-> s4-0 charge) 1.0)
       (set! (-> s4-0 options) (projectile-options))
@@ -1137,14 +1132,14 @@
     (.sync.p)
     (label cfg-2)
     0
-    (forward-up-nopitch->quaternion (-> obj root-override2 quat) (-> obj aim-dir) *y-vector*)
+    (forward-up-nopitch->quaternion (-> obj root quat) (-> obj aim-dir) *y-vector*)
     (seek!
       (-> obj elev-angle)
       (- (vector-x-angle (-> obj aim-dir)))
       (* 10922.667 (-> pp clock seconds-per-frame))
       )
     (let* ((s5-1 (new 'stack-no-clear 'quaternion))
-           (s4-1 (-> obj root-override2 quat))
+           (s4-1 (-> obj root quat))
            (f1-1 (-> obj elev-angle))
            (f0-7 (fmax -728.1778 (fmin 728.1778 f1-1)))
            (f1-2 (- f1-1 f0-7))
@@ -1155,18 +1150,13 @@
       (quaternion-normalize! (quaternion*! s4-1 s4-1 s5-1))
       (quaternion-vector-angle! (the-as quaternion (-> obj gun-elev-jmod target)) *x-vector* f30-0)
       )
-    (let* ((s2-0 (vector-inv-orient-by-quat!
-                   (new 'stack-no-clear 'vector)
-                   (-> obj root-override2 transv)
-                   (-> obj root-override2 quat)
-                   )
-                 )
+    (let* ((s2-0 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> obj root transv) (-> obj root quat)))
            (v1-15 (vector-normalize-copy! (new 'stack-no-clear 'vector) s2-0 1.0))
            (s3-1 (new 'stack-no-clear 'vector))
            )
       0.0
       (let ((s5-2 (new 'stack-no-clear 'quaternion))
-            (s4-2 (-> obj root-override2 quat))
+            (s4-2 (-> obj root quat))
             (gp-1 (-> obj banking-quat))
             )
         (vector-normalize! (vector-cross! s3-1 v1-15 *y-vector*) 1.0)
@@ -1252,7 +1242,7 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   (none)
   )
@@ -1267,7 +1257,7 @@
   (init-enemy-behaviour-and-stats! obj *gun-buoy-nav-enemy-info*)
   (logclear! (-> obj mask) (process-mask actor-pause))
   (process-entity-status! obj (entity-perm-status no-kill) #t)
-  (set! (-> obj start-pos quad) (-> obj root-override2 trans quad))
+  (set! (-> obj start-pos quad) (-> obj root trans quad))
   (set! (-> obj flags) (the-as uint 0))
   (set! (-> obj gun-elev-jmod) (the-as joint-mod (new 'process 'joint-mod-rotate-local obj 6 #f)))
   (quaternion-copy! (the-as quaternion (-> obj gun-elev-jmod target)) *unity-quaternion*)
@@ -1291,7 +1281,7 @@
   (quaternion-copy! (-> obj banking-quat) *unity-quaternion*)
   (logclear! (-> obj nav flags) (nav-control-flag update-heading-from-facing))
   (let ((s5-1 (new 'stack-no-clear 'vector)))
-    (vector-z-quaternion! s5-1 (-> obj root-override2 quat))
+    (vector-z-quaternion! s5-1 (-> obj root quat))
     (set! (-> obj nav state heading quad) (-> s5-1 quad))
     )
   0
@@ -1301,7 +1291,7 @@
   (set-vector! (-> obj aim-dir) 0.0 0.0 1.0 0.0)
   (set! (-> obj splash-timer) 0)
   (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "gun-buoy-steady" :fo-max 80) (-> obj root-override2 trans))
+        (new 'process 'ambient-sound (static-sound-spec "gun-buoy-steady" :fo-max 80) (-> obj root trans))
         )
   (update-vol! (-> obj sound) 0.0)
   (set! (-> obj warning-id) (the-as sound-id -1))

@@ -64,7 +64,7 @@ This commonly includes things such as:
   )
 
 (deftype forest-youngsamos (process-focusable)
-  ((root-override2      collide-shape-moving         :offset        128)
+  ((root                collide-shape-moving         :override)
    (init-quat           quaternion           :inline :offset-assert 208)
    (desired-pos         vector               :inline :offset-assert 224)
    (hit-dir             vector               :inline :offset-assert 240)
@@ -96,18 +96,18 @@ This commonly includes things such as:
 
 (defbehavior forest-youngsamos-post forest-youngsamos ()
   (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-    (find-ground (-> self root-override2) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+    (find-ground (-> self root) a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
     )
-  (let ((v1-3 (vector-! (new 'stack-no-clear 'vector) (-> self desired-pos) (-> self root-override2 trans))))
-    (let ((a0-3 (-> self root-override2 transv)))
+  (let ((v1-3 (vector-! (new 'stack-no-clear 'vector) (-> self desired-pos) (-> self root trans))))
+    (let ((a0-3 (-> self root transv)))
       (if (not (-> self falling?))
           (vector+float*! a0-3 a0-3 v1-3 (* 3.0 (-> self clock seconds-per-frame)))
           )
       )
-    (vector-float*! (-> self root-override2 transv) (-> self root-override2 transv) 0.975)
+    (vector-float*! (-> self root transv) (-> self root transv) 0.975)
     (let ((gp-1 (vector-float*! (new 'stack-no-clear 'vector) v1-3 0.000024414063))
           (s4-0 (-> self init-quat))
-          (s5-0 (-> self root-override2 quat))
+          (s5-0 (-> self root quat))
           )
       (vector-inv-orient-by-quat! gp-1 gp-1 s4-0)
       (quaternion-rotate-local-z! s5-0 s4-0 (* 8192.0 (-> gp-1 x)))
@@ -115,13 +115,10 @@ This commonly includes things such as:
       )
     )
   (if (-> self falling?)
-      (vector-v++!
-        (-> self root-override2 transv)
-        (compute-acc-due-to-gravity (-> self root-override2) (new-stack-vector0) 1.0)
-        )
+      (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 1.0))
       (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
       )
-  (let ((gp-4 (-> self root-override2)))
+  (let ((gp-4 (-> self root)))
     (let ((a2-7 (new 'stack-no-clear 'collide-query)))
       (set! (-> a2-7 collide-with) (-> gp-4 root-prim prim-core collide-with))
       (set! (-> a2-7 ignore-process0) self)
@@ -144,7 +141,7 @@ This commonly includes things such as:
     0
     )
   (let ((a0-20 *target*))
-    (when (and a0-20 (< 614400.0 (vector-vector-distance (get-trans a0-20 0) (-> self root-override2 trans))))
+    (when (and a0-20 (< 614400.0 (vector-vector-distance (get-trans a0-20 0) (-> self root trans))))
       (let ((a1-19 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-19 from) (process->ppointer self))
         (set! (-> a1-19 num-params) 0)
@@ -201,7 +198,7 @@ This commonly includes things such as:
                          )
                      (cond
                        (v1-10
-                         (vector-! (-> self hit-dir) (-> self root-override2 trans) (-> v1-10 root-override trans))
+                         (vector-! (-> self hit-dir) (-> self root trans) (-> v1-10 root trans))
                          (vector-normalize! (-> self hit-dir) 1.0)
                          )
                        ((logtest? (attack-info-mask attacker-velocity) (-> s5-1 mask))
@@ -212,7 +209,7 @@ This commonly includes things such as:
                          )
                        )
                      )
-                   (set! (-> self hit-points) (+ -1.0 (-> self hit-points)))
+                   (+! (-> self hit-points) -1.0)
                    (if (>= 0.0 (-> self hit-points))
                        (go-virtual die)
                        (go-virtual hit)
@@ -275,18 +272,15 @@ This commonly includes things such as:
     (none)
     )
   :code (behavior ()
-    (set! (-> self root-override2 transv quad) (-> self hit-dir quad))
+    (set! (-> self root transv quad) (-> self hit-dir quad))
     (let ((f30-0 (rand-vu-float-range 0.0 1.0))
-          (gp-0 (-> self root-override2 transv))
+          (gp-0 (-> self root transv))
           )
       (vector-float*! gp-0 gp-0 (lerp 24576.0 65536.0 f30-0))
       (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((v1-5
-            (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> self hit-dir) (-> self root-override2 quat))
-            )
-          )
+    (let ((v1-5 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) (-> self hit-dir) (-> self root quat))))
       (cond
         ((< (-> v1-5 x) (-> v1-5 z))
          (ja-no-eval :group! (-> self draw art-group data 12)
@@ -341,11 +335,11 @@ This commonly includes things such as:
     (none)
     )
   :code (behavior ()
-    (speech-control-method-12 *speech-control* self (speech-type speech-type-1 speech-type-3))
+    (speech-control-method-12 *speech-control* self (speech-type speech-type-10))
     (send-event *camera* 'change-target self)
-    (set! (-> self root-override2 transv quad) (-> self hit-dir quad))
+    (set! (-> self root transv quad) (-> self hit-dir quad))
     (let ((f30-0 (rand-vu-float-range 0.0 1.0))
-          (gp-0 (-> self root-override2 transv))
+          (gp-0 (-> self root transv))
           )
       (vector-float*! gp-0 gp-0 (lerp 24576.0 65536.0 f30-0))
       (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
@@ -483,7 +477,7 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> obj root-override2) s4-0)
+    (set! (-> obj root) s4-0)
     )
   (set! (-> obj entity) arg0)
   (process-drawable-from-entity! obj (-> obj entity))
@@ -494,13 +488,13 @@ This commonly includes things such as:
     )
   (logclear! (-> obj mask) (process-mask actor-pause))
   (process-entity-status! obj (entity-perm-status no-kill) #t)
-  (set! (-> obj desired-pos quad) (-> obj root-override2 trans quad))
-  (quaternion-copy! (-> obj init-quat) (-> obj root-override2 quat))
-  (set! (-> obj desired-pos y) (+ 8192.0 (-> obj desired-pos y)))
+  (set! (-> obj desired-pos quad) (-> obj root trans quad))
+  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (+! (-> obj desired-pos y) 8192.0)
   (vector-reset! (-> obj hit-dir))
   (set! (-> obj hit-points) 9.0)
   (set! (-> obj incoming-attack-id) (the-as uint -1))
-  (vector-reset! (-> obj root-override2 transv))
+  (vector-reset! (-> obj root transv))
   (set! (-> obj focus-disable-timer) (the-as uint 0))
   (set! (-> obj hud) (ppointer->handle (process-spawn hud-samos-young :init hud-init-by-other :to obj)))
   (set! (-> obj sound-id) (new-sound-id))
@@ -519,111 +513,105 @@ This commonly includes things such as:
     (set-setting! 'sound-mode #f 0.0 1)
     (set-setting! 'sound-excitement 'abs 0.8 0)
     (set-setting! 'extra-bank '((forest2 forest4) (forest3 forest5)) 0.0 0)
-    (speech-control-method-10
-      *speech-control*
-      6
-      (new 'static 'speech-type-info
-        :min-delay #x4b0
-        :max-delay #x960
-        :list (new 'static 'boxed-array :type string
-          "kg001"
-          "kg002"
-          "kg004"
-          "kg006"
-          "kg001a"
-          "kg013"
-          "kg016"
-          "kg018"
-          "kg019"
-          "kg023"
-          "kg024"
-          "kg002a"
-          "kg004a"
-          "kg078a"
-          "kg079a"
-          "kg080a"
-          "kg081a"
-          "kg004a"
-          "kg082a"
-          "kg083a"
-          "kg084a"
-          "kg085a"
-          "kg086a"
-          "kg087a"
-          "kg088a"
-          "kg091a"
-          "kg023a"
-          "kg006a"
-          "kg092a"
-          "kg093a"
-          "kg094a"
-          "kg095a"
-          "kg103a"
-          "kg104a"
-          "kg112a"
-          "kg024a"
-          "kg134"
-          "kg136"
-          "kg137"
-          "kg138"
-          "kg139"
-          "kg140"
-          "kg141"
-          "kg130"
-          "kg135"
-          "kg156"
-          "kg157"
-          )
-        )
-      )
-    (speech-control-method-10
-      *speech-control*
-      9
-      (new 'static 'speech-type-info
-        :priority #x9
-        :max-delay #x12c
-        :list (new 'static 'boxed-array :type string
-          "kg133"
-          "kg137"
-          "kg142"
-          "kg144"
-          "kg145"
-          "kg146"
-          "kg147"
-          "kg148"
-          "kg149"
-          "kg150"
-          "kg138"
-          "kg151"
-          "kg152"
-          "kg153"
-          "kg154"
-          "kg155"
-          "kg159"
-          "kg163"
-          "kg164"
-          )
-        )
-      )
-    (speech-control-method-10
-      *speech-control*
-      10
-      (new 'static 'speech-type-info :priority #xa :max-delay #x12c :list (new 'static 'boxed-array :type string
-                                                                            "kg165"
-                                                                            "kg166"
-                                                                            "kg167"
-                                                                            "kg168"
-                                                                            "kg169"
-                                                                            "kg170"
-                                                                            "kg171"
-                                                                            "kg172"
-                                                                            "kg173"
-                                                                            "kg174"
-                                                                            "kg175"
-                                                                            "kg176"
-                                                                            )
-                                     )
-      )
+    (speech-table-set! *speech-control* (speech-type speech-type-6) (new 'static 'speech-type-info
+                                                                      :min-delay (seconds 4)
+                                                                      :max-delay (seconds 8)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg001"
+                                                                        "kg002"
+                                                                        "kg004"
+                                                                        "kg006"
+                                                                        "kg001a"
+                                                                        "kg013"
+                                                                        "kg016"
+                                                                        "kg018"
+                                                                        "kg019"
+                                                                        "kg023"
+                                                                        "kg024"
+                                                                        "kg002a"
+                                                                        "kg004a"
+                                                                        "kg078a"
+                                                                        "kg079a"
+                                                                        "kg080a"
+                                                                        "kg081a"
+                                                                        "kg004a"
+                                                                        "kg082a"
+                                                                        "kg083a"
+                                                                        "kg084a"
+                                                                        "kg085a"
+                                                                        "kg086a"
+                                                                        "kg087a"
+                                                                        "kg088a"
+                                                                        "kg091a"
+                                                                        "kg023a"
+                                                                        "kg006a"
+                                                                        "kg092a"
+                                                                        "kg093a"
+                                                                        "kg094a"
+                                                                        "kg095a"
+                                                                        "kg103a"
+                                                                        "kg104a"
+                                                                        "kg112a"
+                                                                        "kg024a"
+                                                                        "kg134"
+                                                                        "kg136"
+                                                                        "kg137"
+                                                                        "kg138"
+                                                                        "kg139"
+                                                                        "kg140"
+                                                                        "kg141"
+                                                                        "kg130"
+                                                                        "kg135"
+                                                                        "kg156"
+                                                                        "kg157"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-9) (new 'static 'speech-type-info
+                                                                      :priority 9
+                                                                      :max-delay (seconds 1)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg133"
+                                                                        "kg137"
+                                                                        "kg142"
+                                                                        "kg144"
+                                                                        "kg145"
+                                                                        "kg146"
+                                                                        "kg147"
+                                                                        "kg148"
+                                                                        "kg149"
+                                                                        "kg150"
+                                                                        "kg138"
+                                                                        "kg151"
+                                                                        "kg152"
+                                                                        "kg153"
+                                                                        "kg154"
+                                                                        "kg155"
+                                                                        "kg159"
+                                                                        "kg163"
+                                                                        "kg164"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-10) (new 'static 'speech-type-info
+                                                                       :priority 10
+                                                                       :max-delay (seconds 1)
+                                                                       :list (new 'static 'boxed-array :type string
+                                                                         "kg165"
+                                                                         "kg166"
+                                                                         "kg167"
+                                                                         "kg168"
+                                                                         "kg169"
+                                                                         "kg170"
+                                                                         "kg171"
+                                                                         "kg172"
+                                                                         "kg173"
+                                                                         "kg174"
+                                                                         "kg175"
+                                                                         "kg176"
+                                                                         )
+                                                                       )
+                       )
     (none)
     )
   )

@@ -196,7 +196,7 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
   bool done_first = false;
 
   // this string is part of the file info struct and the stuff after it is the file name.
-  const auto& file_info_string = get_file_info_string();
+  const auto& file_info_string = get_art_group_file_info_string();
 
   // it should occur in each chunk.
   int chunk_id = 0;
@@ -240,5 +240,26 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
   ASSERT(strcmp(iso_name_1, iso_name_2) == 0);
 
   return result;
+}
+
+std::string StrFileReader::get_texture_name() const {
+  ASSERT(m_chunks.size() == 1);
+  const auto& chunk = m_chunks[0];
+  auto find_string = get_texture_page_file_info_string();
+  int offset;
+  if (find_string_in_data(chunk.data(), int(chunk.size()), find_string, &offset)) {
+    offset += find_string.length();
+  } else {
+    ASSERT_MSG(false, fmt::format("did not find string '{}'", find_string));
+  }
+
+  for (int i = 0; i < 128; i++) {
+    if (chunk[offset + i] == '.') {
+      std::string result;
+      result.assign((const char*)&chunk[offset], i);
+      return result;
+    }
+  }
+  ASSERT_NOT_REACHED();
 }
 }  // namespace decompiler

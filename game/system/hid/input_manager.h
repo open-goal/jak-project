@@ -46,7 +46,13 @@ class InputManager {
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
-  void process_sdl_event(const SDL_Event& event, const bool ignore_mouse, const bool ignore_kb);
+  void process_sdl_event(const SDL_Event& event);
+  void poll_keyboard_data();
+  void clear_keyboard_actions();
+  void poll_mouse_data();
+  void clear_mouse_actions();
+  // Any cleanup that should happen after polling has completed for this frame
+  void finish_polling();
   /// Any event coming from the EE thread that interacts directly with SDL should be enqueued as an
   /// event so it can be ran from the proper thread context (the graphics thread)
   void process_ee_events();
@@ -92,6 +98,8 @@ class InputManager {
   void stop_waiting_for_bind() { m_waiting_for_bind = std::nullopt; }
   void set_camera_sens(const float xsens, const float ysens);
   void reset_input_bindings_to_defaults(const int port, const InputDeviceType device_type);
+  bool auto_hiding_cursor() { return m_auto_hide_mouse || m_mouse.is_camera_being_controlled(); }
+  void hide_cursor(const bool hide_cursor);
 
  private:
   std::mutex m_event_queue_mtx;
@@ -119,10 +127,9 @@ class InputManager {
   /// Collection of arbitrary commands to run on user actions
   CommandBindingGroups m_command_binds;
 
-  bool m_ignored_device_last_frame = false;
-
   bool m_keyboard_enabled = true;
   bool m_mouse_enabled = false;
+  int m_skip_polling_for_n_frames = 0;
   bool m_auto_hide_mouse = true;
   bool m_mouse_currently_hidden = false;
   bool m_ignore_background_controller_events = false;
@@ -134,7 +141,6 @@ class InputManager {
   std::optional<InputBindAssignmentMeta> m_waiting_for_bind = std::nullopt;
 
   void refresh_device_list();
-  void hide_cursor(const bool hide_cursor);
   void clear_inputs();
 
   void ignore_background_controller_events(const bool ignore);

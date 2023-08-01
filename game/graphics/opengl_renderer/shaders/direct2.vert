@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec4 rgba_in;
@@ -11,7 +11,7 @@ out vec3 tex_coord;
 out float fog;
 
 // putting all texture info stuff here so it's easier to copy-paste
-out flat uvec2 tex_info;
+flat out uvec2 tex_info;
 
 void main() {
   gl_Position = vec4((position_in.x - 0x8000) / 0x1000,

@@ -294,10 +294,16 @@
     (loop
       (suspend)
       (let* ((s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> self control unknown-vector01) 1.0))
+             ;; modified to avoid dividing by zero when jak's speed is 0.
+             ;; this fixes the issue where jak gets stuck on frame 60 of the ice-walk animation
+             ;; instead of switching to stance (due to making zero progress here),
+             ;; _and_ it fixes the issue where we get a NaN frame number in daxter, causing the eye animation
+             ;; to read bogus memory.
+             (vector01-len (vector-length (-> self control unknown-vector01)))
              (gp-6 (vector-float*!
                      (new 'stack-no-clear 'vector)
                      (-> self control unknown-vector00)
-                     (/ 1.0 (vector-length (-> self control unknown-vector01)))
+                     (/ 1.0 (if (= vector01-len 0) 0.001 vector01-len)) ;; added the .001 case here.
                      )
                    )
              (f0-18 (fmax -1.0 (fmin 1.0 (vector-dot s5-0 gp-6))))

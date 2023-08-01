@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 
 out vec4 color;
@@ -10,11 +10,11 @@ uniform vec4 fog_color;
 in float fog;
 in vec4 fragment_color;
 
-in flat uvec2 tex_info;
+flat in uvec2 tex_info;
 
 uniform int gfx_hack_no_tex;
 
-layout (binding = 0) uniform sampler2D tex_T0;
+uniform sampler2D tex_T0;
 
 vec4 sample_tex(vec2 coord, uint unit) {
   return texture(tex_T0, coord);

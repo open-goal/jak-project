@@ -1,5 +1,6 @@
 #include "TextureUploadHandler.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
@@ -8,8 +9,10 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
-TextureUploadHandler::TextureUploadHandler(const std::string& name, int my_id)
-    : BucketRenderer(name, my_id) {}
+TextureUploadHandler::TextureUploadHandler(const std::string& name,
+                                           int my_id,
+                                           std::shared_ptr<TextureAnimator> texture_animator)
+    : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {}
 
 void TextureUploadHandler::render(DmaFollower& dma,
                                   SharedRenderState* render_state,
@@ -17,7 +20,6 @@ void TextureUploadHandler::render(DmaFollower& dma,
   // this is the data we get from the PC Port modification.
   m_upload_count = 0;
   std::vector<TextureUpload> uploads;
-
   // loop through all data, grabbing buckets
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto dma_tag = dma.current_tag();
@@ -25,7 +27,13 @@ void TextureUploadHandler::render(DmaFollower& dma,
     auto vif0 = dma.current_tag_vifcode0();
     if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
       dma.read_and_advance();
-      render_state->texture_animator->handle_texture_anim_data(dma);
+      auto p = scoped_prof("texture-animator");
+      // note: if both uploads and animator write to the pool, do uploads before the animator.
+      flush_uploads(uploads, render_state);
+      uploads.clear();
+      m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
+                                                   render_state->texture_pool.get(),
+                                                   render_state->frame_idx);
     }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {
@@ -63,6 +71,7 @@ void TextureUploadHandler::render(DmaFollower& dma,
 
 void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
                                          SharedRenderState* render_state) {
+  auto p = scoped_prof("flush-uploads");
   if (m_fake_uploads) {
     uploads.clear();
   } else {
@@ -73,7 +82,7 @@ void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
     const u8* ee_mem = (const u8*)render_state->ee_main_memory;
     for (auto& upload : uploads) {
       render_state->texture_pool->handle_upload_now(ee_mem + upload.page, upload.mode, ee_mem,
-                                                    render_state->offset_of_s7);
+                                                    render_state->offset_of_s7, m_my_id == 999);
     }
   }
 }

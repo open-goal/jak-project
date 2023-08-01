@@ -139,7 +139,7 @@ auto sceCdCallback(void (*callback)(int)) {
 
 int sceCdRead(int lsn, int num_sectors, void* dest, void* mode) {
   (void)mode;
-  auto do_read = [lsn, num_sectors, dest, mode](s32 thid) {
+  auto do_read = [lsn, num_sectors, dest](s32 thid) {
     // printf("sceCdRead %d, %d -> %p\n", lsn, num_sectors, dest);
     ASSERT(gFakeCd.fp);
     if (fseek(gFakeCd.fp, lsn * SECTOR_SIZE, SEEK_SET)) {

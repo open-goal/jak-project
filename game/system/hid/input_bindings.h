@@ -155,6 +155,14 @@ struct InputModifiers {
   bool need_alt = false;
 
   bool has_necessary_modifiers(const u16 key_modifiers) const;
+
+  bool operator==(const InputModifiers& other) const {
+    if (need_shift == other.need_shift && need_ctrl == other.need_ctrl &&
+        need_meta == other.need_meta && need_alt == other.need_alt) {
+      return true;
+    }
+    return false;
+  }
 };
 
 void to_json(json& j, const InputModifiers& obj);
@@ -287,6 +295,17 @@ struct InputBindingGroups {
   // correspond with the PS2 value. Such as when remapping a key so you can unbind overlapping binds
   std::unordered_map<BindCacheKey, std::vector<InputBindingInfo>, hash_name> m_analog_lookup;
   std::unordered_map<BindCacheKey, std::vector<InputBindingInfo>, hash_name> m_button_lookup;
+  // The underlying data structures support multiple binds for the same input, but the UX doesn't
+  // so we have to wipe out any shared bindings after an assignment
+  void remove_multiple_binds(u32 sdl_idx,
+                             InputBindAssignmentMeta& bind_meta,
+                             std::unordered_map<u32, std::vector<InputBinding>>& bind_map);
+  std::optional<std::pair<InputBinding, bool>> find_button_bind_from_sdl_idx(
+      u32 sdl_idx,
+      const std::optional<InputModifiers> modifiers);
+  std::optional<std::pair<InputBinding, bool>> find_analog_bind_from_sdl_idx(
+      u32 sdl_idx,
+      const std::optional<InputModifiers> modifiers);
 };
 
 void to_json(json& j, const InputBindingGroups& obj);
@@ -306,6 +325,16 @@ extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 /// an arbitrary lambda (with no return value) when triggered.
 ///
 /// An example of these would be taking a screenshot or save-state actions
+// TODO - there is currently a bad UX if commands overlap with user bindings.  For example if "F2"
+// is for screenshots and the user binds that to "X" it will work, but you're going to take a
+// screenshot everytime you jump.
+//
+// We probably don't want that but fundamentally this is a problem because the commands are
+// hard-coded and not customizable so even if we prevented such binds -- there would not be a good
+// user-facing reason why the bind failed to take.
+//
+// So there are some potential solutions but this doesn't feel high priority and this was always an
+// issue.
 struct CommandBinding {
   enum Source { CONTROLLER, KEYBOARD, MOUSE };
 

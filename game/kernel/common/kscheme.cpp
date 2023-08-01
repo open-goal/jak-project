@@ -85,13 +85,22 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
 extern "C" {
 // defined in asm_funcs.asm
 #ifdef __linux__
-uint64_t _call_goal_asm_linux(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
-uint64_t _call_goal_on_stack_asm_linux(u64 rsp,
-                                       u64 u0,
-                                       u64 u1,
-                                       void* fptr,
-                                       void* st_ptr,
-                                       void* offset);
+uint64_t _call_goal_asm_systemv(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+uint64_t _call_goal_on_stack_asm_systemv(u64 rsp,
+                                         u64 u0,
+                                         u64 u1,
+                                         void* fptr,
+                                         void* st_ptr,
+                                         void* offset);
+#elif defined __APPLE__ && defined __x86_64__
+uint64_t _call_goal_asm_systemv(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset) asm(
+    "_call_goal_asm_systemv");
+uint64_t _call_goal_on_stack_asm_systemv(u64 rsp,
+                                         u64 u0,
+                                         u64 u1,
+                                         void* fptr,
+                                         void* st_ptr,
+                                         void* offset) asm("_call_goal_on_stack_asm_systemv");
 #elif _WIN32
 uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
 uint64_t _call_goal_on_stack_asm_win32(u64 rsp, void* fptr, void* st_ptr, void* offset);
@@ -108,7 +117,9 @@ u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
 
   void* fptr = f.c();
 #ifdef __linux__
-  return _call_goal_asm_linux(a, b, c, fptr, st_ptr, offset);
+  return _call_goal_asm_systemv(a, b, c, fptr, st_ptr, offset);
+#elif defined __APPLE__ && defined __x86_64__
+  return _call_goal_asm_systemv(a, b, c, fptr, st_ptr, offset);
 #elif _WIN32
   return _call_goal_asm_win32(a, b, c, fptr, st_ptr, offset);
 #endif
@@ -122,7 +133,9 @@ u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset) {
 
   void* fptr = f.c();
 #ifdef __linux__
-  return _call_goal_on_stack_asm_linux(rsp, 0, 0, fptr, st_ptr, offset);
+  return _call_goal_on_stack_asm_systemv(rsp, 0, 0, fptr, st_ptr, offset);
+#elif defined __APPLE__ && defined __x86_64__
+  return _call_goal_on_stack_asm_systemv(rsp, 0, 0, fptr, st_ptr, offset);
 #elif _WIN32
   return _call_goal_on_stack_asm_win32(rsp, fptr, st_ptr, offset);
 #endif

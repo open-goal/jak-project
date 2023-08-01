@@ -342,10 +342,8 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
     dma.read_and_advance();
   }
 
-  m_common_data.settings.hvdf_offset = m_pc_port_data.hvdf_off;
-  m_common_data.settings.fog = m_pc_port_data.fog;
+  m_common_data.settings.camera = m_pc_port_data.camera;
 
-  memcpy(m_common_data.settings.math_camera.data(), m_pc_port_data.camera[0].data(), 64);
   m_common_data.settings.tree_idx = 0;
 
   if (render_state->occlusion_vis[m_level_id].valid) {
@@ -355,11 +353,6 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
   }
 
   update_render_state_from_pc_settings(render_state, m_pc_port_data);
-
-  for (int i = 0; i < 4; i++) {
-    m_common_data.settings.planes[i] = m_pc_port_data.planes[i];
-    m_common_data.settings.itimes[i] = m_pc_port_data.itimes[i];
-  }
 
   m_has_level = try_loading_level(m_pc_port_data.level_name, render_state);
   return true;
@@ -434,11 +427,15 @@ void Tie3::setup_tree(int idx,
     m_color_result.resize(tree.colors->size());
   }
 
+#ifndef __aarch64__
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
   }
+#else
+  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+#endif
 
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
@@ -452,7 +449,7 @@ void Tie3::setup_tree(int idx,
 
   if (!m_debug_all_visible) {
     // need culling data
-    cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+    cull_check_all_slow(settings.camera.planes, tree.vis->vis_nodes, settings.occlusion_culling,
                         tree.vis_temp.data());
   }
 
@@ -507,17 +504,17 @@ void set_uniform(GLuint uniform, const math::Vector4f& val) {
 }
 }  // namespace
 
-void init_etie_cam_uniforms(const EtieUniforms& uniforms, const SharedRenderState* render_state) {
-  glUniformMatrix4fv(uniforms.cam_no_persp, 1, GL_FALSE, render_state->camera_no_persp[0].data());
+void init_etie_cam_uniforms(const EtieUniforms& uniforms, const GoalBackgroundCameraData& data) {
+  glUniformMatrix4fv(uniforms.cam_no_persp, 1, GL_FALSE, data.rot[0].data());
 
   math::Vector4f perspective[2];
-  float inv_fog = 1.f / render_state->camera_fog[0];
-  auto& hvdf_off = render_state->camera_hvdf_off;
-  float pxx = render_state->camera_persp[0].x();
-  float pyy = render_state->camera_persp[1].y();
-  float pzz = render_state->camera_persp[2].z();
-  float pzw = render_state->camera_persp[2].w();
-  float pwz = render_state->camera_persp[3].z();
+  float inv_fog = 1.f / data.fog[0];
+  auto& hvdf_off = data.hvdf_off;
+  float pxx = data.perspective[0].x();
+  float pyy = data.perspective[1].y();
+  float pzz = data.perspective[2].z();
+  float pzw = data.perspective[2].w();
+  float pwz = data.perspective[3].z();
   float scale = pzw * inv_fog;
   perspective[0].x() = scale * hvdf_off.x();
   perspective[0].y() = scale * hvdf_off.y();
@@ -553,7 +550,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
 
   if (use_envmap) {
     // if we use envmap, use the envmap-style math for the base draw to avoid rounding issue.
-    init_etie_cam_uniforms(m_etie_base_uniforms, render_state);
+    init_etie_cam_uniforms(m_etie_base_uniforms, m_common_data.settings.camera);
   }
 
   glBindVertexArray(tree.vao);
@@ -657,7 +654,7 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
                render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
 
-  init_etie_cam_uniforms(m_etie_uniforms, render_state);
+  init_etie_cam_uniforms(m_etie_uniforms, m_common_data.settings.camera);
   set_uniform(m_etie_uniforms.envmap_tod_tint, m_common_data.envmap_color);
 
   int last_texture = -1;
@@ -890,12 +887,10 @@ void Tie3::render_tree_wind(int idx,
   // note: this isn't the most efficient because we might compute wind matrices for invisible
   // instances. TODO: add vis ids to the instance info to avoid this
   memset(tree.wind_matrix_cache.data(), 0, sizeof(float) * 16 * tree.wind_matrix_cache.size());
-  auto& cam_bad = settings.math_camera;
+  auto& cam_bad = settings.camera.camera;
   std::array<math::Vector4f, 4> cam;
   for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      cam[i][j] = cam_bad.data()[i * 4 + j];
-    }
+    cam[i] = cam_bad[i];
   }
 
   for (size_t inst_id = 0; inst_id < tree.instance_info->size(); inst_id++) {

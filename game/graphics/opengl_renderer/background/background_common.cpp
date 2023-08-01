@@ -2,7 +2,11 @@
 
 #include "background_common.h"
 
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
 #include <immintrin.h>
+#endif
 
 #include "common/util/os.h"
 
@@ -175,14 +179,15 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   auto id = sh.id();
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
   glUniform1i(glGetUniformLocation(id, "decal"), false);
-
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.math_camera.data());
-  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_offset[0],
-              settings.hvdf_offset[1], settings.hvdf_offset[2], settings.hvdf_offset[3]);
-  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.fog.x());
-  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.fog.y());
-  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.fog.z());
+  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE,
+                     settings.camera.camera[0].data());
+  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.camera.hvdf_off[0],
+              settings.camera.hvdf_off[1], settings.camera.hvdf_off[2],
+              settings.camera.hvdf_off[3]);
+  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.camera.fog.x());
+  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.camera.fog.y());
+  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.camera.fog.z());
   glUniform4f(glGetUniformLocation(id, "fog_color"), render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
@@ -274,6 +279,7 @@ SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>&
   return out;
 }
 
+#ifndef __aarch64__
 void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
                              const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out) {
@@ -429,6 +435,7 @@ void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
     }
   }
 }
+#endif
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
   math::Vector4f acc =
@@ -771,14 +778,12 @@ u32 make_all_visible_index_list(std::pair<int, int>* group_out,
 void update_render_state_from_pc_settings(SharedRenderState* state, const TfragPcPortData& data) {
   if (!state->has_pc_data) {
     for (int i = 0; i < 4; i++) {
-      state->camera_planes[i] = data.planes[i];
-      state->camera_matrix[i] = data.camera[i];
-      state->camera_no_persp[i] = data.camera_rot[i];
-      state->camera_persp[i] = data.camera_perspective[i];
+      state->camera_planes[i] = data.camera.planes[i];
+      state->camera_matrix[i] = data.camera.camera[i];
     }
-    state->camera_pos = data.cam_trans;
-    state->camera_hvdf_off = data.hvdf_off;
-    state->camera_fog = data.fog;
+    state->camera_pos = data.camera.trans;
+    state->camera_hvdf_off = data.camera.hvdf_off;
+    state->camera_fog = data.camera.fog;
     state->has_pc_data = true;
   }
 }

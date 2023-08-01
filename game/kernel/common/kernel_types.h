@@ -3,7 +3,7 @@
 #include "common/common_types.h"
 
 //! Mirror of cpad-info
-#pragma pack(push, 4)
+#pragma pack(push, 1)
 struct CPadInfo {
   u8 valid;
   u8 status;
@@ -26,13 +26,15 @@ struct CPadInfo {
   u8 align[6];
   u8 direct[6];
   u8 buzz_val[2];
+  u8 buzz_pause_val[1];
+  u8 buzz_pause_time;
   u64 buzz_time[2];
   u32 buzz;
   s32 buzz_act;
-  s32 change_time;  // actually u64 in goal!
+  s64 change_time;  // actually u64 in goal!
 };
 // static_assert(offsetof(CPadInfo, number) == 32, "CPadInfo number field is wrong");
-static_assert(sizeof(CPadInfo) == 128, "CPadInfo size is wrong");
+static_assert(sizeof(CPadInfo) == 132, "CPadInfo size is wrong");
 #pragma pack(pop)
 
 struct FileStream {

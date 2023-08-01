@@ -4,7 +4,7 @@
 #|
 
   This file runs the game-specific version of the pckernel.
-	See pckernel-common.gc for the bulk of the pckernel.
+  See pckernel-common.gc for the bulk of the pckernel.
 
  |#
 
@@ -125,7 +125,7 @@
 (defmethod handle-input-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
   "handle the text parsing input for the 'settings' group"
 
-	((method-of-type pc-settings handle-input-settings) obj file)
+  ((method-of-type pc-settings handle-input-settings) obj file)
   (case-str *pc-temp-string*
     (("jetboard-trick-text?") (set! (-> obj jetboard-trick-text?) (file-stream-read-symbol file)))
     (("fast-airlock?") (set! (-> obj fast-airlock?) (file-stream-read-symbol file)))
@@ -138,7 +138,7 @@
 (defmethod handle-output-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
   "handle the text writing output for the 'settings' group"
   
-	((method-of-type pc-settings handle-output-settings) obj file)
+  ((method-of-type pc-settings handle-output-settings) obj file)
   (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
   (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
@@ -167,6 +167,18 @@
                           (font-color flat-yellow)
                           (font-flags right shadow kerning))))
 
+
+
+(defun print-level-types ((lev level))
+  "print the level-type linked list for a level"
+  (format #t "print-level-types for ~A~%" (-> lev nickname))
+  (let ((cur-type (-> lev level-type)))
+    (while (and cur-type (nonzero? cur-type) (= type (-> cur-type type)))
+      (format #t "~A~%" cur-type)
+      (set! cur-type (the type (-> cur-type method-table 8))))
+    (format #t "~%"))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -174,4 +186,20 @@
 
 ;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
 (define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; progress adjustments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant CENTER_X (/ 512 2))
+
+(defun adjust-game-x-centered ((origin int) (x float))
+  "given an x position ranging from [0, 512) adjust for aspect ratio towards the origin point specified
+   such that it does not get stretched away with the framebuffer"
+  (+ origin (* (- x origin) (-> *pc-settings* aspect-ratio-reciprocal))))
+
+(defmacro adjust-game-x (x)
+  `(adjust-game-x-centered CENTER_X ,x))
 

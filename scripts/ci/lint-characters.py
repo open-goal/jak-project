@@ -10,6 +10,7 @@ parser.set_defaults(fix=False)
 args = parser.parse_args()
 
 # TODO - trim strings
+# TODO - jak 2 files
 
 # fmt: off
 JAK1_ALLOWED_CHARACTERS = [

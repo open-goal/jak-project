@@ -276,6 +276,7 @@ std::string GsTest::print() const {
         ASSERT(false);
     }
   }
+  result += '\n';
   return result;
 }
 

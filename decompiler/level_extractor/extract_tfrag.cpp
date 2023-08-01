@@ -2007,6 +2007,65 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
   return result;
 }
 
+s32 find_or_add_texture_to_level(u32 combo_tex_id,
+                                 std::vector<tfrag3::Texture>& texture_pool,
+                                 const TextureDB& tdb,
+                                 const std::vector<std::pair<int, int>>& expected_missing_textures,
+                                 const std::string& level_name) {
+  // first, let's see if we have a texture for this.
+  s32 tfrag3_tex_id = INT32_MAX;
+  for (u32 i = 0; i < texture_pool.size(); i++) {
+    if (texture_pool[i].combo_id == combo_tex_id) {
+      tfrag3_tex_id = i;
+      break;
+    }
+  }
+
+  if (tfrag3_tex_id == INT32_MAX) {
+    // nope. we are a new texture.
+    auto tex_it = tdb.textures.find(combo_tex_id);
+    if (tex_it == tdb.textures.end()) {
+      int tpage = combo_tex_id >> 16;
+      int idx = combo_tex_id & 0xffff;
+      bool ok_to_miss =
+          std::find(expected_missing_textures.begin(), expected_missing_textures.end(),
+                    std::make_pair(tpage, idx)) != expected_missing_textures.end();
+      if (ok_to_miss) {
+        // we're missing a texture, just use the first one.
+        tex_it = tdb.textures.begin();
+      } else {
+        ASSERT_MSG(
+            false,
+            fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
+                        "to include "
+                        "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
+                        "tpage is {}. id is {} (0x{:x}) for level {}",
+                        combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
+                        combo_tex_id & 0xffff, level_name));
+      }
+    }
+    tfrag3_tex_id = texture_pool.size();
+    texture_pool.emplace_back();
+    auto& new_tex = texture_pool.back();
+    new_tex.combo_id = combo_tex_id;
+    new_tex.w = tex_it->second.w;
+    new_tex.h = tex_it->second.h;
+    new_tex.debug_name = tex_it->second.name;
+    new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+    new_tex.data = tex_it->second.rgba_bytes;
+  }
+
+  // map animated textures to the animation slot.
+  const auto& level_tex = texture_pool.at(tfrag3_tex_id);
+  const auto& it = tdb.animated_tex_output_to_anim_slot.find(level_tex.debug_name);
+  if (it != tdb.animated_tex_output_to_anim_slot.end()) {
+    // lg::warn("tfrag3 animated texture: {}", level_tex.debug_name);
+    return -int(it->second) - 1;
+  }
+
+  return tfrag3_tex_id;
+}
+
 void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
                       tfrag3::TfragTree& tree_out,
                       std::vector<tfrag3::PreloadedVertex>& vertices,
@@ -2020,49 +2079,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
   // and link textures.
 
   for (auto& [combo_tex_id, draw_list] : draws) {
-    // first, let's see if we have a texture for this.
-    u32 tfrag3_tex_id = UINT32_MAX;
-    for (u32 i = 0; i < texture_pool.size(); i++) {
-      if (texture_pool[i].combo_id == combo_tex_id) {
-        tfrag3_tex_id = i;
-        break;
-      }
-    }
-
-    if (tfrag3_tex_id == UINT32_MAX) {
-      // nope. we are a new texture.
-      auto tex_it = tdb.textures.find(combo_tex_id);
-      if (tex_it == tdb.textures.end()) {
-        int tpage = combo_tex_id >> 16;
-        int idx = combo_tex_id & 0xffff;
-        bool ok_to_miss =
-            std::find(expected_missing_textures.begin(), expected_missing_textures.end(),
-                      std::make_pair(tpage, idx)) != expected_missing_textures.end();
-        if (ok_to_miss) {
-          // we're missing a texture, just use the first one.
-          tex_it = tdb.textures.begin();
-        } else {
-          ASSERT_MSG(
-              false,
-              fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
-                          "to include "
-                          "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
-                          "tpage is {}. id is {} (0x{:x}) for level {}",
-                          combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
-                          combo_tex_id & 0xffff, level_name));
-        }
-      }
-      tfrag3_tex_id = texture_pool.size();
-      texture_pool.emplace_back();
-      auto& new_tex = texture_pool.back();
-      new_tex.combo_id = combo_tex_id;
-      new_tex.w = tex_it->second.w;
-      new_tex.h = tex_it->second.h;
-      new_tex.debug_name = tex_it->second.name;
-      new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-      new_tex.data = tex_it->second.rgba_bytes;
-    }
-
+    s32 tfrag3_tex_id = find_or_add_texture_to_level(combo_tex_id, texture_pool, tdb,
+                                                     expected_missing_textures, level_name);
     // now, add draws
     for (auto& draw : draw_list) {
       tfrag3::StripDraw tdraw;

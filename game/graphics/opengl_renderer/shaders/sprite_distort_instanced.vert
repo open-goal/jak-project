@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 xyz;                  // position from sine table
 layout (location = 1) in vec2 st;                   // tex coord from sine table
@@ -7,7 +7,7 @@ layout (location = 3) in vec4 instance_scale_t;     // sprite scale + texture T-
 
 uniform vec4 u_color;
 
-out flat vec4 fragment_color;
+flat out vec4 fragment_color;
 out vec2 tex_coord;
 
 void main() {

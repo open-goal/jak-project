@@ -36,6 +36,7 @@
 #include "third-party/imgui/imgui_impl_sdl.h"
 #include "third-party/imgui/imgui_style.h"
 #define STBI_WINDOWS_UTF8
+#include "common/util/dialogs.h"
 #include "common/util/string_util.h"
 
 #include "third-party/stb_image/stb_image.h"
@@ -99,6 +100,8 @@ static int gl_init(GfxGlobalSettings& settings) {
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
       sdl_util::log_error("Could not initialize SDL, exiting");
+      dialogs::create_error_message_dialog("Critical Error Encountered",
+                                           "Could not initialize SDL, exiting");
       return 1;
     }
   }
@@ -126,6 +129,9 @@ static int gl_init(GfxGlobalSettings& settings) {
     }
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+#ifdef __APPLE__
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
@@ -216,6 +222,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   prof().end_event();
   if (!window) {
     sdl_util::log_error("gl_make_display failed - Could not create display window");
+    dialogs::create_error_message_dialog(
+        "Critical Error Encountered",
+        "Unable to create OpenGL window.\nOpenGOAL requires OpenGL 4.3.\nEnsure your GPU "
+        "supports this and your drivers are up to date.");
     return NULL;
   }
 
@@ -225,6 +235,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   prof().end_event();
   if (!gl_context) {
     sdl_util::log_error("gl_make_display failed - Could not create OpenGL Context");
+    dialogs::create_error_message_dialog(
+        "Critical Error Encountered",
+        "Unable to create OpenGL context.\nOpenGOAL requires OpenGL 4.3.\nEnsure your GPU "
+        "supports this and your drivers are up to date.");
     return NULL;
   }
 
@@ -232,6 +246,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
     auto p = scoped_prof("startup::sdl::assign_context");
     if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
       sdl_util::log_error("gl_make_display failed - Could not associated context with window");
+      dialogs::create_error_message_dialog("Critical Error Encountered",
+                                           "Unable to create OpenGL window with context.\nOpenGOAL "
+                                           "requires OpenGL 4.3.\nEnsure your GPU "
+                                           "supports this and your drivers are up to date.");
       return NULL;
     }
   }
@@ -242,6 +260,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
       if (!gladLoadGL()) {
         lg::error("GL init fail");
+        dialogs::create_error_message_dialog("Critical Error Encountered",
+                                             "Unable to initialize OpenGL API.\nOpenGOAL requires "
+                                             "OpenGL 4.3.\nEnsure your GPU "
+                                             "supports this and your drivers are up to date.");
         return NULL;
       }
     }
@@ -285,7 +307,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   {
     auto p = scoped_prof("startup::sdl::init_imgui");
     // setup imgui
+#ifdef __APPLE__
+    init_imgui(window, gl_context, "#version 410");
+#else
     init_imgui(window, gl_context, "#version 430");
+#endif
   }
 
   return std::static_pointer_cast<GfxDisplay>(display);
@@ -297,10 +323,10 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
       m_display_manager(std::make_shared<DisplayManager>(window)),
       m_input_manager(std::make_shared<InputManager>()) {
   m_main = is_main;
-
+  m_display_manager->set_input_manager(m_input_manager);
   // Register commands
   m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
-                                    CommandBinding(SDLK_LALT, [&]() {
+                                    CommandBinding(Gfx::g_debug_settings.hide_imgui_key, [&]() {
                                       if (!Gfx::g_debug_settings.ignore_hide_imgui) {
                                         set_imgui_visible(!is_imgui_visible());
                                       }
@@ -359,7 +385,6 @@ void render_game_frame(int game_width,
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
     options.draw_subtitle_editor_window = g_gfx_data->debug_gui.should_draw_subtitle_editor();
-    options.draw_subtitle2_editor_window = g_gfx_data->debug_gui.should_draw_subtitle2_editor();
     options.draw_filters_window = g_gfx_data->debug_gui.should_draw_filters_menu();
     options.save_screenshot = false;
     options.quick_screenshot = false;
@@ -447,13 +472,9 @@ void GLDisplay::process_sdl_events() {
         ImGui_ImplSDL2_ProcessEvent(&evt);
       }
     }
-    ImGuiIO& io = ImGui::GetIO();
     {
-      auto p = scoped_prof("sdl-input-monitor");
-      // Ignore relevant inputs from the window if ImGUI is capturing them
-      // On the first frame, this will clear any current inputs in an attempt to reduce unexpected
-      // behaviour
-      m_input_manager->process_sdl_event(evt, io.WantCaptureMouse, io.WantCaptureKeyboard);
+      auto p = scoped_prof("sdl-input-monitor-process-event");
+      m_input_manager->process_sdl_event(evt);
     }
   }
 }
@@ -462,7 +483,27 @@ void GLDisplay::process_sdl_events() {
  * Main function called to render graphics frames. This is called in a loop.
  */
 void GLDisplay::render() {
-  // Process SDL Events
+  // Before we process the current frames SDL events we for keyboard/mouse button inputs.
+  //
+  // This technically means that keyboard/mouse button inputs will be a frame behind but the
+  // event-based code is buggy and frankly not worth stressing over.  Leaving this as a note incase
+  // someone complains. Binding handling is still taken care of by the event code though.
+  {
+    auto p = scoped_prof("sdl-input-monitor-poll-for-kb-mouse");
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) {
+      m_input_manager->clear_keyboard_actions();
+    } else {
+      m_input_manager->poll_keyboard_data();
+    }
+    if (io.WantCaptureMouse) {
+      m_input_manager->clear_mouse_actions();
+    } else {
+      m_input_manager->poll_mouse_data();
+    }
+    m_input_manager->finish_polling();
+  }
+  // Now process SDL Events
   process_sdl_events();
   // Also process any display related events received from the EE (the game)
   // this is done here so they run from the perspective of the graphics thread
@@ -499,6 +540,9 @@ void GLDisplay::render() {
       game_res_w = 640;
       game_res_h = 480;
     }
+    // set the size of the visible/playable portion of the game in the window
+    get_display_manager()->set_game_size(Gfx::g_global_settings.lbox_w,
+                                         Gfx::g_global_settings.lbox_h);
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
@@ -653,7 +697,7 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
     // just pass it to the texture pool.
     // the texture pool will take care of locking.
     // we don't want to lock here for the entire duration of the conversion.
-    g_gfx_data->texture_pool->handle_upload_now(tpage, mode, g_ee_main_mem, s7_ptr);
+    g_gfx_data->texture_pool->handle_upload_now(tpage, mode, g_ee_main_mem, s7_ptr, false);
   }
 }
 

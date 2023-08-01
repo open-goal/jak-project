@@ -1070,7 +1070,7 @@
     (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.2)))
     (vector-float*! (-> self control transv) (-> self control edge-grab-across-edge-dir) -40960.0)
     (if (< (- (current-time) (-> self control rider-time)) (seconds 0.2))
-        (send-event self 'push-transv (-> self control rider-last-move) #x7530)
+        (send-event self 'push-transv (-> self control rider-last-move) (seconds 100))
         )
     (go target-falling 'target-edge-grab)
     (none)
@@ -1105,7 +1105,7 @@
       (let ((f0-5 (the float (the int (+ 1.0 (/ (- arg0 (-> *TARGET-bank* fall-far)) (-> *TARGET-bank* fall-far-inc))))))
             )
         (pickup-collectable!
-          (-> self fact-override)
+          (-> self fact)
           (pickup-type health)
           (* (-> *FACT-bank* health-single-inc) (- (fmax 0.0 f0-5)))
           (the-as handle #f)
@@ -1114,7 +1114,7 @@
       (target-timed-invulnerable (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout)) self 1)
       )
     (cond
-      ((and (= (-> self game mode) 'play) (>= 0.0 (-> (the-as fact-info-target (-> self fact-override)) health)))
+      ((and (= (-> self game mode) 'play) (>= 0.0 (-> (the-as fact-info-target (-> self fact)) health)))
        (set! (-> self attack-info attacker) (the-as handle #f))
        (go target-death 'target-hit-ground-hard)
        )

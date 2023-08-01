@@ -8,6 +8,7 @@
 #include <variant>
 
 #include "game/settings/settings.h"
+#include "game/system/hid/input_manager.h"
 
 #include "third-party/SDL/include/SDL.h"
 
@@ -73,6 +74,8 @@ class DisplayManager {
   bool is_minimized() { return m_window_state == WindowState::Minimized; }
   int get_window_width() { return m_window_width; }
   int get_window_height() { return m_window_height; }
+  int get_window_game_width() { return m_window_game_width; }
+  int get_window_game_height() { return m_window_game_height; }
   float get_window_scale_x() { return m_window_scale_x; }
   float get_window_scale_y() { return m_window_scale_y; }
   int num_connected_displays() { return m_current_display_modes.size(); }
@@ -89,9 +92,19 @@ class DisplayManager {
   void enqueue_set_window_display_mode(WindowDisplayMode mode);
   void enqueue_set_fullscreen_display_id(int display_id);
 
+  void set_game_size(int width, int height) {
+    m_window_game_width = width;
+    m_window_game_height = height;
+  }
+
+  void set_input_manager(std::shared_ptr<InputManager> input_manager) {
+    m_input_manager = input_manager;
+  }
+
  private:
   SDL_Window* m_window;
   game_settings::DisplaySettings m_display_settings;
+  std::optional<std::shared_ptr<InputManager>> m_input_manager;
 
   std::mutex event_queue_mtx;
   std::queue<EEDisplayEvent> ee_event_queue;
@@ -106,6 +119,8 @@ class DisplayManager {
   int m_window_ypos = 0;
   int m_window_width = 0;
   int m_window_height = 0;
+  int m_window_game_width = 0;
+  int m_window_game_height = 0;
   float m_window_scale_x = 1.0;
   float m_window_scale_y = 1.0;
   WindowState m_window_state = WindowState::Restored;

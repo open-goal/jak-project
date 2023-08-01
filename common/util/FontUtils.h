@@ -86,6 +86,9 @@ class GameTextFontBank {
   std::string convert_game_to_utf8(const char* in) const;
 };
 
+extern GameTextFontBank g_font_bank_jak1_v1;
+extern GameTextFontBank g_font_bank_jak1_v2;
+extern GameTextFontBank g_font_bank_jak2;
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 
 const GameTextFontBank* get_font_bank(GameTextVersion version);

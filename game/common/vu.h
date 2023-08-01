@@ -1,7 +1,11 @@
 #pragma once
 #include <cfloat>
 
-#include "immintrin.h"
+#ifdef __aarch64__
+#include "third-party/sse2neon/sse2neon.h"
+#else
+#include <immintrin.h>
+#endif
 
 #include "common/common_types.h"
 #include "common/math/Vector.h"
@@ -27,6 +31,8 @@ enum class Mask {
 };
 
 #ifdef __linux__
+#define REALLY_INLINE __attribute__((always_inline))
+#elif __APPLE__
 #define REALLY_INLINE __attribute__((always_inline))
 #else
 #define REALLY_INLINE __forceinline

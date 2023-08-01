@@ -9,8 +9,6 @@
 
 ;; DECOMP BEGINS
 
-(format 0 "SKIP: process-drawable-shock-wall-effect in target-darkjak~%")
-
 (defbehavior target-darkjak-setup target ((arg0 symbol))
   (when (zero? (-> self darkjak))
     (set! (-> self darkjak) (new 'process 'darkjak-info))
@@ -58,9 +56,7 @@
                  )
             )
        (or (and (not (and (focus-test? self dark) (nonzero? (-> self darkjak))))
-                (and (>= (- (current-time) (-> (the-as fact-info-target (-> self fact-override)) darkjak-start-time))
-                         (seconds 0.05)
-                         )
+                (and (>= (- (current-time) (-> (the-as fact-info-target (-> self fact)) darkjak-start-time)) (seconds 0.05))
                      (>= (-> self game eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
                      )
                 )
@@ -96,9 +92,8 @@
   (none)
   )
 
-;; ERROR: Function may read a register that is not set: t2
 (defbehavior target-darkjak-process target ()
-  (local-vars (t2-0 none) (gp-0 vector))
+  (local-vars (gp-0 vector))
   (cond
     ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
      (let ((a1-0 'eco-red))
@@ -113,8 +108,8 @@
        )
      (target-danger-set! (-> self control danger-mode) #f)
      (update-transforms (-> self control))
-     (if (and (or (>= (- (current-time) (-> (the-as fact-info-target (-> self fact-override)) darkjak-start-time))
-                      (-> (the-as fact-info-target (-> self fact-override)) darkjak-effect-time)
+     (if (and (or (>= (- (current-time) (-> (the-as fact-info-target (-> self fact)) darkjak-start-time))
+                      (-> (the-as fact-info-target (-> self fact)) darkjak-effect-time)
                       )
                   (not (-> *setting-control* user-current darkjak))
                   )
@@ -221,42 +216,34 @@
             (s2-0 *launch-matrix*)
             )
         (set! (-> s2-0 trans quad) (-> (process-drawable-random-point! self (new 'stack-no-clear 'vector)) quad))
-        (let ((a3-8 #f)
-              (t0-5 #f)
-              (t1-0 1.0)
-              )
-          (gp-1 s5-0 s4-0 s2-0 (the-as sparticle-launch-state a3-8) (the-as sparticle-launch-control t0-5) t1-0)
-          (cond
-            ((rand-vu-percent? 0.25)
-             (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.02))
-               (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
-               ;; (process-drawable-shock-wall-effect
-               ;;   self
-               ;;   (-> *lightning-spec-id-table* 8)
-               ;;   lightning-probe-callback
-               ;;   (-> *part-id-table* 179)
-               ;;   (the-as int t0-5)
-               ;;   (the-as int t1-0)
-               ;;   (the-as float t2-0)
-               ;;   )
-               )
+        (gp-1 s5-0 s4-0 s2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (cond
+        ((rand-vu-percent? 0.25)
+         (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.02))
+           (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
+           (process-drawable-shock-wall-effect
+             self
+             (-> *lightning-spec-id-table* 8)
+             lightning-probe-callback
+             (-> *part-id-table* 179)
              )
-            ((rand-vu-percent? 0.1)
-             (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.02))
-               (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
-               (process-drawable-shock-effect
-                 self
-                 (-> *lightning-spec-id-table* 6)
-                 lightning-probe-callback
-                 (-> *part-id-table* 179)
-                 0
-                 0
-                 40960.0
-                 )
-               )
+           )
+         )
+        ((rand-vu-percent? 0.1)
+         (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.02))
+           (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
+           (process-drawable-shock-effect
+             self
+             (-> *lightning-spec-id-table* 6)
+             lightning-probe-callback
+             (-> *part-id-table* 179)
+             0
+             0
+             40960.0
              )
-            )
-          )
+           )
+         )
         )
       )
     )
@@ -288,7 +275,7 @@
     (persist-with-delay *setting-control* 'bg-a-speed (seconds 3) 'bg-a-speed 'abs 0.5 0)
     (if (not (and (-> self next-state) (= (-> self next-state name) 'target-darkjak-get-off)))
         (pickup-collectable!
-          (-> self fact-override)
+          (-> self fact)
           (pickup-type eco-pill-dark)
           (- (-> *FACT-bank* eco-pill-dark-max-default))
           (the-as handle #f)
@@ -318,9 +305,9 @@
     (set! (-> self darkjak attack-count) (the-as uint 0))
     (set! (-> self darkjak-giant-interp) 1.0)
     (set-setting! 'sound-flava #f 30.0 4)
-    (set! (-> self focus-status) (logior (focus-status dark) (-> self focus-status)))
-    (set! (-> (the-as fact-info-target (-> self fact-override)) darkjak-start-time) (current-time))
-    (set! (-> (the-as fact-info-target (-> self fact-override)) darkjak-effect-time) (seconds 20))
+    (logior! (-> self focus-status) (focus-status dark))
+    (set! (-> (the-as fact-info-target (-> self fact)) darkjak-start-time) (current-time))
+    (set! (-> (the-as fact-info-target (-> self fact)) darkjak-effect-time) (seconds 20))
     (if (logtest? (-> self darkjak stage) 16)
         (logior! (-> self state-flags) (state-flags sf4))
         (logclear! (-> self state-flags) (state-flags sf4))
@@ -422,7 +409,7 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-flags) (logior (state-flags lleg-still rleg-still) (-> self state-flags)))
+    (logior! (-> self state-flags) (state-flags lleg-still rleg-still))
     (set! (-> self neck flex-blend) 0.0)
     (set! (-> self control mod-surface) *darkjak-trans-mods*)
     (kill-persister *setting-control* (the-as engine-pers 'bg-a-speed) 'bg-a-speed)
@@ -1829,7 +1816,7 @@
           )
         (set! (-> self darkjak clock-vel) -4.0)
         (set! (-> self darkjak clock-on) #t)
-        (send-event *camera* 'joystick -1098907648 #x3f800000)
+        (send-event *camera* 'joystick -0.25 1.0)
         (when (>= (- (current-time) sv-72) (seconds 0.1))
           (set! sv-72 (current-time))
           (target-bomb1-fire-shot sv-60 sv-64 sv-48 (the-as int sv-104))
@@ -1882,7 +1869,7 @@
     (set! (-> self darkjak-interp) 1.0)
     (set! (-> self darkjak-giant-interp) (the-as float (-> self control unknown-word04)))
     (when (= (the-as float (-> self control unknown-word04)) 1.0)
-      (set! (-> self darkjak stage) (logand -33 (-> self darkjak stage)))
+      (logand! (-> self darkjak stage) -33)
       (set! (-> self darkjak want-stage) (-> self darkjak stage))
       )
     (none)
@@ -1902,7 +1889,7 @@
           ((method-of-type sphere new) (the-as symbol (-> s5-1 s4-0)) sphere)
           )
         (set! (-> s5-1 0 quad) (-> self control trans quad))
-        (set! (-> s5-1 0 y) (+ 12697.6 (-> s5-1 0 y)))
+        (+! (-> s5-1 0 y) 12697.6)
         (set! (-> s5-1 0 r) 11878.4)
         (let ((v1-29 gp-1))
           (set! (-> v1-29 best-dist) (the-as float s5-1))

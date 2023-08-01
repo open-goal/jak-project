@@ -59,7 +59,8 @@ inline u32 psmt8_addr(u32 x, u32 y, u32 width) {
   // column is 16, 4
 
   // first determine the page
-  u32 pages_per_row = width / 128;
+  // Note: not actually sure what the GS does here...
+  u32 pages_per_row = std::max(1u, width / 128);
   u32 page_col = x / 128;
   u32 page_row = y / 64;
   u32 page_x = x % 128;

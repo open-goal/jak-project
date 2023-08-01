@@ -1,0 +1,66 @@
+name: MacOS Build
+
+on:
+  workflow_call:
+    inputs:
+      cmakePreset:
+        required: true
+        type: string
+      cachePrefix:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: ARM
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
+      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
+      BUILDCACHE_COMPRESS_FORMAT: ZSTD
+      BUILDCACHE_COMPRESS_LEVEL: 19
+      BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up ARM64 environment
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
+      - name: Install Package Dependencies
+        run: arch -arm64 brew install cmake ninja
+
+      - name: Setup Buildcache
+        uses: mikehardy/buildcache-action@v2.1.0
+        with:
+          cache_key: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          buildcache_tag: v0.28.1
+
+      - name: CMake Generation
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build --preset=${{ inputs.cmakePreset }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
+
+      - name: Build Project
+        run: cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+
+      - name: Run Tests
+        run: ./test.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: opengoal-macos-${{ inputs.cachePrefix }}
+          if-no-files-found: error
+          path: |
+            ./build/goalc/goalc
+            ./build/decompiler/extractor
+            ./build/game/gk
+            ./build/lsp/lsp

@@ -21,6 +21,7 @@
 class DirectRenderer : public BucketRenderer {
  public:
   DirectRenderer(const std::string& name, int my_id, int batch_size);
+  void init_shaders(ShaderLibrary& sl) override;
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   virtual void pre_render() {}
@@ -290,6 +291,11 @@ class DirectRenderer : public BucketRenderer {
   } m_ogl;
 
   struct {
+    GLint alpha_min, alpha_max;
+    GLint normal_shader_id = -1;
+  } m_uniforms;
+
+  struct {
     bool disable_texture = false;
     bool wireframe = false;
     bool red = false;
@@ -314,6 +320,8 @@ class DirectRenderer : public BucketRenderer {
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
+  bool m_test_state_needs_double_draw = false;
+  float m_double_draw_aref = 0;
   bool m_blend_state_needs_gl_update = true;
 
   struct SpriteMode {

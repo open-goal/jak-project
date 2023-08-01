@@ -36,7 +36,7 @@ BS::thread_pool thpool(4);
  */
 struct FakeIsoEntry {
   char iso_name[16];
-  char file_path[128];
+  std::string full_path;
 };
 
 FakeIsoEntry fake_iso_entries[MAX_ISO_FILES];  //! List of all known files
@@ -63,8 +63,8 @@ int fake_iso_FS_Init() {
       std::string file_name = f.path().filename().string();
       ASSERT(file_name.length() < 16);  // should be 8.3.
       strcpy(e->iso_name, file_name.c_str());
-      strcpy(e->file_path,
-             fmt::format("out/{}/iso/{}", game_version_names[g_game_version], file_name).c_str());
+      e->full_path = fmt::format("{}/out/{}/iso/{}", file_util::get_jak_project_dir().string(),
+                                 game_version_names[g_game_version], file_name);
       fake_iso_entry_count++;
     }
   }
@@ -118,11 +118,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
  */
 const char* get_file_path(FileRecord* fr) {
   ASSERT(fr->location < fake_iso_entry_count);
-  static char path_buffer[1024];
-  strcpy(path_buffer, file_util::get_jak_project_dir().string().c_str());
-  strcat(path_buffer, "/");
-  strcat(path_buffer, fake_iso_entries[fr->location].file_path);
-  return path_buffer;
+  return fake_iso_entries[fr->location].full_path.c_str();
 }
 
 /*!
