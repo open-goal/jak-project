@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in uint flags;
@@ -30,9 +30,9 @@ const int MODE_MODE = 1;
 const int MODE_EVENT = 2;
 const int MODE_MATERIAL = 3;
 
-uint pat_get_mode(uint p) { return version == 2 ? (p >> 7) & 0x7 : (p >> 3) & 0x7; }
-uint pat_get_material(uint p) { return version == 2 ? (p >> 10) & 0x3f : (p >> 6) & 0x3f; }
-uint pat_get_event(uint p) { return version == 2 ? (p >> 18) & 0x3f : (p >> 14) & 0x3f; }
+uint pat_get_mode(uint p) { return version == 2 ? (p >> 7) & 0x7u : (p >> 3) & 0x7u; }
+uint pat_get_material(uint p) { return version == 2 ? (p >> 10) & 0x3fu : (p >> 6) & 0x3fu; }
+uint pat_get_event(uint p) { return version == 2 ? (p >> 18) & 0x3fu : (p >> 14) & 0x3fu; }
 
 bool logtest(uint a, uint b) { return (a & b) != 0; }
 bool logtesta(uint a, uint b) { return (a & b) == b; }
@@ -93,9 +93,9 @@ void main() {
     uint pMode = pat_get_mode(pat);
     uint pMat = pat_get_material(pat);
     uint pEvent = pat_get_event(pat);
-    if (logtest(collision_mode_mask[pMode/32], 1 << (pMode & 0x1f)) &&
-      logtest(collision_material_mask[pMat/32], 1 << (pMat & 0x1f)) &&
-      logtest(collision_event_mask[pEvent/32], 1 << (pEvent & 0x1f)) &&
+    if (logtest(collision_mode_mask[pMode/32], 1 << (pMode & 0x1fu)) &&
+      logtest(collision_material_mask[pMat/32], 1 << (pMat & 0x1fu)) &&
+      logtest(collision_event_mask[pEvent/32], 1 << (pEvent & 0x1fu)) &&
       logtesta(collision_skip_mask, pat)) {
       // fancy colors
       if (mode == MODE_MODE) {

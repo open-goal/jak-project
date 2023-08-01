@@ -7,7 +7,6 @@
 
 #include "game/graphics/opengl_renderer/Profiler.h"
 #include "game/graphics/opengl_renderer/Shader.h"
-#include "game/graphics/opengl_renderer/TextureAnimator.h"
 #include "game/graphics/opengl_renderer/buckets.h"
 #include "game/graphics/opengl_renderer/loader/Loader.h"
 #include "game/graphics/texture/TexturePool.h"
@@ -32,7 +31,6 @@ struct SharedRenderState {
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   std::shared_ptr<Loader> loader;
-  std::shared_ptr<TextureAnimator> texture_animator;
 
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
@@ -57,12 +55,6 @@ struct SharedRenderState {
 
   // including transformation, rotation, perspective
   math::Vector4f camera_matrix[4];
-
-  // including transformation, rotation
-  math::Vector4f camera_no_persp[4];
-
-  // just the perspective
-  math::Vector4f camera_persp[4];
   math::Vector4f camera_hvdf_off;
   math::Vector4f camera_fog;
   math::Vector4f camera_pos;
@@ -88,9 +80,6 @@ struct SharedRenderState {
   int draw_region_h = 0;
   int draw_offset_x = 0;
   int draw_offset_y = 0;
-
-  // the FBO for blit buffer
-  const Fbo* back_fbo = nullptr;
 
   int bucket_for_vis_copy = 0;
   int num_vis_to_copy = 0;

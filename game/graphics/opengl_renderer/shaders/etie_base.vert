@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec3 tex_coord_in;
@@ -9,7 +9,7 @@ uniform mat4 camera;
 uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
-layout (binding = 10) uniform sampler1D tex_T1; // note, sampled in the vertex shader on purpose.
+uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 uniform int decal;
 uniform float fog_hack_threshold;
 
@@ -56,7 +56,7 @@ void main() {
     fragment_color = vec4(1.0, 1.0, 1.0, 1.0);
   } else {
     // time of day lookup
-    fragment_color = texelFetch(tex_T1, time_of_day_index, 0);
+    fragment_color = texelFetch(tex_T10, time_of_day_index, 0);
     // color adjustment
     fragment_color *= 2;
     fragment_color.a *= 2;

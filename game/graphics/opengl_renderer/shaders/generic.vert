@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in vec3 position_in;
 layout (location = 1) in vec4 rgba_in;
@@ -18,7 +18,7 @@ out vec2 tex_coord;
 out vec4 fragment_color;
 out float fog;
 
-out flat uvec2 tex_info;
+flat out uvec2 tex_info;
 
 const float warp_off = 1.0f - (SCISSOR_HEIGHT / 512.0f);
 

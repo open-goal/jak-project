@@ -4,6 +4,7 @@
 #include "common/util/json_util.h"
 
 #include "game/system/hid/input_bindings.h"
+#include "game/system/hid/sdl_util.h"
 #include "game/tools/filter_menu/filter_menu.h"
 
 namespace game_settings {
@@ -21,6 +22,7 @@ struct DebugSettings {
   std::vector<DebugTextFilter> text_filters = {};
   bool text_check_range = false;
   float text_max_range = 0;
+  u32 hide_imgui_key = SDLK_LALT;
 
   void save_settings();
 };

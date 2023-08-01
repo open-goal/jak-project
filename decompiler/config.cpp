@@ -38,6 +38,12 @@ Config make_config_via_json(nlohmann::json& json) {
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
+
+  if (inputs_json.contains("str_texture_file_names")) {
+    config.str_texture_file_names =
+        inputs_json.at("str_texture_file_names").get<std::vector<std::string>>();
+  }
+
   config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
   config.streamed_audio_file_names =
       inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
@@ -266,6 +272,15 @@ Config make_config_via_json(nlohmann::json& json) {
 
   config.levels_to_extract = inputs_json.at("levels_to_extract").get<std::vector<std::string>>();
   config.levels_extract = json.at("levels_extract").get<bool>();
+
+  if (inputs_json.contains("animated_textures")) {
+    config.animated_textures =
+        inputs_json.at("animated_textures").get<std::unordered_set<std::string>>();
+  }
+
+  if (inputs_json.contains("common_tpages")) {
+    config.common_tpages = inputs_json.at("common_tpages").get<std::unordered_set<int>>();
+  }
 
   auto art_info_json = read_json_file_from_config(json, "art_info_file");
   config.art_groups_by_file =

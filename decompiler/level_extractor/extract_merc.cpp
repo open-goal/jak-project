@@ -726,28 +726,41 @@ std::string debug_dump_to_ply(const std::vector<MercDraw>& draws,
   return result;
 }
 
-int find_or_add_texture_to_level(tfrag3::Level& out,
+s32 find_or_add_texture_to_level(tfrag3::Level& out,
                                  const TextureDB& tex_db,
                                  const std::string& debug_name,
                                  u32 pc_combo_tex_id,
                                  const MercCtrlHeader& hdr,
                                  u8* eye_out,
                                  GameVersion version) {
-  u32 idx_in_level_texture = UINT32_MAX;
-  for (u32 i = 0; i < out.textures.size(); i++) {
+  s32 idx_in_level_texture = INT32_MAX;
+  for (s32 i = 0; i < (int)out.textures.size(); i++) {
     if (out.textures[i].combo_id == pc_combo_tex_id) {
       idx_in_level_texture = i;
       break;
     }
   }
 
-  if (idx_in_level_texture == UINT32_MAX) {
+  if (idx_in_level_texture == INT32_MAX) {
     // not added to level, add it
     auto tex_it = tex_db.textures.find(pc_combo_tex_id);
     if (tex_it == tex_db.textures.end()) {
-      lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
-                pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
-      idx_in_level_texture = 0;
+      if (pc_combo_tex_id == 0 && debug_name == "yakow-lod0") {
+        // this texture is missing in the real game, and it ends up using an invalid texture
+        // configuration, making it completely black. Instead of that, just pick a similar-ish
+        // yakow fur texture. It's not perfect, but it's better than nothing.
+        for (size_t i = 0; i < out.textures.size(); i++) {
+          auto& existing = out.textures[i];
+          if (existing.debug_name == "yak-medfur-end") {
+            idx_in_level_texture = i;
+            break;
+          }
+        }
+      } else {
+        lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                  pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
+        idx_in_level_texture = 0;
+      }
     } else {
       idx_in_level_texture = out.textures.size();
       auto& new_tex = out.textures.emplace_back();
@@ -792,6 +805,12 @@ int find_or_add_texture_to_level(tfrag3::Level& out,
     }
   }
 
+  // check anim output
+  const auto& level_tex = out.textures.at(idx_in_level_texture);
+  const auto& it = tex_db.animated_tex_output_to_anim_slot.find(level_tex.debug_name);
+  if (it != tex_db.animated_tex_output_to_anim_slot.end()) {
+    return -int(it->second) - 1;
+  }
   return idx_in_level_texture;
 }
 
@@ -1073,7 +1092,10 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
     size_t original_size = result.blerc_vertices_i.size();
     result.blerc_vertices_i.resize(original_size + bc.blend_vtx_count);
-    auto* out_vertices = &result.blerc_vertices_i[original_size];
+    BlercVtxInt* out_vertices = nullptr;
+    if (bc.blend_vtx_count) {
+      out_vertices = &result.blerc_vertices_i[original_size];
+    }
 
     // the base position of this vertex.
     for (int vi = 0; vi < bc.blend_vtx_count; vi++) {
