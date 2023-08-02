@@ -59,6 +59,17 @@
     (set! (-> self control current-surface target-speed) (* (-> self control current-surface target-speed) f0-11))
     (set! (-> self control current-surface transv-max) (* (-> self control current-surface transv-max) f0-11))
     )
+  (#when PC_PORT
+    ;; turbo jet board cheat
+    (when (and (pc-cheats? (-> *pc-settings* cheats) board-turbo)
+               (focus-test? self board)
+               (or (aif (level-get *level* 'lwidea) (= (-> it status) 'active))
+                   (aif (level-get *level* 'lwideb) (= (-> it status) 'active)))
+               )
+      (*! (-> self control current-surface target-speed) *turbo-board-speed*)
+      (*! (-> self control current-surface transv-max) *turbo-board-speed*)
+      )
+    )
   (let ((s5-0 (new-stack-vector0)))
     (vector-z-quaternion! s5-0 (-> self control quat-for-control))
     (when (logtest? (-> self control mod-surface flags) (surface-flag xz-local))

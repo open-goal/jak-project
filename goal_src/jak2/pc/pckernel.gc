@@ -117,6 +117,55 @@
       1.0))
 
 
+(defmethod update-cheats pc-settings-jak2 ((obj pc-settings-jak2))
+  "run cheats."
+
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
+
+  (when (pc-cheats? (-> obj cheats) real-time-of-day)
+      (let ((date (new 'stack-no-clear 'scf-time)))
+          (scf-get-time date)
+          (when (zero? (-> date stat))
+            (let* ((cur-time (-> *display* bg-clock frame-counter))
+                  (day-len (seconds 1440)) ;; a full in-game day
+                  (want-hour (bcd->dec (-> date hour)))
+                  (want-minute (bcd->dec (-> date minute)))
+                  (target-hour-frame (/ (the int (* (fsec 3600) want-hour)) 60))
+                  (target-minute-frame (/ (the int (* (fsec 60) want-minute)) 60))
+                  )
+              (set! (-> *display* bg-clock frame-counter) (+ (- cur-time (mod cur-time day-len)) day-len (+ target-hour-frame target-minute-frame)))
+              ))
+          ))
+
+  ;; turbo jet board cheat
+  (cond
+    ((and (pc-cheats? (-> *pc-settings* cheats) board-turbo)
+          *target*
+          (focus-test? *target* board)
+          (or (aif (level-get *level* 'lwidea) (= (-> it status) 'active))
+              (aif (level-get *level* 'lwideb) (= (-> it status) 'active))))
+      (set-setting! 'string-spline-max-move 'abs (* *turbo-board-speed* (meters 2)) 0)
+      (set-setting! 'string-spline-accel 'abs (* *turbo-board-speed* (meters 0.045)) 0)
+      (set-setting! 'string-spline-max-move-player 'abs (* *turbo-board-speed* (meters 1.5)) 0)
+      (set-setting! 'string-spline-accel-player 'abs (* *turbo-board-speed* (meters 0.035)) 0)
+      )
+    (else
+      (remove-setting! 'string-spline-max-move)
+      (remove-setting! 'string-spline-accel)
+      (remove-setting! 'string-spline-max-move-player)
+      (remove-setting! 'string-spline-accel-player)
+      )
+    )
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
+
+  0)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; file I/O
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
