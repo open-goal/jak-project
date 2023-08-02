@@ -6,6 +6,7 @@
 // clang-format off
 #include "common/common_types.h"
 #ifdef OS_POSIX
+#include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -177,4 +178,14 @@ bool socket_timed_out() {
   auto err = WSAGetLastError();
   return err == WSAETIMEDOUT;
 #endif
+}
+
+std::string address_to_string(const sockaddr_in& addr) {
+  char ip_str[INET_ADDRSTRLEN];  // Buffer to hold the IP address string
+  // Convert binary IP address to human-readable string using inet_ntop
+  if (inet_ntop(AF_INET, &(addr.sin_addr), ip_str, INET_ADDRSTRLEN) == nullptr) {
+    // Handle the error (e.g., log, throw an exception, etc.)
+    return "Error: Unable to convert IP address";
+  }
+  return ip_str;
 }

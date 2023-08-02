@@ -1627,7 +1627,7 @@ bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
       ASSERT_NOT_REACHED();
   }
 
-  bool do_alpha_test = false;
+  [[maybe_unused]] bool do_alpha_test = false;
   bool alpha_test_mask_alpha_trick = false;
   bool alpha_test_mask_depth_trick = false;
 

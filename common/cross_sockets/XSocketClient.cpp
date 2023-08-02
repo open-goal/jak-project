@@ -3,6 +3,7 @@
 #include <string>
 
 #include "common/cross_sockets/XSocket.h"
+#include "common/log/log.h"
 
 // clang-format off
 #ifdef _WIN32
@@ -41,7 +42,11 @@ bool XSocketClient::connect() {
   }
 
   addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  // Convert IP address from text to binary form using inet_pton()
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) <= 0) {
+    lg::error("inet_pton() failed");
+    return false;
+  }
   addr.sin_port = htons(tcp_port);
 
   // Connect to server

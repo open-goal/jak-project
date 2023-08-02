@@ -124,7 +124,7 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
 bool find_and_run_tests() {
   // Enumerate test files
   const auto test_files = file_util::find_files_recursively(
-      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
+      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\\.test.gc$"));
   bool failed = false;
   // First do a pass to see if any tests are meant to be prioritized for debugging
   bool only_important_tests = false;

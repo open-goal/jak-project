@@ -43,7 +43,7 @@ std::vector<s16> decode_adpcm(BinaryReader& reader) {
   constexpr s32 f1[5] = {0, 60, 115, 98, 122};
   constexpr s32 f2[5] = {0, 0, -52, -55, -60};
 
-  int block_idx = 0;
+  [[maybe_unused]] int block_idx = 0;
   while (true) {
     if (!reader.bytes_left()) {
       break;

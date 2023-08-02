@@ -727,8 +727,8 @@ void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
              const std::vector<NodeWithTransform>& all_nodes) {
-  int mesh_count = 0;
-  int prim_count = 0;
+  [[maybe_unused]] int mesh_count = 0;
+  [[maybe_unused]] int prim_count = 0;
   int suspicious_faces = 0;
 
   for (const auto& n : all_nodes) {

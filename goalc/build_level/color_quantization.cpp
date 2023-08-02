@@ -105,7 +105,7 @@ u32 count_leaves(Node& root) {
 void collapse1(Node& root) {
   ASSERT(!root.children.empty());
   u32 total_children_removed = 0;
-  u32 total_rgb_sum_moved_up = 0;
+  [[maybe_unused]] u32 total_rgb_sum_moved_up = 0;
   bool started_as_leaf = root.rgb_sum_count;
   for (auto& child : root.children) {
     if (child.depth != 0xff) {
