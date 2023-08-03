@@ -151,11 +151,39 @@
 (defun get-video-params () *video-params*)
 
 
-(define *progress-speed* 1.5)
-(define *airlock-speed* 1.75)
-(define *airlock-close-speed* 1.75)
-(define *turbo-board-speed* 1.5)
-(define *turbo-board* #f) ;; should turbo board be used
+(defenum pc-cheat-state-flag
+  :bitfield #t
+  :type uint8
+  (turbo-board) ;; should turbo board be used
+  (clear-time-mod)
+  )
+
+(deftype pc-cheat-state (structure)
+  ((progress-speed        float)
+   (airlock-speed         float)
+   (airlock-close-speed   float)
+   (turbo-board-speed     float)
+   (flags   pc-cheat-state-flag)
+   )
+  )
+
+(define *pc-cheat-state* (new 'static 'pc-cheat-state
+                              :progress-speed 1.5
+                              :airlock-speed 1.75
+                              :airlock-close-speed 1.75
+                              :turbo-board-speed 1.5
+                              ))
+
+(defmacro cheat-state-flag? (&rest flags)
+  "are the specified flags enabled?"
+  `(logtest? (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+
+(defmacro set-cheat-state-flag! (&rest flags)
+  "set the specified flags"
+  `(logior! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+(defmacro clear-cheat-state-flag! (&rest flags)
+  "clear the specified flags"
+  `(logclear! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
 
 
 (defmacro give-cheat! (&rest cheats)

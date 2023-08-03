@@ -107,13 +107,13 @@
 (defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
   "return the current speed modifier for airlocks"
   (if (-> obj fast-airlock?)
-      *airlock-speed*
+      (-> *pc-cheat-state* airlock-speed)
       1.0))
 
 (defmethod get-airlock-close-speed pc-settings-jak2 ((obj pc-settings-jak2))
   "return the current closing speed modifier for airlocks"
   (if (-> obj fast-airlock?)
-      *airlock-close-speed*
+      (-> *pc-cheat-state* airlock-close-speed)
       1.0))
 
 
@@ -148,19 +148,20 @@
               'ctygena 'ctygenb 'ctygenc
               'ctyport 'ctymarka 'ctymarkb
               'ctypal 'ctyfarma 'ctyfarmb
-              'ctyinda 'ctyindb 'forest) #t)))
-      (set-setting! 'string-spline-max-move 'abs (* *turbo-board-speed* (meters 2)) 0)
-      (set-setting! 'string-spline-accel 'abs (* *turbo-board-speed* (meters 0.045)) 0)
-      (set-setting! 'string-spline-max-move-player 'abs (* *turbo-board-speed* (meters 1.5)) 0)
-      (set-setting! 'string-spline-accel-player 'abs (* *turbo-board-speed* (meters 0.035)) 0)
-      (true! *turbo-board*)
+              'stadium 'ctyinda 'ctyindb) #t)
+            (('forest) (not (task-node-open? (game-task-node forest-scouts-pegasus))))))
+      (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
+      (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
+      (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
+      (set-setting! 'string-spline-accel-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.035)) 0)
+      (set-cheat-state-flag! turbo-board)
       )
     (else
       (remove-setting! 'string-spline-max-move)
       (remove-setting! 'string-spline-accel)
       (remove-setting! 'string-spline-max-move-player)
       (remove-setting! 'string-spline-accel-player)
-      (false! *turbo-board*)
+      (clear-cheat-state-flag! turbo-board)
       )
     )
   
