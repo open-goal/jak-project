@@ -209,10 +209,14 @@
 
 (define-once *pc-settings* (new 'global 'pc-settings-jak2))
 
+(give-cheat! suck-in-all health-bars vehicle-invuln board-turbo)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 (defun draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
@@ -234,6 +238,98 @@
       (set! cur-type (the type (-> cur-type method-table 8))))
     (format #t "~%"))
   )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; damage number
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype damage-number (process)
+  ((trans         vector    :inline)
+   (trans-2d      vector4w  :inline)
+   (on-screen?    symbol)
+   (damage        int32)
+   (font          font-context)
+   (y-ofs         float)
+   )
+  (:methods
+    (active () _type_ :state 14))
+  )
+
+(defstate active (damage-number)
+  :virtual #t
+
+  :trans (behavior ()
+
+    (when (not (logtest? (-> *kernel-context* prevent-from-run) (-> self parent 0 mask)))
+      ;; make font float upwards
+      (+! (-> self y-ofs) (* 1.0 (-> self clock time-adjust-ratio)))
+      )
+
+    ;; convert 3D -> 2D screen now (result in trans-2d)
+    (set! (-> self on-screen?) (transform-point-qword! (-> self trans-2d) (-> self trans)))
+
+    ;; position font
+    (set-origin! (-> self font) (+ (/ (-> self trans-2d x) 16) -1792)
+                                (+ (/ (-> self trans-2d y) 16) -1855))
+    (set-depth! (-> self font) (/ (-> self trans-2d z) 16))
+    ;; now center (we could do this earlier but it's fine)
+    (-! (-> self font origin x) (/ (-> self font width) 2))
+    ;; now move it up
+    (-! (-> self font origin y) (-> self y-ofs))
+    (none))
+  
+  :code (behavior ()
+    (let ((state-time (current-time)))
+        ;; move up for a bit
+        (until (>= (- (current-time) state-time) (seconds 1))
+          (suspend))
+        ;; now fade out
+        (set! state-time (current-time))
+        (until (>= (- (current-time) state-time) (seconds 0.5))
+          (set! (-> self font alpha) (lerp-scale 1.0 0.0 (the float (- (current-time) state-time)) 0.0 (fsec 0.5)))
+          (suspend))
+        )
+    )
+  
+  :post (behavior ()
+    (when (and (-> self on-screen?) ;; text is onscreen
+               (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
+               )
+      (print-game-text (string-format "~D" (-> self damage)) (-> self font) #f 44 (bucket-id debug-no-zbuf1)))
+    )
+  )
+
+(defmethod relocate damage-number ((obj damage-number) (diff int))
+  (if (nonzero? (-> obj font))
+      (&+! (-> obj font) diff)
+      )
+  (the-as damage-number ((the-as (function process int process) (find-parent-method damage-number 7)) obj diff))
+  )
+
+
+(defbehavior damage-number-init-by-other damage-number ((dmg int) (pos vector))
+  "initialize a damage-number"
+  
+  ;; copy params
+  (set! (-> self damage) dmg)
+  (vector-copy! (-> self trans) pos)
+
+  ;; init font
+  (set! (-> self font) (new 'process 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+  (set-scale! (-> self font) (lerp-scale 0.45 0.8 (the float (-> self damage)) 1.0 15.0))
+  (set-flags! (-> self font) (font-flags shadow kerning large middle))
+  (set-width! (-> self font) 100)
+
+  ;; process settings to still render while paused
+  (process-mask-clear! (-> self mask) pause)
+
+  (go-virtual active)
+  )
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools
