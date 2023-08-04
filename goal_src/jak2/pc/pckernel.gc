@@ -149,7 +149,7 @@
               'ctyport 'ctymarka 'ctymarkb
               'ctypal 'ctyfarma 'ctyfarmb
               'stadium 'ctyinda 'ctyindb) #t)
-            (('forest) (not (task-node-open? (game-task-node forest-scouts-pegasus))))))
+            (('forest) #t #|(not (task-node-open? (game-task-node forest-scouts-pegasus))|#))))
       (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
       (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
       (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
@@ -250,6 +250,7 @@
    (trans-2d      vector4w  :inline)
    (on-screen?    symbol)
    (damage        int32)
+   (parent-mask   process-mask)
    (font          font-context)
    (y-ofs         float)
    )
@@ -262,7 +263,7 @@
 
   :trans (behavior ()
 
-    (when (not (logtest? (-> *kernel-context* prevent-from-run) (-> self parent 0 mask)))
+    (when (not (logtest? (-> *kernel-context* prevent-from-run) (-> self parent-mask)))
       ;; make font float upwards
       (+! (-> self y-ofs) (* 1.0 (-> self clock time-adjust-ratio)))
       )
@@ -309,11 +310,12 @@
   )
 
 
-(defbehavior damage-number-init-by-other damage-number ((dmg int) (pos vector))
+(defbehavior damage-number-init-by-other damage-number ((dmg int) (pos vector) (parent-mask process-mask))
   "initialize a damage-number"
   
   ;; copy params
   (set! (-> self damage) dmg)
+  (set! (-> self parent-mask) parent-mask)
   (vector-copy! (-> self trans) pos)
 
   ;; init font
@@ -427,6 +429,7 @@
     (remove-from-list (_type_ (pointer health-bar)) (pointer health-bar))
     (get-bar-for-process (_type_ process-drawable) (pointer health-bar))
     (send-damage-to-bar (_type_ process-drawable int int) (pointer health-bar))
+    (set-proc-bar-hit-points (_type_ process-drawable int) (pointer health-bar))
     )
   )
 
@@ -492,8 +495,10 @@
   :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
     (case msg
       (('damage)
-       (format 0 "bar ~A taking ~D damage~%" self (-> block param 0))
        (-! (-> self hit-points) (the float (the-as int (-> block param 0))))
+       #t)
+      (('set-hit-points)
+       (set! (-> self hit-points) (the float (the-as int (-> block param 0))))
        #t)
       )
     )
@@ -526,7 +531,7 @@
   :post (behavior ()
     (when (and (-> self on-screen?) ;; text is onscreen
                (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
-               )
+               (> (meters 160) (vector-vector-distance (-> (the process-drawable (handle->process (-> self owner))) root trans) (math-camera-pos))))
       (draw-health-bar (the int (-> self font origin x)) (the int (-> self font origin y))
                        (the int (-> self width)) (the int (-> self height))
                        (/ (-> self hit-points) (-> self hit-points-max))
@@ -571,6 +576,9 @@
   ;; process settings to still render while paused
   (process-mask-clear! (-> self mask) pause)
 
+  ;; ready to handle events immediately
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+
   (go-virtual idle)
   )
 
@@ -581,16 +589,21 @@
   (let ((the-bar (get-bar-for-process obj from)))
       (cond
         (the-bar
-          (format 0 "found hp bar~%")
+          (send-event (ppointer->process the-bar) 'damage damage)
           )
         (else
-          (format 0 "no hp bar! spawning now~%")
           (set! the-bar (process-spawn health-bar (- hit-points-old damage) hit-points-old (process->handle from)))
           )
         )
-      (format 0 "send ~D damage to hp bar ~A~%" damage (ppointer->process the-bar))
-      (send-event (ppointer->process the-bar) 'damage damage)
       the-bar)
+  )
+
+(defmethod set-proc-bar-hit-points health-bar-manager ((obj health-bar-manager) (proc process-drawable) (hit-points int))
+  "simply set the hit points (not max hit points) of a process's health bar"
+  
+  (let ((the-bar (get-bar-for-process obj proc)))
+    (send-event (ppointer->process the-bar) 'set-hit-points hit-points)
+    the-bar)
   )
 
 
