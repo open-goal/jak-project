@@ -1074,7 +1074,6 @@ into 7 sections, which might explain the weird sizes in the center.
        (dotimes (s4-0 10)
          (let ((a0-8 (-> obj info texture-anim s4-0)))
            (when a0-8
-             (set! (-> obj info texture-anim s4-0) #f)
              (set! (-> obj texture-anim-array s4-0)
                    (init! (the-as texture-anim-array (-> a0-8 value)))
                    )
@@ -2429,14 +2428,17 @@ into 7 sections, which might explain the weird sizes in the center.
             )
 
           ;; did we find one to unload?
-          ;; PC NOTE : added an extra check for DGO time. If you start a load and discard it on the next frame,
+          ;; PC NOTE : added an extra check for DGO time and name. If you start a load and discard it on the next frame,
           ;; you may attempt to start a new load right away before the ISO thread can properly stop the previous load
           ;; which will just crash the game. Sadly this means loads may sometimes be delayed by one frame. The horror.
-          (when ;(>= unload-idx 0)
-                (and (>= unload-idx 0) (< 1 (- (-> *display* real-clock integral-frame-counter) *dgo-time*)))
-            (let ((lev-to-unload (-> *level* level unload-idx)))
-              (format 0 "Discarding level ~A~%" (-> lev-to-unload name))
-              (level-status-update! lev-to-unload 'inactive) ;; kill it.
+          (when (>= unload-idx 0)
+            (format 0 "  level loading : want to unload ~A. load-level is ~A~%" (-> *level* level unload-idx load-name) (-> *level* load-level))
+            (when (or (!= (-> *level* level unload-idx load-name) (-> *level* load-level))
+                      (< 1 (- (-> *display* real-clock integral-frame-counter) *dgo-time*)))
+              (let ((lev-to-unload (-> *level* level unload-idx)))
+                (format 0 "Discarding level ~A~%" (-> lev-to-unload name))
+                (level-status-update! lev-to-unload 'inactive) ;; kill it.
+                )
               )
             (set! discarded-level #t)
             )

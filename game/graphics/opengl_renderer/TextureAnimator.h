@@ -65,17 +65,18 @@ struct OpenGLTexturePool {
 class ClutBlender {
  public:
   ClutBlender(const std::string& dest,
-              const std::vector<std::string>& sources,
+              const std::array<std::string, 2>& sources,
               const std::optional<std::string>& level_name,
               const tfrag3::Level* level,
               OpenGLTexturePool* tpool);
   GLuint run(const float* weights);
   GLuint texture() const { return m_texture; }
+  bool at_default() const { return m_current_weights[0] == 1.f && m_current_weights[1] == 0.f; }
 
  private:
   const tfrag3::IndexTexture* m_dest;
-  std::vector<const std::array<math::Vector4<u8>, 256>*> m_cluts;
-  std::vector<float> m_current_weights;
+  std::array<const std::array<math::Vector4<u8>, 256>*, 2> m_cluts;
+  std::array<float, 2> m_current_weights;
   GLuint m_texture;
   std::array<math::Vector4<u8>, 256> m_temp_clut;
   std::vector<u32> m_temp_rgba;
@@ -118,7 +119,11 @@ struct LayerVals {
   math::Vector2f st_scale = math::Vector2f::zero();
   math::Vector2f st_offset = math::Vector2f::zero();
   math::Vector4f qs = math::Vector4f(1, 1, 1, 1);
+  float rot = 0;
+  float st_rot = 0;
+  u8 pad[8];
 };
+static_assert(sizeof(LayerVals) == 80);
 
 /*!
  * A single layer in a FixedAnimationDef.
@@ -138,7 +143,6 @@ struct FixedLayerDef {
   bool channel_masks[4] = {true, true, true, true};
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
-  LayerVals start_vals, end_vals;
 
   void set_blend_b2_d1() {
     blend_modes[0] = GsAlpha::BlendMode::SOURCE;
@@ -148,9 +152,20 @@ struct FixedLayerDef {
     blend_fix = 0;
   }
 
+  void set_blend_b1_d1() {
+    blend_modes[0] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[1] = GsAlpha::BlendMode::DEST;
+    blend_modes[2] = GsAlpha::BlendMode::SOURCE;
+    blend_modes[3] = GsAlpha::BlendMode::DEST;
+    blend_fix = 0;
+  }
   void set_no_z_write_no_z_test() {
     z_writes = false;
     z_test = false;
+  }
+  void set_clamp() {
+    clamp_v = true;
+    clamp_u = true;
   }
 };
 
@@ -161,14 +176,22 @@ struct FixedAnimDef {
   // assuming (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
   // alpha blend off, so alpha doesn't matter i think.
   std::vector<FixedLayerDef> layers;
+  bool move_to_pool = false;
+};
+
+struct DynamicLayerData {
+  LayerVals start_vals, end_vals;
 };
 
 struct FixedAnim {
   FixedAnimDef def;
+  std::vector<DynamicLayerData> dynamic_data;
   // GLint dest_texture;
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
   std::vector<GLint> src_textures;
+
+  GpuTexture* pool_gpu_tex = nullptr;
 };
 
 struct FixedAnimArray {
@@ -181,10 +204,14 @@ class TextureAnimator {
  public:
   TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
   ~TextureAnimator();
-  void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
+  void handle_texture_anim_data(DmaFollower& dma,
+                                const u8* ee_mem,
+                                TexturePool* texture_pool,
+                                u64 frame_idx);
   GLuint get_by_slot(int idx);
   void draw_debug_window();
   const std::vector<GLuint>* slots() { return &m_public_output_slots; }
+  void clear_stale_textures(u64 frame_idx);
 
  private:
   void copy_private_to_public();
@@ -214,7 +241,7 @@ class TextureAnimator {
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
-  void run_fixed_animation_array(int idx, const float* times);
+  void run_fixed_animation_array(int idx, const DmaTransfer& transfer, TexturePool* texture_pool);
   void run_fixed_animation(FixedAnim& anim, float time);
 
   struct DrawData {
@@ -237,12 +264,12 @@ class TextureAnimator {
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
   void set_draw_data_from_interpolated(DrawData* result, const LayerVals& vals, int w, int h);
 
-  PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
+  PcTextureId get_id_for_tbp(TexturePool* pool, u64 tbp, u64 other_id);
 
   VramEntry* m_tex_looking_for_clut = nullptr;
   const tfrag3::Level* m_common_level = nullptr;
   std::unordered_map<u32, VramEntry> m_textures;
-  std::unordered_map<u32, PcTextureId> m_ids_by_vram;
+  std::unordered_map<u64, PcTextureId> m_ids_by_vram;
 
   std::set<u32> m_erased_on_this_frame;
 
@@ -287,6 +314,7 @@ class TextureAnimator {
 
   std::vector<GLuint> m_private_output_slots;
   std::vector<GLuint> m_public_output_slots;
+  std::vector<int> m_skip_tbps;
 
   struct Bool {
     bool b = false;
@@ -296,6 +324,7 @@ class TextureAnimator {
   struct ClutBlenderGroup {
     std::vector<ClutBlender> blenders;
     std::vector<int> outputs;
+    u64 last_updated_frame = 0;
   };
   std::vector<ClutBlenderGroup> m_clut_blender_groups;
 
@@ -314,7 +343,7 @@ class TextureAnimator {
                                  const std::string& suffix0,
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
-  void run_clut_blender_group(DmaTransfer& tf, int idx);
+  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
@@ -323,5 +352,17 @@ class TextureAnimator {
   int m_skull_gem_fixed_anim_array_idx = -1;
   int m_bomb_fixed_anim_array_idx = -1;
   int m_cas_conveyor_anim_array_idx = -1;
+  int m_security_anim_array_idx = -1;
+  int m_waterfall_anim_array_idx = -1;
+  int m_waterfall_b_anim_array_idx = -1;
+  int m_lava_anim_array_idx = -1;
+  int m_lava_b_anim_array_idx = -1;
+  int m_stadiumb_anim_array_idx = -1;
+  int m_fortress_pris_anim_array_idx = -1;
+  int m_fortress_warp_anim_array_idx = -1;
+  int m_metkor_anim_array_idx = -1;
+  int m_shield_anim_array_idx = -1;
+  int m_krew_holo_anim_array_idx = -1;
+
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

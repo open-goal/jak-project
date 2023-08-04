@@ -8,15 +8,16 @@
 namespace game_settings {
 
 void to_json(json& j, const DebugSettings& obj) {
-  j = json{{"version", obj.version},
-           {"show_imgui", obj.show_imgui},
-           {"imgui_font_size", obj.imgui_font_size},
-           {"monospaced_font", obj.monospaced_font},
-           {"alternate_style", obj.alternate_style},
-           {"ignore_hide_imgui", obj.ignore_hide_imgui},
-           {"text_filters", obj.text_filters},
-           {"text_check_range", obj.text_check_range},
-           {"text_max_range", obj.text_max_range}};
+  json_serialize(version);
+  json_serialize(show_imgui);
+  json_serialize(imgui_font_size);
+  json_serialize(monospaced_font);
+  json_serialize(alternate_style);
+  json_serialize(ignore_hide_imgui);
+  json_serialize(text_filters);
+  json_serialize(text_check_range);
+  json_serialize(text_max_range);
+  json_serialize(hide_imgui_key);
 }
 
 void from_json(const json& j, DebugSettings& obj) {
@@ -29,6 +30,7 @@ void from_json(const json& j, DebugSettings& obj) {
   json_deserialize_if_exists(text_filters);
   json_deserialize_if_exists(text_check_range);
   json_deserialize_if_exists(text_max_range);
+  json_deserialize_if_exists(hide_imgui_key);
 }
 
 DebugSettings::DebugSettings() {

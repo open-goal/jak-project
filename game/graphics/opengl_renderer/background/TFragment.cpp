@@ -151,21 +151,14 @@ void TFragment::render(DmaFollower& dma,
   {
     setup_for_level(m_tree_kinds, level_name, render_state);
     TfragRenderSettings settings;
-    settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-    settings.fog = m_tfrag_data.fog;
-    memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
-           64);
+
+    settings.camera = m_pc_port_data.camera;
     settings.tree_idx = 0;
     if (render_state->occlusion_vis[m_level_id].valid) {
       settings.occlusion_culling = render_state->occlusion_vis[m_level_id].data;
     }
 
     update_render_state_from_pc_settings(render_state, m_pc_port_data);
-
-    for (int i = 0; i < 4; i++) {
-      settings.planes[i] = m_pc_port_data.planes[i];
-      settings.itimes[i] = m_pc_port_data.itimes[i];
-    }
 
     auto t3prof = prof.make_scoped_child("t3");
     render_matching_trees(lod(), m_tree_kinds, settings, render_state, t3prof);
@@ -228,8 +221,7 @@ void TFragment::handle_initialization(DmaFollower& dma) {
 
   // data
   auto data_upload = dma.read_and_advance();
-  unpack_to_stcycl(&m_tfrag_data, data_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, sizeof(TFragData),
-                   TFragDataMem::TFragFrameData, false, false);
+  (void)data_upload;
 
   // call the setup program
   auto mscal_setup = dma.read_and_advance();
@@ -416,13 +408,13 @@ void TFragment::render_tree(int geom,
     return;
   }
   auto& tree = m_cached_trees.at(geom).at(settings.tree_idx);
-  const auto* itimes = settings.itimes;
+  const auto* itimes = settings.camera.itimes;
 
   if (tree.freeze_itimes) {
     itimes = tree.itimes_debug;
   } else {
     for (int i = 0; i < 4; i++) {
-      tree.itimes_debug[i] = settings.itimes[i];
+      tree.itimes_debug[i] = settings.camera.itimes[i];
     }
   }
 
@@ -433,9 +425,9 @@ void TFragment::render_tree(int geom,
   }
 #ifndef __aarch64__
   if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.itimes, tree.tod_cache, m_color_result.data());
+    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
   } else {
-    interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
   }
 #else
   interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
@@ -455,7 +447,7 @@ void TFragment::render_tree(int geom,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-  cull_check_all_slow(settings.planes, tree.vis->vis_nodes, settings.occlusion_culling,
+  cull_check_all_slow(settings.camera.planes, tree.vis->vis_nodes, settings.occlusion_culling,
                       m_cache.vis_temp.data());
 
   u32 total_tris;
@@ -687,14 +679,14 @@ void TFragment::render_tree_cull_debug(const TfragRenderSettings& settings,
   render_state->shaders[ShaderId::TFRAG3_NO_TEX].activate();
   glUniformMatrix4fv(
       glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "camera"), 1,
-      GL_FALSE, settings.math_camera.data());
+      GL_FALSE, settings.camera.camera[0].data());
   glUniform4f(
       glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "hvdf_offset"),
-      settings.hvdf_offset[0], settings.hvdf_offset[1], settings.hvdf_offset[2],
-      settings.hvdf_offset[3]);
+      settings.camera.hvdf_off[0], settings.camera.hvdf_off[1], settings.camera.hvdf_off[2],
+      settings.camera.hvdf_off[3]);
   glUniform1f(
       glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3_NO_TEX].id(), "fog_constant"),
-      settings.fog.x());
+      settings.camera.fog.x());
   // glDisable(GL_DEPTH_TEST);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
