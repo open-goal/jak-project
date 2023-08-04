@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
@@ -10,12 +10,12 @@ uniform float alpha_multiply;
 
 in vec2 uv;
 
-layout (binding = 0) uniform sampler2D tex;
+uniform sampler2D tex_T0;
 
 void main() {
 
   if (enable_tex == 1) {
-    vec4 tex_color = texture(tex, uv);
+    vec4 tex_color = texture(tex_T0, uv);
     vec4 unscambled_tex = vec4(tex_color[channel_scramble[0]],
     tex_color[channel_scramble[1]],
     tex_color[channel_scramble[2]],

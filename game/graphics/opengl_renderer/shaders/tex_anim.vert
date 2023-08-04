@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 layout (location = 0) in int vertex_index;
 
