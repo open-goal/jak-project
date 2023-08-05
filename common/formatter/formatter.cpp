@@ -44,7 +44,7 @@ std::string apply_formatting(
     // because recursion!)
     inline_form = indent::form_can_be_inlined(curr_form, curr_node);
   }
-  const bool flowing = indent::should_form_flow(curr_node);
+  const bool flowing = indent::should_form_flow(curr_node, inline_form);
   std::optional<formatter_rules::config::FormFormattingConfig> form_config;
   if (!curr_node.refs.empty() && curr_node.refs.at(0).token) {
     const auto& form_head = curr_node.refs.at(0).token;
@@ -66,15 +66,24 @@ std::string apply_formatting(
     // TODO - cleanup / move
     bool is_binding_list = false;
     bool force_newline = false;
+    bool override_force_flow = false;
     if (form_config) {
       force_newline = std::find(form_config->force_newline_at_indices.begin(),
                                 form_config->force_newline_at_indices.end(),
                                 i) != form_config->force_newline_at_indices.end();
+      // Check if it's a small enough binding list, if so we don't force a newline if the element
+      // can be inlined
+      if (inline_element && i > 0 && form_config->bindings_at_index == i - 1 &&
+          curr_node.refs.at(i - 1).refs.size() < form_config->allow_inlining_if_size_less_than) {
+        force_newline = false;
+        override_force_flow = true;
+      }
       is_binding_list = form_config->bindings_at_index == i;
     }
 
-    if (!inline_element || is_binding_list || force_newline ||
-        (form_element_config && form_element_config->force_flow)) {
+    if (!curr_node.metadata.is_top_level &&
+        (!inline_element || is_binding_list || force_newline ||
+         (form_element_config && form_element_config->force_flow))) {
       indent::append_newline(curr_form, ref, curr_node, i, flowing, constant_pair_form,
                              (form_element_config && form_element_config->force_flow));
     }
@@ -102,14 +111,16 @@ std::string apply_formatting(
       std::optional<formatter_rules::config::FormFormattingConfig> config = {};
       std::string formatted_form;
       if (form_config && form_config->index_configs.find(i) != form_config->index_configs.end()) {
-        formatted_form = apply_formatting(ref, "", form_config->index_configs.at(i));
+        formatted_form = apply_formatting(ref, "", *form_config->index_configs.at(i));
       } else {
         formatted_form = apply_formatting(ref, "", {});
       }
       // TODO - align inner lines only
       if (!curr_node.metadata.is_top_level) {
-        indent::align_lines(formatted_form, ref, curr_node, constant_pair_form, flowing,
-                            form_config && i >= form_config->start_flow_at_index);
+        indent::align_lines(
+            formatted_form, ref, curr_node, constant_pair_form, flowing,
+            (!override_force_flow && form_config && i >= form_config->start_flow_at_index),
+            inline_element);
       }
       curr_form += formatted_form;
       if (!curr_node.metadata.is_top_level) {

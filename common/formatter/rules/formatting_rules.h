@@ -98,7 +98,7 @@ bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& 
 // TODO - right now this is very primitive in that it only checks against our hard-coded config
 // eventually make this explore both routes and determine which is best
 // Also factor in distance from the gutter (theres some zprint rationale somewhere on this)
-bool should_form_flow(const FormatterTreeNode& list_node);
+bool should_form_flow(const FormatterTreeNode& list_node, const bool inlining_form);
 std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, const int index);
 
 void append_newline(std::string& curr_text,
@@ -118,7 +118,9 @@ void align_lines(std::string& text,
                  const FormatterTreeNode& node,
                  const FormatterTreeNode& containing_node,
                  const bool constant_pair_form,
-                 const bool flowing,const bool force_flow);
+                 const bool flowing,
+                 const bool force_flow,
+                 const bool inline_element);
 
 }  // namespace indent
 

@@ -210,7 +210,16 @@ bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& 
   return true;
 }
 
-bool should_form_flow(const FormatterTreeNode& list_node) {
+bool should_form_flow(const FormatterTreeNode& list_node, const bool inlining_form) {
+  if (form_contains_comment(list_node)) {
+    return true;
+  }
+  // does the form begin with a constant (a list of content elements)
+  if (!inlining_form && !list_node.refs.empty() &&
+      constant_types.find(list_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+    return true;
+  }
+
   // TODO - make a function to make grabbing this metadata easier...
   // TODO - honestly should just have an is_list metadata
   if (!list_node.refs.empty() && !list_node.refs.at(0).token) {
@@ -307,25 +316,40 @@ void indent_line(std::string& curr_text,
   }
 }
 
+// Recursively iterate through the node until we hit a token
+int length_to_hang(const FormatterTreeNode& node, int length) {
+  if (node.token || node.refs.at(0).token) {
+    return length;
+  }
+  return length_to_hang(node.refs.at(0), length + 1);
+}
+
 void align_lines(std::string& text,
                  const FormatterTreeNode& node,
                  const FormatterTreeNode& containing_node,
                  const bool constant_pair_form,
                  const bool flowing,
-                 const bool force_flow) {
+                 const bool force_flow,
+                 const bool inline_element) {
   const auto lines = str_util::split(text);
-  int start_index = 1;
+  int start_index = 0;
+  if (inline_element) {
+    start_index = 1;
+  }
   int alignment_width = 2;
   if (force_flow) {
     start_index = 0;
   } else if (constant_pair_form &&
              constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
                  constant_types.end()) {
+    start_index = 0;
     alignment_width = 3;
   } else if (!flowing) {
     // If the form has a token (it's a normal list)
     if (containing_node.refs.at(0).token) {
-      alignment_width = containing_node.refs.at(0).token.value().length() + 2;
+      alignment_width = length_to_hang(containing_node.refs.at(1),
+                                       containing_node.refs.at(0).token.value().length()) +
+                        1;
       if (!node.token) {
         alignment_width++;
       }

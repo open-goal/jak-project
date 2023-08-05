@@ -31,7 +31,7 @@ class FormatterTreeNode {
     bool is_comment = false;
     bool is_inline = false;
     int num_blank_lines_following = 0;
-    bool is_binding_list = false; // TODO set this
+    bool is_binding_list = false;  // TODO set this
   };
   std::vector<FormatterTreeNode> refs;
   Metadata metadata;
