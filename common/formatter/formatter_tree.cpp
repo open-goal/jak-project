@@ -2,8 +2,6 @@
 
 #include "common/util/string_util.h"
 
-#include "config/rule_config.h"
-
 #include "third-party/fmt/core.h"
 
 std::string get_source_code(const std::string& source, const TSNode& node) {

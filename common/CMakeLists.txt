@@ -32,10 +32,11 @@ add_library(common
         dma/dma_copy.cpp
         dma/dma.cpp
         dma/gs.cpp
-        formatter/config/rule_config.cpp
         formatter/formatter_tree.cpp
         formatter/formatter.cpp
-        formatter/formatting_rules.cpp
+        formatter/formatter_tree.cpp
+        formatter/rules/formatting_rules.cpp
+        formatter/rules/rule_config.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
