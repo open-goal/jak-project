@@ -10,6 +10,7 @@
 
 (define-extern get-active-mission-description (function discord-info string))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -107,14 +108,70 @@
 (defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
   "return the current speed modifier for airlocks"
   (if (-> obj fast-airlock?)
-      *airlock-speed*
+      (-> *pc-cheat-state* airlock-speed)
       1.0))
 
 (defmethod get-airlock-close-speed pc-settings-jak2 ((obj pc-settings-jak2))
   "return the current closing speed modifier for airlocks"
   (if (-> obj fast-airlock?)
-      *airlock-close-speed*
+      (-> *pc-cheat-state* airlock-close-speed)
       1.0))
+
+
+(defmethod update-cheats pc-settings-jak2 ((obj pc-settings-jak2))
+  "run cheats."
+
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
+
+  (when (pc-cheats? (-> obj cheats) real-time-of-day)
+      (let ((date (new 'stack-no-clear 'scf-time)))
+          (scf-get-time date)
+          (when (zero? (-> date stat))
+            (let* ((cur-time (-> *display* bg-clock frame-counter))
+                  (day-len (seconds 1440)) ;; a full in-game day
+                  (want-hour (bcd->dec (-> date hour)))
+                  (want-minute (bcd->dec (-> date minute)))
+                  (target-hour-frame (/ (the int (* (fsec 3600) want-hour)) 60))
+                  (target-minute-frame (/ (the int (* (fsec 60) want-minute)) 60))
+                  )
+              (set! (-> *display* bg-clock frame-counter) (+ (- cur-time (mod cur-time day-len)) day-len (+ target-hour-frame target-minute-frame)))
+              ))
+          ))
+
+  ;; turbo jet board cheat
+  (cond
+    ((and (pc-cheats? (-> *pc-settings* cheats) turbo-board)
+          *target*
+          (focus-test? *target* board)
+          (case (-> *load-state* vis-nick)
+            (('ctysluma 'ctyslumb 'ctyslumc
+              'ctygena 'ctygenb 'ctygenc
+              'ctyport 'ctymarka 'ctymarkb
+              'ctypal 'ctyfarma 'ctyfarmb
+              'stadium 'ctyinda 'ctyindb) #t)
+            (('forest) #t #|(not (task-node-open? (game-task-node forest-scouts-pegasus)))|#)))
+      (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
+      (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
+      (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
+      (set-setting! 'string-spline-accel-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.035)) 0)
+      (set-cheat-state-flag! turbo-board)
+      )
+    (else
+      (remove-setting! 'string-spline-max-move)
+      (remove-setting! 'string-spline-accel)
+      (remove-setting! 'string-spline-max-move-player)
+      (remove-setting! 'string-spline-accel-player)
+      (clear-cheat-state-flag! turbo-board)
+      )
+    )
+  
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
+
+  0)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -132,6 +189,9 @@
     (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
     (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
+    (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     )
   0)
 
@@ -144,6 +204,9 @@
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
   (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
   (format file "  (text-language ~D)~%" (-> obj text-language))
+  (format file "  (cheats #x~x)~%" (-> obj cheats))
+  (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
+  (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,6 +220,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 (defun draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
@@ -178,6 +243,8 @@
       (set! cur-type (the type (-> cur-type method-table 8))))
     (format #t "~%"))
   )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools

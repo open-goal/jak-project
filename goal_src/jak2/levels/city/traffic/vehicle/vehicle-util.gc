@@ -588,6 +588,17 @@ This commonly includes things such as:
          (format #t "vehicle::apply-damage: hit melt (damage ~f)~%" arg0)
          )
         )
+      (#when PC_PORT
+        ;; vehicle invuln cheats
+        (when (and (pc-cheats? (-> *pc-settings* cheats) vehicle-invuln)
+                   *target*
+                   (focus-test? *target* pilot)
+                   (nonzero? (-> *target* pilot))
+                   (= obj (handle->process (-> *target* pilot vehicle))))
+          (if (!= (-> arg1 pat event) (pat-event melt))
+              (set! arg0 0.0))
+          )
+        )
       (set! (-> obj hit-points) (- (-> obj hit-points) (* arg0 (-> obj damage-factor))))
       (let ((s4-1 (-> arg1 prim-id))
             (s3-0 0)
@@ -1064,10 +1075,9 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-112 vehicle ((obj vehicle) (arg0 object))
-  (decrease-alert-level (-> obj controller traffic) (the-as int arg0))
+(defmethod decrease-traffic-alert-level vehicle ((obj vehicle) (arg0 int))
+  (decrease-alert-level (-> obj controller traffic) arg0)
   0
-  (none)
   )
 
 (defmethod vehicle-method-80 vehicle ((obj vehicle))

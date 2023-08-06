@@ -461,7 +461,7 @@
 
   (with-gensyms (sw)
     ;; save the switch to a variable (only evaluated once)
-    `(let ((sw ,switch))
+    `(let ((,sw ,switch))
         ;; build the cond construct with each case
         (cond ,@(apply
                   (lambda (x) `(
@@ -476,11 +476,11 @@
                             )
                           ;; if the list is made up of a single condition
                           ( (= (length conditions) 1)
-                            `((,comp sw ,(first conditions)) ,@body)
+                            `((,comp ,sw ,(first conditions)) ,@body)
                             )
                           ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(,comp sw ,c)) conditions)) ,@body)
+                            `((or ,@(apply (lambda (c) `(,comp ,sw ,c)) conditions)) ,@body)
                             )
                           )
 
@@ -508,6 +508,17 @@
         )
       )
   )
+
+
+(defmacro the-as-safe (type obj)
+  (with-gensyms (temp)
+    `(let ((,temp ,obj))
+        (if (type? ,temp ,type)
+            (the-as ,type ,temp))
+        )
+    )
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
