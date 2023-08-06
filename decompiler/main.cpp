@@ -10,6 +10,7 @@
 #include "common/util/diff.h"
 #include "common/util/os.h"
 #include "common/util/set_util.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 
@@ -30,22 +31,6 @@ static void mem_log(const std::string& format, Args&&... args) {
 
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
-
-  if (!file_util::setup_project_path(std::nullopt)) {
-    lg::error("Unable to setup project path");
-    return 1;
-  }
-
-  try {
-    lg::set_file(file_util::get_file_path({"log", "decompiler.log"}));
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
-    lg::initialize();
-  } catch (const std::exception& e) {
-    lg::error("Failed to setup logging: {}", e.what());
-    return 1;
-  }
 
   fs::path config_path;
   fs::path in_folder;
@@ -73,10 +58,29 @@ int main(int argc, char** argv) {
       ->required();
   app.add_option("--config-override", config_override,
                  "JSON provided will be merged with the specified config, use to override options");
+  define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
-  // Validate arguments
+  if (!file_util::setup_project_path(std::nullopt)) {
+    lg::error("Unable to setup project path");
+    return 1;
+  }
+
+  try {
+    lg::set_file("decompiler");
+    lg::set_file_level(lg::level::info);
+    lg::set_stdout_level(lg::level::info);
+    lg::set_flush_level(lg::level::info);
+    lg::initialize();
+    if (_cli_flag_disable_ansi) {
+      lg::disable_ansi_colors();
+    }
+  } catch (const std::exception& e) {
+    lg::error("Failed to setup logging: {}", e.what());
+    return 1;
+  }
+
   using namespace decompiler;
 
   Config config;

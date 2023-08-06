@@ -650,7 +650,7 @@ std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const b
     paths_as_strings.push_back(path.string());
   }
   std::sort(paths_as_strings.begin(), paths_as_strings.end(),
-            [aescending](std::string a, std::string b) {
+            [aescending](const std::string& a, const std::string& b) {
               if (aescending) {
                 return a < b;
               } else {

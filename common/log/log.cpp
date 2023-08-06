@@ -12,6 +12,7 @@
 #endif
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 namespace lg {
 struct Logger {
@@ -23,6 +24,7 @@ struct Logger {
   level file_log_level = level::trace;
   level flush_level = level::trace;
   std::mutex mutex;
+  bool disable_colors = false;
 
   ~Logger() {
     // will run when program exits.
@@ -68,7 +70,11 @@ void log_message(level log_level, LogTime& now, const char* message) {
     if (log_level >= gLogger.stdout_log_level ||
         (log_level == level::die && gLogger.stdout_log_level == level::off_unless_die)) {
       fmt::print("{} [", time_string);
-      fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
+      if (gLogger.disable_colors) {
+        fmt::print("{}", log_level_names[int(log_level)]);
+      } else {
+        fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
+      }
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
         fflush(stdout);
@@ -172,6 +178,10 @@ void set_max_debug_levels() {
   gLogger.flush_level = level::trace;
   gLogger.stdout_log_level = level::trace;
   gLogger.file_log_level = level::trace;
+}
+
+void disable_ansi_colors() {
+  gLogger.disable_colors = true;
 }
 
 void initialize() {
