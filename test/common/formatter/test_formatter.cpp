@@ -122,27 +122,31 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
 }
 
 bool find_and_run_tests() {
-  // Enumerate test files
-  const auto test_files = file_util::find_files_recursively(
-      file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
-  bool failed = false;
-  // First do a pass to see if any tests are meant to be prioritized for debugging
-  bool only_important_tests = false;
-  for (const auto& file : test_files) {
-    only_important_tests = has_important_tests(file);
-    if (only_important_tests) {
-      break;
+  try {
+    // Enumerate test files
+    const auto test_files = file_util::find_files_recursively(
+        file_util::get_file_path({"test/common/formatter/corpus"}), std::regex("^.*\.test.gc$"));
+    bool failed = false;
+    // First do a pass to see if any tests are meant to be prioritized for debugging
+    bool only_important_tests = false;
+    for (const auto& file : test_files) {
+      only_important_tests = has_important_tests(file);
+      if (only_important_tests) {
+        break;
+      }
     }
-  }
-  for (const auto& file : test_files) {
-    // don't fail fast, but any failure means we return false
-    if (failed) {
-      run_tests(file, only_important_tests);
-    } else {
-      failed = run_tests(file, only_important_tests);
+    for (const auto& file : test_files) {
+      // don't fail fast, but any failure means we return false
+      if (failed) {
+        run_tests(file, only_important_tests);
+      } else {
+        failed = run_tests(file, only_important_tests);
+      }
     }
+    return !failed;
+  } catch (std::exception& e) {
+    return false;
   }
-  return !failed;
 }
 
 TEST(Formatter, FormatterTests) {

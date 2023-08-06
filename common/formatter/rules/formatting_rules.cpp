@@ -2,6 +2,8 @@
 
 #include <set>
 
+#include "rule_config.h"
+
 #include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"
@@ -196,27 +198,89 @@ bool form_contains_comment(const FormatterTreeNode& node) {
   return false;
 }
 
-bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node) {
-  // Two main checks:
-  // - first, is the form too long to fit on a line TODO - increase accuracy here
-  if (form_exceed_line_width(curr_text, node, 0)) {
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& list_node) {
+  // is the form too long to fit on a line TODO - increase accuracy here
+  if (form_exceed_line_width(curr_text, list_node, 0)) {
     return false;
   }
-  // - second, are there any comments? (inlined or not, doesn't matter)
-  if (form_contains_comment(node)) {
+  // are there any comments? (inlined or not, doesn't matter)
+  if (form_contains_comment(list_node)) {
     return false;
   }
   return true;
 }
 
+bool should_form_flow(const FormatterTreeNode& list_node, const bool inlining_form) {
+  if (form_contains_comment(list_node)) {
+    return true;
+  }
+  // does the form begin with a constant (a list of content elements)
+  if (!inlining_form && !list_node.refs.empty() &&
+      constant_types.find(list_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+    return true;
+  }
+
+  // TODO - make a function to make grabbing this metadata easier...
+  // TODO - honestly should just have an is_list metadata
+  if (!list_node.refs.empty() && !list_node.refs.at(0).token) {
+    // if the first element is a comment, force a flow
+    if (list_node.refs.size() > 1 && list_node.refs.at(1).metadata.is_comment) {
+      return true;
+    }
+    const auto& form_head = list_node.refs.at(0).token;
+    // See if we have any configuration for this form
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      return form_config.force_flow;
+    }
+  }
+
+  // TODO - cleanup, might be inside a let
+  /*if (!containing_form.refs.empty() && containing_form.refs.at(0).token) {
+    const auto& form_head = containing_form.refs.at(0).token;
+    if (form_head && config::opengoal_form_config.find(form_head.value()) !=
+                         config::opengoal_form_config.end()) {
+      const auto& form_config = config::opengoal_form_config.at(form_head.value());
+      if (form_config.force_flow) {
+        return true;
+      }
+    }
+  }*/
+
+  return false;
+}
+
+std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, const int index) {
+  // TODO - honestly should just have an is_list metadata
+  if (list_node.refs.empty() || !list_node.refs.at(0).token) {
+    return std::nullopt;
+  }
+  const auto& form_head = list_node.refs.at(0).token;
+  // See if we have any configuration for this form
+  if (form_head &&
+      config::opengoal_form_config.find(form_head.value()) != config::opengoal_form_config.end()) {
+    const auto& form_config = config::opengoal_form_config.at(form_head.value());
+    if (form_config.inline_until_index != -1) {
+      return index < form_config.inline_until_index;
+    }
+  }
+  return std::nullopt;
+}
+
 void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
-                    const int depth,
                     const int index,
-                    const bool constant_pair_form) {
+                    const bool flowing,
+                    const bool constant_pair_form,
+                    const bool force_newline) {
+  if (force_newline && index >= 1 || (node.metadata.is_comment && !node.metadata.is_inline)) {
+    curr_text = str_util::rtrim(curr_text) + "\n";
+    return;
+  }
   if (index <= 0 || containing_node.metadata.is_top_level ||
-      (node.metadata.is_comment && node.metadata.is_inline)) {
+      (node.metadata.is_comment && node.metadata.is_inline) || (!flowing && index <= 1)) {
     return;
   }
   // Check if it's a constant pair
@@ -227,11 +291,12 @@ void append_newline(std::string& curr_text,
   curr_text = str_util::rtrim(curr_text) + "\n";
 }
 
-void flow_line(std::string& curr_text,
-               const FormatterTreeNode& node,
-               const FormatterTreeNode& containing_node,
-               const int depth,
-               const int index) {
+void indent_line(std::string& curr_text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const int depth,
+                 const int index,
+                 const bool flowing) {
   if (node.metadata.is_top_level || (node.metadata.is_inline && node.metadata.is_comment)) {
     return;
   }
@@ -240,42 +305,89 @@ void flow_line(std::string& curr_text,
   if (constant_pairs::is_element_second_in_constant_pair(containing_node, node, index)) {
     return;
   }
-  if (index > 0) {
-    // If the first element in the list is a constant, we only indent with 1 space instead
-    if (constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
-        constant_types.end()) {
-      curr_text += str_util::repeat(depth, " ");
-    } else {
-      curr_text += str_util::repeat(depth, "  ");
-    }
+  // If the first element in the list is a constant, we only indent with 1 space instead
+  if (index > 0 &&
+      constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
+    curr_text += str_util::repeat(depth, " ");
+  } else if (index > 0 && flowing) {
+    curr_text += str_util::repeat(depth, "  ");
+  } else if (index > 1 && !flowing) {
+    curr_text += str_util::repeat(containing_node.refs.at(0).token.value().length() + 2, " ");
   }
 }
 
-void hang_lines(std::string& text,
-                const FormatterTreeNode& node,
-                const FormatterTreeNode& containing_node,
-                const bool constant_pair_form) {
-  const auto lines = str_util::split(text);
-  // TODO - unsafe (breaks on a list of lists)
-  int alignment_width = 2;
-  if (constant_pair_form &&
-      constant_types.find(containing_node.refs.at(0).metadata.node_type) != constant_types.end()) {
-    alignment_width = 3;
+// Recursively iterate through the node until we hit a token
+int length_to_hang(const FormatterTreeNode& node, int length) {
+  if (node.token || node.refs.at(0).token) {
+    return length;
   }
-  // TODO - implement hanging
-  // always hang unless flowing is "better" (this is the hard part)
-  /*else if (containing_node.metadata.multiple_elements_first_line) {
-    alignment_width = containing_node.refs.at(0).token.value().length() + 2;
-  }*/
+  return length_to_hang(node.refs.at(0), length + 1);
+}
+
+void align_lines(std::string& text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const bool constant_pair_form,
+                 const bool flowing,
+                 const bool force_flow,
+                 const bool inline_element) {
+  const auto lines = str_util::split(text);
+  int start_index = 0;
+  if (inline_element) {
+    start_index = 1;
+  }
+  int alignment_width = 2;
+  if (force_flow) {
+    start_index = 0;
+  } else if (constant_pair_form &&
+             constant_types.find(containing_node.refs.at(0).metadata.node_type) !=
+                 constant_types.end()) {
+    start_index = 0;
+    alignment_width = 3;
+  } else if (!flowing) {
+    // If the form has a token (it's a normal list)
+    if (containing_node.refs.at(0).token) {
+      alignment_width = length_to_hang(containing_node.refs.at(1),
+                                       containing_node.refs.at(0).token.value().length()) +
+                        1;
+      if (!node.token) {
+        alignment_width++;
+      }
+    } else {
+      // otherwise, it's a list of lists
+      alignment_width = 1;
+    }
+  } else if (!node.token) {
+    // If it's a list of lists
+    alignment_width = 1;
+  }
   std::string aligned_form = "";
   for (int i = 0; i < lines.size(); i++) {
-    aligned_form += str_util::repeat(alignment_width, " ") + lines.at(i);
+    if (i >= start_index) {
+      aligned_form += str_util::repeat(alignment_width, " ");
+    }
+    aligned_form += lines.at(i);
     if (i != lines.size() - 1) {
       aligned_form += "\n";
     }
   }
-  text = aligned_form;
+  if (!aligned_form.empty()) {
+    text = aligned_form;
+  }
 }
 }  // namespace indent
+namespace let {
+
+bool can_be_inlined(const FormatterTreeNode& form) {
+  // Check a variety of things specific to `let` style forms (ones with bindings)
+  // - does the binding list have more than one binding?
+  const auto& bindings = form.refs.at(1);  // TODO - assuming
+  if (bindings.refs.size() > 1) {
+    return false;
+  }
+  return true;
+}
+
+}  // namespace let
 
 }  // namespace formatter_rules
