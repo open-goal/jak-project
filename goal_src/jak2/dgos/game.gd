@@ -428,6 +428,7 @@
   "enemy-h.o"
   "nav-enemy-h.o"
   "rigid-body-h.o"
+  "damage-number.o"
   "enemy.o"
   "nav-enemy.o"
   "base-plat.o"
