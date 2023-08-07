@@ -9,20 +9,11 @@
 |#
 
 
-(deftype progress-global-state-pc (basic)
-  ((decoration-draw-time  uint64)
-   
-   (display-mode-choice-index  int8)
-   
-   (aspect-ratio-choice-index  int8)
-   )
-  )
+(defmacro push-and-set-state (progress state)
+  `(begin
+    (push-state ,progress)
+    (set-next-state ,progress ,state 0)))
 
-
-(defmacro when-not-drawn-decoration (&rest body)
-  `(when (> (get-integral-current-time) (-> *progress-state-pc* decoration-draw-time))
-      ,@body
-      (set! (-> *progress-state-pc* decoration-draw-time) (get-integral-current-time))))
 
 
 (deftype menu-display-mode-option (menu-option)
@@ -50,7 +41,8 @@
    (unlock  text-id)
    (flag    pc-cheats)
    
-   (avail-after  game-task-node)
+   (avail-after       game-task-node)
+   (avail-after-hero  game-task-node)
    )
   )
 

@@ -1757,7 +1757,8 @@
       )
     (set-scale! arg1 0.45)
     (print-game-text *temp-string* arg1 #f 44 (bucket-id progress))
-    (draw-decoration obj arg1 alpha (text-id progress-root-graphic-options) #f 0.95)
+    (when-not-drawn-decoration
+      (draw-decoration obj arg1 alpha (text-id progress-root-graphic-options) #f 0.95))
     )
   0
   (none)
@@ -1874,6 +1875,198 @@
     (print-game-text *temp-string* arg1 #f 44 (bucket-id progress))
     (when-not-drawn-decoration
       (draw-decoration obj arg1 alpha (text-id progress-root-graphic-options) #f 0.95))
+    )
+  0
+  (none)
+  )
+
+
+
+
+(defun draw-decoration-aspect-ratio-custom ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 text-id) (arg5 float))
+  (let ((gp-0 70)
+        (s5-0 120)
+        (sv-48 87)
+        (s3-0 375)
+        (s2-0 210)
+        (sv-64 0)
+        )
+    (case (get-aspect-ratio)
+      (('aspect4x3)
+        (set! gp-0 69)
+        (set! s5-0 129)
+        (set! sv-48 80)
+        (set! s3-0 375)
+        (set! s2-0 210)
+        )
+      (('aspect16x9)
+        (set! gp-0 79)
+        (set! s5-0 129)
+        (set! sv-48 68)
+        (set! s3-0 356)
+        (set! s2-0 244)
+        )
+      )
+    (when (not (-> *pc-settings* use-vis?))
+      (set! gp-0 (the int (adjust-game-x (the float gp-0))))
+      (set! s3-0 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) s3-0)))
+      )
+    (set-scale! arg1 arg5)
+    (set! (-> arg1 origin y) (the float sv-48))
+    (set! (-> arg1 height) 50.0)
+    (set-color! arg1 (font-color progress))
+    (set-flags! arg1 (font-flags kerning middle left large))
+    (print-game-text (lookup-text! *common-text* arg3 #f) arg1 #f 44 (bucket-id progress))
+    (set-vector! (-> arg0 box 0 color) 64 128 128 (the int (* 128.0 arg2)))
+    (draw-savegame-box arg0 (the float gp-0) (the float (+ gp-0 s3-0)) (the float s5-0) (the float s5-0))
+    (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                  (bucket-id particles)
+                                  )
+      (draw-sprite2d-xy
+        s0-1
+        gp-0
+        s5-0
+        s3-0
+        s2-0
+        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 arg2)))
+        )
+      )
+    )
+  )
+
+
+(defun draw-highlight-aspect ((x int) (y int) (w int) (h int) (alpha float))
+  "draw the highlight for a number in the aspect ratio screen"
+
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (when (not (-> *pc-settings* use-vis?))
+      (set! x (adjust-game-x (the float x)))
+      (set! w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) w)))
+      )
+    (draw-sprite2d-xy buf x y w h (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha))))
+    )
+  )
+
+
+(defun draw-up-down-aspect ((font font-context) (y-up float) (y-down float))
+  (protect ((-> font origin x) (-> font origin y) (-> font scale))
+  
+  (let ((start-y (-> font origin y)))
+    (set-scale! font 0.5)
+    (set! (-> font origin y) (- start-y y-up))
+    (print-game-text (string-format "~33L~C" 160) font #f 44 (bucket-id progress))
+    (set! (-> font origin y) (+ start-y y-down))
+    (print-game-text (string-format "~33L~C" 162) font #f 44 (bucket-id progress))
+    )
+  )
+  0)
+
+(defmacro swap-confirm? ()
+  "is the confirm button swapped from X?"
+  `(case (scf-get-territory)
+    ((2 3) #t)
+    (else #f)))
+
+
+(defmethod draw-option menu-aspect-ratio-custom-option ((obj menu-aspect-ratio-custom-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+  (let* ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
+        (middle-pad 15.0)
+        (middle-pad-uncorrected middle-pad)
+        (numbers-y 206.0)
+        (numbers-text-y (- numbers-y 44.0))
+        (hilite-width 36)
+        (hilite-height 16)
+        (hilite-y-ofs 6)
+        (hilite-height-total (+ hilite-height (* 2 hilite-y-ofs)))
+        (font-w 100)
+        (font-w-corrected (if (not (-> *pc-settings* use-vis?)) (the int (* (-> *pc-settings* aspect-ratio-reciprocal) font-w))
+                                                                font-w))
+        )
+    (max! alpha 0.0)
+    (set! (-> arg1 alpha) alpha)
+    (set-flags! arg1 (font-flags kerning middle large))
+    (set-scale! arg1 0.65)
+    (set-color! arg1 (font-color progress))
+    (set! (-> arg1 origin y) 80.0)
+
+    (if (not (-> *pc-settings* use-vis?))
+        (*! middle-pad (-> *pc-settings* aspect-ratio-reciprocal)))
+    
+    (protect ((-> arg1 origin x) (-> arg1 width))
+    (set-scale! arg1 0.6)
+    (set-width! arg1 50)
+    (set! (-> arg1 origin y) numbers-y)
+    (set! (-> arg1 origin x) (- 256.0 25))
+    (print-game-text "x" arg1 #f 44 (bucket-id progress))
+
+    (set-width! arg1 font-w-corrected)
+    
+    (set-scale! arg1 0.6)
+    (set! (-> arg1 origin y) numbers-y)
+    (set! (-> arg1 origin x) (- 256.0 middle-pad font-w-corrected))
+    (cond
+      ((= 0 (-> *progress-state-pc* aspect-ratio-ratio-index))
+        (draw-highlight-aspect
+                (- (the int (+ (- 256.0 middle-pad-uncorrected font-w) (/ font-w 2))) (/ hilite-width 2))
+                (- (the int (-> arg1 origin y)) hilite-y-ofs)
+                hilite-width hilite-height-total
+                alpha)
+        (set-color! arg1 (progress-selected 0))
+        (draw-up-down-aspect arg1 21.0 25.0))
+      (else
+        (set-color! arg1 (font-color progress)))
+      )
+    (print-game-text (string-format "~D" (-> *pc-settings* aspect-custom-x)) arg1 #f 44 (bucket-id progress))
+    (set-scale! arg1 0.55)
+    (set-color! arg1 (font-color progress))
+    (set! (-> arg1 origin y) numbers-text-y)
+    (print-game-text (lookup-text! *common-text* (text-id progress-aspect-ratio-custom-width) #f) arg1 #f 44 (bucket-id progress))
+
+    (set-scale! arg1 0.6)
+    (set! (-> arg1 origin y) numbers-y)
+    (set! (-> arg1 origin x) (+ 256.0 middle-pad))
+    (cond
+      ((= 1 (-> *progress-state-pc* aspect-ratio-ratio-index))
+        (draw-highlight-aspect
+                (- (the int (+ (+ 256.0 middle-pad-uncorrected) (/ font-w 2))) (/ hilite-width 2))
+                (- (the int (-> arg1 origin y)) hilite-y-ofs)
+                hilite-width hilite-height-total
+                alpha)
+        (set-color! arg1 (progress-selected 0))
+        (draw-up-down-aspect arg1 21.0 25.0))
+      (else
+        (set-color! arg1 (font-color progress)))
+      )
+    (print-game-text (string-format "~D" (-> *pc-settings* aspect-custom-y)) arg1 #f 44 (bucket-id progress))
+    (set-scale! arg1 0.55)
+    (set-color! arg1 (font-color progress))
+    (set! (-> arg1 origin y) numbers-text-y)
+    (print-game-text (lookup-text! *common-text* (text-id progress-aspect-ratio-custom-height) #f) arg1 #f 44 (bucket-id progress))
+    )
+    
+    (set! (-> arg1 origin y) 289.0)
+    (cond
+      ((< (/ (the float (-> *pc-settings* aspect-custom-x)) (the float (-> *pc-settings* aspect-custom-y))) (/ 4.0 3.0))
+        (set-scale! arg1 0.5)
+        (set-color! arg1 (font-color red))
+        (when (and  (< (/ (the float (-> *pc-settings* aspect-custom-x)) (the float (-> *pc-settings* aspect-custom-y))) (/ 4.0 3.0))
+                    (< (mod (-> *display* real-clock frame-counter) (seconds 1.2)) (seconds 1.0)))
+          (print-game-text (lookup-text! *common-text* (text-id progress-aspect-ratio-custom-warn) #f) arg1 #f 44 (bucket-id progress))
+          )
+        )
+      (else
+        (set-scale! arg1 0.55)
+        (set-color! arg1 (font-color progress))
+        (print-game-text (lookup-text! *common-text* (if  (not (swap-confirm?))
+                                                          (text-id progress-aspect-ratio-custom-pad-x)
+                                                          (text-id progress-aspect-ratio-custom-pad-circle)) #f) arg1 #f 44 (bucket-id progress))
+        )
+      )
+
+    (when-not-drawn-decoration
+      (draw-decoration-aspect-ratio-custom obj arg1 alpha (text-id progress-aspect-ratio-custom-title) 0.55))
     )
   0
   (none)
