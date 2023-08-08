@@ -1715,9 +1715,24 @@ This commonly includes things such as:
                 )
               (send-event (ppointer->process (-> obj parent)) 'child-hit)
               0
-              (if (not *debug-unkillable*)
-                  (enemy-method-48 obj arg0 arg3)
-                  )
+              (when (not *debug-unkillable*)
+                (#cond
+                  (PC_PORT
+                    (let ((old-hp (-> obj hit-points))
+                          (dmg-taken (take-damage-from-attack obj arg0 arg3)))
+                      (when (> dmg-taken 0)
+                        (process-spawn damage-number (damage-amount-from-attack obj arg0 arg3) (-> obj root trans) (-> obj mask))
+                        (send-damage-to-bar *health-bar-manager* obj dmg-taken old-hp))
+                      (when (nonzero? (-> obj fated-time))
+                        (aif (get-bar-for-process *health-bar-manager* obj)
+                            (send-event (ppointer->process it) 'set-hit-points 0)
+                            (send-damage-to-bar *health-bar-manager* obj 1 1))
+                        )
+                      )
+                    )
+                  (#t
+                    (take-damage-from-attack obj arg0 arg3)))
+                )
               (let ((s2-1 (the-as attack-info (enemy-method-58 obj arg0 arg3))))
                 (when s2-1
                   (logclear! (-> obj enemy-flags) (enemy-flag called-dying))
@@ -2003,7 +2018,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod enemy-method-48 enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
+(defmethod take-damage-from-attack enemy ((obj enemy) (arg0 process) (arg1 event-message-block))
   (let* ((v1-1 (damage-amount-from-attack obj arg0 arg1))
          (s5-0 (-> obj hit-points))
          (s4-1 (max 0 (- s5-0 v1-1)))

@@ -1,0 +1,445 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+#|
+
+  Processes for the damage numbers for enemy damage and health bar for enemy health.
+	Enemies spawn the numbers on hit, and send a message to a health bar manager to spawn a health bar
+	with the appropriate settings.
+
+	We do it like this instead of adding code to draw health bars to enemy itself to avoid having to
+	add more fields.
+
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; damage number and health bars
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype damage-number (process)
+  ((trans         vector    :inline)
+   (trans-2d      vector4w  :inline)
+   (on-screen?    symbol)
+   (damage        int32)
+   (parent-mask   process-mask)
+   (font          font-context)
+   (y-ofs         float)
+   )
+  (:methods
+    (active () _type_ :state 14)
+    (initialize-font (_type_) font-context))
+  )
+
+(defstate active (damage-number)
+  :virtual #t
+
+  :trans (behavior ()
+
+    (when (not (logtest? (-> *kernel-context* prevent-from-run) (-> self parent-mask)))
+      ;; make font float upwards
+      (+! (-> self y-ofs) (* 1.0 (-> self clock time-adjust-ratio)))
+      )
+
+    ;; convert 3D -> 2D screen now (result in trans-2d)
+    (set! (-> self on-screen?) (transform-point-qword! (-> self trans-2d) (-> self trans)))
+
+    ;; position font
+    (set-origin! (-> self font) (+ (/ (-> self trans-2d x) 16) -1792)
+                                (+ (/ (-> self trans-2d y) 16) -1855))
+    (set-depth! (-> self font) (/ (-> self trans-2d z) 16))
+    ;; now center (we could do this earlier but it's fine)
+    (-! (-> self font origin x) (/ (-> self font width) 2))
+    ;; now move it up
+    (-! (-> self font origin y) (-> self y-ofs))
+    (none))
+  
+  :code (behavior ()
+    (let ((state-time (current-time)))
+        ;; move up for a bit
+        (until (>= (- (current-time) state-time) (seconds 1))
+          (suspend))
+        ;; now fade out
+        (set! state-time (current-time))
+        (until (>= (- (current-time) state-time) (seconds 0.5))
+          (set! (-> self font alpha) (lerp-scale 1.0 0.0 (the float (- (current-time) state-time)) 0.0 (fsec 0.5)))
+          (suspend))
+        )
+    )
+  
+  :post (behavior ()
+    (when (and (-> self on-screen?) ;; text is onscreen
+               (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
+               )
+      (print-game-text (string-format "~D" (-> self damage)) (-> self font) #f 44 (bucket-id debug-no-zbuf1)))
+    )
+  )
+
+(defmethod relocate damage-number ((obj damage-number) (diff int))
+  (if (nonzero? (-> obj font))
+      (&+! (-> obj font) diff)
+      )
+  (the-as damage-number ((the-as (function process int process) (find-parent-method damage-number 7)) obj diff))
+  )
+
+(defmethod initialize-font damage-number ((self damage-number))
+  "create the font that will be used used."
+
+  (if (zero? (-> self font))
+      (set! (-> self font) (new 'process 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))))
+  
+  (set-scale! (-> self font) (lerp-scale 0.45 0.8 (the float (-> self damage)) 1.0 15.0))
+  (set-flags! (-> self font) (font-flags shadow kerning large middle))
+  (set-width! (-> self font) 100)
+  (set-width! (-> self font) 50)
+  )
+
+
+(defbehavior damage-number-init-by-other damage-number ((dmg int) (pos vector) (parent-mask process-mask))
+  "initialize a damage-number"
+  
+  ;; copy params
+  (set! (-> self damage) dmg)
+  (set! (-> self parent-mask) parent-mask)
+  (vector-copy! (-> self trans) pos)
+
+  ;; init font
+  (initialize-font self)
+
+  ;; process settings to still render while paused
+  (process-mask-clear! (-> self mask) pause)
+
+  (go-virtual active)
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; METALKOR VARIATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype damage-number-metalkor (damage-number)
+  ((damage-metalkor  float)
+   )
+  )
+
+(defstate active (damage-number-metalkor)
+  :virtual #t
+  
+  :post (behavior ()
+    (if *debug-segment*
+        (add-debug-x #t (bucket-id debug-no-zbuf2) (-> self trans) *color-cyan*))
+    (when (and (-> self on-screen?) ;; text is onscreen
+               (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
+               )
+      (let ((dmg-display *temp-string*))
+      (set! dmg-display
+            (cond
+              ((< (abs (- (* (-> self damage-metalkor) (/ 1000.0 4.0)) (the float (/ (-> self damage) 10)))) 0.001)
+                (string-format "~D" (/ (-> self damage) 10)))
+              ((< (abs (- (* (-> self damage-metalkor) (/ 10000.0 4.0)) (the float (/ (-> self damage) 1)))) 0.001)
+                (string-format "~,,1f" (/ (the float (-> self damage)) 10)))
+              (else
+                (string-format "~,,2f" (/ (* (-> self damage-metalkor) 2500) 10)))
+              ))
+      (if #f
+          (format dmg-display " (~D/~,,4f)" (-> self damage) (-> self damage-metalkor)))
+      (print-game-text dmg-display (-> self font) #f 44 (bucket-id debug-no-zbuf1))
+      ;(print-game-text (string-format "~D (~,,4f)" (-> self damage) (-> self damage-metalkor)) (-> self font) #f 44 (bucket-id debug-no-zbuf1))
+      ))
+    )
+  )
+
+
+(defbehavior damage-number-metalkor-init-by-other damage-number-metalkor ((dmg float) (pos vector) (parent-mask process-mask))
+  "initialize a damage-number-metalkor"
+  
+  ;; copy params
+  (set! (-> self damage-metalkor) dmg)
+  (set! (-> self damage) (/ (the int (* (-> self damage-metalkor) 10000)) 4))
+  (set! (-> self parent-mask) parent-mask)
+  (vector-copy! (-> self trans) pos)
+
+  ;; init font
+  (initialize-font self)
+  (set-scale! (-> self font) (lerp-scale 0.45 0.8 (/ (the float (-> self damage)) 10) 1.0 15.0))
+
+  ;; process settings to still render while paused
+  (process-mask-clear! (-> self mask) pause)
+
+  (go-virtual active)
+  )
+
+
+
+(defun draw-health-bar ((x int) (y int) (width int) (height int) (percentage float) (bucket bucket-id))
+  "Draw a rectangular health bar at the given location. color fades from green to yellow to red."
+  
+  (let* ((color (static-rgba 0 0 0 #x80))
+        (bar-w (the int (* percentage (max 0 (+ width -4)))))
+        (x2 (+ x width))
+        (bx2 (+ x 2 bar-w)))
+    (cond
+      ((>= percentage 0.6)
+        ;; fade from green -> yellow
+        (set! (-> color r) (the int (lerp-scale (the float (-> *color-green* r)) (the float (-> *color-yellow* r)) percentage 1.0 0.55)))
+        (set! (-> color g) (the int (lerp-scale (the float (-> *color-green* g)) (the float (-> *color-yellow* g)) percentage 1.0 0.55)))
+        (set! (-> color b) (the int (lerp-scale (the float (-> *color-green* b)) (the float (-> *color-yellow* b)) percentage 1.0 0.55)))
+        )
+      (else
+        ;; fade from yellow -> red
+        (set! (-> color r) (the int (lerp-scale (the float (-> *color-yellow* r)) (the float (-> *color-red* r)) percentage 0.55 0.1)))
+        (set! (-> color g) (the int (lerp-scale (the float (-> *color-yellow* g)) (the float (-> *color-red* g)) percentage 0.55 0.1)))
+        (set! (-> color b) (the int (lerp-scale (the float (-> *color-yellow* b)) (the float (-> *color-red* b)) percentage 0.55 0.1)))
+        )
+      )
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
+                                  bucket
+                                  )
+      (cond
+        ((< x -2)
+          (+! width x)
+          (+! bar-w (+ x 2)))
+        ((< x 0)
+          (+! width x))
+        ((>= x2 512)
+          (-! width (- x2 512)))
+        )
+      (cond
+        ((>= bx2 512)
+          (-! bar-w (- bx2 512)))
+        )
+      (cond
+        ((< y -2)
+          (+! height y))
+        ((< y 0)
+          (+! height y))
+        )
+      (draw-sprite2d-xy buf x y (max 0 width) (max 0 height) (new 'static 'rgba :a #x40))
+      (draw-sprite2d-xy buf (+ x 2) (+ y 2) (max 0 bar-w) (max 0 (+ height -4)) color)
+      )
+    )
+  #f
+  )
+
+
+(deftype health-bar (process)
+  ((ppointer (pointer health-bar) :override)
+   
+   (trans-2d        vector4w  :inline)
+   (width           float)
+   (height          float)
+   (on-screen?      symbol)
+   (font            font-context)
+   (hit-points-max  float)
+   (hit-points      float)
+   
+   ;; who this bar is for
+   (owner     handle)
+
+   ;; linked list fields
+   (prev-bar  (pointer health-bar))
+   (next-bar  (pointer health-bar))
+   )
+  (:methods
+    (idle () _type_ :state 14))
+  )
+
+(defmethod relocate health-bar ((obj health-bar) (diff int))
+  (if (nonzero? (-> obj font))
+      (&+! (-> obj font) diff)
+      )
+  (the-as health-bar ((the-as (function process int process) (find-parent-method health-bar 7)) obj diff))
+  )
+
+
+(deftype health-bar-manager (basic)
+  ((head    (pointer health-bar))
+   (tail    (pointer health-bar))
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (append-to-list (_type_ (pointer health-bar)) (pointer health-bar))
+    (remove-from-list (_type_ (pointer health-bar)) (pointer health-bar))
+    (get-bar-for-process (_type_ process-drawable) (pointer health-bar))
+    (send-damage-to-bar (_type_ process-drawable int int) (pointer health-bar))
+    (set-proc-bar-hit-points (_type_ process-drawable int) (pointer health-bar))
+    )
+  )
+
+(defmethod new health-bar-manager ((allocation symbol) (type-to-make type))
+  
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj head) #f)
+    (set! (-> obj tail) #f)
+    obj)
+  )
+
+
+(defmethod append-to-list health-bar-manager ((obj health-bar-manager) (bar-ptr (pointer health-bar)))
+  "add a health bar to the end of the linked list"
+  (set! (-> bar-ptr 0 prev-bar) (-> obj tail))
+  (cond
+    ((-> obj tail)
+      ;; list has stuff
+      (set! (-> obj tail 0 next-bar) bar-ptr)
+      )
+    (else
+      ;; no tail means list is empty. fill head.
+      (set! (-> obj head) bar-ptr)
+      )
+    )
+  (set! (-> obj tail) bar-ptr)
+  
+  bar-ptr)
+
+(defmethod remove-from-list health-bar-manager ((obj health-bar-manager) (bar-ptr (pointer health-bar)))
+  "remove a health bar from the linked list. call this when deactivating it"
+
+  (if (= (-> obj head) bar-ptr)
+      (set! (-> obj head) (-> bar-ptr 0 next-bar)))
+  (if (= (-> obj tail) bar-ptr)
+      (set! (-> obj tail) (-> bar-ptr 0 prev-bar)))
+  (if (-> bar-ptr 0 next-bar)
+      (set! (-> bar-ptr 0 next-bar 0 prev-bar) (-> bar-ptr 0 prev-bar)))
+  (if (-> bar-ptr 0 prev-bar)
+      (set! (-> bar-ptr 0 prev-bar 0 next-bar) (-> bar-ptr 0 next-bar)))
+
+  bar-ptr)
+
+
+(defmethod get-bar-for-process health-bar-manager ((obj health-bar-manager) (proc process-drawable))
+  "return the health bar associated with that process. #f = not found"
+
+  (let ((cur-bar (-> obj head)))
+    (while cur-bar
+      (if (= (handle->process (-> cur-bar 0 owner)) proc)
+          (return cur-bar))
+      (set! cur-bar (-> cur-bar 0 next-bar))
+      )
+    )
+  (the (pointer health-bar) #f))
+
+(define *health-bar-manager* (new 'global 'health-bar-manager))
+
+
+(defstate idle (health-bar)
+  :virtual #t
+
+  :event (behavior ((from process) (argc int) (msg symbol) (block event-message-block))
+    (case msg
+      (('damage)
+       (-! (-> self hit-points) (the float (the-as int (-> block param 0))))
+       #t)
+      (('set-hit-points)
+       (set! (-> self hit-points) (the float (the-as int (-> block param 0))))
+       #t)
+      )
+    )
+
+  :trans (behavior ()
+
+    ;; convert 3D -> 2D screen now (result in trans-2d)
+    (when (handle->process (-> self owner))
+      (set! (-> self on-screen?) (transform-point-qword! (-> self trans-2d) (-> (the process-drawable (handle->process (-> self owner))) root trans)))
+      )
+
+    ;; set store width and height.
+    (set! (-> self width) (* (-> self font width) (-> *video-params* relative-x-scale)))
+    (set! (-> self height) (-> self font height))
+
+    ;; position font
+    (set-origin! (-> self font) (+ (/ (-> self trans-2d x) 16) -1792)
+                                (+ (/ (-> self trans-2d y) 16) -1855 (the int (-> self height))))
+    (set-depth! (-> self font) (/ (-> self trans-2d z) 16))
+    ;; now center (we could do this earlier but it's fine)
+    (-! (-> self font origin x) (/ (-> self width) 2))
+
+    (none))
+  
+  :code (behavior ()
+    (while (and (handle->process (-> self owner)) (not (case (-> (handle->process (-> self owner)) next-state name) (('inactive 'hidden) #t))))
+      (suspend))
+    )
+  
+  :post (behavior ()
+    (when (and (-> self on-screen?) ;; text is onscreen
+               (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
+               (> (meters 160) (vector-vector-distance (-> (the process-drawable (handle->process (-> self owner))) root trans) (math-camera-pos))))
+      (draw-health-bar (the int (-> self font origin x)) (the int (-> self font origin y))
+                       (the int (-> self width)) (the int (-> self height))
+                       (/ (-> self hit-points) (-> self hit-points-max))
+                       (bucket-id debug-no-zbuf1))
+      ;(print-game-text (string-format "~,,0f/~,,0f" (-> self hit-points) (-> self hit-points-max)) (-> self font) #f 44 (bucket-id debug-no-zbuf1))
+      )
+    )
+  )
+
+
+(defmethod deactivate health-bar ((self health-bar))
+
+  (remove-from-list *health-bar-manager* (process->ppointer self))
+
+  ((method-of-type process deactivate) self)
+  (none)
+  )
+
+
+(defbehavior health-bar-init-by-other health-bar ((hit-points int) (hit-points-max int) (owner handle))
+  "initialize a health-bar"
+  
+  ;; copy params
+  (set! (-> self hit-points-max) (the float hit-points-max))
+  (set! (-> self hit-points) (the float hit-points))
+
+  ;; set owner
+  (set! (-> self owner) owner)
+
+  ;; linked list fields
+  (set! (-> self prev-bar) #f)
+  (set! (-> self next-bar) #f)
+  (append-to-list *health-bar-manager* (the (pointer health-bar) (process->ppointer self)))
+
+  ;; init font
+  (set! (-> self font) (new 'process 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+  (set-scale! (-> self font) 0.35)
+  (set-flags! (-> self font) (font-flags shadow kerning large middle left))
+  (set-width! (-> self font) 34)
+  (set-height! (-> self font) 10)
+
+  ;; process settings to still render while paused
+  (process-mask-clear! (-> self mask) pause)
+
+  ;; ready to handle events immediately
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+
+  (go-virtual idle)
+  )
+
+
+
+(defmethod send-damage-to-bar health-bar-manager ((obj health-bar-manager) (from process-drawable) (damage int) (hit-points-old int))
+  "send damage and hit point information of an enemy to its health bar. creates one if needed."
+  (let ((the-bar (get-bar-for-process obj from)))
+      (cond
+        (the-bar
+          (send-event (ppointer->process the-bar) 'damage damage)
+          )
+        (else
+          (set! the-bar (process-spawn health-bar (- hit-points-old damage) hit-points-old (process->handle from)))
+          )
+        )
+      the-bar)
+  )
+
+(defmethod set-proc-bar-hit-points health-bar-manager ((obj health-bar-manager) (proc process-drawable) (hit-points int))
+  "simply set the hit points (not max hit points) of a process's health bar"
+  
+  (let ((the-bar (get-bar-for-process obj proc)))
+    (send-event (ppointer->process the-bar) 'set-hit-points hit-points)
+    the-bar)
+  )
+
+
+

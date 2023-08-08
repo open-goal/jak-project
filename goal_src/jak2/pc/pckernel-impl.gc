@@ -11,14 +11,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-                                            ;; version: 0.1.0.2
-(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 0 2))
+                                            ;; version: 0.1.1.2
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 1 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+;; cheats
+(defconstant PC_CHEAT_MAX 20) ;; number of cheats
+(defenum pc-cheats
+  :bitfield #t
+  :type uint64
+  (eco-green)
+  (eco-red)
+  (eco-blue)
+  (eco-yellow)
+  (turbo-board)
+  (health-bars)
+  (vehicle-health-bars)
+  (vehicle-invuln)
+  (statistics)
+  (suck-in-all)
+  (music-player)
+  (no-textures)
+  (fast-movies)
+  (slow-movies)
+  (fast-speed)
+  (slow-speed)
+  (fast-travel)
+  (orb-tracker)
+  (real-time-of-day)
+  (city-peace)
+  )
+  
 ;; pc enum for languages. this is the game's languages + custom ones.
 (defenum pc-language
   :type uint16
@@ -49,6 +76,10 @@
 ;; The Jak 2 version of the pc-settings object.
 (deftype pc-settings-jak2 (pc-settings)
   (
+   (cheats pc-cheats)
+   (cheats-revealed pc-cheats)
+   (cheats-purchased pc-cheats)
+
    (fast-airlock?  symbol)
    (fast-elevator? symbol)
    (fast-progress? symbol)
@@ -100,6 +131,16 @@
   (set! (-> obj fast-progress?) #f)
   0)
 
+(defmethod reset-extra pc-settings-jak2 ((obj pc-settings-jak2) (call-handlers symbol))
+  "Set the default goodies settings"
+
+  ((method-of-type pc-settings reset-extra) obj call-handlers)
+
+  (set! (-> obj cheats) (pc-cheats))
+  (set! (-> obj cheats-revealed) (pc-cheats))
+  (set! (-> obj cheats-purchased) (pc-cheats))
+  0)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
@@ -109,9 +150,55 @@
 (defun get-video-params () *video-params*)
 
 
-(define *progress-speed* 1.5)
-(define *airlock-speed* 1.75)
-(define *airlock-close-speed* 1.75)
+(defenum pc-cheat-state-flag
+  :bitfield #t
+  :type uint8
+  (turbo-board) ;; should turbo board be used
+  (clear-time-mod)
+  )
 
+(deftype pc-cheat-state (structure)
+  ((progress-speed        float)
+   (airlock-speed         float)
+   (airlock-close-speed   float)
+   (turbo-board-speed     float)
+   (flags   pc-cheat-state-flag)
+   )
+  )
+
+(define *pc-cheat-state* (new 'static 'pc-cheat-state
+                              :progress-speed 1.5
+                              :airlock-speed 1.75
+                              :airlock-close-speed 1.75
+                              :turbo-board-speed 1.5
+                              ))
+
+(defmacro cheat-state-flag? (&rest flags)
+  "are the specified flags enabled?"
+  `(logtest? (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+
+(defmacro set-cheat-state-flag! (&rest flags)
+  "set the specified flags"
+  `(logior! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+(defmacro clear-cheat-state-flag! (&rest flags)
+  "clear the specified flags"
+  `(logclear! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+
+
+(defmacro give-cheat! (&rest cheats)
+  `(begin
+    (logior! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
+    (logior! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
+    (logior! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    )
+  )
+
+(defmacro lock-cheat! (&rest cheats)
+  `(begin
+    (logclear! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    )
+  )
 
 
