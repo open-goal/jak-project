@@ -146,7 +146,7 @@
           ,(lambda ((arg0 process-drawable))
              (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
              (case (scf-get-territory)
-               ((1)
+               ((GAME_TERRITORY_SCEE)
                 (case (-> *setting-control* user-current language)
                   (((language-enum spanish))
                    (send-event arg0 'segment 32 0)
@@ -429,21 +429,21 @@
     )
   )
 
-(defbehavior demo-screen-change demo-control ((arg0 symbol) (arg1 int) (arg2 symbol) (arg3 int))
+(defbehavior demo-screen-change demo-control ((arg0 int) (arg1 int) (arg2 symbol) (arg3 symbol))
   (when arg3
     (let ((s3-0 (the-as int (-> *setting-control* user-current language))))
-      (if (and (= (the-as language-enum s3-0) (language-enum english)) (= (scf-get-territory) 1))
+      (if (and (= (the-as language-enum s3-0) (language-enum english)) (= (scf-get-territory) GAME_TERRITORY_SCEE))
           (set! s3-0 7)
           )
-      (if (>= (the-as int arg0) 0)
-          (set! arg0 (the-as symbol (+ (the-as uint arg0) (* 3 s3-0))))
+      (if (>= arg0 0)
+          (+! arg0 (* 3 s3-0))
           )
       (if (>= arg1 0)
           (+! arg1 (* 3 s3-0))
           )
       )
     )
-  (set! (-> self want 0) (the-as int arg0))
+  (set! (-> self want 0) arg0)
   (set! (-> self want 1) (-> self draw))
   (when arg2
     (set-setting! 'bg-a 'abs 1.0 0)
@@ -457,7 +457,7 @@
       (suspend)
       )
     )
-  (set! (-> self draw) (the-as int arg0))
+  (set! (-> self draw) arg0)
   (set! (-> self active) #f)
   (while (and (>= (-> self draw) 0) (not (-> self active)))
     (suspend)
@@ -465,7 +465,6 @@
   (remove-setting! 'bg-a)
   (set! (-> self want 1) arg1)
   0
-  (none)
   )
 
 (defun demo-wait-for-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
@@ -495,7 +494,7 @@
                    (text-id progress-demo-exit)
                    )
                  )
-                ((= (scf-get-territory) 1)
+                ((= (scf-get-territory) GAME_TERRITORY_SCEE)
                  (new 'static 'boxed-array :type text-id (text-id atoll-unknown) (text-id strip-unknown))
                  )
                 (else
@@ -570,7 +569,7 @@
         ((or (zero? v1-1) (= v1-1 1))
          (when (zero? (-> *game-info* demo-state))
            (case (scf-get-territory)
-             ((2)
+             ((GAME_TERRITORY_SCEI)
               (let ((t9-1 demo-screen-change)
                     (a0-3 25)
                     (a1-1 26)
@@ -620,7 +619,7 @@
          (set! (-> self gui-id)
                (add-process *gui-control* self (gui-channel jak) (gui-action queue) "demoend" -99.0 0)
                )
-         (if (and (!= (scf-get-territory) 2) (= (-> *setting-control* user-current language) (language-enum japanese)))
+         (if (and (!= (scf-get-territory) GAME_TERRITORY_SCEI) (= (-> *setting-control* user-current language) (language-enum japanese)))
              (demo-screen-change (the-as symbol 2) -1 #t (the-as int #f))
              (demo-screen-change (the-as symbol 2) -1 #t (the-as int #t))
              )
@@ -638,7 +637,7 @@
            (the-as process #f)
            )
          (cond
-           ((zero? (scf-get-territory))
+           ((= (scf-get-territory) GAME_TERRITORY_SCEA)
             (let ((gp-3 (current-time)))
               (until (>= (- (current-time) gp-3) (seconds 0.38))
                 (suspend)
@@ -1408,7 +1407,7 @@
     )
   )
 
-(when (= (scf-get-territory) 1)
+(when (= (scf-get-territory) GAME_TERRITORY_SCEE)
   (let ((v1-40 (get-field-spec-by-id (-> *part-id-table* 5483) (sp-field-id spt-userdata))))
     (if v1-40
         (set! (-> v1-40 initial-valuef)
@@ -1431,7 +1430,7 @@
     )
   )
 
-(when (= (scf-get-territory) 2)
+(when (= (scf-get-territory) GAME_TERRITORY_SCEI)
   (let ((v1-47 (get-field-spec-by-id (-> *part-id-table* 5483) (sp-field-id spt-userdata))))
     (if v1-47
         (set! (-> v1-47 initial-valuef)
@@ -1454,7 +1453,7 @@
     )
   )
 
-(when (= (scf-get-territory) 3)
+(when (= (scf-get-territory) GAME_TERRITORY_SCEK)
   (let ((v1-54 (get-field-spec-by-id (-> *part-id-table* 5483) (sp-field-id spt-userdata))))
     (if v1-54
         (set! (-> v1-54 initial-valuef)
