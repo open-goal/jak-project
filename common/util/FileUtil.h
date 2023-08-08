@@ -62,6 +62,7 @@ void assert_file_exists(const char* path, const char* error_message);
 bool dgo_header_is_compressed(const std::vector<u8>& data);
 std::vector<u8> decompress_dgo(const std::vector<u8>& data_in);
 FILE* open_file(const fs::path& path, const std::string& mode);
+std::vector<fs::path> find_files_in_dir(const fs::path& dir, const std::regex& pattern);
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern);
 std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir);
 std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const bool aescending);

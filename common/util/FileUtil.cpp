@@ -622,6 +622,18 @@ FILE* open_file(const fs::path& path, const std::string& mode) {
 #endif
 }
 
+std::vector<fs::path> find_files_in_dir(const fs::path& dir, const std::regex& pattern) {
+  std::vector<fs::path> files = {};
+  for (auto& p : fs::directory_iterator(dir)) {
+    if (p.is_regular_file()) {
+      if (std::regex_match(p.path().filename().string(), pattern)) {
+        files.push_back(p.path());
+      }
+    }
+  }
+  return files;
+}
+
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
