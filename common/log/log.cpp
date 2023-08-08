@@ -12,6 +12,7 @@
 #endif
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
+#include "common/util/string_util.h"
 
 namespace lg {
 struct Logger {
@@ -23,6 +24,7 @@ struct Logger {
   level file_log_level = level::trace;
   level flush_level = level::trace;
   std::mutex mutex;
+  bool disable_colors = false;
 
   ~Logger() {
     // will run when program exits.
@@ -68,7 +70,11 @@ void log_message(level log_level, LogTime& now, const char* message) {
     if (log_level >= gLogger.stdout_log_level ||
         (log_level == level::die && gLogger.stdout_log_level == level::off_unless_die)) {
       fmt::print("{} [", time_string);
-      fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
+      if (gLogger.disable_colors) {
+        fmt::print("{}", log_level_names[int(log_level)]);
+      } else {
+        fmt::print(fg(log_colors[int(log_level)]), "{}", log_level_names[int(log_level)]);
+      }
       fmt::print("] {}\n", message);
       if (log_level >= gLogger.flush_level) {
         fflush(stdout);
@@ -109,34 +115,49 @@ void log_print(const char* message) {
 }  // namespace internal
 
 // how many extra log files for a single program should be kept?
-constexpr int LOG_ROTATE_MAX = 5;
+constexpr int LOG_ROTATE_MAX = 10;
 
-void set_file(const std::string& filename, const bool should_rotate, const bool append) {
+void set_file(const std::string& filename,
+              const bool should_rotate,
+              const bool append,
+              const std::string& dir) {
   ASSERT(!gLogger.fp);
-  file_util::create_dir_if_needed_for_file(filename);
-
-  // rotate files. log.txt is the current one, log.1.txt is the previous one, etc.
+  std::string file_path;
+  if (!dir.empty()) {
+    file_path = file_util::combine_path(dir, filename);
+  } else {
+    file_path = file_util::get_file_path({"log", filename});
+  }
+  std::string complete_filename = file_path;
   if (should_rotate) {
-    auto as_path = fs::path(filename);
-    auto stem = as_path.stem().string();
-    auto ext = as_path.extension().string();
-    auto dir = as_path.parent_path();
-    for (int i = LOG_ROTATE_MAX; i-- > 0;) {
-      auto src_name =
-          i != 0 ? fmt::format("{}.{}{}", stem, i, ext) : fmt::format("{}{}", stem, ext);
-      auto src_path = dir / src_name;
-      if (file_util::file_exists(src_path.string())) {
-        auto dst_name = fmt::format("{}.{}{}", stem, i + 1, ext);
-        auto dst_path = dir / dst_name;
-        file_util::copy_file(src_path, dst_path);
+    complete_filename += "." + str_util::current_local_timestamp_no_colons() + ".log";
+    // remove any log files with the old format
+    auto old_log_files = file_util::find_files_recursively(
+        fs::path(file_path).parent_path(), std::regex(fmt::format("{}\\.(\\d\\.)?log", filename)));
+    for (const auto& file : old_log_files) {
+      lg::info("removing {}", file.string());
+      fs::remove(file);
+    }
+    // remove the oldest log file if there are more than LOG_ROTATE_MAX
+    auto existing_log_files = file_util::find_files_recursively(
+        fs::path(file_path).parent_path(), std::regex(fmt::format("{}.*\\.log", filename)));
+    // sort the names and remove them
+    existing_log_files = file_util::sort_filepaths(existing_log_files, true);
+    if (existing_log_files.size() > (LOG_ROTATE_MAX - 1)) {
+      lg::info("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
+      for (int i = 0; i < existing_log_files.size() - (LOG_ROTATE_MAX - 1); i++) {
+        lg::info("removing {}", existing_log_files.at(i).string());
+        fs::remove(existing_log_files.at(i));
       }
     }
+  } else {
+    complete_filename += ".log";
   }
 
   if (append) {
-    gLogger.fp = file_util::open_file(filename.c_str(), "a");
+    gLogger.fp = file_util::open_file(complete_filename.c_str(), "a");
   } else {
-    gLogger.fp = file_util::open_file(filename.c_str(), "w");
+    gLogger.fp = file_util::open_file(complete_filename.c_str(), "w");
   }
   ASSERT(gLogger.fp);
 }
@@ -157,6 +178,10 @@ void set_max_debug_levels() {
   gLogger.flush_level = level::trace;
   gLogger.stdout_log_level = level::trace;
   gLogger.file_log_level = level::trace;
+}
+
+void disable_ansi_colors() {
+  gLogger.disable_colors = true;
 }
 
 void initialize() {

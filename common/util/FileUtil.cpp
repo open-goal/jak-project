@@ -644,6 +644,26 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
   return dirs;
 }
 
+std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const bool aescending) {
+  std::vector<std::string> paths_as_strings = {};
+  for (const auto& path : paths) {
+    paths_as_strings.push_back(path.string());
+  }
+  std::sort(paths_as_strings.begin(), paths_as_strings.end(),
+            [aescending](const std::string& a, const std::string& b) {
+              if (aescending) {
+                return a < b;
+              } else {
+                return a > b;
+              }
+            });
+  std::vector<fs::path> sorted_paths = {};
+  for (const auto& path : paths_as_strings) {
+    sorted_paths.push_back(fs::path(path));
+  }
+  return sorted_paths;
+}
+
 void copy_file(const fs::path& src, const fs::path& dst) {
   // Check that the src path exists
   if (!fs::exists(src)) {
