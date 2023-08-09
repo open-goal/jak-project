@@ -219,7 +219,11 @@ build_third_party_lib(zstd libzstd_static)
 
 # build SDL
 include(SDLOptions)
-build_third_party_lib(SDL SDL2)
+if(STATICALLY_LINK)
+    build_third_party_lib(SDL SDL2-static)
+else()
+    build_third_party_lib(SDL SDL2)
+endif()
 
 # build imgui
 include_directories(third-party/glad/include)
