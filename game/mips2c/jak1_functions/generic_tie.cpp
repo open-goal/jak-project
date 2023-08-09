@@ -590,7 +590,7 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   get_fake_spad_addr(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
-  u32 call_addr = 0;
+  [[maybe_unused]] u32 call_addr = 0;
   u32 madr, sadr, qwc;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 384, at);                               // sd ra, 384(at)

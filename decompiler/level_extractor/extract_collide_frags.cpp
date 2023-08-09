@@ -249,7 +249,7 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
    */
 
   auto all_frags = build_all_frags_list(tree, ties);
-  u32 total_faces = 0;
+  [[maybe_unused]] u32 total_faces = 0;
   for (auto& frag : all_frags) {
     unpack_part1_collide_list_item(frag);
     unpack_part2_collide_list_item(frag);

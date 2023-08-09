@@ -1368,8 +1368,8 @@ void create_modifiable_vertex_data(
   // index into a per-effect modifiable vertex buffer, not the giant per-FR3 merc vertex buffer.
 
   // some stats
-  int num_tris = 0;  // all triangles
-  int mod_tris = 0;  // triangles in mod draws
+  [[maybe_unused]] int num_tris = 0;  // all triangles
+  [[maybe_unused]] int mod_tris = 0;  // triangles in mod draws
 
   // loop over models added from this art-group
   for (size_t mi = first_out_model; mi < out.models.size(); mi++) {

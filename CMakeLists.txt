@@ -30,9 +30,6 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
 endif()
 
 # Setup compiler flags
-# TODO - consider moving most of the configuration into presets
-# - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
-# - requires atleast CMake 3.19
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
     set(CMAKE_CXX_FLAGS
@@ -167,33 +164,42 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CODE_COVERAGE)
     message(STATUS "Code Coverage build is enabled!")
 endif()
 
+function(build_third_party_lib dir_name target_name)
+    add_subdirectory(third-party/${dir_name} EXCLUDE_FROM_ALL)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        # For Microsoft Visual C++ Compiler (MSVC)
+        target_compile_options(${target_name} PRIVATE /w)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # For GNU Compiler Collection (GCC) or Clang
+        target_compile_options(${target_name} PRIVATE -w)
+    endif()
+endfunction()
+
+
 # Dependencies and Libraries
 # includes relative to top level jak-project folder
 include_directories(./)
 
 # build templating engine library
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
 include_directories(SYSTEM third-party/inja)
 
 # build repl library
-add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
+build_third_party_lib(replxx replxx)
 
 # SQLite - Jak 2/3's built in editor
 add_definitions(-DHAVE_USLEEP=1)
 add_definitions(-DSQLITE_THREADSAFE=1)
 add_definitions(-DSQLITE_ENABLE_JSON1)
 add_definitions(-DSQLITE_ENABLE_RTREE)
-add_subdirectory(third-party/sqlite3)
+build_third_party_lib(sqlite3 sqlite3)
 
 # build tree-sitter parser
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
 include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
-add_subdirectory(third-party/tree-sitter EXCLUDE_FROM_ALL)
+build_third_party_lib(tree-sitter tree-sitter)
 
 # native OS dialogs for error messages
-add_subdirectory(third-party/libtinyfiledialogs)
-
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+build_third_party_lib(libtinyfiledialogs libtinyfiledialogs)
 
 # build common library
 add_subdirectory(common)
@@ -201,26 +207,24 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
-add_subdirectory(third-party/cubeb EXCLUDE_FROM_ALL)
+# cubeb - audio
+build_third_party_lib(cubeb cubeb)
 
 # build LSP
 add_subdirectory(lsp)
 
-# build libco
-add_subdirectory(third-party/libco)
-
-add_subdirectory(third-party/zstd EXCLUDE_FROM_ALL)
+# build libco and zstd
+build_third_party_lib(libco libco)
+build_third_party_lib(zstd libzstd_static)
 
 # build SDL
 include(SDLOptions)
-add_subdirectory(third-party/SDL EXCLUDE_FROM_ALL)
+build_third_party_lib(SDL SDL2)
 
 # build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/SDL/include)
-add_subdirectory(third-party/imgui EXCLUDE_FROM_ALL)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+build_third_party_lib(imgui imgui)
 
 # build the game code in C++
 add_subdirectory(game)
@@ -236,28 +240,25 @@ if(WIN32)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
-add_subdirectory(third-party/googletest EXCLUDE_FROM_ALL)
+build_third_party_lib(googletest gtest)
 include(GoogleTest)
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # build tests
 include(test/CMakeLists.txt)
 
 # build lzokay library
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${THIRDPARTY_IGNORED_WARNINGS} ")
-add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
+build_third_party_lib(lzokay lzokay)
 
 # build format library
-add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)
+build_third_party_lib(fmt fmt)
 
-add_subdirectory(third-party/stb_image EXCLUDE_FROM_ALL)
-add_subdirectory(third-party/tiny_gltf EXCLUDE_FROM_ALL)
-add_subdirectory(third-party/xdelta3 EXCLUDE_FROM_ALL)
+build_third_party_lib(stb_image stb_image)
+build_third_party_lib(tiny_gltf tiny_gltf)
+build_third_party_lib(xdelta3 xdelta3)
 
 # discord rich presence
 include_directories(third-party/discord-rpc/include)
-add_subdirectory(third-party/discord-rpc EXCLUDE_FROM_ALL)
+build_third_party_lib(discord-rpc discord-rpc)
 
 # build zydis third party library for disassembling x86
 # TODO - Once under CMake 3.13's policy CMP0077, override with `set()` instead
@@ -272,10 +273,9 @@ else()
     option(ZYDIS_BUILD_SHARED_LIB "Zydis: Build shared library" ON)
 endif()
 
-add_subdirectory(third-party/zydis EXCLUDE_FROM_ALL)
+build_third_party_lib(zydis Zydis)
 
 # windows memory management lib
 if(WIN32)
-    add_subdirectory(third-party/mman)
+    build_third_party_lib(mman mman)
 endif()
-string(REPLACE " ${THIRDPARTY_IGNORED_WARNINGS} " "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")

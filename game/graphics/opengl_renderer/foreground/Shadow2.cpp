@@ -115,7 +115,7 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   // maybe the invert z thing
   DmaFollower f = dma;
   auto maybe_invert_z = f.read_and_advance();
-  bool invert_z = false;
+  [[maybe_unused]] bool invert_z = false;
   if (maybe_invert_z.vif0() == 0 && maybe_invert_z.vifcode1().kind == VifCode::Kind::DIRECT &&
       maybe_invert_z.vifcode1().immediate == 35) {
     invert_z = true;

@@ -60,7 +60,7 @@ class SFXBlock : public SoundBank {
                                                              SndPlayParams& params) override;
 
  private:
-  locator& m_locator;
+  [[maybe_unused]] locator& m_locator;
   std::vector<SFX2> m_sounds;
 };
 

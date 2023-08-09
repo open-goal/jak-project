@@ -106,7 +106,7 @@ class SFXBlock2 : public SoundBank {
   };
 
  private:
-  locator& m_locator;
+  [[maybe_unused]] locator& m_locator;
   std::string m_name;
   std::unordered_map<std::string, u32> m_names;
   std::vector<SFX2> m_sounds;
