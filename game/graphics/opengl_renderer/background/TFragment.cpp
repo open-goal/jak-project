@@ -408,7 +408,7 @@ void TFragment::render_tree(int geom,
     return;
   }
   auto& tree = m_cached_trees.at(geom).at(settings.tree_idx);
-  const auto* itimes = settings.camera.itimes;
+  [[maybe_unused]] const auto* itimes = settings.camera.itimes;
 
   if (tree.freeze_itimes) {
     itimes = tree.itimes_debug;

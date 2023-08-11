@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/diff.h"
 #include "common/util/string_util.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 
@@ -16,11 +17,14 @@
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
 
-void setup_logging() {
-  lg::set_file(file_util::get_file_path({"log", "compiler.log"}));
+void setup_logging(const bool disable_ansi_colors) {
+  lg::set_file("compiler");
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
   lg::set_flush_level(lg::level::info);
+  if (disable_ansi_colors) {
+    lg::disable_ansi_colors();
+  }
   lg::initialize();
 }
 
@@ -47,6 +51,7 @@ int main(int argc, char** argv) {
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
+  define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
@@ -77,7 +82,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    setup_logging();
+    setup_logging(_cli_flag_disable_ansi);
   } catch (const std::exception& e) {
     lg::error("Failed to setup logging: {}", e.what());
     return 1;

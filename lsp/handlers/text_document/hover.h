@@ -156,6 +156,8 @@ std::optional<LSPSpec::Hover> hover_handler_ir(Workspace& workspace,
     hover_resp.m_contents = markup;
     return hover_resp;
   }
+
+  return {};
 }
 
 std::string truncate_docstring(const std::string& docstring) {

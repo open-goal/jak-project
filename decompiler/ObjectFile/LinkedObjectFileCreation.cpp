@@ -677,7 +677,7 @@ static void link_v3(LinkedObjectFile& f,
     }
 
     if (game_version == GameVersion::Jak2) {
-      bool adjusted = false;
+      [[maybe_unused]] bool adjusted = false;
       while (segment_size % 4) {
         segment_size++;
         adjusted = true;

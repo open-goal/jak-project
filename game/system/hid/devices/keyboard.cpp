@@ -122,8 +122,6 @@ void KeyboardDevice::process_event(const SDL_Event& event,
         // modifiers are instead inspected on a KEYUP, however if it's one of the keys
         // for triggering the binding assignment, and it's the first time we've seen it -- we ignore
         // it
-        // TODO - `seen_confirm_up` should already be true if they didn't press that key
-        // this is preventing setting modifiers as keys
         if (!bind_assignment->seen_confirm_up) {
           for (const auto& confirm_bind : bind_assignment->keyboard_confirmation_binds) {
             if (confirm_bind.sdl_idx == key_event.keysym.sym) {

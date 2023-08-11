@@ -189,7 +189,7 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
 }
 
 void TerminateVAG(VagCmd* cmd, int param_2) {
-  int* piVar1;
+  [[maybe_unused]] int* piVar1;
   int iVar2;
   u32 uVar3;
   VagCmd* pRVar4;

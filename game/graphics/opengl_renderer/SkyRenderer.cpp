@@ -161,7 +161,7 @@ void SkyRenderer::render(DmaFollower& dma,
     // mmag/mmin = 1
     // clamp
     // drawing.
-    int dma_idx = 0;
+    [[maybe_unused]] int dma_idx = 0;
     while (dma.current_tag().kind == DmaTag::Kind::CNT) {
       m_frame_stats.gif_packets++;
       auto data = dma.read_and_advance();

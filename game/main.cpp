@@ -14,6 +14,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/dialogs.h"
 #include "common/util/os.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 
@@ -33,8 +34,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
  * Set up logging system to log to file.
  * @param verbose : should we print debug-level messages to stdout?
  */
-void setup_logging(bool verbose) {
-  lg::set_file(file_util::get_file_path({"log", "game.log"}));
+void setup_logging(const std::string& game_name, bool verbose, bool disable_ansi_colors) {
+  lg::set_file(game_name);
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::debug);
@@ -43,6 +44,9 @@ void setup_logging(bool verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::warn);
     lg::set_flush_level(lg::level::warn);
+  }
+  if (disable_ansi_colors) {
+    lg::disable_ansi_colors();
   }
   lg::initialize();
 }
@@ -117,6 +121,7 @@ int main(int argc, char** argv) {
   app.footer(game_arg_documentation());
   app.add_option("Game Args", game_args,
                  "Remaining arguments (after '--') that are passed-through to the game itself");
+  define_common_cli_arguments(app);
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
 
@@ -187,7 +192,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    setup_logging(verbose_logging);
+    setup_logging(game_name, verbose_logging, _cli_flag_disable_ansi);
   } catch (const std::exception& e) {
     lg::error("Failed to setup logging: {}", e.what());
     return 1;

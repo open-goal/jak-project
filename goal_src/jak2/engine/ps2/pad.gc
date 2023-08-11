@@ -435,7 +435,7 @@ The cpad-set-buzz! function can be used for vibration.
                (cond
                  ((or (= v1-123 (language-enum japanese)) (= v1-123 (language-enum korean)))
                   (case (scf-get-territory)
-                    ((2 3)
+                    ((GAME_TERRITORY_SCEI GAME_TERRITORY_SCEK)
                      (if (logtest? buttons-pushed (pad-buttons circle))
                          (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
                          )
@@ -448,7 +448,7 @@ The cpad-set-buzz! function can be used for vibration.
                     )
                   )
                  ((let ((v1-135 (scf-get-territory)))
-                    (or (= v1-135 2) (= v1-135 3))
+                    (or (= v1-135 GAME_TERRITORY_SCEI) (= v1-135 GAME_TERRITORY_SCEK))
                     )
                   (if (logtest? buttons-pushed (pad-buttons circle x))
                       (set! buttons-pushed (logior (pad-buttons confirm) buttons-pushed))
@@ -634,3 +634,38 @@ The cpad-set-buzz! function can be used for vibration.
     )
   (none)
   )
+
+
+(defmacro check-cheat-code (cheat-var pad-idx buttons &rest body)
+  "execute body when a cheat code made up of sequential inputs has been inputted"
+
+  `(when (nonzero? (cpad-pressed ,pad-idx)) ;; only check when some button has been pressed
+    (case ,cheat-var
+      ,@(apply-i
+          (lambda (x i)
+            `((,i)
+              (if (cpad-pressed? ,pad-idx ,x)
+                ,(if (< i (- (length buttons) 1))
+                    `(1+! ,cheat-var)
+
+                    `(begin ,@body (set! ,cheat-var 0))
+                    )
+
+                (set! ,cheat-var 0)
+                )
+              )
+            )
+        buttons)
+      )
+    )
+  )
+
+(defmacro cheats-sound-play (cheat?)
+  "play the appropriate sound for inputting a cheat code"
+
+  `(if ,cheat?
+      (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
+      (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
+      )
+  )
+

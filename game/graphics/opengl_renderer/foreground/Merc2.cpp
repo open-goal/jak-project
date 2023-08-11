@@ -285,7 +285,7 @@ void Merc2::model_mod_draws(int num_effects,
       // this lock is not ideal, and can block the rendering thread while blerc_execute runs,
       // which can take up to 2ms on really blerc-heavy scenes
       std::unique_lock<std::mutex> lk(g_merc_data_mutex);
-      int frags_done = 0;
+      [[maybe_unused]] int frags_done = 0;
       auto p = scoped_prof("vert-math");
 
       // loop over fragments

@@ -2189,7 +2189,7 @@ u64 execute(void* ctxt) {
   u32 sadr = 0;
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  [[maybe_unused]] u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   get_fake_spad_addr2(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672

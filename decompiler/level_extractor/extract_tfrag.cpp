@@ -1085,7 +1085,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   vf24_stq_0.w() = 0;  // set later.
 
   //  iaddiu vi11, vi00, 0x4000  |  nop
-  u16 vi11 = 0x4000;
+  [[maybe_unused]] u16 vi11 = 0x4000;
 
   //  iaddiu vi11, vi11, 0x4000  |  nop
   vi11 += 0x4000;
@@ -1677,7 +1677,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   }
 
 end:
-  int total_dvert = 0;
+  [[maybe_unused]] int total_dvert = 0;
   for (auto& draw : all_draws) {
     total_dvert += draw.verts.size();
     draw.tfrag_id = frag.id;
@@ -1994,7 +1994,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
     }
   }
 
-  int dc = 0;
+  [[maybe_unused]] int dc = 0;
   for (auto& group_list : result) {
     for (auto& group : group_list.second) {
       (void)group;

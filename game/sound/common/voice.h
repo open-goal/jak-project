@@ -87,9 +87,9 @@ class voice {
 
   AllocationType m_Alloc;
   bool m_Noise{false};
-  bool m_PitchMod{false};
-  bool m_KeyOn{false};
-  bool m_KeyOff{false};
+  [[maybe_unused]] bool m_PitchMod{false};
+  [[maybe_unused]] bool m_KeyOn{false};
+  [[maybe_unused]] bool m_KeyOff{false};
   bool m_ENDX{false};
 
   void DecodeSamples();
@@ -101,7 +101,7 @@ class voice {
   u32 m_Counter{0};
 
   u16 m_Pitch{0};
-  s16 m_Out{0};
+  [[maybe_unused]] s16 m_Out{0};
 
   u16* m_sample{nullptr};
   u32 m_SSA{0};
