@@ -512,6 +512,20 @@
   (set-setting! 'music (-> info name) 0.0 0)
   (set-setting! 'sound-mode #f 0.0 (-> info mode))
   (set-setting! 'sound-flava #f 999999.0 flava)
+  (cond
+    ((= (-> info mode) 1)
+      (case (-> info name)
+        (('sewer)
+          (set-setting! 'music-volume 'rel 1.2 0)
+          )
+        (else
+          (set-setting! 'music-volume 'rel 1.111111 0)
+          )
+        )
+      )
+    (else
+      (remove-setting! 'music-volume))
+    )
   0)
 
 (defun count-bits ((val int))
@@ -543,8 +557,8 @@
 
   ;; force sound updates
   (when (-> *progress-state-pc* music-player-track)
-    (1+! (-> *setting-control* user-current sound-mode))
-    (1+! (-> *setting-control* user-current sound-flava))
+    (+! (-> *setting-control* user-current sound-mode) 999999)
+    (+! (-> *setting-control* user-current sound-flava) 999999)
     )
   (if (= 0.0 (-> obj max-scroll))
       (set! (-> obj max-scroll) (+ -199.0 (* (-> *music-player-tracks* length) 23))))
