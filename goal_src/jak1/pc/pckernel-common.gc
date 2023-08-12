@@ -827,15 +827,20 @@
     (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
   0)
 
+(defmethod initialize pc-settings ((obj pc-settings))
+  "initial initialize method to be run after allocating"
+  ;; load defaults not covered by the file
+  (reset obj #f)
+  ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
+  (load-settings obj)
+  ;; any post-operations that need to be done after loading
+  (update-mouse-controls! obj)
+  obj)
+
 (defmethod new pc-settings ((allocation symbol) (type-to-make type))
   "make a new pc-settings"
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    ;; load defaults not covered by the file
-    (reset obj #f)
-    ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
-    (load-settings obj)
-    ;; any post-operations that need to be done after loading
-    (update-mouse-controls! obj)
+    (initialize obj)
     obj))
 
 
