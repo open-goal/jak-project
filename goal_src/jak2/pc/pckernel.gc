@@ -189,6 +189,10 @@
       (-> *pc-cheat-state* airlock-close-speed)
       1.0))
 
+(defmacro flava-unlocked? (flava)
+  "return #t if the specified flava is unlocked"
+  `(-> *pc-settings* flava-unlocked ,flava))
+
 
 (defmethod update-cheats pc-settings-jak2 ((obj pc-settings-jak2))
   "run cheats."
@@ -254,6 +258,13 @@
       (set-bit (-> obj music-unlocked) i)
       )
     )
+  
+  (true! (-> obj flava-unlocked 0)) ;; default always unlocked
+  (if (task-node-closed? (game-task-node city-red-gun-training-resolution)) (true! (-> obj flava-unlocked 1))) ;; gun
+  (if (task-node-closed? (game-task-node forest-scouts-resolution)) (true! (-> obj flava-unlocked 2))) ;; board
+  (if (task-node-closed? (game-task-node ruins-mech-resolution)) (true! (-> obj flava-unlocked 3))) ;; mech
+  (if (task-node-closed? (game-task-node city-oracle-introduction)) (true! (-> obj flava-unlocked 4))) ;; darkjak
+  (if (task-node-closed? (game-task-node city-vehicle-training-resolution)) (true! (-> obj flava-unlocked 5))) ;; pilot
 
   0)
 
@@ -306,6 +317,11 @@
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
         )
       )
+    (("flava-unlocked")
+      (dotimes (i 6)
+        (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
+        )
+      )
     )
   0)
 
@@ -324,6 +340,11 @@
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
     (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
+    )
+  (format file ")~%")
+  (format file "  (flava-unlocked")
+  (dotimes (i 6)
+    (format file " ~A" (-> obj flava-unlocked))
     )
   (format file ")~%")
   0)

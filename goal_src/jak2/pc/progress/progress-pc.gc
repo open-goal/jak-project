@@ -603,10 +603,20 @@
             )
           ;; we have a track with a submenu selected
           ((-> *progress-state-pc* music-player-selected)
-            (set! (-> *progress-state-pc* music-player-flava) (bit-on-offset (the-as int (-> *music-player-tracks* (-> obj music-index) flava)) (-> obj flava-index)))
-            (true! play?)
-            ;; exit submenu
-            (false! (-> *progress-state-pc* music-player-selected)))
+            (let ((flava (bit-on-offset (the-as int (-> *music-player-tracks* (-> obj music-index) flava)) (-> obj flava-index))))
+              (cond
+                ((flava-unlocked? flava)
+                  (set! (-> *progress-state-pc* music-player-flava) flava)
+                  (true! play?)
+                  ;; exit submenu
+                  (false! (-> *progress-state-pc* music-player-selected))
+                  )
+                (else
+                  ;; do nothing.
+                  )
+                )
+              )
+            )
           ;; we have a track with a submenu that's not open, open it
           ((nonzero? (-> *music-player-tracks* (-> obj music-index) flava))
             ;; same track that's currently playing, we can just reuse the flava position that's being used
