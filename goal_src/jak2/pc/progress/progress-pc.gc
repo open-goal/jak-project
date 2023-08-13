@@ -341,6 +341,7 @@
      )
     (('music-player)
      (set! (-> *progress-state-pc* music-player-selected) #f)
+     (set! (-> (the-as menu-music-player-option (-> *music-player-options* options 0)) excitement) 0)
      (set! (-> obj current-options) *music-player-options*)
      )
     )
@@ -508,10 +509,9 @@
 (defbehavior play-music-player progress ((info music-player-track-info) (flava int))
   "play a music track using music player track info."
 
-  (format 0 "music-player ~A m:~D f:~D~%" (-> info name) (-> info mode) flava)
   (set-setting! 'music (-> info name) 0.0 0)
-  (set-setting! 'sound-mode #f 0.0 (-> info mode))
   (set-setting! 'sound-flava #f 999999.0 flava)
+  (sound-set-midi-reg 3 (-> info mode))
   (cond
     ((= (-> info mode) 1)
       (case (-> info name)
@@ -526,6 +526,18 @@
     (else
       (remove-setting! 'music-volume))
     )
+  0)
+
+
+(defbehavior stop-music-player progress ((info music-player-track-info) (flava int))
+  "play a music track using music player track info."
+
+  (remove-setting! 'music)
+  (remove-setting! 'music-volume)
+  (remove-setting! 'sound-flava)
+  (sound-set-midi-reg 0 0)
+  (sound-set-midi-reg 2 0)
+  (sound-set-midi-reg 16 0)
   0)
 
 (defun count-bits ((val int))
@@ -557,17 +569,57 @@
 
   ;; force sound updates
   (when (-> *progress-state-pc* music-player-track)
-    (+! (-> *setting-control* user-current sound-mode) 999999)
+    (sound-set-midi-reg 3 (-> *progress-state-pc* music-player-track mode))
     (+! (-> *setting-control* user-current sound-flava) 999999)
     )
+
   (if (= 0.0 (-> obj max-scroll))
-      (set! (-> obj max-scroll) (+ -199.0 (* (-> *music-player-tracks* length) 23))))
+      (set! (-> obj max-scroll) (+ -141.0 (* (-> *music-player-tracks* length) 23))))
 
   ;; control logic
   (let ((scroll-sound? #f)
         (track-max (1- (-> *music-player-tracks* length)))
         (flava-max (1- (count-bits (the-as int (-> *music-player-tracks* (-> obj music-index) flava)))))
+        (old-excitement (-> obj excitement))
         (play? #f))
+
+    ;; excitement controls
+    (cond
+      ((cpad-pressed? 0 right l-analog-right)
+        (seekl! (-> obj excitement) 3 1))
+      ((cpad-pressed? 0 left l-analog-left)
+        (seekl! (-> obj excitement) 0 1))
+      )
+    (when (!= (-> obj excitement) old-excitement)
+      (sound-play "generic-beep")
+      (sound-set-midi-reg 16 (* 25 (-> obj excitement))) ;; play new excitement track
+      (unless (or (< (-> obj excitement) old-excitement) (process-by-name "sound-stinger" arg0))
+        (process-spawn-function process :to arg0 :name "sound-stinger"
+            (lambda :behavior process ((stinger int))
+              (let ((state-time (current-time)))
+                (format 0 "set stinger ~D~%" stinger)
+                (sound-set-midi-reg 0 stinger)
+                (until (>= (- (current-time) state-time) (seconds 0.5))
+                  (suspend))
+                (sound-set-midi-reg 0 0)
+                )
+              )
+            (+ 9 (-> obj excitement)))
+        )
+      (unless (process-by-name "sound-excitement" arg0)
+        (process-spawn-function process :to arg0 :name "sound-excitement"
+            (lambda :behavior process ((excite-fade int))
+              (let ((state-time (current-time)))
+                (format 0 "set excitement fade ~D~%" (* 25 excite-fade))
+                (sound-set-midi-reg 2 (* 25 excite-fade)) ;; fade out old excitement track
+                (until (>= (- (current-time) state-time) (seconds 0.8))
+                  (suspend))
+                )
+              )
+            old-excitement)
+        )
+      )
+
     (cond
       ((or (cpad-pressed? 0 down l-analog-down)
            (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2))))
