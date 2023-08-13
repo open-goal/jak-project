@@ -165,6 +165,7 @@ struct Config {
 
   std::vector<std::string> levels_to_extract;
   bool levels_extract;
+  bool save_texture_pngs = false;
 
   DecompileHacks hacks;
 
