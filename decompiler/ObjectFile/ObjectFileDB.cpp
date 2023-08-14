@@ -741,7 +741,8 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
   std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      auto statistics = process_tpage(data, tex_db, output_path, cfg.animated_textures);
+      auto statistics =
+          process_tpage(data, tex_db, output_path, cfg.animated_textures, cfg.save_texture_pngs);
       total += statistics.total_textures;
       success += statistics.successful_textures;
       total_px += statistics.num_px;
