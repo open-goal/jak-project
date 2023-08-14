@@ -163,6 +163,7 @@ class ObjectFileDB {
                const fs::path& obj_file_name_map_file,
                const std::vector<fs::path>& object_files,
                const std::vector<fs::path>& str_files,
+               const std::vector<fs::path>& str_tex_files,
                const Config& config);
   std::string generate_dgo_listing();
   std::string generate_obj_listing(const std::unordered_set<std::string>& merged_objs);
@@ -308,7 +309,7 @@ class ObjectFileDB {
   void for_each_function(Func f) {
     for_each_obj([&](ObjectFileData& data) {
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        int fn = 0;
+        [[maybe_unused]] int fn = 0;
         for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
           f(goal_func, i, data);
           fn++;
@@ -333,7 +334,7 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function_def_order_in_obj(ObjectFileData& data, Func f) {
     for (int i = 0; i < int(data.linked_data.segments); i++) {
-      int fn = 0;
+      [[maybe_unused]] int fn = 0;
       for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
         f(data.linked_data.functions_by_seg.at(i).at(j), i);
         fn++;
@@ -356,7 +357,7 @@ class ObjectFileDB {
 
   template <typename Func>
   void for_each_function_in_seg_in_obj(int seg, ObjectFileData& data, Func f) {
-    int fn = 0;
+    [[maybe_unused]] int fn = 0;
     if (data.linked_data.segments == 3) {
       for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
         f(data.linked_data.functions_by_seg.at(seg).at(j));

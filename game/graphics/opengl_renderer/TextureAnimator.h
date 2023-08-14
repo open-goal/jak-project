@@ -65,17 +65,18 @@ struct OpenGLTexturePool {
 class ClutBlender {
  public:
   ClutBlender(const std::string& dest,
-              const std::vector<std::string>& sources,
+              const std::array<std::string, 2>& sources,
               const std::optional<std::string>& level_name,
               const tfrag3::Level* level,
               OpenGLTexturePool* tpool);
   GLuint run(const float* weights);
   GLuint texture() const { return m_texture; }
+  bool at_default() const { return m_current_weights[0] == 1.f && m_current_weights[1] == 0.f; }
 
  private:
   const tfrag3::IndexTexture* m_dest;
-  std::vector<const std::array<math::Vector4<u8>, 256>*> m_cluts;
-  std::vector<float> m_current_weights;
+  std::array<const std::array<math::Vector4<u8>, 256>*, 2> m_cluts;
+  std::array<float, 2> m_current_weights;
   GLuint m_texture;
   std::array<math::Vector4<u8>, 256> m_temp_clut;
   std::vector<u32> m_temp_rgba;
@@ -162,6 +163,10 @@ struct FixedLayerDef {
     z_writes = false;
     z_test = false;
   }
+  void set_clamp() {
+    clamp_v = true;
+    clamp_u = true;
+  }
 };
 
 struct FixedAnimDef {
@@ -199,10 +204,14 @@ class TextureAnimator {
  public:
   TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
   ~TextureAnimator();
-  void handle_texture_anim_data(DmaFollower& dma, const u8* ee_mem, TexturePool* texture_pool);
+  void handle_texture_anim_data(DmaFollower& dma,
+                                const u8* ee_mem,
+                                TexturePool* texture_pool,
+                                u64 frame_idx);
   GLuint get_by_slot(int idx);
   void draw_debug_window();
   const std::vector<GLuint>* slots() { return &m_public_output_slots; }
+  void clear_stale_textures(u64 frame_idx);
 
  private:
   void copy_private_to_public();
@@ -255,12 +264,12 @@ class TextureAnimator {
   void set_uniforms_from_draw_data(const DrawData& dd, int dest_w, int dest_h);
   void set_draw_data_from_interpolated(DrawData* result, const LayerVals& vals, int w, int h);
 
-  PcTextureId get_id_for_tbp(TexturePool* pool, u32 tbp);
+  PcTextureId get_id_for_tbp(TexturePool* pool, u64 tbp, u64 other_id);
 
   VramEntry* m_tex_looking_for_clut = nullptr;
   const tfrag3::Level* m_common_level = nullptr;
   std::unordered_map<u32, VramEntry> m_textures;
-  std::unordered_map<u32, PcTextureId> m_ids_by_vram;
+  std::unordered_map<u64, PcTextureId> m_ids_by_vram;
 
   std::set<u32> m_erased_on_this_frame;
 
@@ -305,6 +314,7 @@ class TextureAnimator {
 
   std::vector<GLuint> m_private_output_slots;
   std::vector<GLuint> m_public_output_slots;
+  std::vector<int> m_skip_tbps;
 
   struct Bool {
     bool b = false;
@@ -314,6 +324,7 @@ class TextureAnimator {
   struct ClutBlenderGroup {
     std::vector<ClutBlender> blenders;
     std::vector<int> outputs;
+    u64 last_updated_frame = 0;
   };
   std::vector<ClutBlenderGroup> m_clut_blender_groups;
 
@@ -332,7 +343,7 @@ class TextureAnimator {
                                  const std::string& suffix0,
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
-  void run_clut_blender_group(DmaTransfer& tf, int idx);
+  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
@@ -349,5 +360,9 @@ class TextureAnimator {
   int m_stadiumb_anim_array_idx = -1;
   int m_fortress_pris_anim_array_idx = -1;
   int m_fortress_warp_anim_array_idx = -1;
+  int m_metkor_anim_array_idx = -1;
+  int m_shield_anim_array_idx = -1;
+  int m_krew_holo_anim_array_idx = -1;
+
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 };

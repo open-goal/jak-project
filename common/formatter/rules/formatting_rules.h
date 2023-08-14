@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "formatter_tree.h"
+#include "common/formatter/formatter_tree.h"
 
 namespace formatter_rules {
 // The formatter will try to collapse as much space as possible in the top-level, this means
@@ -85,30 +85,61 @@ bool form_should_be_constant_paired(const FormatterTreeNode& node);
 // Additionally, if the head of the form is a constant we `flow` with an indent of `1` instead of
 // `2`
 //
-// TODO: - incorporate more heuristics here, explore both a hang and flow approach to see which is
-// better
+// By default, we always hang unless:
+// - the head-form overrides the configuration
+// - TODO it will use more lines than the flow approach
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/indent.md
 namespace indent {
 const static int line_width_target = 120;
 
-bool form_can_be_inlined(std::string& curr_text, const FormatterTreeNode& node);
+bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& curr_node);
+
+// TODO - right now this is very primitive in that it only checks against our hard-coded config
+// eventually make this explore both routes and determine which is best
+// Also factor in distance from the gutter (theres some zprint rationale somewhere on this)
+bool should_form_flow(const FormatterTreeNode& list_node, const bool inlining_form);
+std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, const int index);
 
 void append_newline(std::string& curr_text,
                     const FormatterTreeNode& node,
                     const FormatterTreeNode& containing_node,
-                    const int depth,
                     const int index,
-                    const bool constant_pair_form);
-void flow_line(std::string& curr_text,
-               const FormatterTreeNode& node,
-               const FormatterTreeNode& containing_node,
-               const int depth,
-               const int index);
-void hang_lines(std::string& text,
-                const FormatterTreeNode& node,
-                const FormatterTreeNode& containing_node,
-                const bool constant_pair_form);
+                    const bool flowing,
+                    const bool constant_pair_form,
+                    const bool force_newline);
+void indent_line(std::string& curr_text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const int depth,
+                 const int index,
+                 const bool flowing);
+void align_lines(std::string& text,
+                 const FormatterTreeNode& node,
+                 const FormatterTreeNode& containing_node,
+                 const bool constant_pair_form,
+                 const bool flowing,
+                 const bool force_flow,
+                 const bool inline_element);
 
 }  // namespace indent
+
+// Let forms fall into two main categories
+// - Ones that can be entirely inlined
+// - Ones that cannot
+//
+// Single line let forms:
+// - If there is a single binding, let it continue to be one line
+// - otherwise, flow it just as a multi-line let would be done
+//
+// For multi-line let forms, the difficulty is how to format the binding:
+// - align the bindings to within the binding list (single indent space)
+// - always format the binding value on the same line as the binding, no new lines
+// - forms inside the let binding are flowed
+//
+// Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/let.md
+namespace let {
+// TODO - like above, factor in current cursor position
+bool can_be_inlined(const FormatterTreeNode& form);
+}  // namespace let
 }  // namespace formatter_rules

@@ -86,7 +86,10 @@ class FramebufferCopier {
   FramebufferCopier(const FramebufferCopier&) = delete;
   FramebufferCopier& operator=(const FramebufferCopier&) = delete;
   void copy_now(int render_fb_w, int render_fb_h, GLuint render_fb);
+  void copy_back_now(int render_fb_w, int render_fb_h, GLuint render_fb);
   u64 texture() const { return m_fbo_texture; }
+  int width() const { return m_fbo_width; }
+  int height() const { return m_fbo_height; }
 
  private:
   GLuint m_fbo = 0, m_fbo_texture = 0;

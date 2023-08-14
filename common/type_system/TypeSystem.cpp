@@ -1017,7 +1017,7 @@ void TypeSystem::add_builtin_types(GameVersion version) {
 
   // OBJECT
   auto obj_type = add_type(
-      "object", std::make_unique<ValueType>("object", "object", false, 4, false, RegClass::GPR_64));
+      "object", std::make_unique<ValueType>("object", "object", false, 4, true, RegClass::GPR_64));
 
   auto structure_type = add_builtin_structure("object", "structure");
   auto basic_type = add_builtin_basic("structure", "basic");

@@ -40,7 +40,7 @@ class FrameTimeRecorder {
 
 class OpenGlDebugGui {
  public:
-  OpenGlDebugGui(GameVersion version) : m_version(version) {}
+  OpenGlDebugGui() {}
 
   void start_frame();
   void finish_frame();
@@ -86,6 +86,4 @@ class OpenGlDebugGui {
   bool m_want_screenshot = false;
   char m_screenshot_save_name[256] = "screenshot.png";
   float target_fps_input = 60.f;
-
-  GameVersion m_version;
 };

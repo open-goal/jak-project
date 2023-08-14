@@ -745,9 +745,22 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
     // not added to level, add it
     auto tex_it = tex_db.textures.find(pc_combo_tex_id);
     if (tex_it == tex_db.textures.end()) {
-      lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
-                pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
-      idx_in_level_texture = 0;
+      if (pc_combo_tex_id == 0 && debug_name == "yakow-lod0") {
+        // this texture is missing in the real game, and it ends up using an invalid texture
+        // configuration, making it completely black. Instead of that, just pick a similar-ish
+        // yakow fur texture. It's not perfect, but it's better than nothing.
+        for (size_t i = 0; i < out.textures.size(); i++) {
+          auto& existing = out.textures[i];
+          if (existing.debug_name == "yak-medfur-end") {
+            idx_in_level_texture = i;
+            break;
+          }
+        }
+      } else {
+        lg::error("merc failed to find texture: 0x{:x} for {}. Should be in tpage {}",
+                  pc_combo_tex_id, debug_name, pc_combo_tex_id >> 16);
+        idx_in_level_texture = 0;
+      }
     } else {
       idx_in_level_texture = out.textures.size();
       auto& new_tex = out.textures.emplace_back();
@@ -1355,8 +1368,8 @@ void create_modifiable_vertex_data(
   // index into a per-effect modifiable vertex buffer, not the giant per-FR3 merc vertex buffer.
 
   // some stats
-  int num_tris = 0;  // all triangles
-  int mod_tris = 0;  // triangles in mod draws
+  [[maybe_unused]] int num_tris = 0;  // all triangles
+  [[maybe_unused]] int mod_tris = 0;  // triangles in mod draws
 
   // loop over models added from this art-group
   for (size_t mi = first_out_model; mi < out.models.size(); mi++) {

@@ -1335,6 +1335,29 @@
   )
 
 (defmethod vehicle-method-124 vehicle ((obj vehicle))
+  (#when PC_PORT
+    ;; vehicle hp display cheat
+    (when (pc-cheats? (-> *pc-settings* cheats) vehicle-health-bars)
+        (when (and *target* (focus-test? *target* pilot) (nonzero? (-> *target* pilot)))
+          (when (= (handle->process (-> *target* pilot vehicle)) obj)
+            (let ((x 0) (y 0)
+                  (w 0) (h 0)
+                  (screen-pos (new 'static 'vector4w)))
+
+            ;; convert 3D -> 2D screen now (store result in screen-pos)
+            (when (transform-point-qword! screen-pos (-> *target* root trans))
+
+              ;; set params
+              (set! w (the int (* 52.0 (-> *video-params* relative-x-scale))))
+              (set! h (the int 10.0))
+              (set! x (- (+ (/ (-> screen-pos x) 16) -1792) (/ w 2)))
+              (set! y (+ (+ (/ (-> screen-pos y) 16) -1855) 20))
+              
+              (draw-health-bar x y w h (-> obj hit-points) (bucket-id debug-no-zbuf1))
+              )))
+          )
+        )
+    )
   (vehicle-method-94 obj)
   (vehicle-method-121 obj)
   (vehicle-method-97 obj)

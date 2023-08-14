@@ -63,13 +63,14 @@ OpenGLTexturePool::OpenGLTexturePool() {
     u64 w, h, n;
   };
   // list of sizes to preallocate: {width, height, count}.
-  for (const auto& a : std::vector<Alloc>{{4, 4, 1},
+  for (const auto& a : std::vector<Alloc>{{4, 4, 2},
+                                          {4, 64, 2},
                                           {16, 16, 5},
                                           {32, 16, 1},
-                                          {32, 32, 8},
+                                          {32, 32, 10},
                                           {32, 64, 1},
                                           {64, 32, 6},
-                                          {64, 64, 20},
+                                          {64, 64, 30},
                                           {64, 128, 4},
                                           {128, 128, 10},
                                           {256, 1, 2},
@@ -223,17 +224,18 @@ void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
  * texture using the index data in dest.
  */
 ClutBlender::ClutBlender(const std::string& dest,
-                         const std::vector<std::string>& sources,
+                         const std::array<std::string, 2>& sources,
                          const std::optional<std::string>& level_name,
                          const tfrag3::Level* level,
                          OpenGLTexturePool* tpool) {
   // find the destination texture
   m_dest = itex_by_name(level, dest, level_name);
   // find the clut source textures
-  for (const auto& sname : sources) {
-    m_cluts.push_back(&itex_by_name(level, sname, level_name)->color_table);
-    m_current_weights.push_back(0);
+  for (int i = 0; i < 2; i++) {
+    m_cluts[i] = &itex_by_name(level, sources[i], level_name)->color_table;
+    m_current_weights[i] = 0;
   }
+
   // opengl texture that we'll write to
   m_texture = tpool->allocate(m_dest->w, m_dest->h);
   m_temp_rgba.resize(m_dest->w * m_dest->h);
@@ -277,7 +279,7 @@ GLuint ClutBlender::run(const float* weights) {
   }
 
   // do texture lookups
-  for (int i = 0; i < m_temp_rgba.size(); i++) {
+  for (size_t i = 0; i < m_temp_rgba.size(); i++) {
     memcpy(&m_temp_rgba[i], m_temp_clut[m_dest->index_data[i]].data(), 4);
   }
 
@@ -465,12 +467,12 @@ void TextureAnimator::draw_debug_window() {
 
   auto& slots = jak2_animated_texture_slots();
   for (size_t i = 0; i < slots.size(); i++) {
-    ImGui::Text("Slot %d %s", (int)i, slots[i].c_str());
+    ImGui::Text("Slot %d %s (%d)", (int)i, slots[i].c_str(), (int)m_private_output_slots[i]);
     glBindTexture(GL_TEXTURE_2D, m_private_output_slots[i]);
     int w, h;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-    ImGui::Image((void*)m_private_output_slots[i], ImVec2(w, h));
+    ImGui::Image((void*)(u64)m_private_output_slots[i], ImVec2(w, h));
     ImGui::Checkbox(fmt::format("mark {}", i).c_str(), &m_output_debug_flags.at(i).b);
   }
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -510,8 +512,9 @@ void TextureAnimator::add_to_clut_blender_group(int idx,
                                                 const std::optional<std::string>& dgo) {
   auto& grp = m_clut_blender_groups.at(idx);
   for (auto& prefix : textures) {
-    grp.blenders.emplace_back(prefix, std::vector<std::string>{prefix + suffix0, prefix + suffix1},
-                              dgo, m_common_level, &m_opengl_texture_pool);
+    grp.blenders.emplace_back(prefix,
+                              std::array<std::string, 2>{prefix + suffix0, prefix + suffix1}, dgo,
+                              m_common_level, &m_opengl_texture_pool);
     grp.outputs.push_back(output_slot_by_idx(GameVersion::Jak2, prefix));
     m_private_output_slots.at(grp.outputs.back()) = grp.blenders.back().texture();
   }
@@ -555,6 +558,9 @@ enum PcTextureAnimCodes {
   STADIUMB = 35,
   FORTRESS_PRIS = 36,
   FORTRESS_WARP = 37,
+  METKOR = 38,
+  SHIELD = 39,
+  KREW_HOLO = 40,
 };
 
 // metadata for an upload from GOAL memory
@@ -584,7 +590,8 @@ struct TextureAnimPcTransform {
  */
 void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
                                                const u8* ee_mem,
-                                               TexturePool* texture_pool) {
+                                               TexturePool* texture_pool,
+                                               u64 frame_idx) {
   dprintf("animator\n");
   m_current_shader = {};
   glBindVertexArray(m_vao);
@@ -596,6 +603,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   }
   m_in_use_temp_textures.clear();  // reset temp texture allocator.
   m_erased_on_this_frame.clear();
+  m_skip_tbps.clear();
 
   // loop over DMA, and do the appropriate texture operations.
   // this will fill out m_textures, which is keyed on TBP.
@@ -645,23 +653,23 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         } break;
         case DARKJAK: {
           auto p = scoped_prof("darkjak");
-          run_clut_blender_group(tf, m_darkjak_clut_blender_idx);
+          run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
         } break;
         case PRISON_JAK: {
           auto p = scoped_prof("prisonjak");
-          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx);
         } break;
         case ORACLE_JAK: {
           auto p = scoped_prof("oraclejak");
-          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx);
         } break;
         case NEST_JAK: {
           auto p = scoped_prof("nestjak");
-          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx);
+          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx);
         } break;
         case KOR_TRANSFORM: {
           auto p = scoped_prof("kor");
-          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx);
+          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx);
         } break;
         case SKULL_GEM: {
           auto p = scoped_prof("skull-gem");
@@ -707,6 +715,18 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("fort-warp");
           run_fixed_animation_array(m_fortress_warp_anim_array_idx, tf, texture_pool);
         } break;
+        case METKOR: {
+          auto p = scoped_prof("metkor");
+          run_fixed_animation_array(m_metkor_anim_array_idx, tf, texture_pool);
+        } break;
+        case SHIELD: {
+          auto p = scoped_prof("shield");
+          run_fixed_animation_array(m_shield_anim_array_idx, tf, texture_pool);
+        } break;
+        case KREW_HOLO: {
+          auto p = scoped_prof("krew-holo");
+          run_fixed_animation_array(m_krew_holo_anim_array_idx, tf, texture_pool);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -735,6 +755,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
       // if it was skipped by the above step, this is just some temporary texture we don't need
       // (hopefully)
       // (TODO: could flag these somehow?)
+      continue;
+    }
+
+    if (std::find(m_skip_tbps.begin(), m_skip_tbps.end(), tbp) != m_skip_tbps.end()) {
       continue;
     }
     dprintf("end processing on %d\n", tbp);
@@ -766,7 +790,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         in.h = entry.tex_height;
         in.debug_page_name = "PC-ANIM";
         in.debug_name = std::to_string(tbp);
-        in.id = get_id_for_tbp(texture_pool, tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp, 99);
         entry.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
         entry.needs_pool_update = false;
         dprintf("create texture %d\n", tbp);
@@ -841,8 +865,8 @@ void TextureAnimator::force_to_gpu(int tbp) {
  * The only purpose is to avoid putting all the textures with the same ID, which is a slow-path
  * in the pool (which is optimized for only a few textures with the same ID at most).
  */
-PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u32 tbp) {
-  const auto& it = m_ids_by_vram.find(tbp);
+PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u64 tbp, u64 other_id) {
+  const auto& it = m_ids_by_vram.find(tbp | (other_id << 32));
   if (it == m_ids_by_vram.end()) {
     auto ret = pool->allocate_pc_port_texture(GameVersion::Jak2);
     m_ids_by_vram[tbp] = ret;
@@ -990,14 +1014,28 @@ void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
   glColorMask(true, true, true, true);
 }
 
-void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx) {
+void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
   float f;
   ASSERT(tf.size_bytes == 16);
   memcpy(&f, tf.data, sizeof(float));
   float weights[2] = {1.f - f, f};
   auto& blender = m_clut_blender_groups.at(idx);
+  blender.last_updated_frame = frame_idx;
   for (size_t i = 0; i < blender.blenders.size(); i++) {
     m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  }
+}
+
+void TextureAnimator::clear_stale_textures(u64 frame_idx) {
+  for (auto& group : m_clut_blender_groups) {
+    if (frame_idx > group.last_updated_frame) {
+      for (auto& blender : group.blenders) {
+        if (!blender.at_default()) {
+          float weights[2] = {1, 0};
+          blender.run(weights);
+        }
+      }
+    }
   }
 }
 
@@ -1589,7 +1627,7 @@ bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
       ASSERT_NOT_REACHED();
   }
 
-  bool do_alpha_test = false;
+  [[maybe_unused]] bool do_alpha_test = false;
   bool alpha_test_mask_alpha_trick = false;
   bool alpha_test_mask_depth_trick = false;
 
@@ -1766,8 +1804,18 @@ void TextureAnimator::run_fixed_animation_array(int idx,
     // give to the pool for renderers that don't know how to access this directly
     if (anim.def.move_to_pool) {
       ASSERT(tbp < 0x40000);
+      m_skip_tbps.push_back(tbp);  // known to be an output texture.
       if (anim.pool_gpu_tex) {
+        // if the debug checkbox is checked, replace the texture with red.
+        if (m_output_debug_flags.at(anim.dest_slot).b) {
+          FramebufferTexturePairContext ctxt(*anim.fbt);
+          glColorMask(true, true, true, true);
+          glClearColor(1.0, 0.0, 0.0, 0.5);
+          glClear(GL_COLOR_BUFFER_BIT);
+        }
+
         texture_pool->move_existing_to_vram(anim.pool_gpu_tex, tbp);
+        ASSERT(texture_pool->lookup(tbp).value() == anim.fbt->texture());
       } else {
         TextureInput in;
         in.gpu_texture = anim.fbt->texture();
@@ -1775,7 +1823,7 @@ void TextureAnimator::run_fixed_animation_array(int idx,
         in.h = anim.fbt->height();
         in.debug_page_name = "PC-ANIM";
         in.debug_name = std::to_string(tbp);
-        in.id = get_id_for_tbp(texture_pool, tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp, idx);
         anim.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
       }
     }
@@ -1797,12 +1845,15 @@ void interpolate_layer_values(float interp,
   interpolate_1(interp, &out->st_scale, start.st_scale, end.st_scale);
   interpolate_1(interp, &out->st_offset, start.st_offset, end.st_offset);
   interpolate_1(interp, &out->qs, start.qs, end.qs);
+  interpolate_1(interp, &out->rot, start.rot, end.rot);
+  interpolate_1(interp, &out->st_rot, start.st_rot, end.st_rot);
 }
 
 void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
                                                       const LayerVals& vals,
                                                       int w,
                                                       int h) {
+  ASSERT(vals.rot == 0);
   result->color = (vals.color * 128.f).cast<u32>();
   math::Vector2f pos_scale(vals.scale.x() * w, vals.scale.y() * h);
   math::Vector2f pos_offset(2048.f + (vals.offset.x() * w), 2048.f + (vals.offset.y() * h));
@@ -1814,8 +1865,23 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
   math::Vector2<u32> poss[4];
 
   for (int i = 0; i < 4; i++) {
-    sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
     poss[i] = ((corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
+  }
+
+  if (vals.st_rot != 0) {
+    const float rotation_radians = 2.f * M_PI * vals.st_rot / 65536.f;
+    const float sine = std::sin(rotation_radians);
+    const float cosine = std::cos(rotation_radians);
+    math::Vector2f vx(sine, cosine);
+    math::Vector2f vy(cosine, -sine);
+    for (int i = 0; i < 4; i++) {
+      math::Vector2f corner = corners[i].elementwise_multiply(st_scale);
+      sts[i] = st_offset + vx * corner.x() + vy * corner.y();
+    }
+  } else {
+    for (int i = 0; i < 4; i++) {
+      sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
+    }
   }
 
   result->st0.x() = sts[0].x();
@@ -1948,6 +2014,8 @@ void TextureAnimator::setup_texture_anims() {
     skull_gem.move_to_pool = true;
     skull_gem.tex_name = "skull-gem-dest";
     skull_gem.color = math::Vector4<u8>{0, 0, 0, 0x80};
+    // overriden in texture-finish.gc
+    skull_gem.override_size = math::Vector2<int>(32, 32);
 
     auto& skull_gem_0 = skull_gem.layers.emplace_back();
     skull_gem_0.end_time = 300.;
@@ -2197,5 +2265,171 @@ void TextureAnimator::setup_texture_anims() {
     src.end_time = 300.f;
     src.tex_name = "fort-roboscreen-env";
     m_fortress_warp_anim_array_idx = create_fixed_anim_array({def});
+  }
+
+  // metkor
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.tex_name = "squid-env-rim-dest";
+    def.move_to_pool = true;
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-noise";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-scan";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-rim";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-rim";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "environment-phong-rim";
+    }
+    m_metkor_anim_array_idx = create_fixed_anim_array({def});
+  }
+
+  // shield
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.tex_name = "squid-env-rim-dest";
+    def.move_to_pool = true;
+
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "common-white";
+    }
+
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "squid-env-uscroll";
+    }
+
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "squid-env-uscroll";
+    }
+
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "squid-env-rim-src";
+    }
+
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "squid-env-rim-src";
+    }
+    m_shield_anim_array_idx = create_fixed_anim_array({def});
+  }
+
+  // krew
+  {
+    FixedAnimDef def;
+    def.color = math::Vector4<u8>(0, 0, 0, 0x80);
+    def.tex_name = "krew-holo-dest";
+    def.move_to_pool = true;
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-noise";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-scan";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-rim";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-head-env-rim";
+    }
+    {
+      auto& src = def.layers.emplace_back();
+      src.set_blend_b2_d1();
+      src.channel_masks[3] = false;  // no alpha writes.
+      src.set_no_z_write_no_z_test();
+      src.set_clamp();
+      src.end_time = 1200.f;
+      src.tex_name = "metkor-phong-env";
+    }
+    m_krew_holo_anim_array_idx = create_fixed_anim_array({def});
   }
 }

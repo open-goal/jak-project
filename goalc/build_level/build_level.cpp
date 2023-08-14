@@ -3,6 +3,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/compress.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 
 #include "goalc/build_level/Entity.h"
 #include "goalc/build_level/FileInfo.h"
@@ -25,8 +26,8 @@ void save_pc_data(const std::string& nickname,
   print_memory_usage(data, ser.get_save_result().second);
   lg::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
             100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
-                               compressed.size());
+  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", str_util::to_upper(nickname)),
+                               compressed.data(), compressed.size());
 }
 
 std::vector<std::string> get_build_level_deps(const std::string& input_file) {

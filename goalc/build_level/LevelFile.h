@@ -9,11 +9,11 @@
 #include "goalc/build_level/Entity.h"
 #include "goalc/build_level/FileInfo.h"
 #include "goalc/build_level/Tfrag.h"
+#include "goalc/build_level/ambient.h"
 #include "goalc/build_level/collide_bvh.h"
 #include "goalc/build_level/collide_common.h"
 #include "goalc/build_level/collide_drawable.h"
 #include "goalc/build_level/collide_pack.h"
-#include "goalc/build_level/drawable_ambient.h"
 
 struct VisibilityString {
   std::vector<u8> bytes;
@@ -32,9 +32,7 @@ struct DrawableTreeArray {
   std::vector<DrawableTreeCollideFragment> collides;
   std::vector<DrawableTreeAmbient> ambients;
   std::vector<DrawableTreeInstanceShrub> shrubs;
-  size_t add_to_object_file(DataObjectGenerator& gen,
-                            size_t ambient_count,
-                            size_t ambient_arr_slot) const;
+  size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
 
 struct TextureRemap {};

@@ -155,11 +155,13 @@ DrawSettings adgif_to_draw_mode(const AdGifData& ad,
   current_mode.set_depth_write_enable(true);  // todo, is this actual true
   current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
   current_mode.enable_fog();
+  current_mode.set_ab(false);
 
   if (alpha_tpage_flag) {
     current_mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
     current_mode.set_aref(0);
     current_mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+    current_mode.set_ab(true);
   }
 
   // ADGIF 0

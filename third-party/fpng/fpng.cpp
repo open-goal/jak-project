@@ -1743,7 +1743,7 @@ do_literals:
         // NOTE - Manual fix by us to support unicode....
         std::wstring converted_path = utf8_string_to_wide_string(pFilename);
         if (converted_path.empty()) {
-          printf("bad path - %s", converted_path.data());
+          printf("bad path - %ls", converted_path.data());
           return false;
         }
 
@@ -1776,7 +1776,8 @@ do_literals:
 		memset(num_codes, 0, sizeof(num_codes));
 		for (uint32_t i = 0; i < num_syms; i++)
 		{
-			assert(pCode_sizes[i] <= FPNG_DECODER_TABLE_SIZE);
+      // Assertion is always true
+			// assert(pCode_sizes[i] <= FPNG_DECODER_TABLE_SIZE);
 			num_codes[pCode_sizes[i]]++;
 		}
 

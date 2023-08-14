@@ -84,32 +84,6 @@
   )
 
 
-
-;; cheats
-(defconstant PC_CHEAT_MAX 18) ;; number of cheats
-(defenum pc-cheats
-  :bitfield #t
-  :type uint64
-  (eco-green)
-  (eco-red)
-  (eco-blue)
-  (eco-yellow)
-  (invinc)
-  (sidekick-blue)
-  (tunes)
-  (sky)
-  (mirror)
-  (big-head)
-  (small-head)
-  (big-fist)
-  (no-tex)
-  (hard-rats)
-  (hero-mode)
-  (huge-head)
-  (big-head-npc)
-  (oh-my-goodness)
-  )
-
 (defmacro pc-cheats? (obj &rest cheats)
   `(logtest? ,obj (pc-cheats ,@cheats)))
 
@@ -214,7 +188,7 @@
    (lod-force-actor int8) ;; merc lod tier override
 
    ;; misc settings
-   (force-actors? symbol) ;; skips vis check for actor entity
+   (ps2-actor-vis? symbol) ;; skips vis check for actor entity if disabled
    (use-vis? symbol) ;; if off, don't use vis trees. this MUST be off for custom (non-cropping) aspect ratios.
    (hinttitles? symbol) ;; if on, non-cutscene subtitles will show up
    (subtitle-speaker? symbol) ;; #f (force off), #t (force on), auto (on for offscreen)
@@ -229,9 +203,6 @@
 
    (discord-rpc? symbol) ;; enable discord rich presence integration
    (speedrunner-mode? symbol) ;; enable speedrunner mode
-
-   (cheats pc-cheats)
-   (cheats-known pc-cheats)
 
    (flava-hack int64)
 
@@ -424,7 +395,7 @@
 (defmethod reset-misc pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default misc settings"
 
-  (set! (-> obj force-actors?) #f)
+  (set! (-> obj ps2-actor-vis?) #t)
   (set! (-> obj hinttitles?) #t)
   (set! (-> obj subtitle-speaker?) 'auto)
   (reset-camera obj call-handlers)
@@ -442,8 +413,6 @@
 (defmethod reset-extra pc-settings ((obj pc-settings) (call-handlers symbol))
   "Set the default goodies settings"
 
-  (set! (-> obj cheats) (pc-cheats))
-  (set! (-> obj cheats-known) (pc-cheats))
   0)
 
 (defmacro with-pc (&rest body)

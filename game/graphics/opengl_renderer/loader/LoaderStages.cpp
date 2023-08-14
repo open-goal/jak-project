@@ -96,7 +96,7 @@ class TfragLoadStage : public LoaderStage {
 
     constexpr u32 CHUNK_SIZE = 32768;
     u32 uploaded_bytes = 0;
-    u32 unique_buffers = 0;
+    [[maybe_unused]] u32 unique_buffers = 0;
 
     while (true) {
       bool complete_tree;

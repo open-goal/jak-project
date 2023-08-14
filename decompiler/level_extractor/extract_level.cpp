@@ -260,11 +260,19 @@ void extract_common(const ObjectFileDB& db,
     textures_we_have.insert(t.debug_name);
   }
 
+  for (const auto& [id, normal_texture] : tex_db.textures) {
+    if (config.common_tpages.count(normal_texture.page) &&
+        !textures_we_have.count(normal_texture.name)) {
+      textures_we_have.insert(normal_texture.name);
+      tfrag_level.textures.push_back(
+          make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), true));
+    }
+  }
+
   // add animated textures that are missing.
   for (const auto& [id, normal_texture] : tex_db.textures) {
     if (config.animated_textures.count(normal_texture.name) &&
         !textures_we_have.count(normal_texture.name)) {
-      lg::warn("adding anim normal texture {} ", normal_texture.name);
       textures_we_have.insert(normal_texture.name);
       tfrag_level.textures.push_back(
           make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), false));
