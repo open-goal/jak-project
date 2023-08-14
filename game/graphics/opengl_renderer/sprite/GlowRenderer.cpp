@@ -241,7 +241,9 @@ void copy_to_vertex(GlowRenderer::Vertex* vtx, const Vector4f& xyzw) {
   vtx->x = xyzw.x();
   vtx->y = xyzw.y();
   vtx->z = xyzw.z();
-  vtx->w = xyzw.w();
+  // ignore the w computed by the game, and just use 1. The game's VU program ignores this value,
+  // and we need to set w = 1 to get the correct opengl clipping behavior
+  vtx->w = 1;
 }
 }  // namespace
 
