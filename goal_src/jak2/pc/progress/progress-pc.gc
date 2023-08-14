@@ -509,6 +509,7 @@
 (defbehavior play-music-player progress ((info music-player-track-info) (flava int))
   "play a music track using music player track info."
 
+  (set! (-> *progress-state-pc* music-player-track) info)
   (set-setting! 'music (-> info name) 0.0 0)
   (set-setting! 'sound-flava #f 999999.0 flava)
   (sound-set-midi-reg 3 (-> info mode))
@@ -529,7 +530,7 @@
   0)
 
 
-(defbehavior stop-music-player progress ((info music-player-track-info) (flava int))
+(defbehavior stop-music-player progress ()
   "play a music track using music player track info."
 
   (remove-setting! 'music)
@@ -538,6 +539,10 @@
   (sound-set-midi-reg 0 0)
   (sound-set-midi-reg 2 0)
   (sound-set-midi-reg 16 0)
+  (set! (-> *progress-state-pc* music-player-track) #f)
+  ;(min! (-> *setting-control* user-current sound-excitement) 0.0)
+  (sound-set-midi-reg 16 (the int (* 100.0 (-> *setting-control* user-current sound-excitement))))
+  (set! (-> *setting-control* sound-excitement-change-time) (-> *display* base-clock frame-counter))
   0)
 
 (defun count-bits ((val int))
@@ -683,9 +688,8 @@
             (true! play?))
           )
         (when play?
-          (set! (-> *progress-state-pc* music-player-track) (-> *music-player-tracks* (-> obj music-index)))
           (sound-group-continue (sound-group music))
-          (play-music-player (-> *progress-state-pc* music-player-track) (-> *progress-state-pc* music-player-flava))
+          (play-music-player (-> *music-player-tracks* (-> obj music-index)) (-> *progress-state-pc* music-player-flava))
           )
         )
       ((cpad-pressed? 0 triangle)
@@ -695,6 +699,7 @@
           ((-> *progress-state-pc* music-player-selected)
             (false! (-> *progress-state-pc* music-player-selected)))
           (else
+            (stop-music-player)
             (pop-state arg0))
           )
         )
@@ -704,3 +709,15 @@
     )
   0
   )
+
+
+
+(defun hide-progress-screen ()
+  (when (and *progress-process* *progress-state* (!= (-> *progress-state* starting-state) 'title))
+    (stop-music-player)
+    (set-next-state (-> *progress-process* 0) 'go-away 0)
+    )
+  0
+  (none)
+  )
+
