@@ -1950,6 +1950,17 @@
   )
 
 
+(defun draw-highlight-music-player ((x int) (y int) (w int) (h int) (alpha float))
+  "draw the highlight for a number in the music player screen"
+
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (draw-sprite2d-xy buf x y w h (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha))))
+    )
+  )
+
+
 (defun draw-up-down-aspect ((font font-context) (y-up float) (y-down float))
   (protect ((-> font origin x) (-> font origin y) (-> font scale))
   
@@ -2091,6 +2102,10 @@
       (set! (-> box max y) 270.0)
       )
     )
+  (#when PC_PORT
+    (set! (-> box min x) (the float (the int (adjust-game-x (-> box min x)))))
+    (set! (-> box max x) (the float (the int (adjust-game-x (-> box max x)))))
+    )
   (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id progress)
                                )
@@ -2134,13 +2149,16 @@
         )
       )
     (when (not (-> *pc-settings* use-vis?))
-      (set! list-x (the int (adjust-game-x (the float list-x))))
-      (set! list-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) list-w)))
+      (set! title-x (the int (adjust-game-x (the float title-x))))
+      (set! full-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) full-w)))
       )
     (set-scale! arg1 arg5)
     (set-origin! arg1 title-x title-y)
     (set! (-> arg1 width) 375.0)
     (set! (-> arg1 height) 48.0)
+    (when (not (-> *pc-settings* use-vis?))
+      (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
+      )
     (set-color! arg1 (font-color progress))
     (set-flags! arg1 (font-flags kerning middle left large))
     (print-game-text (lookup-text! *common-text* arg3 #f) arg1 #f 44 (bucket-id progress))
@@ -2221,6 +2239,8 @@
         (old-y 0.0)
         (list-text-y (+ (- (-> obj current-scroll)) y-pad-top))
         (max-lines 8)
+        (tab-music 6.0)
+        (tab-flava 12.0)
         (box (new 'stack 'hud-box))
         (flava-text-list (new 'static 'boxed-array :type text-id
                                   (text-id progress-music-player-flava-default)
@@ -2233,6 +2253,12 @@
     (max! alpha 0.0)
     (set! (-> arg1 alpha) alpha)
 
+    (when (not (-> *pc-settings* use-vis?))
+      (*! tab-music (-> *pc-settings* aspect-ratio-reciprocal))
+      (*! tab-flava (-> *pc-settings* aspect-ratio-reciprocal))
+      ;(set! danger-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) danger-w)))
+      )
+
     (set-flags! arg1 (font-flags kerning large))
     (set-scale! arg1 0.6)
     (set-color! arg1 (font-color progress))
@@ -2241,7 +2267,7 @@
     (+! list-text-y (-> box min y))
 
     (set-scale! arg1 0.45)
-    (set! (-> arg1 origin x) (+ (-> box min x) 6))
+    (set! (-> arg1 origin x) (+ (-> box min x) tab-music))
     ;(format *stdcon* "m: ~D f: ~D scroll: ~f~%" (-> obj music-index) (-> obj flava-index) (-> obj current-scroll))
     (dotimes (i (-> *music-player-tracks* length))
       (set! (-> arg1 origin y) (set! old-y list-text-y))
@@ -2257,15 +2283,15 @@
                     (flava-text-height (the int (* (/ 0.42 0.45) text-height))))
               
               ;; draw highlight first
-              (draw-highlight-aspect  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
-                                      (the int (- (-> box max x) (-> box min x))) (+ text-height (* flava-count flava-text-height))
-                                      alpha)
+              (draw-highlight-music-player  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
+                                            (the int (- (-> box max x) (-> box min x))) (+ text-height (* flava-count flava-text-height))
+                                            alpha)
 
               ;; draw text for each flava!
               (protect ((-> arg1 origin x) (-> arg1 origin y) (-> arg1 scale))
                 
                 (set-scale! arg1 0.42)
-                (+! (-> arg1 origin x) 12.0)
+                (+! (-> arg1 origin x) tab-flava)
                 (set! (-> arg1 origin y) list-text-y)
                 (dotimes (f flava-count)
                   (if (= f (-> obj flava-index))
@@ -2287,9 +2313,9 @@
               ))
             (else
               (set-color! arg1 (progress-selected 0))
-              (draw-highlight-aspect  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
-                                      (the int (- (-> box max x) (-> box min x))) text-height
-                                      alpha)
+              (draw-highlight-music-player  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
+                                            (the int (- (-> box max x) (-> box min x))) text-height
+                                            alpha)
               ))
           (when (< (-> arg1 origin y) (+ (-> box min y) y-pad-top))
               (set! (-> obj current-scroll) (seek-ease  (-> obj current-scroll) (+ (-> obj current-scroll) (- (-> arg1 origin y) (+ (-> box min y) y-pad-top)))
@@ -2329,6 +2355,7 @@
           (icon-h 64)
           (icon-scale 0.7)
           (icon-id 0)
+          (danger-pad 8.0)
           (danger-w 73)
           (arrow-w 14)
           (danger-text-list (new 'static 'boxed-array :type text-id
@@ -2340,6 +2367,14 @@
         (set-flags! arg1 (font-flags kerning middle large))
         (set-origin! arg1 278 144)
         (set-width! arg1 158)
+        (when (not (-> *pc-settings* use-vis?))
+          (set! (-> arg1 origin x) (the float (adjust-game-x (-> arg1 origin x))))
+          (*! danger-pad (-> *pc-settings* aspect-ratio-reciprocal))
+          (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
+          (set! icon-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) icon-w)))
+          (set! danger-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) danger-w)))
+          (set! arrow-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) arrow-w)))
+          )
         (set-height! arg1 40)
         (set-scale! arg1 0.42)
         (set-color! arg1 (font-color progress))
@@ -2368,7 +2403,7 @@
         (set! icon-x (the int (+ (-> arg1 origin x) (/ (-> arg1 width) 2))))
         (set! icon-w (the int (* icon-scale icon-w)))
         (set! icon-h (the int (* icon-scale icon-h)))
-        ;; center icon. 3/4 = 1.5/2. the icon is 96x96 but each sprite is 64x64, hence 1.5
+        ;; center icon. the icon is 96x96 but each sprite is 64x64, hence 1.5
         (-! icon-x (the int (/ (* 1.5 icon-w) 2)))
         (set-hud-sprite-attributes! (-> obj sprites 0) :tex (lookup-texture-by-id (get-level-icon-id-01 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x icon-x :y icon-y)
         (set-hud-sprite-attributes! (-> obj sprites 1) :tex (lookup-texture-by-id (get-level-icon-id-02 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x (+ icon-x icon-w) :y icon-y)
@@ -2378,7 +2413,7 @@
         ;; danger scroller
         (set-scale! arg1 0.42)
         (set! (-> arg1 origin y) (+ 26.0 (-> box max y)))
-        (set! (-> arg1 origin x) (+ 8.0 (-> box min x)))
+        (set! (-> arg1 origin x) (+ danger-pad (-> box min x)))
         (set-width! arg1 danger-w)
         (set-flags! arg1 (font-flags kerning large))
         (print-game-text (lookup-text! *common-text* (text-id progress-music-player-danger) #f) arg1 #f 44 (bucket-id progress))
@@ -2389,7 +2424,7 @@
         (+! (-> arg1 origin x) (-> arg1 width))
         (print-game-text (string-format "~33L~C" 163) arg1 #f 44 (bucket-id progress))
         (set-flags! arg1 (font-flags kerning large middle))
-        (set-width! arg1 (the int (- (-> box max x) (-> box min x) danger-w (* arrow-w 2) 8 8)))
+        (set-width! arg1 (the int (- (-> box max x) (-> box min x) danger-w (* arrow-w 2) (* danger-pad 2))))
         (print-game-text (lookup-text! *common-text* (-> danger-text-list (-> obj excitement)) #f) arg1 #f 44 (bucket-id progress))
         (+! (-> arg1 origin x) (-> arg1 width))
         (set-flags! arg1 (font-flags kerning large))
