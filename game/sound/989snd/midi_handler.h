@@ -31,9 +31,11 @@ struct Prog {
 
 class midi_voice : public vag_voice {
  public:
-  midi_voice(Tone& t) : vag_voice(t) {}
+  midi_voice(Tone& t, ProgData& prog) : vag_voice(t), prog(prog) {}
   u8 note{0};
   u8 channel{0};
+  u8 velocity{0};
+  ProgData& prog;
 };
 
 class ame_handler;
