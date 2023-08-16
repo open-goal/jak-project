@@ -78,8 +78,11 @@ void TextureUploadHandler::render(DmaFollower& dma,
       // on next
       ASSERT(dma.current_tag_offset() == render_state->next_bucket);
     } else if (m_direct) {
-      m_direct->render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state,
-                           prof);
+      if (data.vifcode0().kind == VifCode::Kind::DIRECT ||
+          data.vifcode1().kind == VifCode::Kind::DIRECT) {
+        m_direct->render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state,
+                             prof);
+      }
     }
   }
 
