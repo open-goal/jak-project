@@ -128,6 +128,31 @@
 
 (def-mips2c blerc-execute (function none))
 
+(defun process-drawable-might-need-blerc? ((pd process-drawable))
+  "Annoyingly, some warp object have blend shape anims, like the hiphog mirror.
+   These are never drawn with PC-merc (it doesn't support warp), so we still
+   need to the PS2-style blerc for generic. This function sees if this process-drawable
+   might be warp."
+  (let ((draw (-> pd draw)))
+    (if (or (zero? draw) (not draw))
+        (return #f)
+        )
+    (let ((geo (-> draw mgeo)))
+      (if (or (zero? geo) (not geo))
+          (return #f)
+          )
+
+    (dotimes (effect-idx (-> geo header effect-count))
+      (when (= (-> geo effect effect-idx texture-index) (tpage-category warp))
+           (return #t)
+          )
+      )
+    )
+    )
+
+  #f
+  )
+
 ;; WARN: Return type mismatch int vs object.
 (defun merc-blend-shape ((arg0 process-drawable))
   (when *debug-segment*
@@ -152,9 +177,17 @@
       )
     0
     )
+
+
   (let* ((a2-0 (-> arg0 skel root-channel 0))
          (a3-0 (-> a2-0 frame-group))
          (a1-2 (new 'stack-no-clear 'array 'int16 128))
+         ;; don't bother with blerc math if we don't need it.
+         ;; even if we don't need blerc math, we should still run this function to update flags.
+         (disable-blerc
+           (and *use-fp-blerc*
+                (not (process-drawable-might-need-blerc? arg0)))
+           )
          )
     (when (and a3-0
                (> (-> arg0 skel active-channels) 0)
@@ -171,7 +204,9 @@
                (set! (-> a1-2 a3-1) (the int (* 8192.0 (-> a2-2 (+ a3-1 1)))))
                )
              )
-           (setup-blerc-chains a0-13 a1-2 (-> *display* frames (-> *display* on-screen) global-buf))
+           (when (not disable-blerc)
+             (setup-blerc-chains a0-13 a1-2 (-> *display* frames (-> *display* on-screen) global-buf))
+             )
            )
          (logior! (-> arg0 skel status) (joint-control-status blend-shape-valid))
          ;;(return (the-as object #f))
@@ -208,7 +243,9 @@
                       )
                     )
                   )
-                (setup-blerc-chains a0-15 a1-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                (when (not disable-blerc)
+                  (setup-blerc-chains a0-15 a1-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                  )
                 )
               (logior! (-> arg0 skel status) (joint-control-status blend-shape-valid))
               ;; (return (the-as object #f))
@@ -218,13 +255,16 @@
           )
         )
       )
-    )
-  (when (logtest? (-> arg0 skel status) (joint-control-status blend-shape-valid))
-    (logclear! (-> arg0 skel status) (joint-control-status blend-shape-valid))
-    (setup-blerc-chains
-      (-> arg0 draw lod-set lod 0 geo)
-      (new 'static 'array int16 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
-      (-> *display* frames (-> *display* on-screen) global-buf)
+
+    (when (logtest? (-> arg0 skel status) (joint-control-status blend-shape-valid))
+      (logclear! (-> arg0 skel status) (joint-control-status blend-shape-valid))
+      (when (not disable-blerc)
+        (setup-blerc-chains
+          (-> arg0 draw lod-set lod 0 geo)
+          (new 'static 'array int16 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+          (-> *display* frames (-> *display* on-screen) global-buf)
+          )
+        )
       )
     )
   (label end)
