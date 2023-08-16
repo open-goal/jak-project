@@ -480,7 +480,7 @@
     (process-spawn hud-ring-cell 12 (* -2.0 f30-0) 8 :to self)
     (process-spawn hud-ring-cell 11 (* -1.0 f30-0) 9 :to self)
     )
-  (bigmap-method-14 *bigmap*)
+  (enable-drawing *bigmap*)
   (go-virtual come-in)
   )
 
@@ -546,7 +546,7 @@
 ;; definition for method 10 of type progress
 (defmethod deactivate progress ((obj progress))
   (remove-setting-by-arg0 *setting-control* 'extra-bank)
-  (bigmap-method-15 *bigmap*)
+  (disable-drawing *bigmap*)
   (set! (-> *blit-displays-work* menu-mode) #f)
   (set! *progress-process* (the-as (pointer progress) #f))
   (enable-level-text-file-loading)
@@ -1480,7 +1480,7 @@
   (when (and (< 0.8 (-> self anim-frame)) (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
     (cond
       ((>= (-> self pos-transition) 0.38)
-       (bigmap-method-11 *bigmap* 1792 1840 2304 2256)
+       (draw *bigmap* 1792 1840 2304 2256)
        )
       (else
         (let ((s4-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 21)))
@@ -1491,7 +1491,7 @@
           (let ((s5-1 (new 'stack-no-clear 'vector4w)))
             (set! (-> s5-1 quad) (the-as uint128 0))
             (if (and (transform-point-qword! gp-1 s4-2) (transform-point-qword! s5-1 s3-1))
-                (bigmap-method-11 *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
+                (draw *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
                 )
             )
           )
@@ -1819,7 +1819,7 @@
 (defstate gone (progress)
   :virtual #t
   :code (behavior ()
-    (bigmap-method-15 *bigmap*)
+    (disable-drawing *bigmap*)
     (set! (-> *blit-displays-work* menu-mode) #f)
     (while (or (-> *blit-displays-work* screen-copied) (nonzero? (-> *blit-displays-work* count-down)))
       (suspend)
@@ -3138,7 +3138,7 @@
 ;; definition for method 9 of type menu-bigmap-option
 (defmethod respond-progress menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
-  (bigmap-method-12 *bigmap*)
+  (handle-cpad-inputs *bigmap*)
   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
   0

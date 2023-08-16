@@ -28,10 +28,12 @@ vec4 sample_tex(vec2 coord, uint unit) {
 }
 
 vec4 sample_tex_px(vec2 coordf, uint unit) {
-  ivec2 coord;
-  coord.x = int(coordf.x / 16);
-  coord.y = int(coordf.y / 16);
-  return texelFetch(tex_T20, coord, 0);
+  // note: there is still fractional texels and filtering in this mode.
+  vec2 coord_px = coordf / 16.f;
+  vec2 tex_size = vec2(textureSize(tex_T20, 0));
+  // but texture perspective correction is disabled.
+  // current uses are on quads with the same z so it doesn't really matter.
+  return textureProj(tex_T20, vec4(coord_px / tex_size, 1, 1));
 }
 
 void main() {

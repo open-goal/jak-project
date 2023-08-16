@@ -573,7 +573,8 @@ struct TextureAnimPcUpload {
   // note that the data can be any format. They upload stuff in the wrong format sometimes, as
   // an optimization (ps2 is fastest at psmct32)
   u8 format;
-  u8 pad[3];
+  u8 force_to_gpu;
+  u8 pad[2];
 };
 static_assert(sizeof(TextureAnimPcUpload) == 16);
 
@@ -1084,6 +1085,9 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
       vram.tex_height = upload->height;
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
       m_tex_looking_for_clut = nullptr;
+      if (upload->force_to_gpu) {
+        m_erased_on_this_frame.insert(upload->dest);
+      }
       break;
     case (int)GsTex0::PSM::PSMT8:
       vram.kind = VramEntry::Kind::GENERIC_PSMT8;
@@ -1092,6 +1096,9 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
       vram.tex_height = upload->height;
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
       m_tex_looking_for_clut = &vram;
+      if (upload->force_to_gpu) {
+        m_erased_on_this_frame.insert(upload->dest);
+      }
       break;
     default:
       fmt::print("Unhandled format: {}\n", upload->format);
