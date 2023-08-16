@@ -189,6 +189,17 @@ float u32_to_sc(u32 in) {
   return (flt - 0.5) * 16.0;
 }
 
+void DirectRenderer::lookup_textures_again(SharedRenderState* render_state) {
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    if (m_buffered_tex_state_currently_bound[i]) {
+      auto& tex_state = m_buffered_tex_state[i];
+      tex_state.used = true;
+      update_gl_texture(render_state, i);
+      tex_state.used = false;
+    }
+  }
+}
+
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
   if (m_blend_state_needs_gl_update) {
@@ -211,6 +222,9 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     if (tex_state.used) {
       update_gl_texture(render_state, i);
       tex_state.used = false;
+      m_buffered_tex_state_currently_bound[i] = true;
+    } else {
+      m_buffered_tex_state_currently_bound[i] = false;
     }
   }
   m_next_free_tex_state = 0;

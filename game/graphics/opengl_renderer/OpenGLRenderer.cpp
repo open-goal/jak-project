@@ -286,7 +286,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF1, 0x8000);
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,
-                                             BucketId::TEX_ALL_MAP, m_texture_animator);
+                                             BucketId::TEX_ALL_MAP, m_texture_animator, true);
   // 320
   init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::PROGRESS,
                                          0x1000);

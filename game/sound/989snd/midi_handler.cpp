@@ -138,7 +138,45 @@ void midi_handler::stop() {
 }
 
 void midi_handler::set_vol_pan(s32 vol, s32 pan) {
-  // TODO
+  if (vol != VOLUME_DONT_CHANGE) {
+    if (vol >= 0) {
+      m_vol = (m_sound.Vol * vol) >> 10;
+    } else {
+      m_vol = -vol;
+    }
+  }
+
+  if (m_vol > 127) {
+    m_vol = 127;
+  }
+
+  if (pan != PAN_DONT_CHANGE) {
+    if (pan == PAN_RESET) {
+      m_pan = m_sound.Pan;
+    } else {
+      m_pan = pan;
+    }
+  }
+
+  for (auto& v : m_voices) {
+    auto voice = v.lock();
+    if (voice == nullptr) {
+      continue;
+    }
+
+    s16 pan = m_chanpan[voice->channel] + m_pan;
+    if (pan >= 360) {
+      pan -= 360;
+    }
+
+    voice->basevol =
+        m_vm.make_volume_b(m_vol, voice->velocity * m_chanvol[voice->channel] / 127, pan,
+                           voice->prog.Vol, voice->prog.Pan, voice->tone.Vol, voice->tone.Pan);
+
+    auto left = m_vm.adjust_vol_to_group(voice->basevol.left, voice->group);
+    auto right = m_vm.adjust_vol_to_group(voice->basevol.right, voice->group);
+    voice->set_volume(left >> 1, right >> 1);
+  }
 }
 
 void midi_handler::set_pmod(s32 mod) {
@@ -198,12 +236,13 @@ void midi_handler::note_on() {
         pan -= 360;
       }
 
-      auto voice = std::make_shared<midi_voice>(t);
+      auto voice = std::make_shared<midi_voice>(t, program.d);
       voice->basevol = m_vm.make_volume_b(m_vol, (velocity * m_chanvol[channel]) / 0x7f, pan,
                                           program.d.Vol, program.d.Pan, t.Vol, t.Pan);
 
       voice->note = note;
       voice->channel = channel;
+      voice->velocity = velocity;
 
       voice->start_note = note;
       voice->start_fine = 0;
