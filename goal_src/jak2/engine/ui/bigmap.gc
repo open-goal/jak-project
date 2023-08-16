@@ -276,25 +276,29 @@
 
 (defun pc-upload-map-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
   "Added function in the PC port to create a map texture. The format should be mt8 for the image and ct32 for the clut (16 x 16)"
-  (dma-buffer-add-cnt-vif2
-    dma-buf
-    2
-    (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm 11)
-    (new 'static 'vif-tag)
+  (pc-texture-anim-flag start-anim-array dma-buf)
+  (pc-texture-anim-flag upload-clut-16-16 dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) clut-data)
+    (set! (-> upload-record width) 16)
+    (set! (-> upload-record height) 16)
+    (set! (-> upload-record dest) cbp)
+    (set! (-> upload-record format) (gs-psm ct32))
+    (set! (-> upload-record force-to-gpu) 0)
     )
+  (&+! (-> dma-buf base) 16)
 
-  (let ((data (the (inline-array vector4w) (-> dma-buf base))))
-    (set! (-> data 0 x) width)
-    (set! (-> data 0 y) height)
-    (set! (-> data 0 z) (the int image-data))
-    (set! (-> data 0 w) (the int clut-data))
-    (set! (-> data 1 x) tbp)
-    (set! (-> data 1 y) cbp)
-    (set! (-> data 1 z) 0)
-    (set! (-> data 1 w) 0)
+  (pc-texture-anim-flag upload-generic-vram dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) image-data)
+    (set! (-> upload-record width) width)
+    (set! (-> upload-record height) height)
+    (set! (-> upload-record dest) tbp)
+    (set! (-> upload-record format) (gs-psm mt8))
+    (set! (-> upload-record force-to-gpu) 1)
     )
-
-  (&+! (-> dma-buf base) 32)
+  (&+! (-> dma-buf base) 16)
+  (pc-texture-anim-flag finish-anim-array dma-buf)
   )
 
 (defmethod texture-upload-dma bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
@@ -331,7 +335,6 @@
   "Generate DMA to draw a non-city map using the loaded bigmap image.
    This appears to have 3 layers."
 
-   (format 0 "drawing! ~X~%" (-> arg0 base))
   (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
     (let ((v1-1 (-> s4-0 0))
           (s3-0 (-> s4-0 1))
@@ -380,14 +383,20 @@
 (defmethod draw-city-map bigmap ((obj bigmap) (arg0 dma-buffer))
   "Generate DMA to draw the city map. This has only 2 layers, but has scrolling."
 
-  ;; HACK REMOVE
-  (return #f)
-
   (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
-    (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
-    (dma-buffer-add-gs-set arg0 (texflush 0))
+    ; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
+    ; (dma-buffer-add-gs-set arg0 (texflush 0))
     (let ((v1-10 (+ (* (the int (-> obj scroll y)) 512) (-> s4-0 1))))
-      (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-10 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      ;   (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-10 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture
+        arg0               ;; dma
+        (&+ s4-0 v1-10 16) ;; image data
+        (&+ s4-0 (-> s4-0 0) 16) ;; clut data
+        512 ;; width
+        208 ;; height
+        8   ;; dest
+        0   ;; clut dest
+        )
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
@@ -396,10 +405,19 @@
                            )
     (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-21 (+ (* (+ (the int (-> obj scroll y)) 208) 512) (-> s4-0 1))))
-      (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-21 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      ;(texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-21 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture
+        arg0               ;; dma
+        (&+ s4-0 v1-21 16) ;; image data
+        (&+ s4-0 (-> s4-0 0) 16) ;; clut data
+        512 ;; width
+        208 ;; height
+        8   ;; dest
+        0   ;; clut dest
+        )
       )
     )
-  (dma-buffer-add-gs-set arg0 (texflush 1))
+  ;(dma-buffer-add-gs-set arg0 (texflush 1))
   (sprite-dma obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
   (none)
   )
@@ -676,7 +694,6 @@
       (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id tex-all-map)
                                    )
-        (format 0 "pre: ~X~%" (-> s4-1 base))
         (dma-buffer-add-gs-set s4-1
                                (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
                                (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
@@ -686,12 +703,7 @@
             (draw-city-map obj s4-1)
             (draw-non-city-map obj s4-1)
             )
-        (format 0 "post: ~X~%" (-> s4-1 base))
-        (format 0 "patching: ~X~%"
-                (-> (current-frame) bucket-group (bucket-id tex-all-map) last)
-                )
         )
-      (format 0 "post-patch-last: ~X~%" (-> (current-frame) bucket-group (bucket-id tex-all-map) last))
       (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id tex-all-map)
                                    )
@@ -964,7 +976,7 @@
 (kmemopen global "bigmap")
 
 ;; definition for symbol *bigmap*, type bigmap
-(define *bigmap* (new 'global 'bigmap))
+(define-perm *bigmap* bigmap (new 'global 'bigmap))
 
 ;; failed to figure out what this is:
 (kmemclose)

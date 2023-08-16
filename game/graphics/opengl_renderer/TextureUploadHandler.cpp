@@ -16,6 +16,7 @@ TextureUploadHandler::TextureUploadHandler(const std::string& name,
     : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {
   if (add_direct) {
     m_direct = std::make_unique<DirectRenderer>(name, my_id, 1024 * 6);
+    m_direct->set_mipmap(false); // try rm
   }
 }
 
@@ -30,15 +31,24 @@ void TextureUploadHandler::render(DmaFollower& dma,
     auto dma_tag = dma.current_tag();
 
     auto vif0 = dma.current_tag_vifcode0();
-    if (vif0.kind == VifCode::Kind::PC_PORT && vif0.immediate == 12) {
-      dma.read_and_advance();
-      auto p = scoped_prof("texture-animator");
-      // note: if both uploads and animator write to the pool, do uploads before the animator.
-      flush_uploads(uploads, render_state);
-      uploads.clear();
-      m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
-                                                   render_state->texture_pool.get(),
-                                                   render_state->frame_idx);
+    if (vif0.kind == VifCode::Kind::PC_PORT) {
+      if (vif0.immediate == 12) {
+        dma.read_and_advance();
+        auto p = scoped_prof("texture-animator");
+        // note: if both uploads and animator write to the pool, do uploads before the animator.
+        flush_uploads(uploads, render_state);
+        uploads.clear();
+        if (m_direct) {
+          m_direct->flush_pending(render_state, prof);
+        }
+        m_texture_animator->handle_texture_anim_data(
+            dma, (const u8*)render_state->ee_main_memory, render_state->texture_pool.get(),
+            render_state->frame_idx);
+        if (m_direct) {
+          m_direct->lookup_textures_again(render_state);
+          m_direct->reinit_hack();
+        }
+      }
     }
     // does it look like data to do eye rendering?
     if (dma_tag.qwc == (128 / 16)) {
@@ -74,6 +84,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
   }
 
   flush_uploads(uploads, render_state);
+  if (m_direct) {
+    m_direct->flush_pending(render_state, prof);
+  }
 }
 
 void TextureUploadHandler::flush_uploads(std::vector<TextureUpload>& uploads,
