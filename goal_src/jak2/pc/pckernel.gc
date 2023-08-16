@@ -11,10 +11,82 @@
 (define-extern get-active-mission-description (function discord-info string))
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; music player stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defenum music-player-flava
+  :bitfield #t :type uint8
+  (default)
+  (gun)
+  (board)
+  (mech)
+  (darkjak)
+  (pilot)
+  )
+
+(deftype music-player-track-info (basic)
+  ((text    text-id)
+   (name    symbol)
+   (mode    int8)
+   (icon    int16)
+   (flava   music-player-flava)
+   (avail-after   game-task-node)
+   )
+  )
+
+(defmacro static-music-track-info (name &key text &key avail-after &key (mode 0) &key icon &key (flava ()))
+  `(new 'static 'music-player-track-info :text (text-id ,text) :name ,name :icon ,icon :avail-after (game-task-node ,avail-after) :mode ,mode :flava (music-player-flava ,@flava))
+  )
+
+(define *music-player-tracks* (new 'static 'boxed-array :type music-player-track-info
+    (static-music-track-info 'city1     :mode 0 :icon 1   :text progress-music-player-city            :avail-after fortress-escape-resolution :flava (gun board pilot))
+    (static-music-track-info 'city1     :mode 1 :icon 1   :text progress-music-player-city-battle     :avail-after city-help-kid-resolution)
+    (static-music-track-info 'ruins     :mode 0 :icon 4   :text progress-music-player-ruins           :avail-after ruins-tower-resolution :flava (gun board mech darkjak))
+    (static-music-track-info 'atoll     :mode 0 :icon 6   :text progress-music-player-atoll           :avail-after atoll-water-resolution :flava (gun darkjak board))
+    (static-music-track-info 'sewer     :mode 0 :icon 3   :text progress-music-player-sewer           :avail-after fortress-dump-resolution :flava (gun board mech darkjak))
+    (static-music-track-info 'sewer     :mode 1 :icon 3   :text progress-music-player-sewer-battle    :avail-after fortress-dump-resolution)
+    (static-music-track-info 'danger11  :mode 0 :icon 3   :text progress-music-player-danger11        :avail-after fortress-dump-resolution)
+    (static-music-track-info 'atoll     :mode 1 :icon 6   :text progress-music-player-atoll-battle    :avail-after atoll-sig-resolution)
+    (static-music-track-info 'strip     :mode 0 :icon 5   :text progress-music-player-strip           :avail-after strip-rescue-resolution :flava (gun board mech darkjak))
+    (static-music-track-info 'mountain  :mode 0 :icon 8   :text progress-music-player-mountain        :avail-after mountain-collection-resolution :flava (gun board mech darkjak))
+    (static-music-track-info 'mountain  :mode 1 :icon 8   :text progress-music-player-mountain-battle :avail-after mountain-collection-resolution)
+    (static-music-track-info 'palcab    :mode 0 :icon 11  :text progress-music-player-palcab          :avail-after palace-cable-resolution :flava (gun board darkjak))
+    (static-music-track-info 'forest    :mode 0 :icon 9   :text progress-music-player-forest          :avail-after forest-scouts-resolution :flava (gun board mech darkjak))
+    (static-music-track-info 'forest    :mode 1 :icon 9   :text progress-music-player-forest-battle   :avail-after forest-scouts-resolution)
+    (static-music-track-info 'danger9   :mode 0 :icon 1   :text progress-music-player-danger9         :avail-after city-intercept-tanker-resolution)
+    (static-music-track-info 'race      :mode 0 :icon 2   :text progress-music-player-race            :avail-after stadium-race-class3-resolution)
+    (static-music-track-info 'danger3   :mode 0 :icon 1   :text progress-music-player-danger3         :avail-after city-play-onin-game-resolution)
+    (static-music-track-info 'danger1   :mode 0 :icon 8   :text progress-music-player-battle          :avail-after canyon-insert-items-resolution)
+    (static-music-track-info 'danger2   :mode 0 :icon 12  :text progress-music-player-danger2         :avail-after tomb-boss-door)
+    (static-music-track-info 'danger7   :mode 0 :icon 15  :text progress-music-player-danger7         :avail-after tomb-boss-resolution)
+    (static-music-track-info 'danger10  :mode 0 :icon 10  :text progress-music-player-danger10        :avail-after drill-mech-resolution)
+    (static-music-track-info 'palcab    :mode 1 :icon 14  :text progress-music-player-palcab-battle   :avail-after castle-boss-resolution)
+    (static-music-track-info 'danger6   :mode 0 :icon 14  :text progress-music-player-danger6         :avail-after castle-boss-resolution)
+    (static-music-track-info 'danger4   :mode 0 :icon 17  :text progress-music-player-danger4         :avail-after nest-boss-resolution)
+    ))
+
+;; automatically add the default flava to all tracks that had flavas marked
+(dotimes (i (-> *music-player-tracks* length))
+  (if (nonzero? (-> *music-player-tracks* i flava))
+      (logior! (-> *music-player-tracks* i flava) (music-player-flava default)))
+  )
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defmethod initialize pc-settings-jak2 ((obj pc-settings-jak2))
+  "initial initialize method to be run after allocating"
+  
+  (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
+  ((method-of-type pc-settings initialize) obj)
+  obj)
 
 (defmethod set-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol) (value symbol))
   (case setting
@@ -117,6 +189,10 @@
       (-> *pc-cheat-state* airlock-close-speed)
       1.0))
 
+(defmacro flava-unlocked? (flava)
+  "return #t if the specified flava is unlocked"
+  `(-> *pc-settings* flava-unlocked ,flava))
+
 
 (defmethod update-cheats pc-settings-jak2 ((obj pc-settings-jak2))
   "run cheats."
@@ -173,10 +249,55 @@
   0)
 
 
+(defmethod update-music-log pc-settings-jak2 ((obj pc-settings-jak2))
+  "update the music log"
+
+  (dotimes (i (-> *music-player-tracks* length))
+    (when (or (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+              (task-node-closed? (-> *music-player-tracks* i avail-after)))
+      (set-bit (-> obj music-unlocked) i)
+      )
+    )
+  
+  (true! (-> obj flava-unlocked 0)) ;; default always unlocked
+  (if (task-node-closed? (game-task-node city-red-gun-training-resolution)) (true! (-> obj flava-unlocked 1))) ;; gun
+  (if (task-node-closed? (game-task-node forest-scouts-resolution)) (true! (-> obj flava-unlocked 2))) ;; board
+  (if (task-node-closed? (game-task-node ruins-mech-resolution)) (true! (-> obj flava-unlocked 3))) ;; mech
+  (if (task-node-closed? (game-task-node city-oracle-introduction)) (true! (-> obj flava-unlocked 4))) ;; darkjak
+  (if (task-node-closed? (game-task-node city-vehicle-training-resolution)) (true! (-> obj flava-unlocked 5))) ;; pilot
+
+  0)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; file I/O
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defun bit-array<-int64 ((arr bit-array) (start-offset int) (val int))
+  "starting from start-offset at arr, fill the next 64 bits of the array from an int64"
+  (let ((i start-offset)
+        (end-offset (min (+ start-offset 64) (-> arr length))))
+    (while (< i end-offset)
+      (if (nonzero? (logand val (ash 1 (- i start-offset))))
+          (set-bit arr i))
+      (1+! i)
+      )
+    val)
+  )
+
+(defun int64<-bit-array ((arr bit-array) (start-offset int))
+  "starting from start-offset at arr, pack the next 64 bits into a single value and return it"
+  (let ((val 0)
+        (i start-offset)
+        (end-offset (min (+ start-offset 64) (-> arr length))))
+    (while (< i end-offset)
+      (if (get-bit arr i)
+          (logior! val (ash 1 (- i start-offset))))
+      (1+! i)
+      )
+    val)
+  )
 
 (defmethod handle-input-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
   "handle the text parsing input for the 'settings' group"
@@ -191,6 +312,16 @@
     (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
+    (("music-unlocked")
+      (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
+        (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
+        )
+      )
+    (("flava-unlocked")
+      (dotimes (i 6)
+        (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
+        )
+      )
     )
   0)
 
@@ -206,6 +337,16 @@
   (format file "  (cheats #x~x)~%" (-> obj cheats))
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
+  (format file "  (music-unlocked")
+  (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
+    (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
+    )
+  (format file ")~%")
+  (format file "  (flava-unlocked")
+  (dotimes (i 6)
+    (format file " ~A" (-> obj flava-unlocked i))
+    )
+  (format file ")~%")
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
