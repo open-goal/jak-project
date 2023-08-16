@@ -16,7 +16,7 @@ TextureUploadHandler::TextureUploadHandler(const std::string& name,
     : BucketRenderer(name, my_id), m_texture_animator(texture_animator) {
   if (add_direct) {
     m_direct = std::make_unique<DirectRenderer>(name, my_id, 1024 * 6);
-    m_direct->set_mipmap(false); // try rm
+    m_direct->set_mipmap(false);  // try rm
   }
 }
 
@@ -41,9 +41,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
         if (m_direct) {
           m_direct->flush_pending(render_state, prof);
         }
-        m_texture_animator->handle_texture_anim_data(
-            dma, (const u8*)render_state->ee_main_memory, render_state->texture_pool.get(),
-            render_state->frame_idx);
+        m_texture_animator->handle_texture_anim_data(dma, (const u8*)render_state->ee_main_memory,
+                                                     render_state->texture_pool.get(),
+                                                     render_state->frame_idx);
         if (m_direct) {
           m_direct->lookup_textures_again(render_state);
           m_direct->reinit_hack();
