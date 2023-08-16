@@ -9,6 +9,12 @@
 
 namespace decompiler {
 
+TextureDB::TextureDB() {
+  std::vector<u32> data(16 * 16, 0xffffffff);
+  add_texture(kPlaceholderWhiteTexturePage, kPlaceholderWhiteTextureId, data, 16, 16,
+              "placeholder-white", "placeholder", {}, 1, 0);
+}
+
 void TextureDB::add_texture(u32 tpage,
                             u32 texid,
                             const std::vector<u32>& data,
