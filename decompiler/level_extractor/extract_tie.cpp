@@ -2318,6 +2318,12 @@ TieCategoryInfo get_jak1_tie_category(u32 flags) {
 }
 
 u32 get_or_add_texture(u32 combo_tex, tfrag3::Level& lev, const TextureDB& tdb) {
+  if (combo_tex == 0) {
+    // untextured
+    combo_tex = (((u32)TextureDB::kPlaceholderWhiteTexturePage) << 16) |
+                TextureDB::kPlaceholderWhiteTextureId;
+  }
+
   // try looking it up in the existing textures that we have in the C++ renderer data.
   // (this is shared with tfrag)
   u32 idx_in_lev_data = UINT32_MAX;
@@ -2329,40 +2335,26 @@ u32 get_or_add_texture(u32 combo_tex, tfrag3::Level& lev, const TextureDB& tdb) 
   }
 
   if (idx_in_lev_data == UINT32_MAX) {
-    if (combo_tex == 0) {
-      //              lg::warn("unhandled texture 0 case in extract_tie for {} {}",
-      //              lev.level_name,
-      //                       proto.name);
-      idx_in_lev_data = 0;
-    } else {
-      // didn't find it, have to add a new one texture.
-      auto tex_it = tdb.textures.find(combo_tex);
-      if (tex_it == tdb.textures.end()) {
-        bool ok_to_miss = false;  // for TIE, there's no missing textures.
-        if (ok_to_miss) {
-          // we're missing a texture, just use the first one.
-          tex_it = tdb.textures.begin();
-        } else {
-          ASSERT_MSG(
-              false,
-              fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
-                          "to "
-                          "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
-                          "textures. tpage is {}. id is {} (0x{:x})",
-                          combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
-        }
-      }
-      // add a new texture to the level data
-      idx_in_lev_data = lev.textures.size();
-      lev.textures.emplace_back();
-      auto& new_tex = lev.textures.back();
-      new_tex.combo_id = combo_tex;
-      new_tex.w = tex_it->second.w;
-      new_tex.h = tex_it->second.h;
-      new_tex.debug_name = tex_it->second.name;
-      new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-      new_tex.data = tex_it->second.rgba_bytes;
+    // didn't find it, have to add a new one texture.
+    auto tex_it = tdb.textures.find(combo_tex);
+    if (tex_it == tdb.textures.end()) {
+      ASSERT_MSG(false, fmt::format(
+                            "texture {} wasn't found. make sure it is loaded somehow. You may need "
+                            "to "
+                            "include ART.DGO or GAME.DGO in addition to the level DGOs for shared "
+                            "textures. tpage is {}. id is {} (0x{:x})",
+                            combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
     }
+    // add a new texture to the level data
+    idx_in_lev_data = lev.textures.size();
+    lev.textures.emplace_back();
+    auto& new_tex = lev.textures.back();
+    new_tex.combo_id = combo_tex;
+    new_tex.w = tex_it->second.w;
+    new_tex.h = tex_it->second.h;
+    new_tex.debug_name = tex_it->second.name;
+    new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+    new_tex.data = tex_it->second.rgba_bytes;
   }
   return idx_in_lev_data;
 }
