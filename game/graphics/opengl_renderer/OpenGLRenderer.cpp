@@ -283,8 +283,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
                                              BucketId::TEX_ALL_WARP, m_texture_animator);
   init_bucket_renderer<Warp>("warp", BucketCategory::GENERIC, BucketId::GMERC_WARP, m_generic2);
-  init_bucket_renderer<DirectRenderer>("debug-no-zbuf1", BucketCategory::OTHER,
-                                       BucketId::DEBUG_NO_ZBUF1, 0x8000);
+  init_bucket_renderer<TextureUploadHandler>("debug-no-zbuf1", BucketCategory::OTHER,
+                                             BucketId::DEBUG_NO_ZBUF1, m_texture_animator, true);
   init_bucket_renderer<TextureUploadHandler>("tex-all-map", BucketCategory::TEX,
                                              BucketId::TEX_ALL_MAP, m_texture_animator, true);
   // 320
