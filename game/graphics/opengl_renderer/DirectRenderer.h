@@ -51,11 +51,6 @@ class DirectRenderer : public BucketRenderer {
   void reset_state();
 
   /*!
-   * If you don't use the render interface, call this first to set up OpenGL.
-   */
-  void setup_common_state(SharedRenderState* render_state);
-
-  /*!
    * If you don't use the render interface, call this at the very end.
    */
   void flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof);
