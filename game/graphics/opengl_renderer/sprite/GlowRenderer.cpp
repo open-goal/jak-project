@@ -539,6 +539,8 @@ void GlowRenderer::draw_probes(SharedRenderState* render_state,
   glBindVertexArray(m_ogl.vao);
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
+  // don't want to write to the depth buffer we just copied, just test against it.
+  glDepthMask(GL_FALSE);
   GLint old_viewport[4];
   glGetIntegerv(GL_VIEWPORT, old_viewport);
   glViewport(0, 0, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h);
