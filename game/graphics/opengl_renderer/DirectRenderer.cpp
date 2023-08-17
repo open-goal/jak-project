@@ -334,14 +334,20 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   if (state.texture_enable) {
     float alpha_min = 0.0;
     float alpha_max = 10;
+    int greater = 0;
     if (m_test_state.alpha_test_enable) {
       switch (m_test_state.alpha_test) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-        case GsTest::AlphaTest::GREATER:  // todo
           alpha_min = m_test_state.aref / 128.f;
           m_double_draw_aref = alpha_min;
+          greater = 0;
+          break;
+        case GsTest::AlphaTest::GREATER:
+          alpha_min = (1 + m_test_state.aref) / 128.f;
+          m_double_draw_aref = alpha_min;
+          greater = 1;
           break;
         case GsTest::AlphaTest::NEVER:
           break;
@@ -370,6 +376,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "offscreen_mode"),
                 m_offscreen_mode);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "greater"),
+                greater);
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "ta0"),
         state.ta0 / 255.f);
