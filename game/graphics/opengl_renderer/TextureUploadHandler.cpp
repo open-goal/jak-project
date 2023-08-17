@@ -26,6 +26,9 @@ void TextureUploadHandler::render(DmaFollower& dma,
   // this is the data we get from the PC Port modification.
   m_upload_count = 0;
   std::vector<TextureUpload> uploads;
+  if (m_direct) {
+    m_direct->reset_state();
+  }
   // loop through all data, grabbing buckets
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto dma_tag = dma.current_tag();

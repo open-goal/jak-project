@@ -94,7 +94,6 @@ void DirectRenderer::render(DmaFollower& dma,
   pre_render();
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
-  setup_common_state(render_state);
 
   // just dump the DMA data into the other the render function
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -560,10 +559,6 @@ void DirectRenderer::update_gl_test() {
   } else {
     glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
   }
-}
-
-void DirectRenderer::setup_common_state(SharedRenderState* /*render_state*/) {
-  // todo texture clamp.
 }
 
 namespace {

@@ -20,7 +20,14 @@
 struct GpuTexture;
 
 struct VramEntry {
-  enum class Kind { CLUT16_16_IN_PSM32, GENERIC_PSM32, GENERIC_PSMT8, GPU, INVALID } kind;
+  enum class Kind {
+    CLUT16_16_IN_PSM32,
+    GENERIC_PSM32,
+    GENERIC_PSMT8,
+    GENERIC_PSMT4,
+    GPU,
+    INVALID
+  } kind;
   std::vector<u8> data;
 
   int tex_width = 0;

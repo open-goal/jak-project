@@ -292,8 +292,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                          0x1000);
   init_bucket_renderer<DirectRenderer>("screen-filter", BucketCategory::OTHER,
                                        BucketId::SCREEN_FILTER, 256);
-  init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
-                                       0x1000);
+  init_bucket_renderer<TextureUploadHandler>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
+                                             m_texture_animator, true);
   init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF2, 0x8000);
