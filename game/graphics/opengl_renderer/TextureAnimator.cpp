@@ -1084,7 +1084,6 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
  * These may be modified by animation functions, but most of the time they aren't.
  */
 void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
-  printf("[tex anim] erase destination texture\n");
   // auto& out = m_new_dest_textures.emplace_back();
   VramEntry* entry = nullptr;
 
