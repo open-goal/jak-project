@@ -136,6 +136,10 @@
   (with-dma-buffer-add-bucket ((s0-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                arg0
                                )
+    (#when PC_PORT
+      ;; draw a black rectangle covering the screen first
+      (draw-sprite2d-xy s0-0 0 0 512 416 (static-rgba 0 0 0 128))
+      )
     ;; (upload-vram-data s0-0 0 (the-as pointer arg1) arg3 arg2)
     (pc-upload-raw-texture s0-0 (the pointer arg1) arg2 arg3 0)
     (set! sv-32 (+ (log2 (+ arg2 -1)) 1))
@@ -157,6 +161,14 @@
       (set-vector! (the-as vector4w (&+ v1-19 64)) #x7000 #x7300 0 0)
       (set-vector! (the-as vector4w (&+ v1-19 80)) (* arg2 16) (* arg3 16) 0 0)
       (set-vector! (the-as vector4w (&+ v1-19 96)) #x9000 #x8d00 0 0)
+      (#when PC_PORT
+        (when (not (-> *pc-settings* use-vis?))
+          (let ((corrected-width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) #x1000))))
+            (set-vector! (the-as vector4w (&+ v1-19 64)) (- #x8000 corrected-width) #x7300 0 0)
+            (set-vector! (the-as vector4w (&+ v1-19 96)) (+ #x8000 corrected-width) #x8d00 0 0)
+            )
+          )
+        )
       )
     (&+! (-> s0-0 base) 112)
     (set-dirty-mask! arg4 arg5 (* (* arg3 arg2) 4) 0)
