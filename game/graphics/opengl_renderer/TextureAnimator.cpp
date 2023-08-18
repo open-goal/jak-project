@@ -841,6 +841,16 @@ void TextureAnimator::force_to_gpu(int tbp) {
       break;
     case VramEntry::Kind::GPU:
       break;  // already on the gpu.
+    case VramEntry::Kind::GENERIC_PSM32: {
+      int tw = entry.tex_width;
+      int th = entry.tex_height;
+      setup_vram_entry_for_gpu_texture(tw, th, tbp);
+      glBindTexture(GL_TEXTURE_2D, entry.tex.value().texture());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                   entry.data.data());
+      glBindTexture(GL_TEXTURE_2D, 0);
+      entry.kind = VramEntry::Kind::GPU;
+    } break;
     case VramEntry::Kind::GENERIC_PSMT8: {
       // we have data that was uploaded in PSMT8 format. Assume that it will also be read in this
       // format. Convert to normal format.
