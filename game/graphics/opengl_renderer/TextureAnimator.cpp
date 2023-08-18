@@ -108,6 +108,8 @@ GLuint OpenGLTexturePool::allocate(u64 w, u64 h) {
     lg::warn("OpenGLTexturePool creating texture for {} x {}", w, h);
     GLuint slot;
     glGenTextures(1, &slot);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, slot);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, nullptr);
     return slot;
   }
