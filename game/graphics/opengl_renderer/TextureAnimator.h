@@ -11,7 +11,6 @@
 #include "common/math/Vector.h"
 #include "common/texture/texture_conversion.h"
 
-#include "game/graphics/opengl_renderer/Jak2NoiseTextureAnimator.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/pipelines/opengl.h"
