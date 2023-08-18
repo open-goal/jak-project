@@ -356,7 +356,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
       m_psm32_to_psm8_16_16(16, 16, 16, 64),
       m_psm32_to_psm8_32_32(32, 32, 16, 64),
       m_psm32_to_psm8_64_64(64, 64, 64, 64),
-      m_sky_blend_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV) {
+      m_sky_blend_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV),
+      m_sky_final_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -390,6 +391,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
   m_uniforms.tcc = glGetUniformLocation(shader.id(), "tcc");
   m_uniforms.alpha_multiply = glGetUniformLocation(shader.id(), "alpha_multiply");
+  m_uniforms.minimum = glGetUniformLocation(shader.id(), "minimum");
+  m_uniforms.maximum = glGetUniformLocation(shader.id(), "maximum");
 
   // create a single "dummy texture" with all 0 data.
   // this is faster and easier than switching shaders to one without texturing, and is used
@@ -494,6 +497,11 @@ void TextureAnimator::draw_debug_window() {
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
   ImGui::Image((void*)(u64)m_sky_blend_texture.texture(), ImVec2(w, h));
+
+  glBindTexture(GL_TEXTURE_2D, m_sky_final_texture.texture());
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  ImGui::Image((void*)(u64)m_sky_final_texture.texture(), ImVec2(w, h));
 
   auto& slots = jak2_animated_texture_slots();
   for (size_t i = 0; i < slots.size(); i++) {
@@ -2001,61 +2009,90 @@ void TextureAnimator::setup_sky() {
 GLint TextureAnimator::run_clouds(const SkyInput& input) {
   m_debug_sky_input = input;
 
+  // anim 0 creates a clut with rgba = 128, 128, 128, i, at tbp = (24 * 32)
+  // (this has alphas from 0 to 256).
+  // This step is eliminated on OpenGL because we don't need this simple ramp CLUT.
+
+  // the next anim uses that clut with noise textures.
+  // so we expect those textures to have values like (128, 128, 128, x) where 0 <= x <= 255.
+  // (in OpenGL, we create these with a single-channel texture, with that channel in 0 - 1)
+
+  // this repeats for different resolutions (4 times in total)
+
+  // Next, these are blended together into a single texture
+  // The blend mode is 0, 2, 0, 1
+  // [(CSource - 0) * Asource] >> 7 + CDest
+  // in the PS2, CSource is 128, so the >> 7 cancels entirely.
+
+
   int times_idx = 0;
   // Anim 0:
   // this create a 16x16 CLUT with RGB = 128, 128, 128 and alpha = i
   // (texture-anim-alpha-ramp-clut-init)
   // it's uploaded 24 * 32 = 768. (texture-anim-alpha-ramp-clut-upload)
   times_idx++;
-  FramebufferTexturePairContext ctxt(m_sky_blend_texture);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-  glUniform1i(m_uniforms.tcc, 1);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glColorMask(true, true, true, true);
-  glDisable(GL_DEPTH_TEST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_ADD);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
-  glUniform4i(m_uniforms.channel_scramble, 0, 0, 0, 0);
-  glUniform1f(m_uniforms.alpha_multiply, 1.f);
-  glUniform1i(m_uniforms.enable_tex, 1);
+  {
+    FramebufferTexturePairContext ctxt(m_sky_blend_texture);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUniform1i(m_uniforms.tcc, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glColorMask(true, true, true, true);
+    glDisable(GL_DEPTH_TEST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_ZERO);
+    glUniform4i(m_uniforms.channel_scramble, 0, 0, 0, 0);
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
+    glUniform1i(m_uniforms.enable_tex, 1);
 
-  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-  glUniform3fv(m_uniforms.positions, 4, positions);
-  float uv[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
-  glUniform2fv(m_uniforms.uvs, 4, uv);
+    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+    glUniform3fv(m_uniforms.positions, 4, positions);
+    float uv[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+    glUniform2fv(m_uniforms.uvs, 4, uv);
 
-  // Anim 1:
-  // noise (16x16)
-  // while (noise_layer_idx) {
-  for (int noise_layer_idx = 0; noise_layer_idx < kNumSkyNoiseLayers; noise_layer_idx++) {
-    const float new_time = input.times[times_idx];
-    auto& ntp = m_sky_noise_textures[noise_layer_idx];
+    // Anim 1:
+    // noise (16x16)
+    // while (noise_layer_idx) {
+    for (int noise_layer_idx = 0; noise_layer_idx < kNumSkyNoiseLayers; noise_layer_idx++) {
+      const float new_time = input.times[times_idx];
+      auto& ntp = m_sky_noise_textures[noise_layer_idx];
 
-    if (new_time < ntp.last_time) {
-      printf("Wrapping! %d\n", noise_layer_idx);
-      std::swap(ntp.new_tex, ntp.old_tex);
-      m_random_index = update_opengl_noise_texture(ntp.new_tex, ntp.temp_data.data(),
-                                                   m_random_table, ntp.dim, m_random_index);
+      if (new_time < ntp.last_time) {
+        std::swap(ntp.new_tex, ntp.old_tex);
+        m_random_index = update_opengl_noise_texture(ntp.new_tex, ntp.temp_data.data(),
+                                                     m_random_table, ntp.dim, m_random_index);
+      }
+      ntp.last_time = new_time;
+      float new_interp = ntp.last_time / ntp.max_time;
+
+      glBindTexture(GL_TEXTURE_2D, ntp.new_tex);
+      float s = new_interp * ntp.scale * 128.f;
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+      glBindTexture(GL_TEXTURE_2D, ntp.old_tex);
+      s = (1.f - new_interp) * ntp.scale * 128.f;
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+      times_idx++;
     }
-    ntp.last_time = new_time;
-    float new_interp = ntp.last_time / ntp.max_time;
-
-    glBindTexture(GL_TEXTURE_2D, ntp.new_tex);
-    float s = new_interp * ntp.scale * 128.f;
-    set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    glBindTexture(GL_TEXTURE_2D, ntp.old_tex);
-    s = (1.f - new_interp) * ntp.scale * 128.f;
-    set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    times_idx++;
   }
 
-  return m_sky_blend_texture.texture();
+  FramebufferTexturePairContext ctxt(m_sky_final_texture);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glUniform1i(m_uniforms.enable_tex, 2);
+  glBindTexture(GL_TEXTURE_2D, m_sky_blend_texture.texture());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glUniform1f(m_uniforms.minimum, input.cloud_min);
+  glUniform1f(m_uniforms.maximum, input.cloud_max);
+  glDisable(GL_BLEND);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+  return m_sky_final_texture.texture();
 }

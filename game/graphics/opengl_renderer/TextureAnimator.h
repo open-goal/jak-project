@@ -311,6 +311,7 @@ class TextureAnimator {
     GLuint channel_scramble;
     GLuint tcc;
     GLuint alpha_multiply;
+    GLuint minimum, maximum;
   } m_uniforms;
 
   struct {
@@ -394,5 +395,6 @@ class TextureAnimator {
   int m_random_index = 0;
   NoiseTexturePair m_sky_noise_textures[kNumSkyNoiseLayers];
   FramebufferTexturePair m_sky_blend_texture;
+  FramebufferTexturePair m_sky_final_texture;
   GpuTexture* m_sky_pool_gpu_tex = nullptr;
 };
