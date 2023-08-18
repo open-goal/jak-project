@@ -83,7 +83,7 @@
 
 (defmethod initialize pc-settings-jak2 ((obj pc-settings-jak2))
   "initial initialize method to be run after allocating"
-  
+
   (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
   ((method-of-type pc-settings initialize) obj)
   obj)
@@ -240,7 +240,7 @@
       (clear-cheat-state-flag! turbo-board)
       )
     )
-  
+
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
 
   ;; run cheats end!!!
@@ -258,7 +258,7 @@
       (set-bit (-> obj music-unlocked) i)
       )
     )
-  
+
   (true! (-> obj flava-unlocked 0)) ;; default always unlocked
   (if (task-node-closed? (game-task-node city-red-gun-training-resolution)) (true! (-> obj flava-unlocked 1))) ;; gun
   (if (task-node-closed? (game-task-node forest-scouts-resolution)) (true! (-> obj flava-unlocked 2))) ;; board
@@ -327,7 +327,7 @@
 
 (defmethod handle-output-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
   "handle the text writing output for the 'settings' group"
-  
+
   ((method-of-type pc-settings handle-output-settings) obj file)
   (format file "  (jetboard-trick-text? ~A)~%" (-> obj jetboard-trick-text?))
   (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
@@ -365,12 +365,18 @@
 
 (defun draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
-                                     (bucket-id debug-no-zbuf1))
-          (draw-string-xy *pc-settings-built-sha*
-                          buf
-                          512 14
-                          (font-color flat-yellow)
-                          (font-flags right shadow kerning))))
+                               (bucket-id debug-no-zbuf1))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up.
+    (dma-buffer-add-gs-set-flusha buf
+                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                                  (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                                  )
+    (draw-string-xy *pc-settings-built-sha*
+                    buf
+                    512 14
+                    (font-color flat-yellow)
+                    (font-flags right shadow kerning))))
 
 
 
