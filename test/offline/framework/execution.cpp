@@ -110,6 +110,8 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
       {"test", "decompiler", "reference", config.game_name, "decompiler-macros.gc"});
   if (config.game_name == "jak2") {
     compiler.run_front_end_on_file({"goal_src", "jak2", "engine", "data", "art-elts.gc"});
+  } else if (config.game_name == "jak1") {
+    compiler.run_front_end_on_file({"goal_src", "jak1", "engine", "data", "art-elts.gc"});
   }
 
   int total_lines = 0;
