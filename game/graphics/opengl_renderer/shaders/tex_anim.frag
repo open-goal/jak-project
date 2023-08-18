@@ -26,48 +26,9 @@ float cloud_lookup(float v, float minimum, float maximum) {
   float alpha = (v - minimum) / (maximum - minimum);
   float sin_alpha = sin(alpha * 3.1415926 / 2.f);
   return sin_alpha * sin_alpha;
-
-//(defun make-cloud-clut ((arg0 (pointer uint32)) (arg1 float) (arg2 float))
-//  "Generate clut for the cloud texture."
-//  (local-vars (v1-10 int))
-//  0
-//  (let* ((minimum (the int (* 255.0 arg1)))
-//         (maximum (max (the int (* 255.0 arg2)) minimum))
-//         (diff (/ 128.0 (the float (- maximum minimum))))
-//         )
-//    (dotimes (s3-0 256)
-//      (let ((s2-0 (-> *clut-translate* s3-0)))
-//        (cond
-//          ((and (>= minimum s3-0) (nonzero? maximum))
-//           (set! v1-10 0)
-//           )
-//          ((>= s3-0 maximum)
-//           (set! v1-10 128)
-//           )
-//          (else
-//            (let* ((f0-9 (sin (* 128.0 (fmin 128.0 (* (the float (- s3-0 minimum)) diff)))))
-//                   (f0-11 (* f0-9 f0-9))
-//                   )
-//              (set! v1-10 (the int (* 128.0 f0-11)))
-//              )
-//            )
-//          )
-//        (set! (-> arg0 s2-0) (logior (logand (-> arg0 s2-0) -256) 128))
-//        (set! (-> arg0 s2-0) (logior (logand (-> arg0 s2-0) -65281) #x8000))
-//        (set! (-> arg0 s2-0) (logior (logand (-> arg0 s2-0) -16711681) #x800000))
-//        (set! (-> arg0 s2-0)
-//              (logior (logand (-> arg0 s2-0) (the-as uint #xffffffff00ffffff)) (shr (shl v1-10 56) 32))
-//              )
-//        )
-//      )
-//    )
-//  (none)
-//  )
- 
 }
 
 void main() {
-
   if (enable_tex == 1) {
     vec4 tex_color = texture(tex_T0, uv);
     vec4 unscambled_tex = vec4(tex_color[channel_scramble[0]],
@@ -81,14 +42,14 @@ void main() {
       color.xyz *= unscambled_tex.xyz;
     }
   } else if (enable_tex == 2) {
+    // cloud version
     vec4 tex_color = texture(tex_T0, uv);
-    color.x = 1;
-    color.y = 1;
-    color.z = 1;
-    color.a = cloud_lookup(tex_color.r, minimum, maximum);
+    color.x = 0.5;
+    color.y = 0.5;
+    color.z = 0.5;
+    color.a = 0.5 * cloud_lookup(tex_color.r, minimum, maximum);
   } else {
     color = (rgba / 128.);
   }
-
   color.a *= alpha_multiply;
 }

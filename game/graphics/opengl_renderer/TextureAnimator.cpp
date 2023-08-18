@@ -2071,12 +2071,12 @@ GLint TextureAnimator::run_clouds(const SkyInput& input) {
 
       glBindTexture(GL_TEXTURE_2D, ntp.new_tex);
       float s = new_interp * ntp.scale * 128.f;
-      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 256));
       glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
       glBindTexture(GL_TEXTURE_2D, ntp.old_tex);
       s = (1.f - new_interp) * ntp.scale * 128.f;
-      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 256));
       glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
       times_idx++;
     }
