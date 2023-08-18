@@ -35,7 +35,6 @@ struct VramEntry {
   int dest_texture_address = 0;
   int cbp = 0;
   std::optional<FramebufferTexturePair> tex;
-  // math::Vector<u8, 4> rgba_clear;
 
   bool needs_pool_update = false;
   GpuTexture* pool_gpu_tex = nullptr;
@@ -46,19 +45,8 @@ struct VramEntry {
     tex_height = 0;
     tex_width = 0;
     cbp = 0;
-    // tex.reset();
     needs_pool_update = false;
-    // pool_gpu_tex = nullptr;
   }
-};
-
-struct ShaderContext {
-  GsTex0 tex0;
-  GsTex1 tex1;
-  GsTest test;
-  bool clamp_u, clamp_v;
-  GsAlpha alpha;
-  bool source_texture_set = false;
 };
 
 struct OpenGLTexturePool {
@@ -225,26 +213,12 @@ class TextureAnimator {
   void setup_texture_anims();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
-  void handle_erase_dest(DmaFollower& dma);
-  void handle_set_shader(DmaFollower& dma);
-  void handle_draw(DmaFollower& dma, TexturePool& texture_pool);
-  void handle_rg_to_ba(const DmaTransfer& tf);
-  void handle_set_clut_alpha(const DmaTransfer& tf);
-  void handle_copy_clut_alpha(const DmaTransfer& tf);
 
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
-
-  bool set_up_opengl_for_shader(const ShaderContext& shader,
-                                std::optional<GLuint> texture,
-                                bool prim_abe);
   void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
 
-  void load_clut_to_converter();
   const u32* get_clut_16_16_psm32(int cbp);
 
-  GLuint make_temp_gpu_texture(const u32* data, u32 width, u32 height);
-
-  GLuint make_or_get_gpu_texture_for_current_shader(TexturePool& texture_pool);
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
@@ -278,17 +252,13 @@ class TextureAnimator {
   std::unordered_map<u32, VramEntry> m_textures;
   std::unordered_map<u64, PcTextureId> m_ids_by_vram;
 
-  std::set<u32> m_erased_on_this_frame;
+  std::set<u32> m_force_to_gpu; // rename? or rework to not need?
 
   struct TempTexture {
     GLuint tex;
     u32 w, h;
   };
-  std::vector<TempTexture> m_in_use_temp_textures;
-
-  ShaderContext m_current_shader;
   TextureConverter m_converter;
-  int m_current_dest_tbp = -1;
 
   GLuint m_vao;
   GLuint m_vertex_buffer;

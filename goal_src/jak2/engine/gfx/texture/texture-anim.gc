@@ -614,6 +614,7 @@
 (define-extern *metkor-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *shield-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *krew-holo-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *toxic-slime-texture-anim-array* (texture-anim-array texture-anim))
 
 (defun pc-update-fixed-anim ((bucket bucket-id) (anim-id texture-anim-pc) (anim-array texture-anim-array))
   "Run a 'fixed' texture-anim, which should run entirely in C++."
@@ -689,17 +690,20 @@
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
   (cond
-    ((or (= anim-array *sky-texture-anim-array*)
-         )
-
+    ((= anim-array *toxic-slime-texture-anim-array*)
+     ;; not yet implemented
+     (return #f)
+     )
+    ((= anim-array *sky-texture-anim-array*)
      (when (= bucket (bucket-id tex-lcom-sky-post))
        ;; skip. I believe this is only used to generate the envmap texture for the ocean.
        ;; it generates the exact same thing, so if we want this on PC one day, we can just
        ;; steal if from the beginning of the frame.
        (return #f)
        )
-     ;; for sky, we basically emulate the full thing
-     ;; (format *stdcon* "doing sky to bucket ~d~%" bucket)
+
+     ;; todo
+     (return #f)
      )
     ((= anim-array *skull-gem-texture-anim-array*)
      (pc-update-fixed-anim bucket (texture-anim-pc skull-gem) anim-array)
@@ -855,10 +859,13 @@
      (return #f)
      )
     (else
-      (return #f) ;; HACK!!!
+      (format 0 "Unhandled texture animation!~%")
+      (break!)
+      (return #f)
       )
     )
-
+    (format 0 "Texture animation emulation no longer supported~%")
+    (break!)
   ;;
   ;; (return #f)
   ;;
