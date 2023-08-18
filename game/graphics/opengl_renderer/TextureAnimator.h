@@ -11,6 +11,7 @@
 #include "common/math/Vector.h"
 #include "common/texture/texture_conversion.h"
 
+#include "game/graphics/opengl_renderer/Jak2NoiseTextureAnimator.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/graphics/pipelines/opengl.h"
@@ -193,6 +194,37 @@ struct FixedAnimArray {
   std::vector<FixedAnim> anims;
 };
 
+/*
+ (deftype sky-input (structure)
+  ((fog-height float)
+   (cloud-min  float)
+   (cloud-max  float)
+   (times      float 9)
+   (cloud-dest int32)
+   )
+  )
+ */
+
+struct SkyInput {
+  float fog_height;
+  float cloud_min;
+  float cloud_max;
+  float times[9];
+  int32_t cloud_dest;
+};
+
+using Vector16ub = math::Vector<u8, 16>;
+
+struct NoiseTexturePair {
+  GLuint old_tex = 0;
+  GLuint new_tex = 0;
+  std::vector<u8> temp_data;
+  int dim = 0;
+  float scale = 0;
+  float last_time = 0;
+  float max_time = 0;
+};
+
 class TexturePool;
 
 class TextureAnimator {
@@ -211,8 +243,10 @@ class TextureAnimator {
  private:
   void copy_private_to_public();
   void setup_texture_anims();
+  void setup_sky();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
+  void handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool);
 
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
   void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
@@ -252,7 +286,7 @@ class TextureAnimator {
   std::unordered_map<u32, VramEntry> m_textures;
   std::unordered_map<u64, PcTextureId> m_ids_by_vram;
 
-  std::set<u32> m_force_to_gpu; // rename? or rework to not need?
+  std::set<u32> m_force_to_gpu;  // rename? or rework to not need?
 
   struct TempTexture {
     GLuint tex;
@@ -321,6 +355,7 @@ class TextureAnimator {
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
   void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
+  GLint run_clouds(const SkyInput& input);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
@@ -342,4 +377,22 @@ class TextureAnimator {
   int m_krew_holo_anim_array_idx = -1;
 
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
+
+ public:
+  // must be power of 2 - number of 16-byte rows in random table. (original game has 8)
+  static constexpr int kRandomTableSize = 8;
+
+  // must be power of 2 - dimensions of the final clouds textures
+  static constexpr int kFinalSkyTextureSize = 128;
+
+  // number of small sub-textures. Must be less than log2(kFinalTextureSize).
+  static constexpr int kNumSkyNoiseLayers = 4;
+
+ private:
+  SkyInput m_debug_sky_input;
+  Vector16ub m_random_table[kRandomTableSize];
+  int m_random_index = 0;
+  NoiseTexturePair m_sky_noise_textures[kNumSkyNoiseLayers];
+  FramebufferTexturePair m_sky_blend_texture;
+  GpuTexture* m_sky_pool_gpu_tex = nullptr;
 };

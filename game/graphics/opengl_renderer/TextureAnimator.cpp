@@ -355,7 +355,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
       m_psm32_to_psm8_8_8(8, 8, 8, 64),
       m_psm32_to_psm8_16_16(16, 16, 16, 64),
       m_psm32_to_psm8_32_32(32, 32, 16, 64),
-      m_psm32_to_psm8_64_64(64, 64, 64, 64) {
+      m_psm32_to_psm8_64_64(64, 64, 64, 64),
+      m_sky_blend_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -433,6 +434,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
 
   // animation-specific stuff
   setup_texture_anims();
+
+  setup_sky();
 }
 
 /*!
@@ -477,6 +480,20 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
 
 void TextureAnimator::draw_debug_window() {
   ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
+
+  ImGui::Text("Sky:");
+  ImGui::Text("Fog Height: %f", m_debug_sky_input.fog_height);
+  ImGui::Text("Cloud minmax: %f %f", m_debug_sky_input.cloud_min, m_debug_sky_input.cloud_max);
+  for (int i = 0; i < 9; i++) {
+    ImGui::Text("Time[%d]: %f", i, m_debug_sky_input.times[i]);
+  }
+  ImGui::Text("Dest %d", m_debug_sky_input.cloud_dest);
+
+  glBindTexture(GL_TEXTURE_2D, m_sky_blend_texture.texture());
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  ImGui::Image((void*)(u64)m_sky_blend_texture.texture(), ImVec2(w, h));
 
   auto& slots = jak2_animated_texture_slots();
   for (size_t i = 0; i < slots.size(); i++) {
@@ -568,6 +585,7 @@ enum PcTextureAnimCodes {
   METKOR = 38,
   SHIELD = 39,
   KREW_HOLO = 40,
+  CLOUDS_AND_FOG = 41,
 };
 
 // metadata for an upload from GOAL memory
@@ -705,6 +723,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         case KREW_HOLO: {
           auto p = scoped_prof("krew-holo");
           run_fixed_animation_array(m_krew_holo_anim_array_idx, tf, texture_pool);
+        } break;
+        case CLOUDS_AND_FOG: {
+          auto p = scoped_prof("clouds-and-fog");
+          handle_clouds_and_fog(tf, texture_pool);
         } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
@@ -910,6 +932,27 @@ void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame
   blender.last_updated_frame = frame_idx;
   for (size_t i = 0; i < blender.blenders.size(); i++) {
     m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  }
+}
+
+void TextureAnimator::handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool) {
+  ASSERT(tf.size_bytes >= sizeof(SkyInput));
+  SkyInput input;
+  memcpy(&input, tf.data, sizeof(SkyInput));
+  auto tex = run_clouds(input);
+
+  if (m_sky_pool_gpu_tex) {
+    texture_pool->move_existing_to_vram(m_sky_pool_gpu_tex, input.cloud_dest);
+    ASSERT(texture_pool->lookup(input.cloud_dest).value() == tex);
+  } else {
+    TextureInput in;
+    in.gpu_texture = tex;
+    in.w = kFinalSkyTextureSize;
+    in.h = kFinalSkyTextureSize;
+    in.debug_page_name = "PC-ANIM";
+    in.debug_name = "clouds";
+    in.id = get_id_for_tbp(texture_pool, input.cloud_dest, 777);
+    m_sky_pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, input.cloud_dest);
   }
 }
 
@@ -1859,4 +1902,160 @@ void TextureAnimator::setup_texture_anims() {
     }
     m_krew_holo_anim_array_idx = create_fixed_anim_array({def});
   }
+}
+
+// initial values of the random table for cloud texture generation.
+constexpr Vector16ub kInitialRandomTable[TextureAnimator::kRandomTableSize] = {
+    {0x20, 0x19, 0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x89, 0x67, 0x45, 0x23, 0x1},
+    {0x37, 0x82, 0x87, 0x23, 0x78, 0x87, 0x4, 0x32, 0x97, 0x91, 0x48, 0x98, 0x30, 0x38, 0x89, 0x87},
+    {0x62, 0x47, 0x2, 0x62, 0x78, 0x92, 0x28, 0x90, 0x81, 0x47, 0x72, 0x28, 0x83, 0x29, 0x71, 0x68},
+    {0x28, 0x61, 0x17, 0x62, 0x87, 0x74, 0x38, 0x12, 0x83, 0x9, 0x78, 0x12, 0x76, 0x31, 0x72, 0x80},
+    {0x39, 0x72, 0x98, 0x34, 0x72, 0x98, 0x69, 0x78, 0x65, 0x71, 0x98, 0x83, 0x97, 0x23, 0x98, 0x1},
+    {0x97, 0x38, 0x72, 0x98, 0x23, 0x87, 0x23, 0x98, 0x93, 0x72, 0x98, 0x20, 0x81, 0x29, 0x10,
+     0x62},
+    {0x28, 0x75, 0x38, 0x82, 0x99, 0x30, 0x72, 0x87, 0x83, 0x9, 0x14, 0x98, 0x10, 0x43, 0x87, 0x29},
+    {0x87, 0x23, 0x0, 0x87, 0x18, 0x98, 0x12, 0x98, 0x10, 0x98, 0x21, 0x83, 0x90, 0x37, 0x62,
+     0x71}};
+
+/*!
+ * Update dest and random_table.
+ */
+int make_noise_texture(u8* dest, Vector16ub* random_table, int dim, int random_index_in) {
+  ASSERT(dim % 16 == 0);
+  const int qw_per_row = dim / 16;
+  for (int row = 0; row < dim; row++) {
+    for (int qw_in_row = 0; qw_in_row < qw_per_row; qw_in_row++) {
+      const int row_start_qwi = row * qw_per_row;
+      Vector16ub* rand_rows[4] = {
+          random_table + (random_index_in + 0) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 3) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 5) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 7) % TextureAnimator::kRandomTableSize,
+      };
+      const int qwi = row_start_qwi + qw_in_row;
+      *rand_rows[3] = *rand_rows[0] + *rand_rows[1] + *rand_rows[2];
+      memcpy(dest + 16 * qwi, rand_rows[3]->data(), 16);
+      random_index_in = (random_index_in + 1) % TextureAnimator::kRandomTableSize;
+    }
+  }
+  return random_index_in;
+}
+
+int update_opengl_noise_texture(GLuint texture,
+                                u8* temp,
+                                Vector16ub* random_table,
+                                int dim,
+                                int random_index_in) {
+  int ret = make_noise_texture(temp, random_table, dim, random_index_in);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, dim, dim, 0, GL_RED, GL_UNSIGNED_BYTE, temp);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  return ret;
+}
+
+void debug_save_opengl_u8_texture(const std::string& out, GLuint texture) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  fmt::print("saving texture with size {} x {}\n", w, h);
+  std::vector<u8> data_r(w * h);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data_r.data());
+  std::vector<u8> data(w * h * 4);
+  for (int i = 0; i < w * h; i++) {
+    data[i * 4] = data_r[i];
+    data[i * 4 + 1] = data_r[i];
+    data[i * 4 + 2] = data_r[i];
+    data[i * 4 + 3] = 255;
+  }
+  file_util::write_rgba_png(out, data.data(), w, h);
+}
+
+void TextureAnimator::setup_sky() {
+  // sky
+  // initialize random table with values from the game.
+  for (int i = 0; i < kRandomTableSize; i++) {
+    m_random_table[i] = kInitialRandomTable[i];
+  }
+
+  const float max_times[4] = {4800.f, 2400.f, 1200.f, 600.f};
+  const float scales[4] = {0.5, 0.2, 0.15, 0.0075f};
+  for (int i = 0, dim = kFinalSkyTextureSize >> (kNumSkyNoiseLayers - 1); i < kNumSkyNoiseLayers;
+       i++, dim *= 2) {
+    auto& tex = m_sky_noise_textures[i];
+    tex.temp_data.resize(dim * dim);
+    tex.max_time = max_times[i];
+    tex.scale = scales[i];
+    tex.dim = dim;
+    glGenTextures(1, &tex.new_tex);
+    m_random_index = update_opengl_noise_texture(tex.new_tex, tex.temp_data.data(), m_random_table,
+                                                 dim, m_random_index);
+    glGenTextures(1, &tex.old_tex);
+    m_random_index = update_opengl_noise_texture(tex.old_tex, tex.temp_data.data(), m_random_table,
+                                                 dim, m_random_index);
+    // debug_save_opengl_u8_texture(fmt::format("{}_old.png", dim), tex.old_tex);
+    // debug_save_opengl_u8_texture(fmt::format("{}_new.png", dim), tex.new_tex);
+  }
+}
+
+GLint TextureAnimator::run_clouds(const SkyInput& input) {
+  m_debug_sky_input = input;
+
+  int times_idx = 0;
+  // Anim 0:
+  // this create a 16x16 CLUT with RGB = 128, 128, 128 and alpha = i
+  // (texture-anim-alpha-ramp-clut-init)
+  // it's uploaded 24 * 32 = 768. (texture-anim-alpha-ramp-clut-upload)
+  times_idx++;
+  FramebufferTexturePairContext ctxt(m_sky_blend_texture);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glUniform1i(m_uniforms.tcc, 1);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glColorMask(true, true, true, true);
+  glDisable(GL_DEPTH_TEST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glEnable(GL_BLEND);
+  glBlendEquation(GL_FUNC_ADD);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+  glUniform4i(m_uniforms.channel_scramble, 0, 0, 0, 0);
+  glUniform1f(m_uniforms.alpha_multiply, 1.f);
+  glUniform1i(m_uniforms.enable_tex, 1);
+
+  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+  glUniform3fv(m_uniforms.positions, 4, positions);
+  float uv[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+  glUniform2fv(m_uniforms.uvs, 4, uv);
+
+  // Anim 1:
+  // noise (16x16)
+  // while (noise_layer_idx) {
+  for (int noise_layer_idx = 0; noise_layer_idx < kNumSkyNoiseLayers; noise_layer_idx++) {
+    const float new_time = input.times[times_idx];
+    auto& ntp = m_sky_noise_textures[noise_layer_idx];
+
+    if (new_time < ntp.last_time) {
+      printf("Wrapping! %d\n", noise_layer_idx);
+      std::swap(ntp.new_tex, ntp.old_tex);
+      m_random_index = update_opengl_noise_texture(ntp.new_tex, ntp.temp_data.data(),
+                                                   m_random_table, ntp.dim, m_random_index);
+    }
+    ntp.last_time = new_time;
+    float new_interp = ntp.last_time / ntp.max_time;
+
+    glBindTexture(GL_TEXTURE_2D, ntp.new_tex);
+    float s = new_interp * ntp.scale * 128.f;
+    set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glBindTexture(GL_TEXTURE_2D, ntp.old_tex);
+    s = (1.f - new_interp) * ntp.scale * 128.f;
+    set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 128));
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    times_idx++;
+  }
+
+  return m_sky_blend_texture.texture();
 }

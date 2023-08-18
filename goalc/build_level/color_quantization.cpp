@@ -170,7 +170,7 @@ void assign_colors(Node& root, std::vector<Color>& palette_out) {
     if (n.rgb_sum_count) {
       n.final_idx = idx++;
       palette_out.emplace_back(n.r_sum / n.rgb_sum_count, n.g_sum / n.rgb_sum_count,
-                               n.b_sum / n.rgb_sum_count);
+                               n.b_sum / n.rgb_sum_count, 0);
     }
   });
 }
