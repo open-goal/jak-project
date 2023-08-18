@@ -50,6 +50,15 @@ struct VramEntry {
   }
 };
 
+struct ShaderContext {
+  GsTex0 tex0;
+  GsTex1 tex1;
+  GsTest test;
+  bool clamp_u, clamp_v;
+  GsAlpha alpha;
+  bool source_texture_set = false;
+};
+
 struct OpenGLTexturePool {
   OpenGLTexturePool();
   ~OpenGLTexturePool();
@@ -247,12 +256,20 @@ class TextureAnimator {
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
   void handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool);
+  void handle_erase_dest(DmaFollower& dma);
+  void handle_set_shader(DmaFollower& dma);
+  void handle_draw(DmaFollower& dma, TexturePool& texture_pool);
 
   VramEntry* setup_vram_entry_for_gpu_texture(int w, int h, int tbp);
   void set_up_opengl_for_fixed(const FixedLayerDef& def, std::optional<GLint> texture);
+  bool set_up_opengl_for_shader(const ShaderContext& shader,
+                                std::optional<GLuint> texture,
+                                bool prim_abe);
+  GLuint make_temp_gpu_texture(const u32* data, u32 width, u32 height);
 
+  GLuint make_or_get_gpu_texture_for_current_shader(TexturePool& texture_pool);
   const u32* get_clut_16_16_psm32(int cbp);
-
+  void load_clut_to_converter();
   void force_to_gpu(int tbp);
 
   int create_fixed_anim_array(const std::vector<FixedAnimDef>& defs);
@@ -293,7 +310,8 @@ class TextureAnimator {
     u32 w, h;
   };
   TextureConverter m_converter;
-
+  std::vector<TempTexture> m_in_use_temp_textures;
+  ShaderContext m_current_shader;
   GLuint m_vao;
   GLuint m_vertex_buffer;
   struct Vertex {
@@ -323,6 +341,7 @@ class TextureAnimator {
 
   u8 m_index_to_clut_addr[256];
   OpenGLTexturePool m_opengl_texture_pool;
+  int m_current_dest_tbp = -1;
 
   std::vector<GLuint> m_private_output_slots;
   std::vector<GLuint> m_public_output_slots;

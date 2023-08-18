@@ -715,6 +715,7 @@
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
+  (let ((anim-idx 0))
   (cond
     ((= anim-array *toxic-slime-texture-anim-array*)
      ;; not yet implemented
@@ -735,12 +736,13 @@
        (make-sky-input (the sky-input (-> dma-buf base)))
        (&+! (-> dma-buf base) 64)
        (pc-texture-anim-flag finish-anim-array dma-buf)
-       (dotimes (i 9)
+       (dotimes (i 8) ;; intentially skipping fog here!!
          (pc-update-anim-frame-time (-> *sky-texture-anim-array* array-data i))
          )
        )
-     ;; todo
-     (return #f)
+     ;; falling through on purpose
+     (set! anim-idx 8) ;; fog
+     ;(return #f)
      )
     ((= anim-array *skull-gem-texture-anim-array*)
      (pc-update-fixed-anim bucket (texture-anim-pc skull-gem) anim-array)
@@ -897,8 +899,6 @@
       (return #f)
       )
     )
-    (format 0 "Texture animation emulation no longer supported~%")
-    (break!)
   ;;
   ;; (return #f)
   ;;
@@ -917,11 +917,11 @@
       (pc-texture-anim-flag start-anim-array dma-buf)
 
       ;; loop over animated textures. Each will produce a single texture.
-      (dotimes (anim-idx (-> anim-array length))
+      ;(dotimes (anim-idx (-> anim-array length))
+      (while (< anim-idx (-> anim-array length))
         (let* ((anim (-> anim-array array-data anim-idx))
                (dest-tex (-> anim tex))
                )
-          ; (format 0 "texture anim dest tex: ~A~%" dest-tex)
           (when dest-tex
             0
             (let ((tex-width (-> dest-tex w)))
@@ -941,7 +941,6 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
-                ; (format 0 " clearing~%")
                 ;; configure for drawing to this texture.
                 (pc-texture-anim-flag erase-and-init dma-buf)
                 (dma-buffer-add-gs-set-flusha dma-buf
@@ -1024,6 +1023,7 @@
               )
             )
           )
+        (+! anim-idx 1)
         )
 
       ;; reset GS registers - we messed with frame/scissor.
@@ -1040,6 +1040,7 @@
     0
     (none)
     )
+  )
   )
 
 (defun no-alpha-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
