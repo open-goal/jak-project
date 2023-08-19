@@ -197,6 +197,7 @@
   (shield 39)
   (krew-holo 40)
   (clouds-and-fog 41)
+  (slime 42)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -712,15 +713,56 @@
     )
   )
 
+#|
+struct SlimeInput {
+  float alphas[4];
+  float times[9];
+  int32_t dest;
+  int32_t scroll_dest;
+};
+|#
+
+(deftype slime-input (structure)
+  (;(alphas float 4)
+   (times  float 9)
+   (dest   int32)
+   (scroll-dest int32)
+   )
+  )
+
+(defun make-slime-input ((si slime-input))
+  (dotimes (i 9)
+    (set! (-> si times i)
+          (-> *toxic-slime-texture-anim-array* array-data i frame-time)
+          )
+    )
+  (set! (-> si dest)
+        (the int (-> *toxic-slime-texture-anim-array* array-data 6 tex dest 0)))
+  (set! (-> si scroll-dest)
+        (the int (-> *toxic-slime-texture-anim-array* array-data 8 tex dest 0)))
+  )
+
+
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
   (let ((anim-idx 0))
-  (cond
-    ((= anim-array *toxic-slime-texture-anim-array*)
-     ;; not yet implemented
-     (return #f)
-     )
+    (cond
+      ((= anim-array *toxic-slime-texture-anim-array*)
+       (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                    bucket
+                                    )
+         (pc-texture-anim-flag start-anim-array dma-buf)
+         (pc-texture-anim-flag slime dma-buf :qwc 4)
+         (make-slime-input (the slime-input (-> dma-buf base)))
+         (&+! (-> dma-buf base) 64)
+         (pc-texture-anim-flag finish-anim-array dma-buf)
+         (dotimes (i 9)
+           (pc-update-anim-frame-time (-> *toxic-slime-texture-anim-array* array-data i))
+           )
+         )
+       (return #f)
+       )
     ((= anim-array *sky-texture-anim-array*)
      (when (= bucket (bucket-id tex-lcom-sky-post))
        ;; skip. I believe this is only used to generate the envmap texture for the ocean.

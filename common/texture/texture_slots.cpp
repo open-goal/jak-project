@@ -38,6 +38,8 @@ std::vector<std::string> jak2_slots = {
     "fort-roboscreen-dest",
     "squid-env-rim-dest",
     "krew-holo-dest",
+    "cas-toxic-slime-dest",
+    "cas-toxic-slime-scroll-dest",
 };
 
 }
