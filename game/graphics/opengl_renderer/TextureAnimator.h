@@ -221,6 +221,13 @@ struct SkyInput {
   int32_t cloud_dest;
 };
 
+struct SlimeInput {
+  // float alphas[4];
+  float times[9];
+  int32_t dest;
+  int32_t scroll_dest;
+};
+
 using Vector16ub = math::Vector<u8, 16>;
 
 struct NoiseTexturePair {
@@ -255,6 +262,7 @@ class TextureAnimator {
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
   void handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool);
+  void handle_slime(const DmaTransfer& tf, TexturePool* texture_pool);
   void handle_erase_dest(DmaFollower& dma);
   void handle_set_shader(DmaFollower& dma);
   void handle_draw(DmaFollower& dma, TexturePool& texture_pool);
@@ -325,6 +333,7 @@ class TextureAnimator {
     GLuint positions;
     GLuint uvs;
     GLuint enable_tex;
+    GLuint slime_scroll;
     GLuint channel_scramble;
     GLuint tcc;
     GLuint alpha_multiply;
@@ -375,6 +384,7 @@ class TextureAnimator {
                                  const std::optional<std::string>& dgo);
   void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
   GLint run_clouds(const SkyInput& input);
+  void run_slime(const SlimeInput& input);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
       m_psm32_to_psm8_64_64;
@@ -398,21 +408,37 @@ class TextureAnimator {
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 
  public:
-  // must be power of 2 - number of 16-byte rows in random table. (original game has 8)
+  // note: for now these can't be easily changed because each layer has its own hand-tuned
+  // parameters from the original game. If you want to change it, you'll need to make up parameters
+  // for those new layers.
+  // must be power of 2 - number of 16-byte rows in random table. (original
+  // game has 8)
   static constexpr int kRandomTableSize = 8;
 
   // must be power of 2 - dimensions of the final clouds textures
   static constexpr int kFinalSkyTextureSize = 128;
+  static constexpr int kFinalSlimeTextureSize = 128;
 
   // number of small sub-textures. Must be less than log2(kFinalTextureSize).
   static constexpr int kNumSkyNoiseLayers = 4;
+  static constexpr int kNumSlimeNoiseLayers = 4;
 
  private:
-  SkyInput m_debug_sky_input;
   Vector16ub m_random_table[kRandomTableSize];
   int m_random_index = 0;
+
+  SkyInput m_debug_sky_input;
   NoiseTexturePair m_sky_noise_textures[kNumSkyNoiseLayers];
   FramebufferTexturePair m_sky_blend_texture;
   FramebufferTexturePair m_sky_final_texture;
   GpuTexture* m_sky_pool_gpu_tex = nullptr;
+
+  SlimeInput m_debug_slime_input;
+  NoiseTexturePair m_slime_noise_textures[kNumSkyNoiseLayers];
+  FramebufferTexturePair m_slime_blend_texture;
+  FramebufferTexturePair m_slime_final_texture, m_slime_final_scroll_texture;
+  GpuTexture* m_slime_pool_gpu_tex = nullptr;
+  GpuTexture* m_slime_scroll_pool_gpu_tex = nullptr;
+  int m_slime_output_slot = -1;
+  int m_slime_scroll_output_slot = -1;
 };
