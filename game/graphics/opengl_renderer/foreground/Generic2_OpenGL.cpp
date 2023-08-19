@@ -1,6 +1,7 @@
 #include "common/log/log.h"
 
 #include "Generic2.h"
+#include "game/graphics/gfx.h"
 
 void Generic2::opengl_setup(ShaderLibrary& shaders) {
   // create OpenGL objects

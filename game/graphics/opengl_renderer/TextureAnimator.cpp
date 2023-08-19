@@ -355,7 +355,9 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
       m_psm32_to_psm8_8_8(8, 8, 8, 64),
       m_psm32_to_psm8_16_16(16, 16, 16, 64),
       m_psm32_to_psm8_32_32(32, 32, 16, 64),
-      m_psm32_to_psm8_64_64(64, 64, 64, 64) {
+      m_psm32_to_psm8_64_64(64, 64, 64, 64),
+      m_sky_blend_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV),
+      m_sky_final_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -389,6 +391,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
   m_uniforms.tcc = glGetUniformLocation(shader.id(), "tcc");
   m_uniforms.alpha_multiply = glGetUniformLocation(shader.id(), "alpha_multiply");
+  m_uniforms.minimum = glGetUniformLocation(shader.id(), "minimum");
+  m_uniforms.maximum = glGetUniformLocation(shader.id(), "maximum");
 
   // create a single "dummy texture" with all 0 data.
   // this is faster and easier than switching shaders to one without texturing, and is used
@@ -433,6 +437,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* co
 
   // animation-specific stuff
   setup_texture_anims();
+
+  setup_sky();
 }
 
 /*!
@@ -477,6 +483,25 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
 
 void TextureAnimator::draw_debug_window() {
   ImGui::Checkbox("fast-scrambler", &m_debug.use_fast_scrambler);
+
+  ImGui::Text("Sky:");
+  ImGui::Text("Fog Height: %f", m_debug_sky_input.fog_height);
+  ImGui::Text("Cloud minmax: %f %f", m_debug_sky_input.cloud_min, m_debug_sky_input.cloud_max);
+  for (int i = 0; i < 9; i++) {
+    ImGui::Text("Time[%d]: %f", i, m_debug_sky_input.times[i]);
+  }
+  ImGui::Text("Dest %d", m_debug_sky_input.cloud_dest);
+
+  glBindTexture(GL_TEXTURE_2D, m_sky_blend_texture.texture());
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  ImGui::Image((void*)(u64)m_sky_blend_texture.texture(), ImVec2(w, h));
+
+  glBindTexture(GL_TEXTURE_2D, m_sky_final_texture.texture());
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  ImGui::Image((void*)(u64)m_sky_final_texture.texture(), ImVec2(w, h));
 
   auto& slots = jak2_animated_texture_slots();
   for (size_t i = 0; i < slots.size(); i++) {
@@ -552,9 +577,6 @@ enum PcTextureAnimCodes {
   GENERIC_UPLOAD = 16,
   SET_SHADER = 17,
   DRAW = 18,
-  MOVE_RG_TO_BA = 19,
-  SET_CLUT_ALPHA = 20,
-  COPY_CLUT_ALPHA = 21,
   DARKJAK = 22,
   PRISON_JAK = 23,
   ORACLE_JAK = 24,
@@ -574,6 +596,7 @@ enum PcTextureAnimCodes {
   METKOR = 38,
   SHIELD = 39,
   KREW_HOLO = 40,
+  CLOUDS_AND_FOG = 41,
 };
 
 // metadata for an upload from GOAL memory
@@ -616,7 +639,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
     m_opengl_texture_pool.free(t.tex, t.w, t.h);
   }
   m_in_use_temp_textures.clear();  // reset temp texture allocator.
-  m_erased_on_this_frame.clear();
+  m_force_to_gpu.clear();
   m_skip_tbps.clear();
 
   // loop over DMA, and do the appropriate texture operations.
@@ -653,18 +676,6 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         case FINISH_ARRAY:
           done = true;
           break;
-        case MOVE_RG_TO_BA: {
-          auto p = scoped_prof("rg-to-ba");
-          handle_rg_to_ba(tf);
-        } break;
-        case SET_CLUT_ALPHA: {
-          auto p = scoped_prof("set-clut-alpha");
-          handle_set_clut_alpha(tf);
-        } break;
-        case COPY_CLUT_ALPHA: {
-          auto p = scoped_prof("copy-clut-alpha");
-          handle_copy_clut_alpha(tf);
-        } break;
         case DARKJAK: {
           auto p = scoped_prof("darkjak");
           run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
@@ -741,6 +752,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           auto p = scoped_prof("krew-holo");
           run_fixed_animation_array(m_krew_holo_anim_array_idx, tf, texture_pool);
         } break;
+        case CLOUDS_AND_FOG: {
+          auto p = scoped_prof("clouds-and-fog");
+          handle_clouds_and_fog(tf, texture_pool);
+        } break;
         default:
           fmt::print("bad imm: {}\n", vif0.immediate);
           ASSERT_NOT_REACHED();
@@ -754,11 +769,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   }
 
   // The steps above will populate m_textures with some combination of GPU/CPU textures.
-  // we need to make sure that all final textures end up on the GPU. For now, we detect this by
-  // seeing if the "erase" operation ran on an tbp, indicating that it was cleared, which is
-  // always done to all textures by the GOAL code.
-  for (auto tbp : m_erased_on_this_frame) {
-    auto p = scoped_prof("handle-one-erased");
+  // we need to make sure that all final textures end up on the GPU, if desired. (todo: move this to
+  // happen somewhere else)?
+  for (auto tbp : m_force_to_gpu) {
+    auto p = scoped_prof("force-to-gpu");
     force_to_gpu(tbp);
   }
 
@@ -937,133 +951,6 @@ void debug_save_opengl_texture(const std::string& out, GLuint texture) {
   file_util::write_rgba_png(out, data.data(), w, h);
 }
 
-/*!
- * Copy rg channels to ba from src to dst.
- * The PS2 implementation is confusing, and this is just a guess at how it works.
- */
-void TextureAnimator::handle_rg_to_ba(const DmaTransfer& tf) {
-  dprintf("[tex anim] rg -> ba\n");
-  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
-  auto* data = (const TextureAnimPcTransform*)(tf.data);
-  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
-  const auto& src = m_textures.find(data->src_tbp);
-  const auto& dst = m_textures.find(data->dst_tbp);
-  if (src != m_textures.end() && dst != m_textures.end()) {
-    ASSERT(src->second.kind == VramEntry::Kind::GPU);
-    ASSERT(dst->second.kind == VramEntry::Kind::GPU);
-    ASSERT(src->second.tex.value().texture() != dst->second.tex.value().texture());
-    FramebufferTexturePairContext ctxt(dst->second.tex.value());
-    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-    float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
-    glUniform3fv(m_uniforms.positions, 4, positions);
-    glUniform2fv(m_uniforms.uvs, 4, uvs);
-    glUniform1i(m_uniforms.enable_tex, 1);
-    glUniform4f(m_uniforms.rgba, 256, 256, 256, 128);  // TODO - seems wrong.
-    glUniform4i(m_uniforms.channel_scramble, 0, 1, 0, 1);
-    // not sure if this is right or not: the entire cloud stuff is kinda broken.
-    glUniform1f(m_uniforms.alpha_multiply, 1.f);
-    glBindTexture(GL_TEXTURE_2D, src->second.tex.value().texture());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glColorMask(true, true, true, true);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-  } else {
-    ASSERT_NOT_REACHED();
-  }
-
-  //  const auto& vram_src = m_vram_entries.find(data->src_tbp);
-  //  if (vram_src != m_vram_entries.end()) {
-  //    ASSERT(vram_src->second.kind == VramEntry::Kind::GENERIC_PSM32);
-  //    // no idea if this is right, but lets try.
-  //    int w = vram_src->second.width;
-  //    int h = vram_src->second.height;
-  //    u8* tdata = vram_src->second.data_psm32.data();
-  //
-  //    // file_util::write_rgba_png("./before_transform.png", tdata, w, h);
-  //
-  //    for (int i = 0; i < w * h; i++) {
-  //      tdata[i * 4 + 2] = tdata[i * 4];
-  //      tdata[i * 4 + 3] = tdata[i * 4 + 1];
-  //    }
-  //
-  //    // file_util::write_rgba_png("./after_transform.png", tdata, w, h);
-  //
-  //  } else {
-  //    ASSERT_NOT_REACHED();
-  //  }
-}
-
-void TextureAnimator::handle_set_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
-  glUniform1f(m_uniforms.alpha_multiply, 1.f);
-
-  dprintf("[tex anim] set clut alpha\n");
-  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
-  auto* data = (const TextureAnimPcTransform*)(tf.data);
-  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
-  const auto& tex = m_textures.find(data->dst_tbp);
-  ASSERT(tex != m_textures.end());
-
-  ASSERT(tex->second.kind == VramEntry::Kind::GPU);
-  FramebufferTexturePairContext ctxt(tex->second.tex.value());
-  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-  float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
-  glUniform3fv(m_uniforms.positions, 4, positions);
-  glUniform2fv(m_uniforms.uvs, 4, uvs);
-  glUniform1i(m_uniforms.enable_tex, 0);  // NO TEXTURE!
-  glUniform4f(m_uniforms.rgba, 128, 128, 128, 128);
-  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
-  glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glDisable(GL_BLEND);
-  glDisable(GL_DEPTH_TEST);
-  glColorMask(false, false, false, true);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-  glColorMask(true, true, true, true);
-}
-
-void TextureAnimator::handle_copy_clut_alpha(const DmaTransfer& tf) {
-  ASSERT_NOT_REACHED();  // TODO: if re-enabling, needs alpha multiplier stuff
-  glUniform1f(m_uniforms.alpha_multiply, 1.f);
-
-  dprintf("[tex anim] __copy__ clut alpha\n");
-  ASSERT(tf.size_bytes == sizeof(TextureAnimPcTransform));
-  auto* data = (const TextureAnimPcTransform*)(tf.data);
-  dprintf("  src: %d, dest: %d\n", data->src_tbp, data->dst_tbp);
-  const auto& dst_tex = m_textures.find(data->dst_tbp);
-  const auto& src_tex = m_textures.find(data->src_tbp);
-  ASSERT(dst_tex != m_textures.end());
-  if (src_tex == m_textures.end()) {
-    lg::error("Skipping copy clut alpha because source texture at {} wasn't found", data->src_tbp);
-    return;
-  }
-  ASSERT(src_tex != m_textures.end());
-
-  ASSERT(dst_tex->second.kind == VramEntry::Kind::GPU);
-  ASSERT(src_tex->second.kind == VramEntry::Kind::GPU);
-
-  FramebufferTexturePairContext ctxt(dst_tex->second.tex.value());
-  float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
-  float uvs[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
-  glUniform3fv(m_uniforms.positions, 4, positions);
-  glUniform2fv(m_uniforms.uvs, 4, uvs);
-  glUniform1i(m_uniforms.enable_tex, 1);
-  glUniform4f(m_uniforms.rgba, 128, 128, 128, 128);  // TODO - seems wrong.
-  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
-  glBindTexture(GL_TEXTURE_2D, src_tex->second.tex.value().texture());
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glDisable(GL_BLEND);
-  glDisable(GL_DEPTH_TEST);
-  glColorMask(false, false, false, true);
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-  glColorMask(true, true, true, true);
-}
-
 void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
   float f;
   ASSERT(tf.size_bytes == 16);
@@ -1073,6 +960,27 @@ void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame
   blender.last_updated_frame = frame_idx;
   for (size_t i = 0; i < blender.blenders.size(); i++) {
     m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  }
+}
+
+void TextureAnimator::handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool) {
+  ASSERT(tf.size_bytes >= sizeof(SkyInput));
+  SkyInput input;
+  memcpy(&input, tf.data, sizeof(SkyInput));
+  auto tex = run_clouds(input);
+
+  if (m_sky_pool_gpu_tex) {
+    texture_pool->move_existing_to_vram(m_sky_pool_gpu_tex, input.cloud_dest);
+    ASSERT(texture_pool->lookup(input.cloud_dest).value() == tex);
+  } else {
+    TextureInput in;
+    in.gpu_texture = tex;
+    in.w = kFinalSkyTextureSize;
+    in.h = kFinalSkyTextureSize;
+    in.debug_page_name = "PC-ANIM";
+    in.debug_name = "clouds";
+    in.id = get_id_for_tbp(texture_pool, input.cloud_dest, 777);
+    m_sky_pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, input.cloud_dest);
   }
 }
 
@@ -1138,7 +1046,7 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
       }
       m_tex_looking_for_clut = nullptr;
       if (upload->force_to_gpu) {
-        m_erased_on_this_frame.insert(upload->dest);
+        m_force_to_gpu.insert(upload->dest);
       }
       break;
     case (int)GsTex0::PSM::PSMT8:
@@ -1149,7 +1057,7 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
       m_tex_looking_for_clut = &vram;
       if (upload->force_to_gpu) {
-        m_erased_on_this_frame.insert(upload->dest);
+        m_force_to_gpu.insert(upload->dest);
       }
       break;
     case (int)GsTex0::PSM::PSMT4:
@@ -1160,7 +1068,7 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
       memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
       m_tex_looking_for_clut = &vram;
       if (upload->force_to_gpu) {
-        m_erased_on_this_frame.insert(upload->dest);
+        m_force_to_gpu.insert(upload->dest);
       }
       break;
     default:
@@ -1176,7 +1084,6 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
  * These may be modified by animation functions, but most of the time they aren't.
  */
 void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
-  dprintf("[tex anim] erase destination texture\n");
   // auto& out = m_new_dest_textures.emplace_back();
   VramEntry* entry = nullptr;
 
@@ -1265,67 +1172,7 @@ void TextureAnimator::handle_erase_dest(DmaFollower& dma) {
 
   // set as active
   m_current_dest_tbp = entry->dest_texture_address;
-  m_erased_on_this_frame.insert(entry->dest_texture_address);
-}
-
-/*!
- * Set up this texture as a GPU texture. This does a few things:
- * - sets the Kind to GPU
- * - makes sure the texture resource points to a valid OpenGL texture of the right size, without
- *   triggering the resize/delete sync issue mentioned above.
- * - sets flags to indicate if this GPU texture needs to be updated in the pool.
- */
-VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int tbp) {
-  auto pp = scoped_prof("setup-vram-entry");
-  const auto& existing_dest = m_textures.find(tbp);
-
-  // see if we have an existing OpenGL texture at all
-  bool existing_opengl = existing_dest != m_textures.end() && existing_dest->second.tex.has_value();
-
-  // see if we can reuse it (same size)
-  bool can_reuse = true;
-  if (existing_opengl) {
-    if (existing_dest->second.tex->height() != h || existing_dest->second.tex->width() != w) {
-      dprintf(" can't reuse, size mismatch\n");
-      can_reuse = false;
-    }
-  } else {
-    dprintf(" can't reuse, first time using this address\n");
-    can_reuse = false;
-  }
-
-  VramEntry* entry = nullptr;
-  if (can_reuse) {
-    // texture is the right size, just use it again.
-    entry = &existing_dest->second;
-  } else {
-    if (existing_opengl) {
-      // we have a texture, but it's the wrong type. Remember that we need to update the pool
-      entry = &existing_dest->second;
-      entry->needs_pool_update = true;
-    } else {
-      // create the entry. Also need to update the pool
-      entry = &m_textures[tbp];
-      entry->reset();
-      entry->needs_pool_update = true;
-    }
-
-    // if we already have a texture, try to swap it with an OpenGL texture of the right size.
-    if (entry->tex.has_value()) {
-      // gross
-      m_opengl_texture_pool.free(entry->tex->texture(), entry->tex->width(), entry->tex->height());
-      entry->tex->update_texture_size(w, h);
-      entry->tex->update_texture_unsafe(m_opengl_texture_pool.allocate(w, h));
-    } else {
-      entry->tex.emplace(w, h, GL_UNSIGNED_INT_8_8_8_8_REV);
-    }
-  }
-
-  entry->kind = VramEntry::Kind::GPU;
-  entry->tex_width = w;
-  entry->tex_height = h;
-  entry->dest_texture_address = tbp;
-  return entry;
+  m_force_to_gpu.insert(entry->dest_texture_address);
 }
 
 /*!
@@ -1433,24 +1280,6 @@ void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
 }
 
 /*!
- * Get a 16x16 CLUT texture, stored in psm32 (in-memory format, not vram). Fatal if it doesn't
- * exist.
- */
-const u32* TextureAnimator::get_clut_16_16_psm32(int cbp) {
-  const auto& clut_lookup = m_textures.find(cbp);
-  if (clut_lookup == m_textures.end()) {
-    printf("get_clut_16_16_psm32 referenced an unknown clut texture in %d\n", cbp);
-    ASSERT_NOT_REACHED();
-  }
-
-  if (clut_lookup->second.kind != VramEntry::Kind::CLUT16_16_IN_PSM32) {
-    ASSERT_NOT_REACHED();
-  }
-
-  return (const u32*)clut_lookup->second.data.data();
-}
-
-/*!
  * Using the current shader settings, load the CLUT table to the texture coverter "VRAM".
  */
 void TextureAnimator::load_clut_to_converter() {
@@ -1506,7 +1335,7 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
     case VramEntry::Kind::GPU:
       // already on the GPU, just return it.
       return lookup->second.tex->texture();
-    // data on the CPU, in PSM32
+      // data on the CPU, in PSM32
     case VramEntry::Kind::GENERIC_PSM32:
       // see how we're reading it:
       switch (m_current_shader.tex0.psm()) {
@@ -1595,74 +1424,6 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
     default:
       ASSERT_NOT_REACHED();
   }
-}
-
-void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
-                                              std::optional<GLint> texture) {
-  if (texture) {
-    glBindTexture(GL_TEXTURE_2D, *texture);
-    glUniform1i(m_uniforms.enable_tex, 1);
-  } else {
-    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
-    glUniform1i(m_uniforms.enable_tex, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  }
-  // tex0
-  // assuming default-texture-anim-layer-func, which sets 1.
-  glUniform1i(m_uniforms.tcc, 1);
-
-  // ASSERT(shader.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
-  // tex1
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-  glColorMask(def.channel_masks[0], def.channel_masks[1], def.channel_masks[2],
-              def.channel_masks[3]);
-  if (def.z_test) {
-    ASSERT_NOT_REACHED();
-  } else {
-    glDisable(GL_DEPTH_TEST);
-  }
-
-  if (def.clamp_u) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  }
-
-  if (def.clamp_v) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  }
-
-  if (def.blend_enable) {
-    auto blend_a = def.blend_modes[0];
-    auto blend_b = def.blend_modes[1];
-    auto blend_c = def.blend_modes[2];
-    auto blend_d = def.blend_modes[3];
-    glEnable(GL_BLEND);
-
-    // 0 2 0 1
-    if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
-        blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
-      glBlendEquation(GL_FUNC_ADD);
-      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
-    } else if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::DEST &&
-               blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
-      glBlendEquation(GL_FUNC_ADD);
-      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-    } else {
-      fmt::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
-                 (int)blend_d);
-      ASSERT_NOT_REACHED();
-    }
-
-  } else {
-    glDisable(GL_BLEND);
-  }
-  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
 }
 
 bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
@@ -1793,6 +1554,152 @@ bool TextureAnimator::set_up_opengl_for_shader(const ShaderContext& shader,
   }
   glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
   return writes_alpha;
+}
+
+/*!
+ * Set up this texture as a GPU texture. This does a few things:
+ * - sets the Kind to GPU
+ * - makes sure the texture resource points to a valid OpenGL texture of the right size, without
+ *   triggering the resize/delete sync issue mentioned above.
+ * - sets flags to indicate if this GPU texture needs to be updated in the pool.
+ */
+VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int tbp) {
+  auto pp = scoped_prof("setup-vram-entry");
+  const auto& existing_dest = m_textures.find(tbp);
+
+  // see if we have an existing OpenGL texture at all
+  bool existing_opengl = existing_dest != m_textures.end() && existing_dest->second.tex.has_value();
+
+  // see if we can reuse it (same size)
+  bool can_reuse = true;
+  if (existing_opengl) {
+    if (existing_dest->second.tex->height() != h || existing_dest->second.tex->width() != w) {
+      dprintf(" can't reuse, size mismatch\n");
+      can_reuse = false;
+    }
+  } else {
+    dprintf(" can't reuse, first time using this address\n");
+    can_reuse = false;
+  }
+
+  VramEntry* entry = nullptr;
+  if (can_reuse) {
+    // texture is the right size, just use it again.
+    entry = &existing_dest->second;
+  } else {
+    if (existing_opengl) {
+      // we have a texture, but it's the wrong type. Remember that we need to update the pool
+      entry = &existing_dest->second;
+      entry->needs_pool_update = true;
+    } else {
+      // create the entry. Also need to update the pool
+      entry = &m_textures[tbp];
+      entry->reset();
+      entry->needs_pool_update = true;
+    }
+
+    // if we already have a texture, try to swap it with an OpenGL texture of the right size.
+    if (entry->tex.has_value()) {
+      // gross
+      m_opengl_texture_pool.free(entry->tex->texture(), entry->tex->width(), entry->tex->height());
+      entry->tex->update_texture_size(w, h);
+      entry->tex->update_texture_unsafe(m_opengl_texture_pool.allocate(w, h));
+    } else {
+      entry->tex.emplace(w, h, GL_UNSIGNED_INT_8_8_8_8_REV);
+    }
+  }
+
+  entry->kind = VramEntry::Kind::GPU;
+  entry->tex_width = w;
+  entry->tex_height = h;
+  entry->dest_texture_address = tbp;
+  return entry;
+}
+
+/*!
+ * Get a 16x16 CLUT texture, stored in psm32 (in-memory format, not vram). Fatal if it doesn't
+ * exist.
+ */
+const u32* TextureAnimator::get_clut_16_16_psm32(int cbp) {
+  const auto& clut_lookup = m_textures.find(cbp);
+  if (clut_lookup == m_textures.end()) {
+    printf("get_clut_16_16_psm32 referenced an unknown clut texture in %d\n", cbp);
+    ASSERT_NOT_REACHED();
+  }
+
+  if (clut_lookup->second.kind != VramEntry::Kind::CLUT16_16_IN_PSM32) {
+    ASSERT_NOT_REACHED();
+  }
+
+  return (const u32*)clut_lookup->second.data.data();
+}
+
+void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
+                                              std::optional<GLint> texture) {
+  if (texture) {
+    glBindTexture(GL_TEXTURE_2D, *texture);
+    glUniform1i(m_uniforms.enable_tex, 1);
+  } else {
+    glBindTexture(GL_TEXTURE_2D, m_dummy_texture);
+    glUniform1i(m_uniforms.enable_tex, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+  // tex0
+  // assuming default-texture-anim-layer-func, which sets 1.
+  glUniform1i(m_uniforms.tcc, 1);
+
+  // ASSERT(shader.tex0.tfx() == GsTex0::TextureFunction::MODULATE);
+  // tex1
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glColorMask(def.channel_masks[0], def.channel_masks[1], def.channel_masks[2],
+              def.channel_masks[3]);
+  if (def.z_test) {
+    ASSERT_NOT_REACHED();
+  } else {
+    glDisable(GL_DEPTH_TEST);
+  }
+
+  if (def.clamp_u) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (def.clamp_v) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
+  if (def.blend_enable) {
+    auto blend_a = def.blend_modes[0];
+    auto blend_b = def.blend_modes[1];
+    auto blend_c = def.blend_modes[2];
+    auto blend_d = def.blend_modes[3];
+    glEnable(GL_BLEND);
+
+    // 0 2 0 1
+    if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+        blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE && blend_b == GsAlpha::BlendMode::DEST &&
+               blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    } else {
+      fmt::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
+                 (int)blend_d);
+      ASSERT_NOT_REACHED();
+    }
+
+  } else {
+    glDisable(GL_BLEND);
+  }
+  glUniform4i(m_uniforms.channel_scramble, 0, 1, 2, 3);
 }
 
 namespace {
@@ -2502,4 +2409,188 @@ void TextureAnimator::setup_texture_anims() {
     }
     m_krew_holo_anim_array_idx = create_fixed_anim_array({def});
   }
+}
+
+// initial values of the random table for cloud texture generation.
+constexpr Vector16ub kInitialRandomTable[TextureAnimator::kRandomTableSize] = {
+    {0x20, 0x19, 0x18, 0x17, 0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x89, 0x67, 0x45, 0x23, 0x1},
+    {0x37, 0x82, 0x87, 0x23, 0x78, 0x87, 0x4, 0x32, 0x97, 0x91, 0x48, 0x98, 0x30, 0x38, 0x89, 0x87},
+    {0x62, 0x47, 0x2, 0x62, 0x78, 0x92, 0x28, 0x90, 0x81, 0x47, 0x72, 0x28, 0x83, 0x29, 0x71, 0x68},
+    {0x28, 0x61, 0x17, 0x62, 0x87, 0x74, 0x38, 0x12, 0x83, 0x9, 0x78, 0x12, 0x76, 0x31, 0x72, 0x80},
+    {0x39, 0x72, 0x98, 0x34, 0x72, 0x98, 0x69, 0x78, 0x65, 0x71, 0x98, 0x83, 0x97, 0x23, 0x98, 0x1},
+    {0x97, 0x38, 0x72, 0x98, 0x23, 0x87, 0x23, 0x98, 0x93, 0x72, 0x98, 0x20, 0x81, 0x29, 0x10,
+     0x62},
+    {0x28, 0x75, 0x38, 0x82, 0x99, 0x30, 0x72, 0x87, 0x83, 0x9, 0x14, 0x98, 0x10, 0x43, 0x87, 0x29},
+    {0x87, 0x23, 0x0, 0x87, 0x18, 0x98, 0x12, 0x98, 0x10, 0x98, 0x21, 0x83, 0x90, 0x37, 0x62,
+     0x71}};
+
+/*!
+ * Update dest and random_table.
+ */
+int make_noise_texture(u8* dest, Vector16ub* random_table, int dim, int random_index_in) {
+  ASSERT(dim % 16 == 0);
+  const int qw_per_row = dim / 16;
+  for (int row = 0; row < dim; row++) {
+    for (int qw_in_row = 0; qw_in_row < qw_per_row; qw_in_row++) {
+      const int row_start_qwi = row * qw_per_row;
+      Vector16ub* rand_rows[4] = {
+          random_table + (random_index_in + 0) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 3) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 5) % TextureAnimator::kRandomTableSize,
+          random_table + (random_index_in + 7) % TextureAnimator::kRandomTableSize,
+      };
+      const int qwi = row_start_qwi + qw_in_row;
+      *rand_rows[3] = *rand_rows[0] + *rand_rows[1] + *rand_rows[2];
+      memcpy(dest + 16 * qwi, rand_rows[3]->data(), 16);
+      random_index_in = (random_index_in + 1) % TextureAnimator::kRandomTableSize;
+    }
+  }
+  return random_index_in;
+}
+
+int update_opengl_noise_texture(GLuint texture,
+                                u8* temp,
+                                Vector16ub* random_table,
+                                int dim,
+                                int random_index_in) {
+  int ret = make_noise_texture(temp, random_table, dim, random_index_in);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, dim, dim, 0, GL_RED, GL_UNSIGNED_BYTE, temp);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  return ret;
+}
+
+void debug_save_opengl_u8_texture(const std::string& out, GLuint texture) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  fmt::print("saving texture with size {} x {}\n", w, h);
+  std::vector<u8> data_r(w * h);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data_r.data());
+  std::vector<u8> data(w * h * 4);
+  for (int i = 0; i < w * h; i++) {
+    data[i * 4] = data_r[i];
+    data[i * 4 + 1] = data_r[i];
+    data[i * 4 + 2] = data_r[i];
+    data[i * 4 + 3] = 255;
+  }
+  file_util::write_rgba_png(out, data.data(), w, h);
+}
+
+void TextureAnimator::setup_sky() {
+  // sky
+  // initialize random table with values from the game.
+  for (int i = 0; i < kRandomTableSize; i++) {
+    m_random_table[i] = kInitialRandomTable[i];
+  }
+
+  const float max_times[4] = {4800.f, 2400.f, 1200.f, 600.f};
+  const float scales[4] = {0.5, 0.2, 0.15, 0.0075f};
+  for (int i = 0, dim = kFinalSkyTextureSize >> (kNumSkyNoiseLayers - 1); i < kNumSkyNoiseLayers;
+       i++, dim *= 2) {
+    auto& tex = m_sky_noise_textures[i];
+    tex.temp_data.resize(dim * dim);
+    tex.max_time = max_times[i];
+    tex.scale = scales[i];
+    tex.dim = dim;
+    glGenTextures(1, &tex.new_tex);
+    m_random_index = update_opengl_noise_texture(tex.new_tex, tex.temp_data.data(), m_random_table,
+                                                 dim, m_random_index);
+    glGenTextures(1, &tex.old_tex);
+    m_random_index = update_opengl_noise_texture(tex.old_tex, tex.temp_data.data(), m_random_table,
+                                                 dim, m_random_index);
+    // debug_save_opengl_u8_texture(fmt::format("{}_old.png", dim), tex.old_tex);
+    // debug_save_opengl_u8_texture(fmt::format("{}_new.png", dim), tex.new_tex);
+  }
+}
+
+GLint TextureAnimator::run_clouds(const SkyInput& input) {
+  m_debug_sky_input = input;
+
+  // anim 0 creates a clut with rgba = 128, 128, 128, i, at tbp = (24 * 32)
+  // (this has alphas from 0 to 256).
+  // This step is eliminated on OpenGL because we don't need this simple ramp CLUT.
+
+  // the next anim uses that clut with noise textures.
+  // so we expect those textures to have values like (128, 128, 128, x) where 0 <= x <= 255.
+  // (in OpenGL, we create these with a single-channel texture, with that channel in 0 - 1)
+
+  // this repeats for different resolutions (4 times in total)
+
+  // Next, these are blended together into a single texture
+  // The blend mode is 0, 2, 0, 1
+  // [(CSource - 0) * Asource] >> 7 + CDest
+  // in the PS2, CSource is 128, so the >> 7 cancels entirely.
+
+  int times_idx = 0;
+  // Anim 0:
+  // this create a 16x16 CLUT with RGB = 128, 128, 128 and alpha = i
+  // (texture-anim-alpha-ramp-clut-init)
+  // it's uploaded 24 * 32 = 768. (texture-anim-alpha-ramp-clut-upload)
+  times_idx++;
+  {
+    FramebufferTexturePairContext ctxt(m_sky_blend_texture);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUniform1i(m_uniforms.tcc, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glColorMask(true, true, true, true);
+    glDisable(GL_DEPTH_TEST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_ZERO);
+    glUniform4i(m_uniforms.channel_scramble, 0, 0, 0, 0);
+    glUniform1f(m_uniforms.alpha_multiply, 1.f);
+    glUniform1i(m_uniforms.enable_tex, 1);
+
+    float positions[3 * 4] = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0};
+    glUniform3fv(m_uniforms.positions, 4, positions);
+    float uv[2 * 4] = {0, 0, 1, 0, 1, 1, 0, 1};
+    glUniform2fv(m_uniforms.uvs, 4, uv);
+
+    // Anim 1:
+    // noise (16x16)
+    // while (noise_layer_idx) {
+    for (int noise_layer_idx = 0; noise_layer_idx < kNumSkyNoiseLayers; noise_layer_idx++) {
+      const float new_time = input.times[times_idx];
+      auto& ntp = m_sky_noise_textures[noise_layer_idx];
+
+      if (new_time < ntp.last_time) {
+        std::swap(ntp.new_tex, ntp.old_tex);
+        m_random_index = update_opengl_noise_texture(ntp.new_tex, ntp.temp_data.data(),
+                                                     m_random_table, ntp.dim, m_random_index);
+      }
+      ntp.last_time = new_time;
+      float new_interp = ntp.last_time / ntp.max_time;
+
+      glBindTexture(GL_TEXTURE_2D, ntp.new_tex);
+      float s = new_interp * ntp.scale * 128.f;
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 256));
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+      glBindTexture(GL_TEXTURE_2D, ntp.old_tex);
+      s = (1.f - new_interp) * ntp.scale * 128.f;
+      set_uniform(m_uniforms.rgba, math::Vector4f(s, s, s, 256));
+      glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+      times_idx++;
+    }
+  }
+
+  FramebufferTexturePairContext ctxt(m_sky_final_texture);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glUniform1i(m_uniforms.enable_tex, 2);
+  glBindTexture(GL_TEXTURE_2D, m_sky_blend_texture.texture());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glUniform1f(m_uniforms.minimum, input.cloud_min);
+  glUniform1f(m_uniforms.maximum, input.cloud_max);
+  glDisable(GL_BLEND);
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+  return m_sky_final_texture.texture();
 }
