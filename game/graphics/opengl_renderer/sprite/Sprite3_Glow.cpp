@@ -27,6 +27,7 @@ static_assert(sizeof(SpriteGlowData) == 16 * 4);
  * small, so not a big deal.
  */
 bool glow_math(const SpriteGlowConsts* consts,
+               bool skip_uv_clamp,
                const void* vec_data,
                const void* adgif_data,
                SpriteGlowOutput* out) {
@@ -137,9 +138,14 @@ bool glow_math(const SpriteGlowConsts* consts,
   // max.xy vf20, vf01, vf09 -> is this bugged? I think the x broadcast here is wrong
   // this breaks fadeout as the sprite moves off the top of the screen. I've fixed it here because
   // I'm pretty sure this is just a mistake.
-  math::Vector2f vf20_pos(std::max(p0.x(), vf09_min_probe_center.x()),
-                          std::max(p0.y(), vf09_min_probe_center.y()));
-  vf20_pos.min_in_place(vf10_max_probe_center);
+  math::Vector2f vf20_pos;
+  if (skip_uv_clamp) {
+    vf20_pos = p0.xy();
+  } else {
+    vf20_pos = math::Vector2f(std::max(p0.x(), vf09_min_probe_center.x()),
+                              std::max(p0.y(), vf09_min_probe_center.y()));
+    vf20_pos.min_in_place(vf10_max_probe_center);
+  }
 
   // vf17 thing, vf18 thing
   math::Vector2f vf17(consts->clamp_min.x() - 1, consts->clamp_min.y() - 1);
@@ -215,7 +221,7 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
 
     if (m_enable_glow) {
       auto* out = m_glow_renderer.alloc_sprite();
-      if (!glow_math(&consts, vecdata_xfer.data, shader_xfer.data, out)) {
+      if (!glow_math(&consts, m_glow_renderer.new_mode, vecdata_xfer.data, shader_xfer.data, out)) {
         m_glow_renderer.cancel_sprite();
       }
     }
