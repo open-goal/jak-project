@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/TextureAnimator.h"
 #include "game/graphics/texture/TexturePool.h"
 
@@ -13,7 +14,8 @@ class TextureUploadHandler : public BucketRenderer {
  public:
   TextureUploadHandler(const std::string& name,
                        int my_id,
-                       std::shared_ptr<TextureAnimator> texture_animator);
+                       std::shared_ptr<TextureAnimator> texture_animator,
+                       bool add_direct = false);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -26,4 +28,5 @@ class TextureUploadHandler : public BucketRenderer {
   bool m_fake_uploads = false;
   int m_upload_count = 0;
   std::shared_ptr<TextureAnimator> m_texture_animator;
+  std::unique_ptr<DirectRenderer> m_direct;
 };

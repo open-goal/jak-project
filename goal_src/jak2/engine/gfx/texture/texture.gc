@@ -934,7 +934,11 @@ additionally, some texture pages have a chunk system that allows more specific c
 
 (defun upload-vram-data ((buf dma-buffer) (dest int) (data pointer) (height int) (width int))
   "Generate DMA data to upload texture. This simply sets up a texture upload to happen in the future.
-   The texture data itself is referenced, not copied into the dma-buffer."
+  The texture data itself is referenced, not copied into the dma-buffer."
+  (#when PC_PORT
+    ;; disabled.
+    (return #f)
+    )
   (while (> height 0)
     (let ((height-this-time (min 2048 height)))
       (dma-buffer-add-gs-set buf
@@ -1913,6 +1917,7 @@ additionally, some texture pages have a chunk system that allows more specific c
    (#when PC_PORT
      ;; as far as I know this is only used for fonts which have 1 mip level.
      (__pc-texture-relocate (/ dest-loc 64) (-> tex dest 0) dest-fmt)
+     (return dma-buff)
      )
    (dotimes (v1-0 (the-as int (-> tex num-mips)))
     (let ((t1-1 (ash (-> tex w) (- v1-0)))
@@ -2642,8 +2647,13 @@ additionally, some texture pages have a chunk system that allows more specific c
     )
   )
 
-;; when not debugging, use the "fast" ones.
-(when (not *debug-segment*)
+;; modified for PC port: never bother with the debug-mode texture login.
+;; it will never work on PC, and it causes problems with custom levels, due to the way that it allocates the link
+;; array for texture-pages that don't exist, which are never then set to false, causing them to be referenced
+;; after the level is unloaded. This probably works fine if you are playing one level at a time, or if the backup
+;; texture page loading actually works.
+(when (or (not *debug-segment*) PC_PORT)
+  ;; when not debugging, use the "fast" logins. There's no way we can load a texture over the network anyway.
   (set! adgif-shader-login adgif-shader-login-fast)
   (set! adgif-shader-login-no-remap adgif-shader-login-no-remap-fast)
   )

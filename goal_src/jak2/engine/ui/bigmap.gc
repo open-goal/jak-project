@@ -7,7 +7,20 @@
 
 ;; DECOMP BEGINS
 
-(defmethod bigmap-method-17 bigmap ((obj bigmap) (arg0 vector))
+;; The "bigmap" has a number of layers, each corresponding to a map/location in-game.
+;; Each layer has a "mask", which stores a 1-bit value for each cell in a grid. This layer is updated as the game
+;; is played to indicate if the player has "seen" this area, and if it should be shown on the map.
+;; If the player is near an area, it will be marked as visible.
+
+;; There's also a layer mask, which stores a 4-bit value per cell. This is used to segment the map into different regions.
+;; The filling operation will not allow you to "see" areas that don't match the value of your current position.
+;; This can be used to prevent the player from seeing stuff behind a wall by giving the space on either side
+;; of the wall a different layer-mask value.
+
+;; The bit-mask data can be compressed, for including it in saves.
+
+(defmethod set-pos! bigmap ((obj bigmap) (arg0 vector))
+  "Set (-> obj pos) to the integer cell index for the given floating-point position."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -15,42 +28,67 @@
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
     (.lvf vf2 (&-> obj offset quad))
+    ;; move z to y. We want the 2D position in xy.
     (.add.z.vf vf1 vf0 vf1 :mask #b10)
+    ;; apply offset
     (.sub.vf vf1 vf1 vf2)
+    ;; apply scaling.
     (.mul.w.vf vf1 vf1 vf2)
+    ;; convert to integer
     (.ftoi.vf vf1 vf1)
     (.svf (&-> obj pos quad) vf1)
     0
     )
   )
 
-(defmethod bigmap-method-18 bigmap ((obj bigmap))
-  (let ((s5-0 (-> obj compressed-masks (-> obj mask-index))))
+(defmethod decompress-current-masks! bigmap ((obj bigmap))
+  "Decompress the layer set by (-> obj mask-index).
+   The decompressed result will be stored in (-> obj bit-mask data).
+   If it was never compressed, the data will be set to 0."
+
+  (let ((compressed-mask-data (-> obj compressed-masks (-> obj mask-index))))
+    ;; mark compressed data as invalid as we will remove the compressed data after decompression.
     (set! (-> obj compressed-masks (-> obj mask-index)) (the-as (pointer int8) #f))
+    ;; check if we have compressed data
     (cond
-      (s5-0
-        (let* ((a0-2 (unpack-comp-rle (the-as (pointer int8) (-> obj bit-mask data)) s5-0))
-               (v1-7 (&- a0-2 (the-as uint s5-0)))
+      (compressed-mask-data
+        ;; decompress to (-> obj bit-mask data)
+        (let* ((decompressed-data-end (unpack-comp-rle (the-as (pointer int8) (-> obj bit-mask data)) compressed-mask-data))
+               (decompressed-size (&- decompressed-data-end (the-as uint compressed-mask-data)))
                )
-          (let ((a1-3 (+ (- (the-as int s5-0)) (-> obj compressed-data) (-> obj compressed-next-index))))
-            (dotimes (a2-2 a1-3)
-              (set! (-> s5-0 a2-2) (the-as int (-> (the-as (pointer uint8) (&+ a0-2 a2-2)))))
+          ;; we no longer need to keep this compressed data.
+          ;; there is a single buffer (-> obj compressed-data) that stores all compressed layers.
+          ;; when removing a layer, we need to compact the heap by shifting things in memory after this one backward.
+          ;; determine how many bytes are in use after the compressed data we just used
+          (let ((bytes-to-shift-back
+                  (+ (- (the-as int compressed-mask-data)) (-> obj compressed-data) (-> obj compressed-next-index))
+                  )
+                )
+            ;; copy backward.
+            (dotimes (byte-idx bytes-to-shift-back)
+              (set! (-> compressed-mask-data byte-idx)
+                    (the-as int (-> (the-as (pointer uint8) (&+ decompressed-data-end byte-idx))))
+                    )
               )
             )
-          (dotimes (a0-5 20)
-            (let ((a1-6 (-> obj compressed-masks a0-5)))
-              (if (and a1-6 (>= (the-as int a1-6) (the-as int s5-0)))
-                  (set! (-> obj compressed-masks a0-5) (the-as (pointer int8) (&- a1-6 (the-as uint v1-7))))
+          ;; update references to the compressed arrays we just moved.
+          (dotimes (layer-idx 20)
+            (let ((layer-data (-> obj compressed-masks layer-idx)))
+              ;; only update if past this compressed layer and was moved.
+              (if (and layer-data (>= (the-as int layer-data) (the-as int compressed-mask-data)))
+                  (set! (-> obj compressed-masks layer-idx) (the (pointer int8) (&- layer-data (the-as uint decompressed-size))))
                   )
               )
             )
-          (set! (-> obj compressed-next-index) (- (-> obj compressed-next-index) (the-as uint v1-7)))
+          ;; update end-of-heap pointer to account for the memory we just freed.
+          (set! (-> obj compressed-next-index) (- (-> obj compressed-next-index) (the-as uint decompressed-size)))
           )
         )
       (else
-        (let ((v1-10 (-> obj bit-mask data)))
-          (dotimes (a0-9 416)
-            (set! (-> (the-as (pointer uint128) (&+ v1-10 (* a0-9 16)))) (the-as uint128 0))
+        ;; there was no compressed data. Initialize masks to 0.
+        (let ((data (-> obj bit-mask data)))
+          (dotimes (qw-idx 416)
+            (set! (-> (the-as (pointer int128) (&+ data (* qw-idx 16)))) (the int128 0))
             )
           )
         )
@@ -59,20 +97,28 @@
   0
   )
 
-(defmethod bigmap-method-19 bigmap ((obj bigmap))
-  (let* ((s5-0 (+ (-> obj compressed-next-index) 0 (-> obj compressed-data)))
-         (v1-4
+(defmethod compress-current-masks! bigmap ((obj bigmap))
+  "Take the current (-> obj bit-mask data), and store it in the compressed layer buffer."
+  ;; store at the end of the buffer
+  (let* ((compressed-data-dest (+ (-> obj compressed-next-index) 0 (-> obj compressed-data)))
+         ;; compress!
+         (compressed-data-size
            (pack-comp-rle
-             (the-as (pointer uint8) s5-0)
+             (the-as (pointer uint8) compressed-data-dest)
              (-> obj bit-mask data)
              6656
              (the-as int (- #x8000 (the-as int (-> obj compressed-next-index))))
              )
            )
          )
-    (set! (-> obj compressed-masks (-> obj mask-index)) (the-as (pointer int8) s5-0))
-    (set! (-> obj compressed-next-index) (the-as uint (+ (-> obj compressed-next-index) (the-as uint v1-4))))
+    ;; store pointer to the compressed data
+    (set! (-> obj compressed-masks (-> obj mask-index)) (the-as (pointer int8) compressed-data-dest))
+    ;; update end of the heap
+    (set! (-> obj compressed-next-index)
+          (the-as uint (+ (-> obj compressed-next-index) (the-as uint compressed-data-size)))
+          )
     )
+  ;; track max buffer use.
   (set! (-> obj max-next-index)
         (the-as uint (max (the-as int (-> obj max-next-index)) (the-as int (-> obj compressed-next-index))))
         )
@@ -135,8 +181,14 @@
                                    )
         )
 
-(defmethod bigmap-method-20 bigmap ((obj bigmap))
+(defmethod set-enable-from-position! bigmap ((obj bigmap))
+  "Read the value of the layer-mask at the current position.
+   Future calls to maybe-fill-for-position will only succeed
+   if they correspond to a cell with the same layer-mask value
+   as this position."
+  ;; each byte stores 2 mask values.
   (let ((v1-4 (-> obj layer-mask data (+ (* (-> obj pos y) 128) (/ (-> obj pos x) 2)))))
+    ;; pick the low/high part of the byte.
     (if (not (logtest? (-> obj pos x) 1))
         (set! (-> obj layer-mask-enable) (shr v1-4 4))
         (set! (-> obj layer-mask-enable) (logand v1-4 15))
@@ -145,7 +197,9 @@
   0
   )
 
-(defmethod bigmap-method-21 bigmap ((obj bigmap) (arg0 int) (arg1 int))
+(defmethod maybe-fill-for-position bigmap ((obj bigmap) (arg0 int) (arg1 int))
+  "Check the layer-mask for this position. If it matches the value read from
+   set-enable-from-position, then set the bit in the bit-mask."
   (local-vars (v1-3 uint))
   (let* ((v1-1 (+ (* arg1 128) (/ arg0 2)))
          (a3-3 (-> obj layer-mask data v1-1))
@@ -186,7 +240,8 @@
                              )
         )
 
-(defmethod bigmap-method-23 bigmap ((obj bigmap))
+(defmethod mask-image-from-bit-mask bigmap ((obj bigmap))
+  "Modify the image-data in place to mask out parts of the map that have not been seen."
   (let* ((v1-0 (the-as object (-> obj bit-mask)))
          (a1-0 *image-mask-table*)
          (a0-2 (the-as object (-> obj bigmap-image art-group)))
@@ -219,7 +274,35 @@
   (none)
   )
 
-(defmethod bigmap-method-22 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
+(defun pc-upload-map-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
+  "Added function in the PC port to create a map texture. The format should be mt8 for the image and ct32 for the clut (16 x 16)"
+  (pc-texture-anim-flag start-anim-array dma-buf)
+  (pc-texture-anim-flag upload-clut-16-16 dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) clut-data)
+    (set! (-> upload-record width) 16)
+    (set! (-> upload-record height) 16)
+    (set! (-> upload-record dest) cbp)
+    (set! (-> upload-record format) (gs-psm ct32))
+    (set! (-> upload-record force-to-gpu) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+
+  (pc-texture-anim-flag upload-generic-vram dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) image-data)
+    (set! (-> upload-record width) width)
+    (set! (-> upload-record height) height)
+    (set! (-> upload-record dest) tbp)
+    (set! (-> upload-record format) (gs-psm mt8))
+    (set! (-> upload-record force-to-gpu) 1)
+    )
+  (&+! (-> dma-buf base) 16)
+  (pc-texture-anim-flag finish-anim-array dma-buf)
+  )
+
+(defmethod texture-upload-dma bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
+  "Add a texture upload to the DMA buffer."
   (local-vars (sv-16 int))
   (set! sv-16 arg2)
   (dma-buffer-add-gs-set arg0
@@ -233,8 +316,8 @@
   (none)
   )
 
-;; WARN: Return type mismatch pointer vs none.
-(defmethod bigmap-method-26 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+(defmethod sprite-dma bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  "Generate DMA for drawing a single sprite."
   (let ((v1-0 (-> arg0 base)))
     (set! (-> (the-as (pointer uint128) v1-0) 0) (-> obj sprite-tmpl dma-vif quad))
     (set! (-> (the-as (pointer uint128) v1-0) 1) (-> obj sprite-tmpl quad 1))
@@ -248,70 +331,99 @@
   (none)
   )
 
-(defmethod bigmap-method-24 bigmap ((obj bigmap) (arg0 dma-buffer))
+(defmethod draw-non-city-map bigmap ((obj bigmap) (arg0 dma-buffer))
+  "Generate DMA to draw a non-city map using the loaded bigmap image.
+   This appears to have 3 layers."
+
   (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
     (let ((v1-1 (-> s4-0 0))
           (s3-0 (-> s4-0 1))
           )
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-1 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
-      (dma-buffer-add-gs-set arg0 (texflush 1))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ s3-0 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-1 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
+      ;; (dma-buffer-add-gs-set arg0 (texflush 1))
+      ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ s3-0 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      ;; Added
+      (pc-upload-map-texture arg0 (&+ s4-0 s3-0 16) (&+ s4-0 v1-1 16) 512 208 8 0)
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
-                           (tex1-1 (new 'static 'gs-tex1))
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)) ;; pc port note : originally mmag and mmin 0
                            (texflush 1)
                            )
-    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-16 (+ #x1a000 (-> s4-0 1))))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-16 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      ;;(texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-16 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture arg0 (&+ s4-0 v1-16 16) (&+ s4-0 (-> s4-0 0) 16) 512 208 8 0)
       )
     (dma-buffer-add-gs-set arg0 (texflush 0))
-    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+    (sprite-dma obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
     (let ((v1-25 (+ (-> s4-0 0) 1024))
           (s3-1 (+ #x34000 (-> s4-0 1)))
           )
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-25 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ s3-1 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-25 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
+      ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ s3-1 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture arg0 (&+ s4-0 s3-1 16) (&+ s4-0 v1-25 16) 512 208 8 0)
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :tcc #x1 :cld #x1))
                            (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                            (texflush 1)
                            )
-    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-37 (+ #x4e000 (-> s4-0 1))))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-37 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-37 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture arg0 (&+ s4-0 v1-37 16) (&+ s4-0 (+ (-> s4-0 0) 1024) 16) 512 208 8 0)
       )
     )
   (dma-buffer-add-gs-set arg0 (texflush 1))
-  (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+  (sprite-dma obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
   (none)
   )
 
-(defmethod bigmap-method-25 bigmap ((obj bigmap) (arg0 dma-buffer))
+(defmethod draw-city-map bigmap ((obj bigmap) (arg0 dma-buffer))
+  "Generate DMA to draw the city map. This has only 2 layers, but has scrolling."
+
   (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
-    (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
-    (dma-buffer-add-gs-set arg0 (texflush 0))
+    ; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
+    ; (dma-buffer-add-gs-set arg0 (texflush 0))
     (let ((v1-10 (+ (* (the int (-> obj scroll y)) 512) (-> s4-0 1))))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-10 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      ;   (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-10 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture
+        arg0               ;; dma
+        (&+ s4-0 v1-10 16) ;; image data
+        (&+ s4-0 (-> s4-0 0) 16) ;; clut data
+        512 ;; width
+        208 ;; height
+        8   ;; dest
+        0   ;; clut dest
+        )
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
-                           (tex1-1 (new 'static 'gs-tex1))
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)) ;; pc port note : originally mmag and mmin 0
                            (texflush 1)
                            )
-    (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
+    (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-21 (+ (* (+ (the int (-> obj scroll y)) 208) 512) (-> s4-0 1))))
-      (bigmap-method-22 obj arg0 (the-as (pointer uint32) (+ (+ v1-21 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      ;(texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-21 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
+      (pc-upload-map-texture
+        arg0               ;; dma
+        (&+ s4-0 v1-21 16) ;; image data
+        (&+ s4-0 (-> s4-0 0) 16) ;; clut data
+        512 ;; width
+        208 ;; height
+        8   ;; dest
+        0   ;; clut dest
+        )
       )
     )
-  (dma-buffer-add-gs-set arg0 (texflush 1))
-  (bigmap-method-26 obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
+  ;(dma-buffer-add-gs-set arg0 (texflush 1))
+  (sprite-dma obj arg0 (-> obj x0) (-> obj y2) (-> obj x1) (-> obj y1))
   (none)
   )
 
-(defmethod bigmap-method-27 bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
+(defmethod draw-from-minimap bigmap ((obj bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
+  "Read data from a minimap connection and draw it on the bigmap."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -468,7 +580,7 @@
                     (not (load-in-progress? *level*))
                     )
            (if (!= (-> obj bigmap-index) 20)
-               (bigmap-method-23 obj)
+               (mask-image-from-bit-mask obj)
                )
            (let ((s5-0 (-> *level* loading-level))
                  (s4-0 (-> *texture-pool* allocate-func))
@@ -496,10 +608,10 @@
      (set! (-> obj offset quad) (-> *bigmap-info-array* data (-> obj mask-index) quad))
      (when (!= (-> obj bigmap-index) (-> obj mask-index))
        (if (!= (-> obj mask-index) 20)
-           (bigmap-method-19 obj)
+           (compress-current-masks! obj)
            )
        (set! (-> obj mask-index) (-> obj bigmap-index))
-       (bigmap-method-18 obj)
+       (decompress-current-masks! obj)
        )
      (when (!= (-> obj bigmap-index) (-> obj layer-index))
        (set! (-> obj layer-index) (-> obj bigmap-index))
@@ -508,8 +620,8 @@
          (the-as (pointer int8) (-> obj compressed-layers data (-> obj layer-index)))
          )
        )
-     (bigmap-method-17 obj (target-pos 0))
-     (bigmap-method-20 obj)
+     (set-pos! obj (target-pos 0))
+     (set-enable-from-position! obj)
      (cond
        ((-> obj recording-flag)
         (when (-> obj fill-flag)
@@ -517,7 +629,7 @@
                 (a2-5 (-> obj pos y))
                 )
             (if (and (>= a1-9 0) (< a1-9 256) (>= a2-5 0) (< a2-5 208))
-                (bigmap-method-21 obj a1-9 a2-5)
+                (maybe-fill-for-position obj a1-9 a2-5)
                 )
             )
           )
@@ -538,7 +650,7 @@
                        (a2-6 (+ (-> obj pos y) s5-2))
                        )
                    (if (and (>= a1-10 0) (< a1-10 256) (>= a2-6 0) (< a2-6 208))
-                       (bigmap-method-21 obj a1-10 a2-6)
+                       (maybe-fill-for-position obj a1-10 a2-6)
                        )
                    )
                  (+! s3-1 1)
@@ -558,8 +670,7 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-35 8) 0) at op 125
-(defmethod bigmap-method-11 bigmap ((obj bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
+(defmethod draw bigmap ((obj bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
   (local-vars (sv-96 pointer) (sv-100 texture) (sv-104 matrix) (sv-112 int))
   (with-pp
     (when (and (= (file-status (-> obj bigmap-image) "world-map" (the-as int (-> obj load-index))) 'active)
@@ -589,8 +700,8 @@
                                (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                )
         (if (= (-> obj bigmap-index) 20)
-            (bigmap-method-25 obj s4-1)
-            (bigmap-method-24 obj s4-1)
+            (draw-city-map obj s4-1)
+            (draw-non-city-map obj s4-1)
             )
         )
       (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -616,11 +727,11 @@
                 (when (logtest? (-> a2-3 class flags) (minimap-flag bigmap))
                   (cond
                     ((= (-> obj bigmap-index) 20)
-                     (bigmap-method-27 obj s4-2 a2-3)
+                     (draw-from-minimap obj s4-2 a2-3)
                      )
                     (else
                       (if (not (logtest? (-> a2-3 class flags) (minimap-flag city-only)))
-                          (bigmap-method-27 obj s4-2 a2-3)
+                          (draw-from-minimap obj s4-2 a2-3)
                           )
                       )
                     )
@@ -641,7 +752,7 @@
             (set! sv-104 (new 'stack-no-clear 'matrix))
             (set! sv-112 (the int (* 56.0 f30-0)))
             (when sv-100
-              (bigmap-method-17 obj (target-pos 0))
+              (set-pos! obj (target-pos 0))
               (if (-> *blit-displays-work* horizontal-flip-flag)
                   (set! f30-0 (- f30-0))
                   )
@@ -721,7 +832,7 @@
     )
   )
 
-(defmethod bigmap-method-12 bigmap ((obj bigmap))
+(defmethod handle-cpad-inputs bigmap ((obj bigmap))
   (cond
     ((= (-> obj bigmap-index) 20)
      (let* ((v1-2 (-> *cpad-list* cpads 0))
@@ -738,20 +849,19 @@
   0
   )
 
-(defmethod bigmap-method-13 bigmap ((obj bigmap))
+(defmethod compress-all bigmap ((obj bigmap))
   (when (!= (-> obj mask-index) 20)
-    (bigmap-method-19 obj)
+    (compress-current-masks! obj)
     (set! (-> obj mask-index) (the-as uint 20))
     )
   0
   )
 
-;; WARN: Return type mismatch symbol vs none.
-(defmethod bigmap-method-14 bigmap ((obj bigmap))
+(defmethod enable-drawing bigmap ((obj bigmap))
   (set! (-> obj bigmap-index) (the-as uint (-> (level-get-target-inside *level*) info bigmap-id)))
   (cond
     ((= (-> obj bigmap-index) 20)
-     (bigmap-method-17 obj (target-pos 0))
+     (set-pos! obj (target-pos 0))
      (set! (-> obj scroll y) (the float (max 0 (+ (* (-> obj pos y) 2) -208))))
      (set-vector! (-> obj draw-offset) -2621440.0 -4456448.0 16384.0 0.000030517578)
      (cond
@@ -788,7 +898,7 @@
   (none)
   )
 
-(defmethod bigmap-method-15 bigmap ((obj bigmap))
+(defmethod disable-drawing bigmap ((obj bigmap))
   (set-pending-file
     (-> obj bigmap-image)
     (the-as string #f)
@@ -814,8 +924,10 @@
   0
   )
 
+;; definition for symbol *map-save-ptr*, type (pointer uint64)
 (define *map-save-ptr* (the-as (pointer uint64) #f))
 
+;; definition for method 16 of type bigmap
 (defmethod dump-to-file bigmap ((obj bigmap))
   (if (not *map-save-ptr*)
       (set! *map-save-ptr* (the-as (pointer uint64) (malloc 'debug #xd0000)))
@@ -860,8 +972,15 @@
     )
   )
 
+;; failed to figure out what this is:
 (kmemopen global "bigmap")
 
-(define *bigmap* (new 'global 'bigmap))
+;; definition for symbol *bigmap*, type bigmap
+(define-perm *bigmap* bigmap (new 'global 'bigmap))
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+

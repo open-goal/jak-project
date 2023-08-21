@@ -94,7 +94,6 @@ void DirectRenderer::render(DmaFollower& dma,
   pre_render();
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
-  setup_common_state(render_state);
 
   // just dump the DMA data into the other the render function
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -189,6 +188,17 @@ float u32_to_sc(u32 in) {
   return (flt - 0.5) * 16.0;
 }
 
+void DirectRenderer::lookup_textures_again(SharedRenderState* render_state) {
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    if (m_buffered_tex_state_currently_bound[i]) {
+      auto& tex_state = m_buffered_tex_state[i];
+      tex_state.used = true;
+      update_gl_texture(render_state, i);
+      tex_state.used = false;
+    }
+  }
+}
+
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
   if (m_blend_state_needs_gl_update) {
@@ -211,6 +221,9 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     if (tex_state.used) {
       update_gl_texture(render_state, i);
       tex_state.used = false;
+      m_buffered_tex_state_currently_bound[i] = true;
+    } else {
+      m_buffered_tex_state_currently_bound[i] = false;
     }
   }
   m_next_free_tex_state = 0;
@@ -320,14 +333,20 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   if (state.texture_enable) {
     float alpha_min = 0.0;
     float alpha_max = 10;
+    int greater = 0;
     if (m_test_state.alpha_test_enable) {
       switch (m_test_state.alpha_test) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-        case GsTest::AlphaTest::GREATER:  // todo
           alpha_min = m_test_state.aref / 128.f;
           m_double_draw_aref = alpha_min;
+          greater = 0;
+          break;
+        case GsTest::AlphaTest::GREATER:
+          alpha_min = (1 + m_test_state.aref) / 128.f;
+          m_double_draw_aref = alpha_min;
+          greater = 1;
           break;
         case GsTest::AlphaTest::NEVER:
           break;
@@ -356,6 +375,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "offscreen_mode"),
                 m_offscreen_mode);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "greater"),
+                greater);
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "ta0"),
         state.ta0 / 255.f);
@@ -537,10 +559,6 @@ void DirectRenderer::update_gl_test() {
   } else {
     glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
   }
-}
-
-void DirectRenderer::setup_common_state(SharedRenderState* /*render_state*/) {
-  // todo texture clamp.
 }
 
 namespace {
@@ -1216,8 +1234,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner2_stq = m_prim_building.building_stq[1];
 
         // should use most recent vertex z.
-        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
-        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2], 0};
+        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2], 0};
         math::Vector<float, 3> corner3_stq{corner1_stq[0], corner2_stq[1], corner2_stq[2]};
         math::Vector<float, 3> corner4_stq{corner2_stq[0], corner1_stq[1], corner2_stq[2]};
 

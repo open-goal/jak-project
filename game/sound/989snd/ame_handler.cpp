@@ -281,6 +281,7 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
           // auto xmin = m_groups[group].excite_min[i];
           // auto xmax = m_groups[group].excite_max[i];
           // fmt::print("chan {} excite: {}-{}\n", i, xmin, xmax);
+
           // note : added hack here! :-)
           if (!SoundFlavaHack &&
               (comp < m_groups[group].excite_min[i] || comp > m_groups[group].excite_max[i])) {
@@ -325,6 +326,9 @@ std::pair<bool, u8*> ame_handler::run_ame(midi_handler& midi, u8* stream) {
       case 0x16: {
         AME_BEGIN(op)
         if (m_register[stream[0]] != stream[1]) {
+          // if (stream[0] == 3) {
+          //   fmt::print("AME x16 reg[{}] == {}\n", stream[0], stream[1]);
+          // }
           skip = 1;
         }
         AME_END(2)

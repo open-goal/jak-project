@@ -1950,6 +1950,17 @@
   )
 
 
+(defun draw-highlight-music-player ((x int) (y int) (w int) (h int) (alpha float))
+  "draw the highlight for a number in the music player screen"
+
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (draw-sprite2d-xy buf x y w h (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha))))
+    )
+  )
+
+
 (defun draw-up-down-aspect ((font font-context) (y-up float) (y-down float))
   (protect ((-> font origin x) (-> font origin y) (-> font scale))
   
@@ -2073,5 +2084,399 @@
   (none)
   )
 
+
+
+
+(defun begin-scissor-music-player ((box hud-box))
+  (cond
+    ((= (get-aspect-ratio) 'aspect16x9)
+     (set! (-> box min x) 19.0)
+     (set! (-> box min y) 129.0)
+     (set! (-> box max x) 274.0)
+     (set! (-> box max y) 304.0)
+     )
+    (else
+      (set! (-> box min x) 70.0)
+      (set! (-> box min y) 129.0)
+      (set! (-> box max x) 268.0)
+      (set! (-> box max y) 270.0)
+      )
+    )
+  (#when PC_PORT
+    (set! (-> box min x) (the float (the int (adjust-game-x (-> box min x)))))
+    (set! (-> box max x) (the float (the int (adjust-game-x (-> box max x)))))
+    )
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (setup-scissor box buf)
+    )
+  0
+  )
+
+(defun end-scissor-music-player ((box hud-box))
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (restore-scissor box buf)
+    )
+  0
+  )
+
+
+(defun draw-decoration-music-player ((arg0 menu-option) (arg1 font-context) (arg2 float) (arg3 text-id) (arg5 float) (box hud-box))
+  (let ((list-x (the int (-> box min x)))
+        (list-y (the int (-> box min y)))
+        (title-x 70)
+        (title-y 80)
+        (list-w (the int (- (-> box max x) (-> box min x))))
+        (list-h (the int (- (-> box max y) (-> box min y))))
+        (full-w 375)
+        (full-h 199)
+        )
+    (case (get-aspect-ratio)
+      (('aspect16x9)
+        (set! title-y 69)
+        (set! full-w 355)
+        (set! full-h 233)
+        (*! arg5 1.25)
+        )
+      )
+    (when (not (-> *pc-settings* use-vis?))
+      (set! title-x (the int (adjust-game-x (the float title-x))))
+      (set! full-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) full-w)))
+      )
+    (set-scale! arg1 arg5)
+    (set-origin! arg1 title-x title-y)
+    (set! (-> arg1 width) 375.0)
+    (set! (-> arg1 height) 48.0)
+    (when (not (-> *pc-settings* use-vis?))
+      (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
+      )
+    (set-color! arg1 (font-color progress))
+    (set-flags! arg1 (font-flags kerning middle left large))
+    (print-game-text (lookup-text! *common-text* arg3 #f) arg1 #f 44 (bucket-id progress))
+    (set-vector! (-> arg0 box 0 color) 64 128 128 (the int (* 128.0 arg2)))
+    (draw-savegame-box arg0 (the float list-x) (the float (+ list-x full-w)) (the float list-y) (the float list-y))
+    (draw-savegame-box arg0 (the float list-x) (the float (+ list-x list-w)) (the float (+ list-y list-h)) (the float (+ list-y list-h)))
+    (draw-savegame-box arg0 (the float (+ list-x list-w)) (the float (+ list-x list-w)) (the float list-y) (the float (+ list-y full-h)))
+
+    (with-dma-buffer-add-bucket ((s0-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                  (bucket-id particles)
+                                  )
+      (draw-sprite2d-xy
+        s0-1
+        list-x
+        list-y
+        list-w
+        list-h
+        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 arg2)))
+        )
+      )
+    )
+  )
+
+
+(defun draw-up-down-music-player ((font font-context) (box hud-box))
+  (protect ((-> font origin x) (-> font origin y) (-> font scale) (-> font width) (-> font height))
+  
+  (let ((start-y (-> font origin y)))
+    (set-scale! font 0.5)
+    (set! (-> font width) (- (-> box max x) (-> box min x)))
+    (set! (-> font height) 16.0)
+    (set-flags! font (font-flags kerning large middle))
+    (set! (-> font origin x) (-> box min x))
+    (set! (-> font origin y) (- (-> box min y) (-> font height)))
+    (print-game-text (string-format "~33L~C" 160) font #f 44 (bucket-id progress))
+    (set! (-> font origin y) (+ 3.0 (-> box max y)))
+    (print-game-text (string-format "~33L~C" 162) font #f 44 (bucket-id progress))
+    )
+  )
+  0)
+
+
+(defmacro set-hud-sprite-attributes! (sprite
+                                      &key (r 128)
+                                      &key (g 128)
+                                      &key (b 128)
+                                      &key (a 1.0)
+                                      &key x
+                                      &key y
+                                      &key (z #xffffff)
+                                      &key (w 1)
+                                      &key tex
+                                      &key (scale-x 1.0)
+                                      &key (scale-y 1.0)
+                                      )
+  (with-gensyms (col)
+  `(begin
+    (let ((,col (-> ,sprite color2)))
+      (set! (-> ,col 0) ,r)
+      (set! (-> ,col 1) ,g)
+      (set! (-> ,col 2) ,b)
+      (set! (-> ,col 3) (the int (* 128.0 ,a)))
+      )
+    (set! (-> ,sprite pos z) ,z)
+    (set! (-> ,sprite pos w) ,w)
+    (set! (-> ,sprite tex) ,tex)
+    (set! (-> ,sprite scale-x) ,scale-x)
+    (set! (-> ,sprite scale-y) ,scale-y)
+    (set-hud-piece-position! ,sprite ,x ,y)
+    )))
+
+
+(defmethod draw-option menu-music-player-option ((obj menu-music-player-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+  
+  (let* ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
+        (y-pad-top 11)
+        (text-height 23)
+        (old-y 0.0)
+        (list-text-y (+ (- (-> obj current-scroll)) y-pad-top))
+        (max-lines 8)
+        (tab-music 6.0)
+        (tab-flava 12.0)
+        (box (new 'stack 'hud-box))
+        (flava-text-list (new 'static 'boxed-array :type text-id
+                                  (text-id progress-music-player-flava-default)
+                                  (text-id progress-music-player-flava-gun)
+                                  (text-id progress-music-player-flava-board)
+                                  (text-id progress-music-player-flava-mech)
+                                  (text-id progress-music-player-flava-darkjak)
+                                  (text-id progress-music-player-flava-pilot)
+                                  )))
+    (max! alpha 0.0)
+    (set! (-> arg1 alpha) alpha)
+
+    (when (not (-> *pc-settings* use-vis?))
+      (*! tab-music (-> *pc-settings* aspect-ratio-reciprocal))
+      (*! tab-flava (-> *pc-settings* aspect-ratio-reciprocal))
+      ;(set! danger-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) danger-w)))
+      )
+
+    (set-flags! arg1 (font-flags kerning large))
+    (set-scale! arg1 0.6)
+    (set-color! arg1 (font-color progress))
+
+    (begin-scissor-music-player box)
+    (+! list-text-y (-> box min y))
+
+    (set-scale! arg1 0.45)
+    (set! (-> arg1 origin x) (+ (-> box min x) tab-music))
+    ;(format *stdcon* "m: ~D f: ~D scroll: ~f~%" (-> obj music-index) (-> obj flava-index) (-> obj current-scroll))
+    (dotimes (i (-> *music-player-tracks* length))
+      (set! (-> arg1 origin y) (set! old-y list-text-y))
+      (set! (-> arg1 width) (- (-> box max x) (-> box min x)))
+      (cond
+        ((= i (-> obj music-index))
+          (+! list-text-y text-height)
+          (cond
+            ((-> *progress-state-pc* music-player-selected)
+              ;; restore these later
+              (let* ((flava-bits (the-as int (-> *music-player-tracks* i flava)))
+                    (flava-count (count-bits flava-bits))
+                    (flava-text-height (the int (* (/ 0.42 0.45) text-height))))
+              
+              ;; draw highlight first
+              (draw-highlight-music-player  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
+                                            (the int (- (-> box max x) (-> box min x))) (+ text-height (* flava-count flava-text-height))
+                                            alpha)
+
+              ;; draw text for each flava!
+              (protect ((-> arg1 origin x) (-> arg1 origin y) (-> arg1 scale))
+                
+                (set-scale! arg1 0.42)
+                (+! (-> arg1 origin x) tab-flava)
+                (set! (-> arg1 origin y) list-text-y)
+                (dotimes (f flava-count)
+                  (if (= f (-> obj flava-index))
+                      (set-color! arg1 (progress-selected 0))
+                      (set-color! arg1 (font-color progress)))
+                  (let ((flava (bit-on-offset flava-bits f)))
+                    (if (flava-unlocked? flava)
+                        (print-game-text (lookup-text! *common-text* (-> flava-text-list (bit-on-offset flava-bits f)) #f) arg1 #f 44 (bucket-id progress))
+                        (print-game-text (lookup-text! *common-text* (text-id progress-music-player-locked) #f) arg1 #f 44 (bucket-id progress)))
+                    )
+                  (+! (-> arg1 origin y) flava-text-height)
+                  )
+                )
+
+              ;; advance list height
+              (+! list-text-y (* flava-count flava-text-height))
+              ;; set color to selected
+              (set-color! arg1 (font-color progress-force-selected))
+              ))
+            (else
+              (set-color! arg1 (progress-selected 0))
+              (draw-highlight-music-player  (the int (-> box min x)) (the int (+ -6.0 (-> arg1 origin y)))
+                                            (the int (- (-> box max x) (-> box min x))) text-height
+                                            alpha)
+              ))
+          (when (< (-> arg1 origin y) (+ (-> box min y) y-pad-top))
+              (set! (-> obj current-scroll) (seek-ease  (-> obj current-scroll) (+ (-> obj current-scroll) (- (-> arg1 origin y) (+ (-> box min y) y-pad-top)))
+                                                        (if (-> *progress-state-pc* music-player-selected) 999999.0 (* 0.1 text-height (-> arg0 clock time-adjust-ratio)))
+                                                        (* 0.3 text-height)
+                                                        (* 0.01 text-height (-> arg0 clock time-adjust-ratio)))))
+          (when (> list-text-y (-> box max y))
+              (set! (-> obj current-scroll) (seek-ease  (-> obj current-scroll) (+ (-> obj current-scroll) (- list-text-y (-> box max y)))
+                                                        (if (-> *progress-state-pc* music-player-selected) 999999.0 (* 0.1 text-height (-> arg0 clock time-adjust-ratio)))
+                                                        (* 0.3 text-height)
+                                                        (* 0.01 text-height (-> arg0 clock time-adjust-ratio)))))
+          )
+
+        (else
+          (+! list-text-y text-height)
+          (set-color! arg1 (font-color progress))
+          )
+        )
+      (if (get-bit (-> *pc-settings* music-unlocked) i)
+          (print-game-text (lookup-text! *common-text* (-> *music-player-tracks* i text) #f) arg1 #f 44 (bucket-id progress))
+          (print-game-text (lookup-text! *common-text* (text-id progress-music-player-locked) #f) arg1 #f 44 (bucket-id progress)))
+      )
+
+    (if (< (- list-text-y (-> box max y)) 0.0)
+        (+! (-> obj current-scroll) (- list-text-y (-> box max y))))
+    (unless (-> *progress-state-pc* music-player-selected)
+        (max! (-> obj max-scroll) (-> obj current-scroll)))
+
+    (end-scissor-music-player box)
+    
+    ;; draw right panel text
+    (let ((icon-x 0)
+          (icon-y 174)
+          (icon-w (if (= (get-aspect-ratio) 'aspect4x3)
+                      64
+                      48))
+          (icon-h 64)
+          (icon-scale 0.7)
+          (icon-id 0)
+          (danger-pad 8.0)
+          (danger-w 73)
+          (arrow-w 14)
+          (danger-text-list (new 'static 'boxed-array :type text-id
+                                  (text-id progress-music-player-danger-0)
+                                  (text-id progress-music-player-danger-1)
+                                  (text-id progress-music-player-danger-2)
+                                  (text-id progress-music-player-danger-3)
+                                  )))
+        (set-flags! arg1 (font-flags kerning middle large))
+        (case (get-aspect-ratio)
+          (('aspect16x9)
+            (set-origin! arg1 281 160)
+            (set-width! arg1 144)
+            (set! icon-y 190)
+            )
+          (else
+            (set-origin! arg1 278 144)
+            (set-width! arg1 158)
+            )
+          )
+        (when (not (-> *pc-settings* use-vis?))
+          (set! (-> arg1 origin x) (the float (adjust-game-x (-> arg1 origin x))))
+          (*! danger-pad (-> *pc-settings* aspect-ratio-reciprocal))
+          (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
+          (set! icon-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) icon-w)))
+          (set! danger-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) danger-w)))
+          (set! arrow-w (the int (* (-> *pc-settings* aspect-ratio-reciprocal) arrow-w)))
+          )
+        (set-height! arg1 40)
+        (set-scale! arg1 0.42)
+        (set-color! arg1 (font-color progress))
+        (when (-> *progress-state-pc* music-player-track)
+          (print-game-text (lookup-text! *common-text* (text-id progress-music-player-now-playing) #f) arg1 #f 44 (bucket-id progress)))
+        (set-flags! arg1 (font-flags kerning middle left large))
+        (+! (-> arg1 origin y) 110.0)
+        (set-scale! arg1 0.48)
+        (cond
+          ((-> *progress-state-pc* music-player-track)
+            (set! icon-id (-> *progress-state-pc* music-player-track icon)) ;; use this icon ID
+            (print-game-text (lookup-text! *common-text* (-> *progress-state-pc* music-player-track text) #f) arg1 #f 44 (bucket-id progress))
+
+            ;; print flava if needed too
+            (when (nonzero? (-> *progress-state-pc* music-player-track flava))
+              (+! (-> arg1 origin y) 36.0)
+              (set-scale! arg1 0.42)
+              (print-game-text (lookup-text! *common-text* (-> flava-text-list (-> *progress-state-pc* music-player-flava)) #f) arg1 #f 44 (bucket-id progress))
+              )
+            )
+          (else
+            (print-game-text (lookup-text! *common-text* (text-id progress-music-player-no-track) #f) arg1 #f 44 (bucket-id progress))
+            )
+          )
+        ;; draw right panel icon
+        (set! icon-x (the int (+ (-> arg1 origin x) (/ (-> arg1 width) 2))))
+        (set! icon-w (the int (* icon-scale icon-w)))
+        (set! icon-h (the int (* icon-scale icon-h)))
+        ;; center icon. the icon is 96x96 but each sprite is 64x64, hence 1.5
+        (-! icon-x (the int (/ (* 1.5 icon-w) 2)))
+        (set-hud-sprite-attributes! (-> obj sprites 0) :tex (lookup-texture-by-id (get-level-icon-id-01 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x icon-x :y icon-y)
+        (set-hud-sprite-attributes! (-> obj sprites 1) :tex (lookup-texture-by-id (get-level-icon-id-02 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x (+ icon-x icon-w) :y icon-y)
+        (set-hud-sprite-attributes! (-> obj sprites 2) :tex (lookup-texture-by-id (get-level-icon-id-03 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x icon-x :y (+ icon-y icon-h))
+        (set-hud-sprite-attributes! (-> obj sprites 3) :tex (lookup-texture-by-id (get-level-icon-id-04 icon-id)) :a alpha :scale-x icon-scale :scale-y icon-scale :x (+ icon-x icon-w) :y (+ icon-y icon-h))
+        
+        ;; danger scroller
+        (set-scale! arg1 0.42)
+        (set! (-> arg1 origin y) (+ 26.0 (-> box max y)))
+        (set! (-> arg1 origin x) (+ danger-pad (-> box min x)))
+        (set-width! arg1 danger-w)
+        (set-flags! arg1 (font-flags kerning large))
+        (print-game-text (lookup-text! *common-text* (text-id progress-music-player-danger) #f) arg1 #f 44 (bucket-id progress))
+        (set-color! arg1 (progress-selected (seconds 0.5)))
+        (+! (-> arg1 origin x) (-> arg1 width))
+        (set-flags! arg1 (font-flags kerning large right))
+        (set-width! arg1 arrow-w)
+        (+! (-> arg1 origin x) (-> arg1 width))
+        (print-game-text (string-format "~33L~C" 163) arg1 #f 44 (bucket-id progress))
+        (set-flags! arg1 (font-flags kerning large middle))
+        (set-width! arg1 (the int (- (-> box max x) (-> box min x) danger-w (* arrow-w 2) (* danger-pad 2))))
+        (print-game-text (lookup-text! *common-text* (-> danger-text-list (-> obj excitement)) #f) arg1 #f 44 (bucket-id progress))
+        (+! (-> arg1 origin x) (-> arg1 width))
+        (set-flags! arg1 (font-flags kerning large))
+        (set-width! arg1 arrow-w)
+        (print-game-text (string-format "~33L~C" 161) arg1 #f 44 (bucket-id progress))
+        (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id progress)
+                                     )
+          (draw (-> obj sprites 0) buf (-> *level* default-level))
+          (draw (-> obj sprites 1) buf (-> *level* default-level))
+          (draw (-> obj sprites 2) buf (-> *level* default-level))
+          (draw (-> obj sprites 3) buf (-> *level* default-level))
+          )
+        )
+
+    (when-not-drawn-decoration
+      (draw-up-down-music-player arg1 box)
+      (draw-decoration-music-player obj arg1 alpha (-> obj name) 0.7 box))
+    )
+
+  0
+  (none))
+
+
+
+
+(#when PC_PORT
+(defun-debug draw-mouse ()
+  "draw some extra mouse info"
+
+  (let ((mx (+ (the int (-> *mouse* posx)) 256))
+        (my (+ (the int (-> *mouse* posy)) 208)))
+    (format *stdcon* "mouse pos: (~D,~D)~%" mx my)
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                (bucket-id debug-no-zbuf2)
+                                )
+      (draw-sprite2d-xy buf 0 my 512 1 (static-rgba #xff #xff #xff #x40))
+      (draw-sprite2d-xy buf mx 0 1 416 (static-rgba #xff #xff #xff #x40))
+      )
+    )
+  )
+
+(defmacro spawn-draw-mouse-proc ()
+  `(process-spawn-function process :name "draw-mouse" :to *display-pool*
+        (lambda :behavior process ()
+          (loop
+            (suspend)
+            (draw-mouse))
+          )))
+)
 
 

@@ -12,9 +12,10 @@
 #include "common/util/SmallVector.h"
 #include "common/versions/versions.h"
 
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TextureConverter.h"
 #include "game/graphics/texture/TextureID.h"
+
+#include "third-party/glad/include/glad/glad.h"
 
 // verify all texture lookups.
 // will make texture lookups slower and likely caused dropped frames when loading

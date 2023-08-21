@@ -17,11 +17,15 @@
    
    (aspect-ratio-choice-index   int8)
    (aspect-ratio-ratio-index    int8)
+
+   (music-player-track      music-player-track-info)
+   (music-player-flava      int8)
+   (music-player-selected   symbol)
    )
   )
 
 
-(define *progress-state-pc* (new 'static 'progress-global-state-pc))
+(define *progress-state-pc* (new 'static 'progress-global-state-pc :music-player-track #f))
 
 
 (defmacro when-not-drawn-decoration (&rest body)
@@ -133,6 +137,7 @@
   (set-progress-aspect-ratio-pc-index)
   (set-progress-display-mode-index)
   (set! (-> (the menu-on-off-option (-> *graphic-options-pc* options 2)) value-to-modify) (&-> *pc-settings* vsync?))
+  (set! (-> *progress-state-pc* music-player-track) #f)
   )
 
 
@@ -334,6 +339,11 @@
      (set! (-> *progress-state-pc* aspect-ratio-ratio-index) 0)
      (set! (-> obj current-options) *aspect-ratio-custom-options*)
      )
+    (('music-player)
+     (set! (-> *progress-state-pc* music-player-selected) #f)
+     (set! (-> (the-as menu-music-player-option (-> *music-player-options* options 0)) excitement) 0)
+     (set! (-> obj current-options) *music-player-options*)
+     )
     )
   (when (= (-> obj current-options) #f)
     (format #t "Didn't find new menu settings!!~%")
@@ -494,3 +504,223 @@
     ))
   0
   )
+
+
+(defbehavior play-music-player progress ((info music-player-track-info) (flava int))
+  "play a music track using music player track info."
+
+  (set! (-> *progress-state-pc* music-player-track) info)
+  (set-setting! 'music (-> info name) 0.0 0)
+  (set-setting! 'sound-flava #f 999999.0 flava)
+  (sound-set-midi-reg 3 (-> info mode))
+  (cond
+    ((= (-> info mode) 1)
+      (case (-> info name)
+        (('sewer)
+          (set-setting! 'music-volume 'rel 1.2 0)
+          )
+        (else
+          (set-setting! 'music-volume 'rel 1.111111 0)
+          )
+        )
+      )
+    (else
+      (remove-setting! 'music-volume))
+    )
+  (apply-settings *setting-control*)
+  (sound-group-continue (sound-group music))
+  0)
+
+
+(defbehavior stop-music-player progress ()
+  "play a music track using music player track info."
+
+  (remove-setting! 'music)
+  (remove-setting! 'music-volume)
+  (remove-setting! 'sound-flava)
+  (sound-set-midi-reg 0 0)
+  (sound-set-midi-reg 2 0)
+  (sound-set-midi-reg 16 0)
+  (set! (-> *progress-state-pc* music-player-track) #f)
+  ;(min! (-> *setting-control* user-current sound-excitement) 0.0)
+  (sound-set-midi-reg 16 (the int (* 100.0 (-> *setting-control* user-current sound-excitement))))
+  (set! (-> *setting-control* sound-excitement-change-time) (-> *display* base-clock frame-counter))
+  (apply-settings *setting-control*)
+  (sound-group-pause (sound-group music))
+  0)
+
+(defun count-bits ((val int))
+  "return the number of bits set to 1."
+  
+  (let ((bits 0))
+    (dotimes (i 64)
+      (if (logtest? val (ash 1 i))
+          (1+! bits))
+      )
+    bits)
+  )
+
+(defun bit-on-offset ((bits int) (n int))
+  "return the bit offset of where the n'th bit that is set to 1 is"
+
+  (let ((bit-on-i 0))
+    (dotimes (i 64)
+      (if (logtest? bits (ash 1 i))
+          (if (= bit-on-i n)
+              (return i)
+              (1+! bit-on-i)))
+      ))
+  -1)
+
+
+(defmethod respond-progress menu-music-player-option ((obj menu-music-player-option) (arg0 progress) (arg1 symbol))
+  "Handle progress menu navigation logic."
+
+  ;; force sound updates
+  (when (-> *progress-state-pc* music-player-track)
+    (sound-set-midi-reg 3 (-> *progress-state-pc* music-player-track mode))
+    (+! (-> *setting-control* user-current sound-flava) 999999)
+    )
+
+  (if (= 0.0 (-> obj max-scroll))
+      (set! (-> obj max-scroll) (+ -141.0 (* (-> *music-player-tracks* length) 23))))
+
+  ;; control logic
+  (let ((scroll-sound? #f)
+        (track-max (1- (-> *music-player-tracks* length)))
+        (flava-max (1- (count-bits (the-as int (-> *music-player-tracks* (-> obj music-index) flava)))))
+        (old-excitement (-> obj excitement))
+        (play? #f))
+
+    ;; excitement controls
+    (cond
+      ((cpad-pressed? 0 right l-analog-right)
+        (seekl! (-> obj excitement) 3 1))
+      ((cpad-pressed? 0 left l-analog-left)
+        (seekl! (-> obj excitement) 0 1))
+      )
+    (when (!= (-> obj excitement) old-excitement)
+      (sound-play "generic-beep")
+      (sound-set-midi-reg 16 (* 25 (-> obj excitement))) ;; play new excitement track
+      (unless (or (< (-> obj excitement) old-excitement) (process-by-name "sound-stinger" arg0))
+        (process-spawn-function process :to arg0 :name "sound-stinger"
+            (lambda :behavior process ((stinger int))
+              (let ((state-time (current-time)))
+                (format 0 "set stinger ~D~%" stinger)
+                (sound-set-midi-reg 0 stinger)
+                (until (>= (- (current-time) state-time) (seconds 0.5))
+                  (suspend))
+                (sound-set-midi-reg 0 0)
+                )
+              )
+            (+ 9 (-> obj excitement)))
+        )
+      (unless (process-by-name "sound-excitement" arg0)
+        (process-spawn-function process :to arg0 :name "sound-excitement"
+            (lambda :behavior process ((excite-fade int))
+              (let ((state-time (current-time)))
+                (format 0 "set excitement fade ~D~%" (* 25 excite-fade))
+                (sound-set-midi-reg 2 (* 25 excite-fade)) ;; fade out old excitement track
+                (until (>= (- (current-time) state-time) (seconds 0.8))
+                  (suspend))
+                )
+              )
+            old-excitement)
+        )
+      )
+
+    (cond
+      ((or (cpad-pressed? 0 down l-analog-down)
+           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2))))
+        (set! (-> obj last-move) (current-time))
+        (true! scroll-sound?)
+        (cond
+          ((-> *progress-state-pc* music-player-selected)
+            (min-max-wrap-around+! (-> obj flava-index) 1 0 flava-max))
+          (else
+            (min-max-wrap-around+! (-> obj music-index) 1 0 track-max)
+            (if (= (-> obj music-index) 0)
+                (set! (-> obj current-scroll) 0.0)))
+          ))
+      ((or (cpad-pressed? 0 up l-analog-up)
+           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2))))
+        (set! (-> obj last-move) (current-time))
+        (true! scroll-sound?)
+        (cond
+          ((-> *progress-state-pc* music-player-selected)
+            (min-max-wrap-around+! (-> obj flava-index) -1 0 flava-max))
+          (else
+            (min-max-wrap-around+! (-> obj music-index) -1 0 track-max)
+            (if (= (-> obj music-index) track-max)
+                (set! (-> obj current-scroll) (-> obj max-scroll))))
+          ))
+      ((cpad-pressed? 0 confirm)
+        (cpad-clear! 0 confirm)
+        (sound-play "generic-beep")
+
+        (cond
+          ;; track is locked. do nothing.
+          ((not (get-bit (-> *pc-settings* music-unlocked) (-> obj music-index)))
+            )
+          ;; we have a track with a submenu selected
+          ((-> *progress-state-pc* music-player-selected)
+            (let ((flava (bit-on-offset (the-as int (-> *music-player-tracks* (-> obj music-index) flava)) (-> obj flava-index))))
+              (cond
+                ((flava-unlocked? flava)
+                  (set! (-> *progress-state-pc* music-player-flava) flava)
+                  (true! play?)
+                  ;; exit submenu
+                  (false! (-> *progress-state-pc* music-player-selected))
+                  )
+                (else
+                  ;; do nothing.
+                  )
+                )
+              )
+            )
+          ;; we have a track with a submenu that's not open, open it
+          ((nonzero? (-> *music-player-tracks* (-> obj music-index) flava))
+            ;; same track that's currently playing, we can just reuse the flava position that's being used
+            ;; otherwise use zero.
+            (if (= (-> *progress-state-pc* music-player-track) (-> *music-player-tracks* (-> obj music-index)))
+                (set! (-> obj flava-index) (count-bits (logand (1- (ash 1 (-> *progress-state-pc* music-player-flava))) (the-as int (-> *music-player-tracks* (-> obj music-index) flava)))))
+                (set! (-> obj flava-index) 0))
+            (true! (-> *progress-state-pc* music-player-selected)))
+          ;; no submenu required, just play track.
+          (else
+            (set! (-> *progress-state-pc* music-player-flava) 0)
+            (true! play?))
+          )
+        (when play?
+          (play-music-player (-> *music-player-tracks* (-> obj music-index)) (-> *progress-state-pc* music-player-flava))
+          )
+        )
+      ((cpad-pressed? 0 triangle)
+        (cpad-clear! 0 triangle)
+        (sound-play "generic-beep")
+        (cond
+          ((-> *progress-state-pc* music-player-selected)
+            (false! (-> *progress-state-pc* music-player-selected)))
+          (else
+            (stop-music-player)
+            (pop-state arg0))
+          )
+        )
+      )
+    (when scroll-sound?
+      (sound-play "secrets-scroll"))
+    )
+  0
+  )
+
+
+
+(defun hide-progress-screen ()
+  (when (and *progress-process* *progress-state* (!= (-> *progress-state* starting-state) 'title))
+    (stop-music-player)
+    (set-next-state (-> *progress-process* 0) 'go-away 0)
+    )
+  0
+  (none)
+  )
+

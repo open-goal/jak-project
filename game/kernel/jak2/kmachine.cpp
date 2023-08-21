@@ -37,6 +37,7 @@
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
 #include "game/overlord/jak2/iso.h"
+#include "game/sce/deci2.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -393,6 +394,9 @@ int InitMachine() {
   // }
   if (MasterDebug) {
     InitGoalProto();
+  } else {
+    // shut down the deci2 stuff, we don't need it.
+    ee::sceDeci2Disable();
   }
 
   printf("InitSound\n");

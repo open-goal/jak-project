@@ -1,5 +1,6 @@
 #include "CollideMeshRenderer.h"
 
+#include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
 
 float material_colors_jak1[23 * 3] = {

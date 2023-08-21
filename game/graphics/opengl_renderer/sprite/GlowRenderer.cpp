@@ -182,17 +182,20 @@ GlowRenderer::GlowRenderer() {
   glGenFramebuffers(1, &m_ogl.probe_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.probe_fbo);
   glGenTextures(1, &m_ogl.probe_fbo_rgba_tex);
+  glGenTextures(1, &m_ogl.probe_fbo_depth_tex);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_rgba_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, nullptr);
-  glGenRenderbuffers(1, &m_ogl.probe_fbo_zbuf_rb);
-  glBindRenderbuffer(GL_RENDERBUFFER, m_ogl.probe_fbo_zbuf_rb);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                            m_ogl.probe_fbo_zbuf_rb);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                          m_ogl.probe_fbo_rgba_tex, 0);
+
+  glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
+               GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                         m_ogl.probe_fbo_depth_tex, 0);
+
   GLenum render_targets[1] = {GL_COLOR_ATTACHMENT0};
   glDrawBuffers(1, render_targets);
   auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -210,6 +213,15 @@ GlowRenderer::GlowRenderer() {
     glBindTexture(GL_TEXTURE_2D, m_ogl.downsample_fbos[i].tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ds_size * kDownsampleBatchWidth,
                  ds_size * kDownsampleBatchWidth, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (i == 0) {
+      glGenRenderbuffers(1, &m_ogl.first_ds_depth_rb);
+      glBindRenderbuffer(GL_RENDERBUFFER, m_ogl.first_ds_depth_rb);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, ds_size * kDownsampleBatchWidth,
+                            ds_size * kDownsampleBatchWidth);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                                m_ogl.first_ds_depth_rb);
+    }
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            m_ogl.downsample_fbos[i].tex, 0);
     glDrawBuffers(1, render_targets);
@@ -234,6 +246,8 @@ GlowRenderer::GlowRenderer() {
   //  ;; (new 'static 'gs-zbuf :zbp 304 :psm 1 :zmsk 1)
   //  (new 'static 'gs-adcmd :cmds (gs-reg64 zbuf-1) :x #x1000130 :y #x1)
   m_default_draw_mode.disable_depth_write();
+
+  glGenTextures(1, &m_ogl.depth_texture);
 }
 
 namespace {
@@ -241,7 +255,9 @@ void copy_to_vertex(GlowRenderer::Vertex* vtx, const Vector4f& xyzw) {
   vtx->x = xyzw.x();
   vtx->y = xyzw.y();
   vtx->z = xyzw.z();
-  vtx->w = xyzw.w();
+  // ignore the w computed by the game, and just use 1. The game's VU program ignores this value,
+  // and we need to set w = 1 to get the correct opengl clipping behavior
+  vtx->w = 1;
 }
 }  // namespace
 
@@ -334,6 +350,48 @@ void GlowRenderer::add_sprite_pass_2(const SpriteGlowOutput& data, int sprite_id
     vtx[i].x = x * step;  // start of our cell
     vtx[i].y = y * step;
     vtx[i].z = 0;
+    vtx[i].w = 0;
+  }
+  vtx[1].x += step;
+  vtx[2].y += step;
+  vtx[3].x += step;
+  vtx[3].y += step;
+
+  // transformation code gives us these coordinates for where to sample probe fbo
+  vtx[0].u = data.offscreen_uv[0][0];
+  vtx[0].v = data.offscreen_uv[0][1];
+  vtx[1].u = data.offscreen_uv[1][0];
+  vtx[1].v = data.offscreen_uv[0][1];
+  vtx[2].u = data.offscreen_uv[0][0];
+  vtx[2].v = data.offscreen_uv[1][1];
+  vtx[3].u = data.offscreen_uv[1][0];
+  vtx[3].v = data.offscreen_uv[1][1];
+
+  u32* idx = alloc_index(5);
+  idx[0] = idx_start;
+  idx[1] = idx_start + 1;
+  idx[2] = idx_start + 2;
+  idx[3] = idx_start + 3;
+  idx[4] = UINT32_MAX;
+}
+
+void GlowRenderer::add_sprite_new(const SpriteGlowOutput& data, int sprite_idx) {
+  // output is a grid of kBatchWidth * kBatchWidth.
+  // for simplicity, we'll map to (0, 1) here, and the shader will convert to (-1, 1) for opengl.
+  int x = sprite_idx / kDownsampleBatchWidth;
+  int y = sprite_idx % kDownsampleBatchWidth;
+  float step = 1.f / kDownsampleBatchWidth;
+
+  u32 idx_start = m_next_vertex;
+  Vertex* vtx = alloc_vtx(4);
+  for (int i = 0; i < 4; i++) {
+    vtx[i].r = 1.f;  // debug
+    vtx[i].g = 0.f;
+    vtx[i].b = 0.f;
+    vtx[i].a = 0.f;
+    vtx[i].x = x * step;  // start of our cell
+    vtx[i].y = y * step;
+    vtx[i].z = data.second_clear_pos[0].z();
     vtx[i].w = 0;
   }
   vtx[1].x += step;
@@ -467,9 +525,10 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
                  GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glBindRenderbuffer(GL_RENDERBUFFER, m_ogl.probe_fbo_zbuf_rb);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_ogl.probe_fbo_w,
-                          m_ogl.probe_fbo_h);
+    glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
+                 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glBindTexture(GL_TEXTURE_2D, 0);
   }
 
   glBindFramebuffer(GL_READ_FRAMEBUFFER, render_state->render_fb);
@@ -507,6 +566,8 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
   GLint old_viewport[4];
   glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_DOWNSAMPLE].activate();
+  glDisable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
   for (int i = 0; i < kDownsampleIterations - 1; i++) {
     auto* source = &m_ogl.downsample_fbos[i];
     auto* dest = &m_ogl.downsample_fbos[i + 1];
@@ -526,6 +587,21 @@ void GlowRenderer::downsample_chain(SharedRenderState* render_state,
   glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 }
 
+void GlowRenderer::setup_buffers_for_draws() {
+  glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.probe_fbo);
+  glBindVertexArray(m_ogl.vao);
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+  // don't want to write to the depth buffer we just copied, just test against it.
+  glDepthMask(GL_FALSE);
+  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, m_next_vertex * sizeof(Vertex), m_vertex_buffer.data(),
+               GL_STREAM_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_index * sizeof(u32), m_index_buffer.data(),
+               GL_STREAM_DRAW);
+}
+
 /*!
  * Draw probes (including the clear) to the probe fbo. Also copies vertex/index buffer.
  */
@@ -533,22 +609,10 @@ void GlowRenderer::draw_probes(SharedRenderState* render_state,
                                ScopedProfilerNode& prof,
                                u32 idx_start,
                                u32 idx_end) {
-  glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.probe_fbo);
-  glBindVertexArray(m_ogl.vao);
-  glEnable(GL_PRIMITIVE_RESTART);
-  glPrimitiveRestartIndex(UINT32_MAX);
+  render_state->shaders[ShaderId::GLOW_PROBE].activate();
   GLint old_viewport[4];
   glGetIntegerv(GL_VIEWPORT, old_viewport);
   glViewport(0, 0, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h);
-  glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, m_next_vertex * sizeof(Vertex), m_vertex_buffer.data(),
-               GL_STREAM_DRAW);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ogl.index_buffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_next_index * sizeof(u32), m_index_buffer.data(),
-               GL_STREAM_DRAW);
-
-  // do probes
-  render_state->shaders[ShaderId::GLOW_PROBE].activate();
   prof.add_draw_call();
   prof.add_tri(m_next_sprite * 4);
   glDisable(GL_BLEND);
@@ -585,6 +649,7 @@ void GlowRenderer::draw_probe_copies(SharedRenderState* render_state,
   glGetIntegerv(GL_VIEWPORT, old_viewport);
   render_state->shaders[ShaderId::GLOW_PROBE_READ].activate();
   glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.downsample_fbos[0].fbo);
+  glDisable(GL_DEPTH_TEST);
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_rgba_tex);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -613,20 +678,7 @@ void GlowRenderer::debug_draw_probe_copies(SharedRenderState* render_state,
                  (void*)(idx_start * sizeof(u32)));
 }
 
-/*!
- * Draw all pending sprites.
- */
-void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
-  m_debug.num_sprites = m_next_sprite;
-  if (!m_next_sprite) {
-    // no sprites submitted.
-    return;
-  }
-
-  // copy depth from framebuffer to a temporary buffer
-  // (this is a bit wasteful)
-  blit_depth(render_state);
-
+void GlowRenderer::probe_and_copy_old(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // generate vertex/index data for probes
   u32 probe_idx_start = m_next_index;
   for (u32 sidx = 0; sidx < m_next_sprite; sidx++) {
@@ -646,6 +698,7 @@ void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& pr
   }
 
   // draw probes
+  setup_buffers_for_draws();
   draw_probes(render_state, prof, probe_idx_start, copy_idx_start);
   if (m_debug.show_probes) {
     debug_draw_probes(render_state, prof, probe_idx_start, copy_idx_start);
@@ -655,6 +708,76 @@ void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& pr
   draw_probe_copies(render_state, prof, copy_idx_start, copy_idx_end);
   if (m_debug.show_probe_copies) {
     debug_draw_probe_copies(render_state, prof, copy_idx_start, copy_idx_end);
+  }
+}
+
+void GlowRenderer::probe_and_copy_new(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  u32 idx_start = m_next_index;
+  for (u32 sidx = 0; sidx < m_next_sprite; sidx++) {
+    add_sprite_new(m_sprite_data_buffer[sidx], sidx);
+  }
+  u32 idx_end = m_next_index;
+
+  // generate vertex/index data for framebuffer draws
+  for (u32 sidx = 0; sidx < m_next_sprite; sidx++) {
+    add_sprite_pass_3(m_sprite_data_buffer[sidx], sidx);
+  }
+
+  // clear the grid.
+  setup_buffers_for_draws();
+  GLint old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
+  render_state->shaders[ShaderId::GLOW_PROBE_READ].activate();
+  glBindFramebuffer(GL_FRAMEBUFFER, m_ogl.downsample_fbos[0].fbo);
+  glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glViewport(0, 0, m_ogl.downsample_fbos[0].size, m_ogl.downsample_fbos[0].size);
+
+  // TODO: can probably remove this clear
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_ALWAYS);
+  glDepthMask(GL_TRUE);
+
+  render_state->shaders[ShaderId::GLOW_DEPTH_COPY].activate();
+  prof.add_draw_call();
+  prof.add_tri(m_next_sprite * 2);
+  glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
+                 (void*)(idx_start * sizeof(u32)));
+
+  render_state->shaders[ShaderId::GLOW_PROBE_ON_GRID].activate();
+  glDepthFunc(GL_GREATER);
+  prof.add_draw_call();
+  prof.add_tri(m_next_sprite * 2);
+  glDrawElements(GL_TRIANGLE_STRIP, idx_end - idx_start, GL_UNSIGNED_INT,
+                 (void*)(idx_start * sizeof(u32)));
+
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
+}
+
+/*!
+ * Draw all pending sprites.
+ */
+void GlowRenderer::flush(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  m_debug.num_sprites = m_next_sprite;
+  if (!m_next_sprite) {
+    // no sprites submitted.
+    return;
+  }
+
+  // copy depth from framebuffer to a temporary buffer
+  // (this is a bit wasteful)
+  blit_depth(render_state);
+
+  if (new_mode) {
+    probe_and_copy_new(render_state, prof);
+  } else {
+    probe_and_copy_old(render_state, prof);
   }
 
   // downsample probes.
