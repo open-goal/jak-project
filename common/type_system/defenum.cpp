@@ -49,7 +49,7 @@ EnumType* parse_defenum(const goos::Object& defenum,
                         TypeSystem* ts,
                         DefinitionMetadata* symbol_metadata) {
   // default enum type will be int64
-  TypeSpec base_type = ts->make_typespec("int64");
+  TypeSpec base_type = ts->make_typespec("int");
   bool is_bitfield = false;
   std::unordered_map<std::string, s64> entries;
 
