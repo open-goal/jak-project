@@ -5,6 +5,19 @@
 ;; name in dgo: wren
 ;; dgos: FOR
 
+(defenum wren-flags
+  :bitfield #t
+  :type uint16
+  (wrflags-0)
+  (wrflags-1)
+  (wrflags-2)
+  (wrflags-3)
+  (wrflags-4)
+  (wrflags-5)
+  (wrflags-6)
+  (wrflags-7)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype wren (process-drawable)
@@ -21,7 +34,7 @@
    (bob-level-seek float                 :offset-assert 264)
    (bank-angle     float                 :offset-assert 268)
    (peck-timer     uint64                :offset-assert 272)
-   (flags          uint16                :offset-assert 280)
+   (flags          wren-flags            :offset-assert 280)
    )
   :heap-base #xa0
   :method-count-assert 28
@@ -131,8 +144,8 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
   :trans (behavior ()
     (when (< (vector-vector-xz-distance (-> self root trans) (-> self move-dest)) 2048.0)
       (cond
-        ((logtest? (-> self flags) 4)
-         (logand! (-> self flags) -5)
+        ((logtest? (-> self flags) (wren-flags wrflags-2))
+         (logclear! (-> self flags) (wren-flags wrflags-2))
          (set! (-> self fly-index) (the-as uint 0))
          (go-virtual fly)
          )
@@ -189,7 +202,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self peck-timer) (the-as uint (the int (* 300.0 (rand-vu-float-range 1.4 4.3)))))
-    (logand! (-> self flags) -7)
+    (logclear! (-> self flags) (wren-flags wrflags-1 wrflags-2))
     (none)
     )
   :trans (behavior ()
@@ -200,15 +213,15 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
             )
         )
       )
-    (when (logtest? (-> self flags) 2)
-      (logand! (-> self flags) -3)
+    (when (logtest? (-> self flags) (wren-flags wrflags-1))
+      (logclear! (-> self flags) (wren-flags wrflags-1))
       (when (spooked? self)
         (get-point-in-path! (-> self fly-curve 0) (-> self move-dest) 0.0 'interp)
         (set-yaw-angle-clear-roll-pitch!
           (-> self root)
           (vector-y-angle (vector-! (new 'stack-no-clear 'vector) (-> self move-dest) (-> self root trans)))
           )
-        (logior! (-> self flags) 4)
+        (logior! (-> self flags) (wren-flags wrflags-2))
         (go-virtual hunt)
         )
       )
@@ -217,11 +230,11 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
   :code (behavior ()
     (local-vars (v1-34 symbol))
     (until #f
-      (logand! (-> self flags) -2)
+      (logclear! (-> self flags) (wren-flags wrflags-0))
       (let ((f0-0 (rand-vu-float-range 0.0 (get-num-segments (-> self path)))))
         (get-point-in-path! (-> self path) (-> self move-dest) f0-0 'interp)
         )
-      (logior! (-> self flags) 2)
+      (logior! (-> self flags) (wren-flags wrflags-1))
       (ja-no-eval :group! wren-peck-ja
                   :num! (seek! (the float (+ (-> (the-as art-joint-anim wren-peck-ja) frames num-frames) -1)))
                   :frame-num 0.0
@@ -231,7 +244,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
         (ja :num! (seek!))
         )
       #t
-      (let ((v1-33 (the-as symbol (logand (-> self flags) 2))))
+      (let ((v1-33 (the-as symbol (logand (-> self flags) (wren-flags wrflags-1)))))
         (set! v1-33 v1-33)
         (cmove-#f-zero v1-34 v1-33 v1-33)
         )
@@ -245,7 +258,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
           (ja :num! (loop! f30-1))
           )
         )
-      (logior! (-> self flags) 1)
+      (logior! (-> self flags) (wren-flags wrflags-0))
       (let ((gp-2 (current-time))
             (s5-2 (the int (* 300.0 (rand-vu-float-range 0.2 1.5))))
             (f30-3 1.0)
@@ -261,7 +274,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
     (none)
     )
   :post (behavior ()
-    (if (logtest? (-> self flags) 1)
+    (if (logtest? (-> self flags) (wren-flags wrflags-0))
         (seek-to-point-toward-point! (-> self root) (-> self move-dest) 262144.0 (seconds 0.02))
         )
     (ja-post)
@@ -400,7 +413,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
     (none)
     )
   :code (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (wren-flags wrflags-0))
     (ja-channel-push! 1 (seconds 0.2))
     (let ((gp-0 (current-time))
           (s5-0 (the int (* 300.0 (rand-vu-float-range 4.2 16.8))))
@@ -412,7 +425,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
         (ja :num! (loop! f30-1))
         )
       )
-    (logior! (-> self flags) 1)
+    (logior! (-> self flags) (wren-flags wrflags-0))
     (let ((gp-1 (current-time))
           (s5-1 600)
           (f30-2 1.0)
@@ -426,7 +439,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
     (none)
     )
   :post (behavior ()
-    (if (logtest? (-> self flags) 1)
+    (if (logtest? (-> self flags) (wren-flags wrflags-0))
         (seek-to-point-toward-point! (-> self root) (-> self move-dest) 262144.0 (seconds 0.02))
         )
     (debug-draw-path self)
@@ -478,7 +491,7 @@ This commonly includes things such as:
     )
   (set! (-> obj fly-index) (the-as uint 0))
   (set! (-> obj path-u) 0.0)
-  (set! (-> obj flags) (the-as uint 0))
+  (set! (-> obj flags) (wren-flags))
   (set! (-> obj bob-level) 0.0)
   (set! (-> obj bank-angle) 0.0)
   (set! (-> obj path) (new 'process 'path-control obj 'idle 0.0 arg0 #f))

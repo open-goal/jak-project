@@ -80,7 +80,7 @@
    (heading                   symbol                        :offset-assert 724)
    (move-pos                  vector                :inline :offset-assert 736)
    (move-angle                float                         :offset-assert 752)
-   (status-flags              uint64                        :offset-assert 760)
+   (status-flags              grenadier-flags               :offset-assert 760)
    (suppress-knockaside-timer time-frame                    :offset-assert 768)
    )
   :heap-base #x290
@@ -329,7 +329,7 @@
                 )
            (return #t)
            )
-       (logior! (-> obj status-flags) 1)
+       (logior! (-> obj status-flags) (grenadier-flags grflags-0))
        (set! (-> obj suppress-knockaside-timer) (current-time))
        )
      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
@@ -558,7 +558,7 @@
       )
     (grenadier-method-181 self)
     (look-at-target! self (enemy-flag death-start))
-    (logand! (-> self status-flags) -2)
+    (logclear! (-> self status-flags) (grenadier-flags grflags-0))
     (none)
     )
   :trans (behavior ()
@@ -931,7 +931,7 @@
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (logand! (-> self status-flags) -3)
+    (logclear! (-> self status-flags) (grenadier-flags grflags-1))
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
@@ -958,7 +958,7 @@
             )
           0
           (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-          (logior! (-> self status-flags) 2)
+          (logior! (-> self status-flags) (grenadier-flags grflags-1))
           (ja-no-eval :group! grenadier-run-to-throw-ja
                       :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-run-to-throw-ja) frames num-frames) -1)) f30-0)
                       :frame-num 0.0
@@ -968,7 +968,7 @@
             (ja :num! (seek! max f30-0))
             )
           (ja-channel-push! 1 (seconds 0.067))
-          (logand! (-> self status-flags) -3)
+          (logclear! (-> self status-flags) (grenadier-flags grflags-1))
           (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
               (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
               (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
@@ -981,7 +981,7 @@
         )
       0
       (cond
-        ((logtest? (-> self status-flags) 1)
+        ((logtest? (-> self status-flags) (grenadier-flags grflags-0))
          (ja-channel-push! 1 (seconds 0.135))
          (ja-no-eval :group! grenadier-throw-quick-ja
                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw-quick-ja) frames num-frames) -1)) f30-0)
@@ -991,7 +991,7 @@
            (suspend)
            (ja :num! (seek! max f30-0))
            )
-         (logand! (-> self status-flags) -2)
+         (logclear! (-> self status-flags) (grenadier-flags grflags-0))
          )
         (else
           (when (not (enemy-method-96 self 1820.4445 #t))
@@ -1166,7 +1166,7 @@
 ;; definition for method 70 of type grenadier
 (defmethod go-hostile grenadier ((obj grenadier))
   (if (and (and (-> obj next-state) (= (-> obj next-state name) 'knocked))
-           (and (logtest? (-> obj status-flags) 1)
+           (and (logtest? (-> obj status-flags) (grenadier-flags grflags-0))
                 (handle->process (-> obj focus handle))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> obj focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
@@ -1219,7 +1219,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod nav-enemy-method-142 grenadier ((obj grenadier) (arg0 nav-control))
   (local-vars (a0-4 int) (a0-6 int))
-  (b! (logtest? (-> obj status-flags) 2) cfg-6 :delay (empty-form))
+  (b! (logtest? (-> obj status-flags) (grenadier-flags grflags-1)) cfg-6 :delay (empty-form))
   (let ((v1-3 (new 'stack-no-clear 'vector))
         (a2-0 (new 'stack-no-clear 'vector))
         )
@@ -1416,7 +1416,7 @@
                              )
         )
   (set! (-> obj move-angle) 5461.3335)
-  (set! (-> obj status-flags) (the-as uint 0))
+  (set! (-> obj status-flags) (grenadier-flags))
   (set! (-> obj suppress-knockaside-timer) 0)
   (set-vector! (-> obj root scale) 1.5 1.5 1.5 1.0)
   (set! (-> obj joint) (new 'process 'joint-mod-blend-world obj 17 #f 0.0))

@@ -5,6 +5,13 @@
 ;; name in dgo: under-shoot-block
 ;; dgos: UNB
 
+(defenum under-block-flags
+  :bitfield #t
+  (unbflags-0)
+  (unbflags-1)
+  (unbflags-2)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype under-block-spawner (basic)
@@ -629,7 +636,7 @@
    (pulse-op           int8                       :offset-assert 224)
    (pulse-pc           int8                       :offset-assert 225)
    (pulse-ctr          int8                       :offset-assert 226)
-   (flags              uint64                     :offset-assert 232)
+   (flags              under-block-flags          :offset-assert 232)
    (activated-time     time-frame                 :offset-assert 240)
    (rot-axis           vector             :inline :offset-assert 256)
    (away-from-focal-pt vector             :inline :offset-assert 272)
@@ -695,18 +702,18 @@
     (('track)
      (cond
        ((-> arg3 param 0)
-        (if (logtest? (-> self flags) 1)
+        (if (logtest? (-> self flags) (under-block-flags unbflags-0))
             #t
             'abort
             )
         )
        (else
-         (logtest? (-> self flags) 1)
+         (logtest? (-> self flags) (under-block-flags unbflags-0))
          )
        )
      )
     (('attack)
-     (when (logtest? (-> self flags) 1)
+     (when (logtest? (-> self flags) (under-block-flags unbflags-0))
        (let ((gp-0 (the-as attack-info (-> arg3 param 1))))
          (when (and (!= (-> gp-0 id) (-> self prev-attack-id)) (!= (-> gp-0 id) (-> self puzzle prev-special-attack-id)))
            (let ((s5-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
@@ -746,7 +753,7 @@
                   (set! (-> self move-dir-x) s5-1)
                   (set! (-> self move-dir-z) gp-1)
                   (under-block-method-48 self (+ (-> self col) s5-1) (+ (-> self row) gp-1))
-                  (logand! (-> self flags) -2)
+                  (logclear! (-> self flags) (under-block-flags unbflags-0))
                   (if (zero? (-> self activated-time))
                       (under-block-method-42 self)
                       )
@@ -755,7 +762,7 @@
                  ((under-block-method-49 self s5-1 gp-1)
                   (set! (-> self move-dir-x) s5-1)
                   (set! (-> self move-dir-z) gp-1)
-                  (logand! (-> self flags) -2)
+                  (logclear! (-> self flags) (under-block-flags unbflags-0))
                   (go-virtual rock)
                   )
                  ((and (-> self next-state) (= (-> self next-state name) 'idle))
@@ -859,7 +866,7 @@
 
 (defmethod under-block-method-42 under-block ((obj under-block))
   (set! (-> obj activated-time) (current-time))
-  (logior! (-> obj flags) 2)
+  (logior! (-> obj flags) (under-block-flags unbflags-1))
   (set! (-> obj pulse-pc) 0)
   (set! (-> obj pulse-op) 0)
   0
@@ -870,7 +877,7 @@
 ;; WARN: Function (method 45 under-block) has a return type of none, but the expression builder found a return statement.
 (defmethod under-block-method-45 under-block ((obj under-block))
   (let ((v1-0 (-> obj puzzle)))
-    (when (logtest? (-> obj flags) 2)
+    (when (logtest? (-> obj flags) (under-block-flags unbflags-1))
       (cond
         ((!= (-> v1-0 slot-mask) (-> v1-0 slot-mask-full))
          (when (zero? (-> obj pulse-op))
@@ -918,7 +925,7 @@
            )
          )
         (else
-          (logand! (-> obj flags) -3)
+          (logclear! (-> obj flags) (under-block-flags unbflags-1))
           (set-vector! (-> obj draw color-mult) 1.0 1.0 1.0 1.0)
           (set-vector! (-> obj draw color-emissive) 0.0 0.0 0.0 1.0)
           )
@@ -1184,15 +1191,16 @@
 
 (defmethod under-block-method-50 under-block ((obj under-block))
   (with-pp
-    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint (if (logtest? (-> obj flags) 4)
-                                                                    1
-                                                                    0
-                                                                    )
-                                                           )
-                     )
-                )
+    (let ((s5-0
+            (new 'stack 'joint-exploder-tuning (the-as uint (if (logtest? (-> obj flags) (under-block-flags unbflags-2))
+                                                                1
+                                                                0
+                                                                )
+                                                       )
+                 )
+            )
           )
-      (when (logtest? (-> obj flags) 4)
+      (when (logtest? (-> obj flags) (under-block-flags unbflags-2))
         (set! (-> s5-0 fountain-rand-transv-lo quad) (-> obj away-from-focal-pt quad))
         (set! (-> s5-0 fountain-rand-transv-hi x) 24576.0)
         (set! (-> s5-0 fountain-rand-transv-hi y) 49152.0)
@@ -1228,7 +1236,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (none)
     )
   :code (the-as (function none :behavior under-block) sleep-code)
@@ -1239,7 +1247,7 @@
   :event under-block-event-handler
   :trans (the-as (function none :behavior under-block) rider-trans)
   :code (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (while (not (under-block-method-48 self (-> self col) (-> self row)))
       (suspend)
       )
@@ -1273,7 +1281,7 @@
   :event under-block-event-handler
   :trans (the-as (function none :behavior under-block) rider-trans)
   :code (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (set! (-> self state-time) (current-time))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (set! (-> gp-0 vector 0 quad) (-> self root trans quad))
@@ -1302,7 +1310,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logior! (-> self flags) 1)
+    (logior! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'active)
     (none)
     )
@@ -1313,12 +1321,12 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logior! (-> self flags) 1)
+    (logior! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'active)
     (none)
     )
   :exit (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (none)
     )
   :trans (behavior ()
@@ -1524,7 +1532,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (none)
     )
   :trans (behavior ()
@@ -1599,7 +1607,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'beaten)
     (none)
     )
@@ -1610,7 +1618,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (logclear! (-> self mask) (process-mask actor-pause))
     (under-block-method-41 self 'fall)
     (none)
@@ -1650,7 +1658,7 @@
       (when (and (logtest? (-> (the-as collide-shape-moving gp-0) status) (collide-status touch-surface))
                  (>= (- (current-time) (-> self state-time)) (seconds 0.01))
                  )
-        (logior! (-> self flags) 4)
+        (logior! (-> self flags) (under-block-flags unbflags-2))
         (go-virtual explode)
         )
       )
@@ -1663,7 +1671,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-46 self (-> self col) (-> self row))
     (let ((v1-4 (-> self puzzle)))
       (countdown (a0-3 (-> v1-4 slots length))
