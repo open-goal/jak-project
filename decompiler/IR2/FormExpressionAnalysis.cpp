@@ -4934,7 +4934,8 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
     auto fancy_form = convert_logtest_to_fancy_macro(pool, logtest_form);
     if (fancy_form) {
       return pool.alloc_element<GenericElement>(
-          GenericOperator::make_compare(IR2_Condition::Kind::FALSE), pool.alloc_single_form(nullptr, fancy_form));
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
+          pool.alloc_single_form(nullptr, fancy_form));
     }
     return pool.alloc_element<GenericElement>(
         GenericOperator::make_compare(IR2_Condition::Kind::FALSE), logtest_form);
@@ -6155,8 +6156,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
       auto fancy_form = convert_logtest_to_fancy_macro(pool, logtest_form);
       if (fancy_form) {
         val = pool.alloc_single_form(nullptr, fancy_form);
-      }
-      else {
+      } else {
         val = logtest_form;
       }
     }
