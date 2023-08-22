@@ -2779,11 +2779,11 @@ This commonly includes things such as:
 
 ;; definition of type mtn-plat-return
 (deftype mtn-plat-return (base-plat)
-  ((ride-timer time-frame  :offset-assert 272)
-   (flags      uint16      :offset-assert 280)
-   (path-pos   float       :offset-assert 284)
-   (dest-pos   float       :offset-assert 288)
-   (path-speed float       :offset-assert 292)
+  ((ride-timer time-frame      :offset-assert 272)
+   (flags      mtn-plat-flags  :offset-assert 280)
+   (path-pos   float           :offset-assert 284)
+   (dest-pos   float           :offset-assert 288)
+   (path-speed float           :offset-assert 292)
    )
   :heap-base #xb0
   :method-count-assert 38
@@ -2827,8 +2827,8 @@ This commonly includes things such as:
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('ridden)
-       (let ((v0-0 (the-as object (logior (-> self flags) 1))))
-         (set! (-> self flags) (the-as uint v0-0))
+       (let ((v0-0 (the-as object (logior (-> self flags) (mtn-plat-flags mtpflags-0)))))
+         (set! (-> self flags) (the-as mtn-plat-flags v0-0))
          v0-0
          )
        )
@@ -2843,14 +2843,14 @@ This commonly includes things such as:
     (none)
     )
   :trans (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (mtn-plat-flags mtpflags-0))
     (plat-trans)
-    (if (not (logtest? (-> self flags) 1))
+    (if (not (logtest? (-> self flags) (mtn-plat-flags mtpflags-0)))
         (set! (-> self ride-timer) (current-time))
         )
     (let ((v1-10 (and (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
-                      (logtest? (-> self flags) 1)
-                      (if (logtest? (-> self flags) 2)
+                      (logtest? (-> self flags) (mtn-plat-flags mtpflags-0))
+                      (if (logtest? (-> self flags) (mtn-plat-flags mtpflags-1))
                           (and *target* (process-grab? *target* #f))
                           #t
                           )
@@ -2877,8 +2877,8 @@ This commonly includes things such as:
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('ridden)
-       (let ((v0-0 (the-as object (logior (-> self flags) 1))))
-         (set! (-> self flags) (the-as uint v0-0))
+       (let ((v0-0 (the-as object (logior (-> self flags) (mtn-plat-flags mtpflags-0)))))
+         (set! (-> self flags) (the-as mtn-plat-flags v0-0))
          v0-0
          )
        )
@@ -2992,7 +2992,7 @@ This commonly includes things such as:
     (the-as pair 0)
     )
   (stop-bouncing! obj)
-  (set! (-> obj flags) (the-as uint 0))
+  (set! (-> obj flags) (mtn-plat-flags))
   (set! (-> obj path-pos) 0.0)
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (if (logtest? (-> obj path flags) (path-control-flag not-found))
@@ -3658,7 +3658,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (if (logtest? (-> self flags) 1)
+    (if (logtest? (-> self flags) (mtn-plat-flags mtpflags-0))
         (process-release? *target*)
         )
     (none)
@@ -3689,7 +3689,7 @@ This commonly includes things such as:
 (defmethod init-plat! trans-plat ((obj trans-plat))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (logior! (-> obj flags) 2)
+  (logior! (-> obj flags) (mtn-plat-flags mtpflags-1))
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)
                    s5-0

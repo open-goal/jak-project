@@ -528,6 +528,12 @@ FormElement* rewrite_as_send_event(LetElement* in,
           if (enum_ts) {
             param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
           }
+        } else if (param_idx == 2 && param_values.at(0)->to_string(env) == "'darkjak" &&
+                   msg_str == "'change-mode") {
+          auto enum_ts = env.dts->ts.try_enum_lookup("darkjak-stage");
+          if (enum_ts) {
+            param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
+          }
         }
       }
       // if we didn't cast

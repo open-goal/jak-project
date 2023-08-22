@@ -15,7 +15,6 @@ The cpad-set-buzz! function can be used for vibration.
 (define-extern get-current-time (function time-frame))
 (define-extern get-integral-current-time (function uint))
 (define-extern get-current-language (function language-enum))
-(define-extern add-debug-cursor (function symbol bucket-id int int int none))
 
 
 (defenum pad-buttons
@@ -56,6 +55,30 @@ The cpad-set-buzz! function can be used for vibration.
   (negcon 2)
   (namco-gun 6)
   )
+
+
+(defenum mouse-buttons
+    :bitfield #t
+    :type uint32
+    (left)
+    (right)
+    (middle)
+    )
+
+(define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
+
+
+(#when PC_PORT
+
+;; redefined from C kernel
+(define *scf-territory-debug* GAME_TERRITORY_SCEA)
+(defun scf-get-territory ()
+  "redefined from C kernel for convenience"
+  (if *debug-segment*
+      *scf-territory-debug*
+      *scf-territory-debug*)
+  )
+)
 
 ;; decomp begins
 
@@ -553,9 +576,9 @@ The cpad-set-buzz! function can be used for vibration.
    (deltay             int8                 :offset-assert  23)
    (wheel              uint8                :offset-assert  24)
    (change-time        time-frame           :offset-assert  32)
-   (button0-abs        uint32     3         :offset-assert  40)
-   (button0-shadow-abs uint32     1         :offset-assert  52)
-   (button0-rel        uint32     3         :offset-assert  56)
+   (button0-abs        mouse-buttons     3  :offset-assert  40)
+   (button0-shadow-abs mouse-buttons     1  :offset-assert  52)
+   (button0-rel        mouse-buttons     3  :offset-assert  56)
    (pos                vector     2 :inline :offset-assert  80)
    (posx               float                :offset         80)
    (posy               float                :offset         84)
@@ -599,7 +622,7 @@ The cpad-set-buzz! function can be used for vibration.
     (set! (-> gp-0 button0-abs 1) (-> gp-0 button0-shadow-abs 0))
     (set! (-> gp-0 button0-rel 2) (-> gp-0 button0-rel 1))
     (set! (-> gp-0 button0-rel 1) (-> gp-0 button0-rel 0))
-    (set! (-> gp-0 button0-rel 0) (the-as uint 0))
+    (set! (-> gp-0 button0-rel 0) (mouse-buttons))
     (set! (-> gp-0 speedx) 0.0)
     (set! (-> gp-0 speedy) 0.0)
     (cond
@@ -616,8 +639,8 @@ The cpad-set-buzz! function can be used for vibration.
        (set! (-> gp-0 posx) (fmax -256.0 (fmin 256.0 (+ (-> gp-0 posx) (-> gp-0 speedx)))))
        (set! (-> gp-0 posy) (fmax -208.0 (fmin 208.0 (+ (-> gp-0 posy) (-> gp-0 speedy)))))
        (let ((v1-22 (-> gp-0 button0)))
-         (set! (-> gp-0 button0-shadow-abs 0) v1-22)
-         (set! (-> gp-0 button0-abs 0) v1-22)
+         (set! (-> gp-0 button0-shadow-abs 0) (the-as mouse-buttons v1-22))
+         (set! (-> gp-0 button0-abs 0) (the-as mouse-buttons v1-22))
          )
        (set! (-> gp-0 button0-rel 0) (logclear (-> gp-0 button0-abs 0) (-> gp-0 button0-abs 1)))
        )
@@ -628,11 +651,34 @@ The cpad-set-buzz! function can be used for vibration.
           (bucket-id debug-no-zbuf2)
           (+ (the int (-> gp-0 posx)) 256)
           (+ (the int (-> gp-0 posy)) 208)
-          (the-as int (-> gp-0 button0-abs 0))
+          (-> gp-0 button0-abs 0)
           )
         )
     )
   (none)
+  )
+
+(defmacro mouse-pressed ()
+  `(-> *mouse* button0-rel 0)
+  )
+
+(defmacro mouse-hold ()
+  `(-> *mouse* button0-abs 0)
+  )
+
+(defmacro mouse-pressed? (&rest buttons)
+  `(logtest? (mouse-pressed) (mouse-buttons ,@buttons))
+  )
+
+(defmacro mouse-hold? (&rest buttons)
+  `(logtest? (mouse-hold) (mouse-buttons ,@buttons))
+  )
+
+(defmacro mouse-clear! (&rest buttons)
+  `(begin
+      (logclear! (mouse-pressed) (mouse-buttons ,@buttons))
+      (logclear! (mouse-hold) (mouse-buttons ,@buttons))
+      )
   )
 
 

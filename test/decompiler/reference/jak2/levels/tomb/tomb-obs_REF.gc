@@ -1615,13 +1615,13 @@ This commonly includes things such as:
 
 ;; definition of type tomb-plat-return
 (deftype tomb-plat-return (base-plat)
-  ((intro-path path-control  :offset-assert 272)
-   (ride-timer time-frame    :offset-assert 280)
-   (flags      uint16        :offset-assert 288)
-   (path-pos   float         :offset-assert 292)
-   (dest-pos   float         :offset-assert 296)
-   (path-speed float         :offset-assert 300)
-   (sound-id   sound-id      :offset-assert 304)
+  ((intro-path path-control     :offset-assert 272)
+   (ride-timer time-frame       :offset-assert 280)
+   (flags      tomb-plat-flags  :offset-assert 288)
+   (path-pos   float            :offset-assert 292)
+   (dest-pos   float            :offset-assert 296)
+   (path-speed float            :offset-assert 300)
+   (sound-id   sound-id         :offset-assert 304)
    )
   :heap-base #xc0
   :method-count-assert 39
@@ -1728,8 +1728,8 @@ This commonly includes things such as:
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('ridden)
-       (let ((v0-0 (the-as object (logior (-> self flags) 1))))
-         (set! (-> self flags) (the-as uint v0-0))
+       (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
+         (set! (-> self flags) (the-as tomb-plat-flags v0-0))
          v0-0
          )
        )
@@ -1744,9 +1744,9 @@ This commonly includes things such as:
     (none)
     )
   :trans (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (tomb-plat-flags topflags-0))
     (plat-trans)
-    (if (not (logtest? (-> self flags) 1))
+    (if (not (logtest? (-> self flags) (tomb-plat-flags topflags-0)))
         (set! (-> self ride-timer) (current-time))
         )
     (when (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
@@ -1768,8 +1768,8 @@ This commonly includes things such as:
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
       (('ridden)
-       (let ((v0-0 (the-as object (logior (-> self flags) 1))))
-         (set! (-> self flags) (the-as uint v0-0))
+       (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
+         (set! (-> self flags) (the-as tomb-plat-flags v0-0))
          v0-0
          )
        )
@@ -1898,7 +1898,7 @@ This commonly includes things such as:
     (the-as pair 0)
     )
   (stop-bouncing! obj)
-  (set! (-> obj flags) (the-as uint 0))
+  (set! (-> obj flags) (tomb-plat-flags))
   (set! (-> obj path-pos) 0.0)
   (let ((s4-1 (new 'process 'curve-control obj 'path -1000000000.0)))
     (if (logtest? (-> s4-1 flags) (path-control-flag not-found))

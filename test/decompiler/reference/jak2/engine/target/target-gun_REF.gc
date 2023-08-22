@@ -44,7 +44,7 @@
                 (f30-0 (lerp-scale 0.0 1.0 (fabs f0-0) 1820.4445 6371.5557))
                 )
            (cond
-             ((and (logtest? (-> self gun track?) 1)
+             ((and (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
                    (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
                    (>= (-> self gun track-turnv-range)
                        (vector-vector-distance (-> self control trans) (-> self gun track-trans))
@@ -214,7 +214,7 @@
   (set! (-> self gun put-away?) #f)
   (set! (-> self gun active?) #f)
   (set! (-> self gun surpress-time) 0)
-  (set! (-> self gun track?) (the-as uint 6))
+  (set! (-> self gun track?) (gun-track-flags gutflags-1 gutflags-2))
   (set! (-> self gun track-turn) 0.0)
   (set! (-> self gun track-tilt) 0.0)
   (set! (-> self gun track-target-hold-time) 0)
@@ -1187,8 +1187,8 @@
 ;; WARN: Return type mismatch int vs none.
 (defbehavior target-gun-find-track target ()
   (if (logtest? (-> self gun upper-body track-mode) (track-mode lock-on))
-      (logior! (-> self gun track?) 8)
-      (logand! (-> self gun track?) -9)
+      (logior! (-> self gun track?) (gun-track-flags gutflags-3))
+      (logclear! (-> self gun track?) (gun-track-flags gutflags-3))
       )
   (let ((gp-0 (the-as basic #f)))
     (when (and (or (< (- (current-time) (-> self control time-of-last-nonzero-input)) (seconds 0.2))
@@ -1267,7 +1267,7 @@
     (cond
       (gp-0
         (set! (-> self gun track-target-hold-time) 0)
-        (set! (-> self gun track?) (the-as uint 7))
+        (set! (-> self gun track?) (gun-track-flags gutflags-0 gutflags-1 gutflags-2))
         (set! (-> self gun track-trans quad) (-> (get-trans (the-as process-focusable gp-0) 3) quad))
         (when ((method-of-type focus try-update-focus)
                (the-as focus (-> self gun track-target))
@@ -1321,7 +1321,7 @@
                      (= (send-event (the-as process-focusable s5-1) 'track #t) 'abort)
                      )
                  )
-             (set! (-> self gun track?) (the-as uint 6))
+             (set! (-> self gun track?) (gun-track-flags gutflags-1 gutflags-2))
              (set! (-> self gun track-target-hold-time) 0)
              ((method-of-type focus clear-focused) (the-as focus (-> self gun track-target)))
              )
@@ -1335,7 +1335,7 @@
                   ((and (not (send-event-function (the-as process-focusable s5-1) a1-21))
                         (zero? (-> self gun track-target-hold-time))
                         )
-                   (logand! (-> self gun track?) -5)
+                   (logclear! (-> self gun track?) (gun-track-flags gutflags-2))
                    (set! (-> self gun track-trans quad) (-> (get-trans (the-as process-focusable s5-1) 3) quad))
                    )
                   (else
@@ -1391,7 +1391,7 @@
         )
       )
     )
-  (when (logtest? (-> self gun track?) 1)
+  (when (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
     (if *gun-marks*
         (add-debug-sphere
           #t
@@ -1582,7 +1582,7 @@
             )
            (try-update-focus (-> self gun track-target 1) (the-as process-focusable gp-0))
            (set! (-> self gun track-trans quad) (-> (get-trans (the-as process-focusable gp-0) 3) quad))
-           (set! (-> self gun track?) (the-as uint 7))
+           (set! (-> self gun track?) (gun-track-flags gutflags-0 gutflags-1 gutflags-2))
            (if (zero? (-> self gun fire-pending))
                (+! (-> self gun fire-pending) 1)
                )
@@ -1698,7 +1698,9 @@
        )
      (target-gun-find-track)
      (cond
-       ((and (= (-> self gun gun-type) (pickup-type eco-blue)) (not (logtest? (-> self gun track?) 1)))
+       ((and (= (-> self gun gun-type) (pickup-type eco-blue))
+             (not (logtest? (-> self gun track?) (gun-track-flags gutflags-0)))
+             )
         (let ((f0-8 (vector-vector-distance (-> self gun fire-point) (-> self gun laser-hit-point))))
           (cond
             ((< f0-8 122880.0)
@@ -1739,7 +1741,9 @@
      (cond
        ((or (and (nonzero? (-> self gun track-target-hold-time)) (< (current-time) (-> self gun track-target-hold-time)))
             (and (nonzero? (-> self gun turn-fast-hold-time)) (< (current-time) (-> self gun turn-fast-hold-time)))
-            (and (logtest? (-> self gun track?) 1) (logtest? (-> self gun track?) 4))
+            (and (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
+                 (logtest? (-> self gun track?) (gun-track-flags gutflags-2))
+                 )
             (or (logtest? (surface-flag gun-strafe) (-> self control current-surface flags))
                 (focus-test? self pilot-riding)
                 )
@@ -1764,7 +1768,7 @@
          (set! (-> self upper-body flex-blend) 0.0)
          (seek! (-> self upper-body flex-blend) 1.0 (* 8.0 (-> self clock seconds-per-frame)))
          )
-     (when (logtest? (-> self gun track?) 1)
+     (when (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
        (set! (-> self gun top-anim-look-at quad) (-> self gun track-trans quad))
        (let ((gp-6 (new 'stack-no-clear 'vector)))
          (set! (-> gp-6 quad) (-> self gun top-anim-look-at quad))
@@ -1798,7 +1802,7 @@
          )
        )
      (cond
-       ((and (logtest? (-> self gun track?) 1)
+       ((and (logtest? (-> self gun track?) (gun-track-flags gutflags-0))
              (logtest? (process-mask enemy guard) (-> (handle->process (-> self gun track-target 0 handle)) mask))
              )
         (if (and (< (- (current-time) (-> self gun track-press-start-time)) (seconds 0.5))
@@ -1818,7 +1822,7 @@
           ((or (and (nonzero? (-> self gun track-target-hold-time)) (< (current-time) (-> self gun track-target-hold-time)))
                (and (nonzero? (-> self gun turn-fast-hold-time)) (< (current-time) (-> self gun turn-fast-hold-time)))
                )
-           (set! (-> self gun track?) (the-as uint 7))
+           (set! (-> self gun track?) (gun-track-flags gutflags-0 gutflags-1 gutflags-2))
            (set! (-> self gun upper-body twist-max y) 21845.334)
            (set! (-> self gun upper-body twist-speed-y) 0.2)
            (set! (-> self gun upper-body twist-speed-x) 0.6)
