@@ -174,6 +174,8 @@ enum class FixedOperatorKind {
   SEND_EVENT,
   CPAD_PRESSED_P,
   CPAD_HOLD_P,
+  MOUSE_PRESSED_P,
+  MOUSE_HOLD_P,
   FOCUS_TEST,
   INVALID
 };

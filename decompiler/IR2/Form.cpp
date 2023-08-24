@@ -1873,6 +1873,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cpad-pressed?";
     case FixedOperatorKind::CPAD_HOLD_P:
       return "cpad-hold?";
+    case FixedOperatorKind::MOUSE_PRESSED_P:
+      return "mouse-pressed?";
+    case FixedOperatorKind::MOUSE_HOLD_P:
+      return "mouse-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:

@@ -9,7 +9,7 @@
 
 (defbehavior target-falling-trans target ((arg0 symbol) (arg1 time-frame))
   (if (want-to-darkjak?)
-      (go target-darkjak-get-on 2)
+      (go target-darkjak-get-on (darkjak-stage active))
       )
   (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet? #f))
       (go target-attack-air #f)
@@ -76,7 +76,7 @@
       (go target-walk)
       )
     (if (want-to-darkjak?)
-        (go target-darkjak-get-on 2)
+        (go target-darkjak-get-on (darkjak-stage active))
         )
     (when (and (cpad-hold? (-> self control cpad number) l1) (can-duck?))
       (logclear! (-> self state-flags) (state-flags lleg-still rleg-still lleg-no-ik rleg-no-ik))
@@ -188,7 +188,7 @@
       (go target-stance)
       )
     (if (want-to-darkjak?)
-        (go target-darkjak-get-on 2)
+        (go target-darkjak-get-on (darkjak-stage active))
         )
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                        (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
@@ -569,7 +569,10 @@
   )
 
 (defbehavior init-var-jump target ((arg0 float) (arg1 float) (arg2 symbol) (arg3 symbol) (arg4 vector) (arg5 float))
-  (when (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
+  (when (and (focus-test? self dark)
+             (nonzero? (-> self darkjak))
+             (logtest? (-> self darkjak stage) (darkjak-stage giant))
+             )
     (set! arg0 (* arg0 (-> self darkjak-giant-interp)))
     (set! arg1 (* arg1 (-> self darkjak-giant-interp)))
     )
@@ -694,17 +697,22 @@
       )
     )
   0
-  (when (and arg1
-             (ja-group)
-             (and (-> (ja-group) extra)
-                  (not (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32)))
-                  #t
-                  )
+  (when (and arg1 (ja-group) (and (-> (ja-group) extra)
+                                  (not (and (focus-test? self dark)
+                                            (nonzero? (-> self darkjak))
+                                            (logtest? (-> self darkjak stage) (darkjak-stage giant))
+                                            )
+                                       )
+                                  #t
+                                  )
              )
     (let ((v1-62 (res-lump-struct (-> (ja-group) extra) 'collide-offset vector :time (ja-aframe-num 0))))
       (cond
         (v1-62
-          (if (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
+          (if (and (focus-test? self dark)
+                   (nonzero? (-> self darkjak))
+                   (logtest? (-> self darkjak stage) (darkjak-stage giant))
+                   )
               (set! (-> v1-62 y) (* 0.5 (-> v1-62 y)))
               )
           (set! v0-1 (-> self control anim-collide-offset-local))
@@ -720,55 +728,57 @@
     )
   )
 
-(define *duck-mods*
-  (new 'static 'surface
-    :name 'duck
-    :turnv 131072.0
-    :turnvv 524288.0
-    :tiltv 65536.0
-    :tiltvv 262144.0
-    :transv-max 16384.0
-    :target-speed 16384.0
-    :seek0 1.0
-    :seek90 1.0
-    :seek180 1.0
-    :fric 1.0
-    :nonlin-fric-dist 1.0
-    :slip-factor 1.0
-    :slide-factor 1.0
-    :slope-up-factor 1.0
-    :slope-down-factor 1.0
-    :slope-slip-angle 1.0
-    :impact-fric 1.0
-    :bend-factor 1.0
-    :bend-speed 1.0
-    :alignv 1.0
-    :slope-up-traction 1.0
-    :align-speed 1.0
-    :turnvf 30.0
-    :turnvvf 30.0
-    :tiltvf 150.0
-    :tiltvvf 15.0
-    :mult-hook (lambda :behavior target
-      ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
-      (surface-clamp-speed arg0 arg1 arg2 arg3)
-      (when (= arg3 1)
-        (cond
-          ((and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
-           (set! (-> arg0 target-speed) 81920.0)
-           )
-          ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
-           (set! (-> arg0 target-speed) 40960.0)
-           )
-          (else
-            (set! (-> arg0 target-speed) 16384.0)
-            )
-          )
+(define *duck-mods* (new 'static 'surface
+                      :name 'duck
+                      :turnv 131072.0
+                      :turnvv 524288.0
+                      :tiltv 65536.0
+                      :tiltvv 262144.0
+                      :transv-max 16384.0
+                      :target-speed 16384.0
+                      :seek0 1.0
+                      :seek90 1.0
+                      :seek180 1.0
+                      :fric 1.0
+                      :nonlin-fric-dist 1.0
+                      :slip-factor 1.0
+                      :slide-factor 1.0
+                      :slope-up-factor 1.0
+                      :slope-down-factor 1.0
+                      :slope-slip-angle 1.0
+                      :impact-fric 1.0
+                      :bend-factor 1.0
+                      :bend-speed 1.0
+                      :alignv 1.0
+                      :slope-up-traction 1.0
+                      :align-speed 1.0
+                      :turnvf 30.0
+                      :turnvvf 30.0
+                      :tiltvf 150.0
+                      :tiltvvf 15.0
+                      :mult-hook (lambda :behavior target
+                        ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+                        (surface-clamp-speed arg0 arg1 arg2 arg3)
+                        (when (= arg3 1)
+                          (cond
+                            ((and (focus-test? self dark)
+                                  (nonzero? (-> self darkjak))
+                                  (logtest? (-> self darkjak stage) (darkjak-stage giant))
+                                  )
+                             (set! (-> arg0 target-speed) 81920.0)
+                             )
+                            ((and (focus-test? self dark) (nonzero? (-> self darkjak)))
+                             (set! (-> arg0 target-speed) 40960.0)
+                             )
+                            (else
+                              (set! (-> arg0 target-speed) 16384.0)
+                              )
+                            )
+                          )
+                        )
+                      :flags (surface-flag duck)
+                      )
         )
-      )
-    :flags (surface-flag duck)
-    )
-  )
 
 (defstate target-duck-stance (target)
   :event target-standard-event-handler
@@ -823,7 +833,7 @@
         (go target-duck-walk 'duck)
         )
     (if (want-to-darkjak?)
-        (go target-darkjak-get-on 2)
+        (go target-darkjak-get-on (darkjak-stage active))
         )
     (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                          (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
@@ -979,7 +989,7 @@
         (go target-duck-stance 'duck)
         )
     (if (want-to-darkjak?)
-        (go target-darkjak-get-on 2)
+        (go target-darkjak-get-on (darkjak-stage active))
         )
     (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
                                          (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
@@ -1895,7 +1905,10 @@
       600
       1500
       )
-    (if (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 32))
+    (if (and (focus-test? self dark)
+             (nonzero? (-> self darkjak))
+             (logtest? (-> self darkjak stage) (darkjak-stage giant))
+             )
         (activate! *camera-smush-control* 1638.4 15 75 1.0 0.9 (-> *display* camera-clock))
         )
     (when (and (using-gun? self) (let ((v1-44 (-> self water flags)))
@@ -3118,7 +3131,10 @@
              )
            )
          )
-        ((and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 8))
+        ((and (focus-test? self dark)
+              (nonzero? (-> self darkjak))
+              (logtest? (-> self darkjak stage) (darkjak-stage bomb1))
+              )
          (set! (-> self control unknown-sound-id00)
                (add-process *gui-control* self (gui-channel jak) (gui-action queue) "darkbom1" -99.0 0)
                )
@@ -3368,7 +3384,10 @@
       ((and (= (-> self fact eco-type) 1) (>= (-> self fact eco-level) 1.0))
        (go target-yellow-jump-blast)
        )
-      ((and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 4))
+      ((and (focus-test? self dark)
+            (nonzero? (-> self darkjak))
+            (logtest? (-> self darkjak stage) (darkjak-stage bomb0))
+            )
        (go target-darkjak-bomb0)
        )
       )
@@ -3439,7 +3458,10 @@
       (when gp-1
         (logior! (-> self control status) (collide-status on-surface))
         (when (or (and (= (-> self fact eco-type) 2) (>= (-> self fact eco-level) 1.0))
-                  (and (focus-test? self dark) (nonzero? (-> self darkjak)) (logtest? (-> self darkjak stage) 2))
+                  (and (focus-test? self dark)
+                       (nonzero? (-> self darkjak))
+                       (logtest? (-> self darkjak stage) (darkjak-stage active))
+                       )
                   )
           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
           (if (and (= (-> self fact eco-type) 2) (>= (-> self fact eco-level) 1.0))

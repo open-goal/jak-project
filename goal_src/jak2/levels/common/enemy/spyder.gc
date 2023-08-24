@@ -5,6 +5,18 @@
 ;; name in dgo: spyder
 ;; dgos: FOR, ATE
 
+(defenum spyder-flags
+  :bitfield #t
+  (spflags-0)
+  (spflags-1)
+  (spflags-2)
+  (spflags-3)
+  (spflags-4)
+  (spflags-5)
+  (spflags-6)
+  (spflags-7)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype spyder-shot (metalhead-shot)
@@ -52,7 +64,7 @@
    (start-pos         vector       :inline   :offset-assert 768)
    (face-pos          vector       :inline   :offset        800)
    (my-up-vector      vector       :inline   :offset-assert 816)
-   (status-flags      uint64                 :offset-assert 832)
+   (status-flags      spyder-flags           :offset-assert 832)
    (change-dir-timer  time-frame             :offset-assert 840)
    (fire-info         vector       2 :inline :offset-assert 848)
    (joint-ik          joint-mod-ik 4         :offset        880)
@@ -289,7 +301,7 @@
      )
     (('attack)
      (if (type? (-> arg0 parent 0) enemy)
-         (logior! (-> obj status-flags) 2)
+         (logior! (-> obj status-flags) (spyder-flags spflags-1))
          )
      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
      )
@@ -390,8 +402,8 @@
         (cond
           ((>= 143360.0 f0-0)
            (let ((s3-0 (new 'stack-no-clear 'vector)))
-             (logxor! (-> obj status-flags) 16)
-             (if (logtest? (-> obj status-flags) 16)
+             (logxor! (-> obj status-flags) (spyder-flags spflags-4))
+             (if (logtest? (-> obj status-flags) (spyder-flags spflags-4))
                  (set-vector! s3-0 (-> s2-1 z) (-> s2-1 y) (- (-> s2-1 x)) 1.0)
                  (set-vector! s3-0 (- (-> s2-1 z)) (-> s2-1 y) (-> s2-1 x) 1.0)
                  )
@@ -558,14 +570,14 @@
 
 (defbehavior spyder-travel-post spyder ()
   (set! (-> self face-pos quad) (-> self move-dest quad))
-  (logior! (-> self status-flags) 8)
+  (logior! (-> self status-flags) (spyder-flags spflags-3))
   (nav-enemy-travel-post)
   0
   (none)
   )
 
 (defbehavior spyder-face-player-post spyder ()
-  (logior! (-> self status-flags) 8)
+  (logior! (-> self status-flags) (spyder-flags spflags-3))
   (let ((gp-0 (handle->process (-> self focus handle)))
         (f30-0 (-> self nav max-rotation-rate))
         )
@@ -591,10 +603,10 @@
 (defmethod spyder-method-182 spyder ((obj spyder))
   (with-pp
     (cond
-      ((and (logtest? (-> obj status-flags) 4) (!= (-> obj joint scale z) 1.0))
+      ((and (logtest? (-> obj status-flags) (spyder-flags spflags-2)) (!= (-> obj joint scale z) 1.0))
        (seek! (-> obj joint scale z) 1.0 (* 0.8 (-> pp clock seconds-per-frame)))
        )
-      ((and (not (logtest? (-> obj status-flags) 4)) (!= (-> obj joint scale z) 0.0))
+      ((and (not (logtest? (-> obj status-flags) (spyder-flags spflags-2))) (!= (-> obj joint scale z) 0.0))
        (seek! (-> obj joint scale z) 0.0 (* 0.8 (-> pp clock seconds-per-frame)))
        )
       )
@@ -609,9 +621,9 @@
             (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> obj root quat)))
             )
         (cond
-          ((logtest? (-> obj status-flags) 8)
+          ((logtest? (-> obj status-flags) (spyder-flags spflags-3))
            (vector-! s4-1 (-> obj face-pos) (-> obj root trans))
-           (logand! (-> obj status-flags) -9)
+           (logclear! (-> obj status-flags) (spyder-flags spflags-3))
            )
           (else
             (set! (-> s4-1 quad) (-> s3-0 quad))
@@ -639,7 +651,7 @@
 
 (defmethod spyder-method-184 spyder ((obj spyder) (arg0 vector))
   (with-pp
-    (when (not (logtest? (-> obj status-flags) 1))
+    (when (not (logtest? (-> obj status-flags) (spyder-flags spflags-0)))
       (let ((s4-0 (new 'stack-no-clear 'vector)))
         (set! (-> s4-0 quad) (-> *up-vector* quad))
         (let ((s3-0 (new 'stack-no-clear 'quaternion)))
@@ -652,7 +664,7 @@
           (forward-up-nopitch->quaternion (-> obj root quat) arg0 s3-1)
           )
         )
-      (logior! (-> obj status-flags) 1)
+      (logior! (-> obj status-flags) (spyder-flags spflags-0))
       )
     0
     (none)
@@ -672,8 +684,8 @@
   (let ((t9-6 (method-of-type nav-enemy track-target!)))
     (t9-6 obj)
     )
-  (logand! (-> obj status-flags) -2)
-  (if (logtest? (-> obj status-flags) 32)
+  (logclear! (-> obj status-flags) (spyder-flags spflags-0))
+  (if (logtest? (-> obj status-flags) (spyder-flags spflags-5))
       (los-control-method-9 (-> obj los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
       )
   (if (-> obj predator-effect?)
@@ -862,7 +874,7 @@
       )
     (spyder-method-181 self)
     (look-at-target! self (enemy-flag death-start))
-    (logand! (-> self status-flags) -3)
+    (logclear! (-> self status-flags) (spyder-flags spflags-1))
     (when (!= (-> self dest-fade) 128.0)
       (set! (-> self shock-effect-end) (+ (current-time) (seconds 1)))
       (set! (-> self dest-fade) 128.0)
@@ -876,7 +888,7 @@
           (t9-0)
           )
       )
-    (logand! (-> self status-flags) -33)
+    (logclear! (-> self status-flags) (spyder-flags spflags-5))
     (look-at-target! self (enemy-flag lock-focus))
     (none)
     )
@@ -902,7 +914,7 @@
                (spyder-method-181 self)
                )
               ((>= 24576.0 f0-0)
-               (logior! (-> self status-flags) 32)
+               (logior! (-> self status-flags) (spyder-flags spflags-5))
                )
               )
             )
@@ -1148,9 +1160,11 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile spyder ((obj spyder))
-  (if (and (not (logtest? (-> obj status-flags) 2)) (-> obj next-state) (let ((v1-5 (-> obj next-state name)))
-                                                                          (or (= v1-5 'notice) (= v1-5 'knocked))
-                                                                          )
+  (if (and (not (logtest? (-> obj status-flags) (spyder-flags spflags-1)))
+           (-> obj next-state)
+           (let ((v1-5 (-> obj next-state name)))
+             (or (= v1-5 'notice) (= v1-5 'knocked))
+             )
            )
       (go (method-of-object obj attack))
       )
@@ -1166,7 +1180,7 @@
           (t9-0)
           )
       )
-    (logand! (-> self status-flags) -5)
+    (logclear! (-> self status-flags) (spyder-flags spflags-2))
     (dotimes (gp-0 4)
       (enable-set! (-> self joint-ik gp-0) #f)
       )
@@ -1179,7 +1193,7 @@
           )
       )
     (when (nonzero? (-> self hit-points))
-      (logior! (-> self status-flags) 4)
+      (logior! (-> self status-flags) (spyder-flags spflags-2))
       (dotimes (gp-0 4)
         (enable-set! (-> self joint-ik gp-0) #t)
         )
@@ -1365,9 +1379,9 @@
   (set-gravity-length (-> obj root dynam) 573440.0)
   (set-vector! (-> obj root scale) 1.5 1.5 1.5 1.0)
   (set! (-> obj my-up-vector quad) (-> *up-vector* quad))
-  (set! (-> obj status-flags) (the-as uint 4))
+  (set! (-> obj status-flags) (spyder-flags spflags-2))
   (if (rand-vu-percent? 0.5)
-      (logior! (-> obj status-flags) 16)
+      (logior! (-> obj status-flags) (spyder-flags spflags-4))
       )
   (set! (-> obj start-pos quad) (-> obj root trans quad))
   (set! (-> obj sound)

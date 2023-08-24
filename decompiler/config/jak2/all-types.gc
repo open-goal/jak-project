@@ -3467,6 +3467,14 @@
     (confirm 24)
     )
 
+(defenum mouse-buttons
+    :bitfield #t
+    :type uint32
+    (left)
+    (right)
+    (middle)
+    )
+
 (deftype scf-time (structure)
   ((stat   uint8  :offset-assert 0)
    (second uint8  :offset-assert 1)
@@ -3556,9 +3564,9 @@
    (deltay int8 :offset-assert 23)
    (wheel uint8 :offset-assert 24)
    (change-time time-frame :offset-assert 32)
-   (button0-abs uint32 3 :offset-assert 40)
-   (button0-shadow-abs uint32 1 :offset-assert 52)
-   (button0-rel uint32 3 :offset-assert 56)
+   (button0-abs mouse-buttons 3 :offset-assert 40)
+   (button0-shadow-abs mouse-buttons 1 :offset-assert 52)
+   (button0-rel mouse-buttons 3 :offset-assert 56)
    (pos vector 2 :inline :offset-assert 80)
    (posx float :offset 80)
    (posy float :offset 84)
@@ -18567,6 +18575,19 @@
 ;; target-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum darkjak-stage
+  :bitfield #t
+  :type uint32
+  (force-on)
+  (active)
+  (bomb0)
+  (bomb1)
+  (invinc)
+  (giant)
+  (no-anim)
+  (disable-force-on)
+  )
+
 (declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
@@ -18695,7 +18716,7 @@
     target-darkjak-bomb0
     (target-darkjak-bomb1 float float)
     target-darkjak-get-off
-    (target-darkjak-get-on int)
+    (target-darkjak-get-on darkjak-stage)
     target-darkjak-giant
     target-darkjak-running-attack
     (target-death symbol)
@@ -24399,7 +24420,7 @@
 (define-extern history-draw-and-update (function pos-history symbol vector symbol))
 (define-extern dma-timeout-cam (function vector))
 (define-extern display-file-info (function int))
-(define-extern add-debug-cursor (function symbol bucket-id int int int none))
+(define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
 (define-extern *boundary-polygon* (inline-array sky-vertex))
 (define-extern init-boundary-regs (function none))
 (define-extern add-boundary-shader (function texture-id dma-buffer none))
@@ -27673,7 +27694,7 @@
 (define-extern position-in-front-of-screen! (function vector float vector vector))
 (define-extern matrix-local->world
   "Returns [[*math-camera*]]'s `inv-camera-rot-smooth` if `smooth?` is true, else return `inv-camera-rot`"
-  (function symbol matrix))
+  (function symbol symbol matrix))
 (define-extern matrix-world->local
   "Returns [[*math-camera*]]'s `camera-rot`"
   (function symbol object matrix))
@@ -28675,6 +28696,16 @@
     )
   )
 
+(defenum gun-track-flags
+  :bitfield #t
+  :type uint16
+  (gutflags-0)
+  (gutflags-1)
+  (gutflags-2)
+  (gutflags-3)
+  (gutflags-4)
+  )
+
 (deftype gun-info (basic)
   ((process                (pointer target)   :offset-assert 4)
    (gun                    (pointer gun)      :offset-assert 8)
@@ -28719,7 +28750,7 @@
    (laser-point            vector   :inline   :offset-assert 304)
    (laser-dir              vector 2 :inline   :offset-assert 320) ;; guess
    (laser-hit-point        vector   :inline   :offset-assert 352)
-   (track?                 uint16             :offset-assert 368)
+   (track?                 gun-track-flags    :offset-assert 368)
    (track-tilt             degrees            :offset-assert 372)
    (track-turn             degrees            :offset-assert 376)
    (track-find-range       meters             :offset-assert 380)
@@ -29006,8 +29037,8 @@
    (start-time   time-frame       :offset-assert 16)
    (attack-time  time-frame       :offset-assert 24)
    (attack-count uint64           :offset-assert 32)
-   (stage        uint32           :offset-assert 40)
-   (want-stage   uint32           :offset-assert 44)
+   (stage        darkjak-stage    :offset-assert 40)
+   (want-stage   darkjak-stage    :offset-assert 44)
    (clock-pos    float            :offset-assert 48)
    (clock-vel    float            :offset-assert 52)
    (clock-on     symbol           :offset-assert 56)
@@ -35342,6 +35373,18 @@
     )
   )
 
+(defenum spyder-flags
+  :bitfield #t
+  (spflags-0)
+  (spflags-1)
+  (spflags-2)
+  (spflags-3)
+  (spflags-4)
+  (spflags-5)
+  (spflags-6)
+  (spflags-7)
+  )
+
 (deftype spyder (nav-enemy)
   ((los               los-control :inline :offset-assert 608)
    (joint             joint-mod           :offset-assert 756)
@@ -35349,7 +35392,7 @@
    ;; (focus-pos         vector      :inline :offset 348)
    (face-pos          vector      :inline :offset 800)
    (my-up-vector      vector      :inline :offset-assert 816)
-   (status-flags      uint64              :offset-assert 832)
+   (status-flags      spyder-flags        :offset-assert 832)
    (change-dir-timer  time-frame          :offset-assert 840)
    (fire-info         vector 2    :inline :offset-assert 848)
    (joint-ik          joint-mod-ik 4      :offset 880)
@@ -35881,10 +35924,23 @@
   :flag-assert         #x900000010
   )
 
+(defenum hover-nav-flags
+  :bitfield #t
+  :type uint16
+  (honflags-0)
+  (honflags-1)
+  (honflags-2)
+  (honflags-3)
+  (honflags-4)
+  (honflags-5)
+  (honflags-6)
+  (honflags-7)
+  )
+
 (deftype hover-nav-control (basic)
   ((root                        collide-shape-moving        :offset-assert 4)
    (nav                         nav-network                 :offset-assert 8)
-   (flags                       uint16                      :offset-assert 12)
+   (flags                       hover-nav-flags             :offset-assert 12)
    (params                      hover-nav-params            :offset-assert 16)
    (path-timer                  time-frame                  :offset-assert 24)
    (transvv                     vector              :inline :offset-assert 32)
@@ -36551,6 +36607,20 @@
 ;; wren                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum wren-flags
+  :bitfield #t
+  :type uint16
+  (wrflags-0)
+  (wrflags-1)
+  (wrflags-2)
+  (wrflags-3)
+  (wrflags-4)
+  (wrflags-5)
+  (wrflags-6)
+  (wrflags-7)
+  )
+
+
 (deftype wren (process-drawable)
   ((move-dest      vector  :inline :offset-assert 208)
    (fly-curve      curve-control 2 :offset-assert 224)
@@ -36565,7 +36635,7 @@
    (bob-level-seek float           :offset-assert 264)
    (bank-angle     float           :offset-assert 268)
    (peck-timer     uint64          :offset-assert 272)
-   (flags          uint16          :offset-assert 280)
+   (flags          wren-flags      :offset-assert 280)
    )
   :method-count-assert 28
   :size-assert         #x11a
@@ -37311,6 +37381,18 @@
   :flag-assert         #x900000040
   )
 
+(defenum grenadier-flags
+  :bitfield #t
+  (grflags-0)
+  (grflags-1)
+  (grflags-2)
+  (grflags-3)
+  (grflags-4)
+  (grflags-5)
+  (grflags-6)
+  (grflags-7)
+  )
+
 (deftype grenadier (nav-enemy)
   ((shot-trajectory           trajectory            :inline :offset-assert 608)
    (hostile-path              path-control                  :offset-assert 648)
@@ -37319,7 +37401,7 @@
    (heading                   symbol                        :offset-assert 724)
    (move-pos                  vector                :inline :offset-assert 736)
    (move-angle                float                         :offset-assert 752)
-   (status-flags              uint64                        :offset-assert 760)
+   (status-flags              grenadier-flags               :offset-assert 760)
    (suppress-knockaside-timer time-frame                    :offset-assert 768)
    )
   :method-count-assert 184
@@ -38710,10 +38792,19 @@
     (idle () _type_ :state 20))
   )
 
+(defenum mtn-plat-flags
+  :bitfield #t
+  :type uint16
+  (mtpflags-0)
+  (mtpflags-1)
+  (mtpflags-2)
+  (mtpflags-3)
+  )
+
 (deftype mtn-plat-return (base-plat)
   (
     (ride-timer time-frame :offset-assert 272)
-    (flags      uint16     :offset-assert 280)
+    (flags      mtn-plat-flags     :offset-assert 280)
     (path-pos   float      :offset-assert 284)
     (dest-pos   float      :offset-assert 288)
     (path-speed float      :offset-assert 292)
@@ -39346,6 +39437,32 @@
   )
 ;; ---bot-h:bot-flags
 
+(defenum bot-task-bits
+  :type uint32
+  :bitfield #t
+  (botbits-0)
+  (botbits-1)
+  (botbits-2)
+  (botbits-3)
+  (botbits-4)
+  (botbits-5)
+  (botbits-6)
+  (botbits-7)
+  )
+
+(defenum waypoint-bits
+  :bitfield #t
+  :type uint32
+  (wabits-0)
+  (wabits-1)
+  (wabits-2)
+  (wabits-3)
+  (wabits-4)
+  (wabits-5)
+  (wabits-6)
+  (wabits-7)
+  )
+
 (deftype bot (nav-enemy)
   ((bot-flags                       bot-flags              :offset-assert 604)
    (min-speed                       float                  :offset-assert 608)
@@ -39361,9 +39478,9 @@
    (ai-ctrl                         ai-task-control        :offset-assert 648)
    (course                          bot-course             :offset-assert 652)
    (waypoint                        bot-waypoint           :offset-assert 656)
-   (waypoint-bits                   uint32                 :offset-assert 660)
+   (waypoint-bits                   waypoint-bits          :offset-assert 660)
    (waypoint-int32a                 int32                  :offset-assert 664)
-   (bot-task-bits                   uint32                 :offset-assert 668)
+   (bot-task-bits                   bot-task-bits          :offset-assert 668)
    (hit-invuln-ignore-me-delay      uint32                 :offset-assert 672)
    (hit-invuln-focus-disable-delay  uint32                 :offset-assert 676)
    (warn-to-fail-timeout            uint32                 :offset-assert 680)
@@ -40050,9 +40167,22 @@
   :flag-assert         #x900000054
   )
 
+(defenum amphibian-flags
+  :bitfield #t
+  :type uint8
+  (amflags-0)
+  (amflags-1)
+  (amflags-2)
+  (amflags-3)
+  (amflags-4)
+  (amflags-5)
+  (amflags-6)
+  (amflags-7)
+  )
+
 (deftype amphibian (nav-enemy)
   ((tongue-scale       float               :offset-assert 604)
-   (flags              uint8               :offset-assert 608)
+   (flags              amphibian-flags     :offset-assert 608)
    (knocked-anim-index int8                :offset-assert 609)
    (jump-anim-index    int8                :offset-assert 610)
    (tongue-mode        uint64              :offset-assert 616)
@@ -40802,6 +40932,19 @@
     )
   )
 
+(defenum gun-buoy-flags
+  :bitfield #t
+  :type uint16
+  (gubflags-0)
+  (gubflags-1)
+  (gubflags-2)
+  (gubflags-3)
+  (gubflags-4)
+  (gubflags-5)
+  (gubflags-6)
+  (gubflags-7)
+  )
+
 (deftype gun-buoy (nav-enemy)
   ((gun-elev-jmod      joint-mod          :offset-assert 604)
    (start-pos          vector     :inline :offset-assert 608)
@@ -40821,7 +40964,7 @@
    (stare-down-timer   time-frame         :offset-assert 736)
    (warning-id         sound-id           :offset-assert 744)
    (voice-id           sound-id           :offset-assert 748)
-   (flags              uint16             :offset-assert 752)
+   (flags              gun-buoy-flags     :offset-assert 752)
    )
   :method-count-assert 184
   :size-assert         #x2f2
@@ -42067,6 +42210,27 @@
 ;; fort-robotank-turret           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum robotank-turret-flags
+  :bitfield #t
+  :type uint16
+  (rotflags-0)
+  (rotflags-1)
+  (rotflags-2)
+  (rotflags-3)
+  (rotflags-4)
+  (rotflags-5)
+  (rotflags-6)
+  (rotflags-7)
+  (rotflags-8)
+  (rotflags-9)
+  (rotflags-10)
+  (rotflags-11)
+  (rotflags-12)
+  (rotflags-13)
+  (rotflags-14)
+  (rotflags-15)
+  )
+
 (deftype fort-robotank-turret (process-focusable)
   (
     (los                 los-control :inline :offset-assert 208)
@@ -42093,7 +42257,7 @@
     (gun-joint-r         int32 2             :offset-assert 572) ;; elt size: 4
     (gun-spread          float               :offset-assert 580)
     (gun-index           int32               :offset-assert 584)
-    (flags               uint16              :offset-assert 588)
+    (flags               robotank-turret-flags :offset-assert 588)
     (turn-sound-id       sound-id            :offset-assert 592)
   )
   :method-count-assert 35
@@ -42237,6 +42401,28 @@
   :flag-assert         #x900000090
   )
 
+
+(defenum robotank-flags
+  :bitfield #t
+  :type uint16
+  (roflags-0)
+  (roflags-1)
+  (roflags-2)
+  (roflags-3)
+  (roflags-4)
+  (roflags-5)
+  (roflags-6)
+  (roflags-7)
+  (roflags-8)
+  (roflags-9)
+  (roflags-10)
+  (roflags-11)
+  (roflags-12)
+  (roflags-13)
+  (roflags-14)
+  (roflags-15)
+  )
+
 (deftype fort-robotank (process-drawable)
   (
     (root  collide-shape-moving  :override)
@@ -42246,7 +42432,7 @@
     (tread              fort-robotank-tread-info 2 :inline :offset-assert 224 :score 100) ;; elt size: 144
     (path-info          fort-robotank-path-info-array     :offset-assert 512)
     (segment-table      (inline-array fort-robotank-segment)    :offset-assert 516)
-    (flags              uint16     :offset-assert 520)
+    (flags              robotank-flags     :offset-assert 520)
     (pov-cam-offset     vector 2 :inline  :offset-assert 528) ;; elt size: 16
     (turret             handle      :offset-assert 560)
     (no-collision-timer time-frame :offset-assert 568)
@@ -46148,10 +46334,17 @@
     )
   )
 
+(defenum tomb-plat-flags
+  :bitfield #t
+  :type uint16
+  (topflags-0)
+  (topflags-1)
+  )
+
 (deftype tomb-plat-return (base-plat)
   ((intro-path path-control :offset-assert 272)
    (ride-timer time-frame :offset-assert 280)
-   (flags      uint16  :offset-assert 288)
+   (flags      tomb-plat-flags  :offset-assert 288)
    (path-pos   float   :offset-assert 292)
    (dest-pos   float   :offset-assert 296)
    (path-speed float   :offset-assert 300)
@@ -46340,6 +46533,15 @@
     )
   )
 
+(defenum tomb-vibe-flags
+  :bitfield #t
+  :type uint16
+  (tovflags-0)
+  (tovflags-1)
+  (tovflags-2)
+  (tovflags-3)
+  )
+
 (deftype tomb-vibe (process-drawable)
   ((spawn-pos         vector        :inline :offset-assert 208)
    (pat-tbl           (pointer int32)         :offset-assert 224) ;; pattern-table
@@ -46350,7 +46552,7 @@
    (pat-duration      time-frame            :offset-assert 248)
    (actor-group       (pointer actor-group) :offset-assert 256)
    (actor-group-count int32                 :offset-assert 260)
-   (flags             uint16                :offset-assert 264)
+   (flags             tomb-vibe-flags       :offset-assert 264)
    (on-activate       basic                 :offset-assert 268)
    )
   :method-count-assert 24
@@ -47761,6 +47963,13 @@
   :flag-assert         #x900000080
   )
 
+(defenum under-block-flags
+  :bitfield #t
+  (unbflags-0)
+  (unbflags-1)
+  (unbflags-2)
+  )
+
 (deftype under-block (process-focusable)
   ((puzzle             under-block-puzzle :offset-assert 204)
    (my-parent          (pointer process)  :offset-assert 208)
@@ -47776,7 +47985,7 @@
    (pulse-op           int8               :offset-assert 224)
    (pulse-pc           int8               :offset-assert 225)
    (pulse-ctr          int8               :offset-assert 226)
-   (flags              uint64             :offset-assert 232)
+   (flags              under-block-flags  :offset-assert 232)
    (activated-time     time-frame         :offset-assert 240)
    (rot-axis           vector     :inline :offset-assert 256)
    (away-from-focal-pt vector     :inline :offset-assert 272)
@@ -52916,6 +53125,16 @@
 ;; rapid-gunner                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum rapid-gunner-flags
+  :bitfield #t
+  (ragflags-0)
+  (ragflags-1)
+  (ragflags-2)
+  (ragflags-3)
+  (ragflags-4)
+  (ragflags-5)
+  )
+
 (deftype rapid-gunner (nav-enemy)
   ((los              los-control :inline :offset-assert 608)
    (joint            joint-mod           :offset-assert 756)
@@ -52931,7 +53150,7 @@
    (spin-up-angle    float               :offset-assert 840)
    (spin-up-timer    time-frame          :offset-assert 848)
    (shoot-anim-index int32               :offset-assert 856)
-   (status-flags     uint64              :offset-assert 864)
+   (status-flags     rapid-gunner-flags  :offset-assert 864)
    (start-pos        vector      :inline :offset-assert 880)
    (dest-pos         vector      :inline :offset-assert 896)
    (hop-dir          vector      :inline :offset-assert 912)

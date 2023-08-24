@@ -129,11 +129,11 @@
   (with-pp
     (case arg2
       (('set-task)
-       (let* ((s1-1 (logtest? (-> obj bot-task-bits) 16))
+       (let* ((s1-1 (logtest? (-> obj bot-task-bits) (bot-task-bits botbits-4)))
               (t9-0 (method-of-type sig general-event-handler))
               (s5-1 (t9-0 obj arg0 arg1 arg2 arg3))
               )
-         (when (and (not s1-1) (logtest? (-> obj bot-task-bits) 16))
+         (when (and (not s1-1) (logtest? (-> obj bot-task-bits) (bot-task-bits botbits-4)))
            (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
              (set! (-> a1-2 from) (process->ppointer pp))
              (set! (-> a1-2 num-params) 0)
@@ -180,7 +180,7 @@
 
 ;; WARN: disable def twice: 39. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod sig-under-method-262 sig-under ((obj sig-under) (arg0 symbol))
-  (when (or (logtest? (-> obj bot-task-bits) 2)
+  (when (or (logtest? (-> obj bot-task-bits) (bot-task-bits botbits-1))
             (and arg0 (let ((f0-0 81920.0))
                         (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> obj root trans)))
                         )
@@ -200,7 +200,7 @@
   )
 
 (defmethod sig-under-method-264 sig-under ((obj sig-under))
-  (and (logtest? (-> obj bot-task-bits) 8)
+  (and (logtest? (-> obj bot-task-bits) (bot-task-bits botbits-3))
        (not (channel-active? obj (the-as uint 0)))
        (scene-play obj "under-get-sig-out-res" #f)
        )
@@ -382,7 +382,7 @@
     (until #f
       (let ((gp-0 (get-rand-int self 2)))
         (let ((s5-0 (new 'stack-no-clear 'vector)))
-          (if (and (not (logtest? (-> self bot-task-bits) 1)) (zero? gp-0))
+          (if (and (not (logtest? (-> self bot-task-bits) (bot-task-bits botbits-0))) (zero? gp-0))
               (set! (-> s5-0 quad) (-> self sig5-course spots 2 center quad))
               (set! (-> s5-0 quad) (-> self sig5-course spots 1 center quad))
               )
@@ -480,7 +480,7 @@
 ;; WARN: Return type mismatch int vs symbol.
 (defun sig5-default-check-too-far ((arg0 sig-under))
   (let ((v0-0 (bot-simple-check-too-far arg0)))
-    (if (logtest? (-> arg0 bot-task-bits) 4)
+    (if (logtest? (-> arg0 bot-task-bits) (bot-task-bits botbits-2))
         (set! v0-0 2)
         )
     (the-as symbol v0-0)
@@ -536,7 +536,7 @@
                   (the-as
                     (function sigt-wait-spot sig symbol)
                     (lambda ((arg0 object) (arg1 sig-under))
-                      (if (not (and (logtest? (-> arg1 bot-task-bits) 1)
+                      (if (not (and (logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-0))
                                     *target*
                                     (not (logtest? (-> *target* focus-status) (focus-status dead in-air edge-grab)))
                                     )
@@ -602,7 +602,7 @@
         :nav-mesh-index -1
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
-          (logand! (-> arg0 bot-task-bits) -5)
+          (logclear! (-> arg0 bot-task-bits) (bot-task-bits botbits-2))
           (logior! (-> arg0 bot-flags) (bot-flags bf06))
           (logior! (-> arg0 enemy-flags) (enemy-flag enable-on-active checking-water))
           (set! (-> arg0 notice-enemy-dist) 122880.0)
@@ -1178,8 +1178,8 @@
                     (function sigt-wait-spot sig symbol)
                     (lambda ((arg0 object) (arg1 sig-under))
                       (with-pp
-                        (when (not (logtest? (-> arg1 waypoint-bits) 1))
-                          (logior! (-> arg1 waypoint-bits) 1)
+                        (when (not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
+                          (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                             (set! (-> a1-1 from) (process->ppointer pp))
                             (set! (-> a1-1 num-params) 0)
@@ -1229,8 +1229,8 @@
                   (the-as
                     (function sigt-wait-spot sig symbol)
                     (lambda ((arg0 object) (arg1 sig-under))
-                      (when (and (not (logtest? (-> arg1 waypoint-bits) 1)) (+ (current-time) (seconds -6)))
-                        (logior! (-> arg1 waypoint-bits) 1)
+                      (when (and (not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0))) (+ (current-time) (seconds -6)))
+                        (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                         (set-setting! 'music 'danger3 0.0 0)
                         )
                       #f
@@ -1332,17 +1332,17 @@
                           (play-speech arg1 12)
                           )
                       (cond
-                        ((not (logtest? (-> arg1 waypoint-bits) 1))
-                         (logior! (-> arg1 waypoint-bits) 1)
+                        ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
+                         (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                          (process-release? arg1)
                          (sig-under-method-260 arg1)
                          (move-to-point! (-> arg1 root) (the-as vector (-> arg1 sig5-course spots 20)))
                          #f
                          )
-                        ((not (logtest? (-> arg1 waypoint-bits) 2))
+                        ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-1)))
                          (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 2))
                            (remove-setting! 'entity-name)
-                           (logior! (-> arg1 waypoint-bits) 2)
+                           (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-1))
                            (add-process *gui-control* arg1 (gui-channel art-load) (gui-action queue) "under-centipede-three" -99.0 0)
                            )
                          #f
@@ -1398,7 +1398,7 @@
                     (lambda ((arg0 object) (arg1 sig-under))
                       (local-vars (v1-14 symbol))
                       (with-pp
-                        (when (logtest? (-> arg1 waypoint-bits) 1)
+                        (when (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                             (set! (-> a1-1 from) (process->ppointer pp))
                             (set! (-> a1-1 num-params) 0)
@@ -1483,7 +1483,7 @@
           (clear-poi-and-focus! arg0)
           (set! (-> arg0 focus-mode) 0)
           (set! (-> arg0 root penetrated-by) (get-penetrate-info arg0))
-          (logior! (-> arg0 waypoint-bits) 1)
+          (logior! (-> arg0 waypoint-bits) (waypoint-bits wabits-0))
           (send-event arg0 'move-trans (-> arg0 sig5-course spots 21))
           (send-event *target* 'continue (get-continue-by-name *game-info* "sig5-skip-to-cent2"))
           (react-to-focus arg0)
@@ -1498,7 +1498,7 @@
         :on-set (lambda ((arg0 sig-under))
           (stop-speech arg0 (the-as uint 0) #f)
           (set-setting! 'music 'danger7 0.0 0)
-          (logand! (-> arg0 bot-task-bits) -9)
+          (logclear! (-> arg0 bot-task-bits) (bot-task-bits botbits-3))
           (let ((v1-7 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
             (set! (-> v1-7 bytes 5) 1)
             (set! (-> v1-7 bytes 6) 23)
@@ -1609,14 +1609,14 @@
                         (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
                         (return #t)
                         )
-                      (if (not (logtest? (-> arg1 bot-task-bits) 16))
+                      (if (not (logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-4)))
                           (set! (-> arg1 waypoint-time0) (current-time))
                           )
-                      (when (and (not (logtest? (-> arg1 waypoint-bits) 2))
+                      (when (and (not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-1)))
                                  (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.5))
                                  (not (logtest? (-> arg1 focus-status) (focus-status in-air)))
                                  )
-                        (logior! (-> arg1 waypoint-bits) 2)
+                        (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-1))
                         (logior! (-> arg1 enemy-flags) (enemy-flag enable-on-active checking-water))
                         )
                       (if (and (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 1))
@@ -1639,8 +1639,8 @@
                                       )
                                  (or (nonzero? (-> arg1 next-chase-play-time)) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 6)))
                                  )
-                        (when (not (logtest? (-> arg1 waypoint-bits) 1))
-                          (logior! (-> arg1 waypoint-bits) 1)
+                        (when (not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
+                          (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                           (send-event (ppointer->process (-> arg1 my-simple-focus)) 'move-trans (-> arg1 sig5-course spots 32))
                           (set! (-> arg1 poi-handle) (ppointer->handle (-> arg1 my-simple-focus)))
                           )
@@ -1707,11 +1707,11 @@
                   (the-as
                     (function sigt-wait-spot sig symbol)
                     (lambda ((arg0 object) (arg1 sig-under))
-                      (when (and (not (logtest? (-> arg1 waypoint-bits) 1))
+                      (when (and (not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
                                  (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.5))
                                  (not (logtest? (-> arg1 focus-status) (focus-status in-air)))
                                  )
-                        (logior! (-> arg1 waypoint-bits) 1)
+                        (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                         (logior! (-> arg1 enemy-flags) (enemy-flag enable-on-active checking-water))
                         )
                       (cond
