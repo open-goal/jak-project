@@ -546,6 +546,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
     {"O~Y~-16H~-1V/~Z", "Ø"},
+    {"A~Y~-6H~+3V,~Z", "Ą"},
+    {"E~Y~-6H~+2V,~Z", "Ę"},
+    {"L~Y~-16H~+0V/~Z", "Ł"},
+    {"Z~Y~-21H~-5Vº~Z", "Ż"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -558,6 +562,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"I~Y~-19H~-5V'~Z", "Í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"C~Y~-21H~-5V'~Z", "Ć"},
+    {"N~Y~-21H~-5V'~Z", "Ń"},
+    {"S~Y~-21H~-5V'~Z", "Ś"},
+    {"Z~Y~-21H~-5V'~Z", "Ź"},
 
     // double acute accents
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom
