@@ -134,6 +134,8 @@ struct Config {
 
   bool is_pal = false;
 
+  bool make_merc_models_common = false;
+
   bool write_patches = false;
   bool apply_patches = false;
 

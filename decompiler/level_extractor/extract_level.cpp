@@ -273,10 +273,12 @@ void extract_common(const ObjectFileDB& db,
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level);
 
-  // hack in stuff from all levels into common
-  for (const std::string& lvl_dgo_name : dgo_names) {
-    auto tex_remap = extract_tex_remap(db, lvl_dgo_name);
-    extract_art_groups_from_level(db, tex_db, tex_remap, lvl_dgo_name, tfrag_level);
+  if (config.make_merc_models_common) {
+    // stuff merc models from all levels into GAME.fr3
+    for (const std::string& lvl_dgo_name : dgo_names) {
+      auto tex_remap = extract_tex_remap(db, lvl_dgo_name);
+      extract_art_groups_from_level(db, tex_db, tex_remap, lvl_dgo_name, tfrag_level);
+    }
   }
 
   std::set<std::string> textures_we_have;
