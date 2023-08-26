@@ -342,9 +342,6 @@
   "plat.o"
   "plat-button.o"
   "plat-eco.o"
-  "plat-ag.go"
-  "plat-eco-ag.go"
-  "mother-spider-ag.go"
   "ropebridge.o"
   "ticky.o"
   "hud-classes-pc.o" ;; added
