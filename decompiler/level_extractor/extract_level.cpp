@@ -131,6 +131,28 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   }
 }
 
+std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
+                                                         const std::string& dgo_name) {
+  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
+  if (!bsp_rec) {
+    lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
+    return {};
+  }
+  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
+
+  lg::info("Processing level {} ({})", dgo_name, level_name);
+  const auto& bsp_file = db.lookup_record(*bsp_rec);
+  bool ok = is_valid_bsp(bsp_file.linked_data);
+  ASSERT(ok);
+
+  level_tools::DrawStats draw_stats;
+  // draw_stats.debug_print_dma_data = true;
+  level_tools::BspHeader bsp_header;
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
+
+  return bsp_header.texture_remap_table;
+}
+
 std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB& db,
                                                               const TextureDB& tex_db,
                                                               const std::string& dgo_name,
@@ -253,8 +275,7 @@ void extract_common(const ObjectFileDB& db,
 
   // hack in stuff from all levels into common
   for (const std::string& lvl_dgo_name : dgo_names) {
-    auto tex_remap =
-        extract_bsp_from_level(db, tex_db, lvl_dgo_name, config.hacks, false, tfrag_level);
+    auto tex_remap = extract_tex_remap(db, lvl_dgo_name);
     extract_art_groups_from_level(db, tex_db, tex_remap, lvl_dgo_name, tfrag_level);
   }
 
