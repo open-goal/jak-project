@@ -232,7 +232,8 @@ void extract_common(const ObjectFileDB& db,
                     const std::string& dgo_name,
                     bool dump_levels,
                     const fs::path& output_folder,
-                    const Config& config) {
+                    const Config& config,
+                    const std::vector<std::string>& dgo_names) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
     lg::warn("Skipping common extract for {} because the DGO was not part of the input", dgo_name);
     return;
@@ -245,9 +246,17 @@ void extract_common(const ObjectFileDB& db,
 
   confirm_textures_identical(tex_db);
 
+  // original GAME.CGO
   tfrag3::Level tfrag_level;
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level);
+
+  // hack in stuff from all levels into common
+  for (const std::string& lvl_dgo_name : dgo_names) {
+    auto tex_remap =
+        extract_bsp_from_level(db, tex_db, lvl_dgo_name, config.hacks, false, tfrag_level);
+    extract_art_groups_from_level(db, tex_db, tex_remap, lvl_dgo_name, tfrag_level);
+  }
 
   std::set<std::string> textures_we_have;
 
@@ -350,7 +359,7 @@ void extract_all_levels(const ObjectFileDB& db,
                         bool debug_dump_level,
                         bool extract_collision,
                         const fs::path& output_path) {
-  extract_common(db, tex_db, common_name, debug_dump_level, output_path, config);
+  extract_common(db, tex_db, common_name, debug_dump_level, output_path, config, dgo_names);
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
