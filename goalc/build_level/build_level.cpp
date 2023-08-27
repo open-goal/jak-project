@@ -154,7 +154,16 @@ bool run_build_level(const std::string& input_file,
       return false;
     }
 
-    fs::path in_folder = file_util::get_jak_project_dir() / "iso_data/jak1/";
+    fs::path in_folder;
+    lg::info("Looking for ISO path...");
+    for (const auto& entry :
+         fs::directory_iterator(file_util::get_jak_project_dir() / "iso_data")) {
+      if (entry.is_directory() &&
+          entry.path().filename().string().find("jak1") != std::string::npos) {
+        lg::info("Found ISO path: {}", entry.path().string());
+        in_folder = entry.path();
+      }
+    }
     std::vector<fs::path> dgos, objs;
     for (const auto& dgo_name : config.dgo_names) {
       dgos.push_back(in_folder / dgo_name);
