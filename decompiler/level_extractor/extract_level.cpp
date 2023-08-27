@@ -131,6 +131,27 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   }
 }
 
+std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
+                                                         const std::string& dgo_name) {
+  auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
+  if (!bsp_rec) {
+    lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
+    return {};
+  }
+  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
+
+  lg::info("Processing level {} ({})", dgo_name, level_name);
+  const auto& bsp_file = db.lookup_record(*bsp_rec);
+  bool ok = is_valid_bsp(bsp_file.linked_data);
+  ASSERT(ok);
+
+  level_tools::DrawStats draw_stats;
+  level_tools::BspHeader bsp_header;
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
+
+  return bsp_header.texture_remap_table;
+}
+
 std::vector<level_tools::TextureRemap> extract_bsp_from_level(const ObjectFileDB& db,
                                                               const TextureDB& tex_db,
                                                               const std::string& dgo_name,

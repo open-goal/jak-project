@@ -56,7 +56,7 @@ add_library(compiler
         regalloc/Allocator_v2.cpp
         compiler/docs/DocTypes.cpp)
 
-target_link_libraries(compiler common Zydis tiny_gltf)
+target_link_libraries(compiler common Zydis tiny_gltf decomp)
 
 if (WIN32)
     target_link_libraries(compiler mman)
