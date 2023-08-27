@@ -164,6 +164,10 @@ bool run_build_level(const std::string& input_file,
         in_folder = entry.path();
       }
     }
+    if (!fs::exists(in_folder)) {
+      lg::error("Could not find ISO path!");
+      return false;
+    }
     std::vector<fs::path> dgos, objs;
     for (const auto& dgo_name : config.dgo_names) {
       dgos.push_back(in_folder / dgo_name);
