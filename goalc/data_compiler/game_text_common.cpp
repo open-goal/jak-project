@@ -99,7 +99,17 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
  */
 void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.m_banks) {
+    // get font encoding information
     auto font = get_font_bank(bank->m_text_version);
+
+    // convert speakers once.
+    auto speakers_converted = bank->m_speakers;
+    for (auto& [id, name] : speakers_converted) {
+      // convert name in-place. we copied the map earlier so this is safe.
+      // the subtitle lines have the speaker "id" stored in them, which is the map key here.
+      name = font->convert_utf8_to_game(name);
+    }
+
     DataObjectGenerator gen;
     gen.add_type_tag("subtitle-text-info");  // type
     gen.add_word(bank->m_scenes.size());     // length
@@ -128,9 +138,18 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
       for (auto& subtitle : scene.m_lines) {
         gen.add_word(subtitle.metadata.frame_start);                               // frame
         gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(subtitle.text));  // line
-        gen.add_ref_to_string_in_pool(
-            font->convert_utf8_to_game(subtitle.metadata.speaker));  // speaker
-        gen.add_word(subtitle.metadata.offscreen);                   // offscreen
+        // speaker
+        if (subtitle.metadata.speaker.empty()) {
+          gen.add_ref_to_string_in_pool("");
+        } else {
+          auto it = speakers_converted.find(subtitle.metadata.speaker);
+          if (it == speakers_converted.end()) {
+            throw std::runtime_error(fmt::format("in file `{}`: could not find speaker {}",
+                                                 bank->m_file_path, subtitle.metadata.speaker));
+          }
+          gen.add_ref_to_string_in_pool(it->second);
+        }
+        gen.add_word(subtitle.metadata.offscreen);  // offscreen
       }
     }
 

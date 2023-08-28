@@ -67,6 +67,7 @@ class SubtitleEditor {
   bool m_current_scene_offscreen = false;
   bool m_current_scene_merge = false;
 
+  bool m_new_scene_as_current = true;
   std::string m_new_scene_name = "";
   std::string m_new_scene_id = "0";
 
