@@ -99,7 +99,11 @@ void SubtitleEditor::draw_window() {
   } else {
     ImGui::PushStyleColor(ImGuiCol_Text, m_selected_text_color);
   }
-  if (ImGui::TreeNode("Currently Selected Cutscene")) {
+  if (ImGui::TreeNode(
+          "current_scene", "%s",
+          m_current_scene
+              ? fmt::format("Currently Selected Scene - {}", m_current_scene->m_name).c_str()
+              : "Currently Selected Scene")) {
     ImGui::PopStyleColor();
     if (m_current_scene) {
       draw_subtitle_options(*m_current_scene, true);
@@ -367,21 +371,23 @@ std::string SubtitleEditor::subtitle_line_summary(
   // V1
   if (is_v1_format()) {
     if (line.text.empty()) {
-      return fmt::format("{}] {}", info_header, line_text);
+      return fmt::format("[{}] {}", line_meta.frame_start, line_text);
+    } else {
+      return fmt::format(
+          "[{}] {}: {}", line_meta.frame_start,
+          m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker), line_text);
     }
-    return fmt::format("{}] {} - '{}'", info_header,
-                       m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
-                       line_text);
   }
   // V2
-  if (line_meta.merge) {
-    return fmt::format("{}-{}] {} - {}", info_header, line_meta.frame_end,
-                       m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
+  else {
+    auto speaker_text =
+        line_meta.speaker == "none"
+            ? ""
+            : fmt::format("{}: ", m_subtitle_db.m_banks[m_current_language]->m_speakers.at(
+                                       line_meta.speaker));
+    return fmt::format("[{}-{}] {}{}", line_meta.frame_start, line_meta.frame_end, speaker_text,
                        line_text);
   }
-  return fmt::format("{}-{}] {} - '{}'", info_header, line_meta.frame_end,
-                     m_subtitle_db.m_banks[m_current_language]->m_speakers.at(line_meta.speaker),
-                     line_text);
 }
 
 void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool current_scene) {
