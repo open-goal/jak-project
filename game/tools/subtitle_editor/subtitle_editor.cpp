@@ -343,7 +343,7 @@ std::string SubtitleEditor::subtitle_line_summary(
   std::string line_text = "";
   if (!line.text.empty()) {
     if (m_truncate_summaries && line.text.size() > 30) {
-      line_text = line.text.substr(0, 30) + "...";
+      line_text = line.text.substr(0, 27) + "...";
     } else {
       line_text = line.text;
     }
@@ -351,7 +351,7 @@ std::string SubtitleEditor::subtitle_line_summary(
     if (is_v1_format()) {
       line_text = "Clear Screen";
     } else if (line_meta.merge) {
-      line_text = "<Merge>";
+      line_text = "<original game text>";
     }
   }
   // Append important info about the frame / speaker to the front
@@ -435,16 +435,18 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       }
       bool hide_line_options = false;
       if (is_v1_format()) {
-        if (line_text.empty()) {
-          hide_line_options = true;
-        } else {
-          ImGui::InputInt("Starting Frame", &subtitle_line->metadata.frame_start,
-                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
-        }
+        ImGui::InputInt("Starting Frame", &frames[0],
+                        ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       } else {
         ImGui::InputInt2("Start and End Frame", frames,
                          ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal);
       }
+
+      // no text + text isn't going to be filled automatically by the game
+      if (line_text.empty() && !line_meta.merge) {
+        hide_line_options = true;
+      }
+
       if (!hide_line_options) {
         if (ImGui::BeginCombo(
                 "Speaker",
@@ -461,7 +463,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
           }
           ImGui::EndCombo();
         }
-        ImGui::InputText("Text", &subtitle_line->text,
+        ImGui::InputText("Text", &line_text,
                          line_meta.merge ? ImGuiInputTextFlags_ReadOnly : 0);
         ImGui::Checkbox("Offscreen?", &subtitle_line->metadata.offscreen);
         if (!is_v1_format()) {
@@ -469,7 +471,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
           if (ImGui::Checkbox("Merge Text?", &subtitle_line->metadata.merge)) {
             // Clear text if they've checked it
             if (subtitle_line->metadata.merge) {
-              subtitle_line->text = "";
+              line_text = "";
             }
           }
         }
@@ -533,7 +535,7 @@ void SubtitleEditor::draw_new_scene_line_form() {
       }
     }
   }
-  bool rendered_text_entry_btn = false;
+
   // Validation:
   // - start frame > 0
   // - end frame > start_frame
@@ -546,7 +548,6 @@ void SubtitleEditor::draw_new_scene_line_form() {
     ImGui::Text("Can't add a new text entry with the current fields!");
     ImGui::PopStyleColor();
   } else {
-    rendered_text_entry_btn = true;
     if (ImGui::Button("Add Text Entry")) {
       m_current_scene->add_line(m_current_scene_text, m_current_scene_frames[0],
                                 m_current_scene_frames[1], m_current_scene_offscreen,
@@ -559,9 +560,6 @@ void SubtitleEditor::draw_new_scene_line_form() {
       ImGui::Text("Can't add a clear screen entry with the current fields!");
       ImGui::PopStyleColor();
     } else {
-      if (rendered_text_entry_btn) {
-        ImGui::SameLine();
-      }
       if (ImGui::Button("Add Clear Screen Entry")) {
         m_current_scene->add_line("", m_current_scene_frames[0], 0, m_current_scene_offscreen, "",
                                   false);
