@@ -207,6 +207,8 @@ void SubtitleEditor::draw_speaker_options() {
     const auto& bank = m_subtitle_db.m_banks[m_current_language];
     for (auto& [speaker_id, speaker_localized] : bank->m_speakers) {
       if (speaker_id == "none") {
+        // this is a special speaker that has ID zero and does not appear in-game
+        // it means there was no speaker for the line. (e.g. text-only, not vocal)
         continue;
       }
       // Insertion or deletion not needed here as it has to be wired up in .gc and C++ code
