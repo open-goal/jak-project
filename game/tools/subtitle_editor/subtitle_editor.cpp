@@ -240,9 +240,15 @@ void SubtitleEditor::draw_scene_section_header(const bool non_cutscenes) {
           new_scene.m_hint_id = 0;
         }
         m_subtitle_db.m_banks.at(m_current_language)->m_scenes.emplace(m_new_scene_name, new_scene);
+        if (m_new_scene_as_current) {
+          m_current_scene =
+              &m_subtitle_db.m_banks.at(m_current_language)->m_scenes.at(m_new_scene_name);
+        }
+
         m_new_scene_name = "";
       }
-      ImGui::NewLine();
+      ImGui::SameLine();
+      ImGui::Checkbox("Set Scene as Current", &m_new_scene_as_current);
     }
     ImGui::TreePop();
   }
