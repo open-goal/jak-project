@@ -384,7 +384,7 @@ std::string SubtitleEditor::subtitle_line_summary(
         line_meta.speaker == "none"
             ? ""
             : fmt::format("{}: ", m_subtitle_db.m_banks[m_current_language]->m_speakers.at(
-                                       line_meta.speaker));
+                                      line_meta.speaker));
     return fmt::format("[{}-{}] {}{}", line_meta.frame_start, line_meta.frame_end, speaker_text,
                        line_text);
   }
@@ -477,8 +477,7 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
           }
           ImGui::EndCombo();
         }
-        ImGui::InputText("Text", &line_text,
-                         line_meta.merge ? ImGuiInputTextFlags_ReadOnly : 0);
+        ImGui::InputText("Text", &line_text, line_meta.merge ? ImGuiInputTextFlags_ReadOnly : 0);
         ImGui::Checkbox("Offscreen?", &subtitle_line->metadata.offscreen);
         if (!is_v1_format()) {
           ImGui::SameLine();

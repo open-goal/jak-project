@@ -99,7 +99,6 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
  */
 void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) {
   for (const auto& [lang, bank] : db.m_banks) {
-
     // get font encoding information
     auto font = get_font_bank(bank->m_text_version);
 
