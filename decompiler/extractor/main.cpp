@@ -208,17 +208,17 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
     }
   }
 
-  if (version_info.game_name == "jak1") {
-    compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
-  }
-  compiler.make_system().set_constant("*default-territory*", version_info.region);
-
   auto project_path = file_util::get_jak_project_dir() / "goal_src" / data_subfolder / "game.gp";
   if (!fs::exists(project_path)) {
     return ExtractorErrorCode::COMPILATION_BAD_PROJECT_PATH;
   }
 
   compiler.make_system().load_project_file(project_path.string());
+  compiler.make_system().set_constant("*default-territory*", version_info.region);
+  if (version_info.game_name == "jak1") {
+    compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
+  }
+
   compiler.run_front_end_on_string("(mi)");
 
   return ExtractorErrorCode::SUCCESS;
