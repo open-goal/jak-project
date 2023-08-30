@@ -39,7 +39,8 @@ static const std::unordered_map<std::string, GameIsoFlags> sGameIsoFlagNames = {
 static const std::unordered_map<int, std::string> sGameIsoTerritoryMap = {
     {GAME_TERRITORY_SCEA, "NTSC-U"},
     {GAME_TERRITORY_SCEE, "PAL"},
-    {GAME_TERRITORY_SCEI, "NTSC-J"}};
+    {GAME_TERRITORY_SCEI, "NTSC-J"},
+    {GAME_TERRITORY_SCEK, "NTSC-K"}};
 
 std::string get_territory_name(int territory) {
   ASSERT_MSG(sGameIsoTerritoryMap.count(territory),
@@ -99,8 +100,6 @@ static const ISOMetadata jak1_ntsc_black_label_info = {
     "ntsc_v1",
     "jak1",
     {"jak1-black-label"}};
-
-// TODO - we don't detect or handle ntsc_v2?
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
 static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> isoDatabase{
