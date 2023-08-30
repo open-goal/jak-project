@@ -22,6 +22,7 @@ class Interpreter {
   bool get_global_variable_by_name(const std::string& name, Object* dest);
   void set_global_variable_by_name(const std::string& name, const Object& value);
   void set_global_variable_to_symbol(const std::string& name, const std::string& value);
+  void set_global_variable_to_int(const std::string& name, int value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
   HeapObject* intern_ptr(const std::string& name);
