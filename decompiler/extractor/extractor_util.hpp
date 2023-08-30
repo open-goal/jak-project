@@ -154,7 +154,7 @@ ISOMetadata get_version_info_or_default(const fs::path& iso_data_path) {
   const auto build_info = get_buildinfo_from_path(iso_data_path);
   if (!build_info) {
     lg::warn(
-        "unable locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC-U Black "
+        "unable to locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC-U Black "
         "Label");
   } else {
     auto maybe_version_info = get_version_info_from_build_info(build_info.value());
