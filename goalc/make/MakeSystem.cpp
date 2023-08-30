@@ -511,3 +511,7 @@ void MakeSystem::set_constant(const std::string& name, const std::string& value)
 void MakeSystem::set_constant(const std::string& name, bool value) {
   m_goos.set_global_variable_to_symbol(name, value ? "#t" : "#f");
 }
+
+void MakeSystem::set_constant(const std::string& name, int value) {
+  m_goos.set_global_variable_to_int(name, value);
+}
