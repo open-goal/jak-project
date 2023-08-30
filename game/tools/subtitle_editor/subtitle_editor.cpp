@@ -152,6 +152,10 @@ void SubtitleEditor::draw_edit_options() {
         const bool isSelected = m_current_language == key;
         if (ImGui::Selectable(fmt::format("[{}] {}", value->m_lang_id, value->m_file_path).c_str(),
                               isSelected)) {
+          if (key != m_current_language) {
+            // different language. get rid of current scene as it will be for the wrong language.
+            m_current_scene = nullptr;
+          }
           m_current_language = key;
         }
         if (isSelected) {
