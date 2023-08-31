@@ -34,7 +34,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
   return header[0];
 }
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 10;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 12;
 }  // namespace
 
 Sprite3::Sprite3(const std::string& name, int my_id)
