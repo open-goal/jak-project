@@ -2590,7 +2590,7 @@ void TextureAnimator::setup_sky() {
   }
   {
     const float max_times[6] = {9600, 4800, 2400, 1200, 600, 450};
-    const float scales[6] = {0.5, 0.2, 0.125, 0.015, 0.01, 0.0075};
+    const float scales[6] = {0.49, 0.19, 0.145, 0.015, 0.01, 0.0075};
     for (int i = 0, dim = kFinalSkyHiresTextureSize >> (kNumSkyHiresNoiseLayers - 1);
          i < kNumSkyHiresNoiseLayers; i++, dim *= 2) {
       auto& tex = m_sky_hires_noise_textures[i];
