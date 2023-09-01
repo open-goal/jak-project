@@ -81,7 +81,7 @@
       (set! (-> gp-0 length 1) a2-2)
       (set! (-> gp-0 num-alloc 1) 0)
       (set! (-> gp-0 is-3d) arg2)
-      ;; per block
+      ;; per block uint64 (bit per-sprite)
       (set! (-> gp-0 alloc-table) (the-as (pointer uint64) (malloc 'global (* s2-1 8))))
       ;; per particle
       (set! (-> gp-0 cpuinfo-table) (the-as (inline-array sparticle-cpuinfo) (malloc 'global (* 144 s5-1))))
@@ -90,6 +90,7 @@
       ;; adgifs
       (set! (-> gp-0 adgifdata-table) arg4)
       (dotimes (v1-5 s2-1)
+        ;; fill alloc-table with 1's
         (set! (-> gp-0 alloc-table v1-5) (the-as uint -1))
         )
       (dotimes (s4-1 s5-1)
@@ -182,21 +183,21 @@
 
 (defun sp-free-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-2d))
   "free a particle"
-  
+
   ;; clear flags on our launch state.
   (if (and (-> arg2 binding) (nonzero? (-> arg2 binding)))
       (logclear! (-> arg2 binding flags)
                  (sp-launch-state-flags launcher-active particles-active)
                  )
       )
-  
+
   ;; clear the bit indicating that we're alive.
   (let ((v1-6 (/ arg1 64))
         (t0-4 (logand arg1 63))
         )
    (logior! (-> arg0 alloc-table v1-6) (ash 1 t0-4))
    )
-  
+
   ;; decrease alloc count for the appropriate group
   (if (< arg1 (-> arg0 length 0))
    (+! (-> arg0 num-alloc 0) -1)
@@ -232,17 +233,17 @@
     (set! v1-0 t0-0)
     (set! t0-0 (-> arg0 blocks 1))
     )
-   
+
    ;; this adds a moving offset to the allocation system. I'm not sure why.
    (when arg2
     (set! a3-0 (the-as int (-> arg2 randomize)))
     (+! (-> arg2 randomize) 1)
-    (when (= (-> arg2 randomize) t0-0)
+    (when (= (-> arg2 randomize) (/ t0-0 SPRITE_MAX_AMOUNT_MULT))
      (set! (-> arg2 randomize) (the-as uint 0))
      0
      )
     )
-   
+
    ;; find the earliest free.
    (dotimes (a2-1 t0-0)
     (when (nonzero? (-> arg0 alloc-table (+ v1-0 a3-0)))
@@ -310,7 +311,7 @@
      )
     )
    )
-  
+
   (the-as sparticle-cpuinfo #f)
   )
 
@@ -446,7 +447,7 @@
             )
         (t9-2 sv-16 (the-as pointer a1-7) sv-32)
         )
-      
+
       ;; alternate to run without doing scratchpad (will change behavior of kill, but at least works for hud)
       ; (set! sv-80 (the-as int (-> arg0 cpuinfo-table arg1)))
       ; (set! sv-96 (the-as int (&+ (-> arg0 vecdata-table) (* 48 arg1))))
@@ -702,7 +703,7 @@
      (new 'static 'rgba :r #x40 :b #x40 :a #x80)
      )
     )
-   
+
    ;; update timer
    (let ((v1-14 (logand (the-as int (-> *sp-frame-time* x)) 255)))
      (set! *particle-300hz-timer* (+ *particle-300hz-timer* v1-14))
@@ -723,7 +724,7 @@
          )
        )
      )
-   
+
    ;; process the particles
    ;; pc port note : made this not run when paused, since aux sprites wont get added.
    (unless (paused?)
@@ -739,7 +740,7 @@
      )
     )
    (set! *sp-launcher-lock* #f)
-   
+
    ;; launch queued particles
    (sp-clear-queue)
    ;;(.mfc0 v1-29 Count)
