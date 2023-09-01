@@ -218,6 +218,8 @@ struct SkyInput {
   float cloud_min;
   float cloud_max;
   float times[11];
+  float max_times[6];
+  float scales[6];
   int32_t cloud_dest;
 };
 

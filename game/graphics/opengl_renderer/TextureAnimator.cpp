@@ -2571,14 +2571,10 @@ void TextureAnimator::setup_sky() {
   }
 
   {
-    const float max_times[4] = {4800.f, 2400.f, 1200.f, 600.f};
-    const float scales[4] = {0.5, 0.2, 0.15, 0.0075f};
     for (int i = 0, dim = kFinalSkyTextureSize >> (kNumSkyNoiseLayers - 1); i < kNumSkyNoiseLayers;
          i++, dim *= 2) {
       auto& tex = m_sky_noise_textures[i];
       tex.temp_data.resize(dim * dim);
-      tex.max_time = max_times[i];
-      tex.scale = scales[i];
       tex.dim = dim;
       glGenTextures(1, &tex.new_tex);
       m_random_index = update_opengl_noise_texture(tex.new_tex, tex.temp_data.data(),
@@ -2589,14 +2585,10 @@ void TextureAnimator::setup_sky() {
     }
   }
   {
-    const float max_times[6] = {9600, 4800, 2400, 1200, 600, 450};
-    const float scales[6] = {0.49, 0.19, 0.145, 0.015, 0.01, 0.0075};
     for (int i = 0, dim = kFinalSkyHiresTextureSize >> (kNumSkyHiresNoiseLayers - 1);
          i < kNumSkyHiresNoiseLayers; i++, dim *= 2) {
       auto& tex = m_sky_hires_noise_textures[i];
       tex.temp_data.resize(dim * dim);
-      tex.max_time = max_times[i];
-      tex.scale = scales[i];
       tex.dim = dim;
       glGenTextures(1, &tex.new_tex);
       m_random_index = update_opengl_noise_texture(tex.new_tex, tex.temp_data.data(),
@@ -2690,6 +2682,9 @@ GLint TextureAnimator::run_clouds(const SkyInput& input, bool hires) {
     for (int noise_layer_idx = 0; noise_layer_idx < noise_layer_amt; noise_layer_idx++) {
       const float new_time = input.times[times_idx];
       auto& ntp = noise_textures[noise_layer_idx];
+
+      ntp.max_time = input.max_times[noise_layer_idx];
+      ntp.scale = input.scales[noise_layer_idx];
 
       if (new_time < ntp.last_time) {
         std::swap(ntp.new_tex, ntp.old_tex);
