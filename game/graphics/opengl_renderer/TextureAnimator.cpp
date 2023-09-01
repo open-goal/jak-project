@@ -519,7 +519,7 @@ void TextureAnimator::draw_debug_window() {
   ImGui::Text("Sky:");
   ImGui::Text("Fog Height: %f", m_debug_sky_input.fog_height);
   ImGui::Text("Cloud minmax: %f %f", m_debug_sky_input.cloud_min, m_debug_sky_input.cloud_max);
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 11; i++) {
     ImGui::Text("Time[%d]: %f", i, m_debug_sky_input.times[i]);
   }
   ImGui::Text("Dest %d", m_debug_sky_input.cloud_dest);
@@ -2589,8 +2589,8 @@ void TextureAnimator::setup_sky() {
     }
   }
   {
-    const float max_times[5] = {9600, 4800, 2400, 1200, 600};
-    const float scales[5] = {0.5, 0.2, 0.1375, 0.0125, 0.0075};
+    const float max_times[6] = {9600, 4800, 2400, 1200, 600, 450};
+    const float scales[6] = {0.5, 0.2, 0.125, 0.015, 0.01, 0.0075};
     for (int i = 0, dim = kFinalSkyHiresTextureSize >> (kNumSkyHiresNoiseLayers - 1);
          i < kNumSkyHiresNoiseLayers; i++, dim *= 2) {
       auto& tex = m_sky_hires_noise_textures[i];

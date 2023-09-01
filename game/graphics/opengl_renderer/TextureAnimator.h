@@ -217,7 +217,7 @@ struct SkyInput {
   float fog_height;
   float cloud_min;
   float cloud_max;
-  float times[10];
+  float times[11];
   int32_t cloud_dest;
 };
 
@@ -417,12 +417,12 @@ class TextureAnimator {
 
   // must be power of 2 - dimensions of the final clouds textures
   static constexpr int kFinalSkyTextureSize = 128;
-  static constexpr int kFinalSkyHiresTextureSize = 256;
+  static constexpr int kFinalSkyHiresTextureSize = 512;
   static constexpr int kFinalSlimeTextureSize = 128;
 
   // number of small sub-textures. Must be less than log2(kFinalTextureSize).
   static constexpr int kNumSkyNoiseLayers = 4;
-  static constexpr int kNumSkyHiresNoiseLayers = 5;
+  static constexpr int kNumSkyHiresNoiseLayers = 6;
   static constexpr int kNumSlimeNoiseLayers = 4;
 
  private:
