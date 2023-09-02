@@ -16,7 +16,7 @@
                                     )
             )
       )
-    (set! (-> gp-0 tree) (the-as string 'camera))
+    (set! (-> gp-0 tree) 'camera)
     (set! (-> gp-0 on-enter) #f)
     (set! (-> gp-0 on-exit) #f)
     (set! (-> gp-0 on-inside) #f)
@@ -1388,34 +1388,22 @@
     (transform-point-vector! gp-0 s2-0)
     (when (< 0.0 (-> gp-0 z))
       (reverse-transform-point! gp-0 s2-0 s5-0 arg0)
-      (let ((s3-1 (the-as object (new 'stack-no-clear 'inline-array 'vector 6))))
+      (let ((points (new 'stack-no-clear 'inline-array 'vector 6)))
         (dotimes (v1-5 6)
-          (set! (-> (the-as (inline-array vector) s3-1) v1-5 quad) (the-as uint128 0))
+          (set! (-> points v1-5 quad) (the-as uint128 0))
           )
-        (let ((s4-1 (editable-face-method-30 obj (the-as (inline-array vector) s3-1)))
+        (let ((s4-1 (editable-face-method-30 obj points))
               (s2-1 0)
               (s1-1 (vector-negate! (new 'stack-no-clear 'vector) s5-0))
               )
           (while (< (+ s2-1 2) s4-1)
-            (if (or (point-in-triangle-cross
-                      gp-0
-                      s5-0
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
-                    (point-in-triangle-cross
-                      gp-0
-                      s1-1
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
+            (if (or (point-in-triangle-cross gp-0 s5-0 (-> points 0) (-> points 1) (-> points 2))
+                    (point-in-triangle-cross gp-0 s1-1 (-> points 0) (-> points 1) (-> points 2))
                     )
                 (return (vector-vector-distance (camera-pos) gp-0))
                 )
             (+! s2-1 1)
-            (set! s3-1 (-> (the-as (inline-array vector) s3-1) 1))
+            (set! points (the-as (inline-array vector) (-> points 1)))
             )
           )
         )
@@ -1487,7 +1475,7 @@
   (local-vars
     (sv-208 (inline-array vector))
     (sv-216 int)
-    (sv-288 (array editable-point))
+    (sv-288 array)
     (sv-292 int)
     (sv-296 int)
     (sv-368 matrix)
@@ -1567,21 +1555,18 @@
             )
           )
         (set! sv-288
-              (the-as
-                (array editable-point)
-                ((method-of-type array new)
-                 (the-as symbol (new 'stack-no-clear 'array 'editable-point 6))
-                 array
-                 editable-point
-                 6
-                 )
-                )
+              ((method-of-type array new)
+               (the-as symbol (new 'stack-no-clear 'array 'editable-point 6))
+               array
+               editable-point
+               6
+               )
               )
         (set! sv-292 (+ (-> obj length) -1))
         (set! sv-296 1)
         (editable-face-method-31 obj (-> obj normal))
         (dotimes (v1-85 sv-292)
-          (set! (-> sv-288 v1-85) (-> obj vertex (+ v1-85 1)))
+          (set! (-> (the-as (array editable-point) sv-288) v1-85) (-> obj vertex (+ v1-85 1)))
           )
         (set! sv-368 (new-stack-matrix0))
         (set! sv-372 (the-as editable-point #f))
@@ -1602,8 +1587,8 @@
         (while (< sv-296 (-> obj length))
           (set! sv-372 (the-as editable-point #f))
           (dotimes (s5-4 sv-292)
-            (when (-> sv-288 s5-4)
-              (let* ((a1-27 (edit-get-trans (-> sv-288 s5-4)))
+            (when (-> (the-as (array editable-point) sv-288) s5-4)
+              (let* ((a1-27 (edit-get-trans (-> (the-as (array editable-point) sv-288) s5-4)))
                      (a0-48 (vector-matrix*! (new 'stack-no-clear 'vector) a1-27 sv-368))
                      )
                 (set! sv-400 (vector-y-angle a0-48))
@@ -1611,13 +1596,13 @@
               (cond
                 (sv-380
                   (when (or (not sv-372) (< sv-376 sv-400))
-                    (set! sv-372 (-> sv-288 s5-4))
+                    (set! sv-372 (-> (the-as (array editable-point) sv-288) s5-4))
                     (set! sv-376 sv-400)
                     )
                   )
                 (else
                   (when (or (not sv-372) (< sv-400 sv-376))
-                    (set! sv-372 (-> sv-288 s5-4))
+                    (set! sv-372 (-> (the-as (array editable-point) sv-288) s5-4))
                     (set! sv-376 sv-400)
                     )
                   )
@@ -1626,8 +1611,8 @@
             )
           (set! (-> obj vertex sv-296) sv-372)
           (dotimes (v1-137 sv-292)
-            (if (= sv-372 (-> sv-288 v1-137))
-                (set! (-> sv-288 v1-137) #f)
+            (if (= sv-372 (-> (the-as (array editable-point) sv-288) v1-137))
+                (set! (-> (the-as (array editable-point) sv-288) v1-137) #f)
                 )
             )
           (set! sv-296 (+ sv-296 1))
@@ -1792,7 +1777,7 @@
   )
 
 ;; definition for method 30 of type editable-plane
-(defmethod editable-plane-method-30 editable-plane ((obj editable-plane) (arg0 matrix))
+(defmethod editable-plane-method-30 editable-plane ((obj editable-plane) (arg0 (inline-array vector)))
   (case (-> obj length)
     ((2)
      (let* ((v1-2 (editable-plane-method-31 obj (new 'stack-no-clear 'vector)))
@@ -1809,15 +1794,15 @@
             (f30-0 (-> obj radius))
             )
        (let ((v1-4 (edit-get-trans (-> obj vertex 0))))
-         (vector+float*! (the-as vector (-> arg0 vector)) v1-4 s5-1 f30-0)
-         (vector+float*! (the-as vector (-> arg0 vector)) (the-as vector (-> arg0 vector)) s4-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 1) v1-4 s5-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 1) (-> arg0 vector 1) s4-1 (- f30-0))
-         (vector+float*! (-> arg0 vector 2) v1-4 s5-1 f30-0)
-         (vector+float*! (-> arg0 vector 2) (-> arg0 vector 2) s4-1 f30-0)
-         (vector+float*! (-> arg0 trans) v1-4 s5-1 (- f30-0))
+         (vector+float*! (-> arg0 0) v1-4 s5-1 f30-0)
+         (vector+float*! (-> arg0 0) (-> arg0 0) s4-1 (- f30-0))
+         (vector+float*! (-> arg0 1) v1-4 s5-1 (- f30-0))
+         (vector+float*! (-> arg0 1) (-> arg0 1) s4-1 (- f30-0))
+         (vector+float*! (-> arg0 2) v1-4 s5-1 f30-0)
+         (vector+float*! (-> arg0 2) (-> arg0 2) s4-1 f30-0)
+         (vector+float*! (-> arg0 3) v1-4 s5-1 (- f30-0))
          )
-       (vector+float*! (-> arg0 trans) (-> arg0 trans) s4-1 f30-0)
+       (vector+float*! (-> arg0 3) (-> arg0 3) s4-1 f30-0)
        )
      4
      )
@@ -1855,34 +1840,22 @@
       )
     (when (< 0.0 (-> gp-0 z))
       (reverse-transform-point! gp-0 (edit-get-trans (-> obj vertex 0)) s5-0 arg0)
-      (let ((s3-1 (the-as object (new 'stack-no-clear 'matrix))))
+      (let ((points (new 'stack-no-clear 'inline-array 'vector 4)))
         (dotimes (v1-6 4)
-          (set! (-> (the-as (inline-array vector) s3-1) v1-6 quad) (the-as uint128 0))
+          (set! (-> points v1-6 quad) (the-as uint128 0))
           )
-        (let ((s4-1 (editable-plane-method-30 obj (the-as matrix s3-1)))
+        (let ((s4-1 (editable-plane-method-30 obj points))
               (s2-2 0)
               (s1-2 (vector-negate! (new 'stack-no-clear 'vector) s5-0))
               )
           (while (< (+ s2-2 2) s4-1)
-            (if (or (point-in-triangle-cross
-                      gp-0
-                      s5-0
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
-                    (point-in-triangle-cross
-                      gp-0
-                      s1-2
-                      (-> (the-as (inline-array vector) s3-1) 0)
-                      (-> (the-as (inline-array vector) s3-1) 1)
-                      (-> (the-as (inline-array vector) s3-1) 2)
-                      )
+            (if (or (point-in-triangle-cross gp-0 s5-0 (-> points 0) (-> points 1) (-> points 2))
+                    (point-in-triangle-cross gp-0 s1-2 (-> points 0) (-> points 1) (-> points 2))
                     )
                 (return (vector-vector-distance (camera-pos) gp-0))
                 )
             (+! s2-2 1)
-            (set! s3-1 (-> (the-as (inline-array vector) s3-1) 1))
+            (set! points (the-as (inline-array vector) (-> points 1)))
             )
           )
         )
@@ -1895,9 +1868,9 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod editable-method-10 editable-plane ((obj editable-plane))
-  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 4)))
     (dotimes (v1-0 4)
-      (set! (-> gp-0 quad v1-0) (the-as uint128 0))
+      (set! (-> gp-0 v1-0 quad) (the-as uint128 0))
       )
     (let ((s4-0 (editable-plane-method-30 obj gp-0)))
       (when (>= s4-0 3)
@@ -1912,7 +1885,7 @@
           )
         (add-debug-bound
           (bucket-id debug2)
-          (the-as (inline-array vector) gp-0)
+          gp-0
           s4-0
           (if (logtest? (-> obj flags) (editable-flag orient))
               (new 'static 'rgba :r #xff :a #x80)
@@ -2065,8 +2038,7 @@
   )
 
 ;; definition for method 14 of type editable-array
-;; WARN: Return type mismatch (array editable) vs none.
-(defmethod editable-array-method-14 editable-array ((obj editable-array) (arg0 (function symbol)) (arg1 symbol))
+(defmethod editable-array-method-14 editable-array ((obj editable-array) (arg0 (function editable editable-region symbol)) (arg1 editable-region))
   (let ((gp-0 (-> obj selection)))
     (set! (-> gp-0 length) 0)
     (let* ((s2-0 (-> obj length))
@@ -2075,7 +2047,7 @@
            )
       (while (< s1-0 s2-0)
         (when (and s0-0 (logtest? (-> s0-0 flags) (editable-flag selected)))
-          (when (arg0)
+          (when (arg0 s0-0 arg1)
             (set! (-> gp-0 (-> gp-0 length)) s0-0)
             (+! (-> gp-0 length) 1)
             )
@@ -2084,8 +2056,8 @@
         (set! s0-0 (-> obj data s1-0))
         )
       )
+    gp-0
     )
-  (none)
   )
 
 ;; definition for method 15 of type editable-array
@@ -2263,7 +2235,7 @@
       (set! sv-44 (the-as float -4095996000.0))
       (set! (-> sv-36 id) (the-as uint (string->int (-> sv-20 data s5-1))))
       (set! (-> sv-36 level) (the-as string (string->symbol (-> sv-20 data (+ s5-1 1)))))
-      (set! (-> sv-36 tree) (the-as string (string->symbol (-> sv-20 data (+ s5-1 2)))))
+      (set! (-> sv-36 tree) (string->symbol (-> sv-20 data (+ s5-1 2))))
       (set! (-> sv-36 on-enter) (if (string= (-> sv-20 data (+ s5-1 3)) "")
                                     (the-as string #f)
                                     (-> sv-20 data (+ s5-1 3))
@@ -2522,14 +2494,14 @@
       )
     )
   (set! (-> *editable-light-region* changed) #f)
-  (editable-array-method-9 obj (editable-command refresh-filter) (the-as editable-array #f))
+  (editable-array-method-9 obj (editable-command refresh-filter) (the-as mouse-info #f))
   #t
   (none)
   )
 
 ;; definition for method 13 of type editable-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod editable-array-method-13 editable-array ((obj editable-array) (arg0 uint) (arg1 basic) (arg2 string))
+(defmethod editable-array-method-13 editable-array ((obj editable-array) (arg0 editable-command) (arg1 editable-command) (arg2 string))
   (set! (-> obj target) #f)
   (set! (-> obj target-mode) arg0)
   (set! (-> obj target-command) arg1)
@@ -2581,21 +2553,21 @@
   (let ((v1-4 (new 'debug 'editable-region)))
     (set! (-> v1-4 locked) #t)
     (set! (-> v1-4 changed) #f)
-    (set! (-> v1-4 tree) (the-as string 'sample))
+    (set! (-> v1-4 tree) 'sample)
     (set! (-> v1-4 filter) (editable-filter sample))
     (set! *editable-sample-region* v1-4)
     )
   (let ((v1-6 (new 'debug 'editable-region)))
     (set! (-> v1-6 locked) #t)
     (set! (-> v1-6 changed) #f)
-    (set! (-> v1-6 tree) (the-as string 'light))
+    (set! (-> v1-6 tree) 'light)
     (set! (-> v1-6 filter) (editable-filter light))
     (set! *editable-light-region* v1-6)
     )
   (let ((v0-84 (new 'debug 'editable-region)))
     (set! (-> v0-84 locked) #t)
     (set! (-> v0-84 changed) #f)
-    (set! (-> v0-84 tree) (the-as string 'entity))
+    (set! (-> v0-84 tree) 'entity)
     (set! (-> v0-84 filter) (editable-filter entity))
     (set! *editable-entity-region* v0-84)
     )
