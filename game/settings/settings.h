@@ -18,6 +18,7 @@ struct DebugSettings {
   bool monospaced_font = true;
   bool alternate_style = false;
   bool ignore_hide_imgui = false;
+  bool treat_pad0_as_pad1 = false;
 
   std::vector<DebugTextFilter> text_filters = {};
   bool text_check_range = false;

@@ -135,7 +135,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         ImGui::TreePop();
       }
       ImGui::Checkbox("Ignore Hide ImGui Bind", &Gfx::g_debug_settings.ignore_hide_imgui);
-      if (ImGui::BeginMenu("Frame Rate")) {
+      if (ImGui::TreeNode("Frame Rate")) {
         ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
         ImGui::InputFloat("Target FPS", &target_fps_input);
         if (ImGui::MenuItem("Apply")) {
@@ -144,9 +144,10 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         ImGui::Separator();
         ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
         ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
-        ImGui::EndMenu();
+        ImGui::TreePop();
       }
       ImGui::MenuItem("Filters", nullptr, &m_filters_menu);
+      ImGui::Checkbox("Treat Pad0 as Pad1", &Gfx::g_debug_settings.treat_pad0_as_pad1);
       ImGui::EndMenu();
     }
 
