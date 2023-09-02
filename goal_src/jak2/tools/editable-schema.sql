@@ -121,7 +121,13 @@ CREATE TABLE IF NOT EXISTS 'region_face' (
 	  -- plane
 		-- face
 	'kind'	TEXT,
-	'radius'	REAL,
+	-- 'radius'	REAL, removed, radius only allows for square planes, not good enough.
+	-- Added by us so that the regions can actually be displayed as they are
+	-- in the final game
+	'normal_x' REAL,
+	'normal_y' REAL,
+	'normal_z' REAL,
+	'normal_w' REAL,
 	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
 	PRIMARY KEY('region_face_id' AUTOINCREMENT)
 );
@@ -133,6 +139,7 @@ CREATE TABLE IF NOT EXISTS 'region_point' (
 	'x'	REAL,
 	'y'	REAL,
 	'z'	REAL,
+	'w' REAL,
 	FOREIGN KEY('region_face_id') REFERENCES 'region_face'('region_face_id'),
 	PRIMARY KEY('region_point_id' AUTOINCREMENT)
 );
