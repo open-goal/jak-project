@@ -87,7 +87,8 @@
   (local-vars (sv-32 vector2h) (sv-36 vector))
   (set! sv-32 (new 'stack 'vector2h))
   (set! sv-36 (-> obj bsphere))
-  (add-debug-x #t (bucket-id debug-no-zbuf1) sv-36 (new 'static 'rgba :r #xff :g #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf1) sv-36 (#if PC_PORT (if *debug-region-color-alt* (static-rgba #x00 #xff #x00 #x80) (new 'static 'rgba :r #xff :g #xff :a #x80))
+                                                                (new 'static 'rgba :r #xff :g #xff :a #x80)))
   (when (nonzero? (-> obj region))
     (let ((s5-0 add-debug-text-3d)
           (s4-0 #t)
@@ -245,7 +246,8 @@ otherwise, add the [[drawable-region-sphere]] to `region-start-prim-list` and in
     (t9-0 obj arg0)
     )
   (let ((a2-0 (-> obj bsphere)))
-    (add-debug-sphere #t (bucket-id debug2) a2-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x80))
+    (add-debug-sphere #t (bucket-id debug2) a2-0 (-> obj bsphere w) (#if PC_PORT (if *debug-region-color-alt* (static-rgba #xff #x00 #xff #x80) (new 'static 'rgba :r #xff :a #x80))
+                                                                                 (new 'static 'rgba :r #xff :a #x80)))
     )
   0
   (none)
@@ -288,23 +290,43 @@ otherwise, add the [[drawable-region-sphere]] to `region-start-prim-list` and in
       (t9-0 obj arg0)
       )
     )
-  (let ((s5-0 (-> obj bsphere)))
-    (add-debug-vector
-      #t
-      (bucket-id debug-no-zbuf1)
-      s5-0
-      (-> obj data normal)
-      (meters 2)
-      (new 'static 'rgba :r #xff :g #xff :a #x80)
+  (#cond
+    (PC_PORT
+      (when *debug-region-show-bsphere*
+        (let ((s5-0 (-> obj bsphere)))
+          (add-debug-vector
+            #t
+            (bucket-id debug-no-zbuf1)
+            s5-0
+            (-> obj data normal)
+            (meters 2)
+            (new 'static 'rgba :r #xff :g #xff :a #x80)
+            )
+          (add-debug-sphere #t (bucket-id debug2) s5-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x30))
+          )
+        )
       )
-    (add-debug-sphere #t (bucket-id debug2) s5-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x30))
-    )
+    (#t
+      (let ((s5-0 (-> obj bsphere)))
+        (add-debug-vector
+          #t
+          (bucket-id debug-no-zbuf1)
+          s5-0
+          (-> obj data normal)
+          (meters 2)
+          (new 'static 'rgba :r #xff :g #xff :a #x80)
+          )
+        (add-debug-sphere #t (bucket-id debug2) s5-0 (-> obj bsphere w) (new 'static 'rgba :r #xff :a #x30))
+        )
+      ))
   (add-debug-bound
     (bucket-id debug2)
     (-> obj data points)
     (the-as int (-> obj data num-points))
-    (new 'static 'rgba :r #xff :g #xff :a #x80)
-    (new 'static 'rgba :r #xff :a #x80)
+    (#if PC_PORT (if *debug-region-color-alt* (static-rgba #x00 #xff #x00 #x80) (new 'static 'rgba :r #xff :g #xff :a #x80))
+                 (new 'static 'rgba :r #xff :g #xff :a #x80))
+    (#if PC_PORT (if *debug-region-color-alt* (static-rgba #xff #x00 #xff #x80) (new 'static 'rgba :r #xff :a #x80))
+                 (new 'static 'rgba :r #xff :a #x80))
     0
     )
   0
