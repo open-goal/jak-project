@@ -217,7 +217,9 @@ struct SkyInput {
   float fog_height;
   float cloud_min;
   float cloud_max;
-  float times[9];
+  float times[11];
+  float max_times[6];
+  float scales[6];
   int32_t cloud_dest;
 };
 
@@ -261,7 +263,7 @@ class TextureAnimator {
   void setup_sky();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
-  void handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool);
+  void handle_clouds_and_fog(const DmaTransfer& tf, TexturePool* texture_pool, bool hires);
   void handle_slime(const DmaTransfer& tf, TexturePool* texture_pool);
   void handle_erase_dest(DmaFollower& dma);
   void handle_set_shader(DmaFollower& dma);
@@ -383,7 +385,7 @@ class TextureAnimator {
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
   void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
-  GLint run_clouds(const SkyInput& input);
+  GLint run_clouds(const SkyInput& input, bool hires);
   void run_slime(const SlimeInput& input);
 
   Psm32ToPsm8Scrambler m_psm32_to_psm8_8_8, m_psm32_to_psm8_16_16, m_psm32_to_psm8_32_32,
@@ -417,10 +419,12 @@ class TextureAnimator {
 
   // must be power of 2 - dimensions of the final clouds textures
   static constexpr int kFinalSkyTextureSize = 128;
+  static constexpr int kFinalSkyHiresTextureSize = 512;
   static constexpr int kFinalSlimeTextureSize = 128;
 
   // number of small sub-textures. Must be less than log2(kFinalTextureSize).
   static constexpr int kNumSkyNoiseLayers = 4;
+  static constexpr int kNumSkyHiresNoiseLayers = 6;
   static constexpr int kNumSlimeNoiseLayers = 4;
 
  private:
@@ -432,9 +436,13 @@ class TextureAnimator {
   FramebufferTexturePair m_sky_blend_texture;
   FramebufferTexturePair m_sky_final_texture;
   GpuTexture* m_sky_pool_gpu_tex = nullptr;
+  NoiseTexturePair m_sky_hires_noise_textures[kNumSkyHiresNoiseLayers];
+  FramebufferTexturePair m_sky_hires_blend_texture;
+  FramebufferTexturePair m_sky_hires_final_texture;
+  GpuTexture* m_sky_hires_pool_gpu_tex = nullptr;
 
   SlimeInput m_debug_slime_input;
-  NoiseTexturePair m_slime_noise_textures[kNumSkyNoiseLayers];
+  NoiseTexturePair m_slime_noise_textures[kNumSlimeNoiseLayers];
   FramebufferTexturePair m_slime_blend_texture;
   FramebufferTexturePair m_slime_final_texture, m_slime_final_scroll_texture;
   GpuTexture* m_slime_pool_gpu_tex = nullptr;
