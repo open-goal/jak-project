@@ -838,6 +838,8 @@ void initialize_sql_db() {
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
+  const bool did_db_exist = file_util::file_exists(db_path.string());
+
   // Attempt to open the database
   const auto opened = sql_db.open_db(db_path.string());
   (void)opened;
@@ -851,6 +853,29 @@ void initialize_sql_db() {
 
   const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
   // TODO - error check
+
+  // If the database did not originally exist, let's seed it with original game data
+  if (!did_db_exist) {
+    lg::warn("[SQL]: Seeding database, this may take a bit");
+    fs::path level_info_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                                  "db-fixtures" / "fixture-level_info.sql";
+    if (file_util::file_exists(level_info_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(level_info_fixture));
+      // TODO - error check
+    }
+    fs::path light_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                             "db-fixtures" / "fixture-light.sql";
+    if (file_util::file_exists(light_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(light_fixture));
+      // TODO - error check
+    }
+    fs::path test_region = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                           "db-fixtures" / "test-region.sql";
+    if (file_util::file_exists(test_region.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(test_region));
+      // TODO - error check
+    }
+  }
 }
 
 sqlite::GenericResponse run_sql_query(const std::string& query) {
