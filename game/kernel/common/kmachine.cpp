@@ -828,6 +828,14 @@ u32 pc_rand() {
   return (u32)extra_random_generator();
 }
 
+void pc_treat_pad0_as_pad1(u32 symptr) {
+  Gfx::g_debug_settings.treat_pad0_as_pad1 = symbol_to_bool(symptr);
+}
+
+u32 pc_is_imgui_visible() {
+  return bool_to_symbol(Gfx::g_debug_settings.show_imgui);
+}
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
@@ -909,6 +917,8 @@ void init_common_pc_port_functions(
   // Return the current OS as a symbol. Actually returns what it was compiled for!
   make_func_symbol_func("pc-get-os", (void*)pc_get_os);
   make_func_symbol_func("pc-get-unix-timestamp", (void*)pc_get_unix_timestamp);
+  make_func_symbol_func("pc-treat-pad0-as-pad1", (void*)pc_treat_pad0_as_pad1);
+  make_func_symbol_func("pc-is-imgui-visible?", (void*)pc_is_imgui_visible);
 
   // file related functions
   make_func_symbol_func("pc-filepath-exists?", (void*)pc_filepath_exists);
