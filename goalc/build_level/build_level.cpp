@@ -7,6 +7,7 @@
 #include "common/util/json_util.h"
 #include "common/util/string_util.h"
 
+#include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "goalc/build_level/Entity.h"
 #include "goalc/build_level/FileInfo.h"
@@ -144,37 +145,45 @@ bool run_build_level(const std::string& input_file,
   // Add textures and models
   // TODO remove hardcoded config settings
   if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
+    fs::path iso_folder = "";
+    lg::info("Looking for ISO path...");
+    // TODO - add to file_util
+    for (const auto& entry :
+         fs::directory_iterator(file_util::get_jak_project_dir() / "iso_data")) {
+      // TODO - hard-coded to jak 1
+      if (entry.is_directory() &&
+          entry.path().filename().string().find("jak1") != std::string::npos) {
+        lg::info("Found ISO path: {}", entry.path().string());
+        iso_folder = entry.path();
+      }
+    }
+
+    if (iso_folder.empty() || !fs::exists(iso_folder)) {
+      lg::warn("Could not locate ISO path!");
+      return false;
+    }
+
+    // Look for iso build info if it's available, otherwise default to ntsc_v1
+    const auto version_info = get_version_info_or_default(iso_folder);
+
     decompiler::Config config;
     try {
       config = decompiler::read_config_file(
-          file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc", "ntsc_v1",
+          file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc",
+          version_info.decomp_config_version,
           R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": []})");
     } catch (const std::exception& e) {
       lg::error("Failed to parse config: {}", e.what());
       return false;
     }
 
-    fs::path in_folder;
-    lg::info("Looking for ISO path...");
-    for (const auto& entry :
-         fs::directory_iterator(file_util::get_jak_project_dir() / "iso_data")) {
-      if (entry.is_directory() &&
-          entry.path().filename().string().find("jak1") != std::string::npos) {
-        lg::info("Found ISO path: {}", entry.path().string());
-        in_folder = entry.path();
-      }
-    }
-    if (!fs::exists(in_folder)) {
-      lg::error("Could not find ISO path!");
-      return false;
-    }
     std::vector<fs::path> dgos, objs;
     for (const auto& dgo_name : config.dgo_names) {
-      dgos.push_back(in_folder / dgo_name);
+      dgos.push_back(iso_folder / dgo_name);
     }
 
     for (const auto& obj_name : config.object_file_names) {
-      objs.push_back(in_folder / obj_name);
+      objs.push_back(iso_folder / obj_name);
     }
 
     decompiler::ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, {},

@@ -2,7 +2,7 @@
 #include <regex>
 #include <unordered_map>
 
-#include "extractor_util.hpp"
+#include "extractor_util.h"
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
@@ -52,8 +52,8 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   }
 
   // Find the game in our tracking database
-  auto dbEntry = isoDatabase.find(serial.value());
-  if (dbEntry == isoDatabase.end()) {
+  auto dbEntry = iso_database.find(serial.value());
+  if (dbEntry == iso_database.end()) {
     lg::error("Serial '{}' not found in the validation database", serial.value());
     log_potential_new_db_entry(ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB,
                                serial.value(), elf_hash.value(), expected_num_files, expected_hash);
@@ -203,7 +203,7 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
 
   int flags = 0;
   for (const auto& flag : version_info.flags) {
-    if (auto it = sGameIsoFlagNames.find(flag); it != sGameIsoFlagNames.end()) {
+    if (auto it = game_iso_flag_names.find(flag); it != game_iso_flag_names.end()) {
       flags |= it->second;
     }
   }
@@ -320,7 +320,7 @@ int main(int argc, char** argv) {
     lg::error("Error: input game name '{}' is not valid", game_name);
     return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
   }
-  std::string data_subfolder = data_subfolders[game_name];
+  std::string data_subfolder = data_subfolders.at(game_name);
 
   if (flag_extract) {
     // we extract to a temporary location because we don't know what we're extracting yet!
@@ -356,7 +356,7 @@ int main(int argc, char** argv) {
       } else {
         // We know the version since we just extracted it, so the user didn't need to provide this
         // explicitly
-        data_subfolder = data_subfolders[version_info->game_name];
+        data_subfolder = data_subfolders.at(version_info->game_name);
         iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
         if (fs::exists(iso_data_path)) {
           fs::remove_all(iso_data_path);
