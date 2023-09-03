@@ -115,7 +115,7 @@ TEST(Kernel, basename) {
 TEST(Kernel, DecodeFileName) {
   std::string x;
   x = DecodeFileName("$TEXTURE/beans");
-  EXPECT_EQ(x, "out/obj/beans.go");
+  EXPECT_EQ(x, "out/jak1/obj/beans.go");
 
   x = DecodeFileName("$ART_GROUP/stuff");
   EXPECT_EQ(x, "data/art-group6/stuff-ag.go");
@@ -127,7 +127,7 @@ TEST(Kernel, DecodeFileName) {
   EXPECT_EQ(x, "data/level30/my-level.123");
 
   x = DecodeFileName("$DATA/my-data");
-  EXPECT_EQ(x, "out/obj/my-data.go");
+  EXPECT_EQ(x, "out/jak1/obj/my-data.go");
 
   x = DecodeFileName("$CODE/my-code");
   EXPECT_EQ(x, "game/obj/my-code.o");

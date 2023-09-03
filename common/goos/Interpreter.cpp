@@ -240,6 +240,10 @@ void Interpreter::set_global_variable_to_symbol(const std::string& name, const s
   set_global_variable_by_name(name, sym);
 }
 
+void Interpreter::set_global_variable_to_int(const std::string& name, int value) {
+  set_global_variable_by_name(name, Object::make_integer(value));
+}
+
 /*!
  * Get arguments being passed to a form. Don't evaluate them. There are two modes, "varargs" and
  * "not varargs".  With varargs enabled, any number of unnamed and named arguments can be given.

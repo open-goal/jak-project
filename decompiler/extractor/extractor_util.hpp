@@ -39,7 +39,8 @@ static const std::unordered_map<std::string, GameIsoFlags> sGameIsoFlagNames = {
 static const std::unordered_map<int, std::string> sGameIsoTerritoryMap = {
     {GAME_TERRITORY_SCEA, "NTSC-U"},
     {GAME_TERRITORY_SCEE, "PAL"},
-    {GAME_TERRITORY_SCEI, "NTSC-J"}};
+    {GAME_TERRITORY_SCEI, "NTSC-J"},
+    {GAME_TERRITORY_SCEK, "NTSC-K"}};
 
 std::string get_territory_name(int territory) {
   ASSERT_MSG(sGameIsoTerritoryMap.count(territory),
@@ -100,8 +101,6 @@ static const ISOMetadata jak1_ntsc_black_label_info = {
     "jak1",
     {"jak1-black-label"}};
 
-// TODO - we don't detect or handle ntsc_v2?
-
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
 static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> isoDatabase{
     {"SCUS-97124",
@@ -155,7 +154,7 @@ ISOMetadata get_version_info_or_default(const fs::path& iso_data_path) {
   const auto build_info = get_buildinfo_from_path(iso_data_path);
   if (!build_info) {
     lg::warn(
-        "unable locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC-U Black "
+        "unable to locate buildinfo.json file in iso data path, defaulting to Jak 1 - NTSC-U Black "
         "Label");
   } else {
     auto maybe_version_info = get_version_info_from_build_info(build_info.value());

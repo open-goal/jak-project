@@ -1,3 +1,5 @@
+#include "build_level.h"
+
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
@@ -5,6 +7,7 @@
 #include "common/util/json_util.h"
 #include "common/util/string_util.h"
 
+#include "decompiler/level_extractor/extract_merc.h"
 #include "goalc/build_level/Entity.h"
 #include "goalc/build_level/FileInfo.h"
 #include "goalc/build_level/LevelFile.h"
@@ -34,6 +37,27 @@ std::vector<std::string> get_build_level_deps(const std::string& input_file) {
   auto level_json = parse_commented_json(
       file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
   return {level_json.at("gltf_file").get<std::string>()};
+}
+
+// Find all art groups the custom level needs in a list of object files,
+// skipping any that we already found in other dgos before
+std::vector<decompiler::ObjectFileRecord> find_art_groups(
+    std::vector<std::string>& processed_ags,
+    const std::vector<std::string>& custom_level_ag,
+    const std::vector<decompiler::ObjectFileRecord>& dgo_files) {
+  std::vector<decompiler::ObjectFileRecord> art_groups;
+  for (const auto& file : dgo_files) {
+    // skip any art groups we already added from other dgos
+    if (std::find(processed_ags.begin(), processed_ags.end(), file.name) != processed_ags.end()) {
+      continue;
+    }
+    if (std::find(custom_level_ag.begin(), custom_level_ag.end(), file.name) !=
+        custom_level_ag.end()) {
+      art_groups.push_back(file);
+      processed_ags.push_back(file.name);
+    }
+  }
+  return art_groups;
 }
 
 bool run_build_level(const std::string& input_file,
@@ -116,6 +140,74 @@ bool run_build_level(const std::string& input_file,
   file_util::create_dir_if_needed_for_file(save_path);
   lg::print("Saving to {}\n", save_path.string());
   file_util::write_binary_file(save_path, result.data(), result.size());
+
+  // Add textures and models
+  // TODO remove hardcoded config settings
+  if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
+    decompiler::Config config;
+    try {
+      config = decompiler::read_config_file(
+          file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc", "ntsc_v1",
+          R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": []})");
+    } catch (const std::exception& e) {
+      lg::error("Failed to parse config: {}", e.what());
+      return false;
+    }
+
+    fs::path in_folder;
+    lg::info("Looking for ISO path...");
+    for (const auto& entry :
+         fs::directory_iterator(file_util::get_jak_project_dir() / "iso_data")) {
+      if (entry.is_directory() &&
+          entry.path().filename().string().find("jak1") != std::string::npos) {
+        lg::info("Found ISO path: {}", entry.path().string());
+        in_folder = entry.path();
+      }
+    }
+    if (!fs::exists(in_folder)) {
+      lg::error("Could not find ISO path!");
+      return false;
+    }
+    std::vector<fs::path> dgos, objs;
+    for (const auto& dgo_name : config.dgo_names) {
+      dgos.push_back(in_folder / dgo_name);
+    }
+
+    for (const auto& obj_name : config.object_file_names) {
+      objs.push_back(in_folder / obj_name);
+    }
+
+    decompiler::ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, {},
+                                config);
+
+    // need to process link data for tpages
+    db.process_link_data(config);
+
+    decompiler::TextureDB tex_db;
+    auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak1/textures";
+    file_util::create_dir_if_needed(textures_out);
+    db.process_tpages(tex_db, textures_out, config);
+
+    std::vector<std::string> processed_art_groups;
+
+    // find all art groups used by the custom level in other dgos
+    for (auto& dgo : config.dgo_names) {
+      // remove "DGO/" prefix
+      const auto& dgo_name = dgo.substr(4);
+      const auto& files = db.obj_files_by_dgo.at(dgo_name);
+      auto art_groups = find_art_groups(
+          processed_art_groups, level_json.at("art_groups").get<std::vector<std::string>>(), files);
+      auto tex_remap = decompiler::extract_tex_remap(db, dgo_name);
+      for (const auto& ag : art_groups) {
+        if (ag.name.length() > 3 && !ag.name.compare(ag.name.length() - 3, 3, "-ag")) {
+          const auto& ag_file = db.lookup_record(ag);
+          lg::print("custom level: extracting art group {}\n", ag_file.name_in_dgo);
+          decompiler::extract_merc(ag_file, tex_db, db.dts, tex_remap, pc_level, false,
+                                   db.version());
+        }
+      }
+    }
+  }
 
   // Save the PC level
   save_pc_data(file.nickname, pc_level,
