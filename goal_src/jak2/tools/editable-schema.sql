@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS 'light' (
 CREATE TABLE IF NOT EXISTS 'region' (
 	'region_id'	INTEGER NOT NULL,
 	'level_name'	TEXT,
-	'flags'	TEXT,
 	-- Can be:
 		-- target
 		-- camera
@@ -121,6 +120,9 @@ CREATE TABLE IF NOT EXISTS 'region_face' (
 	  -- plane
 		-- face
 	'kind'	TEXT,
+	-- Can be:
+	  -- orient (face the opposite direction of the normal)
+	'flags'	TEXT,
 	-- 'radius'	REAL, removed, radius only allows for square planes, not good enough.
 	-- Added by us so that the regions can actually be displayed as they are
 	-- in the final game
@@ -128,6 +130,10 @@ CREATE TABLE IF NOT EXISTS 'region_face' (
 	'normal_y' REAL,
 	'normal_z' REAL,
 	'normal_w' REAL,
+	'pos_x'	REAL,
+	'pos_y'	REAL,
+	'pos_z'	REAL,
+	'pos_w'	REAL,
 	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
 	PRIMARY KEY('region_face_id' AUTOINCREMENT)
 );
@@ -139,6 +145,7 @@ CREATE TABLE IF NOT EXISTS 'region_point' (
 	'x'	REAL,
 	'y'	REAL,
 	'z'	REAL,
+	-- also added, doesn't hurt
 	'w' REAL,
 	FOREIGN KEY('region_face_id') REFERENCES 'region_face'('region_face_id'),
 	PRIMARY KEY('region_point_id' AUTOINCREMENT)
