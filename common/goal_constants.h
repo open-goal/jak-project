@@ -84,7 +84,7 @@ constexpr u32 GOAL_RELOC_METHOD = 7;     // method ID of GOAL relocate
 constexpr u32 GOAL_MEMUSAGE_METHOD = 8;  // method ID of GOAL mem-usage
 
 constexpr int EE_MAIN_MEM_LOW_PROTECT = 512 * 1024;
-constexpr int EE_MAIN_MEM_SIZE = 128 * (1 << 20);  // 128 MB, same as PS2 TOOL
+constexpr int EE_MAIN_MEM_SIZE = 256 * (1 << 20);  // 128 MB, same as PS2 TOOL (changed to 256 MB)
 constexpr u64 EE_MAIN_MEM_MAP = 0x2123000000;      // intentionally > 32-bit to catch pointer bugs
 
 // when true, attempt to map the EE memory in the low 2 GB of RAM
