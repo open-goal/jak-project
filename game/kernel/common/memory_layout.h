@@ -29,3 +29,5 @@ constexpr u32 DEBUG_HEAP_START = 0x8000000;
 namespace jak2 {
 constexpr u32 DEBUG_HEAP_SIZE = 0x2f00000;
 }
+
+static_assert(DEBUG_HEAP_START > GLOBAL_HEAP_END, "global heap overrun into debug");

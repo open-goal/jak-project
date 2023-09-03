@@ -918,7 +918,7 @@ Ptr<Type> set_fixed_type(u32 offset,
 }
 
 static bool in_valid_memory_for_new_type(u32 addr) {
-  if (SymbolTable2.offset <= addr && addr < 0x8000000) {
+  if (SymbolTable2.offset <= addr && addr < EE_MAIN_MEM_SIZE) {
     return true;
   }
 
