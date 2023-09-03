@@ -688,6 +688,59 @@ u32 alloc_vagdir_names(u32 heap_sym) {
   return s7.offset;
 }
 
+std::vector<std::string> valid_levels = {
+    "default-level", "intro",    "demo",     "title",    "vinroom",   "drillmid", "drill",
+    "drillb",        "drillmtn", "sewer",    "sewerb",   "sewer",     "sewescb",  "tomba",
+    "tombb",         "tombc",    "tombd",    "tombe",    "tombext",   "tombboss", "under",
+    "underb",        "palcab",   "palshaft", "palboss",  "palroof",   "palout",   "throne",
+    "palent",        "prison",   "forexita", "forexitb", "forresca",  "forrescb", "fordumpa",
+    "fordumpb",      "fordumpc", "fordumpd", "strip",    "ruins",     "sagehut",  "atoll",
+    "atollext",      "mountain", "mtnext",   "forest",   "forestb",   "mincan",   "ctywide",
+    "ctykora",       "ctyasha",  "ctygena",  "ctygenb",  "ctygenc",   "ctysluma", "ctyslumb",
+    "ctyslumc",      "ctyport",  "ctyfarma", "ctyfarmb", "ctyinda",   "consite",  "consiteb",
+    "ctyindb",       "ctymarka", "ctymarkb", "ctypal",   "stadium",   "stadiumb", "stadiumc",
+    "stadiumd",      "skatea",   "garage",   "stadblmp", "onintent",  "kiosk",    "oracle",
+    "hideout",       "hiphog",   "gungame",  "dig1",     "dig3a",     "dig3b",    "caspad",
+    "castle",        "casboss",  "casext",   "cascity",  "village1",  "introcst", "nest",
+    "nestb",         "outrocst", "portwall", "island1",  "skatepark", "halfpipe", "vistest",
+    "woodstest",     "tobytest", "chartest", "dptest",   "ctyfence",  "4aaron",   "4pal01",
+    "andrew01",      "bsbs",     "eitest",   "miketest", "tatetest",  "teststdc", "teststdd",
+    "wasall",        "stadocc"};
+
+std::vector<std::string> levels_dumped_lights = {};
+std::vector<std::string> levels_dumped_regions = {};
+std::vector<std::string> levels_dumped_samples = {};
+
+inline u64 bool_to_symbol(const bool val) {
+  return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
+}
+
+u64 pc_has_level_been_dumped_lights(u32 level_name_str) {
+  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
+
+  for (const auto& level : levels_dumped_lights) {
+    if (level == level_name) {
+      return bool_to_symbol(true);
+    }
+  }
+
+  levels_dumped_lights.push_back(level_name);
+  return bool_to_symbol(false);
+}
+
+u64 pc_has_level_been_dumped_regions(u32 level_name_str) {
+  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
+
+  for (const auto& level : levels_dumped_regions) {
+    if (level == level_name) {
+      return bool_to_symbol(true);
+    }
+  }
+
+  levels_dumped_regions.push_back(level_name);
+  return bool_to_symbol(false);
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(
@@ -709,6 +762,11 @@ void InitMachine_PCPort() {
 
   // debugging tools
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
+
+  make_function_symbol_from_c("has-level-been-dumped-lights?",
+                              (void*)pc_has_level_been_dumped_lights);
+  make_function_symbol_from_c("has-level-been-dumped-regions?",
+                              (void*)pc_has_level_been_dumped_regions);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
@@ -869,10 +927,10 @@ void initialize_sql_db() {
       const auto success = sql_db.run_query(file_util::read_text_file(light_fixture));
       // TODO - error check
     }
-    fs::path test_region = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
-                           "db-fixtures" / "test-region.sql";
-    if (file_util::file_exists(test_region.string())) {
-      const auto success = sql_db.run_query(file_util::read_text_file(test_region));
+    fs::path region_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                              "db-fixtures" / "fixture-region.sql";
+    if (file_util::file_exists(region_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(region_fixture));
       // TODO - error check
     }
   }
