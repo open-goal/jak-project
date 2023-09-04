@@ -18,6 +18,8 @@
    (aspect-ratio-choice-index   int8)
    (aspect-ratio-ratio-index    int8)
 
+   (frame-rate-choice-index     int8)
+
    (music-player-track      music-player-track-info)
    (music-player-flava      int8)
    (music-player-selected   symbol)
@@ -60,6 +62,21 @@
     (('borderless) (set! (-> *progress-state-pc* display-mode-choice-index) 2))
     ))
 
+(defun set-progress-frame-rate-index ()
+  "Set the frame rate option index accordingly."
+  (case (-> *pc-settings* target-fps)
+    ((30) (set! (-> *progress-state-pc* frame-rate-choice-index) 0))
+    ((50) (set! (-> *progress-state-pc* frame-rate-choice-index) 1))
+    ((60) (set! (-> *progress-state-pc* frame-rate-choice-index) 2))
+    ((75) (set! (-> *progress-state-pc* frame-rate-choice-index) 3))
+    ((120) (set! (-> *progress-state-pc* frame-rate-choice-index) 4))
+    ((144) (set! (-> *progress-state-pc* frame-rate-choice-index) 5))
+    ((165) (set! (-> *progress-state-pc* frame-rate-choice-index) 6))
+    ((240) (set! (-> *progress-state-pc* frame-rate-choice-index) 7))
+    ;; default to 60 fps
+    (else (set! (-> *progress-state-pc* frame-rate-choice-index) 2))
+    )
+  )
 
 
 (defmethod init-defaults progress ((obj progress))
@@ -136,7 +153,8 @@
   ;; set aspect ratio options
   (set-progress-aspect-ratio-pc-index)
   (set-progress-display-mode-index)
-  (set! (-> (the menu-on-off-option (-> *graphic-options-pc* options 2)) value-to-modify) (&-> *pc-settings* vsync?))
+  (set-progress-frame-rate-index)
+  (set! (-> (the menu-on-off-option (-> *graphic-options-pc* options 3)) value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *progress-state-pc* music-player-track) #f)
   )
 
@@ -505,6 +523,38 @@
   0
   )
 
+(defmethod respond-progress menu-frame-rate-option ((obj menu-frame-rate-option) (arg0 progress) (arg1 symbol))
+  "Handle progress menu navigation logic."
+
+  (when arg1
+    (cond
+      ((cpad-pressed? 0 triangle)
+        (set-progress-frame-rate-index))
+      ((cpad-pressed? 0 confirm)
+        (sound-play "generic-beep")
+        (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
+        )
+      (else
+        (let ((sound-beep? #f))
+          (when (cpad-pressed? 0 left l-analog-left)
+            (true! sound-beep?)
+            (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) -1 0 (1- (-> *frame-rate-options* length)))
+            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
+            )
+          (when (cpad-pressed? 0 right l-analog-right)
+            (true! sound-beep?)
+            (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) 1 0 (1- (-> *frame-rate-options* length)))
+            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
+            )
+          (if sound-beep?
+            (sound-play "generic-beep")
+            )
+          )
+        )
+      )
+    )
+  0
+  )
 
 (defbehavior play-music-player progress ((info music-player-track-info) (flava int))
   "play a music track using music player track info."
