@@ -822,38 +822,63 @@
 
 (defmethod respond-progress menu-scrolling-option-list ((obj menu-scrolling-option-list) (progress progress) (arg1 symbol))
   "Handle progress menu navigation logic."
-  (let ((gp-0 #f))
-    (load-level-text-files (the-as int (-> *setting-control* user-current language)))
-    (when (or (= (-> obj picked-option-item) #f)
-              (zero? (-> obj picked-option-item)))
-      (cond
-        ((or (cpad-pressed? 0 down l-analog-down)
-            (and (cpad-hold? 0 down l-analog-down)
-                  (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))
-                  )
-            )
-        (set! (-> obj last-move) (current-time))
-        (cond
-          ((< (-> *progress-pc-state* current-menu-option-index) (dec (-> obj menu-options length)))
+  (if (or (= (-> obj selected-option-item) #f)
+            (zero? (-> obj selected-option-item)))
+    (cond
+      ((or (cpad-pressed? 0 down l-analog-down)
+           (and (cpad-hold? 0 down l-analog-down)
+                (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))))
+       (set! (-> obj last-move) (current-time))
+       (cond
+         ((< (-> *progress-pc-state* current-menu-option-index) (dec (-> obj menu-options length)))
            (+! (-> *progress-pc-state* current-menu-option-index) 1)
            (sound-play "roll-over"))
-          (else
+         (else
            (set! (-> *progress-pc-state* current-menu-option-index) 0)
            (sound-play "roll-over"))))
-        ((or (cpad-pressed? 0 up l-analog-up)
-             (and (cpad-hold? 0 up l-analog-up)
-                  (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))))
-         (set! (-> obj last-move) (current-time))
-         (+! (-> *progress-pc-state* current-menu-option-index) -1)
-         (sound-play "roll-over")
-         (when (< (-> *progress-pc-state* current-menu-option-index) 0)
-          (set! (-> *progress-pc-state* current-menu-option-index) (dec (-> obj menu-options length)))))
-      ;;  ((cpad-pressed? 0 triangle)
-      ;;   (format 0 "implement")
-      ;;   ;; (pop-state arg0)
-      ;;   )
-      ))
-    ;; TODO - do i need to reload text?
-    )
+      ((or (cpad-pressed? 0 up l-analog-up)
+            (and (cpad-hold? 0 up l-analog-up)
+                (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))))
+        (set! (-> obj last-move) (current-time))
+        (+! (-> *progress-pc-state* current-menu-option-index) -1)
+        (sound-play "roll-over")
+        (when (< (-> *progress-pc-state* current-menu-option-index) 0)
+        (set! (-> *progress-pc-state* current-menu-option-index) (dec (-> obj menu-options length)))))
+      ((cpad-pressed? 0 confirm)
+        (set! (-> obj selected-option-index) (-> *progress-pc-state* current-menu-option-index))
+        (set! (-> obj selected-option-item) (-> obj menu-options (-> *progress-pc-state* current-menu-option-index)))
+        ))
+    (cond
+      ((cpad-pressed? 0 confirm)
+      (format 0 "implement!~%")
+      )
+      ((cpad-pressed? 0 triangle)
+      (set! (-> obj selected-option-index) -1)
+      (set! (-> obj selected-option-item) #f))))
+  ;; propagate event to menu-option
+  (respond-progress (-> obj menu-options (-> *progress-pc-state* current-menu-option-index)) progress arg1)
   0
   )
+
+(defmethod respond-progress menu-generic-boolean-option ((obj menu-generic-boolean-option) (progress progress) (arg1 symbol))
+  (if (>= (-> *progress-pc-state* current-menu-option-index) 0)
+    (cond
+      ((cpad-pressed? 0 left l-analog-left right l-analog-right)
+       (if (-> obj value)
+         (set! (-> obj value) #f)
+         (set! (-> obj value) #t))
+       (sound-play "generic-beep"))
+      ((cpad-pressed? 0 confirm)
+       (when (and (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
+        ((-> obj on-confirm) (-> obj value)))
+       (sound-play "generic-beep")))
+    (cond
+      ((cpad-pressed? 0 confirm)
+       ;; set the value, this is so we edit the component's state and not the actual underlying value
+       ;; in other words, don't change the setting until the user has actually confirmed the change!
+       (when (and (nonzero? (-> obj get-value-fn)) (!= (-> obj get-value-fn) #f))
+        (set! (-> obj value) ((-> obj get-value-fn)))))))
+  0
+  )
+
+
