@@ -5,7 +5,7 @@
 
 #include "common/util/FileUtil.h"
 
-#include <decompiler/config.h>
+#include "decompiler/config.h"
 
 namespace decompiler {
 void process_streamed_audio(const Config& config,

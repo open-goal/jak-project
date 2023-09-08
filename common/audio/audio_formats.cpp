@@ -66,7 +66,7 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
 
   [[maybe_unused]] int block_idx = 0;
   // 16 byte blocks
-  int bytes_read = reader.get_seek(); // we've already read n bytes into the file
+  int bytes_read = reader.get_seek();  // we've already read n bytes into the file
   // Jak VAG's don't interleave the samples because of course they don't
   // instead they are partitioned into contiguous 8kb (thats 8192 bytes) chunks
   // alternating left/right
