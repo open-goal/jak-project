@@ -35,42 +35,150 @@
   ()
   )
 
-(deftype progress-pc-state (structure)
+(deftype generic-progress-state-entry (structure)
+  "All info that is pushed onto a 'stack' when navigating to a sub-menu with
+   the new generic menu options"
+  (;; what needs to be drawn now, the normal progress code figures this out with a hard-coded switch statement, this avoids that
+   (ref menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   (on-load (function none))
+   ;; so we can restore back to the same menu position
+   (hover-index int32)
+   ;; symbol used normally for progress stuff
+   (progress-id symbol)
+   ))
+
+(deftype progress-pc-generic-store (structure)
   "Isolated type for keeping track of some global state, as re-using the normal [[*progress*]] object
-   can lead to unexpected behaviour -- they change some of values all over the place"
-  ((current-menu-option-index int32)))
+   can lead to unexpected behaviour -- they change some values all over the place"
+  ((current-menu-hover-index int32)
+   (clear-screen? symbol)
+   (history-stack generic-progress-state-entry 10 :inline)
+   (history-stack-index int32))
+  (:methods
+    (init! (_type_) none)
+    (navigate! (_type_ progress menu-option-list (function none)) none)
+    (back! (_type_ progress) none)
+    (has-history? (_type_) symbol)
+    (reset-first-history-entry! (_type_) none)))
 
-(define *progress-pc-state* (new 'static 'progress-pc-state))
+(defmethod init! progress-pc-generic-store ((this progress-pc-generic-store))
+  (set! (-> this clear-screen?) #f)
+  (none))
 
-(deftype menu-generic-boolean-option (menu-option)
+(defmethod navigate! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress) (target menu-option-list) (on-load (function none)))
+  (when (< (-> this history-stack-index) 9) ;; hard-coded length
+    ;; if this is the first history entry, we push the current page as well
+    ;; if it's not, then we update the current entry before proceeding to the next page
+    (if (has-history? this)
+      (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+        (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry progress-id) (-> progress current)))
+      (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+        (set! (-> stack-entry ref) (-> progress current-options))
+        (set! (-> stack-entry on-load) on-load)
+        (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry progress-id) (-> progress current))))
+    ;; push the target history entry now
+    (inc! (-> this history-stack-index))
+    ;; Create a new stack entry
+    (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+      (set! (-> stack-entry ref) target)
+      (set! (-> stack-entry on-load) on-load)
+      (set! (-> stack-entry hover-index) 0)
+      (set! (-> stack-entry progress-id) 'generic-menu))
+    ;; Update global state
+    (set! (-> this clear-screen?) #t)
+    (set! (-> progress next) 'generic-menu)
+    (set! (-> progress selected-option) #f))
+  (none))
+
+(defmethod back! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress))
+  (set! (-> this history-stack-index) (max 0 (dec (-> this history-stack-index))))
+  (set! (-> this clear-screen?) #t)
+  (set! (-> progress next) 'generic-menu)
+  (set! (-> progress selected-option) #f)
+  (none))
+
+(defmethod has-history? progress-pc-generic-store ((this progress-pc-generic-store))
+  (> (-> this history-stack-index) 0))
+
+(defmethod reset-first-history-entry! progress-pc-generic-store ((this progress-pc-generic-store))
+  ;; if we are have no history, just reset the entry.  This is so we don't preserve state
+  ;; after completely exiting the menu
+  (when (not (has-history? this))
+    (set! (-> this history-stack-index) 0)
+    (set! (-> this clear-screen?) #f)
+    (set! (-> this current-menu-hover-index) 0)
+    (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+      (set! (-> stack-entry hover-index) 0)
+      (set! (-> stack-entry ref) #f)
+      (set! (-> stack-entry on-load) #f)
+      (set! (-> stack-entry progress-id) #f)))
+  (none))
+
+(define *progress-pc-generic-store* (new 'static 'progress-pc-generic-store))
+
+(deftype menu-generic-option (menu-option)
+  ((mounted? symbol))
+  (:methods
+    (on-mount! "Called when the menu item is first drawn as a means to initialize defaults, etc" (_type_) none)))
+
+(defmethod on-mount! menu-generic-option ((this menu-generic-option))
+  (set! (-> this mounted?) #t)
+  (none))
+
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-boolean-option (menu-generic-option)
   "Generic two option menu entry (ie. yes/no)"
-  (
-    (height int32) ;; not used yet
-    (truthy-text text-id)
-    (falsey-text text-id)
-    ;; state
-    (value symbol)
-    ;; lambdas
-    (get-value-fn (function symbol))
-    (on-confirm (function symbol none))
-  ))
+  (;; props
+   (truthy-text text-id)
+   (falsey-text text-id)
+   ;; state
+   (value symbol)
+   ;; lambdas
+   (get-value-fn (function symbol))
+   (on-confirm (function symbol none))))
 
-(deftype menu-scrolling-option-list (paged-menu-option)
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-carousel-option (menu-generic-option)
+  "Generic left-right menu entry (ie. language selection)"
+  (;; props
+   (items (array text-id))
+   ;; state
+   (item-index int32)
+   ;; lambdas
+   (get-item-index-fn (function int))
+   (on-confirm (function int none))))
+
+(defmethod on-mount! menu-generic-carousel-option ((this menu-generic-carousel-option))
+  (set! (-> this mounted?) #t)
+  (set! (-> this item-index) 0)
+  (none))
+
+(deftype menu-generic-scrolling-page (menu-generic-option)
   "A menu option that holds menu options"
-  ((menu-options          (array menu-option)) ;; the `options` in `menu-options` has a limit of 8
+  (;; props
+   (menu-options          (array menu-option))
    (header                text-id)
+   ;; state
    (selected-option-item  menu-option)
    (selected-option-index int32)
-   (last-move             time-frame))
-  (:methods
-    (new (symbol type) _type_ 0)))
+   (last-move             time-frame)))
 
-;; TODO - remove doesn't work, not invoked with static data
-(defmethod new menu-scrolling-option-list ((allocation symbol) (type-to-make type))
-  (format 0 "new scrolling list!~%")
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj selected-option-index) -1)
-    obj))
+(defmethod on-mount! menu-generic-scrolling-page ((this menu-generic-scrolling-page))
+  (set! (-> this mounted?) #t)
+  (set! (-> this selected-option-item) #f)
+  (set! (-> this selected-option-index) -1)
+  (none))
+
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-link-option (menu-generic-option)
+  "A very simple link option that allows you to link to any other menu-option"
+  (;; props
+   (target menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   (on-load (function none))))
 
 (deftype menu-music-player-option (menu-option)
   ((last-move   time-frame)

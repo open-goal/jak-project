@@ -11,51 +11,74 @@
 
 (set! (-> *main-options-debug* options 9) (new 'static 'menu-main-menu-option :name (text-id progress-music-player) :scale #t :next-state 'music-player))
 
+(defmacro progress-new-generic-scrolling-page (title &rest options)
+  `(new 'static 'menu-option-list
+    :options (new 'static 'boxed-array :type menu-option
+    (new 'static 'menu-generic-scrolling-page
+     :name ,title ; (text-id progress-misc-game-options)
+     :menu-options (new 'static 'boxed-array :type menu-option
+     ,@options)))))
+
+(defmacro progress-new-generic-link (text target)
+  `(new 'static 'menu-generic-link-option
+    :name ,text
+    :target ,target))
 
 (define *game-options-pc*
-  (new 'static 'menu-option-list
-    :y-center #xc6
-    :y-space 30
-    :scale 0.82
-    :options (new 'static 'boxed-array :type menu-option
-                  (new 'static 'menu-scrolling-option-list
-                    :name (text-id progress-root-game-options)
-                    :menu-options (new 'static 'boxed-array :type menu-option
-                      ;; make a macro for this...these are finally the menu options
-                      (new 'static 'menu-generic-boolean-option
-                        :name (text-id progress-vibration)
-                        :scale #t
-                        :truthy-text (text-id progress-on)
-                        :falsey-text (text-id progress-off)
-                        :get-value-fn (lambda () #t)
-                        :on-confirm (lambda (val symbol) (format 0 "~A~%" val)))
-                      (new 'static 'menu-generic-boolean-option
-                        :name (text-id progress-subtitles)
-                        :scale #t
-                        :truthy-text (text-id progress-on)
-                        :falsey-text (text-id progress-off)
-                        :get-value-fn (lambda () #f))
-                      (new 'static 'menu-generic-boolean-option
-                        :name (text-id progress-subtitles)
-                        :scale #t
-                        :truthy-text (text-id progress-on)
-                        :falsey-text (text-id progress-off)
-                        :get-value-fn (lambda () #t))
-                      (new 'static 'menu-generic-boolean-option
-                        :name (text-id progress-subtitles)
-                        :scale #t
-                        :truthy-text (text-id progress-on)
-                        :falsey-text (text-id progress-off)
-                        :get-value-fn (lambda () #f))
-                      (new 'static 'menu-generic-boolean-option
-                        :name (text-id progress-subtitles)
-                        :scale #t
-                        :truthy-text (text-id progress-on)
-                        :falsey-text (text-id progress-off)
-                        :get-value-fn (lambda () #t))
-                        )))
-    )
-  )
+  (progress-new-generic-scrolling-page (text-id progress-root-game-options)
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-vibration)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *setting-control* user-default vibration))
+      :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
+    (new 'static 'menu-generic-boolean-option
+      :name (text-id progress-subtitles)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *setting-control* user-default subtitle))
+      :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default subtitle) val)))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-sound-subtitle-language)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id language-name-english)
+                  (text-id language-name-french)
+                  (text-id language-name-german)
+                  (text-id language-name-spanish)
+                  (text-id language-name-italian)
+                  (text-id language-name-japanese)
+                  (text-id language-name-korean)
+                  (text-id language-name-english-uk))
+      :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
+      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default subtitle-language)
+                                              (the-as language-enum index))))
+    (new 'static 'menu-generic-carousel-option
+      :name (text-id progress-sound-language)
+      :items (new 'static 'boxed-array :type text-id
+                  (text-id language-name-english)
+                  (text-id language-name-french)
+                  (text-id language-name-german)
+                  (text-id language-name-spanish)
+                  (text-id language-name-italian)
+                  (text-id language-name-japanese)
+                  (text-id language-name-korean)
+                  (text-id language-name-english-uk))
+      :get-item-index-fn (lambda () (-> *setting-control* user-default language))
+      :on-confirm (lambda ((index int)) (set! (-> *setting-control* user-default language) (the-as language-enum index))
+                                        ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
+                                        ;; fix it eventually
+                                        (load-level-text-files (the-as int (-> *setting-control* user-default language)))))
+    (progress-new-generic-link (text-id progress-misc-game-options)
+      (progress-new-generic-scrolling-page (text-id progress-misc-game-options)
+        (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-speedrunner-mode)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* speedrunner-mode?) val)
+            (commit-to-file *pc-settings*)))))))
+
 
 (define *graphic-options-pc*
   (new 'static 'menu-option-list
