@@ -1576,6 +1576,20 @@
   `(-> PP clock frame-counter)
   )
 
+(defmacro seconds-per-frame ()
+  "Macro for assuming a 16.6 ms frame time at higher frame rates."
+  `(if (= (get-video-mode) 'custom)
+     0.016666668
+     (-> PP clock seconds-per-frame)
+     )
+  )
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
+                            &key (rate 1.0))
+  `(vector-copy! (-> *launch-matrix* trans) (the vector ,origin))
+  `(sp-launch-particles-var ,system ,particle *launch-matrix* ,launch-state ,launch-control (if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate))
+  )
+
 (defconstant TASK_MANAGER_INIT_HOOK 0)
 (defconstant TASK_MANAGER_CLEANUP_HOOK 1)
 (defconstant TASK_MANAGER_UPDATE_HOOK 2)
