@@ -18,10 +18,10 @@ uniform sampler2D tex_T0;
 float cloud_lookup(float v, float minimum, float maximum) {
   maximum = max(minimum, maximum);
   if (v <= minimum) {
-    return 0;
+    return 0.0;
   }
   if (v >= maximum) {
-    return 1;
+    return 1.0;
   }
 
   float alpha = (v - minimum) / (maximum - minimum);

@@ -50,6 +50,28 @@ void unstrip_shrub_draws(const std::vector<u32>& stripped_indices,
   }
 }
 
+void unstrip_tie_wind(std::vector<u32>& unstripped,
+                      std::vector<u32>& draw_to_start,
+                      std::vector<u32>& draw_to_count,
+                      const std::vector<tfrag3::InstancedStripDraw>& draws) {
+  for (auto& draw : draws) {
+    draw_to_start.push_back(unstripped.size());
+
+    for (size_t i = 2; i < draw.vertex_index_stream.size(); i++) {
+      u32 a = draw.vertex_index_stream[i];
+      u32 b = draw.vertex_index_stream[i - 1];
+      u32 c = draw.vertex_index_stream[i - 2];
+      if (a == UINT32_MAX || b == UINT32_MAX || c == UINT32_MAX) {
+        continue;
+      }
+      unstripped.push_back(a);
+      unstripped.push_back(b);
+      unstripped.push_back(c);
+    }
+    draw_to_count.push_back(unstripped.size() - draw_to_start.back());
+  }
+}
+
 /*!
  * Convert merc strips. Doesn't assume anything about strips. Output is [model][effect][draw] format
  */
@@ -384,6 +406,32 @@ int make_tfrag_tie_index_buffer_view(const std::vector<u32>& indices,
   return buffer_view_idx;
 }
 
+int make_tie_wind_index_buffer_view(const std::vector<tfrag3::InstancedStripDraw>& draws,
+                                    tinygltf::Model& model,
+                                    std::vector<u32>& draw_to_start,
+                                    std::vector<u32>& draw_to_count) {
+  std::vector<u32> unstripped;
+  unstrip_tie_wind(unstripped, draw_to_start, draw_to_count, draws);
+
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(u32) * unstripped.size());
+
+  // and fill it
+  memcpy(buffer.data.data(), unstripped.data(), buffer.data.size());
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
+  return buffer_view_idx;
+}
+
 /*!
  * Create a tinygltf buffer and buffer view for indices, and convert to gltf format.
  * The map can be used to go from slots in the old index buffer to new.
@@ -615,6 +663,45 @@ void add_tie(const tfrag3::Level& level,
       prim.attributes[fmt::format("COLOR_{}", i)] = colors[i];
     }
     prim.mode = TINYGLTF_MODE_TRIANGLES;
+  }
+
+  if (!tie.instanced_wind_draws.empty()) {
+    std::vector<u32> draw_to_start, draw_to_count;
+    int wind_index_buffer_view = make_tie_wind_index_buffer_view(tie.instanced_wind_draws, model,
+                                                                 draw_to_start, draw_to_count);
+
+    for (size_t draw_idx = 0; draw_idx < tie.instanced_wind_draws.size(); draw_idx++) {
+      const auto& wind_draw = tie.instanced_wind_draws[draw_idx];
+      int mat =
+          add_material_for_tex(level, model, wind_draw.tree_tex_id, tex_image_map, wind_draw.mode);
+      for (const auto& grp : wind_draw.instance_groups) {
+        int c_node_idx = (int)model.nodes.size();
+        auto& c_node = model.nodes.emplace_back();
+        model.nodes[node_idx].children.push_back(c_node_idx);
+        int c_mesh_idx = (int)model.meshes.size();
+        auto& c_mesh = model.meshes.emplace_back();
+        c_node.mesh = c_mesh_idx;
+        auto& prim = c_mesh.primitives.emplace_back();
+
+        const auto& info = tie.wind_instance_info.at(grp.instance_idx);
+        for (int i = 0; i < 4; i++) {
+          float scale = i == 3 ? (1.f / 4096.f) : 1.f;
+          for (int j = 0; j < 4; j++) {
+            c_node.matrix.push_back(scale * info.matrix[i][j]);
+          }
+        }
+
+        prim.material = mat;
+        prim.indices = make_index_buffer_accessor(
+            model, draw_to_start.at(draw_idx), draw_to_count.at(draw_idx), wind_index_buffer_view);
+        prim.attributes["POSITION"] = position_buffer_accessor;
+        prim.attributes["TEXCOORD_0"] = texture_buffer_accessor;
+        for (int i = 0; i < kMaxColor; i++) {
+          prim.attributes[fmt::format("COLOR_{}", i)] = colors[i];
+        }
+        prim.mode = TINYGLTF_MODE_TRIANGLES;
+      }
+    }
   }
 }
 
