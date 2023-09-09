@@ -369,7 +369,7 @@
    (locked    symbol           :offset-assert   8)
    (id        uint64           :offset-assert  16)
    (filter    editable-filter  :offset-assert  24)
-   (tree      string           :offset-assert  28)
+   (tree      symbol           :offset-assert  28)
    (level     string           :offset-assert  32)
    (on-enter  string           :offset-assert  36)
    (on-inside string           :offset-assert  40)
@@ -435,8 +435,8 @@
    (selection         (array editable)          :offset-assert  32)
    (filter            editable-filter  2        :offset-assert  36)
    (target            editable                  :offset-assert  44)
-   (target-mode       uint32                    :offset-assert  48)
-   (target-command    basic                     :offset-assert  52)
+   (target-mode       editable-command          :offset-assert  48)
+   (target-command    editable-command          :offset-assert  52)
    (target-message    string                    :offset-assert  56)
    (edit-plane        editable-plane            :offset-assert  60)
    (edit-plane-center vector           :inline  :offset-assert  64)
@@ -452,12 +452,12 @@
   :flag-assert         #x120000007c
   (:methods
     (new (symbol type int) _type_ 0)
-    (editable-array-method-9 (_type_ editable-command editable-array) symbol :behavior editable-player 9)
+    (editable-array-method-9 (_type_ editable-command mouse-info) symbol :behavior editable-player 9)
     (editable-array-method-10 (_type_ vector int) editable 10)
     (editable-array-method-11 (_type_) int 11)
     (editable-array-method-12 (_type_ editable-array) none 12)
-    (editable-array-method-13 (_type_ uint basic string) none 13)
-    (editable-array-method-14 (_type_ (function symbol) symbol) none 14)
+    (editable-array-method-13 (_type_ editable-command editable-command string) none 13)
+    (editable-array-method-14 (_type_ (function editable editable-region symbol) editable-region) (array editable) 14)
     (editable-array-method-15 (_type_ editable) none 15)
     (editable-array-method-16 (_type_) none 16)
     (editable-array-method-17 (_type_ vector vector) vector 17)
@@ -474,7 +474,7 @@
     (set! (-> s5-0 region-lock?) #f)
     (set! (-> s5-0 move-lock?) #f)
     (set! (-> s5-0 target) #f)
-    (set! (-> s5-0 target-command) (the-as basic 0))
+    (set! (-> s5-0 target-command) (editable-command none))
     (set! (-> s5-0 target-message) #f)
     (set! (-> s5-0 selection)
           (the-as (array editable) ((method-of-type array new) allocation array editable arg0))
@@ -636,7 +636,7 @@
   ((length int32                  :offset-assert  24)
    (normal vector         :inline :offset-assert  32)
    (center vector         :inline :offset-assert  48)
-   (vertex editable-point 6       :offset-assert  64)
+   (vertex editable-point 6       :offset-assert  64) ;; can hold up to 6 (kinda a weird number...) but still does just define 1 face!
    )
   :method-count-assert 32
   :size-assert         #x58
@@ -669,16 +669,16 @@
   )
 
 (deftype editable-plane (editable)
-  ((length int32            :offset-assert  24)
-   (radius float            :offset-assert  28)
-   (vertex editable-point 2 :offset-assert  32)
+  "Modified from the original, in the original editor code a plane is defined by a normal vector (2 points) and a radius (equal side lengths)"
+  ((length int32)
+   (normal vector :inline)
+   (position vector :inline)
+   (vertex editable-point 4)
    )
   :method-count-assert 32
-  :size-assert         #x28
-  :flag-assert         #x2000000028
   (:methods
     (new (symbol type editable-region) _type_ 0)
-    (editable-plane-method-30 (_type_ matrix) int 30)
+    (editable-plane-method-30 (_type_ (inline-array vector)) int 30)
     (editable-plane-method-31 (_type_ vector) vector 31)
     )
   )
@@ -699,21 +699,20 @@
                                )
                         )
     (set! (-> gp-0 owner) '())
-    (set! (-> gp-0 radius) 20480.0)
     gp-0
     )
   )
 
 (deftype editable-player (process-drawable)
-  ((current           editable-array   :offset-assert 200)
-   (select-command    function         :offset-assert 204)
-   (move-command      function         :offset-assert 208)
-   (extra-command     function         :offset-assert 212)
-   (left-handed       basic            :offset-assert 216)
-   (light-names       basic            :offset-assert 220)
-   (external-cam-mode symbol           :offset-assert 224)
-   (command           function       6 :offset-assert 228)
-   (close-menu-time   time-frame       :offset-assert 256)
+  ((current           editable-array     :offset-assert 200)
+   (select-command    function           :offset-assert 204)
+   (move-command      function           :offset-assert 208)
+   (extra-command     function           :offset-assert 212)
+   (left-handed       basic              :offset-assert 216)
+   (light-names       basic              :offset-assert 220)
+   (external-cam-mode symbol             :offset-assert 224)
+   (command           editable-command 6 :offset-assert 228)
+   (close-menu-time   time-frame         :offset-assert 256)
    )
   :heap-base #x90
   :method-count-assert 22
@@ -743,5 +742,3 @@
 (define *editable-work* (new 'global 'editable-work))
 
 (define *editable* (the-as (pointer editable-player) #f))
-
-0
