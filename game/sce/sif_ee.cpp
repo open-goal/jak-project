@@ -109,7 +109,12 @@ s32 sceOpen(const char* filename, s32 flag) {
     } break;
 
     default: {
-      fp = file_util::open_file(name.c_str(), "w");
+      // either append or truncate
+      if (flag & SCE_TRUNC) {
+        fp = file_util::open_file(name.c_str(), "w");
+      } else {
+        fp = file_util::open_file(name.c_str(), "a+");
+      }
     } break;
   }
   if (!fp) {

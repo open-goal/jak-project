@@ -68,7 +68,15 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   std::optional<std::shared_ptr<PadData>> pad_data = std::nullopt;
   if (Display::GetMainDisplay()) {
-    pad_data = Display::GetMainDisplay()->get_input_manager()->get_current_data(port);
+    if (Gfx::g_debug_settings.treat_pad0_as_pad1) {
+      if (port == 0) {
+        pad_data = Display::GetMainDisplay()->get_input_manager()->get_current_data(1);
+      } else {
+        pad_data = Display::GetMainDisplay()->get_input_manager()->get_current_data(0);
+      }
+    } else {
+      pad_data = Display::GetMainDisplay()->get_input_manager()->get_current_data(port);
+    }
   }
 
   if (pad_data) {
