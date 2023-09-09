@@ -312,7 +312,8 @@ int main(int argc, char** argv) {
     auto streaming_audio_in = in_folder / "VAG";
     auto streaming_audio_out = out_folder / "assets" / "streaming_audio";
     file_util::create_dir_if_needed(streaming_audio_out);
-    process_streamed_audio(streaming_audio_out, in_folder, config.streamed_audio_file_names);
+    process_streamed_audio(config, streaming_audio_out, in_folder,
+                           config.streamed_audio_file_names);
   }
 
   lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
