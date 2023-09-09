@@ -363,7 +363,7 @@ void extract_from_level(const ObjectFileDB& db,
     file_util::create_dir_if_needed_for_file(fore_file_path);
     save_level_foreground_as_gltf(level_data, fore_file_path);
   }
-  file_util::write_text_file(entities_folder / fmt::format("{}_actors.json", dgo_name),
+  file_util::write_text_file(entities_folder / fmt::format("{}_actors.json", level_data.level_name),
                              extract_actors_to_json(bsp_header.actors));
 }
 
