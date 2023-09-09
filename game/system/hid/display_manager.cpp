@@ -88,6 +88,14 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         // framerate we don't handle that
         update_curr_display_info();
         break;
+      case SDL_WINDOWEVENT_ENTER:
+        if (m_input_manager && m_input_manager.value()->auto_hiding_cursor()) {
+          m_input_manager.value()->hide_cursor(true);
+        }
+        break;
+      case SDL_WINDOWEVENT_LEAVE:
+        m_input_manager.value()->hide_cursor(false);
+        break;
     }
   } else if (event_type == SDL_DISPLAYEVENT) {
     // https://wiki.libsdl.org/SDL2/SDL_DisplayEventID
@@ -173,7 +181,7 @@ void DisplayManager::set_window_size(int width, int height) {
 
 void DisplayManager::enqueue_set_window_display_mode(WindowDisplayMode mode) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_WINDOW_DISPLAY_MODE, mode});
+  ee_event_queue.push({EEDisplayEventType::SET_WINDOW_DISPLAY_MODE, mode, {}});
 }
 
 void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
@@ -235,7 +243,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
 
 void DisplayManager::enqueue_set_fullscreen_display_id(int display_id) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID, display_id});
+  ee_event_queue.push({EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID, display_id, {}});
 }
 
 void DisplayManager::set_fullscreen_display_id(int display_id) {

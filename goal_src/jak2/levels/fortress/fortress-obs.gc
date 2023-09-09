@@ -8,8 +8,8 @@
 ;; DECOMP BEGINS
 
 (deftype fort-trap-door (process-drawable)
-  ((root-override collide-shape-moving  :offset        128)
-   (notify-actor  entity-actor          :offset-assert 200)
+  ((root         collide-shape-moving  :override)
+   (notify-actor entity-actor          :offset-assert 200)
    )
   :heap-base #x50
   :method-count-assert 22
@@ -78,7 +78,7 @@
 (defstate die (fort-trap-door)
   :virtual #t
   :enter (behavior ()
-    (let ((root-prim (-> self root-override root-prim)))
+    (let ((root-prim (-> self root root-prim)))
       (set! (-> root-prim prim-core collide-as) (collide-spec))
       (set! (-> root-prim prim-core collide-with) (collide-spec))
       )
@@ -114,9 +114,7 @@
                   )
              (when target-proc
                (set! (-> exploder-tuning fountain-rand-transv-lo quad) (-> (get-trans target-proc 0) quad))
-               (set! (-> exploder-tuning fountain-rand-transv-lo y)
-                     (+ -16384.0 (-> exploder-tuning fountain-rand-transv-lo y))
-                     )
+               (+! (-> exploder-tuning fountain-rand-transv-lo y) -16384.0)
                )
              )
            (set! (-> exploder-tuning fountain-rand-transv-hi x) 24576.0)
@@ -175,9 +173,9 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-override) (the-as collide-shape-moving cshape))
+    (set! (-> obj root) (the-as collide-shape-moving cshape))
     )
-  (set! (-> (the-as collide-shape-moving (-> obj root-override)) penetrated-by) (penetrate flop))
+  (set! (-> (the-as collide-shape-moving (-> obj root)) penetrated-by) (penetrate flop))
   (process-drawable-from-entity! obj entity)
   (initialize-skeleton
     obj

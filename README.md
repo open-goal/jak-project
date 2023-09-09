@@ -26,6 +26,11 @@
   - [Windows](#windows)
     - [Required Software](#required-software)
     - [Using Visual Studio](#using-visual-studio)
+  - [MacOS](#macos)
+    - [Intel Based](#intel-based)
+    - [Apple Silicon](#apple-silicon)
+  - [VSCode](#vscode)
+    - [Building and Debugging](#building-and-debugging)
   - [Building and Running the Game](#building-and-running-the-game)
     - [Extract Assets](#extract-assets)
     - [Build the Game](#build-the-game)
@@ -128,7 +133,7 @@ Unfortunately you'll still need task runner on your local machine to run the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python libgl1-mesa-dev
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 
@@ -233,6 +238,51 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 
 ![](./docs/img/windows/release-build.png)
 ![](./docs/img/windows/build-all.png)
+
+### MacOS
+
+> NOTE: At this time you can only run the game on macOS if you have an Intel processor.
+
+Ensure that you have Xcode command line tools installed (this installs things like Apple Clang).  If you don't, you can run the following command:
+
+```bash
+xcode-select --install
+```
+
+#### Intel Based
+
+```bash
+brew install go-task/tap/go-task
+brew install cmake nasm ninja go-task clang-format
+cmake -B build --preset=Release-macos-clang
+cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+```
+
+#### Apple Silicon
+
+**Not Supported at This Time**
+
+```bash
+brew install go-task/tap/go-task
+brew install cmake ninja go-task clang-format
+cmake -B build --preset=Release-macos-clang
+cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+```
+
+You may have to add the MacOS SDK to your `LIBRARY_PATH`:
+- `export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"`
+
+### VSCode
+
+If you either don't want to or cannot use Visual Studio for working with the C++ project, VSCode is a good alternatively.
+
+The `clangd` extension is [recommended](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd) and requires `clangd` to be on your `$PATH`.  If you can run `clangd` in a terminal successfully then you should be good to go.
+
+Once you generate your CMake for the first time the clangd LSP should be able to index the project and give you intellisense.
+
+#### Building and Debugging
+
+TODO - Consider Contributing Documentation :)
 
 ### Building and Running the Game
 

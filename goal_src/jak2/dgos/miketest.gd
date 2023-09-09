@@ -1,0 +1,9 @@
+("MIKETEST.DGO"
+  (
+    "miketest-vis.go"
+    "tpage-3096.go"
+    "tpage-3097.go"
+    "tpage-3099.go"
+    "tpage-3098.go"
+    "com-airlock-inner-ag.go"
+  ))

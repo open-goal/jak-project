@@ -1026,7 +1026,7 @@ it returns a triangle and normal direction to push in.
 
      ;; hack: things have gone very wrong.
      ;; added print
-     (format 0 "very far in collision hack running~%")
+     ;; (format 0 "very far in collision hack running~%")
      (set! (-> sv-48 quad) (-> arg1 best-other-tri normal quad)) ;; just use the triangle's normal, things are bad.
      (set! (-> arg0 coverage) 0.0)
      )
@@ -3139,8 +3139,6 @@ it returns a triangle and normal direction to push in.
   (none)
   )
 
-;; definition for method 50 of type collide-shape
-;; INFO: Used lq/sq
 (defmethod send-shoves collide-shape ((obj collide-shape) (arg0 process) (arg1 touching-shapes-entry) (arg2 float) (arg3 float) (arg4 float))
   (local-vars (sv-144 process) (sv-160 collide-shape-prim) (sv-176 vector))
   (with-pp
@@ -3161,7 +3159,7 @@ it returns a triangle and normal direction to push in.
             (when (and s0-0 gp-0)
               (while s0-0
                 (set! sv-160 (get-touched-prim s0-0 obj arg1))
-                (get-touched-prim s0-0 (-> (the-as process-focusable gp-0) root-override) arg1)
+                (get-touched-prim s0-0 (-> (the-as process-focusable gp-0) root) arg1)
                 (when (logtest? (-> sv-160 prim-core action) (collide-action no-standon))
                   (let ((v1-12 (get-middle-of-bsphere-overlap s0-0 (new 'stack-no-clear 'vector))))
                     (set! sv-176 (new 'stack-no-clear 'vector))
@@ -3175,18 +3173,16 @@ it returns a triangle and normal direction to push in.
                   (.svf (&-> sv-176 quad) vf6)
                   (vector-normalize! sv-176 1.0)
                   (when (and (< arg2 (-> sv-176 y)) (and (not (focus-test? (the-as process-focusable gp-0) dead hit board mech))
-                                                         (< (-> (the-as process-focusable gp-0) root-override transv y) 4.096)
+                                                         (< (-> (the-as process-focusable gp-0) root transv y) 4.096)
                                                          )
                              )
                     (let ((s2-1 (new 'stack-no-clear 'vector)))
-                      (set! (-> s2-1 quad) (-> (the-as process-focusable gp-0) root-override transv quad))
-                      (let* ((v1-26 (-> (the-as process-focusable gp-0) root-override transv))
+                      (set! (-> s2-1 quad) (-> (the-as process-focusable gp-0) root transv quad))
+                      (let* ((v1-26 (-> (the-as process-focusable gp-0) root transv))
                              (f30-0 (sqrtf (+ (* (-> v1-26 x) (-> v1-26 x)) (* (-> v1-26 z) (-> v1-26 z)))))
                              )
                         (if (= f30-0 0.0)
-                            (set! (-> s2-1 quad)
-                                  (-> (vector-z-quaternion! s2-1 (-> (the-as process-focusable gp-0) root-override quat)) quad)
-                                  )
+                            (set! (-> s2-1 quad) (-> (vector-z-quaternion! s2-1 (-> (the-as process-focusable gp-0) root quat)) quad))
                             )
                         (vector-xz-normalize! s2-1 (fmax f30-0 arg4))
                         )

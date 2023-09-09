@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <unordered_set>
 
 #include "decompiler/data/TextureDB.h"
 
@@ -13,5 +15,7 @@ struct TPageResultStats {
 
 TPageResultStats process_tpage(ObjectFileData& data,
                                TextureDB& texture_db,
-                               const fs::path& output_path);
+                               const fs::path& output_path,
+                               const std::unordered_set<std::string>& animated_textures,
+                               bool save_pngs);
 }  // namespace decompiler

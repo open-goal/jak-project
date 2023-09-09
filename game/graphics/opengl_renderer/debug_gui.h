@@ -40,7 +40,7 @@ class FrameTimeRecorder {
 
 class OpenGlDebugGui {
  public:
-  OpenGlDebugGui(GameVersion version) : m_version(version) {}
+  OpenGlDebugGui() {}
 
   void start_frame();
   void finish_frame();
@@ -48,7 +48,6 @@ class OpenGlDebugGui {
   bool should_draw_render_debug() const { return master_enable && m_draw_debug; }
   bool should_draw_profiler() const { return master_enable && m_draw_profiler; }
   bool should_draw_subtitle_editor() const { return master_enable && m_subtitle_editor; }
-  bool should_draw_subtitle2_editor() const { return master_enable && m_subtitle2_editor; }
   bool should_draw_filters_menu() const { return master_enable && m_filters_menu; }
   bool should_draw_loader_menu() const { return master_enable && m_draw_loader; }
   const char* screenshot_name() const { return m_screenshot_save_name; }
@@ -83,11 +82,8 @@ class OpenGlDebugGui {
   bool m_draw_debug = false;
   bool m_draw_loader = false;
   bool m_subtitle_editor = false;
-  bool m_subtitle2_editor = false;
   bool m_filters_menu = false;
   bool m_want_screenshot = false;
   char m_screenshot_save_name[256] = "screenshot.png";
   float target_fps_input = 60.f;
-
-  GameVersion m_version;
 };

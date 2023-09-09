@@ -35,6 +35,8 @@ add_library(
         Disasm/OpcodeInfo.cpp
         Disasm/Register.cpp
 
+        extractor/extractor_util.cpp
+
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
@@ -108,7 +110,7 @@ target_link_libraries(decompiler
 
 
 add_executable(extractor
-        extractor/main.cpp extractor/extractor_util.hpp )
+        extractor/main.cpp extractor/extractor_util.cpp)
 
 target_link_libraries(extractor
         decomp

@@ -32,10 +32,11 @@ add_library(common
         dma/dma_copy.cpp
         dma/dma.cpp
         dma/gs.cpp
-        formatter/formatter.cpp
-        formatter/formatting_rules.cpp
         formatter/formatter_tree.cpp
-        formatter/config/rule_config.cpp
+        formatter/formatter.cpp
+        formatter/formatter_tree.cpp
+        formatter/rules/formatting_rules.cpp
+        formatter/rules/rule_config.cpp
         global_profiler/GlobalProfiler.cpp
         goos/Interpreter.cpp
         goos/Object.cpp
@@ -51,10 +52,12 @@ add_library(common
         repl/nrepl/ReplClient.cpp
         repl/nrepl/ReplServer.cpp
         repl/util.cpp
-        serialization/subtitles/subtitles_deser.cpp
-        serialization/subtitles/subtitles_ser.cpp
-        serialization/subtitles2/subtitles2_deser.cpp
-        serialization/subtitles2/subtitles2_ser.cpp
+        serialization/subtitles/subtitles_v1.cpp
+        serialization/subtitles/subtitles_v2.cpp
+        serialization/subtitles/subtitles.cpp
+        serialization/text/text_ser.cpp
+        sqlite/sqlite.cpp
+        texture/texture_slots.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/state.cpp
@@ -69,6 +72,7 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/dialogs.cpp
         util/diff.cpp
         util/FileUtil.cpp
         util/FontUtils.cpp
@@ -83,9 +87,9 @@ add_library(common
         util/Timer.cpp
         util/unicode_util.cpp
         versions/versions.cpp
-)
+        )
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

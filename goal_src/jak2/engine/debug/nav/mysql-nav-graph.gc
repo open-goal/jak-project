@@ -217,7 +217,7 @@
   :size-assert         #x41c
   :flag-assert         #x150000041c
   (:methods
-    (new (symbol type int symbol) _type_ 0)
+    (new (symbol type string) _type_ 0)
     (init-from-sql! (_type_ string string) symbol 9)
     (exec-sql! (_type_) symbol 10)
     (indexof-nav-node (_type_ int) int 11)
@@ -235,7 +235,7 @@
 
 
 ;; WARN: Return type mismatch object vs mysql-nav-graph.
-(defmethod new mysql-nav-graph ((allocation symbol) (type-to-make type) (arg0 int) (arg1 symbol))
+(defmethod new mysql-nav-graph ((allocation symbol) (type-to-make type) (arg0 string))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (if (zero? gp-0)
         (return (the-as mysql-nav-graph 0))
@@ -334,11 +334,10 @@ if none exist, return `-1`"
     (else
       (let ((v1-3 (indexof-visnode obj edge-id node-id)))
         (when (>= v1-3 0)
-          (set! (-> (the-as mysql-nav-visnode (+ (the-as uint (-> obj visnode-array)) (* v1-3 32))) nav_visnode_id)
-                (logand -3
-                        (-> (the-as mysql-nav-visnode (+ (the-as uint (-> obj visnode-array)) (* v1-3 32))) nav_visnode_id)
-                        )
-                )
+          (logand!
+            (-> (the-as mysql-nav-visnode (+ (the-as uint (-> obj visnode-array)) (* v1-3 32))) nav_visnode_id)
+            -3
+            )
           (return v1-3)
           )
         )
@@ -1200,4 +1199,3 @@ returns `-1` if none is found"
   0
   (none)
   )
-

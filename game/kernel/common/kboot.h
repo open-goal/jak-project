@@ -4,6 +4,7 @@
 #define GAME_TERRITORY_SCEA 0  // sony america
 #define GAME_TERRITORY_SCEE 1  // sony europe
 #define GAME_TERRITORY_SCEI 2  // sony inc. (japan)
+#define GAME_TERRITORY_SCEK 3  // sony korea
 
 enum class RuntimeExitStatus {
   RUNNING = 0,

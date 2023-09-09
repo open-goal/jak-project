@@ -321,7 +321,7 @@
 
 (defmethod init-proj-settings! wasp-shot ((obj wasp-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'wasp-shot)
   (set! (-> obj max-speed) 491520.0)
   (set! (-> obj move) metalhead-shot-move)
@@ -455,7 +455,7 @@
          )
      (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (enemy-method-62 obj)
-     (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (if (zero? (-> obj hit-points))
@@ -470,14 +470,14 @@
   )
 
 (defmethod enemy-method-52 wasp ((obj wasp) (arg0 vector))
-  (let ((s4-0 (-> obj root-override2)))
+  (let ((s4-0 (-> obj root)))
     (case (-> obj incoming knocked-type)
       (((knocked-type knocked-type-2))
-       (let ((gp-1 (-> obj root-override2 transv)))
+       (let ((gp-1 (-> obj root transv)))
          (let ((a1-1 (handle->process (-> obj incoming attacker-handle))))
            (if a1-1
-               (vector-! gp-1 (-> (the-as process-focusable a1-1) root-override trans) (-> obj root-override2 trans))
-               (vector-! gp-1 (-> obj incoming attacker-pos) (-> obj root-override2 trans))
+               (vector-! gp-1 (-> (the-as process-focusable a1-1) root trans) (-> obj root trans))
+               (vector-! gp-1 (-> obj incoming attacker-pos) (-> obj root trans))
                )
            )
          (set! (-> gp-1 y) 0.0)
@@ -509,10 +509,10 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod go-idle wasp ((obj wasp))
   (cond
-    ((logtest? (-> obj fact-info-override enemy-options) (enemy-option user0))
+    ((logtest? (-> obj fact enemy-options) (enemy-option user0))
      (go (method-of-object obj shoot-bridge-wait))
      )
-    ((logtest? (enemy-option ambush) (-> obj fact-info-override enemy-options))
+    ((logtest? (enemy-option ambush) (-> obj fact enemy-options))
      (go (method-of-object obj ambush))
      )
     (else
@@ -535,7 +535,7 @@
   )
 
 (defmethod enemy-method-129 wasp ((obj wasp))
-  (if (logtest? (-> obj fact-info-override enemy-options) (enemy-option user0))
+  (if (logtest? (-> obj fact enemy-options) (enemy-option user0))
       (set! (-> obj focus-pos quad) (-> obj plat-pos quad))
       ((method-of-type hover-enemy enemy-method-129) obj)
       )
@@ -564,7 +564,7 @@
 (defstate dormant (wasp)
   :virtual #t
   :enter (behavior ()
-    (if (logtest? (-> self fact-info-override enemy-options) (enemy-option user0))
+    (if (logtest? (-> self fact enemy-options) (enemy-option user0))
         (go-virtual shoot-bridge-wait)
         )
     (none)
@@ -662,7 +662,7 @@
     )
   :trans (behavior ()
     (if (< (vector-vector-distance
-             (-> self root-override2 trans)
+             (-> self root trans)
              (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 6.0 'interp)
              )
            40960.0
@@ -707,9 +707,9 @@
         ((< a0-0 (-> v1-0 length))
          (let ((a1-1 (-> v1-0 data a0-0 actor extra trans)))
            (set! (-> self plat-pos quad) (-> a1-1 quad))
-           (set! (-> self plat-pos y) (+ -8192.0 (-> self plat-pos y)))
+           (+! (-> self plat-pos y) -8192.0)
            (set! (-> self focus-pos quad) (-> self plat-pos quad))
-           (when (< (vector-vector-distance (-> self root-override2 trans) a1-1)
+           (when (< (vector-vector-distance (-> self root trans) a1-1)
                     (- 327680.0 (* 81920.0 (the float (-> self bridge-index))))
                     )
              (+! (-> self bridge-index) 1)
@@ -728,8 +728,8 @@
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'vector)))
       (set! (-> a1-0 quad) (-> self focus-pos quad))
-      (set! (-> a1-0 z) (+ 81920.0 (-> a1-0 z)))
-      (set! (-> a1-0 y) (+ 40960.0 (-> a1-0 y)))
+      (+! (-> a1-0 z) 81920.0)
+      (+! (-> a1-0 y) 40960.0)
       (hover-nav-control-method-11 (-> self hover) a1-0)
       )
     (hover-enemy-dest-post)
@@ -759,7 +759,7 @@
          (spawn-wasp-shot self gp-0 19 0.000000000000000000000000000000000000000000024 -1.0)
          (spawn-wasp-shot self gp-0 23 0.00000000000000000000000000000000000000000003 1.0)
          )
-       (sound-play "wasp-fire" :position (-> self root-override2 trans))
+       (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
         (enemy-event-handler proc arg1 event-type event)
@@ -773,7 +773,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (sound-play "wasp-warn" :position (-> self root-override2 trans))
+    (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
                 :num! (seek!
                   (the float
@@ -814,8 +814,8 @@
       )
     (let ((a1-8 (new 'stack-no-clear 'vector)))
       (set! (-> a1-8 quad) (-> self focus-pos quad))
-      (set! (-> a1-8 z) (+ 81920.0 (-> a1-8 z)))
-      (set! (-> a1-8 y) (+ 40960.0 (-> a1-8 y)))
+      (+! (-> a1-8 z) 81920.0)
+      (+! (-> a1-8 y) 40960.0)
       (hover-nav-control-method-11 (-> self hover) a1-8)
       )
     (hover-enemy-dest-post)
@@ -826,7 +826,7 @@
 (defstate shoot-bridge-outro (wasp)
   :virtual #t
   :enter (behavior ()
-    (let ((v1-1 (-> self root-override2 root-prim)))
+    (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
       (set! (-> v1-1 prim-core collide-with) (collide-spec))
       )
@@ -839,7 +839,7 @@
       (hover-nav-control-method-10
         (-> self hover)
         v1-7
-        (vector-normalize! (vector-! (new 'stack-no-clear 'vector) v1-7 (-> self root-override2 trans)) 1.0)
+        (vector-normalize! (vector-! (new 'stack-no-clear 'vector) v1-7 (-> self root trans)) 1.0)
         (the-as vector #t)
         )
       )
@@ -848,7 +848,7 @@
     )
   :trans (behavior ()
     (when (< (vector-vector-distance
-               (-> self root-override2 trans)
+               (-> self root trans)
                (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (get-num-segments (-> self path)) 'interp)
                )
              8192.0
@@ -920,7 +920,7 @@
          (spawn-wasp-shot self gp-0 19 0.000000000000000000000000000000000000000000024 -1.0)
          (spawn-wasp-shot self gp-0 23 0.00000000000000000000000000000000000000000003 1.0)
          )
-       (sound-play "wasp-fire" :position (-> self root-override2 trans))
+       (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
         (enemy-event-handler proc arg1 event-type event)
@@ -934,7 +934,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (sound-play "wasp-warn" :position (-> self root-override2 trans))
+    (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
                 :num! (seek!
                   (the float
@@ -1011,7 +1011,7 @@
       )
     (set! (-> self enemy-flags) v1-35)
     (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
-        (set! (-> self mask) (logior (process-mask collectable) (-> self mask)))
+        (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-42 (-> self enemy-flags)))
@@ -1035,7 +1035,7 @@
   :code (behavior ()
     (dispose! self)
     (set! (-> self hit-points) 0)
-    (let ((v1-3 (-> self root-override2 root-prim)))
+    (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
@@ -1068,7 +1068,7 @@
               (t2-1 #f)
               (t3-0 *launch-matrix*)
               )
-          (set! (-> t3-0 trans quad) (-> self root-override2 trans quad))
+          (set! (-> t3-0 trans quad) (-> self root trans quad))
           ((the-as (function object object object object object object object object none) t9-11)
            a0-12
            a1-8
@@ -1096,7 +1096,7 @@
   :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
   :code (behavior ()
     (dispose! self)
-    (let ((v1-3 (-> self root-override2 root-prim)))
+    (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
       )
@@ -1122,7 +1122,7 @@
     (the-as
       process-focusable
       (when s5-0
-        (let* ((a0-4 (-> obj root-override2))
+        (let* ((a0-4 (-> obj root))
                (s4-1 (vector+! (new 'stack-no-clear 'vector) (-> a0-4 trans) (-> a0-4 transv)))
                (s3-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> obj focus-pos)))
                (s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s5-0) 0)))
@@ -1181,7 +1181,7 @@
   )
 
 (defmethod enemy-method-80 wasp ((obj wasp) (arg0 enemy-knocked-info))
-  (-> obj root-override2)
+  (-> obj root)
   (>= (-> arg0 on-surface-count) 1)
   )
 
@@ -1252,12 +1252,12 @@
                     (-> arg0 scale)
                     (quaternion-rotate-local-z! sv-208 a1-3 sv-192)
                     (quaternion->matrix s5-0 sv-208)
-                    (set! (-> s2-1 quad) (-> arg0 root-override2 scale quad))
+                    (set! (-> s2-1 quad) (-> arg0 root scale quad))
                     (scale-matrix! s5-0 s2-1 s5-0)
-                    (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root-override2 quat)))
+                    (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
                            (t9-6 vector-inv-orient-by-quat!)
                            (a0-10 (new 'stack-no-clear 'vector))
-                           (a2-4 (-> arg0 root-override2 quat))
+                           (a2-4 (-> arg0 root quat))
                            (v0-6 (t9-6 a0-10 sv-224 a2-4))
                            (f30-0 (* 2457600.0 (-> pp clock seconds-per-frame)))
                            (f28-0
@@ -1307,7 +1307,7 @@
                           0
                           0
                           (sound-group sfx)
-                          (-> arg0 root-override2 trans)
+                          (-> arg0 root trans)
                           )
                         )
                       )
@@ -1447,7 +1447,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-35 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1524,9 +1524,9 @@
   (set! (-> obj neck ear) (the-as uint 0))
   (set! (-> obj scale) (get-rand-float-range obj 0.9 1.3))
   (set! (-> obj sound-id) (new-sound-id))
-  (set! (-> obj root-override2 dynam gravity y) 327680.0)
-  (set! (-> obj root-override2 dynam gravity-length) 327680.0)
-  (set! (-> obj root-override2 dynam gravity-max) 327680.0)
+  (set! (-> obj root dynam gravity y) 327680.0)
+  (set! (-> obj root dynam gravity-length) 327680.0)
+  (set! (-> obj root dynam gravity-max) 327680.0)
   (set! (-> obj gun-jmod)
         (the-as joint-mod (new 'process 'joint-mod-rotate-local obj (-> obj hover-info gun-base) #t))
         )

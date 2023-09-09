@@ -105,6 +105,7 @@
 
 (declare-type sql-result basic)
 (define-extern sql-query (function string sql-result))
+(define-extern *collapse-quote* symbol)
 
 (define-extern loading-level kheap)
 (define-extern dma-sync (function pointer int int int))
@@ -572,7 +573,8 @@
 
 
 (deftype process (process-tree)
-  ((pool dead-pool)
+  ((self process :override)
+   (pool dead-pool)
    (status symbol :offset-assert 40)
    (pid int32)
    (main-thread cpu-thread :offset-assert 48)
@@ -3454,15 +3456,23 @@
     (x        14)
     (square   15)
     ;; only 16 buttons are mapped to hardware, the rest are 'actions' or something else
-    (l-analog-down 16)
+    (l-analog-up 16)
     (l-analog-right 17)
-    (l-analog-up 18)
+    (l-analog-down 18)
     (l-analog-left 19)
-    (r-analog-down 20)
+    (r-analog-up 20)
     (r-analog-right 21)
-    (r-analog-up 22)
+    (r-analog-down 22)
     (r-analog-left 23)
     (confirm 24)
+    )
+
+(defenum mouse-buttons
+    :bitfield #t
+    :type uint32
+    (left)
+    (right)
+    (middle)
     )
 
 (deftype scf-time (structure)
@@ -3554,9 +3564,9 @@
    (deltay int8 :offset-assert 23)
    (wheel uint8 :offset-assert 24)
    (change-time time-frame :offset-assert 32)
-   (button0-abs uint32 3 :offset-assert 40)
-   (button0-shadow-abs uint32 1 :offset-assert 52)
-   (button0-rel uint32 3 :offset-assert 56)
+   (button0-abs mouse-buttons 3 :offset-assert 40)
+   (button0-shadow-abs mouse-buttons 1 :offset-assert 52)
+   (button0-rel mouse-buttons 3 :offset-assert 56)
    (pos vector 2 :inline :offset-assert 80)
    (posx float :offset 80)
    (posy float :offset 84)
@@ -5149,8 +5159,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype texture-anim-layer (structure)
-  ((extra           vector  :inline :offset 240)
-   (func            (function texture-anim-layer int) :offset 256)
+  ((interpolated-color     vector :inline) ;; added
+   (interpolated-scale-offset vector :inline)
+   (interpolated-st-scale-offset vector :inline)
+   (interpolated-qs vector :inline)
+   (interpolated-rot vector :inline)
+   (extra           vector  :inline :offset 240)
+   (func            (function dma-buffer uint int int texture-anim-layer float int) :offset 256)
    (func-id         symbol          :offset 256)
    (init-func       (function texture-anim-layer int) :offset 260)
    (init-func-id    symbol          :offset 260)
@@ -5161,6 +5176,9 @@
    (test            gs-test         :offset 280)
    (alpha           gs-alpha        :offset 288)
    (clamp           gs-clamp        :offset 296)
+
+   (start-vectors   vector 5 :inline :offset 80 :score -10) ;; added
+
    (start-color     vector  :inline :offset 80)
    (start-scale     vector2 :inline :offset 96)
    (start-offset    vector2 :inline :offset 104)
@@ -5169,9 +5187,13 @@
    (start-qs        vector  :inline :offset 128)
    (start-rot       degrees         :offset 144)
    (start-st-rot    degrees         :offset 148)
+
+   (end-vectors     vector 5 :inline :offset 160 :score -10) ;; added
+
    (end-color       vector  :inline :offset 160)
    (end-scale       vector2 :inline :offset 176)
    (end-offset      vector2 :inline :offset 184)
+   (end-scale-offset vector :inline :offset 176)
    (end-st-scale    vector2 :inline :offset 192)
    (end-st-offset   vector2 :inline :offset 200)
    (end-qs          vector  :inline :offset 208)
@@ -5182,14 +5204,14 @@
   :size-assert         #x130
   :flag-assert         #xb00000130
   (:methods
-    (texture-anim-layer-method-9 (_type_) _type_ 9)
-    (texture-anim-layer-method-10 (_type_) _type_ 10)
+    (initialize-texture! (_type_) _type_ 9)
+    (clear-texture! (_type_) _type_ 10)
     )
   )
 
 (deftype texture-anim (structure)
   ((num-layers   uint32           :offset-assert 0)
-   (func         (function texture-anim int)         :offset-assert 4)
+   (func         (function dma-buffer texture-anim int)         :offset-assert 4)
    (func-id      symbol           :offset 4)
    (init-func    (function texture-anim int)         :offset-assert 8)
    (init-func-id symbol           :offset 8)
@@ -5209,8 +5231,8 @@
   :size-assert         #x58
   :flag-assert         #xb00000058
   (:methods
-    (texture-anim-method-9 (_type_) _type_ 9)
-    (texture-anim-method-10 (_type_) _type_ 10)
+    (init-textures! (_type_) _type_ 9)
+    (clear-textures! (_type_) _type_ 10)
     )
   )
 
@@ -5221,8 +5243,8 @@
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (texture-anim-array-method-9 (_type_) _type_ 9)
-    (texture-anim-array-method-10 (_type_) _type_ 10)
+    (init! (_type_) _type_ 9)
+    (clear! (_type_) _type_ 10)
     )
   )
 
@@ -5321,7 +5343,7 @@
   :flag-assert         #x90000008c
   )
 
-(define-extern *clut-translate* (pointer uint32))
+(define-extern *clut-translate* (pointer uint8))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lights-h                       ;;
@@ -6733,6 +6755,13 @@
   (progress-on #x10e)
   (progress-off #x10f)
   (progress-move-dpad #x110)
+  (text-x111 #x111)
+  (text-x112 #x112)
+  (text-x113 #x113)
+  (text-x114 #x114)
+  (text-x115 #x115)
+  (text-x116 #x116)
+  (text-x117 #x117)
   (progress-aspect-ratio #x118)
   (progress-progressive-scan #x119)
   (progress-video-mode #x11a)
@@ -7205,6 +7234,7 @@
   (scene-nest-boss-intro #x306)
   (scene-intro #x307)
   (scene-outro #x308)
+  (text-x30b #x30b)
   (scene-subtitles-hint #x30c)
   (scene-subtitles-enabled #x30d)
   (scene-subtitles-disabled #x30e)
@@ -7220,6 +7250,118 @@
   (discord-rpc-dark-gun-training #x1105)
   (discord-rpc-onin-game #x1106)
   (discord-rpc-whack #x1107)
+  (progress-display-mode #x1200)
+  (progress-windowed #x1201)
+  (progress-fullscreen #x1202)
+  (progress-borderless #x1203)
+  (progress-aspect-ratio-auto #x1204)
+  (progress-aspect-ratio-custom #x1205)
+  (progress-aspect-ratio-4x3 #x1206)
+  (progress-aspect-ratio-16x9 #x1207)
+  (progress-aspect-ratio-custom-title #x1208)
+  (progress-aspect-ratio-custom-pad-x #x1209)
+  (progress-aspect-ratio-custom-pad-circle #x120a)
+  (progress-aspect-ratio-custom-warn #x120b)
+  (progress-music-player #x120c)
+  (progress-vsync #x120d)
+  (progress-text-language #x120e)
+  (progress-cheats #x120f)
+  (progress-aspect-ratio-custom-width #x1210)
+  (progress-aspect-ratio-custom-height #x1211)
+  (progress-music-player-locked #x1212)
+  (progress-music-player-now-playing #x1213)
+  (progress-music-player-no-track #x1214)
+  (progress-music-player-flava-default #x1215)
+  (progress-music-player-flava-gun #x1216)
+  (progress-music-player-flava-board #x1217)
+  (progress-music-player-flava-mech #x1218)
+  (progress-music-player-flava-darkjak #x1219)
+  (progress-music-player-flava-pilot #x121a)
+  (progress-music-player-danger #x121b)
+  (progress-music-player-danger-0 #x121c)
+  (progress-music-player-danger-1 #x121d)
+  (progress-music-player-danger-2 #x121e)
+  (progress-music-player-danger-3 #x121f)
+  (progress-music-player-city #x1220)
+  (progress-music-player-city-battle #x1221)
+  (progress-music-player-battle #x1222)
+  (progress-music-player-danger2 #x1223)
+  (progress-music-player-danger3 #x1224)
+  (progress-music-player-danger4 #x1225)
+  (progress-music-player-danger6 #x1226)
+  (progress-music-player-danger7 #x1227)
+  (progress-music-player-danger9 #x1228)
+  (progress-music-player-danger10 #x1229)
+  (progress-music-player-danger11 #x122a)
+  (progress-music-player-atoll #x122b)
+  (progress-music-player-atoll-battle #x122c)
+  (progress-music-player-strip #x122d)
+  (progress-music-player-forest #x122e)
+  (progress-music-player-forest-battle #x122f)
+  (progress-music-player-sewer #x1230)
+  (progress-music-player-sewer-battle #x1231)
+  (progress-music-player-mountain #x1232)
+  (progress-music-player-mountain-battle #x1233)
+  (progress-music-player-palcab #x1234)
+  (progress-music-player-palcab-battle #x1235)
+  (progress-music-player-race #x1236)
+  (progress-music-player-ruins #x1237)
+  (progress-window-size #x1238)
+  (progress-window-size-decoration #x1239)
+  (progress-game-res #x123a)
+  (progress-game-res-decoration #x123b)
+  (progress-lod-bg #x123c)
+  (progress-lod-fg #x123d)
+  (progress-subtitle-speaker #x123f)
+  (progress-subtitle-speaker-off #x1240)
+  (progress-subtitle-speaker-auto #x1241)
+  (progress-subtitle-speaker-on #x1242)
+  (progress-territory #x1243)
+  (progress-territory-scea #x1244)
+  (progress-territory-scee #x1245)
+  (progress-territory-scei #x1246)
+  (progress-territory-scek #x1247)
+  (progress-msaa #x1248)
+  (progress-msaa-x #x1249)
+  (progress-led-options #x124a)
+  (progress-led-state #x124b)
+  (progress-led-health #x124c)
+  (progress-disable-auto-save #x124d)
+  (progress-auto-save-disabled #x124e)
+  (progress-disable-auto-save-warn #x124f)
+  (progress-cheats-turbo-board #x1250)
+  (progress-cheats-health-bars #x1251)
+  (progress-cheats-vehicle-health-bars #x1252)
+  (progress-cheats-vehicle-invuln #x1253)
+  (progress-cheats-statistics #x1254)
+  (progress-cheats-suck-in-all #x1255)
+  (progress-cheats-music-player #x1256)
+  (progress-cheats-no-textures #x1257)
+  (progress-cheats-fast-movies #x1258)
+  (progress-cheats-slow-movies #x1259)
+  (progress-cheats-fast-speed #x125a)
+  (progress-cheats-slow-speed #x125b)
+  (progress-cheats-fast-travel #x125c)
+  (progress-cheats-orb-tracker #x125d)
+  (progress-cheats-real-time-of-day #x125e)
+  (progress-cheats-city-peace #x125f)
+  (progress-cheats-board-tricks #x1260)
+  (progress-cheats-weather-bad #x1261)
+  (progress-cheats-weather-good #x1262)
+  (progress-camera-options #x1280)
+  (progress-camera-options-first-horz #x1281)
+  (progress-camera-options-first-vert #x1282)
+  (progress-camera-options-third-horz #x1283)
+  (progress-camera-options-third-vert #x1284)
+  (progress-reset-to-default #x1285)
+  (progress-normal #x1286)
+  (progress-inverted #x1287)
+  (progress-ps2-parts #x1288)
+  (progress-discord-rpc #x1289)
+  (progress-lod-default #x128a)
+  (progress-lod-low #x128b)
+  (progress-lod-high #x128c)
+  (progress-credits #x128d)
 )
 ;; ---text-id-h:text-id
 
@@ -7612,8 +7754,8 @@
   )
 
 (deftype engine-minimap (engine-pers)
-  ((alive-list-override connection-minimap  :offset 24 :score 50)
-   (dead-list-override  connection-minimap  :offset 28 :score 50)
+  ((alive-list connection-minimap  :override)
+   (dead-list  connection-minimap  :override)
    )
   :method-count-assert 15
   :size-assert         #x20
@@ -7842,23 +7984,23 @@
     (new (symbol type) _type_ 0)
     (initialize (_type_) none 9) ;; some sort of init?
     (update (_type_) none 10)
-    (bigmap-method-11 (_type_ int int int int) int 11)
-    (bigmap-method-12 (_type_) int 12)
-    (bigmap-method-13 (_type_) int 13)
-    (bigmap-method-14 (_type_) none 14)
-    (bigmap-method-15 (_type_) int 15)
+    (draw (_type_ int int int int) int 11)
+    (handle-cpad-inputs (_type_) int 12)
+    (compress-all (_type_) int 13)
+    (enable-drawing (_type_) none 14)
+    (disable-drawing (_type_) int 15)
     (dump-to-file (_type_) file-stream 16)
-    (bigmap-method-17 (_type_ vector) int 17)
-    (bigmap-method-18 (_type_) int 18)
-    (bigmap-method-19 (_type_) int 19)
-    (bigmap-method-20 (_type_) int 20)
-    (bigmap-method-21 (_type_ int int) int 21)
-    (bigmap-method-22 (_type_ dma-buffer (pointer uint32) int int int gs-psm) none 22)
-    (bigmap-method-23 (_type_) none 23)
-    (bigmap-method-24 (_type_ dma-buffer) none 24)
-    (bigmap-method-25 (_type_ dma-buffer) none 25)
-    (bigmap-method-26 (_type_ dma-buffer int int int int) none 26)
-    (bigmap-method-27 (_type_ dma-buffer connection-minimap) int 27)
+    (set-pos! (_type_ vector) int 17)
+    (decompress-current-masks! (_type_) int 18)
+    (compress-current-masks! (_type_) int 19)
+    (set-enable-from-position! (_type_) int 20)
+    (maybe-fill-for-position (_type_ int int) int 21)
+    (texture-upload-dma (_type_ dma-buffer (pointer uint32) int int int gs-psm) none 22)
+    (mask-image-from-bit-mask (_type_) none 23)
+    (draw-non-city-map (_type_ dma-buffer) none 24)
+    (draw-city-map (_type_ dma-buffer) none 25)
+    (sprite-dma (_type_ dma-buffer int int int int) none 26)
+    (draw-from-minimap (_type_ dma-buffer connection-minimap) int 27)
     )
   )
 
@@ -9134,7 +9276,8 @@
   )
 
 (deftype region-face-array (inline-array-class)
-  ((data region-face-data :dynamic :offset 20) ;; not sure what's going on here.
+  ((data drawable-region-face :inline :dynamic :offset 16)
+   (pad0 uint8 4)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -9147,8 +9290,6 @@
   :method-count-assert 20
   :size-assert         #x20
   :flag-assert         #x1400000020
-  (:methods
-    )
   )
 
 (deftype region-prim-list (structure)
@@ -9289,7 +9430,8 @@
    (vector vector 3 :inline :offset-assert 112)
   ))
 
-(define-extern *traffic-manager* process)
+(declare-type traffic-manager process)
+(define-extern *traffic-manager* traffic-manager)
 (define-extern *ctywide-entity* entity)
 (define-extern *lwide-entity* entity)
 (define-extern *race-vehicle-entity* entity-actor)
@@ -13256,7 +13398,7 @@
    (race-number-turbos     int32                :offset-assert 516)
    (bot-health             float             3  :offset-assert 520)
    (demo-state             uint32               :offset-assert 532)
-   (wanted-flash           basic                :offset-assert 536)
+   (wanted-flash           symbol               :offset-assert 536)
    (distance               float                :offset-assert 540)
    (kiosk-timeout          uint64               :offset-assert 544)
    (pause-start-time       time-frame           :offset-assert 552)
@@ -13469,7 +13611,7 @@
    (speech        uint16  :offset-assert 6)
    (text-message  text-id :offset-assert 8)
    (text-duration uint16  :offset-assert 12)
-   (delay         uint16  :offset-assert 14)
+   (delay         uint16  :offset-assert 14 :decomp-as time-frame)
    (pos           uint16  :offset-assert 16)
    (neg           uint16  :offset-assert 18)
    (on-close      pair    :offset-assert 20)
@@ -13534,8 +13676,8 @@
    (flags           speech-type-flag  :offset-assert   1)
    (priority        int8              :offset-assert   2)
    (request-timeout uint16            :offset-assert   4)
-   (min-delay       uint16            :offset-assert   6)
-   (max-delay       uint16            :offset-assert   8)
+   (min-delay       uint16            :offset-assert   6 :decomp-as time-frame)
+   (max-delay       uint16            :offset-assert   8 :decomp-as time-frame)
    (delay           uint16            :offset-assert  10)
    (play-index      int16             :offset-assert  12)
    (list            (array string)    :offset-assert  16)
@@ -13548,13 +13690,63 @@
 ;; +++speech-h:speech-type
 (defenum speech-type
   :type int8
-  :bitfield #t
-  (speech-type-0 0)
-  (speech-type-1 1)
-  (speech-type-2 2)
-  (speech-type-3 3)
-  (speech-type-4 4)
-  (speech-type-5 5)
+  (speech-type-0)
+  (speech-type-1)
+  (speech-type-2)
+  (speech-type-3)
+  (speech-type-4)
+  (speech-type-5)
+  (speech-type-6)
+  (speech-type-7)
+  (speech-type-8)
+  (speech-type-9)
+  (speech-type-10)
+  (speech-type-11)
+  (speech-type-12)
+  (speech-type-13)
+  (speech-type-14)
+  (speech-type-15)
+  (speech-type-16)
+  (speech-type-17)
+  (speech-type-18)
+  (speech-type-19)
+  (speech-type-20)
+  (speech-type-21)
+  (speech-type-22)
+  (speech-type-23)
+  (speech-type-24)
+  (speech-type-25)
+  (speech-type-26)
+  (speech-type-27)
+  (speech-type-28)
+  (speech-type-29)
+  (speech-type-30)
+  (speech-type-31)
+  (speech-type-32)
+  (speech-type-33)
+  (speech-type-34)
+  (speech-type-35)
+  (speech-type-36)
+  (speech-type-37)
+  (speech-type-38)
+  (speech-type-39)
+  (speech-type-40)
+  (speech-type-41)
+  (speech-type-42)
+  (speech-type-43)
+  (speech-type-44)
+  (speech-type-45)
+  (speech-type-46)
+  (speech-type-47)
+  (speech-type-48)
+  (speech-type-49)
+  (speech-type-50)
+  (speech-type-51)
+  (speech-type-52)
+  (speech-type-53)
+  (speech-type-54)
+  (speech-type-55)
+  (speech-type-56)
   )
 ;; ---speech-h:speech-type
 
@@ -13613,7 +13805,7 @@
   :flag-assert         #x11000001c4
   (:methods
     (speech-control-method-9 (_type_) none 9)
-    (speech-control-method-10 (_type_ int speech-type-info) none 10)
+    (speech-table-set! (_type_ speech-type speech-type-info) none 10)
     (speech-control-method-11 (_type_) none 11)
     (speech-control-method-12 (_type_ process-drawable speech-type) none 12)
     (speech-control-method-13 (_type_ handle) none 13)
@@ -16872,7 +17064,7 @@
   )
 
 (deftype manipy (process-drawable)
-  ((root-override        collide-shape          :offset 128 :score 1)
+  ((root        collide-shape                   :override)
    (new-trans-hook       (function none)        :offset-assert 200)
    (cur-trans-hook       (function none)        :offset-assert 204)
    (cur-event-hook       (function none)        :offset-assert 208)
@@ -16947,7 +17139,7 @@
   )
 
 (deftype lightning-tracker (process)
-  ((ppointer-override (pointer lightning-tracker) :offset 28 :score 100)
+  ((ppointer  (pointer lightning-tracker)  :override)
    (root          trsqv           :offset-assert 128)
    (lightning     lightning-control  :offset-assert 132)
    (callback      (function lightning-tracker none)           :offset-assert 136)
@@ -16977,7 +17169,7 @@
   )
 
 (deftype touch-tracker (process-drawable)
-  ((root-override    collide-shape           :offset 128 :score 1)
+  ((root    collide-shape           :override)
    (duration     time-frame                     :offset-assert 200)
    (target       handle                         :offset-assert 208)
    (event        symbol                         :offset-assert 216) ;; guessed by decompiler
@@ -16994,7 +17186,7 @@
   )
 
 (deftype swingpole (process-drawable)
-  ((root-override collide-shape    :offset 128 :score 1)
+  ((root collide-shape             :override)
    (edge-length meters             :offset-assert 200)
    (path-pos    float              :offset-assert 204)
    (joint-track int32              :offset-assert 208)
@@ -17052,7 +17244,7 @@
   )
 
 (deftype explosion (process-drawable)
-  ((root-override collide-shape    :offset 128 :score 1)
+  ((root collide-shape    :override)
    (start-time      time-frame  :offset-assert 200)
    (duration        uint32  :offset-assert 208)
    (linger-duration uint32  :offset-assert 212)
@@ -17901,7 +18093,7 @@
   )
 
 (deftype process-focusable (process-drawable)
-  ((root-override collide-shape :offset 128 :score 100)
+  ((root collide-shape :override)
    (focus-status focus-status :offset-assert 200)
    )
   :method-count-assert 27
@@ -18313,7 +18505,7 @@
 ;; ---projectile-h:projectile-options
 
 (deftype projectile (process-drawable)
-  ((root-override   collide-shape-moving               :offset 128 :score 999)
+  ((root  collide-shape-moving  :override)
    (starting-pos    vector                     :inline :offset-assert 208)
    (starting-dir    vector                     :inline :offset-assert 224)
    (target-pos      vector                     :inline :offset-assert 240)
@@ -18438,6 +18630,19 @@
 ;; target-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum darkjak-stage
+  :bitfield #t
+  :type uint32
+  (force-on)
+  (active)
+  (bomb0)
+  (bomb1)
+  (invinc)
+  (giant)
+  (no-anim)
+  (disable-force-on)
+  )
+
 (declare-type shadow-geo basic)
 (declare-type sidekick basic)
 (declare-type racer-info basic)
@@ -18451,9 +18656,9 @@
 (declare-type indax-info basic)
 (declare-type turret-info basic)
 (deftype target (process-focusable)
-  ((self-override           target                                   :offset 32 :score 100)
+  ((self  target  :override)
    (control                 control-info                             :offset 128 :score 200) ;; guessed by decompiler
-   (fact-override           fact-info-target                         :offset 160 :score 100)
+   (fact  fact-info-target  :override)
    (skel2                   joint-control                            :offset-assert 204)
    (shadow-backup           shadow-geo                               :offset-assert 208)
    (target-flags            uint32                                   :offset 188)
@@ -18566,7 +18771,7 @@
     target-darkjak-bomb0
     (target-darkjak-bomb1 float float)
     target-darkjak-get-off
-    (target-darkjak-get-on int)
+    (target-darkjak-get-on darkjak-stage)
     target-darkjak-giant
     target-darkjak-running-attack
     (target-death symbol)
@@ -18686,7 +18891,7 @@
   )
 
 (deftype sidekick (process-drawable)
-  ((parent-override     (pointer target) :offset 16 :score 100 )
+  ((parent  (pointer target)  :override)
    (control             control-info         :offset 128) ;; guessed by decompiler
    (anim-seed           uint64               :offset 208) ;; ??
    (shadow-in-movie?    symbol               :offset-assert 216) ;; guessed by decompiler
@@ -20161,23 +20366,23 @@
   )
 
 (deftype region-prim-area (structure)
-  ((region-prim-list        region-prim-list :inline :offset-assert 0)
-   (pos                     vector           :inline :offset-assert 1296)
-   (unknown-vector-uiyb1    vector           :inline :offset-assert 1312)
-   (ray                     vector           :inline :offset 1328)
-   (unknown-vector-t3edh    vector           :inline :offset-assert 1344)
-   (region-enter-count      int32                    :offset 1360)
-   (region-enter-list       region-prim-area          320     :offset-assert 1364)
-   (region-enter-prim-list  drawable-region-sphere          320     :offset-assert 2644)
-   (region-exit-count       int32                    :offset-assert 3924)
-   (region-exit-list        region-prim-area          320     :offset-assert 3928)
-   (region-exit-prim-list   drawable-region-sphere          320     :offset-assert 5208)
-   (region-inside-count     int32                    :offset-assert 6488)
-   (region-inside-list      region-prim-area          320     :offset-assert 6492)
-   (region-inside-prim-list drawable-region-sphere          320     :offset-assert 7772)
-   (region-start-count      int32                    :offset-assert 9052)
-   (region-start-list       region-prim-area          320     :offset-assert 9056)
-   (region-start-prim-list  drawable-region-sphere          320     :offset-assert 10336)
+  ((region-prim-list        region-prim-list    :inline :offset-assert 0)
+   (pos                     vector              :inline :offset-assert 1296)
+   (unknown-vector-uiyb1    vector              :inline :offset-assert 1312)
+   (ray                     vector              :inline :offset 1328)
+   (unknown-vector-t3edh    vector              :inline :offset-assert 1344)
+   (region-enter-count      int32                       :offset 1360)
+   (region-enter-list       region          320         :offset-assert 1364)
+   (region-enter-prim-list  drawable-region-sphere 320  :offset-assert 2644)
+   (region-exit-count       int32                       :offset-assert 3924)
+   (region-exit-list        region          320         :offset-assert 3928)
+   (region-exit-prim-list   drawable-region-sphere 320  :offset-assert 5208)
+   (region-inside-count     int32                       :offset-assert 6488)
+   (region-inside-list      region          320         :offset-assert 6492)
+   (region-inside-prim-list drawable-region-sphere 320  :offset-assert 7772)
+   (region-start-count      int32                       :offset-assert 9052)
+   (region-start-list       region          320         :offset-assert 9056)
+   (region-start-prim-list  drawable-region-sphere 320  :offset-assert 10336)
    )
   :method-count-assert 13
   :size-assert         #x2d60
@@ -22070,18 +22275,18 @@
   :size-assert         #x164
   :flag-assert         #x2100f00164
   (:methods
-    (come-in () _type_ :state 20) ;; (hidden? (_type_) symbol 20)
-    (idle () _type_ :state 21) ;; (adjust-sprites (_type_) none 21)
-    (go-away () _type_ :state 22) ;; (adjust-icons (_type_) none 22)
-    (gone () _type_ :state 23) ;; (adjust-ratios (_type_ symbol symbol) none 23)
-    (init-defaults "Initialize default menu settings." (_type_) connection 24) ;; (draw-fuel-cell-screen (_type_ int) none 24)
-    (progress-method-25 (_type_) none 25) ;; (draw-money-screen (_type_ int) none 25)
-    (is-gone (_type_) object 26) ;; (draw-buzzer-screen (_type_ int) none 26)
-    (can-go-back? (_type_) symbol 27) ;; (draw-notice-screen (_type_) none 27)
-    (progress-method-28 (_type_ symbol) symbol 28) ;; (draw-options (_type_ int int float) none 28)
-    (progress-method-29 (_type_) int 29) ;; (respond-common (_type_) none 29)
-    (progress-method-30 (_type_) int 30) ;; (respond-progress (_type_) none 30)
-    (set-next-state "Set the next menu state specified by arg0 at the index specified by arg1." (_type_ symbol int) int 31) ;; (respond-memcard (_type_) none 31)
+    (come-in () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (go-away () _type_ :state 22)
+    (gone () _type_ :state 23)
+    (init-defaults "Initialize default menu settings." (_type_) object 24)
+    (respond-to-cpad (_type_) none 25)
+    (gone? (_type_) object 26)
+    (can-go-back? (_type_) symbol 27)
+    (get-state-check-card (_type_ symbol) symbol 28)
+    (push-state (_type_) int 29)
+    (pop-state (_type_) int 30)
+    (set-next-state "Set the next menu state specified by arg0 at the index specified by arg1." (_type_ symbol int) int 31)
     (set-menu-options "Set the menu options for the menu state specified by arg0." (_type_ symbol) int 32)
     )
   )
@@ -22101,7 +22306,7 @@
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (respond-progress "Handle progress menu navigation logic." (_type_ progress object) int :behavior progress 9)
+    (respond-progress "Handle progress menu navigation logic." (_type_ progress symbol) int :behavior progress 9)
     (draw-option (_type_ progress font-context int symbol) none 10)
     (menu-option-method-11 () none 11)
     )
@@ -22240,7 +22445,7 @@
   )
 
 (deftype menu-insufficient-space-option (menu-option)
-  ((last-move uint64  :offset-assert 48)
+  ((last-move time-frame  :offset-assert 48)
    )
   :method-count-assert 12
   :size-assert         #x38
@@ -22388,7 +22593,7 @@
 (deftype menu-select-start-option (menu-option)
   ((task-index      int32   :offset-assert 48)
    (real-task-index int32   :offset-assert 52)
-   (last-move       uint64  :offset-assert 56)
+   (last-move       time-frame  :offset-assert 56)
    )
   :method-count-assert 12
   :size-assert         #x40
@@ -22399,7 +22604,7 @@
 
 (deftype menu-select-scene-option (menu-option)
   ((task-index int32   :offset-assert 48)
-   (last-move  uint64  :offset-assert 56)
+   (last-move  time-frame  :offset-assert 56)
    )
   :method-count-assert 12
   :size-assert         #x40
@@ -22432,7 +22637,7 @@
 
 (deftype menu-missions-option (paged-menu-option)
   ((task-line-index int32   :offset-assert 64)
-   (last-move       uint64  :offset-assert 72)
+   (last-move       time-frame  :offset-assert 72)
    )
   :method-count-assert 12
   :size-assert         #x50
@@ -22442,7 +22647,7 @@
   )
 
 (deftype menu-highscores-option (paged-menu-option)
-  ((last-move uint64    :offset-assert 64)
+  ((last-move time-frame    :offset-assert 64)
    (sprites   hud-sprite 2 :inline :offset 80)
    )
   :method-count-assert 12
@@ -22471,7 +22676,7 @@
    (num-items       int32     :offset-assert 56)
    (num-hero-items  int32     :offset-assert 60)
    (secret-items    (array secret-item-option)     :offset-assert 64)
-   (last-move       uint64    :offset-assert 72)
+   (last-move       time-frame    :offset-assert 72)
    (sprites         hud-sprite 2 :inline :offset 80)
    )
   :method-count-assert 12
@@ -22501,7 +22706,7 @@
   )
 
 (deftype menu-qr-option (menu-option)
-  ((last-move       uint64  :offset-assert 48)
+  ((last-move       time-frame  :offset-assert 48)
    (value-to-modify function  :offset 60)
    )
   :method-count-assert 12
@@ -22542,7 +22747,7 @@
   )
 
 (deftype menu-graphic-option (menu-option)
-  ((last-move       uint64   :offset-assert 48)
+  ((last-move       time-frame   :offset-assert 48)
    (value-to-modify pointer  :offset 60)
    )
   :method-count-assert 12
@@ -22590,7 +22795,7 @@
   )
 
 (deftype menu-game-option (menu-option)
-  ((last-move       uint64   :offset-assert 48)
+  ((last-move       time-frame   :offset-assert 48)
    (value-to-modify pointer  :offset 60)
    )
   :method-count-assert 12
@@ -24270,7 +24475,7 @@
 (define-extern history-draw-and-update (function pos-history symbol vector symbol))
 (define-extern dma-timeout-cam (function vector))
 (define-extern display-file-info (function int))
-(define-extern add-debug-cursor (function symbol bucket-id int int int none))
+(define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
 (define-extern *boundary-polygon* (inline-array sky-vertex))
 (define-extern init-boundary-regs (function none))
 (define-extern add-boundary-shader (function texture-id dma-buffer none))
@@ -24883,49 +25088,49 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *texture-anim-work* texture-anim-work)
-;; (define-extern texture-anim-layer-interp function)
-;; (define-extern texture-anim-layer-add-shader function)
-;; (define-extern texture-anim-layer-add-clut-shader function)
-;; (define-extern texture-anim-layer-draw function)
-;; (define-extern default-texture-anim-layer-func function)
-;; (define-extern blend-clut-texture-anim-layer-func function)
-;; (define-extern move-rg-to-ba-texture-anim-layer-func function)
-;; (define-extern fill-rgb-texture-anim-layer-func function)
-(define-extern update-texture-anim (function bucket-id none))
-;; (define-extern no-alpha-texture-anim-layer-func function)
-;; (define-extern copy-alpha-texture-anim-layer-func function)
-;; (define-extern copy-clut-alpha-texture-anim-layer-func function)
-;; (define-extern set-alpha-texture-anim-layer-func function)
-;; (define-extern set-clut-alpha-texture-anim-layer-func function)
-;; (define-extern dest-texture-init function)
-;; (define-extern src-texture-init function)
-;; (define-extern src-texture-init-mt8 function)
-;; (define-extern make-noise-texture function)
-;; (define-extern make-cloud-clut function)
-;; (define-extern texture-anim-cloud-clut-upload function)
-;; (define-extern texture-anim-cloud-clut-init function)
-;; (define-extern make-slime-clut function)
-;; (define-extern texture-anim-slime-clut-upload function)
-;; (define-extern texture-anim-slime-clut-init function)
-;; (define-extern make-ramp-clut function)
-;; (define-extern make-alpha-ramp-clut function)
-;; (define-extern noise-texture-init function)
-;; (define-extern texture-anim-alpha-ramp-clut-upload function)
-;; (define-extern texture-anim-alpha-ramp-clut-init function)
-;; (define-extern texture-anim-overide-size-init function)
-;; (define-extern texture-anim-change-mt8h-init function)
+(define-extern texture-anim-layer-interp (function texture-anim-layer float none))
+(define-extern texture-anim-layer-add-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-add-clut-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-draw (function dma-buffer int int texture-anim-layer none))
+(define-extern default-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern blend-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern move-rg-to-ba-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern fill-rgb-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern update-texture-anim (function bucket-id texture-anim-array none))
+(define-extern no-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern dest-texture-init (function texture-anim none))
+(define-extern src-texture-init (function texture-anim-layer none))
+(define-extern src-texture-init-mt8 (function texture-anim-layer none))
+(define-extern make-noise-texture (function pointer int int int none))
+(define-extern make-cloud-clut (function (pointer uint32) float float none))
+(define-extern texture-anim-cloud-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-cloud-clut-init (function texture-anim none))
+(define-extern make-slime-clut (function (pointer uint32) none))
+(define-extern texture-anim-slime-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-slime-clut-init (function texture-anim none))
+(define-extern make-ramp-clut (function (pointer uint32) pointer object none))
+(define-extern make-alpha-ramp-clut (function (pointer uint32) none))
+(define-extern noise-texture-init (function texture-anim-layer none))
+(define-extern texture-anim-alpha-ramp-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-alpha-ramp-clut-init (function texture-anim none))
+(define-extern texture-anim-overide-size-init (function texture-anim none))
+(define-extern texture-anim-change-mt8h-init (function texture-anim none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-funcs             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern noise-texture-anim-layer-func function)
-;; (define-extern cloud-texture-anim-layer-func function)
-;; (define-extern cloud-texture-anim-func function)
-;; (define-extern fog-texture-anim-init function)
+(define-extern noise-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-init (function texture-anim int))
 (define-extern *fog-texture-work* fog-texture-work)
-;; (define-extern real-fog-texture-anim-func function)
-;; (define-extern fog-texture-anim-func function)
+(define-extern real-fog-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-func (function dma-buffer texture-anim int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-tables            ;;
@@ -27544,7 +27749,7 @@
 (define-extern position-in-front-of-screen! (function vector float vector vector))
 (define-extern matrix-local->world
   "Returns [[*math-camera*]]'s `inv-camera-rot-smooth` if `smooth?` is true, else return `inv-camera-rot`"
-  (function symbol matrix))
+  (function symbol symbol matrix))
 (define-extern matrix-world->local
   "Returns [[*math-camera*]]'s `camera-rot`"
   (function symbol object matrix))
@@ -28257,7 +28462,7 @@
 ;; ---fma-sphere:fma-sphere-mode
 
 (deftype fma-sphere (process-drawable)
-  ((root-override collide-shape               :offset 128 :score 999)
+  ((root  collide-shape  :override)
    (first-time?   symbol                      :offset-assert 200)
    (mode          fma-sphere-mode                      :offset-assert 204)
    (track-handle  handle                      :offset-assert 208)
@@ -28340,7 +28545,7 @@
   )
 
 (deftype launcher (process-drawable)
-  ((root-override   collide-shape    :offset 128 :score 1)
+  ((root  collide-shape  :override)
    (spring-height   meters           :offset-assert 200)
    (camera          state            :offset-assert 204) ;; guessed by decompiler
    (active-distance float            :offset-assert 208)
@@ -28546,6 +28751,16 @@
     )
   )
 
+(defenum gun-track-flags
+  :bitfield #t
+  :type uint16
+  (gutflags-0)
+  (gutflags-1)
+  (gutflags-2)
+  (gutflags-3)
+  (gutflags-4)
+  )
+
 (deftype gun-info (basic)
   ((process                (pointer target)   :offset-assert 4)
    (gun                    (pointer gun)      :offset-assert 8)
@@ -28590,7 +28805,7 @@
    (laser-point            vector   :inline   :offset-assert 304)
    (laser-dir              vector 2 :inline   :offset-assert 320) ;; guess
    (laser-hit-point        vector   :inline   :offset-assert 352)
-   (track?                 uint16             :offset-assert 368)
+   (track?                 gun-track-flags    :offset-assert 368)
    (track-tilt             degrees            :offset-assert 372)
    (track-turn             degrees            :offset-assert 376)
    (track-find-range       meters             :offset-assert 380)
@@ -28877,8 +29092,8 @@
    (start-time   time-frame       :offset-assert 16)
    (attack-time  time-frame       :offset-assert 24)
    (attack-count uint64           :offset-assert 32)
-   (stage        uint32           :offset-assert 40)
-   (want-stage   uint32           :offset-assert 44)
+   (stage        darkjak-stage    :offset-assert 40)
+   (want-stage   darkjak-stage    :offset-assert 44)
    (clock-pos    float            :offset-assert 48)
    (clock-vel    float            :offset-assert 52)
    (clock-on     symbol           :offset-assert 56)
@@ -29059,7 +29274,7 @@
 (define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target)) ;;
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object)) ;; guess
-(define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float none))
+(define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol))
 (define-extern process-drawable2-shock-effect (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none))
 (define-extern process-drawable-shock-skel-effect  (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher float int int none))
 (define-extern *lightning-darkjak-pill* lightning-spec)
@@ -29164,7 +29379,7 @@
   )
 
 (deftype remote (process-drawable)
-  ((parent-override (pointer camera-slave) :offset 16 :score 100)
+  ((parent  (pointer camera-slave)  :override)
    (base-trans    vector           :inline :offset-assert 208)
    (focus         focus            :inline :offset-assert 224)
    (seeker        cam-float-seeker :inline :offset-assert 236)
@@ -29617,7 +29832,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gun-red-shot (process-drawable)
-  ((root-override   collide-shape-moving               :offset 128 :score 999)
+  ((root  collide-shape-moving  :override)
    (probe-count int32           :offset-assert 200)
    (probe-mask  uint32          :offset-assert 204)
    (actor-count int32           :offset-assert 208)
@@ -30438,7 +30653,7 @@
   )
 
 (deftype collectable (process-drawable)
-  ((root-override2     collide-shape-moving  :offset 128 :score 1000)
+  ((root  collide-shape-moving  :override)
    (pickup-type pickup-type :offset-assert 200)
    (pickup-amount float :offset-assert 204)
    (notify handle :offset-assert 208)
@@ -30752,7 +30967,7 @@
   )
 
 (deftype crate (process-focusable)
-  ((root-override2     collide-shape-moving  :offset 128 :score 1000)
+  ((root  collide-shape-moving  :override)
    (smush              smush-control :inline :offset-assert 208)
    (base               vector        :inline :offset-assert 240)
    (look               symbol                :offset-assert 256) ;; guessed by decompiler
@@ -30938,19 +31153,19 @@
    (num-unlocked-secrets                 int32            :offset-assert 120)
    (game-options-item-selected           int32            :offset-assert 124)
    (game-options-item-picked             basic            :offset-assert 128)
-   (game-options-last-move               uint64           :offset-assert 136)
+   (game-options-last-move               time-frame       :offset-assert 136)
    (game-options-vibrations              symbol           :offset-assert 144)
    (game-options-subtitles               symbol           :offset-assert 148)
    (game-options-language-index          int32            :offset-assert 152)
    (game-options-subtitle-language-index int32            :offset-assert 156)
    (graphic-options-item-selected        int32            :offset-assert 160)
-   (graphic-options-item-picked          basic            :offset-assert 164)
-   (graphic-options-last-move            uint64           :offset-assert 168)
+   (graphic-options-item-picked          symbol           :offset-assert 164)
+   (graphic-options-last-move            time-frame       :offset-assert 168)
    (graphic-options-aspect-ratio         symbol           :offset-assert 176)
    (graphic-options-progressive-scan     symbol           :offset-assert 180)
    (qr-options-item-selected             int32            :offset-assert 184)
    (qr-options-item-picked               basic            :offset-assert 188)
-   (qr-options-last-move                 uint64           :offset-assert 192)
+   (qr-options-last-move                 time-frame       :offset-assert 192)
    (qr-options-restart                   basic            :offset-assert 200)
    (qr-options-quit                      basic            :offset-assert 204)
    (total-num-tasks                      int32            :offset-assert 208)
@@ -30966,7 +31181,7 @@
   )
 
 (deftype hud-ring-cell (process-drawable)
-  ((parent-override (pointer progress) :offset 16 :score 999)
+  ((parent  (pointer progress)  :override)
    (joint-idx     int32   :offset-assert 200)
    (init-angle    degrees :offset-assert 204)
    (graphic-index int32   :offset-assert 208)
@@ -30997,7 +31212,7 @@
 (define-extern begin-scan (function hud-box progress int))
 (define-extern end-scan (function hud-box float int))
 (define-extern progress-post (function none :behavior progress))
-(define-extern update-center-screen (function int))
+(define-extern update-center-screen (function menu-graphic-option progress symbol int))
 (define-extern update-restart-quit (function menu-option progress symbol int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -31005,12 +31220,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype print-highscore-obj (basic)
-  ((self        texture-page  :offset-assert 4)
+  ((self        menu-highscores-option  :offset-assert 4)
    (index       int32  :offset-assert 8)
-   (previous    texture-page  :offset-assert 12) ; guess
+   (previous    symbol :offset-assert 12) ; guess
    (place       int32  :offset-assert 16)
    (score       float  :offset-assert 20)
-   (game-score  basic  :offset-assert 24)
+   (game-score  symbol :offset-assert 24)
    (context     font-context  :offset-assert 28)
    (local-scale float  :offset-assert 32)
    (interp      float  :offset-assert 36)
@@ -31052,16 +31267,16 @@
 (define-extern get-level-icon-id-02 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern get-level-icon-id-03 "TODO - Icon id enum perhaps?" (function int texture-id))
 (define-extern get-level-icon-id-04 "TODO - Icon id enum perhaps?" (function int texture-id))
-(define-extern draw-decoration (function menu-option font-context float int symbol float pointer))
+(define-extern draw-decoration (function menu-option font-context float text-id symbol float pointer))
 (define-extern draw-missions-decoration (function menu-missions-option font-context float text-id pointer))
-(define-extern draw-sound-options-decoration (function menu-slider-option font-context float symbol text-id pointer))
+(define-extern draw-sound-options-decoration (function menu-slider-option font-context float text-id symbol pointer))
 (define-extern draw-decoration-secrets (function menu-option font-context float text-id pointer))
-(define-extern draw-decoration-load-save (function menu-option font-context float int pointer))
+(define-extern draw-decoration-load-save (function menu-option font-context float text-id pointer))
 (define-extern sort-task-node-result (function int none))
 (define-extern find-mission-text-at-index (function int game-task-node-info))
 (define-extern draw-secret-list (function secret-item-option progress font-context int symbol float none))
 (define-extern draw-highscore-icon (function menu-highscores-option uint int int float pointer))
-(define-extern draw-highscore-cup "First int is an enum" (function texture-page int int int float float pointer))
+(define-extern draw-highscore-cup "First int is an enum" (function menu-highscores-option int int int float float pointer))
 (define-extern get-highscore-score "TODO - takes and returns an enum?" (function int int))
 (define-extern eval-highscore (function print-highscore-obj int))
 (define-extern str-print-time (function float string))
@@ -31183,7 +31398,7 @@
 (define-extern get-eye-block (function int int int))
 (define-extern convert-eye-data (function eye uint float))
 (define-extern merc-eye-anim (function process-drawable none))
-(define-extern set-eye-draw-flag (function symbol int int none))
+(define-extern set-eye-draw-flag (function symbol int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glist-h                        ;;
@@ -31648,7 +31863,7 @@
   :flag-assert         #xd00000030
   (:methods
     (new (symbol type) _type_ 0) ;; added to avoid re-definition errors (even though nothing was being re-defined)
-    (editable-region-method-9 (_type_ editable-array int int) none 9)
+    (editable-region-method-9 (_type_ editable-array int int) symbol 9)
     (editable-region-method-10 (_type_ int) symbol 10)
     (editable-region-method-11 (_type_ vector int) none 11)
     (editable-region-method-12 (_type_) editable-filter 12)
@@ -32104,7 +32319,7 @@
   :size-assert         #x41c
   :flag-assert         #x150000041c
   (:methods
-    (new (symbol type int symbol) _type_ 0)
+    (new (symbol type string) _type_ 0)
     (init-from-sql!
       "Query the database and initialize the [[mysql-nav-graph]] and all it's related components"
       (_type_ string string) symbol 9)
@@ -32169,7 +32384,7 @@
   )
 
 (deftype nav-graph-editor (process)
-  ((self-override       nav-graph-editor :offset 32 :score 100)
+  ((self  nav-graph-editor  :override)
    (nav-graph           mysql-nav-graph                  :offset-assert 128)
    (mode                symbol                 :offset-assert 132)
    (command-id          int32                  :offset-assert 136)
@@ -32236,11 +32451,11 @@
     (nav-graph-editor-method-45 (_type_) none 45)
     (nav-graph-editor-method-46 (_type_) pad-buttons 46)
     (nav-graph-editor-method-47 (_type_) none 47)
-    (nav-graph-editor-method-48 "TODO - enum / com-type" (_type_ uint32) nav-graph-command 48)
+    (nav-graph-editor-method-48 "TODO - enum / com-type" (_type_ uint) nav-graph-command 48)
     (nav-graph-editor-method-49 (_type_) nav-graph-command 49)
     (nav-graph-editor-method-50 (_type_) none 50)
     (nav-graph-editor-method-51 (_type_) none 51)
-    (nav-graph-editor-method-52 (_type_) none 52)
+    (nav-graph-editor-method-52 (_type_) uint 52)
     (nav-graph-editor-method-53 (_type_ int int) none 53)
     (nav-graph-editor-method-54 (_type_ int) none 54)
     (nav-graph-editor-method-55 (_type_ int) none 55)
@@ -32256,7 +32471,7 @@
   )
 
 (define-extern *nav-graph-editor* (pointer nav-graph-editor))
-(define-extern nav-graph-editor-init-by-other (function int none :behavior nav-graph-editor))
+(define-extern nav-graph-editor-init-by-other (function string none :behavior nav-graph-editor))
 (define-extern run-nav-graph-editor (function symbol (pointer process)))
 (define-extern get-nav-graph-editor (function nav-graph-editor))
 (define-extern exit-nav-graph-editor (function none))
@@ -32299,7 +32514,7 @@
 (define-extern dm-cam-mode-func (function (state camera-slave) debug-menu-msg object))
 (define-extern dm-cam-mode-default (function object debug-menu-msg symbol))
 (define-extern dm-cam-settings-default (function object debug-menu-msg symbol))
-(define-extern dm-cam-settings-func (function cam-slave-options debug-menu-msg symbol))
+(define-extern dm-cam-settings-func (function int debug-menu-msg symbol))
 (define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
 (define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))
 (define-extern dm-cam-setting-float (function float debug-menu-msg float float float)) ;; TODO - omit the last 2 args and set the return type to `none` to get a hang
@@ -32458,8 +32673,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype com-airlock (process-drawable)
-  ((child-override        basic    :offset 24) ;; what is this!
-   (root-override         collide-shape    :offset 128 :score 999)
+  ((root  collide-shape  :override)
    (level-name            pair     :offset-assert 200)
    (open-test             pair     :offset-assert 204)
    (were-behind?          symbol   :offset-assert 208)
@@ -32660,7 +32874,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype blocking-plane (process-drawable)
-  ((root-override collide-shape :offset 128 :score 999))
+  ((root  collide-shape  :override))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
@@ -32979,8 +33193,8 @@
   )
 
 (deftype enemy (process-focusable)
-  ((root-override2              collide-shape-moving :offset 128 :score 200)
-   (fact-info-override          fact-info-enemy             :offset 160 :score 100)
+  ((root  collide-shape-moving  :override)
+   (fact  fact-info-enemy  :override)
    (enemy-flags                 enemy-flag                  :offset-assert 208)
    (enemy-info                  enemy-info                  :offset-assert 216)
    (hit-points                  int32                       :offset-assert 220)
@@ -33042,7 +33256,7 @@
     (view-anims () _type_ :state 45)
     (enemy-method-46 "@abstract" (_type_ int) none 46)
     (enemy-method-47 (_type_ vector) float 47)
-    (enemy-method-48 (_type_ process event-message-block) int 48)
+    (take-damage-from-attack (_type_ process event-message-block) int 48)
     (enemy-method-49 (_type_) time-frame :behavior enemy 49)
     (enemy-method-50 (_type_ vector) vector 50)
     (enemy-method-51 (_type_) float 51)
@@ -33258,7 +33472,7 @@
   )
 
 (deftype nav-enemy (enemy)
-  ((enemy-info-override     nav-enemy-info :offset 216 :score 100)
+  ((enemy-info  nav-enemy-info  :override)
    (frustration-point       vector :inline :offset-assert 544)
    (move-dest               vector :inline :offset-assert 560)
    (frustration-time        time-frame         :offset-assert 576) ;; time-frame
@@ -33551,7 +33765,7 @@
 ;; ---rigid-body-h:rigid-body-object-flag
 
 (deftype rigid-body-object (process-focusable)
-  ((root-override-2       collide-shape-moving        :offset 128 :score 999)
+  ((root  collide-shape-moving  :override)
    (info                  rigid-body-object-constants :offset-assert 204)
    (flags                 rigid-body-object-flag      :offset-assert 208)
    (max-time-step         float                       :offset-assert 216)
@@ -33654,7 +33868,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype base-plat (process-focusable)
-  ((root-override-2 collide-shape-moving :offset 128 :score 100)
+  ((root  collide-shape-moving  :override)
    (smush        smush-control :inline :offset-assert 208)
    (basetrans    vector        :inline :offset-assert 240)
    (bounce-time  time-frame            :offset-assert 256)
@@ -33704,7 +33918,7 @@
 
 (deftype eco-door (process-drawable)
   "@unused - Likely a left-over from Jak 1"
-  ((root-override  collide-shape        :offset 128 :score 100)
+  ((root  collide-shape  :override)
    (speed          float                :offset-assert 200)
    (open-distance  float                :offset-assert 204)
    (close-distance float                :offset-assert 208)
@@ -34227,7 +34441,7 @@
 
 (declare-type water-anim process-drawable)
 (deftype rigid-body-platform (rigid-body-object)
-  ((info-override         rigid-body-platform-constants :offset 204 :score 100)
+  ((info  rigid-body-platform-constants  :override)
    (control-point-array   rigid-body-control-point-inline-array         :offset-assert 272) ;; guessed by decompiler
    (player-velocity       vector                                :inline :offset-assert 288)
    (player-velocity-prev  vector                                :inline :offset-assert 304)
@@ -34395,7 +34609,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype simple-nav-sphere (process-drawable)
-  ((root-override collide-shape :offset 128 :score 999)
+  ((root  collide-shape  :override)
    (first-time? symbol  :offset-assert 200)
    (track-joint int32  :offset-assert 204)
    )
@@ -34608,7 +34822,7 @@
 
 (deftype warp-gate (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
     (level-name uint32 :offset-assert 200)
     (on-notice pair :offset-assert 204)
     (on-activate pair :offset-assert 208)
@@ -35214,6 +35428,18 @@
     )
   )
 
+(defenum spyder-flags
+  :bitfield #t
+  (spflags-0)
+  (spflags-1)
+  (spflags-2)
+  (spflags-3)
+  (spflags-4)
+  (spflags-5)
+  (spflags-6)
+  (spflags-7)
+  )
+
 (deftype spyder (nav-enemy)
   ((los               los-control :inline :offset-assert 608)
    (joint             joint-mod           :offset-assert 756)
@@ -35221,7 +35447,7 @@
    ;; (focus-pos         vector      :inline :offset 348)
    (face-pos          vector      :inline :offset 800)
    (my-up-vector      vector      :inline :offset-assert 816)
-   (status-flags      uint64              :offset-assert 832)
+   (status-flags      spyder-flags        :offset-assert 832)
    (change-dir-timer  time-frame          :offset-assert 840)
    (fire-info         vector 2    :inline :offset-assert 848)
    (joint-ik          joint-mod-ik 4      :offset 880)
@@ -35753,10 +35979,23 @@
   :flag-assert         #x900000010
   )
 
+(defenum hover-nav-flags
+  :bitfield #t
+  :type uint16
+  (honflags-0)
+  (honflags-1)
+  (honflags-2)
+  (honflags-3)
+  (honflags-4)
+  (honflags-5)
+  (honflags-6)
+  (honflags-7)
+  )
+
 (deftype hover-nav-control (basic)
   ((root                        collide-shape-moving        :offset-assert 4)
    (nav                         nav-network                 :offset-assert 8)
-   (flags                       uint16                      :offset-assert 12)
+   (flags                       hover-nav-flags             :offset-assert 12)
    (params                      hover-nav-params            :offset-assert 16)
    (path-timer                  time-frame                  :offset-assert 24)
    (transvv                     vector              :inline :offset-assert 32)
@@ -36048,6 +36287,9 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
   )
 
 (deftype hover-nav-bsp-node (structure)
@@ -36060,6 +36302,7 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
+    (new (symbol type) _type_ 0)
     (hover-nav-bsp-node-method-9 (_type_) none 9)
     (hover-nav-bsp-node-method-10 (_type_ int) none 10)
     )
@@ -36075,11 +36318,11 @@
 
 (define-extern probe-for-clear-collision? (function vector vector symbol))
 (define-extern hover-nav-graph-process-points (function none))
-(define-extern hover-nav-graph-output (function none))
+(define-extern hover-nav-graph-output (function symbol))
 (define-extern *axes-table* (array vector))
 (define-extern *hover-bsp* hover-nav-bsp)
 (define-extern hover-nav-graph-output-bsp (function hover-nav-bsp))
-(define-extern hover-nav-network-build-bsp (function hover-nav-bsp-node none))
+(define-extern hover-nav-network-build-bsp (function (array hover-nav-bsp-point) hover-nav-bsp))
 (define-extern hover-nav-bsp-output (function hover-nav-bsp none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36254,7 +36497,7 @@
   )
 
 (deftype forest-youngsamos (process-focusable)
-  ((root-override2      collide-shape-moving :offset 128 :score 999)
+  ((root  collide-shape-moving  :override)
    (init-quat           quaternion :inline :offset-assert 208)
    (desired-pos         vector     :inline :offset-assert 224)
    (hit-dir             vector     :inline :offset-assert 240)
@@ -36419,6 +36662,20 @@
 ;; wren                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum wren-flags
+  :bitfield #t
+  :type uint16
+  (wrflags-0)
+  (wrflags-1)
+  (wrflags-2)
+  (wrflags-3)
+  (wrflags-4)
+  (wrflags-5)
+  (wrflags-6)
+  (wrflags-7)
+  )
+
+
 (deftype wren (process-drawable)
   ((move-dest      vector  :inline :offset-assert 208)
    (fly-curve      curve-control 2 :offset-assert 224)
@@ -36433,7 +36690,7 @@
    (bob-level-seek float           :offset-assert 264)
    (bank-angle     float           :offset-assert 268)
    (peck-timer     uint64          :offset-assert 272)
-   (flags          uint16          :offset-assert 280)
+   (flags          wren-flags      :offset-assert 280)
    )
   :method-count-assert 28
   :size-assert         #x11a
@@ -37179,6 +37436,18 @@
   :flag-assert         #x900000040
   )
 
+(defenum grenadier-flags
+  :bitfield #t
+  (grflags-0)
+  (grflags-1)
+  (grflags-2)
+  (grflags-3)
+  (grflags-4)
+  (grflags-5)
+  (grflags-6)
+  (grflags-7)
+  )
+
 (deftype grenadier (nav-enemy)
   ((shot-trajectory           trajectory            :inline :offset-assert 608)
    (hostile-path              path-control                  :offset-assert 648)
@@ -37187,7 +37456,7 @@
    (heading                   symbol                        :offset-assert 724)
    (move-pos                  vector                :inline :offset-assert 736)
    (move-angle                float                         :offset-assert 752)
-   (status-flags              uint64                        :offset-assert 760)
+   (status-flags              grenadier-flags               :offset-assert 760)
    (suppress-knockaside-timer time-frame                    :offset-assert 768)
    )
   :method-count-assert 184
@@ -37353,7 +37622,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype fort-trap-door (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 10)
+  ((root  collide-shape-moving  :override)
    (notify-actor entity-actor  :offset-assert 200)
    )
   :method-count-assert 22
@@ -37736,7 +38005,7 @@
   )
 
 (deftype fire-floor (process-drawable)
-  ((root-override      collide-shape-moving     :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (part-off           sparticle-launch-control :offset-assert 200)
    (size               float       2            :offset-assert 204)
    (attack-id          uint32                   :offset-assert 212)
@@ -37870,7 +38139,7 @@
   )
 
 (deftype drill-falling-door (process-drawable)
-  ((root-override  collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (hit-state      int32 :offset-assert 200)
    (next-hit-state int32 :offset-assert 204)
    )
@@ -37913,7 +38182,7 @@
   )
 
 (deftype drill-metalhead-eggs (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (actor-group   actor-group  :offset-assert 200)
    (notify-actor  entity-actor :offset-assert 204)
   )
@@ -37951,7 +38220,7 @@
   )
 
 (deftype drill-bridge-shot (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (anim          art-joint-anim :offset-assert 200)
    (art-name      string         :offset-assert 204)
    )
@@ -38027,7 +38296,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drill-barons-ship (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (init-quat          quaternion :inline :offset-assert 208)
    (next-to-shoot-idx  int32              :offset-assert 224)
    (current-y-position float              :offset-assert 228)
@@ -38075,7 +38344,7 @@
   )
 
 (deftype drill-barons-ship-turret (process-drawable)
-  ((root-override      collide-shape-moving     :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (info               barons-ship-turret-info  :offset-assert 200)
    (shot-timer         time-frame               :offset-assert 208)
    (shot-counter       int32                    :offset-assert 216)
@@ -38454,7 +38723,7 @@
 
 (deftype mtn-dice (process-drawable)
   (
-    (root-override      collide-shape-moving :offset 128 :score 100)
+    (root  collide-shape-moving  :override)
     (incoming-attack-id uint32         :offset-assert 200)
     (watervol           entity-actor         :offset-assert 204)
     (face-matrix        matrix 6 :inline      :offset-assert 208) ;; elt size: 64
@@ -38578,10 +38847,19 @@
     (idle () _type_ :state 20))
   )
 
+(defenum mtn-plat-flags
+  :bitfield #t
+  :type uint16
+  (mtpflags-0)
+  (mtpflags-1)
+  (mtpflags-2)
+  (mtpflags-3)
+  )
+
 (deftype mtn-plat-return (base-plat)
   (
     (ride-timer time-frame :offset-assert 272)
-    (flags      uint16     :offset-assert 280)
+    (flags      mtn-plat-flags     :offset-assert 280)
     (path-pos   float      :offset-assert 284)
     (dest-pos   float      :offset-assert 288)
     (path-speed float      :offset-assert 292)
@@ -38666,7 +38944,7 @@
 
 (deftype mtn-iris-door (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
   )
   :method-count-assert 22
   :size-assert         #xc8
@@ -38704,7 +38982,7 @@
 
 (deftype mtn-plat-buried-rocks (process-drawable)
   (
-    (root-override        collide-shape          :offset 128 :score 1)
+    (root  collide-shape  :override)
   )
   :method-count-assert 22
   :size-assert         #xc8
@@ -39214,6 +39492,32 @@
   )
 ;; ---bot-h:bot-flags
 
+(defenum bot-task-bits
+  :type uint32
+  :bitfield #t
+  (botbits-0)
+  (botbits-1)
+  (botbits-2)
+  (botbits-3)
+  (botbits-4)
+  (botbits-5)
+  (botbits-6)
+  (botbits-7)
+  )
+
+(defenum waypoint-bits
+  :bitfield #t
+  :type uint32
+  (wabits-0)
+  (wabits-1)
+  (wabits-2)
+  (wabits-3)
+  (wabits-4)
+  (wabits-5)
+  (wabits-6)
+  (wabits-7)
+  )
+
 (deftype bot (nav-enemy)
   ((bot-flags                       bot-flags              :offset-assert 604)
    (min-speed                       float                  :offset-assert 608)
@@ -39229,9 +39533,9 @@
    (ai-ctrl                         ai-task-control        :offset-assert 648)
    (course                          bot-course             :offset-assert 652)
    (waypoint                        bot-waypoint           :offset-assert 656)
-   (waypoint-bits                   uint32                 :offset-assert 660)
+   (waypoint-bits                   waypoint-bits          :offset-assert 660)
    (waypoint-int32a                 int32                  :offset-assert 664)
-   (bot-task-bits                   uint32                 :offset-assert 668)
+   (bot-task-bits                   bot-task-bits          :offset-assert 668)
    (hit-invuln-ignore-me-delay      uint32                 :offset-assert 672)
    (hit-invuln-focus-disable-delay  uint32                 :offset-assert 676)
    (warn-to-fail-timeout            uint32                 :offset-assert 680)
@@ -39918,9 +40222,22 @@
   :flag-assert         #x900000054
   )
 
+(defenum amphibian-flags
+  :bitfield #t
+  :type uint8
+  (amflags-0)
+  (amflags-1)
+  (amflags-2)
+  (amflags-3)
+  (amflags-4)
+  (amflags-5)
+  (amflags-6)
+  (amflags-7)
+  )
+
 (deftype amphibian (nav-enemy)
   ((tongue-scale       float               :offset-assert 604)
-   (flags              uint8               :offset-assert 608)
+   (flags              amphibian-flags     :offset-assert 608)
    (knocked-anim-index int8                :offset-assert 609)
    (jump-anim-index    int8                :offset-assert 610)
    (tongue-mode        uint64              :offset-assert 616)
@@ -40376,7 +40693,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype cntrlrm-door (process-drawable)
-  ((root-override collide-shape  :offset 128 :score 100) ;; originally called 'root' proof that they had some ability to override with the same name
+  ((root  collide-shape  :override)
    (unknown-pad-k1jhb2n3k1j int32 52 :offset-assert 200) ;; ??
    )
   :method-count-assert 22
@@ -40389,7 +40706,7 @@
   )
 
 (deftype cntrlrm-button (process-drawable)
-  ((root-override collide-shape  :offset 128 :score 100) ;; originally called 'root' proof that they had some ability to override with the same name
+  ((root  collide-shape  :override)
    (unknown-pad-n12jn3123123 int32 52 :offset-assert 200) ;; ??
    )
   :method-count-assert 21
@@ -40438,7 +40755,7 @@
 
 (deftype cranecrate (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
     (unknown-pad-n12jn3123123 int32 52 :offset-assert 200) ;; ??
    )
   :method-count-assert 22
@@ -40514,7 +40831,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype strip-hazard (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 100)
+  ((root  collide-shape-moving  :override)
    (sync               sync-linear :inline :offset-assert 200)
    (shove-vec          vector      :inline :offset-assert 224)
    (no-collision-timer uint64              :offset-assert 240)
@@ -40561,7 +40878,7 @@
   )
 
 (deftype grenade-point (process-drawable)
-  ((root-override      collide-shape        :offset 128 :score 100)
+  ((root  collide-shape  :override)
    (camera-name        string               :offset-assert 200)
    (parented?          symbol               :offset-assert 204)
    (lightning-time     time-frame              :offset-assert 208)
@@ -40670,6 +40987,19 @@
     )
   )
 
+(defenum gun-buoy-flags
+  :bitfield #t
+  :type uint16
+  (gubflags-0)
+  (gubflags-1)
+  (gubflags-2)
+  (gubflags-3)
+  (gubflags-4)
+  (gubflags-5)
+  (gubflags-6)
+  (gubflags-7)
+  )
+
 (deftype gun-buoy (nav-enemy)
   ((gun-elev-jmod      joint-mod          :offset-assert 604)
    (start-pos          vector     :inline :offset-assert 608)
@@ -40689,7 +41019,7 @@
    (stare-down-timer   time-frame         :offset-assert 736)
    (warning-id         sound-id           :offset-assert 744)
    (voice-id           sound-id           :offset-assert 748)
-   (flags              uint16             :offset-assert 752)
+   (flags              gun-buoy-flags     :offset-assert 752)
    )
   :method-count-assert 184
   :size-assert         #x2f2
@@ -40786,7 +41116,7 @@
   )
 
 (deftype atollrotpipe (process-drawable)
-  ((root-override collide-shape-moving  :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (smush         smush-control :inline :offset 200)
    (init-quat     quaternion    :inline :offset 240)
    (rot-angle     float                 :offset 256)
@@ -40803,7 +41133,7 @@
   )
 
 (deftype slider (process-drawable)
-  ((root-override     collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (path-pos          float              :offset-assert 200)
    (sync              sync-eased :inline :offset-assert 208)
    (attack-id         uint32             :offset-assert 252)
@@ -41439,7 +41769,7 @@
 
 (deftype sew-mar-statue (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
     (spawned-debris? symbol  :offset-assert 200)
    )
   :method-count-assert 22
@@ -41462,7 +41792,7 @@
 
 (deftype sew-mine (process-drawable)
   (
-    (root-override collide-shape-moving :offset 128 :score 100)
+    (root  collide-shape-moving  :override)
     (last-time time-frame  :offset-assert 200)
    )
   :method-count-assert 23
@@ -41935,6 +42265,27 @@
 ;; fort-robotank-turret           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum robotank-turret-flags
+  :bitfield #t
+  :type uint16
+  (rotflags-0)
+  (rotflags-1)
+  (rotflags-2)
+  (rotflags-3)
+  (rotflags-4)
+  (rotflags-5)
+  (rotflags-6)
+  (rotflags-7)
+  (rotflags-8)
+  (rotflags-9)
+  (rotflags-10)
+  (rotflags-11)
+  (rotflags-12)
+  (rotflags-13)
+  (rotflags-14)
+  (rotflags-15)
+  )
+
 (deftype fort-robotank-turret (process-focusable)
   (
     (los                 los-control :inline :offset-assert 208)
@@ -41961,7 +42312,7 @@
     (gun-joint-r         int32 2             :offset-assert 572) ;; elt size: 4
     (gun-spread          float               :offset-assert 580)
     (gun-index           int32               :offset-assert 584)
-    (flags               uint16              :offset-assert 588)
+    (flags               robotank-turret-flags :offset-assert 588)
     (turn-sound-id       sound-id            :offset-assert 592)
   )
   :method-count-assert 35
@@ -42105,16 +42456,38 @@
   :flag-assert         #x900000090
   )
 
+
+(defenum robotank-flags
+  :bitfield #t
+  :type uint16
+  (roflags-0)
+  (roflags-1)
+  (roflags-2)
+  (roflags-3)
+  (roflags-4)
+  (roflags-5)
+  (roflags-6)
+  (roflags-7)
+  (roflags-8)
+  (roflags-9)
+  (roflags-10)
+  (roflags-11)
+  (roflags-12)
+  (roflags-13)
+  (roflags-14)
+  (roflags-15)
+  )
+
 (deftype fort-robotank (process-drawable)
   (
-    (root-override      collide-shape-moving :offset 128 :score 100)
+    (root  collide-shape-moving  :override)
     (barrel-part        sparticle-launch-control     :offset-assert 200)
     (roller-jmod        joint-mod     :offset-assert 204)
     (vibe-jmod          joint-mod     :offset-assert 208)
     (tread              fort-robotank-tread-info 2 :inline :offset-assert 224 :score 100) ;; elt size: 144
     (path-info          fort-robotank-path-info-array     :offset-assert 512)
     (segment-table      (inline-array fort-robotank-segment)    :offset-assert 516)
-    (flags              uint16     :offset-assert 520)
+    (flags              robotank-flags     :offset-assert 520)
     (pov-cam-offset     vector 2 :inline  :offset-assert 528) ;; elt size: 16
     (turret             handle      :offset-assert 560)
     (no-collision-timer time-frame :offset-assert 568)
@@ -42168,7 +42541,7 @@
 
 (deftype fort-dump-bomb-a (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
   )
   :method-count-assert 22
   :size-assert         #xc8
@@ -42180,7 +42553,7 @@
   )
 
 (deftype fort-missile-target (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 100)
+  ((root  collide-shape-moving  :override)
    (part-mat matrix 2 :inline :offset-assert 208) ;; a total guess
    (sound-id uint32    :offset-assert 336)
    )
@@ -42194,7 +42567,7 @@
   )
 
 (deftype fort-missile (process-drawable)
-  ((root-override      collide-shape :offset 128 :score 100)
+  ((root  collide-shape  :override)
    (part-doom          sparticle-launch-control     :offset-assert 200)
    (hud                handle    :offset-assert 208)
    (door-actor         entity-actor 2 :offset-assert 216)
@@ -42785,7 +43158,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype metalkor-bomb (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (joint-mods joint-mod 49 :offset-assert 200)
    )
   :method-count-assert 21
@@ -42839,7 +43212,7 @@
   )
 
 (deftype metalkor-distort (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 21
   :size-assert         #xc8
@@ -43498,8 +43871,8 @@
 ;; TODO - defined in the kernel
 (define-extern *demo-control* (pointer demo-control))
 (define-extern demo-plug-lightning (function process-drawable vector cspace none))
-(define-extern demo-screen-change (function symbol int symbol int none :behavior demo-control))
-(define-extern demo-wait-for-press (function time-frame time-frame symbol symbol))
+(define-extern demo-screen-change (function int int symbol symbol int :behavior demo-control))
+(define-extern demo-wait-for-press (function time-frame time-frame symbol))
 (define-extern demo-menu (function object :behavior demo-control))
 (define-extern demo-control-init (function none :behavior demo-control))
 
@@ -43556,7 +43929,7 @@
 
 (deftype pal-prong (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
   )
   :method-count-assert 23
   :size-assert         #xc8
@@ -43611,7 +43984,7 @@
 
 (deftype fort-elec-switch (process-drawable)
   (
-    (root-override      collide-shape      :offset 128 :score 100)
+    (root  collide-shape  :override)
     (l-bolt             lightning-control  :offset-assert 200)
     (notify-actor       entity-actor  :offset-assert 204)
     (tank-actor         entity-actor  :offset-assert 208)
@@ -43629,7 +44002,7 @@
   )
 
 (deftype fort-fence (process-drawable)
-  ((root-override      collide-shape      :offset 128 :score 100)
+  ((root  collide-shape  :override)
    (anim      spool-anim   :offset-assert 200)
    (exit-anim basic   :offset-assert 204)
    (loading?  symbol   :offset-assert 208)
@@ -43923,7 +44296,7 @@
 
 (deftype cas-trapdoor (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
   )
   :method-count-assert 22
   :size-assert         #xc8 ;; 200
@@ -44002,7 +44375,7 @@
 
 (deftype lightning-ball (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
     (timer time-frame :offset-assert 200)
   )
   :method-count-assert 21
@@ -44154,7 +44527,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tomb-spider (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 21
   :size-assert         #xc8
@@ -44165,7 +44538,7 @@
   )
 
 (deftype tomb-boulder-stop (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (prefix string  :offset-assert 200)
    )
   :method-count-assert 21
@@ -44177,7 +44550,7 @@
   )
 
 (deftype tomb-boulder-pillar (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (prefix string :offset-assert 200)
    )
   :method-count-assert 21
@@ -44191,7 +44564,7 @@
 (declare-type tomb-wing-door com-airlock)
 
 (deftype tomb-boulder (process-drawable)
-  ((root-override   collide-shape-moving  :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (art-name        string                :offset-assert 200)
    (anim            spool-anim            :offset-assert 204)
    (loop-id         sound-id              :offset-assert 208)
@@ -44228,7 +44601,7 @@
   )
 
 (deftype spider-eyes (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (node-index uint32                  :offset-assert 200)
    )
   :method-count-assert 22
@@ -44314,7 +44687,7 @@
   )
 
 (deftype squid-tentacle (process-drawable)
-  ((root-override     collide-shape-moving            :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (chain-joints      squid-tentacle-chain 11 :inline :offset-assert 208)
    (gravity           vector                  :inline :offset-assert 912)
    (gravity-target    vector                  :inline :offset-assert 928)
@@ -44686,7 +45059,7 @@
 
 (deftype pal-falling-plat (process-drawable)
   (
-    (root-override collide-shape-moving :offset 128 :score 100)
+    (root  collide-shape-moving  :override)
   )
   :method-count-assert 22
   :size-assert         #xc8
@@ -44792,19 +45165,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype title-control (process)
-  ((selected int32 :offset-assert 128)
-   (sprites hud-sprite 2 :inline :offset-assert 144)
-   (sprite-pos vector :inline :offset-assert 272)
+  ((selected    int32 :offset-assert 128)
+   (sprites     hud-sprite 2 :inline :offset-assert 144)
+   (sprite-pos  vector :inline :offset-assert 272)
    (sprite-draw uint32 :offset-assert 288)
-   (buffer external-art-buffer 2 :offset-assert 292)
-   (want int32 2 :offset-assert 300)
-   (want-name basic 2 :offset-assert 308)
-   (have int32 2 :offset-assert 316)
-   (draw int32  :offset-assert 324)
-   (draw-name basic :offset-assert 328)
-   (active symbol :offset-assert 332)
-   (spark-time time-frame :offset-assert 336)
-   (gui-id sound-id :offset-assert 344)
+   (buffer      external-art-buffer 2 :offset-assert 292)
+   (want        int32 2 :offset-assert 300)
+   (want-name   string 2 :offset-assert 308)
+   (have        int32 2 :offset-assert 316)
+   (draw        int32  :offset-assert 324)
+   (draw-name   string :offset-assert 328)
+   (active      symbol :offset-assert 332)
+   (spark-time  time-frame :offset-assert 336)
+   (gui-id      sound-id :offset-assert 344)
    )
   :method-count-assert 18
   :size-assert         #x15c
@@ -44819,7 +45192,7 @@
   )
 
 (define-extern title-plug-lightning (function process-drawable vector cspace none))
-(define-extern title-screen-change (function symbol int symbol int symbol symbol none :behavior title-control))
+(define-extern title-screen-change (function string int string int symbol symbol none :behavior title-control))
 (define-extern wait-for-press (function time-frame time-frame symbol symbol))
 (define-extern title-menu (function object :behavior title-control))
 (define-extern title-fade-out (function float none))
@@ -44840,7 +45213,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype mech (process-drawable)
-  ((root-override     collide-shape-moving          :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (extra-trans       vector :inline :offset-assert 208)
    (condition         int32          :offset-assert 224)
    (shadow-backup     basic          :offset-assert 228)
@@ -45012,7 +45385,7 @@
   )
 
 (deftype pal-electric-fan (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (poles              pal-fan-pole 3 :inline :offset-assert 200)
    (no-collision-timer time-frame :offset 536)
    (sound-timer        time-frame :offset-assert 544)
@@ -45029,7 +45402,7 @@
   )
 
 (deftype pal-cable-nut (process-drawable)
-  ((root-override     collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (sync              sync-linear :inline :offset-assert 200)
    (init-quat         quaternion  :inline :offset-assert 224)
    (sound-played?     symbol      2       :offset-assert 240)
@@ -45342,11 +45715,11 @@
   :flag-assert         #x10003000b0
   )
 
-;; (define-extern race-birth-func-texture-lap-01 (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern race-birth-func-texture-lap-02 (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern race-birth-func-texture-position-01 (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern race-birth-func-texture-position-02 (function int sparticle-cpuinfo sparticle-launchinfo none))
-;; (define-extern race-birth-func-texture-position-word (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern race-birth-func-texture-lap-01 (function int sparticle-cpuinfo sparticle-launchinfo int))
+(define-extern race-birth-func-texture-lap-02 (function int sparticle-cpuinfo sparticle-launchinfo int))
+(define-extern race-birth-func-texture-position-01 (function int sparticle-cpuinfo sparticle-launchinfo int))
+(define-extern race-birth-func-texture-position-02 (function int sparticle-cpuinfo sparticle-launchinfo int))
+(define-extern race-birth-func-texture-position-word (function int sparticle-cpuinfo sparticle-launchinfo int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadium-obs                    ;;
@@ -45432,7 +45805,7 @@
 
 (deftype stad-samos (process-focusable)
   (
-    (root-override2 collide-shape-moving :offset 128 :score 101)
+    (root  collide-shape-moving  :override)
     (rift-rider-actor          entity-actor         :offset-assert 204)
     (lightning                 handle  4      :offset-assert 208) ;; elt size: 8
     (speed                     float          :offset-assert 240)
@@ -45906,7 +46279,7 @@
   )
 
 (deftype tomb-stair-block-spikes (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 21
   :size-assert         #xc8
@@ -45929,7 +46302,7 @@
   )
 
 (deftype tomb-stair-block (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (initial-y    float     :offset-assert 200)
    (spike-info   tomb-stair-block-spike-info 4 :inline :offset 208)
    (camera-state int32     :offset 336)
@@ -46005,7 +46378,7 @@
   )
 
 (deftype tomb-boulder-door (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 22
   :size-assert         #xc8
@@ -46016,10 +46389,17 @@
     )
   )
 
+(defenum tomb-plat-flags
+  :bitfield #t
+  :type uint16
+  (topflags-0)
+  (topflags-1)
+  )
+
 (deftype tomb-plat-return (base-plat)
   ((intro-path path-control :offset-assert 272)
    (ride-timer time-frame :offset-assert 280)
-   (flags      uint16  :offset-assert 288)
+   (flags      tomb-plat-flags  :offset-assert 288)
    (path-pos   float   :offset-assert 292)
    (dest-pos   float   :offset-assert 296)
    (path-speed float   :offset-assert 300)
@@ -46038,7 +46418,7 @@
   )
 
 (deftype tomb-sphinx (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (target-actor entity-actor   :offset-assert 200)
    (sound-id     sound-id  :offset-assert 204)
    (move-dir     float   :offset 216)
@@ -46208,6 +46588,15 @@
     )
   )
 
+(defenum tomb-vibe-flags
+  :bitfield #t
+  :type uint16
+  (tovflags-0)
+  (tovflags-1)
+  (tovflags-2)
+  (tovflags-3)
+  )
+
 (deftype tomb-vibe (process-drawable)
   ((spawn-pos         vector        :inline :offset-assert 208)
    (pat-tbl           (pointer int32)         :offset-assert 224) ;; pattern-table
@@ -46218,7 +46607,7 @@
    (pat-duration      time-frame            :offset-assert 248)
    (actor-group       (pointer actor-group) :offset-assert 256)
    (actor-group-count int32                 :offset-assert 260)
-   (flags             uint16                :offset-assert 264)
+   (flags             tomb-vibe-flags       :offset-assert 264)
    (on-activate       basic                 :offset-assert 268)
    )
   :method-count-assert 24
@@ -46553,7 +46942,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tomb-boss-catwalk (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (which-look int32  :offset-assert 200)
    )
   :method-count-assert 23
@@ -46610,7 +46999,7 @@
   )
 
 (deftype heart-mar (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 21
   :size-assert         #xc8
@@ -46621,7 +47010,7 @@
   )
 
 (deftype tomb-boss-pillar (process-drawable)
-  ((root-override   collide-shape-moving     :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (explode-part    sparticle-launch-control :offset-assert 200)
    (segs-shot       int32                    :offset-assert 204)
    (last-pillar-hit time-frame               :offset-assert 208)
@@ -46637,7 +47026,7 @@
   )
 
 (deftype tomb-boss-firepot (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -46664,7 +47053,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype tomb-boss-debris (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (y-velocity    float              :offset-assert 200)
    (floor         float              :offset-assert 204)
    (sound-floor   float              :offset-assert 208)
@@ -46943,7 +47332,7 @@
   )
 
 (deftype ctyport-mine (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 100)
+  ((root  collide-shape-moving  :override)
    (info        city-port-run-mine-info         :offset-assert 200)
    (base-height float                           :offset-assert 204)
    (center      vector                  :inline :offset-assert 208)
@@ -47629,6 +48018,13 @@
   :flag-assert         #x900000080
   )
 
+(defenum under-block-flags
+  :bitfield #t
+  (unbflags-0)
+  (unbflags-1)
+  (unbflags-2)
+  )
+
 (deftype under-block (process-focusable)
   ((puzzle             under-block-puzzle :offset-assert 204)
    (my-parent          (pointer process)  :offset-assert 208)
@@ -47644,7 +48040,7 @@
    (pulse-op           int8               :offset-assert 224)
    (pulse-pc           int8               :offset-assert 225)
    (pulse-ctr          int8               :offset-assert 226)
-   (flags              uint64             :offset-assert 232)
+   (flags              under-block-flags  :offset-assert 232)
    (activated-time     time-frame         :offset-assert 240)
    (rot-axis           vector     :inline :offset-assert 256)
    (away-from-focal-pt vector     :inline :offset-assert 272)
@@ -47898,7 +48294,7 @@
   )
 
 (deftype under-mine (process-drawable)
-  ((root-override     collide-shape-moving     :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (chain             under-mine-chain-physics :offset-assert 200)
    (chain-initialized symbol     :offset-assert 204)
    (main-mod          joint-mod  :offset-assert 208)
@@ -48015,7 +48411,7 @@
   )
 
 (deftype under-break-floor (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 23
   :size-assert         #xc8
@@ -48039,7 +48435,7 @@
   )
 
 (deftype under-break-bridge (process-drawable)
-  ((root-override   collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (bridge-id int8  :offset-assert 200)
    )
   :method-count-assert 23
@@ -48078,7 +48474,7 @@
   )
 
 (deftype under-plat-wall (process-drawable)
-  ((root-override   collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (extended-amount float               :offset-assert 200)
    (in-trans        vector      :inline :offset-assert 208)
    (out-trans       vector      :inline :offset-assert 224)
@@ -48132,7 +48528,7 @@
   )
 
 (deftype under-laser-shadow (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (info            under-laser-info :offset-assert 200)
    (trans-xz-offset vector   :inline :offset-assert 208)
    )
@@ -48145,7 +48541,7 @@
   )
 
 (deftype under-laser-slave (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    )
   :method-count-assert 21
   :size-assert         #xc8
@@ -48156,7 +48552,7 @@
   )
 
 (deftype under-laser (process-drawable)
-  ((root-override      collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (info               under-laser-info   :offset-assert 200)
    (id                 int8               :offset-assert 204)
    (lightning          lightning-control  :offset-assert 208)
@@ -48974,9 +49370,9 @@
 (deftype traffic-guard-type-settings (structure)
   ((target-count    int8    :offset-assert 0)
    (inaccuracy      float   :offset-assert 4)
-   (acquire-delay   uint16  :offset-assert 8)
-   (shot-delay      uint16  :offset-assert 10)
-   (burst-delay     uint16  :offset-assert 12)
+   (acquire-delay   uint16  :offset-assert 8 :decomp-as time-frame)
+   (shot-delay      uint16  :offset-assert 10 :decomp-as time-frame)
+   (burst-delay     uint16  :offset-assert 12 :decomp-as time-frame)
    (shot-count      int8    :offset-assert 14)
    (rand-shot-count int8    :offset-assert 15)
    )
@@ -49541,8 +49937,8 @@
 (declare-type vehicle-physics-work structure)
 (deftype vehicle (rigid-body-object)
   (
-    (self-override vehicle :offset 32 :score 999)
-    (info-override rigid-body-vehicle-constants :offset 204 :score 999)
+    (self  vehicle  :override)
+    (info  rigid-body-vehicle-constants  :override)
     (pad uint32 2 :offset-assert 272)
     (vehicle-jkhn1b23jn1 int64 :offset-assert 280) ;; (method 96 vehicle)
     (controls vehicle-controls :inline :offset-assert 288)
@@ -49676,7 +50072,7 @@
     (vehicle-method-109 (_type_) none 109)
     (vehicle-method-110 (_type_) none 110)
     (vehicle-method-111 (_type_ object target) none 111)
-    (vehicle-method-112 (_type_ object) none 112)
+    (decrease-traffic-alert-level (_type_ int) int 112)
     (vehicle-method-113 (_type_) none 113)
     (vehicle-method-114 (_type_) none 114)
     (vehicle-method-115 (_type_ vector) none 115)
@@ -49900,7 +50296,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype vehicle-rider (process-focusable)
-  ((parent-override (pointer vehicle) :offset 16 :score 100)
+  ((parent  (pointer vehicle)  :override)
    (flags       uint8  :offset-assert 204)
    (riding-anim int32  :offset-assert 208)
    (anim-t      float  :offset-assert 212)
@@ -50343,6 +50739,46 @@
 ;; race-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum racer-info-flags
+  :bitfield #t
+  :type uint8
+  (hide-in-scene)
+  )
+
+(defenum race-info-flags
+  :bitfield #t
+  :type uint8
+  (city-race)
+  (pidax)
+  (complete-immediately)
+  (retryable)
+  (borrow)
+  (bbush)
+  (show-tutorial)
+  )
+
+(defenum race-flags
+  :bitfield #t
+  :type uint8
+  (begun)
+  (pidax) ;; verify
+  (ready)
+  (sleep)
+  )
+
+(defenum racer-flags
+  :bitfield #t
+  :type uint8
+  (in-race)
+  (finished)
+  (dead)
+  (racerflag-3)
+  (racerflag-4)
+  (saved-score)
+  (on-track)
+  (unknown)
+  )
+
 (deftype race-turbo-pad (structure)
   ((position vector :inline :offset-assert 0)
    (handle   handle         :offset-assert 16)
@@ -50366,7 +50802,7 @@
 (deftype race-racer-info (structure)
   ((rider       uint8  :offset-assert 0)
    (vehicle     uint8  :offset-assert 1)
-   (flags       uint8  :offset-assert 2)
+   (flags       racer-info-flags  :offset-assert 2)
    (seek-offset int8   :offset-assert 3)
    )
   :method-count-assert 9
@@ -50377,7 +50813,7 @@
 (deftype race-info (basic)
   ((race-mesh-name           string         :offset-assert 4)
    (path-group-name          string         :offset-assert 8)
-   (task-node                uint16         :offset-assert 12)
+   (task-node                game-task-node :offset-assert 12)
    (mesh                     race-mesh      :offset-assert 16)
    (ai-min-speed-factor      float          :offset-assert 20)
    (ai-max-speed-factor      float          :offset-assert 24)
@@ -50387,7 +50823,7 @@
    (finish-sphere            sphere :inline :offset-assert 64)
    (finish-dir               vector :inline :offset-assert 80)
    (player-intro-pos         vector :inline :offset-assert 96)
-   (flags                    uint8          :offset-assert 112)
+   (flags                    race-info-flags :offset-assert 112)
    (score                    uint8          :offset-assert 113)
    (lap-count                int8           :offset-assert 114)
    (racer-count              int8           :offset-assert 115)
@@ -50404,8 +50840,8 @@
    (manager                  handle         :offset-assert 144)
    (manager-handle-init-hack basic          :offset 144)
    (hatch-actor-name         string         :offset-assert 152)
-   (countdown-scene          basic          :offset-assert 156)
-   (complete-continue        basic          :offset-assert 160)
+   (countdown-scene          string         :offset-assert 156)
+   (complete-continue        string         :offset-assert 160)
    (start-camera             string         :offset-assert 164)
    (go-speech                uint16         :offset-assert 168)
    )
@@ -50413,7 +50849,7 @@
   :size-assert         #xaa
   :flag-assert         #xa000000aa
   (:methods
-    (race-info-method-9 (_type_) none 9)
+    (initialize-mesh (_type_) none 9)
     )
   )
 
@@ -50422,7 +50858,7 @@
 (deftype racer-state (structure)
   ((position          vector  :inline :offset-assert 0)
    (racer             handle          :offset-assert 16)
-   (flags             uint8           :offset-assert 24)
+   (flags             racer-flags     :offset-assert 24)
    (rank              int8            :offset-assert 25)
    (finish-count      int8            :offset-assert 26)
    (lap-count         int8            :offset-assert 27)
@@ -50443,7 +50879,7 @@
   :size-assert         #x70
   :flag-assert         #xe00000070
   (:methods
-    (racer-state-method-9 (_type_ race-state) none 9)
+    (update-lap-distance (_type_ race-state) none 9)
     (begin-lap (_type_ race-state) none 10)
     (end-lap (_type_ race-state) none 11)
     (print-laps (_type_ race-state string) none 12)
@@ -50451,10 +50887,23 @@
     )
   )
 
+(defenum race-state-enum
+  :type uint8
+  (idle)
+  (player-get-on)
+  (player-set-pos)
+  (countdown-scene-start)
+  (countdown-scene)
+  (countdown-start)
+  (countdown)
+  (active)
+  (all-dead)
+  )
+
 (deftype race-state (structure)
   ((info                 race-info           :offset-assert 0)
-   (flags                uint8               :offset-assert 4)
-   (state                uint8               :offset-assert 5)
+   (flags                race-flags          :offset-assert 4)
+   (state                race-state-enum     :offset-assert 5)
    (racer-count          int8                :offset-assert 6)
    (finished-count       int8                :offset-assert 7)
    (i-player             int8                :offset-assert 8)
@@ -50482,14 +50931,14 @@
   (:methods
     (init-racers! (_type_ process-drawable) none 9)
     (begin-race (_type_) none 10)
-    (race-state-method-11 (_type_) none 11)
-    (race-state-method-12 (_type_) none 12)
-    (race-state-method-13 (_type_) none 13)
-    (race-state-method-14 (_type_) none 14)
-    (race-state-method-15 (_type_) none 15)
+    (update (_type_) none 11)
+    (update-rankings (_type_) none 12)
+    (debug-print-rankings (_type_) none 13)
+    (update-racers (_type_) none 14)
+    (spawn-race-signal (_type_) none 15)
     (initialize (_type_ process race-info) none 16)
-    (race-state-method-17 (_type_) none 17)
-    (race-state-method-18 (_type_) none 18)
+    (set-speech-tables! (_type_) none 17)
+    (setup-race (_type_) none 18)
     )
   )
 
@@ -50510,14 +50959,14 @@
     (win () _type_ :state 17)
     (lose () _type_ :state 18)
     (die () _type_ :state 19)
-    (race-manager-method-20 (_type_) none 20)
+    (update (_type_) int 20)
     (initialize-state (_type_) none 21)
     (race-manager-method-22 (_type_) none 22)
-    (race-manager-method-23 (_type_) none 23)
-    (race-manager-method-24 (_type_) none 24)
-    (race-manager-method-25 (_type_) none 25)
-    (race-manager-method-26 (_type_ float) none 26)
-    (race-manager-method-27 (_type_) none 27)
+    (initialize-race-state (_type_) none 23)
+    (draw-message-continue (_type_) none 24)
+    (draw-message-retry (_type_) none 25)
+    (save-score (_type_ float) none 26)
+    (stop-speech (_type_) none 27)
     )
   )
 
@@ -50533,6 +50982,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-mesh                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defenum race-mesh-flags
+  :bitfield #t
+  :type uint8
+  (racemeshflag-0)
+  (racemeshflag-1)
+  (racemeshflag-2)
+  (racemeshflag-3)
+  (racemeshflag-4)
+  (racemeshflag-5)
+  (racemeshflag-6)
+  (racemeshflag-7)
+  )
 
 (deftype race-mesh-hash-search (structure)
   ((best-dist             float                  :offset-assert 0)
@@ -50659,7 +51121,7 @@
 (deftype race-mesh (basic)
   ((version          uint8                          :offset-assert 4)
    (path-group-count uint8                          :offset-assert 5)
-   (flags            uint8                          :offset-assert 6)
+   (flags            race-mesh-flags                :offset-assert 6)
    (pad              uint8 1                        :offset-assert 7)
    (slice-count      int16                          :offset-assert 8)
    (edge-count       int16                          :offset-assert 10)
@@ -50751,7 +51213,7 @@
   )
 
 (deftype turbo-pickup (process-drawable)
-  ((root-override collide-shape-moving :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (available symbol :offset-assert 200)
    )
   :method-count-assert 23
@@ -50845,7 +51307,7 @@
 (define-extern race-manager-event-handler (function process int symbol event-message-block object :behavior race-manager))
 (define-extern *race-manager* (pointer race-manager))
 (define-extern race-manager-init-by-other (function race-info symbol none :behavior race-manager))
-(define-extern race-start (function int symbol symbol process))
+(define-extern race-start (function int process symbol process))
 (define-extern race-kill (function none))
 (define-extern type-from-race-vehicle-type (function uint type))
 (define-extern race-vehicle-entity-hack (function none))
@@ -51624,7 +52086,7 @@
 (define-extern *citizen-rebel-global-info* civilian-global-info)
 (define-extern *citizen-rebel-nav-enemy-info* nav-enemy-info)
 (define-extern shuttle-init (function task-manager (array city-shuttle-info) none))
-(define-extern shuttle-cleanup (function task-manager none))
+(define-extern shuttle-cleanup (function task-manager (array city-shuttle-info) none))
 (define-extern shuttle-update (function task-manager (array city-shuttle-info) uint none))
 (define-extern *city-shuttle-info* (array city-shuttle-info))
 (define-extern *city-burning-bush-shuttle-1-info* (array city-shuttle-info))
@@ -51910,7 +52372,7 @@
   )
 
 (deftype turbo-ring (process-drawable)
-  ((root-override collide-shape           :offset 128 :score 100)
+  ((root  collide-shape  :override)
    (touch-time time-frame                 :offset-assert 200)
    (minimap    connection-minimap         :offset-assert 208)
    (player-got symbol                      :offset-assert 212)
@@ -52012,7 +52474,7 @@
 
 (deftype security-wall (process-drawable)
   (
-    (root-override collide-shape :offset 128 :score 100)
+    (root collide-shape :override)
     (pass int32 :offset-assert 200)
     (incoming-attack-id uint32 :offset-assert 204)
     (next-message-time int64 :offset-assert 208)
@@ -52535,7 +52997,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype mechblock (process-drawable)
-  ((root-override  collide-shape-moving  :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (origin         vector :inline :offset-assert 208)
    (drop-point     vector :inline :offset 256)
    (allow-drag?    symbol         :offset-assert 272)
@@ -52646,7 +53108,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype ruins-pillar-collapse (process-drawable)
-  ((root-override  collide-shape-moving  :offset 128 :score 1)
+  ((root  collide-shape-moving  :override)
    (player-attack-id int32               :offset-assert 200)
    (fall-anim-index  int32               :offset-assert 204)
    (hit-points       int8                :offset-assert 208)
@@ -52718,6 +53180,16 @@
 ;; rapid-gunner                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum rapid-gunner-flags
+  :bitfield #t
+  (ragflags-0)
+  (ragflags-1)
+  (ragflags-2)
+  (ragflags-3)
+  (ragflags-4)
+  (ragflags-5)
+  )
+
 (deftype rapid-gunner (nav-enemy)
   ((los              los-control :inline :offset-assert 608)
    (joint            joint-mod           :offset-assert 756)
@@ -52733,7 +53205,7 @@
    (spin-up-angle    float               :offset-assert 840)
    (spin-up-timer    time-frame          :offset-assert 848)
    (shoot-anim-index int32               :offset-assert 856)
-   (status-flags     uint64              :offset-assert 864)
+   (status-flags     rapid-gunner-flags  :offset-assert 864)
    (start-pos        vector      :inline :offset-assert 880)
    (dest-pos         vector      :inline :offset-assert 896)
    (hop-dir          vector      :inline :offset-assert 912)
@@ -52821,7 +53293,7 @@
   )
 
 (deftype tanker-container (process-drawable)
-  ((root-override collide-shape :offset 128 :score 100))
+  ((root collide-shape :override))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
@@ -52833,7 +53305,7 @@
   )
 
 (deftype tanker-crash (process-drawable)
-  ((root-override collide-shape :offset 128 :score 100))
+  ((root collide-shape :override))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
@@ -52844,7 +53316,7 @@
   )
 
 (deftype tanker-deadly (process-drawable)
-  ((root-override collide-shape :offset 128 :score 100)
+  ((root collide-shape :override)
    (track-joint int32          :offset-assert 200)
    (attack-id   uint32         :offset-assert 204)
    (die-time    time-frame         :offset-assert 208)

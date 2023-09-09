@@ -1,0 +1,1668 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: car.gc
+;; name in dgo: car
+;; dgos: CWI
+
+;; DECOMP BEGINS
+
+(defskelgroup skel-cara cara cara-lod0-jg cara-idle-ja
+              ((cara-lod0-mg (meters 20)) (cara-lod1-mg (meters 40)) (cara-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.2)
+              :shadow cara-shadow-mg
+              )
+
+(defskelgroup skel-carb carb carb-lod0-jg carb-idle-ja
+              ((carb-lod0-mg (meters 20)) (carb-lod1-mg (meters 40)) (carb-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow carb-shadow-mg
+              )
+
+(defskelgroup skel-carc carc carc-lod0-jg carc-idle-ja
+              ((carc-lod0-mg (meters 20)) (carc-lod1-mg (meters 40)) (carc-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5.3)
+              :shadow carc-shadow-mg
+              )
+
+(defskelgroup skel-hellcat hellcat hellcat-lod0-jg hellcat-idle-ja
+              ((hellcat-lod0-mg (meters 20)) (hellcat-lod1-mg (meters 40)) (hellcat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              :shadow hellcat-shadow-mg
+              :origin-joint-index 3
+              )
+
+(define *car-explosion-info*
+  (new 'static 'vehicle-explosion-info
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      )
+    :collide-spec #x1
+    :art-level 'ctywide
+    :skel #f
+    :skel-name "skel-vehicle-explosion"
+    :anim 2
+    )
+  )
+
+(define *cara-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 0.995
+      :angular-damping 0.995
+      :bounce-factor 0.4
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 3) (meters 6))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*cara-constants*
+    :flags #x68
+    :object-type #xe
+    :guard-type #x7
+    :max-engine-thrust (meters 39)
+    :inv-max-engine-thrust 0.000006260016
+    :engine-response-rate 20.0
+    :engine-intake-factor 1.0
+    :brake-factor 2.25
+    :turbo-boost-factor 1.0
+    :max-xz-speed (meters 40)
+    :ground-probe-distance (meters 4.5)
+    :cos-ground-effect-angle 0.42261824
+    :spring-lift-factor 0.4
+    :air-drag-factor 1.0
+    :steering-thruster-factor 3.0
+    :steering-thruster-max-gain 3.5
+    :steering-thruster-half-gain-speed (meters 15)
+    :tire-friction-factor 0.6
+    :tire-static-friction 0.55
+    :tire-dynamic-friction 0.4
+    :tire-dynamic-friction-speed (meters 2)
+    :tire-inv-max-friction-speed 0.000024414063
+    :airfoil-factor 1.0
+    :drag-force-factor 1.0
+    :speed-scrubbing-drag 10.0
+    :speed-limiting-drag 0.7
+    :pitch-control-factor 0.5
+    :roll-control-factor 1.0
+    :jump-thrust-factor 0.5
+    :buoyancy-factor 1.0
+    :player-weight 163840.0
+    :player-shift-x (meters 0.6)
+    :player-shift-z (meters 1)
+    :target-speed-offset (meters 3)
+    :turning-accel (meters 20)
+    :toughness-factor 1.0
+    :damage-factor 2.5
+    :camera-string-min-height (meters 4.5)
+    :camera-string-max-height (meters 4.5)
+    :camera-string-min-length (meters 5)
+    :camera-string-max-length (meters 12.5)
+    :camera-min-fov 15109.688
+    :camera-max-fov 17476.268
+    :camera-head-offset 8192.0
+    :camera-foot-offset 4096.0
+    :camera-normal-max-angle-offset 5461.3335
+    :camera-air-max-angle-offset 5461.3335
+    :camera-max-lookaround-speed 40960.0
+    :seat-count 3
+    :section-count 4
+    :rider-stance #x1
+    :grab-rail-count 6
+    :grab-rail-array (new 'static 'inline-array vehicle-grab-rail-info 6
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 4505.6 :y -2662.4 :z 15360.0 :w 1.0)
+          (new 'static 'vector :x -4505.6 :y -2662.4 :z 15360.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :z 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 7372.8 :y -819.2 :z -4096.0 :w 1.0)
+          (new 'static 'vector :x 7372.8 :y -819.2 :z 4096.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -7372.8 :y -819.2 :z 4096.0 :w 1.0)
+          (new 'static 'vector :x -7372.8 :y -819.2 :z -4096.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -3686.4 :y -409.6 :z -14950.4 :w 1.0)
+          (new 'static 'vector :x 3686.4 :y -409.6 :z -14950.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :z -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 3837.952 :y -409.6 :z -14950.4 :w 1.0)
+          (new 'static 'vector :x 6041.6 :y -614.4 :z -9011.2 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 0.707 :z -0.707 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -6041.6 :y -614.4 :z -9011.2 :w 1.0)
+          (new 'static 'vector :x -3837.952 :y -409.6 :z -14950.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -0.707 :z -0.707 :w 1.0)
+        )
+      )
+    :seat-array (new 'static 'inline-array vehicle-seat-info 4
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x 4079.616 :y 819.2 :z -311.296 :w (the-as float #x30000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x -4079.616 :y 819.2 :z -311.296 :w (the-as float #x30000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :y 3751.936 :z -10563.584 :w (the-as float #x40000))
+        )
+      (new 'static 'vehicle-seat-info)
+      )
+    :rider-hand-offset (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 614.4 :y 614.4 :z 1433.6 :w 1.0)
+      (new 'static 'vector :x 614.4 :y 614.4 :z -1433.6 :w 1.0)
+      )
+    :section-bike-front (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+      :damage-seg-count 3
+      )
+    :section-bike-rear (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+      :damage-seg-count 3
+      )
+    :section-car-front-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+      :damage-seg-count 3
+      )
+    :section-car-rear-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+      :damage-seg-count 3
+      )
+    :explosion #f
+    :engine-pitch-scale 0.09
+    :engine-pitch-mod-amp 0.01
+    :engine-sound-select 5
+    :engine-sound (static-sound-name "vehicle-engine")
+    :thrust-sound (static-sound-name "bike-thrust")
+    :scrape-sound (static-sound-name "car-scrape-stn")
+    :glance-sound (static-sound-name "car-glance-stn")
+    :impact-sound (static-sound-name "car-impact-stn")
+    :extra-sound (static-sound-name "car-by-5")
+    :explosion-part #xa1
+    :headlight-count 2
+    :taillight-count 2
+    :thruster-flame-width (meters 0.6)
+    :thruster-flame-length (meters 2)
+    :thruster-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3072.0 :z -14336.0 :w 1.0)
+      (new 'static 'vector :x -3072.0 :z -14336.0 :w 1.0)
+      )
+    :exhaust-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6963.2 :y -1024.0 :z -7372.8 :w 1.0)
+      (new 'static 'vector :x -6963.2 :y -1024.0 :z -7372.8 :w 1.0)
+      )
+    :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+    :smoke-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3072.0 :z -13926.4 :w 1.0)
+      (new 'static 'vector :x -3072.0 :z -13926.4 :w 1.0)
+      )
+    :smoke-local-vel (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 12288.0 :w 1.0)
+      (new 'static 'vector :x -12288.0 :w 1.0)
+      )
+    :headlight-local-pos (new 'static 'inline-array vector 3
+      (new 'static 'vector :x 4915.2 :z 15564.8 :w 1.0)
+      (new 'static 'vector :x -4915.2 :z 15564.8 :w 1.0)
+      (new 'static 'vector)
+      )
+    :taillight-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+      (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+      )
+    :lift-thruster-count 2
+    :roll-thruster-count 2
+    :steering-thruster-count 2
+    :stabilizer-count 4
+    :inv-lift-thruster-count 0.5
+    :lift-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 819.2 :z 8192.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 819.2 :z -8192.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      )
+    :roll-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x 6963.2 :y 819.2 :w 1.0)
+        :normal (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x -6963.2 :y 819.2 :w 1.0)
+        :normal (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+        )
+      )
+    :steering-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 7782.4 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -7782.4 :w 1.0)
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :stabilizer-array (new 'static 'inline-array vehicle-control-point 6
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 8192.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 0.5)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 2.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+        :normal (new 'static 'vector :y 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point)
+      (new 'static 'vehicle-control-point)
+      )
+    :engine-thrust-local-pos (new 'static 'vector :z -5734.4 :w 1.0)
+    :brake-local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+    :color-option-count 3
+    :color-option-array (new 'static 'inline-array vector 3
+      (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+      (new 'static 'vector :x 1.0 :y 0.7 :z 1.0 :w 1.0)
+      (new 'static 'vector :x 1.0 :y 0.7 :z 0.7 :w 1.0)
+      )
+    )
+  )
+
+(define *carb-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 6.0
+      :inv-mass 0.16666667
+      :linear-damping 0.995
+      :angular-damping 0.995
+      :bounce-factor 0.4
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 3) (meters 4) (meters 6))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*carb-constants*
+    :flags #x68
+    :object-type #xf
+    :guard-type #x7
+    :max-engine-thrust (meters 40)
+    :inv-max-engine-thrust 0.0000061035157
+    :engine-response-rate 10.0
+    :engine-intake-factor 1.0
+    :brake-factor 2.25
+    :turbo-boost-factor 1.0
+    :max-xz-speed (meters 40)
+    :ground-probe-distance (meters 4.5)
+    :cos-ground-effect-angle 0.42261824
+    :spring-lift-factor 0.4
+    :air-drag-factor 1.0
+    :steering-thruster-factor 3.5
+    :steering-thruster-max-gain 3.8
+    :steering-thruster-half-gain-speed (meters 15)
+    :tire-friction-factor 0.55
+    :tire-static-friction 0.55
+    :tire-dynamic-friction 0.4
+    :tire-dynamic-friction-speed (meters 2)
+    :tire-inv-max-friction-speed 0.000034877234
+    :airfoil-factor 1.0
+    :drag-force-factor 1.0
+    :speed-scrubbing-drag 10.0
+    :speed-limiting-drag 0.69
+    :pitch-control-factor 0.5
+    :roll-control-factor 1.0
+    :jump-thrust-factor 0.5
+    :buoyancy-factor 1.0
+    :player-weight 163840.0
+    :player-shift-x (meters 0.6)
+    :player-shift-z (meters 1)
+    :target-speed-offset (meters 3)
+    :turning-accel (meters 20)
+    :toughness-factor 1.0
+    :damage-factor 2.5
+    :camera-string-min-height (meters 4.5)
+    :camera-string-max-height (meters 4.5)
+    :camera-string-min-length (meters 5)
+    :camera-string-max-length (meters 12.5)
+    :camera-min-fov 15109.688
+    :camera-max-fov 17476.268
+    :camera-head-offset 8192.0
+    :camera-foot-offset 4096.0
+    :camera-normal-max-angle-offset 5461.3335
+    :camera-air-max-angle-offset 5461.3335
+    :camera-max-lookaround-speed 40960.0
+    :seat-count 3
+    :section-count 4
+    :rider-stance #x1
+    :grab-rail-count 5
+    :grab-rail-array (new 'static 'inline-array vehicle-grab-rail-info 5
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 6963.2 :y -2048.0 :z -3276.8 :w 1.0)
+          (new 'static 'vector :x 6963.2 :y -2048.0 :z 1638.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -6963.2 :y -2048.0 :z 1638.4 :w 1.0)
+          (new 'static 'vector :x -6963.2 :y -2048.0 :z -3276.8 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 4096.0 :y -1638.4 :z 16384.0 :w 1.0)
+          (new 'static 'vector :x 3891.2 :y -1638.4 :z 16384.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :z 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -3891.2 :y -1638.4 :z 16384.0 :w 1.0)
+          (new 'static 'vector :x -4096.0 :y -1638.4 :z 16384.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :z 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -819.2 :y 1024.0 :z -12697.6 :w 1.0)
+          (new 'static 'vector :x 819.2 :y 1024.0 :z -12697.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :z -1.0 :w 1.0)
+        )
+      )
+    :seat-array (new 'static 'inline-array vehicle-seat-info 4
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x 4218.88 :y 999.424 :z -172.032 :w (the-as float #x30000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x -3891.2 :y 999.424 :z -172.032 :w (the-as float #x30000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :y 3751.936 :z -8192.0 :w (the-as float #x40000))
+        )
+      (new 'static 'vehicle-seat-info)
+      )
+    :rider-hand-offset (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 122.88 :y -1433.6 :z 614.4 :w 1.0)
+      (new 'static 'vector :x 122.88 :y 1433.6 :z 614.4 :w 1.0)
+      )
+    :section-bike-front (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+      :damage-seg-count 3
+      )
+    :section-bike-rear (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+      :damage-seg-count 3
+      )
+    :section-car-front-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+      :damage-seg-count 3
+      )
+    :section-car-rear-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+      :damage-seg-count 3
+      )
+    :explosion #f
+    :engine-pitch-scale 0.25
+    :engine-pitch-mod-amp 0.025
+    :engine-sound-select 6
+    :engine-sound (static-sound-name "vehicle-engine")
+    :thrust-sound (static-sound-name "bike-thrust")
+    :scrape-sound (static-sound-name "car-scrape-stn")
+    :glance-sound (static-sound-name "car-glance-stn")
+    :impact-sound (static-sound-name "car-impact-stn")
+    :extra-sound (static-sound-name "car-by-6")
+    :explosion-part #xa1
+    :headlight-count 2
+    :taillight-count 2
+    :thruster-flame-width (meters 0.6)
+    :thruster-flame-length (meters 2)
+    :thruster-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 4096.0 :y 1638.4 :z -13107.2 :w 1.0)
+      (new 'static 'vector :x -4096.0 :y 1638.4 :z -13107.2 :w 1.0)
+      )
+    :exhaust-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6553.6 :y 3072.0 :z -10240.0 :w 1.0)
+      (new 'static 'vector :x -6553.6 :y 3072.0 :z -10240.0 :w 1.0)
+      )
+    :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+    :smoke-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 4096.0 :y 1638.4 :z -10240.0 :w 1.0)
+      (new 'static 'vector :x -4096.0 :y 1638.4 :z -10240.0 :w 1.0)
+      )
+    :smoke-local-vel (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 12288.0 :w 1.0)
+      (new 'static 'vector :x -12288.0 :w 1.0)
+      )
+    :headlight-local-pos (new 'static 'inline-array vector 3
+      (new 'static 'vector :x 4096.0 :y 2457.6 :z 15155.2 :w 1.0)
+      (new 'static 'vector :x -4096.0 :y 2457.6 :z 15155.2 :w 1.0)
+      (new 'static 'vector)
+      )
+    :taillight-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3891.2 :y 4096.0 :z -12697.6 :w 1.0)
+      (new 'static 'vector :x -3891.2 :y 4096.0 :z -12697.6 :w 1.0)
+      )
+    :lift-thruster-count 2
+    :roll-thruster-count 2
+    :steering-thruster-count 2
+    :stabilizer-count 4
+    :inv-lift-thruster-count 0.5
+    :lift-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 819.2 :z 9011.2 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 819.2 :z -9011.2 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      )
+    :roll-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x 6963.2 :y 819.2 :w 1.0)
+        :normal (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x -6963.2 :y 819.2 :w 1.0)
+        :normal (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+        )
+      )
+    :steering-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 7782.4 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -7782.4 :w 1.0)
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :stabilizer-array (new 'static 'inline-array vehicle-control-point 6
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 8192.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 0.5)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 2.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+        :normal (new 'static 'vector :y 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point)
+      (new 'static 'vehicle-control-point)
+      )
+    :engine-thrust-local-pos (new 'static 'vector :z -5734.4 :w 1.0)
+    :brake-local-pos (new 'static 'vector :z -8192.0 :w 1.0)
+    :color-option-count 4
+    :color-option-array (new 'static 'inline-array vector 4
+      (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+      (new 'static 'vector :x 1.0 :y 0.7 :z 1.0 :w 1.0)
+      (new 'static 'vector :x 1.0 :y 0.7 :z 0.7 :w 1.0)
+      (new 'static 'vector :x 0.6 :y 1.0 :z 0.8 :w 1.0)
+      )
+    )
+  )
+
+(define *carc-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 9.0
+      :inv-mass 0.11111111
+      :linear-damping 0.995
+      :angular-damping 0.995
+      :bounce-factor 0.4
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :z -4096.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 3) (meters 4) (meters 6))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*carc-constants*
+    :flags #x68
+    :object-type #x10
+    :guard-type #x7
+    :max-engine-thrust (meters 35)
+    :inv-max-engine-thrust 0.0000069754465
+    :engine-response-rate 10.0
+    :engine-intake-factor 1.0
+    :brake-factor 2.25
+    :turbo-boost-factor 1.0
+    :max-xz-speed (meters 40)
+    :ground-probe-distance (meters 4.5)
+    :cos-ground-effect-angle 0.42261824
+    :spring-lift-factor 0.4
+    :air-drag-factor 1.0
+    :steering-thruster-factor 3.0
+    :steering-thruster-max-gain 3.0
+    :steering-thruster-half-gain-speed (meters 15)
+    :tire-friction-factor 0.75
+    :tire-static-friction 0.55
+    :tire-dynamic-friction 0.4
+    :tire-dynamic-friction-speed (meters 2)
+    :tire-inv-max-friction-speed 0.000024414063
+    :airfoil-factor 1.0
+    :drag-force-factor 1.0
+    :speed-scrubbing-drag 10.0
+    :speed-limiting-drag 0.7
+    :pitch-control-factor 0.5
+    :roll-control-factor 1.0
+    :jump-thrust-factor 0.5
+    :buoyancy-factor 1.0
+    :player-weight 163840.0
+    :player-shift-x (meters 0.6)
+    :player-shift-z (meters 1)
+    :target-speed-offset (meters -2)
+    :turning-accel (meters 15)
+    :toughness-factor 1.0
+    :damage-factor 2.5
+    :camera-string-min-height (meters 4.5)
+    :camera-string-max-height (meters 4.5)
+    :camera-string-min-length (meters 5)
+    :camera-string-max-length (meters 12.5)
+    :camera-min-fov 15109.688
+    :camera-max-fov 17476.268
+    :camera-head-offset 8192.0
+    :camera-foot-offset 4096.0
+    :camera-normal-max-angle-offset 5461.3335
+    :camera-air-max-angle-offset 5461.3335
+    :camera-max-lookaround-speed 40960.0
+    :seat-count 4
+    :section-count 4
+    :rider-stance #x1
+    :grab-rail-count 9
+    :grab-rail-array (new 'static 'inline-array vehicle-grab-rail-info 9
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 5324.8 :y -819.2 :z -4096.0 :w 1.0)
+          (new 'static 'vector :x 5324.8 :y -819.2 :z 2048.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -5324.8 :y -819.2 :z 2048.0 :w 1.0)
+          (new 'static 'vector :x -5324.8 :y -819.2 :z -4096.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 3276.8 :y -204.8 :z 9830.4 :w 1.0)
+          (new 'static 'vector :y -204.8 :z 10547.2 :w 1.0)
+          )
+        :normal (new 'static 'vector :z 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :y -204.8 :z 10547.2 :w 1.0)
+          (new 'static 'vector :x -3276.8 :y -204.8 :z 9830.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :z 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -204.8 :y 3276.8 :z -20889.6 :w 1.0)
+          (new 'static 'vector :x 204.8 :y 3276.8 :z -20889.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :z -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 3072.0 :y 3481.6 :z -19660.8 :w 1.0)
+          (new 'static 'vector :x 3891.2 :y 3481.6 :z -16793.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 0.707 :z -0.707 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -3891.2 :y 3481.6 :z -16793.6 :w 1.0)
+          (new 'static 'vector :x -3072.0 :y 3481.6 :z -19660.8 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -0.707 :z -0.707 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 4915.2 :z -14745.6 :w 1.0)
+          (new 'static 'vector :x 4915.2 :z -12697.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -4915.2 :z -12697.6 :w 1.0)
+          (new 'static 'vector :x -4915.2 :z -14745.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :seat-array (new 'static 'inline-array vehicle-seat-info 4
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :y 761.856 :z 1368.064 :w (the-as float #x10000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x -2867.2 :y 1638.4 :z -2867.2 :w (the-as float #x20000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x 2867.2 :y 1638.4 :z -2867.2 :w (the-as float #x20000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :y 4239.36 :z -14192.64 :w (the-as float #x40000))
+        )
+      )
+    :rider-hand-offset (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 696.32 :y -1433.6 :z 614.4 :w 1.0)
+      (new 'static 'vector :x 696.32 :y 1433.6 :z 614.4 :w 1.0)
+      )
+    :section-bike-front (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+      :damage-seg-count 3
+      )
+    :section-bike-rear (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+      :damage-seg-count 3
+      )
+    :section-car-front-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+      :damage-seg-count 3
+      )
+    :section-car-rear-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+      :damage-seg-count 3
+      )
+    :explosion #f
+    :engine-pitch-scale 0.25
+    :engine-pitch-mod-amp 0.025
+    :engine-sound-select 7
+    :engine-sound (static-sound-name "vehicle-engine")
+    :thrust-sound (static-sound-name "bike-thrust")
+    :scrape-sound (static-sound-name "car-scrape-stn")
+    :glance-sound (static-sound-name "car-glance-stn")
+    :impact-sound (static-sound-name "car-impact-stn")
+    :extra-sound (static-sound-name "car-by-7")
+    :explosion-part #xa1
+    :headlight-count 1
+    :taillight-count 2
+    :thruster-flame-width (meters 0.6)
+    :thruster-flame-length (meters 2)
+    :thruster-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3891.2 :z -15155.2 :w 1.0)
+      (new 'static 'vector :x -3891.2 :z -15155.2 :w 1.0)
+      )
+    :exhaust-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2457.6 :y 3481.6 :z -20480.0 :w 1.0)
+      (new 'static 'vector :x -2457.6 :y 3481.6 :z -20480.0 :w 1.0)
+      )
+    :exhaust-local-dir (new 'static 'inline-array vector 2
+      (new 'static 'vector :x -0.4 :z -0.92 :w 1.0)
+      (new 'static 'vector :x 0.4 :z -0.92 :w 1.0)
+      )
+    :smoke-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 4096.0 :y 2048.0 :z -14336.0 :w 1.0)
+      (new 'static 'vector :x -4096.0 :y 2048.0 :z -14336.0 :w 1.0)
+      )
+    :smoke-local-vel (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 12288.0 :w 1.0)
+      (new 'static 'vector :x -12288.0 :w 1.0)
+      )
+    :headlight-local-pos (new 'static 'inline-array vector 3
+      (new 'static 'vector :y 409.6 :z 8601.6 :w 1.0)
+      (new 'static 'vector)
+      (new 'static 'vector)
+      )
+    :taillight-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2867.2 :y 2048.0 :z -18022.4 :w 1.0)
+      (new 'static 'vector :x -2867.2 :y 2048.0 :z -18022.4 :w 1.0)
+      )
+    :lift-thruster-count 2
+    :roll-thruster-count 2
+    :steering-thruster-count 2
+    :stabilizer-count 4
+    :inv-lift-thruster-count 0.5
+    :lift-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 4915.2 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -13107.2 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      )
+    :roll-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x 6963.2 :y 819.2 :z -4096.0 :w 1.0)
+        :normal (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x -6963.2 :y 819.2 :z -4096.0 :w 1.0)
+        :normal (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+        )
+      )
+    :steering-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 3686.4 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -11878.4 :w 1.0)
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :stabilizer-array (new 'static 'inline-array vehicle-control-point 6
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -12288.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z 4096.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 0.5)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -4096.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 2.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :z -12288.0 :w 1.0)
+        :normal (new 'static 'vector :y 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point)
+      (new 'static 'vehicle-control-point)
+      )
+    :engine-thrust-local-pos (new 'static 'vector :z -9830.4 :w 1.0)
+    :brake-local-pos (new 'static 'vector :z -12288.0 :w 1.0)
+    :color-option-count 4
+    :color-option-array (new 'static 'inline-array vector 4
+      (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+      (new 'static 'vector :x 0.6 :y 1.2 :z 1.2 :w 1.0)
+      (new 'static 'vector :x 0.7 :y 1.25 :z 0.8 :w 1.0)
+      (new 'static 'vector :x 1.0 :y 0.6 :z 1.5 :w 1.0)
+      )
+    )
+  )
+
+(define *hellcat-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 20.0
+      :inv-mass 0.05
+      :linear-damping 0.995
+      :angular-damping 0.995
+      :bounce-factor 0.4
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 6) (meters 3) (meters 7))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*hellcat-constants*
+    :flags #x4c
+    :object-type #x13
+    :guard-type #x5
+    :max-engine-thrust (meters 30)
+    :inv-max-engine-thrust 0.000008138021
+    :engine-response-rate 8.0
+    :engine-intake-factor 1.0
+    :brake-factor 2.25
+    :turbo-boost-factor 1.0
+    :max-xz-speed (meters 30)
+    :ground-probe-distance (meters 4.5)
+    :cos-ground-effect-angle 0.42261824
+    :spring-lift-factor 0.3
+    :air-drag-factor 1.0
+    :steering-thruster-factor 3.0
+    :steering-thruster-max-gain 2.0
+    :steering-thruster-half-gain-speed (meters 15)
+    :tire-friction-factor 0.5
+    :tire-static-friction 0.55
+    :tire-dynamic-friction 0.4
+    :tire-dynamic-friction-speed (meters 2)
+    :tire-inv-max-friction-speed 0.000034877234
+    :airfoil-factor 1.0
+    :drag-force-factor 1.0
+    :speed-scrubbing-drag 10.0
+    :speed-limiting-drag 0.5
+    :pitch-control-factor 0.5
+    :roll-control-factor 1.0
+    :jump-thrust-factor 0.5
+    :buoyancy-factor 1.0
+    :player-weight 163840.0
+    :player-shift-x (meters 0.6)
+    :player-shift-z (meters 1)
+    :target-speed-offset (meters -2)
+    :turning-accel (meters 12)
+    :toughness-factor 4.0
+    :damage-factor 2.0
+    :camera-string-min-height (meters 4.5)
+    :camera-string-max-height (meters 4.5)
+    :camera-string-min-length (meters 5)
+    :camera-string-max-length (meters 12.5)
+    :camera-min-fov 15109.688
+    :camera-max-fov 17476.268
+    :camera-head-offset 8192.0
+    :camera-foot-offset 4096.0
+    :camera-air-max-angle-offset 5461.3335
+    :camera-max-lookaround-speed 40960.0
+    :seat-count 3
+    :section-count 4
+    :rider-stance #x1
+    :grab-rail-count 6
+    :grab-rail-array (new 'static 'inline-array vehicle-grab-rail-info 6
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 3686.4 :y 409.6 :z 24576.0 :w 1.0)
+          (new 'static 'vector :x 3276.8 :y 409.6 :z 25395.2 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -3276.8 :y 409.6 :z 25395.2 :w 1.0)
+          (new 'static 'vector :x -3686.4 :y 409.6 :z 24576.0 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x 8601.6 :z -409.6 :w 1.0)
+          (new 'static 'vector :x 8601.6 :y -409.6 :z 2867.2 :w 1.0)
+          )
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -8601.6 :y -409.6 :z 2867.2 :w 1.0)
+          (new 'static 'vector :x -8601.6 :z -409.6 :w 1.0)
+          )
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :y -409.6 :z -15974.4 :w 1.0)
+          (new 'static 'vector :x 10240.0 :y -409.6 :z -13926.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :z -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-grab-rail-info
+        :local-pos (new 'static 'inline-array vector 2
+          (new 'static 'vector :x -10240.0 :y -409.6 :z -13926.4 :w 1.0)
+          (new 'static 'vector :y -409.6 :z -15974.4 :w 1.0)
+          )
+        :normal (new 'static 'vector :z -1.0 :w 1.0)
+        )
+      )
+    :seat-array (new 'static 'inline-array vehicle-seat-info 4
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x 5120.0 :y 819.2 :z 2457.6 :w (the-as float #x10000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :x -5120.0 :y 819.2 :z 2457.6 :w (the-as float #x20000))
+        )
+      (new 'static 'vehicle-seat-info
+        :position (new 'static 'vector :y 3686.4 :z -8192.0 :w (the-as float #x40000))
+        )
+      (new 'static 'vehicle-seat-info)
+      )
+    :rider-hand-offset (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2457.6 :y 409.6 :z 4710.4 :w 1.0)
+      (new 'static 'vector :x -2457.6 :y 409.6 :z 4710.4 :w 1.0)
+      )
+    :section-bike-front (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+      :damage-seg-count 3
+      )
+    :section-bike-rear (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+      :damage-seg-count 3
+      )
+    :section-car-front-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+      :damage-seg-count 3
+      )
+    :section-car-rear-right (new 'static 'vehicle-section-info
+      :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+      :damage-seg-count 3
+      )
+    :explosion #f
+    :engine-pitch-scale 0.25
+    :engine-pitch-mod-amp 0.025
+    :engine-sound-select 8
+    :engine-sound (static-sound-name "vehicle-engine")
+    :thrust-sound (static-sound-name "bike-thrust")
+    :scrape-sound (static-sound-name "car-scrape-stn")
+    :glance-sound (static-sound-name "car-glance-stn")
+    :impact-sound (static-sound-name "car-impact-stn")
+    :extra-sound (static-sound-name "car-by-8")
+    :explosion-part #xa1
+    :headlight-count 3
+    :taillight-count 2
+    :thruster-flame-width (meters 0.6)
+    :thruster-flame-length (meters 2)
+    :thruster-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+      (new 'static 'vector :x -6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+      )
+    :exhaust-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+      (new 'static 'vector :x -6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+      )
+    :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+    :smoke-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+      (new 'static 'vector :x -2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+      )
+    :smoke-local-vel (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 2048.0 :w 1.0)
+      (new 'static 'vector :x -2048.0 :w 1.0)
+      )
+    :headlight-local-pos (new 'static 'inline-array vector 3
+      (new 'static 'vector :x 5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+      (new 'static 'vector :x -5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+      (new 'static 'vector :y 6963.2 :z 6922.24 :w 1.0)
+      )
+    :taillight-local-pos (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+      (new 'static 'vector :x -10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+      )
+    :lift-thruster-count 2
+    :roll-thruster-count 2
+    :steering-thruster-count 2
+    :stabilizer-count 4
+    :inv-lift-thruster-count 0.5
+    :lift-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 8192.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -12288.0 :w 1.0)
+        :normal (new 'static 'vector :y -1.0 :w 1.0)
+        )
+      )
+    :roll-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x 6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :x -6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+        )
+      )
+    :steering-thruster-array (new 'static 'inline-array vehicle-control-point 2
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 5734.4 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -9830.4 :w 1.0)
+        :normal (new 'static 'vector :x -1.0 :w 1.0)
+        )
+      )
+    :stabilizer-array (new 'static 'inline-array vehicle-control-point 6
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z 6144.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 0.5)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+        :normal (new 'static 'vector :x 1.0 :w 2.0)
+        )
+      (new 'static 'vehicle-control-point
+        :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+        :normal (new 'static 'vector :y 1.0 :w 1.0)
+        )
+      (new 'static 'vehicle-control-point)
+      (new 'static 'vehicle-control-point)
+      )
+    :engine-thrust-local-pos (new 'static 'vector :y 2048.0 :z -7782.4 :w 1.0)
+    :brake-local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+    :color-option-count 1
+    :color-option-array (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+    )
+  )
+
+(set! (-> *cara-constants* explosion) *car-explosion-info*)
+
+(set! (-> *carb-constants* explosion) *car-explosion-info*)
+
+(set! (-> *carc-constants* explosion) *car-explosion-info*)
+
+(set! (-> *hellcat-constants* explosion) *car-explosion-info*)
+
+(deftype car-base (vehicle)
+  ((rider-hand-joint-array int8 2 :offset-assert 880)
+   )
+  :heap-base #x300
+  :method-count-assert 144
+  :size-assert         #x372
+  :flag-assert         #x9003000372
+  )
+
+
+(defmethod vehicle-method-117 car-base ((obj car-base) (arg0 vector) (arg1 int) (arg2 int))
+  (vector-matrix*!
+    arg0
+    (-> obj info rider-hand-offset arg2)
+    (-> obj node-list data (-> obj rider-hand-joint-array arg1) bone transform)
+    )
+  0
+  (none)
+  )
+
+(deftype cara (car-base)
+  ((steering-wheel-l joint-mod-rotate-local  :offset-assert 884)
+   (steering-wheel-r joint-mod-rotate-local  :offset-assert 888)
+   (fin-fl           joint-mod-rotate-local  :offset-assert 892)
+   (fin-fr           joint-mod-rotate-local  :offset-assert 896)
+   (fin-rl           joint-mod-rotate-local  :offset-assert 900)
+   (fin-rr           joint-mod-rotate-local  :offset-assert 904)
+   (rudder-l         joint-mod-rotate-local  :offset-assert 908)
+   (rudder-r         joint-mod-rotate-local  :offset-assert 912)
+   (rudder           joint-mod-rotate-local  :offset-assert 916)
+   )
+  :heap-base #x320
+  :method-count-assert 144
+  :size-assert         #x398
+  :flag-assert         #x9003200398
+  )
+
+
+(defmethod relocate cara ((obj cara) (arg0 int))
+  (if (nonzero? (-> obj steering-wheel-l))
+      (&+! (-> obj steering-wheel-l) arg0)
+      )
+  (if (nonzero? (-> obj steering-wheel-r))
+      (&+! (-> obj steering-wheel-r) arg0)
+      )
+  (if (nonzero? (-> obj fin-fl))
+      (&+! (-> obj fin-fl) arg0)
+      )
+  (if (nonzero? (-> obj fin-fr))
+      (&+! (-> obj fin-fr) arg0)
+      )
+  (if (nonzero? (-> obj fin-rl))
+      (&+! (-> obj fin-rl) arg0)
+      )
+  (if (nonzero? (-> obj fin-rr))
+      (&+! (-> obj fin-rr) arg0)
+      )
+  (if (nonzero? (-> obj rudder))
+      (&+! (-> obj rudder) arg0)
+      )
+  (if (nonzero? (-> obj rudder-l))
+      (&+! (-> obj rudder-l) arg0)
+      )
+  (if (nonzero? (-> obj rudder-r))
+      (&+! (-> obj rudder-r) arg0)
+      )
+  ((the-as (function object object cara) (find-parent-method cara 7)) obj arg0)
+  )
+
+(defmethod allocate-and-init-cshape cara ((obj cara))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 18432.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 3686.4 0.0 12288.0 4096.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) -3686.4 0.0 12288.0 4096.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 5))))
+      (set! (-> v1-15 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 819.2 5734.4 4915.2)
+      (set! (-> v1-15 nav-radius) 14336.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 80))))
+      (set! (-> v1-17 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 2048.0 -4096.0 5734.4)
+      (set! (-> v1-17 nav-radius) 14336.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 2))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 4915.2 0.0 -11468.8 4096.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 8))))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) -4915.2 0.0 -11468.8 4096.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-23 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 18432.0)
+      )
+    (set! (-> s5-0 nav-radius) 20480.0)
+    (let ((v1-25 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod update-joint-mods cara ((obj cara))
+  (let ((f30-0 (* 3640.889 (-> obj controls steering)))
+        (f26-0 (* 9102.223 (-> obj controls steering)))
+        (f28-0 (* -3640.889 (-> obj controls lean-z)))
+        (s5-0 (new 'static 'vector :x 1.0 :w 1.0))
+        )
+    (quaternion-vector-angle! (-> obj steering-wheel-l rotation) s5-0 f26-0)
+    (quaternion-vector-angle! (-> obj steering-wheel-r rotation) s5-0 f26-0)
+    (quaternion-vector-angle! (-> obj fin-fl rotation) s5-0 (- f28-0))
+    (quaternion-vector-angle! (-> obj fin-fr rotation) s5-0 f28-0)
+    (quaternion-vector-angle! (-> obj fin-rl rotation) s5-0 f28-0)
+    (quaternion-vector-angle! (-> obj fin-rr rotation) s5-0 (- f28-0))
+    (quaternion-vector-angle! (-> obj rudder rotation) s5-0 f30-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-skel-and-rigid-body cara ((obj cara))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-cara" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (alloc-and-init-rigid-body-control obj *cara-constants*)
+  (set! (-> obj rider-hand-joint-array 0) 11)
+  (set! (-> obj rider-hand-joint-array 1) 12)
+  (set! (-> obj steering-wheel-l) (new 'process 'joint-mod-rotate-local obj 11 #t))
+  (set! (-> obj steering-wheel-r) (new 'process 'joint-mod-rotate-local obj 12 #t))
+  (set! (-> obj fin-fl) (new 'process 'joint-mod-rotate-local obj 4 #t))
+  (set! (-> obj fin-fr) (new 'process 'joint-mod-rotate-local obj 5 #t))
+  (set! (-> obj fin-rl) (new 'process 'joint-mod-rotate-local obj 6 #t))
+  (set! (-> obj fin-rr) (new 'process 'joint-mod-rotate-local obj 8 #t))
+  (set! (-> obj rudder) (new 'process 'joint-mod-rotate-local obj 10 #t))
+  (set! (-> obj rudder-l) (new 'process 'joint-mod-rotate-local obj 7 #t))
+  (set! (-> obj rudder-r) (new 'process 'joint-mod-rotate-local obj 9 #t))
+  0
+  (none)
+  )
+
+(deftype carb (car-base)
+  ((steering-wheel-l joint-mod-rotate-local  :offset-assert 884)
+   (steering-wheel-r joint-mod-rotate-local  :offset-assert 888)
+   (fin-fl           joint-mod-rotate-local  :offset-assert 892)
+   (fin-fr           joint-mod-rotate-local  :offset-assert 896)
+   (fin-rl           joint-mod-rotate-local  :offset-assert 900)
+   (fin-rr           joint-mod-rotate-local  :offset-assert 904)
+   )
+  :heap-base #x310
+  :method-count-assert 144
+  :size-assert         #x38c
+  :flag-assert         #x900310038c
+  )
+
+
+(defmethod relocate carb ((obj carb) (arg0 int))
+  (if (nonzero? (-> obj steering-wheel-l))
+      (&+! (-> obj steering-wheel-l) arg0)
+      )
+  (if (nonzero? (-> obj steering-wheel-r))
+      (&+! (-> obj steering-wheel-r) arg0)
+      )
+  (if (nonzero? (-> obj fin-fl))
+      (&+! (-> obj fin-fl) arg0)
+      )
+  (if (nonzero? (-> obj fin-fr))
+      (&+! (-> obj fin-fr) arg0)
+      )
+  (if (nonzero? (-> obj fin-rl))
+      (&+! (-> obj fin-rl) arg0)
+      )
+  (if (nonzero? (-> obj fin-rr))
+      (&+! (-> obj fin-rr) arg0)
+      )
+  ((the-as (function object object carb) (find-parent-method carb 7)) obj arg0)
+  )
+
+(defmethod allocate-and-init-cshape carb ((obj carb))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 18432.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 3686.4 409.6 13107.2 3686.4)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) -3686.4 409.6 13107.2 3686.4)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 819.2 6553.6 4096.0)
+      (set! (-> v1-15 nav-radius) 14336.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 64))))
+      (set! (-> v1-17 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 2457.6 -2457.6 5734.4)
+      (set! (-> v1-17 nav-radius) 14336.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 2))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 4505.6 409.6 -11059.2 3686.4)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 8))))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) -4505.6 409.6 -11059.2 3686.4)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-23 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 18432.0)
+      )
+    (set! (-> s5-0 nav-radius) 20480.0)
+    (let ((v1-25 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod update-joint-mods carb ((obj carb))
+  (let ((f30-0 (* -5461.3335 (-> obj controls lean-z)))
+        (f28-0 (* 9102.223 (-> obj controls steering)))
+        (gp-0 (new 'static 'vector :x 1.0 :w 1.0))
+        )
+    (quaternion-vector-angle! (-> obj steering-wheel-l rotation) gp-0 f28-0)
+    (quaternion-vector-angle! (-> obj steering-wheel-r rotation) gp-0 f28-0)
+    (quaternion-vector-angle! (-> obj fin-fl rotation) gp-0 (+ (* -0.8 f30-0) (* 0.4 f28-0)))
+    (quaternion-vector-angle! (-> obj fin-fr rotation) gp-0 (+ (* 0.8 f30-0) (* 0.4 f28-0)))
+    (quaternion-vector-angle! (-> obj fin-rl rotation) gp-0 (+ (* 0.8 f30-0) (* 0.4 f28-0)))
+    (quaternion-vector-angle! (-> obj fin-rr rotation) gp-0 (+ (* -0.8 f30-0) (* 0.4 f28-0)))
+    )
+  0
+  (none)
+  )
+
+(defmethod init-skel-and-rigid-body carb ((obj carb))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-carb" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (alloc-and-init-rigid-body-control obj *carb-constants*)
+  (set! (-> obj rider-hand-joint-array 0) 8)
+  (set! (-> obj rider-hand-joint-array 1) 9)
+  (set! (-> obj steering-wheel-l) (new 'process 'joint-mod-rotate-local obj 8 #t))
+  (set! (-> obj steering-wheel-r) (new 'process 'joint-mod-rotate-local obj 9 #t))
+  (set! (-> obj fin-fl) (new 'process 'joint-mod-rotate-local obj 4 #t))
+  (set! (-> obj fin-fr) (new 'process 'joint-mod-rotate-local obj 6 #t))
+  (set! (-> obj fin-rl) (new 'process 'joint-mod-rotate-local obj 5 #t))
+  (set! (-> obj fin-rr) (new 'process 'joint-mod-rotate-local obj 7 #t))
+  0
+  (none)
+  )
+
+(deftype carc (car-base)
+  ((steering-wheel joint-mod-rotate-local  :offset-assert 884)
+   (fin-fl         joint-mod-rotate-local  :offset-assert 888)
+   (fin-fr         joint-mod-rotate-local  :offset-assert 892)
+   (fin-rl         joint-mod-rotate-local  :offset-assert 896)
+   (fin-rr         joint-mod-rotate-local  :offset-assert 900)
+   (fin2-rl        joint-mod-rotate-local  :offset-assert 904)
+   (fin2-rr        joint-mod-rotate-local  :offset-assert 908)
+   )
+  :heap-base #x310
+  :method-count-assert 144
+  :size-assert         #x390
+  :flag-assert         #x9003100390
+  )
+
+
+;; WARN: Return type mismatch carb vs carc.
+(defmethod relocate carc ((obj carc) (arg0 int))
+  (if (nonzero? (-> obj steering-wheel))
+      (&+! (-> obj steering-wheel) arg0)
+      )
+  (if (nonzero? (-> obj fin-fl))
+      (&+! (-> obj fin-fl) arg0)
+      )
+  (if (nonzero? (-> obj fin-fr))
+      (&+! (-> obj fin-fr) arg0)
+      )
+  (if (nonzero? (-> obj fin-rl))
+      (&+! (-> obj fin-rl) arg0)
+      )
+  (if (nonzero? (-> obj fin-rr))
+      (&+! (-> obj fin-rr) arg0)
+      )
+  (if (nonzero? (-> obj fin2-rl))
+      (&+! (-> obj fin2-rl) arg0)
+      )
+  (if (nonzero? (-> obj fin2-rr))
+      (&+! (-> obj fin2-rr) arg0)
+      )
+  (the-as carc ((the-as (function object object carb) (find-parent-method carc 7)) obj arg0))
+  )
+
+(defmethod allocate-and-init-cshape carc ((obj carc))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 6) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 7))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 21299.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 3686.4 -819.2 6963.2 3276.8)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) -3686.4 -819.2 6963.2 3276.8)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 64))))
+      (set! (-> v1-15 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 2457.6 0.0 6144.0)
+      (set! (-> v1-15 nav-radius) 12288.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 10))))
+      (set! (-> v1-17 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 2048.0 -10240.0 4915.2)
+      (set! (-> v1-17 nav-radius) 10240.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 10))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 0.0 2048.0 -16384.0 4096.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-21 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-21 transform-index) 3)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 21299.2)
+      )
+    (set! (-> s5-0 nav-radius) 16384.0)
+    (let ((v1-23 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-23 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod update-joint-mods carc ((obj carc))
+  (let ((f30-0 (* -5461.3335 (-> obj controls steering)))
+        (f28-0 (* -5461.3335 (-> obj controls lean-z)))
+        (f0-3 (* 9102.223 (-> obj controls steering)))
+        (s5-0 (new 'static 'vector :x 1.0 :w 1.0))
+        )
+    (quaternion-vector-angle! (-> obj steering-wheel rotation) s5-0 f0-3)
+    (quaternion-vector-angle! (-> obj fin-fl rotation) s5-0 (- f28-0))
+    (quaternion-vector-angle! (-> obj fin-fr rotation) s5-0 f28-0)
+    (quaternion-vector-angle! (-> obj fin-rl rotation) s5-0 (+ (* 0.8 f28-0) (* -0.2 f30-0)))
+    (quaternion-vector-angle! (-> obj fin-rr rotation) s5-0 (+ (* -0.8 f28-0) (* -0.2 f30-0)))
+    (quaternion-vector-angle! (-> obj fin2-rl rotation) s5-0 (+ (* 0.2 f28-0) (* -0.8 f30-0)))
+    (quaternion-vector-angle! (-> obj fin2-rr rotation) s5-0 (+ (* -0.2 f28-0) (* -0.8 f30-0)))
+    )
+  0
+  (none)
+  )
+
+(defmethod init-skel-and-rigid-body carc ((obj carc))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-carc" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (alloc-and-init-rigid-body-control obj *carc-constants*)
+  (set! (-> obj rider-hand-joint-array 0) 10)
+  (set! (-> obj steering-wheel) (new 'process 'joint-mod-rotate-local obj 10 #t))
+  (set! (-> obj fin-fl) (new 'process 'joint-mod-rotate-local obj 4 #t))
+  (set! (-> obj fin-fr) (new 'process 'joint-mod-rotate-local obj 5 #t))
+  (set! (-> obj fin-rl) (new 'process 'joint-mod-rotate-local obj 8 #t))
+  (set! (-> obj fin-rr) (new 'process 'joint-mod-rotate-local obj 9 #t))
+  (set! (-> obj fin2-rl) (new 'process 'joint-mod-rotate-local obj 6 #t))
+  (set! (-> obj fin2-rr) (new 'process 'joint-mod-rotate-local obj 7 #t))
+  0
+  (none)
+  )
+
+(define *hellcat-front-turret-control-info* (new 'static 'turret-control-info
+                                              :joint-index 4
+                                              :barrel-count 1
+                                              :shot-speed 819200.0
+                                              :attack-range 286720.0
+                                              :rot-min (new 'static 'array float 2 -16384.0 -21845.334)
+                                              :rot-max (new 'static 'array float 2 0.0 21845.334)
+                                              :local-pos (new 'static 'vector :y -1433.6 :z 4096.0 :w 1.0)
+                                              :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                              :barrel-array (new 'static 'inline-array turret-barrel-info 4
+                                                (new 'static 'turret-barrel-info
+                                                  :local-pos (new 'static 'vector :y -1433.6 :z 4096.0 :w 1.0)
+                                                  :local-dir (new 'static 'vector :z 1.0 :w 1.0)
+                                                  )
+                                                (new 'static 'turret-barrel-info)
+                                                (new 'static 'turret-barrel-info)
+                                                (new 'static 'turret-barrel-info)
+                                                )
+                                              )
+        )
+
+(deftype hellcat (vehicle-guard)
+  ((turret-jm joint-mod-rotate-local  :offset-assert 1076)
+   )
+  :heap-base #x3c0
+  :method-count-assert 159
+  :size-assert         #x438
+  :flag-assert         #x9f03c00438
+  )
+
+
+(defmethod relocate hellcat ((obj hellcat) (arg0 int))
+  (if (nonzero? (-> obj turret-jm))
+      (&+! (-> obj turret-jm) arg0)
+      )
+  ((the-as (function object object hellcat) (find-parent-method hellcat 7)) obj arg0)
+  )
+
+(defmethod allocate-and-init-cshape hellcat ((obj hellcat))
+  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 26624.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 4096.0 1228.8 9011.2 6144.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) -4096.0 1228.8 9011.2 6144.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 2048.0 -409.6 6144.0)
+      (set! (-> v1-15 nav-radius) 24576.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 10))))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 4096.0 -10240.0 8192.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 2))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 10240.0 2048.0 -8192.0 6144.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 8))))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) -10240.0 2048.0 -8192.0 6144.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-23 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 26624.0)
+      )
+    (set! (-> s5-0 nav-radius) 20480.0)
+    (let ((v1-25 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> obj root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod update-joint-mods hellcat ((obj hellcat))
+  (update-joint-mod (-> obj turret) (-> obj turret-jm))
+  0
+  (none)
+  )
+
+(defmethod init-skel-and-rigid-body hellcat ((obj hellcat))
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hellcat" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
+    )
+  (alloc-and-init-rigid-body-control obj *hellcat-constants*)
+  (set-info (-> obj turret) *hellcat-front-turret-control-info*)
+  (set! (-> obj turret-jm) (new 'process 'joint-mod-rotate-local obj (-> obj turret info joint-index) #t))
+  0
+  (none)
+  )

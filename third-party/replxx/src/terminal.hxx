@@ -38,6 +38,7 @@ private:
 	std::vector<char> _empty;
 #else
 	struct termios _origTermios; /* in order to restore at exit */
+	struct termios _rawModeTermios; /* in order to reset raw mode after callbacks */
 	int _interrupt[2];
 #endif
 	bool _rawMode; /* for destructor to check if restore is needed */
@@ -57,6 +58,7 @@ public:
 	void enable_bracketed_paste( void );
 	void disable_bracketed_paste( void );
 	int enable_raw_mode(void);
+	int reset_raw_mode(void);
 	void disable_raw_mode(void);
 	char32_t read_char(void);
 	void clear_screen( CLEAR_SCREEN );

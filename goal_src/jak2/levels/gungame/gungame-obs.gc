@@ -370,23 +370,22 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (when (and (zero? (-> self start-time))
-               (or (and (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0))
-                        (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-0 from) (process->ppointer self))
-                          (set! (-> a1-0 num-params) 1)
-                          (set! (-> a1-0 message) 'player-in-open-area?)
-                          (set! (-> a1-0 param 0) (the-as uint #f))
-                          (let ((t9-0 send-event-function)
-                                (v1-11 (-> self actor-group 1 data 0 actor))
-                                )
-                            (t9-0
-                              (if v1-11
-                                  (-> v1-11 extra process)
-                                  )
-                              a1-0
-                              )
-                            )
-                          )
+               (or (and (cpad-pressed? 0 confirm) (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                                                    (set! (-> a1-0 from) (process->ppointer self))
+                                                    (set! (-> a1-0 num-params) 1)
+                                                    (set! (-> a1-0 message) 'player-in-open-area?)
+                                                    (set! (-> a1-0 param 0) (the-as uint #f))
+                                                    (let ((t9-0 send-event-function)
+                                                          (v1-11 (-> self actor-group 1 data 0 actor))
+                                                          )
+                                                      (t9-0
+                                                        (if v1-11
+                                                            (-> v1-11 extra process)
+                                                            )
+                                                        a1-0
+                                                        )
+                                                      )
+                                                    )
                         )
                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-1 from) (process->ppointer self))
@@ -528,7 +527,7 @@ This commonly includes things such as:
     (none)
     )
   :trans (behavior ()
-    (when (and (zero? (-> self start-time)) (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0)))
+    (when (and (zero? (-> self start-time)) (cpad-pressed? 0 confirm))
       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-3 from) (process->ppointer self))
         (set! (-> a1-3 num-params) 1)
@@ -653,7 +652,7 @@ This commonly includes things such as:
     (if (task-node-open? (game-task-node city-yellow-gun-training-introduction))
         (go-virtual yellow-training-intro)
         )
-    (when (and (zero? (-> self start-time)) (logtest? (pad-buttons confirm) (-> *cpad-list* cpads 0 button0-rel 0)))
+    (when (and (zero? (-> self start-time)) (cpad-pressed? 0 confirm))
       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-3 from) (process->ppointer self))
         (set! (-> a1-3 num-params) 1)
@@ -1593,6 +1592,9 @@ This commonly includes things such as:
               )
             )
           )
+        ;; pc port note : give skill directly
+        (#when PC_PORT
+          (send-event *target* 'get-pickup (pickup-type skill) (* (the float (-> self egg-count)) (-> *FACT-bank* super-skill-inc))))
         (go-virtual end-course)
         )
       )
@@ -1838,22 +1840,25 @@ This commonly includes things such as:
       (suspend)
       )
     (when (> (-> self egg-count) 0)
-      (let* ((gp-0 (handle->process (-> self voicebox)))
-             (v1-8 (if (type? gp-0 process-drawable)
-                       (the-as process-drawable gp-0)
-                       )
-                   )
-             (t1-0 (new 'static 'fact-info))
-             )
-        (set! (-> t1-0 options) (actor-option))
-        (logior! (-> t1-0 options) (actor-option suck-in))
-        (birth-pickup-at-point
-          (-> v1-8 root trans)
-          (pickup-type skill)
-          (* (the float (-> self egg-count)) (-> *FACT-bank* super-skill-inc))
-          #t
-          *entity-pool*
-          t1-0
+      ;; pc port note : skill is given earlier
+      (#unless PC_PORT
+        (let* ((gp-0 (handle->process (-> self voicebox)))
+              (v1-8 (if (type? gp-0 process-drawable)
+                        (the-as process-drawable gp-0)
+                        )
+                    )
+              (t1-0 (new 'static 'fact-info))
+              )
+          (set! (-> t1-0 options) (actor-option))
+          (logior! (-> t1-0 options) (actor-option suck-in))
+          (birth-pickup-at-point
+            (-> v1-8 root trans)
+            (pickup-type skill)
+            (* (the float (-> self egg-count)) (-> *FACT-bank* super-skill-inc))
+            #t
+            *entity-pool*
+            t1-0
+            )
           )
         )
       (let ((gp-1 (current-time)))
@@ -1993,7 +1998,7 @@ This commonly includes things such as:
   )
 
 (defmethod training-manager-method-22 training-manager ((obj training-manager) (arg0 symbol))
-  (local-vars (v1-28 symbol) (a0-18 symbol) (sv-48 process) (sv-64 process-tree) (sv-80 process-tree))
+  (local-vars (v1-28 symbol) (a0-18 symbol) (sv-48 process) (sv-64 process) (sv-80 process))
   (let ((s4-0 (new 'static 'fact-info :pickup-type (pickup-type ammo-red) :pickup-spawn-amount 20.0))
         (s3-0 (new 'stack-no-clear 'vector))
         (s2-0 (new 'stack-no-clear 'sphere))
@@ -2004,9 +2009,9 @@ This commonly includes things such as:
       (set! (-> s3-0 quad) (-> *entrance-gungame-crates-pos* s0-0 pos quad))
       (set! (-> s3-0 w) 1.0)
       (vector-rotate-around-y! s3-0 s3-0 -4460.999)
-      (set! (-> s3-0 x) (+ 1667072.0 (-> s3-0 x)))
-      (set! (-> s3-0 y) (+ 40960.0 (-> s3-0 y)))
-      (set! (-> s3-0 z) (+ 5025792.0 (-> s3-0 z)))
+      (+! (-> s3-0 x) 1667072.0)
+      (+! (-> s3-0 y) 40960.0)
+      (+! (-> s3-0 z) 5025792.0)
       (training-manager-method-29 obj s3-0)
       (when arg0
         (set! (-> s2-0 quad) (-> s3-0 quad))
@@ -2028,20 +2033,20 @@ This commonly includes things such as:
                 )
               )
           (set! a0-18 (when v1-21
-                        (set! sv-64 (the-as process-tree a0-18))
+                        (set! sv-64 (the-as process a0-18))
                         (set! sv-64 (-> v1-21 0 self))
                         a0-18
                         )
                 )
           )
         (set! v1-28 (when (type? sv-64 process-focusable)
-                      (set! sv-80 (the-as process-tree v1-28))
+                      (set! sv-80 (the-as process v1-28))
                       (set! sv-80 sv-64)
                       v1-28
                       )
               )
         (quaternion-vector-angle!
-          (-> (the-as process-focusable sv-80) root-override quat)
+          (-> (the-as process-focusable sv-80) root quat)
           *up-vector*
           (+ -4551.1113 (-> *entrance-gungame-crates-pos* s0-0 pos w))
           )
@@ -2085,9 +2090,9 @@ This commonly includes things such as:
         (set! (-> s4-0 quad) (-> arg0 s2-0 pos quad))
         (set! (-> s4-0 w) 1.0)
         (vector-rotate-around-y! s4-0 s4-0 -4460.999)
-        (set! (-> s4-0 x) (+ 1667072.0 (-> s4-0 x)))
-        (set! (-> s4-0 y) (+ 40960.0 (-> s4-0 y)))
-        (set! (-> s4-0 z) (+ 5025792.0 (-> s4-0 z)))
+        (+! (-> s4-0 x) 1667072.0)
+        (+! (-> s4-0 y) 40960.0)
+        (+! (-> s4-0 z) 5025792.0)
         (training-manager-method-29 obj s4-0)
         (set! (-> s3-0 pickup-type) (-> arg0 s2-0 ammo))
         (set! (-> s3-0 pickup-spawn-amount) (the float (-> arg0 s2-0 num)))
@@ -2097,7 +2102,7 @@ This commonly includes things such as:
                          )
                      )
                )
-          (quaternion-vector-angle! (-> s1-1 root-override quat) *up-vector* (+ -4551.1113 (-> arg0 s2-0 pos w)))
+          (quaternion-vector-angle! (-> s1-1 root quat) *up-vector* (+ -4551.1113 (-> arg0 s2-0 pos w)))
           (set! (-> obj course-crates s2-0) (process->handle s1-1))
           )
         )

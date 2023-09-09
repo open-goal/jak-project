@@ -1507,7 +1507,7 @@
   ;;  - we don't return #t for run-logic?
   (let ((s3-0 (or (logtest? (-> arg0 mask) (process-mask process-tree))
                   ;; prevent if not both (clear to run and run-logic? = #t)
-                  (not (and (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask))) (run-logic? arg0)))
+                  (not (and (not (logtest? (-> arg2 prevent-from-run) (-> arg0 mask))) (run-logic? arg0)))
                   (begin (logior! (-> arg0 mask) (process-mask kernel-run)) (arg1 arg0))
                   )
               )
@@ -2480,7 +2480,8 @@
 ;; categories within the active pool.
 (change-parent (define *display-pool* (new 'global 'process-tree "display-pool")) *active-pool*)
 (#when PC_PORT
-(change-parent (define *pc-pool* (new 'global 'process-tree "pc-pool")) *active-pool*))
+(change-parent (define *pc-pool* (new 'global 'process-tree "pc-pool")) *active-pool*)
+(set! (-> *pc-pool* mask) (process-mask freeze pause menu progress process-tree)))
 
 (change-parent (define *camera-pool* (new 'global 'process-tree "camera-pool")) *active-pool*)
 (set! (-> *camera-pool* mask) (process-mask freeze pause menu progress process-tree camera))

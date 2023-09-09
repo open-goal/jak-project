@@ -232,7 +232,7 @@ void build_graph(std::vector<Node>& nodes,
   }
 
   // second pass: loop over shared edges
-  int shared_edge_count = 0;
+  [[maybe_unused]] int shared_edge_count = 0;
   for (const auto& [edge, infos] : edge_info_map) {
     // skip any edge that only shows up once.
     if (infos.size() < 2) {

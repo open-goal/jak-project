@@ -43,7 +43,7 @@
   :code (the-as (function none :behavior metalkor-egg) sleep-code)
   :post (behavior ()
     (ja-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
@@ -53,8 +53,8 @@
   :enter (behavior ()
     (send-event (ppointer->process (-> self parent)) 'setup-flitter-gem)
     (let ((s5-0 (new 'stack-no-clear 'enemy-init-by-other-params)))
-      (set! (-> s5-0 trans quad) (-> self root-override trans quad))
-      (quaternion-copy! (-> s5-0 quat) (-> self root-override quat))
+      (set! (-> s5-0 trans quad) (-> self root trans quad))
+      (quaternion-copy! (-> s5-0 quat) (-> self root quat))
       (set! (-> s5-0 entity) (-> self entity))
       (set! (-> s5-0 directed?) #f)
       (set! (-> s5-0 no-initial-move-to-ground?) #f)
@@ -106,7 +106,7 @@
   :code (the-as (function none :behavior metalkor-egg) sleep-code)
   :post (behavior ()
     (ja-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
@@ -127,8 +127,8 @@
            )
       (init-vf0-vector)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-0 quad) (-> self root-override transv quad))
-        (.lvf vf1 (&-> (-> self root-override transv) quad))
+        (set! (-> gp-0 quad) (-> self root transv quad))
+        (.lvf vf1 (&-> (-> self root transv) quad))
         (.add.w.vf vf2 vf0 vf0 :mask #b1)
         (.mul.vf vf1 vf1 vf1)
         (.mul.x.vf acc vf2 vf1 :mask #b1)
@@ -147,8 +147,8 @@
              )
             (else
               (vector-v++!
-                (-> self root-override transv)
-                (compute-acc-due-to-gravity (the-as collide-shape-moving (-> self root-override)) (new-stack-vector0) 1.0)
+                (-> self root transv)
+                (compute-acc-due-to-gravity (the-as collide-shape-moving (-> self root)) (new-stack-vector0) 1.0)
                 )
               (let ((a2-1 (new 'stack-no-clear 'collide-query)))
                 (set! (-> a2-1 collide-with) (collide-spec backgnd enemy obstacle hit-by-others-list pusher))
@@ -157,8 +157,8 @@
                 (set! (-> a2-1 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
                 (set! (-> a2-1 action-mask) (collide-action solid))
                 (fill-cache-integrate-and-collide
-                  (the-as collide-shape-moving (-> self root-override))
-                  (-> (the-as collide-shape-moving (-> self root-override)) transv)
+                  (the-as collide-shape-moving (-> self root))
+                  (-> (the-as collide-shape-moving (-> self root)) transv)
                   a2-1
                   (meters 0)
                   )
@@ -180,7 +180,7 @@
             ((and (< f0-3 v1-27) (let* ((f0-4 81920.0)
                                         (f0-6 (* f0-4 f0-4))
                                         )
-                                   (.lvf vf1 (&-> (-> self root-override transv) quad))
+                                   (.lvf vf1 (&-> (-> self root transv) quad))
                                    (.add.w.vf vf2 vf0 vf0 :mask #b1)
                                    (.mul.vf vf1 vf1 vf1)
                                    (.mul.x.vf acc vf2 vf1 :mask #b1)
@@ -218,7 +218,7 @@
   :code (the-as (function none :behavior metalkor-egg) sleep-code)
   :post (behavior ()
     (transform-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
@@ -259,15 +259,15 @@
   :code (the-as (function none :behavior metalkor-egg) sleep-code)
   :post (behavior ()
     (ja-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
 
 (defun metalkor-shot-move ((arg0 metalkor-shot))
-  (set! (-> arg0 old-transv quad) (-> arg0 root-override transv quad))
+  (set! (-> arg0 old-transv quad) (-> arg0 root transv quad))
   (projectile-move-fill-line-sphere arg0)
-  (let ((s5-0 (-> arg0 root-override)))
+  (let ((s5-0 (-> arg0 root)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (vector-! s4-0 (-> arg0 tail-pos) (-> s5-0 trans))
       (let ((f0-0 (vector-length s4-0)))
@@ -288,13 +288,13 @@
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init-proj-settings! metalkor-shot ((obj metalkor-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'metalhead-shot)
   (set! (-> obj max-speed) 532480.0)
   (set! (-> obj move) metalkor-shot-move)
   (set! (-> obj timeout) (seconds 0.767))
-  (set-gravity-length (-> obj root-override dynam) 573440.0)
-  (set! (-> obj old-transv quad) (-> obj root-override transv quad))
+  (set-gravity-length (-> obj root dynam) 573440.0)
+  (set! (-> obj old-transv quad) (-> obj root transv quad))
   (none)
   )
 
@@ -305,7 +305,7 @@
     (sv-240 vector)
     (sv-256 entity-actor)
     )
-  (let* ((s4-0 (-> obj root-override))
+  (let* ((s4-0 (-> obj root))
          (v0-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
@@ -348,7 +348,7 @@
       )
     )
   (let ((s4-2 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-2 quad) (-> obj root-override trans quad))
+    (set! (-> s4-2 quad) (-> obj root trans quad))
     (let ((gp-1 (new 'stack-no-clear 'quaternion)))
       (let ((s3-0 (lambda :behavior metalkor-shot
                     ()
@@ -473,9 +473,9 @@
     ((or (= arg0 2) (= arg0 3))
      (let ((v0-0 (new 'static 'vector :w 1.0)))
        (set! (-> v0-0 quad)
-             (-> (the-as collide-shape-prim-group (-> obj root-override root-prim)) child 0 prim-core world-sphere quad)
+             (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 0 prim-core world-sphere quad)
              )
-       (set! (-> v0-0 y) (+ 32768.0 (-> v0-0 y)))
+       (+! (-> v0-0 y) 32768.0)
        v0-0
        )
      )
@@ -564,10 +564,10 @@
          )
     (init-vf0-vector)
     (let ((gp-0 (new 'stack-no-clear 'collide-query))
-          (s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root-override quat)))
+          (s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
           )
       (let ((v1-1 (-> gp-0 bbox))
-            (a0-2 (-> self root-override trans))
+            (a0-2 (-> self root trans))
             (a1-1 (new 'stack-no-clear 'vector))
             )
         (set! (-> a1-1 x) 32768.0)
@@ -577,7 +577,7 @@
         (vector-! (the-as vector v1-1) a0-2 a1-1)
         )
       (let ((v1-3 (-> gp-0 bbox max))
-            (a0-4 (-> self root-override trans))
+            (a0-4 (-> self root trans))
             (a1-2 (new 'stack-no-clear 'vector))
             )
         (set! (-> a1-2 x) 32768.0)
@@ -642,10 +642,7 @@
               )
             (let ((f0-12 (probe-using-line-sphere *collide-cache* gp-0)))
               (when (>= f0-12 0.0)
-                (let ((f1-2
-                        (vector-dot (-> s5-0 vector 1) (vector-! (new 'stack-no-clear 'vector) s2-0 (-> self root-override trans)))
-                        )
-                      )
+                (let ((f1-2 (vector-dot (-> s5-0 vector 1) (vector-! (new 'stack-no-clear 'vector) s2-0 (-> self root trans)))))
                   (cond
                     ((>= 409.6 f1-2)
                      (vector+float*! s3-0 (-> gp-0 start-pos) (-> gp-0 move-dist) f0-12)
@@ -741,17 +738,17 @@
   :code (the-as (function none :behavior metalkor-legs) sleep-code)
   :post (behavior ()
     (transform-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
 
 (define *metalkor-lowtorso-spinner-setup*
   (new 'static 'boxed-array :type metalkor-spinner-info
-    (new 'static 'metalkor-spinner-info :joint-index #x29 :launch-angle 18204.445)
-    (new 'static 'metalkor-spinner-info :joint-index #x1e :launch-angle 25486.223)
-    (new 'static 'metalkor-spinner-info :joint-index #x26 :launch-angle -18204.445)
-    (new 'static 'metalkor-spinner-info :joint-index #x21 :launch-angle -25486.223)
+    (new 'static 'metalkor-spinner-info :joint-index 41 :launch-angle 18204.445)
+    (new 'static 'metalkor-spinner-info :joint-index 30 :launch-angle 25486.223)
+    (new 'static 'metalkor-spinner-info :joint-index 38 :launch-angle -18204.445)
+    (new 'static 'metalkor-spinner-info :joint-index 33 :launch-angle -25486.223)
     )
   )
 
@@ -775,7 +772,7 @@
         )
       (vector-normalize! s5-0 (* 81920.0 (cos 10922.667)))
       (+! (-> s5-0 y) (* 81920.0 (sin 10922.667)))
-      (set! (-> s5-0 y) (+ 12288.0 (-> s5-0 y)))
+      (+! (-> s5-0 y) 12288.0)
       (vector+! s5-0 s5-0 (-> self entity trans))
       (set! (-> self spinners arg0)
             (ppointer->handle
@@ -1299,7 +1296,7 @@
          #f
          )
         (('spinner)
-         (let ((v1-10 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root-override quat))))
+         (let ((v1-10 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat))))
            (the-as object (metalkor-lowtorso-start-spinner (the-as int (-> event param 0)) (-> v1-10 vector 2)))
            )
          )
@@ -1358,12 +1355,9 @@
                   )
              (when v1-36
                (let ((s3-2 (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable v1-36) root trans) s4-0))
-                     (s4-2 (vector-!
-                             (new 'stack-no-clear 'vector)
-                             (-> (the-as process-drawable v1-36) root trans)
-                             (-> self root-override trans)
-                             )
-                           )
+                     (s4-2
+                       (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable v1-36) root trans) (-> self root trans))
+                       )
                      )
                  (set! (-> s3-2 y) 0.0)
                  (set! (-> s4-2 y) 0.0)
@@ -1392,7 +1386,7 @@
                      )
                    (when (send-event-function proc a1-14)
                      (set! (-> self no-collision-timer) (current-time))
-                     (let ((v1-52 (-> self root-override root-prim)))
+                     (let ((v1-52 (-> self root root-prim)))
                        (set! (-> v1-52 prim-core collide-as) (collide-spec))
                        (set! (-> v1-52 prim-core collide-with) (collide-spec))
                        )
@@ -1414,9 +1408,9 @@
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self no-collision-timer)) (seconds 0.1))
-      (let ((v1-5 (-> self root-override root-prim)))
-        (set! (-> v1-5 prim-core collide-as) (-> self root-override backup-collide-as))
-        (set! (-> v1-5 prim-core collide-with) (-> self root-override backup-collide-with))
+      (let ((v1-5 (-> self root root-prim)))
+        (set! (-> v1-5 prim-core collide-as) (-> self root backup-collide-as))
+        (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
         )
       )
     (clone-anim-once (ppointer->handle (-> self parent)) #t (-> self prefix))
@@ -1480,7 +1474,7 @@
   :code (the-as (function none :behavior metalkor-lowtorso) sleep-code)
   :post (behavior ()
     (transform-post)
-    (do-push-aways (-> self root-override))
+    (do-push-aways (-> self root))
     (none)
     )
   )
@@ -1534,7 +1528,7 @@
     318
     (new 'static 'vector :x -942.08 :y -860.16 :z 1269.76 :w 163840.0)
     )
-  (set-gravity-length (-> obj root-override2 dynam) 491520.0)
+  (set-gravity-length (-> obj root dynam) 491520.0)
   (set! (-> obj minimap) #f)
   (none)
   )
@@ -1543,7 +1537,7 @@
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (with-pp
     (when (not (logtest? (enemy-flag recover-applied-velocity) (-> obj enemy-flags)))
-      (when (and (>= (-> obj enemy-info-override gem-joint) 0)
+      (when (and (>= (-> obj enemy-info gem-joint) 0)
                  (not (logtest? (enemy-flag cam-attack-mode) (-> obj enemy-flags)))
                  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-0 from) (process->ppointer pp))
@@ -1555,22 +1549,22 @@
                        )
                    )
                  )
-        (set! (-> obj enemy-flags) (logior (enemy-flag cam-attack-mode) (-> obj enemy-flags)))
+        (logior! (-> obj enemy-flags) (enemy-flag cam-attack-mode))
         (remove-from-process *part-engine* obj)
         (setup-masks
           (-> obj draw)
-          (the-as int (-> obj enemy-info-override gem-no-seg))
-          (the-as int (-> obj enemy-info-override gem-seg))
+          (the-as int (-> obj enemy-info gem-no-seg))
+          (the-as int (-> obj enemy-info gem-seg))
           )
         (let ((v1-30
                 (ppointer->process
                   (birth-pickup-at-point
-                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data (-> obj enemy-info-override gem-joint)))
+                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data (-> obj enemy-info gem-joint)))
                     (pickup-type gem)
                     1.0
                     #t
                     (ppointer->process (-> obj parent))
-                    (-> obj fact-info-override)
+                    (-> obj fact)
                     )
                   )
                 )
@@ -1600,7 +1594,7 @@
                        )
                    )
                  )
-        (set! (-> obj enemy-flags) (logior (enemy-flag cam-attack-mode) (-> obj enemy-flags)))
+        (logior! (-> obj enemy-flags) (enemy-flag cam-attack-mode))
         (remove-from-process *part-engine* obj)
         (setup-masks
           (-> obj draw)
@@ -1615,7 +1609,7 @@
                     1.0
                     #t
                     *entity-pool*
-                    (-> obj fact-info-override)
+                    (-> obj fact)
                     )
                   )
                 )
@@ -2070,8 +2064,8 @@ This commonly includes things such as:
         )
     (let ((f30-0 4096.0))
       (let ((f28-1 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
-        (matrix->quaternion (-> self root-override quat) s5-0)
-        (set-vector! (-> self root-override scale) f28-1 f28-1 f28-1 1.0)
+        (matrix->quaternion (-> self root quat) s5-0)
+        (set-vector! (-> self root scale) f28-1 f28-1 f28-1 1.0)
         )
       (let ((t9-3 vector<-cspace!)
             (a0-3 gp-0)
@@ -2090,7 +2084,7 @@ This commonly includes things such as:
       (vector-! gp-0 gp-0 (camera-pos))
       (vector-normalize! gp-0 f30-0)
       )
-    (vector+! (-> self root-override trans) (camera-pos) gp-0)
+    (vector+! (-> self root trans) (camera-pos) gp-0)
     )
   0
   (none)
@@ -2349,35 +2343,35 @@ This commonly includes things such as:
 
 (define *metalkor-bomb-collide-joints* (new 'static 'boxed-array :type int8
                                          5
-                                         #x8
-                                         #xb
-                                         #xe
-                                         #x11
-                                         #x14
-                                         #x17
-                                         #x1a
-                                         #x1d
-                                         #x20
-                                         #x23
-                                         #x26
-                                         #x29
-                                         #x2c
-                                         #x2f
-                                         #x32
-                                         #x35
-                                         #x38
-                                         #x3b
-                                         #x3e
-                                         #x41
-                                         #x44
-                                         #x47
-                                         #x4a
-                                         #x4d
-                                         #x50
-                                         #x53
-                                         #x56
-                                         #x59
-                                         #x5c
+                                         8
+                                         11
+                                         14
+                                         17
+                                         20
+                                         23
+                                         26
+                                         29
+                                         32
+                                         35
+                                         38
+                                         41
+                                         44
+                                         47
+                                         50
+                                         53
+                                         56
+                                         59
+                                         62
+                                         65
+                                         68
+                                         71
+                                         74
+                                         77
+                                         80
+                                         83
+                                         86
+                                         89
+                                         92
                                          )
         )
 
@@ -2391,7 +2385,7 @@ This commonly includes things such as:
     (let ((gp-0 (new 'stack-no-clear 'collide-query)))
       (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
         (let ((a1-0 (new 'stack-no-clear 'sphere)))
-          (set! (-> a1-0 quad) (-> self root-override trans quad))
+          (set! (-> a1-0 quad) (-> self root trans quad))
           (set! (-> a1-0 r) 204800.0)
           (set-from-sphere! s5-0 a1-0)
           )
@@ -2407,14 +2401,14 @@ This commonly includes things such as:
     (let ((s5-1 (new 'stack-no-clear 'vector))
           (gp-1 (new 'stack-no-clear 'vector))
           )
-      (set! (-> gp-1 quad) (-> self root-override trans quad))
+      (set! (-> gp-1 quad) (-> self root trans quad))
       (vector<-cspace!
-        (-> self root-override trans)
+        (-> self root trans)
         (-> self node-list data (-> *metalkor-bomb-collide-joints* (+ (-> *metalkor-bomb-collide-joints* length) -1)))
         )
       (dotimes (s4-0 (-> *metalkor-bomb-collide-joints* length))
         (vector<-cspace! s5-1 (-> self node-list data (-> *metalkor-bomb-collide-joints* s4-0)))
-        (vector-! s5-1 s5-1 (-> self root-override trans))
+        (vector-! s5-1 s5-1 (-> self root trans))
         (let ((v1-26 s5-1))
           (.lvf vf1 (&-> s5-1 quad))
           (let ((f0-1 (-> self clock frames-per-second)))
@@ -2425,9 +2419,9 @@ This commonly includes things such as:
           (.mul.x.vf vf1 vf1 vf2 :mask #b111)
           (.svf (&-> v1-26 quad) vf1)
           )
-        (integrate-and-collide! (-> self root-override) s5-1)
+        (integrate-and-collide! (-> self root) s5-1)
         )
-      (let ((v0-6 (-> self root-override trans)))
+      (let ((v0-6 (-> self root trans)))
         (set! (-> v0-6 quad) (-> gp-1 quad))
         v0-6
         )
@@ -2439,7 +2433,7 @@ This commonly includes things such as:
   (let ((gp-0 (new 'stack-no-clear 'collide-query)))
     (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
       (let ((a1-0 (new 'stack-no-clear 'sphere)))
-        (set! (-> a1-0 quad) (-> self root-override trans quad))
+        (set! (-> a1-0 quad) (-> self root trans quad))
         (set! (-> a1-0 r) 204800.0)
         (set-from-sphere! s5-0 a1-0)
         )
@@ -2459,7 +2453,7 @@ This commonly includes things such as:
                   )
             )
         (set! (-> gp-0 start-pos quad) (-> s4-0 quad))
-        (set! (-> gp-0 start-pos y) (+ 81920.0 (-> gp-0 start-pos y)))
+        (+! (-> gp-0 start-pos y) 81920.0)
         (set! (-> gp-0 move-dist quad) (-> (new 'static 'vector :y -163840.0) quad))
         (let ((v1-17 gp-0))
           (set! (-> v1-17 radius) 4096.0)

@@ -520,15 +520,11 @@
   )
 
 (defbehavior target-eco-process target ()
-  (when (and (!= (-> (the-as fact-info-target (-> self fact-override)) eco-level) 0.0)
-             (>= (- (-> *display* game-clock frame-counter)
-                    (-> (the-as fact-info-target (-> self fact-override)) eco-pickup-time)
-                    )
-                 (-> (the-as fact-info-target (-> self fact-override)) eco-timeout)
-                 )
+  (when (and (!= (-> self fact eco-level) 0.0)
+             (>= (- (-> *display* game-clock frame-counter) (-> self fact eco-pickup-time)) (-> self fact eco-timeout))
              )
-    (set! (-> (the-as fact-info-target (-> self fact-override)) eco-level) 0.0)
-    (set! (-> (the-as fact-info-target (-> self fact-override)) eco-timeout) 0)
+    (set! (-> self fact eco-level) 0.0)
+    (set! (-> self fact eco-timeout) 0)
     (logclear! (-> self state-flags) (state-flags sf4))
     (send-event self 'reset-collide)
     (stop! (-> self sound))
@@ -536,25 +532,23 @@
   (if (logtest? (-> self game secrets) (game-secrets endless-dark))
       (set! (-> self game eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
       )
-  (when (and (< 0.0 (-> (the-as fact-info-target (-> self fact-override)) eco-level))
+  (when (and (< 0.0 (-> self fact eco-level))
              (not (focus-test? self in-head))
              (not (logtest? (-> self draw status) (draw-control-status no-draw no-draw-temp)))
              (not (movie?))
-             (rand-vu-percent? (lerp-scale
-                                 0.0
-                                 1.0
-                                 (the float (- (-> (the-as fact-info-target (-> self fact-override)) eco-timeout)
-                                               (- (-> *display* game-clock frame-counter)
-                                                  (-> (the-as fact-info-target (-> self fact-override)) eco-pickup-time)
-                                                  )
-                                               )
-                                      )
-                                 0.0
-                                 900.0
-                                 )
-                               )
+             (rand-vu-percent?
+               (lerp-scale
+                 0.0
+                 1.0
+                 (the float
+                      (- (-> self fact eco-timeout) (- (-> *display* game-clock frame-counter) (-> self fact eco-pickup-time)))
+                      )
+                 0.0
+                 900.0
+                 )
+               )
              )
-    (case (-> (the-as fact-info-target (-> self fact-override)) eco-type)
+    (case (-> self fact eco-type)
       ((1)
        (change-sound! (-> self sound) (static-sound-name "yel-eco-jak"))
        (let ((s1-0 (rand-vu-int-range 3 (+ (-> self node-list length) -1)))
@@ -843,9 +837,7 @@
 (defbehavior target-powerup-process target ()
   (let ((f30-0 (-> self control collision-spheres 0 prim-core world-sphere w)))
     (if (focus-test? self board)
-        (set! (-> self control collision-spheres 0 prim-core world-sphere w)
-              (+ 4096.0 (-> self control collision-spheres 0 prim-core world-sphere w))
-              )
+        (+! (-> self control collision-spheres 0 prim-core world-sphere w) 4096.0)
         )
     (water-control-method-10 (-> self water))
     (set! (-> self control collision-spheres 0 prim-core world-sphere w) f30-0)
@@ -938,30 +930,19 @@
      )
     )
   (target-darkjak-process)
-  (when (nonzero? (-> (the-as fact-info-target (-> self fact-override)) trick-point-duration))
-    (when (>= (- (-> *display* game-clock frame-counter)
-                 (-> (the-as fact-info-target (-> self fact-override)) trick-point-start-time)
-                 )
-              (-> (the-as fact-info-target (-> self fact-override)) trick-point-duration)
+  (when (nonzero? (-> self fact trick-point-duration))
+    (when (>= (- (-> *display* game-clock frame-counter) (-> self fact trick-point-start-time))
+              (-> self fact trick-point-duration)
               )
-      (format
-        #t
-        "------------> ~,,f total points~%"
-        (-> (the-as fact-info-target (-> self fact-override)) trick-point)
-        )
-      (send-event
-        (handle->process (-> self notify))
-        'notify
-        'trick-judge
-        (-> (the-as fact-info-target (-> self fact-override)) trick-point)
-        )
-      (reset! (-> self fact-override) 'trick-judge)
+      (format #t "------------> ~,,f total points~%" (-> self fact trick-point))
+      (send-event (handle->process (-> self notify)) 'notify 'trick-judge (-> self fact trick-point))
+      (reset! (-> self fact) 'trick-judge)
       )
     )
   (cond
     ((logtest? (-> self game features) (game-feature unk-game-feature-01))
      (cond
-       ((< (current-time) (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout))
+       ((< (current-time) (-> self fact stop-time-timeout))
         (set-setting! 'bg-a 'abs 0.3 0)
         (set-setting! 'bg-r 'abs 1.0 0)
         (update-rates! (-> *display* entity-clock) 0.0)
@@ -969,22 +950,22 @@
             (sound-play "stopwatch")
             )
         )
-       ((nonzero? (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout))
+       ((nonzero? (-> self fact stop-time-timeout))
         (remove-setting! 'bg-a)
         (remove-setting! 'bg-r)
         (update-rates! (-> *display* entity-clock) 1.0)
-        (set! (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout) 0)
+        (set! (-> self fact stop-time-timeout) 0)
         0
         )
        ((cpad-pressed? (-> self control cpad number) r1)
-        (set! (-> (the-as fact-info-target (-> self fact-override)) stop-time-timeout) (+ (current-time) (seconds 5)))
+        (set! (-> self fact stop-time-timeout) (+ (current-time) (seconds 5)))
         )
        )
      )
     ((logtest? (-> self game features) (game-feature unk-game-feature-03))
      (when *time-of-day-fast*
        (set! *time-of-day-fast* #f)
-       (send-event (ppointer->process *time-of-day*) 'change 'ratio #x3f800000)
+       (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
        )
      (cond
        ((cpad-hold? (-> self control cpad number) r1)
@@ -1014,7 +995,7 @@
     ((logtest? (-> self game features) (game-feature unk-game-feature-05))
      (when *time-of-day-fast*
        (set! *time-of-day-fast* #f)
-       (send-event (ppointer->process *time-of-day*) 'change 'ratio #x3f800000)
+       (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
        )
      (cond
        ((cpad-hold? (-> self control cpad number) r1)
@@ -1041,6 +1022,25 @@
         )
        )
      )
+    )
+  (#when PC_PORT
+    ;; time cheats (doesn't work properly)
+    (cond
+      ((movie?)
+        )
+      ((pc-cheats? (-> *pc-settings* cheats) slow-speed)
+        ;(update-rates! (-> *display* entity-clock) (* 0.3 (-> *display* entity-clock clock-ratio)))
+        ;(update-rates! (-> *display* target-clock) (* 0.5 (-> *display* target-clock clock-ratio)))
+        )
+      ((pc-cheats? (-> *pc-settings* cheats) fast-speed)
+        ;(update-rates! (-> *display* entity-clock) (* 60.0 (-> *display* entity-clock clock-ratio)))
+        ;(update-rates! (-> *display* target-clock) (* 2.0 (-> *display* target-clock clock-ratio)))
+        )
+      ((logtest? (-> self game features) (game-feature unk-game-feature-01 unk-game-feature-03 unk-game-feature-05))
+        )
+      (else
+        )
+      )
     )
   (target-eco-process)
   (target-color-effect-process)
@@ -1096,7 +1096,7 @@
          )
      (logior! (-> self focus-status) (focus-status in-air))
      (if (logtest? (surface-flag super) (-> self control current-surface flags))
-         (set! (-> self focus-status) (logior (focus-status super) (-> self focus-status)))
+         (logior! (-> self focus-status) (focus-status super))
          )
      )
     (else
@@ -1104,7 +1104,7 @@
       )
     )
   (if (using-gun? self)
-      (set! (-> self focus-status) (logior (focus-status gun) (-> self focus-status)))
+      (logior! (-> self focus-status) (focus-status gun))
       (logclear! (-> self focus-status) (focus-status gun))
       )
   (if (or (logtest? (water-flags touch-water) (-> self water flags))
@@ -1124,11 +1124,11 @@
       (logclear! (-> self focus-status) (focus-status under-water))
       )
   (if (= (-> self control ground-pat material) (pat-material ice))
-      (set! (-> self focus-status) (logior (focus-status ice) (-> self focus-status)))
+      (logior! (-> self focus-status) (focus-status ice))
       (logclear! (-> self focus-status) (focus-status ice))
       )
   (if (< (- (current-time) (-> self gun fire-time)) (seconds 0.1))
-      (set! (-> self focus-status) (logior (focus-status shooting) (-> self focus-status)))
+      (logior! (-> self focus-status) (focus-status shooting))
       (logclear! (-> self focus-status) (focus-status shooting))
       )
   0

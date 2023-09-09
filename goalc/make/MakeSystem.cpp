@@ -100,7 +100,7 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<GroupTool>();
   add_tool<TextTool>();
   add_tool<SubtitleTool>();
-  add_tool<Subtitle2Tool>();
+  add_tool<SubtitleV2Tool>();
   add_tool<BuildLevelTool>();
 }
 
@@ -510,4 +510,8 @@ void MakeSystem::set_constant(const std::string& name, const std::string& value)
 
 void MakeSystem::set_constant(const std::string& name, bool value) {
   m_goos.set_global_variable_to_symbol(name, value ? "#t" : "#f");
+}
+
+void MakeSystem::set_constant(const std::string& name, int value) {
+  m_goos.set_global_variable_to_int(name, value);
 }

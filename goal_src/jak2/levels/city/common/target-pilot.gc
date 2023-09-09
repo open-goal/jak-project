@@ -95,20 +95,17 @@
            )
           (('vehicle-hit)
            (speech-control-method-12 *speech-control* self (if (-> self pilot as-daxter?)
-                                                               (speech-type speech-type-1 speech-type-3 speech-type-5)
-                                                               (speech-type speech-type-0 speech-type-5)
+                                                               (speech-type speech-type-42)
+                                                               (speech-type speech-type-33)
                                                                )
                                      )
            )
           (('vehicle-got-hit)
-           (speech-control-method-12
-             *speech-control*
-             self
-             (if (-> self pilot as-daxter?)
-                 (speech-type speech-type-0 speech-type-1 speech-type-3 speech-type-5)
-                 (speech-type speech-type-1 speech-type-5)
-                 )
-             )
+           (speech-control-method-12 *speech-control* self (if (-> self pilot as-daxter?)
+                                                               (speech-type speech-type-43)
+                                                               (speech-type speech-type-34)
+                                                               )
+                                     )
            )
           (else
             (target-standard-event-handler arg0 arg1 arg2 arg3)
@@ -223,8 +220,8 @@
     (let ((s4-1 (handle->process (-> s5-0 vehicle))))
       (when s4-1
         (set! (-> s5-0 entity) (-> s4-1 entity))
-        (set! (-> s5-0 gun?) (logtest? (-> (the-as vehicle s4-1) info-override flags) 32))
-        (set! (-> s5-0 enable-cam-side-shift) (logtest? (-> (the-as vehicle s4-1) info-override flags) 128))
+        (set! (-> s5-0 gun?) (logtest? (-> (the-as vehicle s4-1) info flags) 32))
+        (set! (-> s5-0 enable-cam-side-shift) (logtest? (-> (the-as vehicle s4-1) info flags) 128))
         (send-event
           (ppointer->process (-> (the-as vehicle s4-1) parent))
           'player-got-on-vehicle-child
@@ -264,9 +261,7 @@
       )
     (when (not (-> s5-0 gun?))
       (if arg1
-          (set! (-> self control current-surface flags)
-                (logior (surface-flag gun-fast-exit) (-> self control current-surface flags))
-                )
+          (logior! (-> self control current-surface flags) (surface-flag gun-fast-exit))
           )
       (target-gun-end-mode arg1)
       )
@@ -275,7 +270,7 @@
   (set! (-> self control reaction) target-collision-reaction)
   (set! (-> self control transv quad) (the-as uint128 0))
   (set! (-> self control ctrl-xz-vel) 0.0)
-  (set! (-> self focus-status) (logior (focus-status pilot) (-> self focus-status)))
+  (logior! (-> self focus-status) (focus-status pilot))
   (set! (-> self control bend-target) 0.0)
   (let ((v1-73 (-> self node-list data)))
     (set! (-> v1-73 0 param0) (the-as (function cspace transformq none) cspace<-transformq+world-trans!))
@@ -351,8 +346,8 @@
          )
     (when s5-0
       (compute-seat-position (the-as vehicle s5-0) (-> self control trans) (-> gp-2 seat-index))
-      (set! (-> self control transv quad) (-> (the-as vehicle s5-0) root-override-2 transv quad))
-      (quaternion-copy! (-> self control quat) (-> (the-as vehicle s5-0) root-override-2 quat))
+      (set! (-> self control transv quad) (-> (the-as vehicle s5-0) root transv quad))
+      (quaternion-copy! (-> self control quat) (-> (the-as vehicle s5-0) root quat))
       (quaternion-copy! (-> self control quat-for-control) (-> self control quat))
       (quaternion-copy! (-> self control dir-targ) (-> self control quat))
       (let ((s4-0 (-> self alt-cam-pos)))

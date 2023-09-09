@@ -1,6 +1,6 @@
-#version 430 core
+#version 410 core
 
-in flat vec4 fragment_color;
+flat in vec4 fragment_color;
 in vec2 tex_coord;
 
 uniform sampler2D tex;

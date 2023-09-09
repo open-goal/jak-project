@@ -11,7 +11,8 @@ GameController::GameController(int sdl_device_id,
   m_loaded = false;
   m_device_handle = SDL_GameControllerOpen(sdl_device_id);
   if (!m_device_handle) {
-    sdl_util::log_error(fmt::format("Could not read data from device index: {}", sdl_device_id));
+    sdl_util::log_error(
+        fmt::format("Could not open game controller with device id: {}", sdl_device_id));
     return;
   }
 
@@ -24,14 +25,27 @@ GameController::GameController(int sdl_device_id,
   m_sdl_instance_id = SDL_JoystickInstanceID(joystick);
   if (m_sdl_instance_id < 0) {
     sdl_util::log_error(
-        fmt::format("Could not get instance id for gamecontroller: id {}", sdl_device_id));
+        fmt::format("Could not determine instance id for gamecontroller: id {}", sdl_device_id));
     return;
   }
   const auto controller_guid = SDL_JoystickGetGUID(joystick);
+  if (sdl_util::is_SDL_GUID_zero(controller_guid)) {
+    sdl_util::log_error(fmt::format("Could not determine controller guid: id {}", sdl_device_id));
+    return;
+  }
   char guidStr[33];
   SDL_JoystickGetGUIDString(controller_guid, guidStr, sizeof(guidStr));
   m_guid = guidStr;
 
+  // NOTE - it has been observed that this function will return `NULL` which indicates a bad
+  // controller this seems to happen if you disconnect the controller while it's in the process of
+  // connecting
+  //
+  // However, SDL_GameControllerGetAttached returns true, and `NULL` here is not an outright failure
+  // there could be controllers that just have no name.
+  //
+  // So I'm letting this one go through, in most cases it had an invalid guid as well (so caught
+  // above).
   auto name = SDL_GameControllerName(m_device_handle);
   if (!name) {
     sdl_util::log_error(fmt::format("Could not get device name with id: {}", sdl_device_id));
@@ -40,6 +54,7 @@ GameController::GameController(int sdl_device_id,
     m_device_name = name;
   }
   m_has_led = sdl_util::from_sdl_bool(SDL_GameControllerHasLED(m_device_handle));
+  m_has_rumble = sdl_util::from_sdl_bool(SDL_GameControllerHasRumble(m_device_handle));
 
   if (m_settings->controller_binds.find(m_guid) == m_settings->controller_binds.end()) {
     m_settings->controller_binds[m_guid] = DEFAULT_CONTROLLER_BINDS;
@@ -51,8 +66,7 @@ GameController::GameController(int sdl_device_id,
 void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
-                                   std::optional<InputBindAssignmentMeta>& bind_assignment,
-                                   bool /*ignore_inputs*/) {
+                                   std::optional<InputBindAssignmentMeta>& bind_assignment) {
   if (event.type == SDL_CONTROLLERAXISMOTION && event.caxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
     if ((int)event.caxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
@@ -134,7 +148,7 @@ void GameController::close_device() {
 }
 
 int GameController::update_rumble(const u8 low_rumble, const u8 high_rumble) {
-  if (m_device_handle) {
+  if (m_has_rumble && m_device_handle) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerRumble
     // Arbitrary duration, since it's called every frame anyway, just so the vibration doesn't last
     // forever. SDL expects a value in the range of 0-0xFFFF, so the `257` is just normalizing the
@@ -150,8 +164,10 @@ void GameController::set_led(const u8 red, const u8 green, const u8 blue) {
   if (!m_has_led) {
     return;
   }
-  auto ok = SDL_GameControllerSetLED(m_device_handle, red, green, blue);
-  if (ok != 0) {
-    m_has_led = false;
+  if (m_device_handle) {
+    auto ok = SDL_GameControllerSetLED(m_device_handle, red, green, blue);
+    if (ok != 0) {
+      m_has_led = false;
+    }
   }
 }

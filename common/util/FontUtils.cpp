@@ -12,21 +12,12 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "string_util.h"
+
 #include "common/util/Assert.h"
 
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
-
-namespace {
-
-/*!
- * Is this a valid character for a hex number?
- */
-bool hex_char(char c) {
-  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
-}
-
-}  // namespace
 
 const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
     {"jak1-v1", GameTextVersion::JAK1_V1},
@@ -210,6 +201,9 @@ std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
  * Turn a normal readable string into a string readable in the in-game font encoding and converts
  * \cXX escape sequences
  */
+// NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
+// time loading the text files)
+// TODO - improve that as a follow up sometime in the future
 std::string GameTextFontBank::convert_utf8_to_game(std::string str, bool escape) const {
   std::string newstr;
 
@@ -230,7 +224,7 @@ std::string GameTextFontBank::convert_utf8_to_game(std::string str, bool escape)
           }
           auto first = str.at(i + 2);
           auto second = str.at(i + 3);
-          if (!hex_char(first) || !hex_char(second)) {
+          if (!str_util::hex_char(first) || !str_util::hex_char(second)) {
             throw std::runtime_error("invalid character escape hex number");
           }
           char hex_num[3] = {first, second, '\0'};
@@ -551,6 +545,11 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
+    {"O~Y~-16H~-1V/~Z", "Ø"},
+    {"A~Y~-6H~+3V,~Z", "Ą"},
+    {"E~Y~-6H~+2V,~Z", "Ę"},
+    {"L~Y~-16H~+0V/~Z", "Ł"},
+    {"Z~Y~-21H~-5Vº~Z", "Ż"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -563,6 +562,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"I~Y~-19H~-5V'~Z", "Í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"C~Y~-21H~-5V'~Z", "Ć"},
+    {"N~Y~-21H~-5V'~Z", "Ń"},
+    {"S~Y~-21H~-5V'~Z", "Ś"},
+    {"Z~Y~-21H~-5V'~Z", "Ź"},
 
     // double acute accents
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom

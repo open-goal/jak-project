@@ -115,12 +115,12 @@
      (sound-play "pred-shot-hit")
      )
     (((projectile-options lose-altitude proj-options-2))
-     (let ((f0-0 (doppler-pitch-shift (-> obj root-override trans) (-> obj root-override transv)))
+     (let ((f0-0 (doppler-pitch-shift (-> obj root trans) (-> obj root transv)))
            (a0-7 (static-sound-spec "pred-shot-loop" :volume 0.0 :mask (pitch reg0)))
            )
        (set! (-> a0-7 volume) 1024)
        (set! (-> a0-7 pitch-mod) (the int (* 1524.0 f0-0)))
-       (sound-play-by-spec a0-7 (-> obj sound-id) (-> obj root-override trans))
+       (sound-play-by-spec a0-7 (-> obj sound-id) (-> obj root trans))
        )
      )
     )
@@ -171,9 +171,9 @@
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -181,14 +181,14 @@
 
 (defmethod init-proj-settings! predator-shot ((obj predator-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root-override trans quad))
+  (set! (-> obj tail-pos quad) (-> obj root trans quad))
   (set! (-> obj attack-mode) 'predator-shot)
   (set! (-> obj max-speed) 532480.0)
   (set! (-> obj move) metalhead-shot-move)
   (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
   (set! (-> obj timeout) (seconds 0.767))
   (set! (-> obj sound-id) (new-sound-id))
-  (set-gravity-length (-> obj root-override dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (none)
   )
 
@@ -396,7 +396,7 @@
     :walk-travel-speed (meters 4)
     :walk-acceleration (meters 3)
     :walk-turning-acceleration (meters 8)
-    :maximum-rotation-rate (degrees 720.0)
+    :maximum-rotation-rate (degrees 720)
     :notice-nav-radius (meters 40)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -700,11 +700,7 @@
             (s3-0 (new 'stack-no-clear 'vector))
             )
         (when s2-0
-          (seek!
-            (-> obj miss-amount)
-            (* 0.5 (vector-length (-> (the-as process-focusable s2-0) root-override transv)))
-            4096.0
-            )
+          (seek! (-> obj miss-amount) (* 0.5 (vector-length (-> (the-as process-focusable s2-0) root transv))) 4096.0)
           (set! (-> s3-0 quad) (-> (get-trans (the-as process-focusable s2-0) 3) quad))
           (set! sv-224 (new 'stack-no-clear 'vector))
           (let ((v1-24 (-> s5-0 pos))
@@ -725,7 +721,7 @@
                   )
               (let ((a0-19 s3-0))
                 (let ((v1-30 s3-0))
-                  (let ((a1-6 (-> (the-as process-focusable s2-0) root-override transv)))
+                  (let ((a1-6 (-> (the-as process-focusable s2-0) root transv)))
                     (let ((a2-2 f0-6))
                       (.mov vf7 a2-2)
                       )
@@ -847,7 +843,7 @@
         (logior! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
         )
       )
-    (if (< 245760.0 (vector-vector-distance (-> obj root-override2 trans) (camera-pos)))
+    (if (< 245760.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
         (setup-masks (-> obj draw) 0 8)
         )
     (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
@@ -969,18 +965,12 @@
           (let ((s5-0 (handle->process (-> self focus handle))))
             (when s5-0
               (seek-toward-heading-vec!
-                (-> self root-override2)
-                (vector-!
-                  (new 'stack-no-clear 'vector)
-                  (get-trans (the-as process-focusable s5-0) 0)
-                  (-> self root-override2 trans)
-                  )
+                (-> self root)
+                (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable s5-0) 0) (-> self root trans))
                 32768.0
                 (seconds 0.05)
                 )
-              (if (< (vector-vector-distance (-> self root-override2 trans) (get-trans (the-as process-focusable s5-0) 0))
-                     24576.0
-                     )
+              (if (< (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable s5-0) 0)) 24576.0)
                   (go-virtual close-attack)
                   )
               )
@@ -1004,7 +994,7 @@
   :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
   :enter (behavior ()
     (set-dangerous! self #t)
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-6 *game-info*)
            (a0-3 (+ (-> v1-6 attack-id) 1))
@@ -1087,9 +1077,7 @@
           (go-virtual active)
           )
       (when gp-0
-        (if (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
-               49152.0
-               )
+        (if (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root trans)) 49152.0)
             (go-virtual hostile)
             )
         )
@@ -1144,7 +1132,7 @@
           (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-4 enemy-flags))))
           )
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-4 enemy-flags))))
-      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info-override callback-info))
+      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info callback-info))
       )
     0
     (predator-method-187 self)
@@ -1158,9 +1146,7 @@
           (go-virtual active)
           )
       (when gp-0
-        (if (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
-               65536.0
-               )
+        (if (< (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root trans)) 65536.0)
             (go-virtual hostile)
             )
         (if (and (>= (- (current-time) (-> self state-time)) (seconds 0.5))
@@ -1241,10 +1227,7 @@
           )
       (when (get-enemy-target self)
         (when (and gp-0 (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
-          (let ((f0-0
-                  (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root-override2 trans))
-                  )
-                )
+          (let ((f0-0 (vector-vector-xz-distance (get-trans (the-as process-focusable gp-0) 0) (-> self root trans))))
             (cond
               ((< f0-0 16384.0)
                (go-virtual close-attack)
@@ -1339,7 +1322,7 @@
     -1
     (dotimes (s4-0 (the-as int (-> *predator-graph* node-count)))
       (let* ((s3-0 (-> *predator-graph* node s4-0))
-             (f0-0 (vector-vector-distance (-> s3-0 position) (-> obj root-override2 trans)))
+             (f0-0 (vector-vector-distance (-> s3-0 position) (-> obj root trans)))
              )
         (when (and (not (logtest? (-> s3-0 flags) (predator-node-flag taken))) (or (= s5-0 -1) (< f0-0 f30-0)))
           (set! f30-0 f0-0)
@@ -1393,14 +1376,14 @@
   (predator-method-183 obj)
   (los-control-method-9 (-> obj los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
   (when (nonzero? (-> obj sound))
-    (update-trans! (-> obj sound) (-> obj root-override2 trans))
+    (update-trans! (-> obj sound) (-> obj root trans))
     (update! (-> obj sound))
     )
   (none)
   )
 
 (defmethod set-dangerous! predator ((obj predator) (arg0 symbol))
-  (let ((v1-1 (-> obj root-override2 root-prim)))
+  (let ((v1-1 (-> obj root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
         (if arg0
@@ -1484,7 +1467,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1504,7 +1487,7 @@
     )
   0
   (let ((v1-2 (-> obj nav)))
-    (set! (-> v1-2 acceleration) (-> obj enemy-info-override walk-acceleration))
+    (set! (-> v1-2 acceleration) (-> obj enemy-info walk-acceleration))
     )
   0
   0
@@ -1561,7 +1544,7 @@ This commonly includes things such as:
     (set! (-> v1-5 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 327680.0)
+  (set-gravity-length (-> obj root dynam) 327680.0)
   (add-connection *part-engine* obj 8 obj 318 (new 'static 'vector :x 1228.8 :y 450.56 :z 983.04 :w 614400.0))
   (add-connection *part-engine* obj 8 obj 318 (new 'static 'vector :x -1228.8 :y 450.56 :z 983.04 :w 614400.0))
   (new-source! (-> obj los) obj (seconds 0.2) (collide-spec backgnd enemy obstacle))
@@ -1576,14 +1559,10 @@ This commonly includes things such as:
   (set! (-> obj miss-amount) 16384.0)
   (set! (-> obj ambient-sound-id) (new 'static 'sound-id))
   (predator-method-185 obj)
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "pred-hum" :fo-min 2 :fo-max 30)
-                         (-> obj root-override2 trans)
-                         )
+  (set! (-> obj sound)
+        (new 'process 'ambient-sound (static-sound-spec "pred-hum" :fo-min 2 :fo-max 30) (-> obj root trans))
         )
-  (set! (-> obj enemy-flags) (logior (enemy-flag trackable-backup enable-on-hostile) (-> obj enemy-flags)))
+  (logior! (-> obj enemy-flags) (enemy-flag trackable-backup enable-on-hostile))
   (add-icon! *minimap* obj (the-as uint 16) (the-as int #f) (the-as vector #t) 0)
   0
   (none)
@@ -1785,7 +1764,7 @@ This commonly includes things such as:
                                     )
                                 )
                          )
-                    (set! (-> obj predator-h (-> obj predator-count)) (process->handle (the-as process s2-2)))
+                    (set! (-> obj predator-h (-> obj predator-count)) (process->handle s2-2))
                     (+! (-> obj predator-count) 1)
                     (when v1-66
                       (change-to (-> v1-66 nav-mesh) (the-as process-drawable s2-2))

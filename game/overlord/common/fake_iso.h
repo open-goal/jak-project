@@ -13,6 +13,8 @@
 
 #include "isocommon.h"
 
+#include "third-party/BS_thread_pool.hpp"
+
 void fake_iso_init_globals();
 int fake_iso_FS_Init();
 const char* get_file_path(FileRecord* fr);
@@ -21,3 +23,5 @@ FileRecord* FS_FindIN(const char* iso_name);
 uint32_t FS_GetLength(FileRecord* fr);
 void LoadMusicTweaks();
 extern u32 fake_iso_entry_count;
+
+extern BS::thread_pool thpool;

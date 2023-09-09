@@ -2,10 +2,9 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-// TODO find better way to pass the ambient array
-size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen,
-                                             size_t ambient_count,
-                                             size_t ambient_arr_slot) const {
+static size_t ambient_arr_slot;
+
+size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   /*
    (deftype drawable-tree-array (drawable-group)
     ((trees drawable-tree 1 :offset 32 :score 100))
@@ -56,9 +55,8 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen,
       gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
     }
 
-    for (auto& ambients : ambients) {
-      gen.link_word_to_byte(tree_word++,
-                            ambients.add_to_object_file(gen, ambient_count, ambient_arr_slot));
+    for (auto& ambient : ambients) {
+      gen.link_word_to_byte(tree_word++, ambient.add_to_object_file(gen, ambient_arr_slot));
     }
   }
 
@@ -87,14 +85,13 @@ std::vector<u8> LevelFile::save_object_file() const {
   auto file_info_slot = info.add_to_object_file(gen);
   gen.link_word_to_byte(1, file_info_slot);
 
-  auto ambient_arr_slot = generate_inline_array_ambients(gen, ambients);
+  ambient_arr_slot = generate_inline_array_ambients(gen, ambients);
 
   //(bsphere                vector :inline                   :offset-assert  16)
   //(all-visible-list       (pointer uint16)                 :offset-assert  32)
   //(visible-list-length    int32                            :offset-assert  36)
   //(drawable-trees         drawable-tree-array              :offset-assert  40)
-  gen.link_word_to_byte(40 / 4,
-                        drawable_trees.add_to_object_file(gen, ambients.size(), ambient_arr_slot));
+  gen.link_word_to_byte(40 / 4, drawable_trees.add_to_object_file(gen));
   //(pat                    pointer                          :offset-assert  44)
   //(pat-length             int32                            :offset-assert  48)
   //(texture-remap-table    (pointer uint64)                 :offset-assert  52)

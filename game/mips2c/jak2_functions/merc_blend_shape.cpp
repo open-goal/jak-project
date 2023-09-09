@@ -93,10 +93,10 @@ void simplified1(BlercContext* context, u8* ee_buffer) {
   }
 }
 
+}  // namespace
 void blerc_c(void* a, void* b) {
   simplified1((BlercContext*)a, (u8*)b);
 }
-}  // namespace
 
 // clang-format off
 
@@ -115,8 +115,8 @@ struct Cache {
 } cache;
 
 u64 execute(void* ctxt) {
-  bool hit18 = false;
-  bool hit19 = false;
+  [[maybe_unused]] bool hit18 = false;
+  [[maybe_unused]] bool hit19 = false;
   auto pp = scoped_prof("blerc-exec");
   std::unique_lock<std::mutex> lk(g_merc_data_mutex);
   auto* c = (ExecutionContext*)ctxt;

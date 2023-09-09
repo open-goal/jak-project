@@ -39,7 +39,7 @@ void ReplServer::ping_response(int socket) {
                                  versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   auto resp = write_to_socket(socket, ping.c_str(), ping.size());
   if (resp == -1) {
-    lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, inet_ntoa(addr.sin_addr),
+    lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, address_to_string(addr),
              ntohs(addr.sin_port), socket);
     close_socket(socket);
     client_sockets.erase(socket);
@@ -80,7 +80,7 @@ std::optional<std::string> ReplServer::get_msg() {
     if (new_socket < 0) {
       // TODO - handle error
     } else {
-      lg::info("[nREPL:{}]: New socket connection: {}:{}:{}", tcp_port, inet_ntoa(addr.sin_addr),
+      lg::info("[nREPL:{}]: New socket connection: {}:{}:{}", tcp_port, address_to_string(addr),
                ntohs(addr.sin_port), new_socket);
 
       // Say hello
@@ -110,7 +110,7 @@ std::optional<std::string> ReplServer::get_msg() {
         // Socket disconnected
         // TODO - add a queue of messages in the REPL::Wrapper so we can print _BEFORE_ the prompt
         // is output
-        lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, inet_ntoa(addr.sin_addr),
+        lg::warn("[nREPL:{}] Client Disconnected: {}", tcp_port, address_to_string(addr),
                  ntohs(addr.sin_port), sock);
 
         // Cleanup the socket and remove it from our set

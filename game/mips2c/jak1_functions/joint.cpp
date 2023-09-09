@@ -2157,7 +2157,7 @@ namespace calc_animation_from_spr {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  [[maybe_unused]] u32 call_addr = 0;
   u32 madr, sadr, qwc;
   c->mov64(v1, a1);                                 // or v1, a1, r0
   c->daddiu(sp, sp, -192);                          // daddiu sp, sp, -192

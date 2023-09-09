@@ -6,7 +6,9 @@
 #include "common/global_profiler/GlobalProfiler.h"
 
 #include "game/graphics/gfx.h"
+#include "game/system/hid/sdl_util.h"
 
+#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_style.h"
 
@@ -106,19 +108,13 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Tools")) {
-      if (m_version == GameVersion::Jak1) {
-        ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
-      } else {
-        ImGui::MenuItem("Subtitle2 Editor", nullptr, &m_subtitle2_editor);
-      }
-
       if (ImGui::BeginMenu("Screenshot")) {
         ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
         ImGui::InputText("File", m_screenshot_save_name, 50);
         ImGui::InputInt("Width", &screenshot_width);
         ImGui::InputInt("Height", &screenshot_height);
         ImGui::InputInt("MSAA", &screenshot_samples);
-        ImGui::Checkbox("Screenshot on f2", &screenshot_hotkey_enabled);
+        ImGui::Checkbox("Screenshot on F2", &screenshot_hotkey_enabled);
         ImGui::EndMenu();
       }
       ImGui::MenuItem("Subtitle Editor", nullptr, &m_subtitle_editor);
@@ -168,6 +164,10 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       }
       ImGui::EndMenu();
     }
+    ImGui::Text("%s", fmt::format("Press {} to toggle this toolbar",
+                                  sdl_util::get_keyboard_button_name(
+                                      Gfx::g_debug_settings.hide_imgui_key, InputModifiers()))
+                          .c_str());
   }
   ImGui::EndMainMenuBar();
 

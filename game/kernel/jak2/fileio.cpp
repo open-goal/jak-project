@@ -96,12 +96,12 @@ char* MakeFileName(int type, const char* name, int new_string) {
     // GOAL object file, but containing data instead of code.
     // likely packed by a tool that isn't the GOAL compiler.
     // sprintf(buf, "%sfinal/%s.go", prefix, name);
-    sprintf(buf, "%sout/obj/%s.go", prefix, name);
+    sprintf(buf, "%sout/jak2/obj/%s.go", prefix, name);
   } else if (type == TX_PAGE_FILE_TYPE) {
     // Texture Page
     // part of level files, so it has a version number.
     // sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
-    sprintf(buf, "%sout/obj/%s.go", prefix, name);
+    sprintf(buf, "%sout/jak2/obj/%s.go", prefix, name);
   } else if (type == JA_FILE_TYPE) {
     // Art JA (joint animation? no idea)
     // part of level files, so it has a version number

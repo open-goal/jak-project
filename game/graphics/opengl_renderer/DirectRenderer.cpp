@@ -94,7 +94,6 @@ void DirectRenderer::render(DmaFollower& dma,
   pre_render();
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
-  setup_common_state(render_state);
 
   // just dump the DMA data into the other the render function
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -140,6 +139,13 @@ void DirectRenderer::reset_state() {
   m_stats = {};
 }
 
+void DirectRenderer::init_shaders(ShaderLibrary& sl) {
+  auto id = sl[ShaderId::DIRECT_BASIC_TEXTURED].id();
+  m_uniforms.alpha_min = glGetUniformLocation(id, "alpha_min");
+  m_uniforms.alpha_max = glGetUniformLocation(id, "alpha_max");
+  m_uniforms.normal_shader_id = id;
+}
+
 void DirectRenderer::draw_debug_window() {
   ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
   ImGui::SameLine();
@@ -182,6 +188,17 @@ float u32_to_sc(u32 in) {
   return (flt - 0.5) * 16.0;
 }
 
+void DirectRenderer::lookup_textures_again(SharedRenderState* render_state) {
+  for (int i = 0; i < TEXTURE_STATE_COUNT; i++) {
+    if (m_buffered_tex_state_currently_bound[i]) {
+      auto& tex_state = m_buffered_tex_state[i];
+      tex_state.used = true;
+      update_gl_texture(render_state, i);
+      tex_state.used = false;
+    }
+  }
+}
+
 void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // update opengl state
   if (m_blend_state_needs_gl_update) {
@@ -204,6 +221,9 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     if (tex_state.used) {
       update_gl_texture(render_state, i);
       tex_state.used = false;
+      m_buffered_tex_state_currently_bound[i] = true;
+    } else {
+      m_buffered_tex_state_currently_bound[i] = false;
     }
   }
   m_next_free_tex_state = 0;
@@ -252,8 +272,40 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
               game_height[render_state->version], viewport_size[2], viewport_size[3]);
 
   int draw_count = 0;
-  glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
-  draw_count++;
+  int num_tris = 0;
+
+  if (m_test_state_needs_double_draw && current_shader == m_uniforms.normal_shader_id) {
+    // this batch thing is a hack to make the sky in jak 2 draw correctly.
+    // This is the usual atest with FB_ONLY issue.
+    // we should check what pcsx2 does
+    int n_batch = m_prim_buffer.vert_count;
+    if (n_batch > 50 && n_batch < 700 && (n_batch % 2) == 0) {
+      n_batch = n_batch / 2;
+    } else {
+      // printf("not splitting batch %d\n", n_batch);
+    }
+    int offset = 0;
+    while (offset < m_prim_buffer.vert_count) {
+      glDepthMask(GL_TRUE);
+      glUniform1f(m_uniforms.alpha_min, m_double_draw_aref);
+      glUniform1f(m_uniforms.alpha_max, 10);
+      glDrawArrays(GL_TRIANGLES, offset, n_batch);
+      glDepthMask(GL_FALSE);
+      glUniform1f(m_uniforms.alpha_min, -10);
+      glUniform1f(m_uniforms.alpha_max, m_double_draw_aref);
+      glDrawArrays(GL_TRIANGLES, offset, n_batch);
+      offset += n_batch;
+      draw_count += 2;
+      num_tris += n_batch / 3;
+    }
+    m_test_state_needs_double_draw = false;
+    m_test_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
+  } else {
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    num_tris += m_prim_buffer.vert_count / 3;
+    draw_count++;
+  }
 
   if (m_debug_state.wireframe) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
@@ -268,10 +320,9 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
 
   glActiveTexture(GL_TEXTURE0);
   glBindVertexArray(0);
-  int n_tris = draw_count * (m_prim_buffer.vert_count / 3);
-  prof.add_tri(n_tris);
+  prof.add_tri(num_tris);
   prof.add_draw_call(draw_count);
-  m_stats.triangles += n_tris;
+  m_stats.triangles += num_tris;
   m_stats.draw_calls += draw_count;
   m_prim_buffer.vert_count = 0;
 }
@@ -280,14 +331,22 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
-    float alpha_reject = 0.0;
+    float alpha_min = 0.0;
+    float alpha_max = 10;
+    int greater = 0;
     if (m_test_state.alpha_test_enable) {
       switch (m_test_state.alpha_test) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-        case GsTest::AlphaTest::GREATER:  // todo
-          alpha_reject = m_test_state.aref / 128.f;
+          alpha_min = m_test_state.aref / 128.f;
+          m_double_draw_aref = alpha_min;
+          greater = 0;
+          break;
+        case GsTest::AlphaTest::GREATER:
+          alpha_min = (1 + m_test_state.aref) / 128.f;
+          m_double_draw_aref = alpha_min;
+          greater = 1;
           break;
         case GsTest::AlphaTest::NEVER:
           break;
@@ -298,8 +357,11 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
 
     render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
-                                     "alpha_reject"),
-                alpha_reject);
+                                     "alpha_min"),
+                alpha_min);
+    glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "alpha_max"),
+                alpha_max);
     glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "color_mult"),
                 m_ogl.color_mult);
@@ -313,6 +375,9 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
                                      "offscreen_mode"),
                 m_offscreen_mode);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                     "greater"),
+                greater);
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "ta0"),
         state.ta0 / 255.f);
@@ -475,6 +540,14 @@ void DirectRenderer::update_gl_test() {
   bool alpha_trick_to_disable = m_test_state.alpha_test_enable &&
                                 m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
                                 m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
+
+  if (m_test_state.afail == GsTest::AlphaFail::FB_ONLY ||
+      m_test_state.afail == GsTest::AlphaFail::RGB_ONLY) {
+    m_test_state_needs_double_draw = true;
+  } else {
+    m_test_state_needs_double_draw = false;
+  }
+
   if (state.depth_writes && !alpha_trick_to_disable) {
     glDepthMask(GL_TRUE);
   } else {
@@ -486,10 +559,6 @@ void DirectRenderer::update_gl_test() {
   } else {
     glColorMaski(0, GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
   }
-}
-
-void DirectRenderer::setup_common_state(SharedRenderState* /*render_state*/) {
-  // todo texture clamp.
 }
 
 namespace {
@@ -1165,8 +1234,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         auto& corner2_stq = m_prim_building.building_stq[1];
 
         // should use most recent vertex z.
-        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2]};
-        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2]};
+        math::Vector<u32, 4> corner3_vert{corner1_vert[0], corner2_vert[1], corner2_vert[2], 0};
+        math::Vector<u32, 4> corner4_vert{corner2_vert[0], corner1_vert[1], corner2_vert[2], 0};
         math::Vector<float, 3> corner3_stq{corner1_stq[0], corner2_stq[1], corner2_stq[2]};
         math::Vector<float, 3> corner4_stq{corner2_stq[0], corner1_stq[1], corner2_stq[2]};
 

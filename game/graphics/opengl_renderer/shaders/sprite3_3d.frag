@@ -1,10 +1,10 @@
-#version 430 core
+#version 410 core
 
 out vec4 color;
 
-in flat vec4 fragment_color;
+flat in vec4 fragment_color;
 in vec3 tex_coord;
-in flat uvec2 tex_info;
+flat in uvec2 tex_info;
 
 uniform sampler2D tex_T0;
 uniform float alpha_min;

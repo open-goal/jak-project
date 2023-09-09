@@ -57,13 +57,25 @@ void Wrapper::add_to_history(const std::string& line) {
 }
 
 void Wrapper::save_history() {
-  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  fs::path path;
+  if (repl_config.per_game_history) {
+    path = file_util::get_user_config_dir() / game_version_names[repl_config.game_version] /
+           ".opengoal.repl.history";
+  } else {
+    path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  }
   file_util::create_dir_if_needed_for_file(path.string());
   repl.history_save(path.string());
 }
 
 void Wrapper::load_history() {
-  fs::path path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  fs::path path;
+  if (repl_config.per_game_history) {
+    path = file_util::get_user_config_dir() / game_version_names[repl_config.game_version] /
+           ".opengoal.repl.history";
+  } else {
+    path = file_util::get_user_config_dir() / ".opengoal.repl.history";
+  }
   if (fs::exists(path)) {
     repl.history_load(path.string());
   } else {
@@ -150,6 +162,9 @@ void Wrapper::init_settings() {
   // NOTE - a nice popular project that uses replxx
   // - https://github.com/ClickHouse/ClickHouse/blob/master/base/base/ReplxxLineReader.cpp#L366
   repl.set_word_break_characters(" \t");
+  repl.set_complete_on_empty(false);
+  repl.set_indent_multiline(false);
+  repl.enable_bracketed_paste();
   // Setup default keybinds
   for (const auto& bind : repl_config.keybinds) {
     char32_t code;
@@ -167,8 +182,6 @@ void Wrapper::init_settings() {
     repl.bind_key(code, commit_text_action(bind.command));
   }
 }
-
-// TODO - command to print out keybinds
 
 void Wrapper::reload_startup_file() {
   startup_file = load_user_startup_file(username, repl_config.game_version);

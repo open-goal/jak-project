@@ -200,6 +200,7 @@ void add_ambients_from_json(const nlohmann::json& json,
   for (const auto& ambient_json : json) {
     auto& ambient = ambient_list.emplace_back();
     ambient.aid = ambient_json.value("aid", base_aid + ambient_list.size());
+    ambient.vis_id = ambient_json.value("vis_id", 0);
     ambient.trans = vectorm4_from_json(ambient_json.at("trans"));
     ambient.bsphere = vectorm4_from_json(ambient_json.at("bsphere"));
     if (ambient_json.find("lump") != ambient_json.end()) {

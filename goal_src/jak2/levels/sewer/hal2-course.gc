@@ -70,7 +70,7 @@
     (('notify)
      (case (-> arg3 param 0)
        (('jinx-bomb)
-        (logior! (-> obj bot-task-bits) 1)
+        (logior! (-> obj bot-task-bits) (bot-task-bits botbits-0))
         #t
         )
        (else
@@ -206,8 +206,8 @@
 (defmethod hal-sewer-method-230 hal-sewer ((obj hal-sewer) (arg0 process-focusable) (arg1 process-focusable))
   (when (and arg0 arg1)
     (let ((gp-0 (new 'stack-no-clear 'collide-query)))
-      (set! (-> gp-0 start-pos quad) (-> arg0 root-override trans quad))
-      (set! (-> gp-0 start-pos y) (+ 8192.0 (-> gp-0 start-pos y)))
+      (set! (-> gp-0 start-pos quad) (-> arg0 root trans quad))
+      (+! (-> gp-0 start-pos y) 8192.0)
       (vector-! (-> gp-0 move-dist) (get-trans arg1 3) (-> gp-0 start-pos))
       (let ((v1-5 gp-0))
         (set! (-> v1-5 radius) 2048.0)
@@ -325,7 +325,7 @@
                          )
                        )
                      (logclear! (-> obj bot-flags) (bot-flags bf22))
-                     (set! (-> obj bot-flags) (logior (bot-flags bf23) (-> obj bot-flags)))
+                     (logior! (-> obj bot-flags) (bot-flags bf23))
                      )
                    )
                  )
@@ -374,7 +374,7 @@
                     )
                   )
                 )
-              (set! (-> obj bot-flags) (logior (bot-flags bf22) (-> obj bot-flags)))
+              (logior! (-> obj bot-flags) (bot-flags bf22))
               )
             )
           )
@@ -426,17 +426,17 @@
                                    )
                              )
                         (cond
-                          ((not (logtest? (-> arg1 waypoint-bits) 1))
+                          ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
                            (when (and s3-0 s4-0 s5-0)
-                             (logior! (-> arg1 waypoint-bits) 1)
+                             (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                              (set! (-> arg1 slave-handle 0) (process->handle s3-0))
                              (set! (-> arg1 slave-handle 1) (process->handle s4-0))
                              (set! (-> arg1 slave-handle 2) (process->handle s5-0))
                              )
                            #f
                            )
-                          ((not (logtest? (-> arg1 waypoint-bits) 2))
-                           (logior! (-> arg1 waypoint-bits) 2)
+                          ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-1)))
+                           (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-1))
                            (hal-method-226 arg1)
                            (send-event s3-0 'request 'waypoint 2)
                            (send-event s4-0 'request 'waypoint 2)
@@ -484,7 +484,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 2
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
             (set! (-> v1-1 bytes 5) 1)
@@ -535,7 +535,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 3
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (play-speech arg0 0)
           (let ((v1-3 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
@@ -589,7 +589,7 @@
                            (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
                            #t
                            )
-                          ((and (>= (- (-> (target-pos 0) x) (-> arg1 root-override2 trans x)) -65536.0)
+                          ((and (>= (- (-> (target-pos 0) x) (-> arg1 root trans x)) -65536.0)
                                 (or (not s3-0) (>= (the-as int (send-event s3-0 'query 'waypoint)) 3))
                                 (or (not s4-0) (>= (the-as int (send-event s4-0 'query 'waypoint)) 3))
                                 (or (not s5-0) (>= (the-as int (send-event s5-0 'query 'waypoint)) 3))
@@ -614,7 +614,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 4
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (if (not (logtest? (bot-flags bf19 bf20 bf21) (-> arg0 bot-flags)))
               (play-speech arg0 1)
@@ -1548,7 +1548,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 23
         :nav-mesh-index -1
-        :skip-to #x1d
+        :skip-to 29
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1610,7 +1610,7 @@
                     (the-as
                       (function halt-wait-spot hal symbol)
                       (lambda ((arg0 object) (arg1 hal-sewer)) (cond
-                                                                 ((logtest? (-> arg1 bot-task-bits) 1)
+                                                                 ((logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-0))
                                                                   (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
                                                                   (go-to-waypoint! arg1 24 #f)
                                                                   (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
@@ -1733,7 +1733,7 @@
                                  )
                             (play-speech arg1 28)
                             )
-                        (when (logtest? (-> arg1 bot-task-bits) 2)
+                        (when (logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-1))
                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
                           (go-to-waypoint! arg1 25 #f)
                           (ai-task-control-method-10 (-> arg1 ai-ctrl) arg1)
@@ -1826,7 +1826,7 @@
                           (cond
                             ((>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 1.5))
                              (cond
-                               ((logtest? (-> arg1 waypoint-bits) 1)
+                               ((logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                                 (when (and (not (speech-playing? arg1 29)) (not (speech-playing? arg1 30)))
                                   (if (zero? (get-rand-int arg1 2))
                                       (play-speech arg1 29)
@@ -1846,7 +1846,7 @@
                             (else
                               (let ((a0-11 *target*))
                                 (if (and a0-11 (focus-test? a0-11 hit))
-                                    (logior! (-> arg1 waypoint-bits) 1)
+                                    (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                                     )
                                 )
                               )
@@ -2304,7 +2304,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 29
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (play-speech arg0 39)
@@ -2439,7 +2439,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 35
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -2607,7 +2607,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 37
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (let ((v1-1 (get-task-by-type (-> arg0 ai-ctrl) halt-wait-spot arg0)))
             (set! (-> v1-1 bytes 5) 1)
@@ -2642,9 +2642,9 @@
                           (play-speech arg1 48)
                           )
                         (when (or (>= (-> (target-pos 0) x) 5207572.5)
-                                  (>= (-> (the-as process-focusable s3-0) root-override trans x) 5120000.0)
-                                  (>= (-> (the-as process-focusable s4-0) root-override trans x) 5120000.0)
-                                  (>= (-> (the-as process-focusable s5-0) root-override trans x) 5120000.0)
+                                  (>= (-> (the-as process-focusable s3-0) root trans x) 5120000.0)
+                                  (>= (-> (the-as process-focusable s4-0) root trans x) 5120000.0)
+                                  (>= (-> (the-as process-focusable s5-0) root trans x) 5120000.0)
                                   )
                           (ai-task-control-method-12 (-> arg1 ai-ctrl) arg1)
                           (go-to-waypoint! arg1 41 #f)
@@ -2665,7 +2665,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 41
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (let ((a0-1 (-> arg0 actor-group 0 data 18 actor)))
@@ -2727,9 +2727,9 @@
                               (play-speech arg1 52)
                               )
                           (cond
-                            ((not (logtest? (-> arg1 waypoint-bits) 1))
+                            ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0)))
                              (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.5))
-                               (logior! (-> arg1 waypoint-bits) 1)
+                               (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                                (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
                                  (set! (-> a1-5 from) (process->ppointer pp))
                                  (set! (-> a1-5 num-params) 0)
@@ -2752,9 +2752,9 @@
                                )
                              #f
                              )
-                            ((not (logtest? (-> arg1 waypoint-bits) 2))
+                            ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-1)))
                              (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 4))
-                               (logior! (-> arg1 waypoint-bits) 2)
+                               (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-1))
                                (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
                                  (set! (-> a1-10 from) (process->ppointer pp))
                                  (set! (-> a1-10 num-params) 0)
@@ -2773,9 +2773,9 @@
                                )
                              #f
                              )
-                            ((not (logtest? (-> arg1 waypoint-bits) 4))
+                            ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-2)))
                              (when (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 5))
-                               (logior! (-> arg1 waypoint-bits) 4)
+                               (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-2))
                                (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
                                  (set! (-> a1-11 from) (process->ppointer pp))
                                  (set! (-> a1-11 num-params) 0)
@@ -2833,7 +2833,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 42
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (if (zero? (get-rand-int arg0 2))
@@ -2931,12 +2931,12 @@
       (new 'static 'bot-waypoint
         :waypoint-id 43
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (logclear! (-> arg0 bot-flags) (bot-flags bf24))
             (reset-warn-time! arg0)
-            (if (and (not (logtest? (-> arg0 bot-task-bits) 16)) (not (hal-sewer-method-231 arg0 24)))
+            (if (and (not (logtest? (-> arg0 bot-task-bits) (bot-task-bits botbits-4))) (not (hal-sewer-method-231 arg0 24)))
                 (play-speech arg0 55)
                 )
             (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
@@ -2969,7 +2969,7 @@
                           (return #t)
                           )
                         (cond
-                          ((logtest? (-> arg1 bot-task-bits) 20)
+                          ((logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-2 botbits-4))
                            (logclear! (-> arg1 bot-flags) (bot-flags bf24))
                            (reset-warn-time! arg1)
                            (set! (-> arg1 waypoint-time0) (current-time))
@@ -3008,7 +3008,7 @@
                                    (play-speech arg1 (-> a1-14 v1-55))
                                    )
                                   (else
-                                    (set! (-> arg1 bot-flags) (logior (bot-flags bf24) (-> arg1 bot-flags)))
+                                    (logior! (-> arg1 bot-flags) (bot-flags bf24))
                                     )
                                   )
                                 )
@@ -3030,7 +3030,7 @@
       (new 'static 'bot-waypoint
         :waypoint-id 44
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -3155,12 +3155,12 @@
       (new 'static 'bot-waypoint
         :waypoint-id 47
         :nav-mesh-index -1
-        :skip-to #x30
+        :skip-to 48
         :on-set (lambda ((arg0 hal-sewer))
           (with-pp
             (logclear! (-> arg0 bot-flags) (bot-flags bf24))
             (reset-warn-time! arg0)
-            (if (and (not (logtest? (-> arg0 bot-task-bits) 32)) (not (hal-sewer-method-231 arg0 27)))
+            (if (and (not (logtest? (-> arg0 bot-task-bits) (bot-task-bits botbits-5))) (not (hal-sewer-method-231 arg0 27)))
                 (play-speech arg0 62)
                 )
             (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
@@ -3193,7 +3193,7 @@
                           (return #t)
                           )
                         (cond
-                          ((logtest? (-> arg1 bot-task-bits) 40)
+                          ((logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-3 botbits-5))
                            (logclear! (-> arg1 bot-flags) (bot-flags bf24))
                            (reset-warn-time! arg1)
                            (set! (-> arg1 waypoint-time0) (current-time))
@@ -3229,7 +3229,7 @@
                                    )
                                   (else
                                     (if (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 20))
-                                        (set! (-> arg1 bot-flags) (logior (bot-flags bf24) (-> arg1 bot-flags)))
+                                        (logior! (-> arg1 bot-flags) (bot-flags bf24))
                                         )
                                     )
                                   )
@@ -3300,8 +3300,10 @@
                                              )
                                          )
                                    )
-                              (when (and (logtest? (-> arg1 waypoint-bits) 1) (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.25)))
-                                (set! (-> arg1 waypoint-bits) (logand -2 (-> arg1 waypoint-bits)))
+                              (when (and (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
+                                         (>= (- (current-time) (-> arg1 waypoint-time0)) (seconds 0.25))
+                                         )
+                                (logclear! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                                 (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
                                   (set! (-> a1-1 from) (process->ppointer pp))
                                   (set! (-> a1-1 num-params) 0)
@@ -3483,9 +3485,7 @@
                                            )
                                      )
                                 (if (and s4-1
-                                         (>= 65536.0
-                                             (vector-vector-xz-distance (target-pos 0) (-> (the-as process-focusable s4-1) root-override trans))
-                                             )
+                                         (>= 65536.0 (vector-vector-xz-distance (target-pos 0) (-> (the-as process-focusable s4-1) root trans)))
                                          )
                                     (play-speech arg1 67)
                                     )
@@ -3536,7 +3536,7 @@
             (send-event s4-0 'skip)
             (send-event s3-0 'skip)
             )
-          (logior! (-> arg0 waypoint-bits) 1)
+          (logior! (-> arg0 waypoint-bits) (waypoint-bits wabits-0))
           (none)
           )
         :check-too-far 'hal2-default-check-too-far
@@ -3690,7 +3690,7 @@
                                    )
                                (if (>= a1-8 0)
                                    (play-speech arg1 a1-8)
-                                   (set! (-> arg1 bot-flags) (logior (bot-flags bf24) (-> arg1 bot-flags)))
+                                   (logior! (-> arg1 bot-flags) (bot-flags bf24))
                                    )
                                )
                              )
@@ -3937,15 +3937,9 @@
                                (play-speech arg1 76)
                                )
                               (else
-                                (when (and (>= (vector4-dot (-> (the-as process-focusable s3-0) root-override trans) (the-as vector (-> arg1 test-plane)))
-                                               0.0
-                                               )
-                                           (>= (vector4-dot (-> (the-as process-focusable s4-0) root-override trans) (the-as vector (-> arg1 test-plane)))
-                                               0.0
-                                               )
-                                           (>= (vector4-dot (-> (the-as process-focusable s5-0) root-override trans) (the-as vector (-> arg1 test-plane)))
-                                               0.0
-                                               )
+                                (when (and (>= (vector4-dot (-> (the-as process-focusable s3-0) root trans) (the-as vector (-> arg1 test-plane))) 0.0)
+                                           (>= (vector4-dot (-> (the-as process-focusable s4-0) root trans) (the-as vector (-> arg1 test-plane))) 0.0)
+                                           (>= (vector4-dot (-> (the-as process-focusable s5-0) root trans) (the-as vector (-> arg1 test-plane))) 0.0)
                                            )
                                   (let ((a0-18 *target*))
                                     (when (and a0-18
@@ -4134,8 +4128,8 @@
       (new 'static 'bot-speech-info :hold-time #x5a :name "hal114")
       )
     :speech-tunings (new 'static 'inline-array bot-speech-tuning 2
-      (new 'static 'bot-speech-tuning :fo-min 10 :fo-max 70 :fo-curve #xb :trans? #t)
-      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x96 :fo-curve #xb :trans? #t)
+      (new 'static 'bot-speech-tuning :fo-min 10 :fo-max 70 :fo-curve 11 :trans? #t)
+      (new 'static 'bot-speech-tuning :fo-min 30 :fo-max #x96 :fo-curve 11 :trans? #t)
       )
     :dirs (new 'static 'inline-array vector 8
       (new 'static 'vector :x 1.0 :w 1.0)

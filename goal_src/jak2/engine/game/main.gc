@@ -90,24 +90,10 @@
   "Draw blackout over the whole screen.
    This isn't used - instead they adjust some GS setting to fade the whole
    screen to black, which is much faster than drawing over the entire screen."
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
-         (gp-0 (-> s5-0 base))
-         )
+  (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id debug-no-zbuf2)
+                               )
     (draw-sprite2d-xy-absolute s5-0 0 0 512 416 (new 'static 'rgba :a #x80))
-    (let ((a3-1 (-> s5-0 base)))
-      (let ((v1-6 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-6) 16))
-        )
-      (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) bucket-group)
-        (bucket-id debug-no-zbuf2)
-        gp-0
-        (the-as (pointer dma-tag) a3-1)
-        )
-      )
     )
   (none)
   )
@@ -390,7 +376,6 @@
   (none)
   )
 
-
 (define *cheat-temp* (the-as (pointer int32) (malloc 'global 20)))
 (define *master-exit* #f)
 (define *progress-cheat* #f)
@@ -399,684 +384,76 @@
 (defun main-cheats ()
   (when (and (cpad-hold? 0 l3) (or *cheat-mode* (not (demo?))))
     ((lambda ()
-       (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-         (let ((v1-5 (-> *cheat-temp* 0)))
-           (cond
-             ((zero? v1-5)
-              (cond
-                ((cpad-pressed? 0 up)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 1)
-              (cond
-                ((cpad-pressed? 0 up)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 2)
-              (cond
-                ((cpad-pressed? 0 down)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 3)
-              (cond
-                ((cpad-pressed? 0 down)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 4)
-              (cond
-                ((cpad-pressed? 0 left)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 5)
-              (cond
-                ((cpad-pressed? 0 right)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 6)
-              (cond
-                ((cpad-pressed? 0 left)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 7)
-              (cond
-                ((cpad-pressed? 0 right)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 8)
-              (cond
-                ((cpad-pressed? 0 x)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 9)
-              (cond
-                ((cpad-pressed? 0 x)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 10)
-              (cond
-                ((cpad-pressed? 0 square)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 11)
-              (cond
-                ((cpad-pressed? 0 circle)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 12)
-              (cond
-                ((cpad-pressed? 0 square)
-                 (+! (-> *cheat-temp* 0) 1)
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             ((= v1-5 13)
-              (cond
-                ((cpad-pressed? 0 circle)
-                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-                 (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
-                 (set! *cheat-mode* (not *cheat-mode*))
-                 (if *cheat-mode*
-                     (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                     (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                     )
-                 (set! (-> *cheat-temp* 0) 0)
-                 0
-                 )
-                (else
-                  (set! (-> *cheat-temp* 0) 0)
-                  0
-                  )
-                )
-              )
-             )
-           )
-         )
+        (check-cheat-code (-> *cheat-temp* 0) 0
+            (up up down down left right left right x x square circle square circle)
+              (cpad-clear! 0 r1)
+              ;; toggle!
+              (not! *cheat-mode*)
+              (cheats-sound-play *cheat-mode*)
+            )
        (when *cheat-mode*
-         (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-           (let ((v1-146 (-> *cheat-temp* 1)))
-             (cond
-               ((zero? v1-146)
-                (cond
-                  ((cpad-pressed? 0 circle)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 1)
-                (cond
-                  ((cpad-pressed? 0 square)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 2)
-                (cond
-                  ((cpad-pressed? 0 circle)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 3)
-                (cond
-                  ((cpad-pressed? 0 square)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 4)
-                (cond
-                  ((cpad-pressed? 0 x)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 5)
-                (cond
-                  ((cpad-pressed? 0 x)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 6)
-                (cond
-                  ((cpad-pressed? 0 right)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 7)
-                (cond
-                  ((cpad-pressed? 0 left)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 8)
-                (cond
-                  ((cpad-pressed? 0 right)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 9)
-                (cond
-                  ((cpad-pressed? 0 left)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 10)
-                (cond
-                  ((cpad-pressed? 0 down)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 11)
-                (cond
-                  ((cpad-pressed? 0 down)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 12)
-                (cond
-                  ((cpad-pressed? 0 up)
-                   (+! (-> *cheat-temp* 1) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-146 13)
-                (cond
-                  ((cpad-pressed? 0 up)
-                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
-                   (set! *cheat-mode* (if (= *cheat-mode* 'debug)
-                                          #t
-                                          'debug
-                                          )
-                         )
-                   (if (= *cheat-mode* 'debug)
-                       (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       )
-                   (set! (-> *cheat-temp* 1) 0)
-                   0
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 1) 0)
-                    0
-                    )
-                  )
-                )
-               )
-             )
-           )
-         )
+          (check-cheat-code (-> *cheat-temp* 1) 0
+              (circle square circle square x x right left right left down down up up)
+                (cpad-clear! 0 r1)
+                (set! *cheat-mode* (if (= *cheat-mode* 'debug)
+                                      #t
+                                      'debug
+                                      )
+                      )
+                (cheats-sound-play *cheat-mode*)
+              )
+          )
        (none)
        )
      )
     ((lambda ()
        (case (scf-get-territory)
-         ((2)
-          (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-            (let ((v1-7 (-> *cheat-temp* 2)))
-              (cond
-                ((zero? v1-7)
-                 (cond
-                   ((cpad-pressed? 0 l1)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 1)
-                 (cond
-                   ((cpad-pressed? 0 r1)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 2)
-                 (cond
-                   ((cpad-pressed? 0 l1)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 3)
-                 (cond
-                   ((cpad-pressed? 0 r1)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 4)
-                 (cond
-                   ((cpad-pressed? 0 triangle)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 5)
-                 (cond
-                   ((cpad-pressed? 0 circle)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 6)
-                 (cond
-                   ((cpad-pressed? 0 x)
-                    (+! (-> *cheat-temp* 2) 1)
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                ((= v1-7 7)
-                 (cond
-                   ((cpad-pressed? 0 square)
-                    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-                    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
-                    (set! *progress-cheat* (if *progress-cheat*
-                                               #f
-                                               'language
-                                               )
-                          )
-                    (if *progress-cheat*
-                        (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                        (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                        )
-                    (set! (-> *cheat-temp* 2) 0)
-                    0
-                    )
-                   (else
-                     (set! (-> *cheat-temp* 2) 0)
-                     0
-                     )
-                   )
-                 )
-                )
+         ((GAME_TERRITORY_SCEI)
+          (check-cheat-code (-> *cheat-temp* 2) 0
+              (l1 r1 l1 r1 triangle circle x square)
+                (cpad-clear! 0 r1)
+                (set! *progress-cheat* (if *progress-cheat*
+                                            #f
+                                            'language
+                                            )
+                      )
+                (cheats-sound-play *progress-cheat*)
               )
-            )
           )
          )
        (when *debug-segment*
-         (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-           (let ((v1-95 (-> *cheat-temp* 3)))
-             (cond
-               ((zero? v1-95)
+          (check-cheat-code (-> *cheat-temp* 3) 0
+              (x square triangle circle x square triangle circle)
+                (cpad-clear! 0 r1)
+                (set! *progress-cheat* (if *progress-cheat*
+                                            #f
+                                            'pal
+                                            )
+                      )
+                (cheats-sound-play *progress-cheat*)
+              )
+          (check-cheat-code (-> *cheat-temp* 4) 1 ;; note : this erroneously uses (-> *cheat-temp* 5) in the original game
+              (triangle x circle square triangle x circle square)
+                (cpad-clear! 0 r1)
+                (set! *cheat-mode* (if (= *cheat-mode* 'camera)
+                                      #f
+                                      'camera
+                                      )
+                      )
                 (cond
-                  ((cpad-pressed? 0 x)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
+                  (*cheat-mode*
+                    (if (not *external-cam-mode*)
+                        (external-cam-reset!)
+                        )
+                    (set! *external-cam-mode* 'pad-1)
+                    (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
+                    )
                   (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
+                    (set! *external-cam-mode* #f)
+                    (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
                     )
                   )
-                )
-               ((= v1-95 1)
-                (cond
-                  ((cpad-pressed? 0 square)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 2)
-                (cond
-                  ((cpad-pressed? 0 triangle)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 3)
-                (cond
-                  ((cpad-pressed? 0 circle)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 4)
-                (cond
-                  ((cpad-pressed? 0 x)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 5)
-                (cond
-                  ((cpad-pressed? 0 square)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 6)
-                (cond
-                  ((cpad-pressed? 0 triangle)
-                   (+! (-> *cheat-temp* 3) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-95 7)
-                (cond
-                  ((cpad-pressed? 0 circle)
-                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
-                   (set! *progress-cheat* (if *progress-cheat*
-                                              #f
-                                              'pal
-                                              )
-                         )
-                   (if *progress-cheat*
-                       (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       )
-                   (set! (-> *cheat-temp* 3) 0)
-                   0
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 3) 0)
-                    0
-                    )
-                  )
-                )
-               )
-             )
-           )
-         (when (nonzero? (-> *cpad-list* cpads 1 button0-rel 0))
-           (let ((v1-181 (-> *cheat-temp* 5)))
-             (cond
-               ((zero? v1-181)
-                (cond
-                  ((cpad-pressed? 1 triangle)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 1)
-                (cond
-                  ((cpad-pressed? 1 x)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 2)
-                (cond
-                  ((cpad-pressed? 1 circle)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 3)
-                (cond
-                  ((cpad-pressed? 1 square)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 4)
-                (cond
-                  ((cpad-pressed? 1 triangle)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 5)
-                (cond
-                  ((cpad-pressed? 1 x)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 6)
-                (cond
-                  ((cpad-pressed? 1 circle)
-                   (+! (-> *cheat-temp* 5) 1)
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               ((= v1-181 7)
-                (cond
-                  ((cpad-pressed? 1 square)
-                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
-                   (set! *cheat-mode* (if (= *cheat-mode* 'camera)
-                                          #f
-                                          'camera
-                                          )
-                         )
-                   (cond
-                     (*cheat-mode*
-                       (if (not *external-cam-mode*)
-                           (external-cam-reset!)
-                           )
-                       (set! *external-cam-mode* 'pad-1)
-                       (sound-play-by-spec (static-sound-spec "menu-pick" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       )
-                     (else
-                       (set! *external-cam-mode* #f)
-                       (sound-play-by-spec (static-sound-spec "menu-back" :fo-curve 1) (new-sound-id) (the-as vector #t))
-                       )
-                     )
-                   (set! (-> *cheat-temp* 5) 0)
-                   0
-                   )
-                  (else
-                    (set! (-> *cheat-temp* 5) 0)
-                    0
-                    )
-                  )
-                )
-               )
-             )
-           )
+              )
          )
        (none)
        )
@@ -1086,30 +463,29 @@
       ((lambda ()
          (cond
            ((cpad-pressed? 1 x)
-            (send-event *target* 'get-pickup 13 #x447a0000)
-            (send-event *target* 'get-pickup 14 #x447a0000)
-            (send-event *target* 'get-pickup 15 #x447a0000)
-            (send-event *target* 'get-pickup 16 #x447a0000)
-            (send-event *target* 'get-pickup 7 #x447a0000)
-            (send-event *target* 'get-pickup 22 #x447a0000)
-            (send-event *target* 'get-pickup 21 #x447a0000)
-            (set! (-> *game-info* features)
-                  (logior (game-feature
-                            gun
-                            gun-yellow
-                            gun-red
-                            gun-blue
-                            gun-dark
-                            board
-                            darkjak
-                            darkjak-bomb0
-                            darkjak-bomb1
-                            darkjak-invinc
-                            darkjak-giant
-                            )
-                          (-> *game-info* features)
-                          )
-                  )
+            (send-event *target* 'get-pickup (pickup-type ammo-yellow) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type ammo-red) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type ammo-blue) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type ammo-dark) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type eco-pill-dark) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type skill) 1000.0)
+            (send-event *target* 'get-pickup (pickup-type gem) 1000.0)
+            (logior!
+              (-> *game-info* features)
+              (game-feature
+                gun
+                gun-yellow
+                gun-red
+                gun-blue
+                gun-dark
+                board
+                darkjak
+                darkjak-bomb0
+                darkjak-bomb1
+                darkjak-invinc
+                darkjak-giant
+                )
+              )
             (logior!
               (-> *game-info* debug-features)
               (game-feature gun gun-yellow gun-red gun-blue gun-dark board darkjak)
@@ -1221,24 +597,23 @@
           (else
             (when (process-spawn-function
                     process
-                    (lambda ((arg0 time-frame)) (with-pp
-                                                  (set-blackout-frames (seconds 100))
-                                                  (set! (-> *setting-control* user-default allow-pause) #f)
-                                                  (set! (-> *setting-control* user-default allow-progress) #f)
-                                                  (apply-settings *setting-control*)
-                                                  (set! (-> *setting-control* user-default sfx-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default music-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default dialog-volume) 0.0)
-                                                  (set! (-> *setting-control* user-default ambient-volume) 0.0)
-                                                  (let ((s5-0 (current-time)))
-                                                    (until (>= (- (current-time) s5-0) (seconds 0.1))
-                                                      (suspend)
-                                                      )
-                                                    )
-                                                  (kernel-shutdown)
-                                                  (none)
-                                                  )
-                            )
+                    (lambda ((arg0 time-frame))
+                      (set-blackout-frames (seconds 100))
+                      (set! (-> *setting-control* user-default allow-pause) #f)
+                      (set! (-> *setting-control* user-default allow-progress) #f)
+                      (apply-settings *setting-control*)
+                      (set! (-> *setting-control* user-default sfx-volume) 0.0)
+                      (set! (-> *setting-control* user-default music-volume) 0.0)
+                      (set! (-> *setting-control* user-default dialog-volume) 0.0)
+                      (set! (-> *setting-control* user-default ambient-volume) 0.0)
+                      (let ((s5-0 (current-time)))
+                        (until (>= (- (current-time) s5-0) (seconds 0.1))
+                          (suspend)
+                          )
+                        )
+                      (kernel-shutdown)
+                      (none)
+                      )
                     (if (= *master-exit* 'movie)
                         2
                         1
@@ -1315,6 +690,7 @@
                             (region-tree (-> region-trees tree-i))
                             )
                       (while (< tree-i s3-5)
+                        (let ((tree-name (-> region-tree name)))
                         (let* ((s0-4 (-> region-tree data2 (+ (-> region-tree length) -1) length))
                                 (i 0)
                                 (region (-> (the-as drawable-inline-array-region-prim (-> region-tree data2 (+ (-> region-tree length) -1))) data i))
@@ -1323,10 +699,10 @@
                             (let ((draw? #f))
                               (when (and *display-region-inside* (region-method-9 (-> region region) (target-pos 0)))
                                 (true! draw?)
-                                (format *stdcon* "~1kinside region-~D (~A)~%" (-> region region id) (-> lev name)))
+                                (format *stdcon* "~1kinside region-~D [~A] (l: ~A)~%" (-> region region id) tree-name (-> lev name)))
                               (when (and *region-debug-inspect* (or (= *region-debug-inspect* region) (and *merge-region-prims* (= (-> region region id) (-> *region-debug-inspect* region id)))))
                                 (when (= *region-debug-inspect* region)
-                                  (format *stdcon* "~1kinspecting region-~D (~A)~%" (-> *region-debug-inspect* region id) (-> lev name))
+                                  (format *stdcon* "~1kinspecting region-~D [~A] (l: ~A)~%" (-> *region-debug-inspect* region id) tree-name (-> lev name))
                                   (format *stdcon* "  on-enter: ~A~%" (-> *region-debug-inspect* region on-enter))
                                   (format *stdcon* "  on-inside: ~A~%" (-> *region-debug-inspect* region on-inside))
                                   (format *stdcon* "  on-exit: ~A~%" (-> *region-debug-inspect* region on-exit))
@@ -1334,10 +710,12 @@
                                 (true! draw?)
                                 )
                               (when draw?
+                                (set! *debug-region-color-alt* (= tree-name 'camera))
                                 (debug-draw-region region 0)))
                             (set! i (+ i 1))
                             (set! region (-> (the-as drawable-inline-array-region-prim (-> region-tree data2 (+ (-> region-tree length) -1))) data i))
                             )
+                          )
                           )
                         (+! tree-i 1)
                         (set! region-tree (-> region-trees tree-i))
@@ -1476,6 +854,10 @@
   (local-vars (a0-94 int) (a0-96 int))
   (with-pp
 
+    ;; added for PC port : increment this to invalidate some weird task-control caches
+    (#when PC_PORT
+      (1+! (-> *game-info* task-counter)))
+
     ; ;; LOAD LEVEL
     (if (-> *level* loading-level)
         (load-continue (-> *level* loading-level))
@@ -1483,11 +865,7 @@
 
     ; ;; Run blerc to modify foreground models
     (with-profiler 'merc *profile-merc-color*
-      ;; with FP blerc, the vertices are modified in the PC renderer, so we can just skip
-      ;; this call to save time.
-      (unless *use-fp-blerc*
-        (blerc-execute)
-        )
+      (blerc-execute)
       (blerc-init)
       )
 
@@ -1708,12 +1086,9 @@
     (set! *teleport* #t)
     (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
-    (format 0 "about to display-sync~%")
     (display-sync gp-1)
-    (format 0 "about to swap-display~%")
     (swap-display gp-1)
-    (format 0 "about to install-handler~%")
-    (install-handler 3 vblank-handler) ;; TODO: this never gets called.
+    (install-handler 3 vblank-handler)
     (free-nodes *touching-list*)
     (prepare *collide-rider-pool*)
     (update-actor-hash)
@@ -1763,7 +1138,6 @@
                                        )
                                      )
           )
-    (format 0 "SKIP: level activation in on~%")
     (cond
       ((or (level-get-with-status *level* 'loaded)
            (level-get-with-status *level* 'alive)

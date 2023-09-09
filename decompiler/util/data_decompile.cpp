@@ -1235,8 +1235,8 @@ goos::Object decompile_structure(const TypeSpec& type,
                     fmt::format("Failed to decompile: looking at field {} (from {}) with type {}",
                                 field.name(), type_info->get_name(), field.type().print()));
               }
-              field_defs_out.emplace_back(field.name(),
-                                          decompile_value(field.type(), bytes_out, ts));
+              field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts,
+                                                                        field.decomp_as_type()));
             }
           }
         }
@@ -1517,7 +1517,8 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
 
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
-                             const TypeSystem& ts) {
+                             const TypeSystem& ts,
+                             const std::optional<TypeSpec> decomp_as_type) {
   auto as_enum = ts.try_enum_lookup(type);
   if (as_enum) {
     ASSERT((int)bytes.size() == as_enum->get_load_size());
@@ -1566,93 +1567,107 @@ goos::Object decompile_value(const TypeSpec& type,
     }
   }
 
+  const auto& output_type = decomp_as_type ? *decomp_as_type : type;
   // try as common integer types:
+  auto print_int = [](s64 val, bool is_signed, const TypeSpec& ts, s64 hex_cutoff = 100) {
+    if (ts == TypeSpec("seconds") || ts == TypeSpec("time-frame")) {
+      return pretty_print::to_symbol(
+          fmt::format("(seconds {})", fixed_point_to_string(val, TICKS_PER_SECOND)));
+    } else if (!is_signed || val > hex_cutoff) {
+      return pretty_print::to_symbol(fmt::format("#x{:x}", u64(val)));
+    } else {
+      return pretty_print::to_symbol(fmt::format("{}", val));
+    }
+  };
+  auto print_float = [](double val, const TypeSpec& ts) {
+    if (ts == TypeSpec("meters")) {
+      double meters = val / METER_LENGTH;
+      auto rep = pretty_print::float_representation(meters);
+      if (rep.print().find("the-as") != std::string::npos) {
+        return rep;
+      } else {
+        return pretty_print::to_symbol(fmt::format("(meters {})", meters_to_string(val)));
+      }
+    } else if (ts == TypeSpec("degrees")) {
+      double degrees = val / DEGREES_LENGTH;
+      auto rep = pretty_print::float_representation(degrees);
+      if (rep.print().find("the-as") != std::string::npos) {
+        return rep;
+      } else {
+        return pretty_print::to_symbol(fmt::format("(degrees {})", degrees_to_string(val)));
+      }
+    } else if (ts == TypeSpec("fsec")) {
+      double seconds = val / TICKS_PER_SECOND;
+      auto rep = pretty_print::float_representation(seconds);
+      if (rep.print().find("the-as") != std::string::npos) {
+        return rep;
+      } else {
+        return pretty_print::to_symbol(fmt::format("(fsec {})", float_to_string(seconds, false)));
+      }
+    } else {
+      return pretty_print::float_representation(val);
+    }
+  };
   if (ts.tc(TypeSpec("uint32"), type)) {
     ASSERT(bytes.size() == 4);
     u32 value;
     memcpy(&value, bytes.data(), 4);
-    return pretty_print::to_symbol(fmt::format("#x{:x}", u64(value)));
+    return print_int(value, false, output_type);
   } else if (ts.tc(TypeSpec("int32"), type)) {
     ASSERT(bytes.size() == 4);
     s32 value;
     memcpy(&value, bytes.data(), 4);
-    if (value > 100) {
-      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-    } else {
-      return pretty_print::to_symbol(fmt::format("{}", value));
-    }
+    return print_int(value, true, output_type);
   } else if (ts.tc(TypeSpec("uint16"), type)) {
     ASSERT(bytes.size() == 2);
     u16 value;
     memcpy(&value, bytes.data(), 2);
-    return pretty_print::to_symbol(fmt::format("#x{:x}", u64(value)));
+    return print_int(value, false, output_type);
   } else if (ts.tc(TypeSpec("int16"), type)) {
     ASSERT(bytes.size() == 2);
     s16 value;
     memcpy(&value, bytes.data(), 2);
-    if (value > 100) {
-      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-    } else {
-      return pretty_print::to_symbol(fmt::format("{}", value));
-    }
-  } else if (ts.tc(TypeSpec("int8"), type)) {
-    ASSERT(bytes.size() == 1);
-    s8 value;
-    memcpy(&value, bytes.data(), 1);
-    if (value > 5) {
-      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-    } else {
-      return pretty_print::to_symbol(fmt::format("{}", value));
-    }
-  } else if (type == TypeSpec("seconds") || type == TypeSpec("time-frame")) {
-    ASSERT(bytes.size() == 8);
-    s64 value;
-    memcpy(&value, bytes.data(), 8);
-
-    return pretty_print::to_symbol(
-        fmt::format("(seconds {})", fixed_point_to_string(value, TICKS_PER_SECOND)));
-  } else if (ts.tc(TypeSpec("uint64"), type)) {
-    ASSERT(bytes.size() == 8);
-    u64 value;
-    memcpy(&value, bytes.data(), 8);
-    return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-  } else if (ts.tc(TypeSpec("int64"), type)) {
-    ASSERT(bytes.size() == 8);
-    s64 value;
-    memcpy(&value, bytes.data(), 8);
-    if (value > 100) {
-      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-    } else {
-      return pretty_print::to_symbol(fmt::format("{}", value));
-    }
-  } else if (type == TypeSpec("meters")) {
-    ASSERT(bytes.size() == 4);
-    float value;
-    memcpy(&value, bytes.data(), 4);
-    double meters = (double)value / METER_LENGTH;
-    auto rep = pretty_print::float_representation(meters);
-    if (rep.print().find("the-as") != std::string::npos) {
-      return rep;
-      // return pretty_print::build_list("the-as", "meters", rep);
-    } else {
-      return pretty_print::to_symbol(fmt::format("(meters {})", meters_to_string(value)));
-    }
-  } else if (type == TypeSpec("degrees")) {
-    ASSERT(bytes.size() == 4);
-    float value;
-    memcpy(&value, bytes.data(), 4);
-    double degrees = (double)value / DEGREES_LENGTH;
-    return pretty_print::build_list("degrees", pretty_print::float_representation(degrees));
-  } else if (ts.tc(TypeSpec("float"), type)) {
-    ASSERT(bytes.size() == 4);
-    float value;
-    memcpy(&value, bytes.data(), 4);
-    return pretty_print::float_representation(value);
+    return print_int(value, true, output_type);
   } else if (ts.tc(TypeSpec("uint8"), type)) {
     ASSERT(bytes.size() == 1);
     u8 value;
     memcpy(&value, bytes.data(), 1);
-    return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+    return print_int(value, false, output_type);
+  } else if (ts.tc(TypeSpec("int8"), type)) {
+    ASSERT(bytes.size() == 1);
+    s8 value;
+    memcpy(&value, bytes.data(), 1);
+    return print_int(value, true, output_type);
+  } else if (type == TypeSpec("seconds") || type == TypeSpec("time-frame")) {
+    ASSERT(bytes.size() == 8);
+    s64 value;
+    memcpy(&value, bytes.data(), 8);
+    return print_int(value, false, output_type);
+  } else if (ts.tc(TypeSpec("uint64"), type)) {
+    ASSERT(bytes.size() == 8);
+    u64 value;
+    memcpy(&value, bytes.data(), 8);
+    return print_int(value, false, output_type);
+  } else if (ts.tc(TypeSpec("int64"), type)) {
+    ASSERT(bytes.size() == 8);
+    s64 value;
+    memcpy(&value, bytes.data(), 8);
+    return print_int(value, true, output_type);
+  } else if (type == TypeSpec("meters")) {
+    ASSERT(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    return print_float(value, output_type);
+  } else if (type == TypeSpec("degrees")) {
+    ASSERT(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    return print_float(value, output_type);
+  } else if (ts.tc(TypeSpec("float"), type)) {
+    ASSERT(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    return print_float(value, output_type);
   } else {
     throw std::runtime_error(fmt::format("decompile_value failed on a {}", type.print()));
   }

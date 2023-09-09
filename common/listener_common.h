@@ -34,7 +34,7 @@ enum class ListenerMessageKind : u16 {
  */
 enum ListenerToTargetMsgKind : u16 {
   LTT_MSG_POKE = 1,           //! "Poke" the game and have it flush buffers
-  LTT_MSG_INSEPCT = 5,        //! Inspect an object
+  LTT_MSG_INSPECT = 5,        //! Inspect an object
   LTT_MSG_PRINT = 6,          //! Print an object
   LTT_MSG_PRINT_SYMBOLS = 7,  //! Print all symbols
   LTT_MSG_RESET = 8,          //! Reset the game

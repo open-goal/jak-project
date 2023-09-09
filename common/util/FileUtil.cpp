@@ -38,6 +38,13 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#include <limits.h>
+
+#include "mach-o/dyld.h"
+#endif
+
 namespace file_util {
 fs::path get_user_home_dir() {
 #ifdef _WIN32
@@ -64,6 +71,9 @@ fs::path get_user_config_dir() {
   } else {
     config_base_path = fs::path(config_base_dir);
   }
+#elif __APPLE__
+  auto config_base_dir = get_env("HOME");
+  config_base_path = fs::path(config_base_dir) / "Library" / "Application Support";
 #endif
   return config_base_path / "OpenGOAL";
 }
@@ -101,13 +111,21 @@ std::string get_current_executable_path() {
     return file_path.substr(4);
   }
   return file_path;
-#else
-  // do Linux stuff
+#elif __linux
   char buffer[FILENAME_MAX + 1];
   auto len = readlink("/proc/self/exe", buffer,
                       FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
   // information about the current process
   buffer[len] = '\0';
+  return std::string(buffer);
+#elif __APPLE__
+  char buffer[PATH_MAX];
+  uint32_t bufsize = sizeof(buffer);
+  if (_NSGetExecutablePath(buffer, &bufsize) != 0) {
+    lg::warn("Could not get executable path, trying with _NSGetArgv()[0] instead.");
+    auto argv = *_NSGetArgv();
+    return std::string(argv[0]);
+  }
   return std::string(buffer);
 #endif
 }
@@ -604,6 +622,18 @@ FILE* open_file(const fs::path& path, const std::string& mode) {
 #endif
 }
 
+std::vector<fs::path> find_files_in_dir(const fs::path& dir, const std::regex& pattern) {
+  std::vector<fs::path> files = {};
+  for (auto& p : fs::directory_iterator(dir)) {
+    if (p.is_regular_file()) {
+      if (std::regex_match(p.path().filename().string(), pattern)) {
+        files.push_back(p.path());
+      }
+    }
+  }
+  return files;
+}
+
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
@@ -624,6 +654,26 @@ std::vector<fs::path> find_directories_in_dir(const fs::path& base_dir) {
     }
   }
   return dirs;
+}
+
+std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const bool aescending) {
+  std::vector<std::string> paths_as_strings = {};
+  for (const auto& path : paths) {
+    paths_as_strings.push_back(path.string());
+  }
+  std::sort(paths_as_strings.begin(), paths_as_strings.end(),
+            [aescending](const std::string& a, const std::string& b) {
+              if (aescending) {
+                return a < b;
+              } else {
+                return a > b;
+              }
+            });
+  std::vector<fs::path> sorted_paths = {};
+  for (const auto& path : paths_as_strings) {
+    sorted_paths.push_back(fs::path(path));
+  }
+  return sorted_paths;
 }
 
 void copy_file(const fs::path& src, const fs::path& dst) {

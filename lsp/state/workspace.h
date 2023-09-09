@@ -62,7 +62,7 @@ class WorkspaceAllTypesFile {
   WorkspaceAllTypesFile(const LSPSpec::DocumentUri& uri,
                         const GameVersion version,
                         const fs::path file_path)
-      : m_uri(uri), m_game_version(version), m_dts(m_game_version), m_file_path(file_path){};
+      : m_game_version(version), m_uri(uri), m_dts(m_game_version), m_file_path(file_path){};
 
   GameVersion m_game_version;
   LSPSpec::DocumentUri m_uri;

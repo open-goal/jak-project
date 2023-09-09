@@ -1,4 +1,4 @@
-#version 430 core
+#version 410 core
 
 
 out vec4 color;
@@ -10,11 +10,12 @@ uniform vec4 fog_color;
 in float fog;
 in vec4 fragment_color;
 
-in flat uvec2 tex_info;
+flat in uvec2 tex_info;
 
 uniform int gfx_hack_no_tex;
+uniform uint warp_sample_mode;
 
-layout (binding = 0) uniform sampler2D tex_T0;
+uniform sampler2D tex_T0;
 
 vec4 sample_tex(vec2 coord, uint unit) {
   return texture(tex_T0, coord);
@@ -25,7 +26,7 @@ void main() {
   // 0x2 is decal
   // 0x4 is fog
 
-  if (gfx_hack_no_tex == 0) {
+  if (warp_sample_mode == 1 || gfx_hack_no_tex == 0) {
     vec4 T0 = sample_tex(tex_coord.xy, tex_info.x);
     if ((tex_info.y & 1u) == 0) {
       if ((tex_info.y & 2u) == 0) {

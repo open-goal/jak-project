@@ -123,9 +123,9 @@
   (case arg2
     (('reset)
      (let ((v1-1 (the-as object (-> arg3 param 0))))
-       (set! (-> obj root-override trans quad) (-> (the-as matrix v1-1) trans quad))
+       (set! (-> obj root trans quad) (-> (the-as matrix v1-1) trans quad))
        (set! (-> obj starting-pos quad) (-> (the-as matrix v1-1) trans quad))
-       (set! (-> obj root-override transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
+       (set! (-> obj root transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
        (set! (-> obj pre-move-transv quad) (-> (&+ (the-as matrix v1-1) 64) quad 0))
        )
      (set! (-> obj hits) 0)
@@ -167,7 +167,7 @@
 (defmethod spawn-impact-particles juicer-shot ((obj juicer-shot))
   "Spawns associated particles with the projectile if applicable"
   (let ((s5-0 (-> obj starting-pos))
-        (s4-0 (-> obj root-override trans))
+        (s4-0 (-> obj root trans))
         )
     (when (line-in-view-frustum? s5-0 s4-0)
       (let ((s3-0 (new 'stack-no-clear 'vector))
@@ -258,7 +258,7 @@
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root-override trans quad))
+        (set! (-> t3-0 trans quad) (-> obj root trans quad))
         ((the-as (function object object object object object object object object none) t9-3)
          a0-4
          a1-2
@@ -279,7 +279,7 @@
 
 (defmethod made-impact? juicer-shot ((obj juicer-shot))
   "TODO - queries the collision cache, return true/false"
-  (let ((gp-0 (-> obj root-override))
+  (let ((gp-0 (-> obj root))
         (s5-0 (new 'stack-no-clear 'collide-query))
         )
     (let ((v1-0 s5-0))
@@ -306,12 +306,12 @@
   (let ((s5-0 (handle->process (-> arg0 victim))))
     (cond
       (s5-0
-        (set! (-> arg0 root-override trans quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
+        (set! (-> arg0 root trans quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
         ((method-of-type projectile deal-damage!) arg0 s5-0 (the-as event-message-block #f))
         )
       (else
         (projectile-move-fill-line-sphere arg0)
-        (if (logtest? (-> arg0 root-override status) (collide-status touch-surface))
+        (if (logtest? (-> arg0 root status) (collide-status touch-surface))
             (go (method-of-object arg0 impact))
             )
         )
@@ -358,9 +358,9 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> obj root-override) s5-0)
+    (set! (-> obj root) s5-0)
     )
-  (set! (-> obj root-override pat-ignore-mask)
+  (set! (-> obj root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   (none)
@@ -381,9 +381,9 @@
   (logior! (-> obj options) (projectile-options proj-options-8000))
   (set! (-> obj attack-mode) 'eco-yellow)
   (set! (-> obj move) juicer-proj-move)
-  (set! (-> obj root-override dynam gravity y) 0.0)
-  (set! (-> obj root-override dynam gravity-length) 0.0)
-  (set! (-> obj root-override dynam gravity-max) 0.0)
+  (set! (-> obj root dynam gravity y) 0.0)
+  (set! (-> obj root dynam gravity-length) 0.0)
+  (set! (-> obj root dynam gravity-max) 0.0)
   (set! (-> obj attack-mode) 'shock-red)
   (dotimes (s5-0 5)
     (set! (-> obj lightning s5-0) (new
@@ -664,7 +664,7 @@
     :walk-travel-speed (meters 2)
     :walk-acceleration (meters 2)
     :walk-turning-acceleration (meters 3)
-    :maximum-rotation-rate (degrees 360.0)
+    :maximum-rotation-rate (degrees 360)
     :notice-nav-radius (meters 7.5)
     :frustration-distance (meters 8)
     :frustration-time (seconds 4)
@@ -742,7 +742,7 @@
                      )
                 )
            (zero? (get-rand-int obj 3))
-           (let ((f0-0 (vector-vector-distance-squared (-> obj root-override2 trans) (target-pos 0)))
+           (let ((f0-0 (vector-vector-distance-squared (-> obj root trans) (target-pos 0)))
                  (f1-0 32768.0)
                  )
              (>= f0-0 (* f1-0 f1-0))
@@ -771,7 +771,7 @@
             )
         (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
         (enemy-method-62 obj)
-        (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+        (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
         (process-contact-action arg0)
         (send-event arg0 'get-attack-count 1)
         (juicer-method-180 obj)
@@ -800,7 +800,7 @@
          )
      (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (enemy-method-62 obj)
-     (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+     (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (if (zero? (-> obj hit-points))
@@ -812,9 +812,9 @@
     (('instant-death)
      (when (> (-> obj hit-points) 0)
        (set! (-> obj hit-points) 0)
-       (set! (-> obj root-override2 penetrated-by) (get-penetrate-info obj))
+       (set! (-> obj root penetrated-by) (get-penetrate-info obj))
        (let ((s4-0 (enemy-method-50 obj (new 'stack-no-clear 'vector))))
-         (vector-z-quaternion! s4-0 (-> obj root-override2 quat))
+         (vector-z-quaternion! s4-0 (-> obj root quat))
          (vector-float*! s4-0 s4-0 -1.0)
          (vector-normalize! s4-0 1.0)
          )
@@ -828,7 +828,7 @@
            )
        (logclear! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
        (enemy-method-62 obj)
-       (set! (-> obj enemy-flags) (logior (enemy-flag actor-pause-backup) (-> obj enemy-flags)))
+       (logior! (-> obj enemy-flags) (enemy-flag actor-pause-backup))
        (process-contact-action arg0)
        (send-event arg0 'get-attack-count 1)
        (juicer-method-180 obj)
@@ -917,7 +917,7 @@
                 (set! (-> v1-102 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-102 enemy-flags))))
                 )
             (set! (-> v1-102 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-102 enemy-flags))))
-            (set! (-> v1-102 nav callback-info) (-> v1-102 enemy-info-override callback-info))
+            (set! (-> v1-102 nav callback-info) (-> v1-102 enemy-info callback-info))
             )
           0
           )
@@ -930,7 +930,7 @@
 
 (defmethod enemy-method-84 juicer ((obj juicer) (arg0 enemy-jump-info))
   (cond
-    ((logtest? (-> obj fact-info-override enemy-options) (enemy-option user8))
+    ((logtest? (-> obj fact enemy-options) (enemy-option user8))
      (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos))
      (let ((f0-1 8192.0))
        (setup-from-to-height! (-> arg0 traj) (-> arg0 start-pos) (-> arg0 dest-pos) f0-1 -4.551111)
@@ -967,7 +967,7 @@
       (format 0 "ERROR: ~A has no intro path, skipping ambush~%" (-> self name))
       (go-virtual notice)
       )
-    (get-point-in-path! (-> self intro-path) (-> self root-override2 trans) 0.0 'interp)
+    (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
     (none)
     )
   :code (behavior ()
@@ -1033,11 +1033,11 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (let ((s5-0 0))
-      (let ((s4-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root-override2 quat)))
+      (let ((s4-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
             (gp-1 (vector-!
                     (new 'stack-no-clear 'vector)
                     (get-trans (the-as process-focusable (handle->process (-> self focus handle))) 0)
-                    (-> self root-override2 trans)
+                    (-> self root trans)
                     )
                   )
             )
@@ -1066,7 +1066,7 @@
           (let ((a1-9 (-> self nav state)))
             (set! (-> gp-2 quad) (-> a1-9 travel quad))
             )
-          (seek-toward-heading-vec! (-> self root-override2) gp-2 (-> self nav max-rotation-rate) (seconds 0.02))
+          (seek-toward-heading-vec! (-> self root) gp-2 (-> self nav max-rotation-rate) (seconds 0.02))
           (suspend)
           (ja :num! (seek! max f30-1))
           )
@@ -1152,10 +1152,10 @@
     (let ((a0-1 (handle->process (-> self focus handle))))
       (when a0-1
         (let* ((gp-0 (get-trans (the-as process-focusable a0-1) 1))
-               (f30-0 (vector-vector-xz-distance (-> self root-override2 trans) gp-0))
+               (f30-0 (vector-vector-xz-distance (-> self root trans) gp-0))
                )
           (cond
-            ((< (- (-> gp-0 y) (-> self root-override2 trans y)) 4096.0)
+            ((< (- (-> gp-0 y) (-> self root trans y)) 4096.0)
              (let ((v1-10 (-> self nav state)))
                (logclear! (-> v1-10 flags) (nav-state-flag directional-mode))
                (logior! (-> v1-10 flags) (nav-state-flag target-poly-dirty))
@@ -1223,23 +1223,22 @@
         (a0-3 self)
         )
     (when (and (logtest? (enemy-flag enemy-flag37) (-> a0-3 enemy-flags)) gp-0)
-      (let ((f0-1 (fabs (deg-diff
-                          (quaternion-y-angle (-> self root-override2 quat))
-                          (vector-y-angle (vector-!
-                                            (new 'stack-no-clear 'vector)
-                                            (get-trans (the-as process-focusable gp-0) 0)
-                                            (-> self root-override2 trans)
-                                            )
-                                          )
-                          )
-                        )
+      (let ((f0-1
+              (fabs
+                (deg-diff
+                  (quaternion-y-angle (-> self root quat))
+                  (vector-y-angle
+                    (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable gp-0) 0) (-> self root trans))
+                    )
                   )
+                )
+              )
             )
         (cond
           ((or (< 5461.3335 f0-1) (and (-> self using-turn-anim) (< 910.2222 f0-1)))
            (set! (-> self using-turn-anim) #t)
            (seek-to-point-toward-point!
-             (-> self root-override2)
+             (-> self root)
              (get-trans (the-as process-focusable gp-0) 0)
              (-> self nav max-rotation-rate)
              (seconds 0.2)
@@ -1294,7 +1293,7 @@
   :event (the-as (function process int symbol event-message-block object :behavior juicer) enemy-event-handler)
   :enter (behavior ()
     (let ((v1-1 (-> self nav state))
-          (a0-1 (-> self root-override2 trans))
+          (a0-1 (-> self root trans))
           )
       (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
       (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
@@ -1302,7 +1301,7 @@
       )
     0
     (set! (-> self torso-track-player) (the-as basic #t))
-    (set! (-> self enemy-flags) (logior (enemy-flag actor-pause-backup) (-> self enemy-flags)))
+    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (set! (-> self hit-focus) #f)
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-9 *game-info*)
@@ -1358,9 +1357,7 @@
           (until (ja-done? 0)
             (let ((s3-0 (handle->process (-> self focus handle))))
               (when s3-0
-                (when (< 28672.0
-                         (vector-vector-distance (-> self root-override2 trans) (get-trans (the-as process-focusable s3-0) 0))
-                         )
+                (when (< 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable s3-0) 0)))
                   (fire-projectile self (the-as process-focusable s3-0) s5-0)
                   (current-time)
                   (if (not gp-0)
@@ -1369,7 +1366,7 @@
                   )
                 )
               )
-            (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info-override use-victory))
+            (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
                 (go-virtual victory)
                 )
             (b!
@@ -1399,9 +1396,7 @@
           (send-event (handle->process (-> self current-projectile)) 'die)
           (let ((a0-37 (handle->process (-> self focus handle))))
             (when a0-37
-              (if (>= 28672.0
-                      (vector-vector-distance (-> self root-override2 trans) (get-trans (the-as process-focusable a0-37) 0))
-                      )
+              (if (>= 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable a0-37) 0)))
                   (go-virtual circling)
                   )
               )
@@ -1437,7 +1432,7 @@
             (set! (-> v1-15 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-15 enemy-flags))))
             )
         (set! (-> v1-15 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag36) (-> v1-15 enemy-flags))))
-        (set! (-> v1-15 nav callback-info) (-> v1-15 enemy-info-override callback-info))
+        (set! (-> v1-15 nav callback-info) (-> v1-15 enemy-info callback-info))
         )
       0
       (let ((v1-18 self))
@@ -1470,7 +1465,7 @@
             )
           )
         )
-      (when (< 20480.0 (vector-vector-xz-distance (-> self focus-pos) (-> self root-override2 trans)))
+      (when (< 20480.0 (vector-vector-xz-distance (-> self focus-pos) (-> self root trans)))
         (let ((v1-54 self))
           (set! (-> v1-54 enemy-flags) (the-as enemy-flag (logclear (-> v1-54 enemy-flags) (enemy-flag enemy-flag36))))
           (set! (-> v1-54 nav callback-info) *nav-enemy-null-callback-info*)
@@ -1480,7 +1475,7 @@
           (set! (-> v1-57 enemy-flags) (the-as enemy-flag (logclear (-> v1-57 enemy-flags) (enemy-flag enemy-flag37))))
           )
         0
-        (vector-reset! (-> self root-override2 transv))
+        (vector-reset! (-> self root transv))
         (ja-channel-push! 1 (seconds 0.1))
         (let ((gp-2 (-> self draw art-group data (-> *juicer-global-info* celebrate-anim (get-rand-int self 2))))
               (f30-2 (get-rand-float-range self 0.9 1.1))
@@ -1507,13 +1502,10 @@
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override hit-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
                   :num! (seek!
                     (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override hit-anim)))
-                                frames
-                                num-frames
-                                )
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
                             -1
                             )
                          )
@@ -1538,7 +1530,7 @@
       )
     (set! (-> self enemy-flags) v1-37)
     (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
-        (set! (-> self mask) (logior (process-mask collectable) (-> self mask)))
+        (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-44 (-> self enemy-flags)))
@@ -1560,7 +1552,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 1))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1))
-          (gp-0 (-> self draw art-group data (-> self enemy-info-override idle-anim)))
+          (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
         (ja-no-eval :group! gp-0
@@ -1587,7 +1579,7 @@
             (s5-0 (current-time))
             (f28-0 f30-0)
             )
-        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override idle-anim))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                     :num! (loop! f28-0)
                     :frame-num 0.0
                     )
@@ -1597,13 +1589,10 @@
           )
         )
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info-override taunt-anim))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info taunt-anim))
                   :num! (seek!
                     (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info-override taunt-anim)))
-                                frames
-                                num-frames
-                                )
+                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info taunt-anim))) frames num-frames)
                             -1
                             )
                          )
@@ -1730,7 +1719,7 @@
 
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod juicer-method-184 juicer ((obj juicer) (arg0 symbol))
-  (let ((v1-1 (-> obj root-override2 root-prim)))
+  (let ((v1-1 (-> obj root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
         (if arg0
@@ -1839,7 +1828,7 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-26 prim-core collide-with))
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 3))
-    (set! (-> obj root-override2) s5-0)
+    (set! (-> obj root) s5-0)
     )
   0
   (none)
@@ -1878,7 +1867,7 @@
     (set! (-> v1-7 speed-scale) 1.0)
     )
   0
-  (set-gravity-length (-> obj root-override2 dynam) 573440.0)
+  (set-gravity-length (-> obj root dynam) 573440.0)
   (set! (-> obj last-fire-time) 0)
   (set! (-> obj heading) (the-as basic (if (rand-vu-percent? 0.5)
                                            #t
@@ -1914,7 +1903,7 @@
     (new 'static 'vector :x -901.12 :y -1146.88 :z 1269.76 :w 163840.0)
     )
   (add-connection *part-engine* obj 20 obj 4635 (new 'static 'vector :w 163840.0))
-  (set! (-> obj root-override2 pause-adjust-distance) 81920.0)
+  (set! (-> obj root pause-adjust-distance) 81920.0)
   (set! (-> obj current-projectile) (the-as handle #f))
   0
   (none)

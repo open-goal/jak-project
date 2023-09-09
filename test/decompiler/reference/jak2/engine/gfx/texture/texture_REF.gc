@@ -682,7 +682,6 @@
 
 ;; definition for function upload-vram-data
 ;; WARN: Return type mismatch symbol vs none.
-;; ERROR: Failed store: (s.w! (+ a0-1 8) 0) at op 13
 (defun upload-vram-data ((buf dma-buffer) (dest int) (data pointer) (height int) (width int))
   (while (> height 0)
     (let ((height-this-time (min 2048 height)))
@@ -702,7 +701,6 @@
   )
 
 ;; definition for function upload-vram-pages
-;; ERROR: Failed store: (s.w! (+ a0-24 8) 0) at op 143
 (defun upload-vram-pages ((pool texture-pool)
                  (dest-seg texture-pool-segment)
                  (tpage texture-page)
@@ -848,7 +846,6 @@
   )
 
 ;; definition for function upload-vram-pages-pris
-;; ERROR: Failed store: (s.w! (+ a0-27 8) 0) at op 137
 (defun upload-vram-pages-pris ((pool texture-pool)
                       (dest-seg texture-pool-segment)
                       (tpage texture-page)
@@ -1251,9 +1248,11 @@
                (dotimes (s2-1 7)
                  (let ((v1-54 (-> *level* level s2-1)))
                    (when (or (= (-> v1-54 status) 'active) (= (-> v1-54 status) 'reserved))
-                     (if (-> v1-54 texture-anim-array 5)
-                         (update-texture-anim bucket)
-                         )
+                     (let ((a1-26 (-> v1-54 texture-anim-array 5)))
+                       (if a1-26
+                           (update-texture-anim bucket a1-26)
+                           )
+                       )
                      )
                    )
                  )
@@ -1265,21 +1264,21 @@
                 (let ((f30-0 (-> pp clock seconds-per-frame)))
                   (set! (-> pp clock seconds-per-frame) (* 10.0 (-> pp clock seconds-per-frame)))
                   (if s2-0
-                      (update-texture-anim bucket)
+                      (update-texture-anim bucket s2-0)
                       )
                   (set! (-> pp clock seconds-per-frame) f30-0)
                   )
                 )
                (else
                  (if s2-0
-                     (update-texture-anim bucket)
+                     (update-texture-anim bucket s2-0)
                      )
                  )
                )
              )
             (else
               (if s2-0
-                  (update-texture-anim bucket)
+                  (update-texture-anim bucket s2-0)
                   )
               )
             )
@@ -1409,7 +1408,6 @@
 
 ;; definition for method 13 of type texture-page
 ;; WARN: Return type mismatch int vs none.
-;; ERROR: Failed store: (s.w! (+ a0-1 8) 0) at op 19
 (defmethod upload-now! texture-page ((obj texture-page) (arg0 tex-upload-mode))
   (let ((gp-0 *txt-dma-list*))
     (let ((v1-0 gp-0))
@@ -1462,7 +1460,6 @@
   )
 
 ;; definition for function texture-relocate
-;; ERROR: Failed store: (s.w! (+ t4-0 8) 0) at op 18
 (defun texture-relocate ((dma-buff dma-buffer) (tex texture) (dest-loc int) (dest-fmt gs-psm) (clut-dst int))
   (dotimes (v1-0 (the-as int (-> tex num-mips)))
     (let ((t1-1 (ash (-> tex w) (- v1-0)))
@@ -1551,7 +1548,6 @@
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Return type mismatch int vs none.
-;; ERROR: Failed store: (s.w! (+ a0-26 8) 0) at op 192
 (defmethod setup-font-texture texture-pool ((obj texture-pool))
   (local-vars (sv-16 int) (sv-20 int))
   (let ((s3-0 (-> obj font-palette)))
@@ -1988,7 +1984,7 @@
 ;; definition for function hack-texture
 (defun hack-texture ((arg0 texture))
   (set! (-> arg0 uv-dist) 1000000.0)
-  (set! (-> arg0 masks data 0 dist) (+ 40960000.0 (-> arg0 masks data 0 dist)))
+  (+! (-> arg0 masks data 0 dist) 40960000.0)
   (set! (-> arg0 masks data 1 dist) (+ 40960000.0 (-> arg0 masks data 1 dist)))
   )
 
@@ -2270,7 +2266,3 @@
 
 ;; definition for symbol *texture-pool*, type texture-pool
 (define *texture-pool* (new 'global 'texture-pool))
-
-
-
-

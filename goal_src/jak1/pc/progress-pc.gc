@@ -188,7 +188,7 @@
 
 (define *controller-options* (new 'static 'boxed-array :type game-option
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-select-controller) :scale #t :param3 (game-option-menu select-controller))
-  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vibrations) :scale #t)
+  (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vibrations) :scale #t :option-disabled-func (lambda () (not (pc-current-controller-has-rumble?))))
   (new 'static 'game-option :option-type (game-option-type slider) :name (text-id input-opts-analog-deadzone) :scale #t :param1 0.0 :param2 1.0
     :slider-step-size 0.01 :slider-show-decimal? #t)
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-ignore-controller-win-focus) :scale #t
@@ -511,7 +511,7 @@
 (define *text-languages* (static-text-list-array
         english uk-english french german spanish italian japanese portuguese br-portuguese swedish finnish danish norwegian dutch hungarian))
 (define *subtitle-languages* (static-text-list-array
-        english uk-english french german spanish italian br-portuguese swedish))
+        english uk-english french german spanish italian br-portuguese swedish finnish danish dutch))
 
 
 
@@ -1012,7 +1012,7 @@
   (set! (-> *gfx-ps2-options* 1 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *gfx-ps2-options* 2 value-to-modify) (&-> *pc-settings* ps2-parts?))
   (set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-envmap?))
-  (set! (-> *gfx-ps2-options* 4 value-to-modify) (&-> *pc-settings* force-actors?))
+  (set! (-> *gfx-ps2-options* 4 value-to-modify) (&-> *pc-settings* ps2-actor-vis?))
 
   (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
@@ -1937,9 +1937,12 @@
               (sound-play "starts-options")
               (sound-volume-off)
               (set! (-> *game-info* mode) 'play)
-              (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
-              (set-master-mode 'game)
-              )
+              (if (= (-> *pc-settings* speedrunner-mode?) #t)
+                  ;; Start a new game differently if speedrunning mode is active
+                  (speedrun-start-full-game-run)
+                  ;; start the game normally
+                  (initialize! *game-info* 'game (the-as game-save #f) "intro-start"))
+              (set-master-mode 'game))
              (else
                (sound-play "cursor-options")
                (set! (-> obj next-display-state) (progress-screen invalid))

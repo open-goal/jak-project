@@ -204,7 +204,6 @@
   (= (-> *entity-debug-inspect* entity) e)
   )
 
-(define *entity-debug-part-spawner-list* '(stadiumb-part))
 (define *entity-debug-include-part-spawner* #f)
 (define *entity-debug-include-cameras* #f)
 (define *entity-debug-include-nav-meshes* #f)
@@ -223,8 +222,7 @@
             (dotimes (s2-0 (-> s3-0 length))
               (let ((s1-0 (-> s3-0 data s2-0 actor)))
                 (unless (and (not *entity-debug-include-part-spawner*)
-                             (or (type-type? (-> s1-0 etype) part-spawner)
-                                 (assoc (-> s1-0 etype symbol) *entity-debug-part-spawner-list*)))
+                             (type-type? (-> s1-0 etype) part-spawner))
                   (debug-menu-append-item *entity-pick-menu* (new-dm-flag (res-lump-struct s1-0 'name string) s1-0 dm-entity-flag-func))
                   )
                 )
@@ -487,6 +485,14 @@
     )
   #f)
 
+(defun dm-anim-tester-x-refresh ()
+  (atx-start)
+  (atx-list-init! (-> *ATX-settings* list-ctrl))
+  (set! (-> *ATX-settings* list-ctrl func) atx-list-art-group-func)
+  (atx-add-common-group)
+  (atx-add-level-group) 
+)
+
 (defun dm-anim-tester-x-func ((action symbol))
   (unless *atx*
       (atx-start))
@@ -534,6 +540,7 @@
       (debug-menu-append-item menu (new-dm-func "Stop"  #f atx-stop))
       (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) (dm-lambda-float-var (-> *ATX-settings* speed)) 0.01 -10.0 10.0))
       (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) (dm-lambda-float-var (-> *ATX-settings* frame-num)) 0.1 0.0 99999.0))
+      (debug-menu-append-item menu (new-dm-func "Refresh" #f dm-anim-tester-x-refresh))
       (debug-menu-append-item menu (new-dm-func "Pick Art Group" 'pick-art-group dm-anim-tester-x-func))
       (debug-menu-append-item menu (new-dm-func "Pick Anim" 'at-pick-joint-anim dm-anim-tester-x-func))
       (debug-menu-append-item menu (new-dm-func "Pick Mesh" 'pick-mesh-geo dm-anim-tester-x-func))
@@ -691,6 +698,7 @@
       (debug-menu-append-item regions-menu (new-dm-func "Print on-inside" 'on-inside dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-func "Print on-exit" 'on-exit dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Display region inside" *display-region-inside* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Show non-sphere bsphere" *debug-region-show-bsphere* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Region Marks" *display-region-marks* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "region-mode" #f
                                                 (lambda (arg (msg debug-menu-msg))
@@ -754,6 +762,12 @@
   (when (= msg (debug-menu-msg press))
       (set! (-> *pc-settings* gfx-msaa) msaa))
   (= (-> *pc-settings* gfx-msaa) msaa)))
+
+(defun dm-territory-pick-func ((bterr int) (msg debug-menu-msg))
+  (let ((terr (/ bterr 8)))
+  (when (= msg (debug-menu-msg press))
+      (set! *debug-territory* terr))
+  (= *debug-territory* terr)))
 
 (when (-> *debug-menu-context* root-menu)
   ;; (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
@@ -845,8 +859,10 @@
             ;(flag "PS2 Music" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-music?)))
             ;(flag "PS2 Sound effects" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-se?)))
             ;(flag "PS2 Hints" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
+            (flag "Highres Clouds" #f ,(dm-lambda-boolean-flag (-> *pc-settings* hires-clouds?)))
             (flag "Faster airlocks" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-airlock?)))
             (flag "Faster elevators" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-elevator?)))
+            (flag "Faster progress" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-progress?)))
             )
          (menu "Level of detail"
                (flag "PS2 LOD     " #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-lod-dist?)))
@@ -883,8 +899,14 @@
             (flag "eco" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-eco-led?)))
             (flag "heat" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-heat-led?)))
             )
+         (menu "Territory"
+            (flag "GAME_TERRITORY_SCEA" (the binteger GAME_TERRITORY_SCEA) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEE" (the binteger GAME_TERRITORY_SCEE) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEI" (the binteger GAME_TERRITORY_SCEI) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEK" (the binteger GAME_TERRITORY_SCEK) dm-territory-pick-func)
+            )
          (flag "V-sync" #f ,(dm-lambda-boolean-flag (-> *pc-settings* vsync?)))
-         (flag "All actors" #f ,(dm-lambda-boolean-flag (-> *pc-settings* force-actors?)))
+         (flag "PS2 actor vis" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-actor-vis?)))
          (flag "Display actor counts" *display-actor-counts* dm-boolean-toggle-pick-func)
          (flag "Display git commit" *display-sha* dm-boolean-toggle-pick-func)
          (flag "Music fadein" #f ,(dm-lambda-boolean-flag (-> *pc-settings* music-fadein?)))

@@ -37,6 +37,7 @@
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
 #include "game/overlord/jak2/iso.h"
+#include "game/sce/deci2.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -393,6 +394,9 @@ int InitMachine() {
   // }
   if (MasterDebug) {
     InitGoalProto();
+  } else {
+    // shut down the deci2 stuff, we don't need it.
+    ee::sceDeci2Disable();
   }
 
   printf("InitSound\n");
@@ -443,12 +447,22 @@ u32 MouseGetData(u32 _mouse) {
   mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
   mouse->status = 1;
+  // Contrary to the name, this is a 16bitfield
+  // where:
+  // 0 = left button
+  // 1 = right button
+  // 2 = middle button
   mouse->button0 = 0;
 
   s32 xpos = 0;
   s32 ypos = 0;
   if (Display::GetMainDisplay()) {
     std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+    const auto mouse_button_status =
+        Display::GetMainDisplay()->get_input_manager()->get_mouse_button_status();
+    mouse->button0 |= (mouse_button_status.left ? 1 : 0);
+    mouse->button0 |= (mouse_button_status.right ? 2 : 0);
+    mouse->button0 |= (mouse_button_status.middle ? 4 : 0);
   }
 
   // NOTE - ignoring speed and setting position directly
@@ -458,10 +472,16 @@ u32 MouseGetData(u32 _mouse) {
   // TODO - probably factor in scaling as well
   auto win_width = 0;
   auto win_height = 0;
+  auto game_width = 0;
+  auto game_height = 0;
   if (Display::GetMainDisplay()) {
     win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
     win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+    game_width = Display::GetMainDisplay()->get_display_manager()->get_window_game_width();
+    game_height = Display::GetMainDisplay()->get_display_manager()->get_window_game_height();
   }
+  xpos -= (win_width - game_width) / 2;
+  ypos -= (win_height - game_height) / 2;
 
   // These are used to calculate the speed at which to move the mouse to it's new coordinates
   // zero'd out so they are ignored and don't impact the position we are about to set
@@ -472,8 +492,8 @@ u32 MouseGetData(u32 _mouse) {
   // - [-208.0, 208.0] for height
   // (then 208 or 256 is always added to them to get the final screen coordinate)
   // So just normalize the actual window's values to this range
-  double width_per = xpos / double(win_width);
-  double height_per = ypos / double(win_height);
+  double width_per = xpos / double(game_width);
+  double height_per = ypos / double(game_height);
   mouse->posx = (512.0 * width_per) - 256.0;
   mouse->posy = (416.0 * height_per) - 208.0;
   // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
@@ -525,7 +545,6 @@ void update_discord_rpc(u32 discord_info) {
       // Get the data from GOAL
       int orbs = (int)info->orb_count;
       int gems = (int)info->gem_count;
-      u32 deaths = info->death_count;
       // convert encodings
       std::string status = get_font_bank(GameTextVersion::JAK2)
                                ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
@@ -780,9 +799,12 @@ void InitMachineScheme() {
     *EnableMethodSet = *EnableMethodSet + 1;
     {
       auto p = scoped_prof("load-game-dgo");
-      load_and_link_dgo_from_c("game", kglobalheap,
-                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                               0x400000, true);
+      //      load_and_link_dgo_from_c("game", kglobalheap,
+      //                               LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE |
+      //                               LINK_FLAG_PRINT_LOGIN, 0x400000, true);
+      load_and_link_dgo_from_c_fast(
+          "game", kglobalheap, LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+          0x400000);
     }
 
     *EnableMethodSet = *EnableMethodSet + -1;
@@ -802,90 +824,41 @@ void InitMachineScheme() {
   }
 }
 
-std::optional<SQLite::Database> sql_db = std::nullopt;
+sqlite::SQLiteDatabase sql_db;
 
 void initialize_sql_db() {
   // If the DB has already been initialized, no-op
-  if (sql_db) {
+  if (sql_db.is_open()) {
     return;
   }
   // In the original environment, they relied on a database already being setup with the correct
   // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
   // that here!
 
-  // TODO - eventually tie this to .sql files instead of hard-coding the strings here, usually a
-  // nicer editing experience
-
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
-  try {
-    sql_db = SQLite::Database(db_path.string(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-    SQLite::Transaction tx(sql_db.value());
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'level_info' ( 'level_info_id' INTEGER, 'name' TEXT, "
-        "'translate_x' REAL, 'translate_y' REAL, 'translate_z' REAL, 'last_update' TEXT, "
-        "'sample_point_update' TEXT, PRIMARY KEY('level_info_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'light' ( 'light_id' INTEGER, 'name' TEXT, 'level_name' TEXT, "
-        "'pos_x' REAL, 'pos_y' REAL, 'pos_z' REAL, 'r' REAL, 'dir_x' REAL, 'dir_y' REAL, 'dir_z' "
-        "REAL, 'color0_r' REAL, 'color0_g' REAL, 'color0_b' REAL, 'color0_a' REAL, 'decay_start' "
-        "REAL, 'ambient_point_ratio' REAL, 'brightness' REAL, PRIMARY KEY('light_id' "
-        "AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_edge' ( 'nav_edge_id' INTEGER NOT NULL, 'nav_graph_id' "
-        "INTEGER NOT NULL, 'nav_node_id_1' INTEGER, 'nav_node_id_2' INTEGER, 'directionality' "
-        "TEXT, 'speed_limit' NUMERIC, 'density' NUMERIC, 'traffic_edge_flag' NUMERIC, "
-        "'nav_clock_mask' NUMERIC, 'nav_clock_type' TEXT, 'width' NUMERIC, 'minimap_edge_flag' "
-        "NUMERIC, FOREIGN KEY('nav_node_id_2') REFERENCES 'nav_node'('nav_node_id'), FOREIGN "
-        "KEY('nav_graph_id') REFERENCES 'nav_graph'('nav_graph_id'), FOREIGN KEY('nav_node_id_1') "
-        "REFERENCES 'nav_node'('nav_node_id'), PRIMARY KEY('nav_edge_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_graph' ( 'nav_graph_id' INTEGER, 'name' TEXT, PRIMARY "
-        "KEY('nav_graph_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_mesh' ( 'nav_mesh_id' INTEGER, PRIMARY KEY('nav_mesh_id' "
-        "AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_node' ( 'nav_node_id' INTEGER NOT NULL, 'nav_graph_id' "
-        "INTEGER NOT NULL, 'nav_mesh_id' INTEGER NOT NULL, 'x' REAL, 'y' REAL, 'z' REAL, "
-        "'level_name' TEXT, 'angle' REAL, 'radius' REAL, 'nav_node_flag' NUMERIC, FOREIGN "
-        "KEY('nav_mesh_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
-        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'nav_visible_nodes' ( 'nav_node_id' INTEGER NOT NULL, "
-        "'nav_graph_id' INTEGER NOT NULL, 'nav_edge_id' INTEGER NOT NULL, FOREIGN "
-        "KEY('nav_edge_id') REFERENCES 'nav_mesh'('nav_mesh_id'), FOREIGN KEY('nav_graph_id') "
-        "REFERENCES 'nav_graph'('nav_graph_id'), PRIMARY KEY('nav_node_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'race_path' ( 'race_path_id' INTEGER, 'race' TEXT, 'path' "
-        "INTEGER, PRIMARY KEY('race_path_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region' ( 'region_id' INTEGER NOT NULL, 'level_name' TEXT, "
-        "'flags' NUMERIC, 'tree' TEXT, 'on_enter' TEXT, 'on_exit' TEXT, 'on_inside' TEXT, PRIMARY "
-        "KEY('region_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_face' ( 'region_face_id' INTEGER NOT NULL, 'region_id' "
-        "INTEGER NOT NULL, 'idx' INTEGER, 'kind' TEXT, 'radius' REAL, FOREIGN KEY('region_id') "
-        "REFERENCES 'region'('region_id'), PRIMARY KEY('region_face_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_point' ( 'region_point_id' INTEGER, 'region_face_id' "
-        "INTEGER NOT NULL, 'idx' INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
-        "KEY('region_face_id') REFERENCES 'region_face'('region_face_id'), PRIMARY "
-        "KEY('region_point_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'region_sphere' ( 'region_sphere_id' INTEGER, 'region_id' "
-        "INTEGER, 'x' REAL, 'y' REAL, 'z' REAL, 'r' REAL, FOREIGN KEY('region_id') REFERENCES "
-        "'region'('region_id'), PRIMARY KEY('region_sphere_id' AUTOINCREMENT) );");
-    sql_db->exec(
-        "CREATE TABLE IF NOT EXISTS 'sample_point' ( 'sample_point_id' INTEGER, 'level_info_id' "
-        "INTEGER NOT NULL, 'source' TEXT, 'x' REAL, 'y' REAL, 'z' REAL, FOREIGN "
-        "KEY('level_info_id') REFERENCES 'level_info'('level_info_id'), PRIMARY "
-        "KEY('sample_point_id' AUTOINCREMENT) );");
-    tx.commit();
-  } catch (std::exception& e) {
-    lg::error("[SQL] Error creating SQLite DB - {}", e.what());
+  // Attempt to open the database
+  const auto opened = sql_db.open_db(db_path.string());
+  (void)opened;
+
+  fs::path schema_file =
+      file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" / "editable-schema.sql";
+  if (!file_util::file_exists(schema_file.string())) {
+    lg::error("Unable to locate SQL Schema file at {}", schema_file.string());
+    return;
   }
+
+  const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
+  // TODO - error check
+}
+
+sqlite::GenericResponse run_sql_query(const std::string& query) {
+  if (!sql_db.is_open()) {
+    // TODO - error
+    return sqlite::GenericResponse();
+  }
+  return sql_db.run_query(query);
 }
 
 }  // namespace jak2

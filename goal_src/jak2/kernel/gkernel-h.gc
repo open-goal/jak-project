@@ -276,7 +276,8 @@
 ;; Base type for all actual processes.
 ;; this can be used directly, or child types can be made.
 (deftype process (process-tree)
-  ((pool             dead-pool                   ) ;; where to return us when we die
+  ((self             process            :override) ;; ourselves!
+   (pool             dead-pool                   ) ;; where to return us when we die
    (status           symbol     :offset-assert 40) ;; used by kernel to track init/death
    (pid              int32                       ) ;; globally unique ID, never reused for another
    (main-thread      cpu-thread :offset-assert 48) ;; suspendable main thread
@@ -483,13 +484,13 @@
   ;; this uses the self field, which seems to always just get set to the object.
   ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (the process (if the-pp (-> the-pp 0 self)))
+     (if the-pp (-> the-pp 0 self))
      )
   )
 
 (defmacro process->ppointer (proc)
   "safely get a (pointer process) from a process, returning #f if invalid."
-  `(let ((the-proc (the-as process ,proc)))
+  `(let ((the-proc ,proc))
      (if the-proc (-> the-proc ppointer))
      )
   )
@@ -503,7 +504,7 @@
 
 (defmacro process->handle (proc)
   "convert a process to a handle. if proc is #f, returns a #f handle."
-  `(ppointer->handle (process->ppointer ,proc))
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
   )
 
 (defmethod print handle ((obj handle))
@@ -614,6 +615,8 @@
 
 ;; the result that the C Kernel will send us.
 (define *sql-result* (the-as sql-result #f))
+;; TODO - no idea what this is, but some sort of symbol set on the C side as well.
+(define-extern *collapse-quote* symbol)
 
 (defmacro defbehavior (name process-type bindings &rest body)
   "define a new behavior. This is simply a function where self is bound to the process register,

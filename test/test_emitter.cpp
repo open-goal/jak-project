@@ -2168,7 +2168,7 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64) {
   tester.emit(IGen::store8_gpr64_gpr64_plus_gpr64(RAX, RCX, RDX));
   EXPECT_EQ(tester.dump_to_hex_string(), "88 14 01");
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2230,7 +2230,7 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s8) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2293,7 +2293,7 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s32) {
   instr.emit(buff);
   EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2351,7 +2351,7 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64) {
   tester.emit(IGen::store16_gpr64_gpr64_plus_gpr64(RCX, RAX, R8));
   EXPECT_EQ(tester.dump_to_hex_string(), "66 44 89 04 08");
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2414,7 +2414,7 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s8) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2477,7 +2477,7 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s32) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2535,7 +2535,7 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64) {
   tester.emit(IGen::store32_gpr64_gpr64_plus_gpr64(RCX, RAX, R8));
   EXPECT_EQ(tester.dump_to_hex_string(), "44 89 04 08");
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2598,7 +2598,7 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s8) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2661,7 +2661,7 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s32) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2719,7 +2719,7 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64) {
   tester.emit(IGen::store64_gpr64_gpr64_plus_gpr64(RCX, RAX, R8));
   EXPECT_EQ(tester.dump_to_hex_string(), "4c 89 04 08");
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2782,7 +2782,7 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s8) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;
@@ -2845,7 +2845,7 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s32) {
   instr.emit(buff);
   EXPECT_EQ(*(s8*)(buff + instr.offset_of_disp()), -3);
 
-  int iter = 0;
+  [[maybe_unused]] int iter = 0;
   for (int i = 0; i < 16; i++) {
     if (i == RSP) {
       continue;

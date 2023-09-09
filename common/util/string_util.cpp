@@ -46,8 +46,6 @@ std::string ltrim(const std::string& s) {
   return (start == std::string::npos) ? "" : s.substr(start);
 }
 
-// TODO - used a lot in formatting, and its slow because i bet it iterates from the start and not
-// the end
 std::string rtrim(const std::string& s) {
   size_t end = s.find_last_not_of(WHITESPACE);
   return (end == std::string::npos) ? "" : s.substr(0, end + 1);
@@ -206,5 +204,8 @@ std::string to_lower(const std::string& str) {
   std::string new_str(str.size(), ' ');
   std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
   return new_str;
+}
+bool hex_char(char c) {
+  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
 }
 }  // namespace str_util

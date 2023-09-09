@@ -12,11 +12,14 @@
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/dialogs.h"
 #include "common/util/os.h"
+#include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 
 #include "game/common/game_common_types.h"
+#include "graphics/gfx_test.h"
 
 #include "third-party/CLI11.hpp"
 
@@ -31,8 +34,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
  * Set up logging system to log to file.
  * @param verbose : should we print debug-level messages to stdout?
  */
-void setup_logging(bool verbose) {
-  lg::set_file(file_util::get_file_path({"log", "game.log"}));
+void setup_logging(const std::string& game_name, bool verbose, bool disable_ansi_colors) {
+  lg::set_file(game_name);
   if (verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::debug);
@@ -41,6 +44,9 @@ void setup_logging(bool verbose) {
     lg::set_file_level(lg::level::debug);
     lg::set_stdout_level(lg::level::warn);
     lg::set_flush_level(lg::level::warn);
+  }
+  if (disable_ansi_colors) {
+    lg::disable_ansi_colors();
   }
   lg::initialize();
 }
@@ -90,6 +96,8 @@ int main(int argc, char** argv) {
   bool disable_display = false;
   bool enable_debug_vm = false;
   bool enable_profiling = false;
+  std::string gpu_test = "";
+  std::string gpu_test_out_path = "";
   int port_number = -1;
   fs::path project_path_override;
   std::vector<std::string> game_args;
@@ -104,16 +112,32 @@ int main(int argc, char** argv) {
   app.add_flag("--no-display", disable_display, "Disable video display");
   app.add_flag("--vm", enable_debug_vm, "Enable debug PS2 VM (defaulted to off)");
   app.add_flag("--profile", enable_profiling, "Enables profiling immediately from startup");
+  app.add_option("--gpu-test", gpu_test,
+                 "Tests for minimum graphics requirements.  Valid Options are: [opengl]");
+  app.add_option("--gpu-test-out-path", gpu_test_out_path,
+                 "Where to store the gpu test result file");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.footer(game_arg_documentation());
   app.add_option("Game Args", game_args,
                  "Remaining arguments (after '--') that are passed-through to the game itself");
+  define_common_cli_arguments(app);
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
 
   if (show_version) {
     lg::print(build_revision());
+    return 0;
+  }
+
+  if (!gpu_test.empty() && !gpu_test_out_path.empty()) {
+    const auto output = tests::run_gpu_test(gpu_test);
+    json data = output;
+    try {
+      file_util::write_text_file(gpu_test_out_path, data.dump(2));
+    } catch (std::exception& e) {
+      return 1;
+    }
     return 0;
   }
 
@@ -132,6 +156,8 @@ int main(int argc, char** argv) {
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
     lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
+    dialogs::create_error_message_dialog(
+        "Unmet Requirements", "Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
   }
 
@@ -166,7 +192,7 @@ int main(int argc, char** argv) {
   }
 
   try {
-    setup_logging(verbose_logging);
+    setup_logging(game_name, verbose_logging, _cli_flag_disable_ansi);
   } catch (const std::exception& e) {
     lg::error("Failed to setup logging: {}", e.what());
     return 1;

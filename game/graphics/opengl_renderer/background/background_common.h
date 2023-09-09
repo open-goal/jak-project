@@ -4,31 +4,29 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 
-// data passed from game to PC renderers
-// the GOAL code assumes this memory layout.
-struct TfragPcPortData {
+struct GoalBackgroundCameraData {
   math::Vector4f planes[4];
   math::Vector<s32, 4> itimes[4];
   math::Vector4f camera[4];
   math::Vector4f hvdf_off;
   math::Vector4f fog;
-  math::Vector4f cam_trans;
+  math::Vector4f trans;
+  math::Vector4f rot[4];
+  math::Vector4f perspective[4];
+};
 
-  math::Vector4f camera_rot[4];
-  math::Vector4f camera_perspective[4];
-
+// data passed from game to PC renderers
+// the GOAL code assumes this memory layout.
+struct TfragPcPortData {
+  GoalBackgroundCameraData camera;
   char level_name[16];
 };
 static_assert(sizeof(TfragPcPortData) == 16 * 24);
 
 // inputs to background renderers.
 struct TfragRenderSettings {
-  math::Matrix4f math_camera;
-  math::Vector4f hvdf_offset;
-  math::Vector4f fog;
+  GoalBackgroundCameraData camera;
   int tree_idx;
-  math::Vector<s32, 4> itimes[4];
-  math::Vector4f planes[4];
   bool debug_culling = false;
   const u8* occlusion_culling = nullptr;
 };
@@ -60,9 +58,11 @@ struct SwizzledTimeOfDay {
 
 SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in);
 
+#ifndef __aarch64__
 void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
                              const SwizzledTimeOfDay& swizzled_colors,
                              math::Vector<u8, 4>* out);
+#endif
 
 void cull_check_all_slow(const math::Vector4f* planes,
                          const std::vector<tfrag3::VisNode>& nodes,

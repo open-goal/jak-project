@@ -19,8 +19,7 @@ class InputDevice {
   virtual void process_event(const SDL_Event& event,
                              const CommandBindingGroups& commands,
                              std::shared_ptr<PadData> data,
-                             std::optional<InputBindAssignmentMeta>& bind_assignment,
-                             bool ignore_inputs = false) = 0;
+                             std::optional<InputBindAssignmentMeta>& bind_assignment) = 0;
   virtual void close_device() = 0;
   bool is_loaded() const { return m_loaded; };
 };

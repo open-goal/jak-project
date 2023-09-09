@@ -34,7 +34,7 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
   return header[0];
 }
 
-constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 10;
+constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 12;
 }  // namespace
 
 Sprite3::Sprite3(const std::string& name, int my_id)
@@ -550,6 +550,8 @@ void Sprite3::render_jak1(DmaFollower& dma,
 }
 
 void Sprite3::draw_debug_window() {
+  ImGui::Checkbox("Glow", &m_enable_glow);
+  ImGui::Checkbox("new glow", &m_glow_renderer.new_mode);
   ImGui::Separator();
   ImGui::Text("Distort sprites: %d", m_distort_stats.total_sprites);
   ImGui::Text("2D Group 0 (World) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp0,
@@ -558,7 +560,6 @@ void Sprite3::draw_debug_window() {
               m_debug_stats.count_2d_grp1);
   ImGui::Checkbox("Culling", &m_enable_culling);
   ImGui::Checkbox("2d", &m_2d_enable);
-  ImGui::Checkbox("Glow", &m_enable_glow);
   ImGui::SameLine();
   ImGui::Checkbox("3d", &m_3d_enable);
   ImGui::Checkbox("Distort", &m_distort_enable);
