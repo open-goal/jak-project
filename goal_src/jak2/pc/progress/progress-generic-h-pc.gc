@@ -1,0 +1,94 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; TODO:
+;; - slider
+;; - disabled options
+;; - detail list
+
+(deftype generic-progress-state-entry (structure)
+  "All info that is pushed onto a 'stack' when navigating to a sub-menu with
+   the new generic menu options"
+  (;; what needs to be drawn now, the normal progress code figures this out with a hard-coded switch statement, this avoids that
+   (ref menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   (on-load (function none))
+   ;; so we can restore back to the same menu position
+   (hover-index int32)
+   ;; symbol used normally for progress stuff
+   (progress-id symbol)))
+
+(deftype progress-pc-generic-store (structure)
+  "Isolated type for keeping track of some global state, as re-using the normal [[*progress*]] object
+   can lead to unexpected behaviour -- they change some values all over the place"
+  ((current-menu-hover-index int32)
+   (clear-screen? symbol)
+   (history-stack generic-progress-state-entry 10 :inline)
+   (history-stack-index int32))
+  (:methods
+    (init! (_type_) none)
+    (navigate! (_type_ progress menu-option-list (function none)) none)
+    (back! (_type_ progress) none)
+    (has-history? (_type_) symbol)
+    (clear-history-if-empty! (_type_) none)))
+
+(define *progress-pc-generic-store* (new 'static 'progress-pc-generic-store))
+
+(deftype menu-generic-option (menu-option)
+  ((mounted? symbol))
+  (:methods
+    (on-mount! "Called when the menu item is first drawn as a means to initialize defaults, etc" (_type_) none)))
+
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-boolean-option (menu-generic-option)
+  "Generic two option menu entry (ie. yes/no)"
+  (;; props
+   (truthy-text text-id)
+   (falsey-text text-id)
+   ;; state
+   (value symbol)
+   ;; lambdas
+   (get-value-fn (function symbol))
+   (on-confirm (function symbol none))))
+
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-carousel-option (menu-generic-option)
+  "Generic left-right menu entry (ie. language selection)"
+  (;; props
+   (items (array text-id))
+   ;; state
+   (item-index int32)
+   ;; lambdas
+   (get-item-index-fn (function int))
+   (on-confirm (function int none))))
+
+(deftype menu-generic-scrolling-page (menu-generic-option)
+  "A menu option that holds menu options"
+  (;; props
+   (menu-options          (array menu-option))
+   (header                text-id)
+   ;; state
+   (selected-option-item  menu-option)
+   (selected-option-index int32)
+   (last-move             time-frame)))
+
+;; TODO - make methods for calling the lambdas just to reduce duplication (checking if the value is set, etc)
+(deftype menu-generic-link-option (menu-generic-option)
+  "A very simple link option that allows you to link to any other menu-option"
+  (;; props
+   (target menu-option-list)
+   ;; generic function to potentially run some setup code when the entry is loaded
+   (on-load (function none))))
+
+(defmacro progress-new-generic-scrolling-page (title &rest options)
+  `(new 'static 'menu-option-list
+    :options (new 'static 'boxed-array :type menu-option
+    (new 'static 'menu-generic-scrolling-page
+     :name ,title ; (text-id progress-misc-game-options)
+     :menu-options (new 'static 'boxed-array :type menu-option
+     ,@options)))))
+
+(defmacro progress-new-generic-link (text target)
+  `(new 'static 'menu-generic-link-option
+    :name ,text
+    :target ,target))

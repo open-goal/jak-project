@@ -68,35 +68,36 @@
   (none)
   )
 
-(defun draw-highlight ((arg0 int) (arg1 int) (arg2 float))
-  (let ((s3-0 (if (= (get-aspect-ratio) 'aspect4x3)
-                  70
-                  79
-                  )
-              )
-        (a3-0 (if (= (get-aspect-ratio) 'aspect4x3)
-                  374
-                  355
-                  )
-              )
+(defun draw-highlight ((y-pos int) (height int) (alpha float))
+  (let ((x-pos (if (= (get-aspect-ratio) 'aspect4x3)
+                   70
+                   79
+                   )
+               )
+        (width (if (= (get-aspect-ratio) 'aspect4x3)
+                   374
+                   355
+                   )
+               )
         )
+    ;; og:preserve-this
     (#when PC_PORT
       ;; added for better widescreen handling
       (when (not (-> *pc-settings* use-vis?))
-        (set! s3-0 (the int (adjust-game-x (the float s3-0))))
-        (set! a3-0 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) a3-0)))
+        (set! x-pos (the int (adjust-game-x (the float x-pos))))
+        (set! width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) width)))
         )
       )
-    (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
+    (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id progress)
                                  )
       (draw-sprite2d-xy
-        s2-0
-        s3-0
-        arg0
-        a3-0
-        arg1
-        (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 arg2)))
+        buffer
+        x-pos
+        y-pos
+        width
+        height
+        (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha)))
         )
       )
     )
