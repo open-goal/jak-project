@@ -12,9 +12,9 @@
 
 (deftype progress-global-state-pc (basic)
   ((decoration-draw-time  uint64)
-   
+
    (display-mode-choice-index   int8)
-   
+
    (aspect-ratio-choice-index   int8)
    (aspect-ratio-ratio-index    int8)
 
@@ -149,6 +149,7 @@
 
   ;; PC STATE BEGIN
   ;; --------------
+  (init! *progress-pc-generic-store*)
 
   ;; set aspect ratio options
   (set-progress-aspect-ratio-pc-index)
@@ -185,21 +186,7 @@
      )
     (('game-options)
      (set! (-> obj current-options)
-           (cond
-             ((demo?)
-              (if (= (scf-get-territory) GAME_TERRITORY_SCEE)
-                  *game-options*
-                  *game-options-demo*
-                  )
-              )
-             ((and (= (scf-get-territory) GAME_TERRITORY_SCEI) (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
-              *game-options*
-              )
-             (else
-               *game-options*
-               )
-             )
-           )
+           (if (demo?) *game-options-demo* *game-options-pc*))
      )
     (('graphic-options)
      (set! (-> obj current-options) *graphic-options-pc*)
@@ -362,6 +349,22 @@
      (set! (-> (the-as menu-music-player-option (-> *music-player-options* options 0)) excitement) 0)
      (set! (-> obj current-options) *music-player-options*)
      )
+    (('generic-menu)
+     ;; a single condition to handle all generic menu links
+     (let ((curr-history-entry (-> *progress-pc-generic-store* history-stack
+                                  (-> *progress-pc-generic-store* history-stack-index))))
+       ;; call the on-load function is appropriate, this can be used to perform some kind of generic setup
+       ;; for the particular route
+       (when (and (nonzero? (-> curr-history-entry on-load)) (!= (-> curr-history-entry on-load) #f))
+        ((-> curr-history-entry on-load)))
+       ;; restore state from the history entry
+       (set! (-> *progress-pc-generic-store* clear-screen?) #f)
+       (set! (-> *progress-pc-generic-store* current-menu-hover-index) (-> curr-history-entry hover-index))
+       (if (!= (-> curr-history-entry progress-id) 'generic-menu)
+        ;; do a recursive call to hit the relevant case in this switch
+        (set-menu-options obj (-> curr-history-entry progress-id))
+        ;; otherwise, set the options
+        (set! (-> obj current-options) (-> curr-history-entry ref)))))
     )
   (when (= (-> obj current-options) #f)
     (format #t "Didn't find new menu settings!!~%")
@@ -369,7 +372,6 @@
     )
   0
   )
-
 
 
 
@@ -426,7 +428,7 @@
         (when (cpad-pressed? 0 right l-analog-right)
           (true! sound-beep?)
           (min-max-wrap-around+! (-> *progress-state-pc* aspect-ratio-choice-index) 1 0 3))
-        
+
         (if sound-beep?
             (sound-play "generic-beep")))
         )
@@ -459,7 +461,7 @@
         (when (cpad-pressed? 0 right l-analog-right)
           (true! sound-beep?)
           (min-max-wrap-around+! (-> *progress-state-pc* display-mode-choice-index) 1 0 2))
-        
+
         (if sound-beep?
             (sound-play "generic-beep")))
         )
@@ -587,7 +589,7 @@
 
 (defun count-bits ((val int))
   "return the number of bits set to 1."
-  
+
   (let ((bits 0))
     (dotimes (i 64)
       (if (logtest? val (ash 1 i))
@@ -753,4 +755,3 @@
   0
   (none)
   )
-

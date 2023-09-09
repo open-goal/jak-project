@@ -54,7 +54,7 @@
    (stereo-mode-backup                   int32          :offset-assert 216)
    (secrets-unlocked                     symbol         :offset-assert 220)
    (missions-total-spacing               float          :offset-assert 224)
-   (clear-screen                         basic          :offset-assert 228)
+   (clear-screen                         symbol          :offset-assert 228)
    )
   :method-count-assert 9
   :size-assert         #xe8
@@ -967,10 +967,10 @@
 (defmethod respond-to-cpad progress ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (when (-> obj current-options)
-    (let ((s5-0 (-> obj current-options options)))
-      (when (and s5-0 (= (-> obj menu-transition) 0.0))
+    (let ((option-array (-> obj current-options options)))
+      (when (and option-array (= (-> obj menu-transition) 0.0))
         (respond-progress
-          (the-as menu-option (-> s5-0 (-> obj option-index)))
+          (the-as menu-option (-> option-array (-> obj option-index)))
           obj
           (and (= (-> obj menu-transition) 0.0) (-> obj selected-option))
           )
@@ -996,7 +996,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1017,7 +1017,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1060,8 +1060,7 @@
   )
 
 (defbehavior progress-trans progress ()
-
-        ;; pc port note : added variable
+  ;; og:preserve-this pc port note : added variable
   (let ((speed-mod (if (-> *pc-settings* fast-progress?) (-> *pc-cheat-state* progress-speed) 1.0)))
   (cond
     ((and (= (-> self next) 'none)
@@ -2385,7 +2384,7 @@
          ((and (cpad-pressed? 0 confirm) (!= (-> arg0 current) 'none))
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-          (set! (-> *progress-state* clear-screen) (the-as basic #t))
+          (set! (-> *progress-state* clear-screen) #t)
           (cond
             ((-> s5-0 0)
              (sound-play "generic-beep")

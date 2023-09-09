@@ -1,0 +1,268 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defmethod init! progress-pc-generic-store ((this progress-pc-generic-store))
+  (set! (-> this clear-screen?) #f)
+  (none))
+
+(defmethod navigate! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress) (target menu-option-list) (on-load (function none)))
+  (when (< (-> this history-stack-index) 9) ;; hard-coded length
+    ;; if this is the first history entry, we push the current page as well
+    ;; if it's not, then we update the current entry before proceeding to the next page
+    (if (has-history? this)
+      (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+        (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry progress-id) (-> progress current)))
+      (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+        (set! (-> stack-entry ref) (-> progress current-options))
+        (set! (-> stack-entry on-load) on-load)
+        (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry progress-id) (-> progress current))))
+    ;; push the target history entry now
+    (inc! (-> this history-stack-index))
+    ;; Create a new stack entry
+    (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+      (set! (-> stack-entry ref) target)
+      (set! (-> stack-entry on-load) on-load)
+      (set! (-> stack-entry hover-index) 0)
+      (set! (-> stack-entry progress-id) 'generic-menu))
+    ;; Update global state
+    (set! (-> this clear-screen?) #t)
+    (set! (-> progress next) 'generic-menu)
+    (set! (-> progress selected-option) #f))
+  (none))
+
+(defmethod back! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress))
+  (set! (-> this history-stack-index) (max 0 (dec (-> this history-stack-index))))
+  (set! (-> this clear-screen?) #t)
+  (set! (-> progress next) 'generic-menu)
+  (set! (-> progress selected-option) #f)
+  (none))
+
+(defmethod has-history? progress-pc-generic-store ((this progress-pc-generic-store))
+  (> (-> this history-stack-index) 0))
+
+(defmethod clear-history-if-empty! progress-pc-generic-store ((this progress-pc-generic-store))
+  ;; if we are have no history, just reset the entry.  This is so we don't preserve state
+  ;; after completely exiting the menu
+  (when (not (has-history? this))
+    (set! (-> this history-stack-index) 0)
+    (set! (-> this clear-screen?) #f)
+    (set! (-> this current-menu-hover-index) 0)
+    (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
+      (set! (-> stack-entry hover-index) 0)
+      (set! (-> stack-entry ref) #f)
+      (set! (-> stack-entry on-load) #f)
+      (set! (-> stack-entry progress-id) #f)))
+  (none))
+
+(defmethod on-mount! menu-generic-option ((this menu-generic-option))
+  (set! (-> this mounted?) #t)
+  (none))
+
+(defmethod on-mount! menu-generic-carousel-option ((this menu-generic-carousel-option))
+  (set! (-> this mounted?) #t)
+  (set! (-> this item-index) 0)
+  (none))
+
+(defmethod on-mount! menu-generic-scrolling-page ((this menu-generic-scrolling-page))
+  (set! (-> this mounted?) #t)
+  (set! (-> this selected-option-item) #f)
+  (set! (-> this selected-option-index) -1)
+  (none))
+
+;; Progress Code Overrides
+
+(defmethod respond-to-cpad progress ((obj progress))
+  (mc-get-slot-info 0 *progress-save-info*)
+  ;; ND originally did this...called this every frame in the game options, looked like a hack
+  ;; there's probably a way to consistently do it synchronously
+  (load-level-text-files (the-as int (-> *setting-control* user-current language)))
+  (when (-> obj current-options)
+    (let ((option-array (-> obj current-options options))
+          (has-generic-history? (has-history? *progress-pc-generic-store*)))
+      (when (and option-array (= (-> obj menu-transition) 0.0))
+        (let ((in-generic-page? (and (= (-> option-array length) 1)
+                                     (type? (-> option-array 0) menu-generic-scrolling-page))))
+         (cond
+          ;; If it's a scrolling menu, we have to pull from it's list of items
+          (in-generic-page?
+           ;; update the scrolling list
+           (respond-progress
+            (the-as menu-option (-> option-array 0))
+            obj
+            (and (= (-> obj menu-transition) 0.0) (-> obj selected-option))))
+          ;; Do a bounds check to avoid crashing
+          ((>= (-> obj option-index) (-> option-array length))
+           (format 0 "respond-to-cpad:progress: Option index ~D out of bounds~%" (-> obj option-index)))
+          (else
+           (respond-progress
+            (the-as menu-option (-> option-array (-> obj option-index)))
+            obj
+            (and (= (-> obj menu-transition) 0.0) (-> obj selected-option)))))
+        (cond
+          ((-> obj selected-option)
+           (cond
+             ((cpad-pressed? 0 confirm)
+              (set! (-> obj selected-option) #f)
+              )
+             ((cpad-pressed? 0 triangle)
+              (when (not in-generic-page?)
+                (if (= (-> obj current-options) *main-options*)
+                  (sound-play "window-contract")
+                  (sound-play "generic-beep")))
+              (set! (-> obj selected-option) #f))))
+          (else
+            (cond
+              ((cpad-pressed? 0 up l-analog-up)
+               (cond
+                 ((= (-> obj current-options) *main-options*)
+                  (sound-play "ring-select"))
+                 ((!= (length option-array) 1)
+                  (sound-play "roll-over")))
+               (if (and (= *title* (-> obj current-options)) (not (memcard-unlocked-secrets? #f)) (zero? (-> obj option-index)))
+                   (set! (-> obj option-index) 3))
+               (cond
+                 ((> (-> obj want-option-index) 0)
+                  (set! (-> obj want-option-index) -1))
+                 ((< -2 (-> obj want-option-index))
+                  (+! (-> obj want-option-index) -1))))
+              ((cpad-pressed? 0 down l-analog-down)
+               (cond
+                 ((= (-> obj current-options) *main-options*)
+                  (sound-play "ring-select"))
+                 ((!= (length option-array) 1)
+                  (sound-play "roll-over")))
+               (cond
+                 ((< (-> obj want-option-index) 0)
+                  (set! (-> obj want-option-index) 1))
+                 ((< (-> obj want-option-index) 2)
+                  (+! (-> obj want-option-index) 1))))
+              ((cpad-pressed? 0 confirm)
+               (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+               (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
+               (when (and (not in-generic-page?)
+                          (not (-> *progress-state* clear-screen)))
+                (sound-play "generic-beep"))
+               ;; don't "select" the page link
+               (when (!= (-> obj next) 'generic-menu)
+                (set! (-> obj selected-option) #t)))
+              ((cpad-pressed? 0 triangle)
+               ;; if we are within a generic managed menu option, handle the stack elsewhere
+               ;; TODO - this likely has issues if we have a nested-non-generic menu, but deal with that use-case if it's ever
+               ;; actually employed
+               (when (and (not has-generic-history?) (can-go-back? obj))
+                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
+                 (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+                 (if (and (= (-> *progress-state* starting-state) 'main) (!= (-> obj current-options) *main-options*))
+                     (sound-play "window-contract")
+                     (sound-play "generic-beep"))
+                 (clear-history-if-empty! *progress-pc-generic-store*)
+                 (pop-state obj))))))))))
+  (none))
+
+;; Component implementation
+
+(defmethod respond-progress menu-generic-scrolling-page ((obj menu-generic-scrolling-page) (progress progress) (selected? symbol))
+  "Handle progress menu navigation logic."
+  (if (or (= (-> obj selected-option-item) #f)
+            (zero? (-> obj selected-option-item)))
+    (cond
+      ((or (cpad-pressed? 0 down l-analog-down)
+           (and (cpad-hold? 0 down l-analog-down)
+                (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))))
+       (set! (-> obj last-move) (current-time))
+       (cond
+         ((< (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> obj menu-options length)))
+           (+! (-> *progress-pc-generic-store* current-menu-hover-index) 1)
+           (sound-play "roll-over"))
+         (else
+           (set! (-> *progress-pc-generic-store* current-menu-hover-index) 0)
+           (sound-play "roll-over"))))
+      ((or (cpad-pressed? 0 up l-analog-up)
+            (and (cpad-hold? 0 up l-analog-up)
+                (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.5))))
+        (set! (-> obj last-move) (current-time))
+        (+! (-> *progress-pc-generic-store* current-menu-hover-index) -1)
+        (sound-play "roll-over")
+        (when (< (-> *progress-pc-generic-store* current-menu-hover-index) 0)
+        (set! (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> obj menu-options length)))))
+      ((cpad-pressed? 0 confirm)
+       ;; ignore confirm if it's a link
+       (when (and (< (-> *progress-pc-generic-store* current-menu-hover-index) (-> obj menu-options length))
+                  (not (type? (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index)) menu-generic-link-option)))
+        (set! (-> obj selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
+        (set! (-> obj selected-option-item) (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index))))
+        (sound-play "generic-beep"))
+      ((cpad-pressed? 0 triangle)
+       ;; we are in a sub-page, time to go back
+       (when (has-history? *progress-pc-generic-store*)
+        (back! *progress-pc-generic-store* progress)
+        (sound-play "score-slide")))
+    )
+    (cond
+      ((cpad-pressed? 0 confirm)
+       (set! (-> obj selected-option-index) -1)
+       (set! (-> obj selected-option-item) #f))
+      ((cpad-pressed? 0 triangle)
+       (set! (-> obj selected-option-index) -1)
+       (set! (-> obj selected-option-item) #f))))
+  ;; propagate event to menu-option
+  (when (< (-> *progress-pc-generic-store* current-menu-hover-index) (-> obj menu-options length))
+    (respond-progress (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index)) progress selected?))
+  0)
+
+(defmethod respond-progress menu-generic-boolean-option ((obj menu-generic-boolean-option) (progress progress) (selected? symbol))
+  (if selected?
+    (cond
+      ((cpad-pressed? 0 left l-analog-left right l-analog-right)
+       (if (-> obj value)
+         (set! (-> obj value) #f)
+         (set! (-> obj value) #t))
+       (sound-play "generic-beep"))
+      ((cpad-pressed? 0 confirm)
+       (when (and (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
+        ((-> obj on-confirm) (-> obj value)))
+       (sound-play "generic-beep")))
+    (cond
+      ((cpad-pressed? 0 confirm)
+       ;; set the value, this is so we edit the component's state and not the actual underlying value
+       ;; in other words, don't change the setting until the user has actually confirmed the change!
+       (when (and (nonzero? (-> obj get-value-fn))
+                  (!= (-> obj get-value-fn) #f))
+        (set! (-> obj value) ((-> obj get-value-fn)))))))
+  0)
+
+(defmethod respond-progress menu-generic-carousel-option ((obj menu-generic-carousel-option) (progress progress) (selected? symbol))
+  (if selected?
+    (cond
+      ((cpad-pressed? 0 left l-analog-left)
+       (dec! (-> obj item-index))
+       (when (< (-> obj item-index) 0)
+        (set! (-> obj item-index) (dec (-> obj items length))))
+       (sound-play "generic-beep"))
+      ((cpad-pressed? 0 right l-analog-right)
+       (inc! (-> obj item-index))
+       (when (>= (-> obj item-index) (-> obj items length))
+        (set! (-> obj item-index) 0))
+       (sound-play "generic-beep"))
+      ((cpad-pressed? 0 confirm)
+       (when (and (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
+        ((-> obj on-confirm) (-> obj item-index)))
+       (sound-play "generic-beep")))
+    (cond
+      ((cpad-pressed? 0 confirm)
+       ;; set the value, this is so we edit the component's state and not the actual underlying value
+       ;; in other words, don't change the setting until the user has actually confirmed the change!
+       (when (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
+        (set! (-> obj item-index) ((-> obj get-item-index-fn)))))))
+  0)
+
+(defmethod respond-progress menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (selected? symbol))
+  (when (>= (-> *progress-pc-generic-store* current-menu-hover-index) 0)
+    (cond
+      ((cpad-pressed? 0 confirm)
+       (navigate! *progress-pc-generic-store* progress (-> obj target) (-> obj on-load))
+       (set! (-> progress selected-option) #f)
+       (sound-play "score-slide"))))
+  0)

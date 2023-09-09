@@ -1,0 +1,312 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+(defun draw-page-border ((hud-bounds hud-box) (alpha float))
+  (let ((x-pos 70)
+        (y-pos 112)
+        (width 375)
+        (background-height 200))
+    (when (= (get-aspect-ratio) 'aspect16x9)
+      (set! x-pos 79)
+      (set! y-pos 86)
+      (set! width 356)
+      (set! background-height 255))
+    (#when PC_PORT
+      ;; added for better widescreen handling
+      (when (not (-> *pc-settings* use-vis?))
+        (set! x-pos (the int (adjust-game-x (the float x-pos))))
+        (set! width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) width)))))
+    (set-vector! (-> hud-bounds color) 64 128 128 (the int (* 128.0 alpha)))
+    ;; Top Line
+    (set! (-> hud-bounds min x) (the float x-pos))
+    (set! (-> hud-bounds max x) (the float (+ x-pos width)))
+    (set! (-> hud-bounds min y) (the float y-pos))
+    (set! (-> hud-bounds max y) (the float y-pos))
+    (with-dma-buffer-add-bucket ((buffer-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id progress))
+      ((method-of-type hud-box draw-box-prim-only) hud-bounds buffer-1))
+    ;; Bottom Line
+    (set! (-> hud-bounds min x) (the float x-pos))
+    (set! (-> hud-bounds max x) (the float (+ x-pos width)))
+    (set! (-> hud-bounds min y) (the float (+ y-pos background-height)))
+    (set! (-> hud-bounds max y) (the float (+ y-pos background-height)))
+    (with-dma-buffer-add-bucket ((buffer-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id progress))
+      ((method-of-type hud-box draw-box-prim-only) hud-bounds buffer-2)))
+  (none))
+
+(defun draw-page-background ((alpha float))
+  (let ((x-pos 70)
+        (y-pos 112)
+        (width 375)
+        (background-height 200))
+    (when (= (get-aspect-ratio) 'aspect16x9)
+      (set! x-pos 79)
+      (set! y-pos 86)
+      (set! width 356)
+      (set! background-height 256))
+    (#when PC_PORT
+      ;; added for better widescreen handling
+      (when (not (-> *pc-settings* use-vis?))
+        (set! x-pos (the int (adjust-game-x (the float x-pos))))
+        (set! width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) width)))))
+    (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id particles))
+      (draw-sprite2d-xy buffer x-pos y-pos width background-height
+        (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a (the int (* 64.0 alpha))))))
+  (none))
+
+(defun draw-page-header ((font-ctx font-context) (text text-id))
+  (let ((x-pos 70)
+        (y-pos 85)
+        (width 375))
+    (when (= (get-aspect-ratio) 'aspect16x9)
+      (set! x-pos 79)
+      (set! y-pos 55)
+      (set! width 356))
+    (set-scale! font-ctx 0.75)
+    (set! (-> font-ctx height) 20.0)
+    (set! (-> font-ctx origin y) (the float y-pos))
+    (set-color! font-ctx (font-color progress))
+    (print-game-text (lookup-text! *common-text* text #f) font-ctx #f 44 (bucket-id progress)))
+  (none))
+
+(defun draw-scrolling-page-up-down-arrows ((font-ctx font-context) (draw-up? symbol) (draw-down? symbol))
+  (let ((new-x-pos 250.0)
+        (new-y-pos-up 100)
+        (new-y-pos-down 211)
+        (new-scale 0.5)
+        (old-scale (-> font-ctx scale))
+        (old-x-pos (-> font-ctx origin x))
+        (old-y-pos (-> font-ctx origin y)))
+    (when (= (get-aspect-ratio) 'aspect16x9)
+      (set! new-x-pos 251.5)
+      (set! new-y-pos-up 75)
+      (set! new-y-pos-down 265))
+    (set! (-> font-ctx scale) new-scale)
+    (when draw-up?
+      (set! (-> font-ctx origin x) (the float new-x-pos))
+      (set! (-> font-ctx origin y) (the float new-y-pos-up))
+      (let ((print-text-fn print-game-text))
+        (format (clear *temp-string*) "~33L~C" 160)
+        (print-text-fn *temp-string* font-ctx #f 44 (bucket-id progress))))
+    (when draw-down?
+      (set! (-> font-ctx origin x) (the float new-x-pos))
+      (set! (-> font-ctx origin y) (the float (+ new-y-pos-up new-y-pos-down)))
+      (let ((print-text-fn-1 print-game-text))
+        (format (clear *temp-string*) "~33L~C" 162)
+        (print-text-fn-1 *temp-string* font-ctx #f 44 (bucket-id progress))))
+    (set! (-> font-ctx origin x) old-x-pos)
+    (set! (-> font-ctx origin y) old-y-pos)
+    (set! (-> font-ctx scale) old-scale))
+  (none))
+
+;; The boundary info could be moved to the menu-option, every one of these is duplicate code
+(defun begin-scissor-scrolling-page ((hud-bounds hud-box))
+  (cond
+    ((= (get-aspect-ratio) 'aspect16x9)
+     (set! (-> hud-bounds min x) 19.0)
+     (set! (-> hud-bounds min y) 86.0)
+     (set! (-> hud-bounds max x) 494.0)
+     (set! (-> hud-bounds max y) 340.0))
+    (else
+     (set! (-> hud-bounds min x) 70.0)
+     (set! (-> hud-bounds min y) 112.0)
+     (set! (-> hud-bounds max x) 444.0)
+     (set! (-> hud-bounds max y) 312.0)))
+  (#when PC_PORT
+    (set! (-> hud-bounds min x) (the float (the int (adjust-game-x (-> hud-bounds min x)))))
+    (set! (-> hud-bounds max x) (the float (the int (adjust-game-x (-> hud-bounds max x))))))
+  (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress))
+    (setup-scissor hud-bounds buffer))
+  (none))
+
+(defun end-scissor-scrolling-page ((hud-bounds hud-box) (arg1 float))
+  (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id progress)
+                               )
+    (restore-scissor hud-bounds buffer))
+  (none))
+
+(defmethod draw-option menu-generic-scrolling-page ((obj menu-generic-scrolling-page) (progress progress) (font-ctx font-context) (arg3 int) (arg4 symbol))
+  ;; (inspect obj)
+  (when (or (zero? (-> obj mounted?)) (not (-> obj mounted?)))
+    (on-mount! obj))
+  ;; the list has a total of 200px of y-height
+  ;; with 10px of margin at the top and bottom, that leaves 180 / 4 = 45px per item
+  ;; it's the responsibility of each generic component to center itself within these 45px lines
+  (when (not (-> *progress-pc-generic-store* clear-screen?))
+    (let ((font-alpha (fmax 0.0 (* 2.0 (- 0.5 (-> progress menu-transition)))))
+        (hud-bounds (new 'stack-no-clear 'hud-box))
+        (max-page-size (if (= (get-aspect-ratio) 'aspect16x9) 5 4))
+        (margin-top-bottom 10.0)
+        (line-height 45.0))
+    (set! (-> font-ctx alpha) font-alpha)
+    (set-color! font-ctx (font-color progress))
+    ;; header
+    (draw-page-header font-ctx (-> obj name))
+    ;; background borders
+    (draw-page-border (-> obj box 0) font-alpha)
+    ;; background
+    (draw-page-background font-alpha)
+    (begin-scissor-scrolling-page hud-bounds)
+    (if (= (get-aspect-ratio) 'aspect16x9)
+      (set! (-> font-ctx origin y) (+ 86.0 margin-top-bottom))
+      (set! (-> font-ctx origin y) (+ 112.0 margin-top-bottom)))
+    ;; render items
+    (let* ((menu-option-index (if (< (-> *progress-pc-generic-store* current-menu-hover-index) max-page-size)
+                                  0
+                                  (-> *progress-pc-generic-store* current-menu-hover-index)))
+           (end-index (min (-> obj menu-options length) (+ menu-option-index max-page-size))))
+      (while (< menu-option-index end-index)
+        (let ((menu-option (-> obj menu-options menu-option-index)))
+          (when (nonzero? menu-option)
+            ;; save the y position as who knows where it will end up after the component finishes rendering
+            (let ((old-y-pos (-> font-ctx origin y)))
+              (draw-option menu-option progress font-ctx menu-option-index
+                           (= (-> obj selected-option-index) menu-option-index))
+              ;; move to the next line
+              (set! (-> font-ctx origin y) (+ old-y-pos line-height))
+              ;; reset the font color
+              (set-color! font-ctx (font-color progress)))))
+        (+! menu-option-index 1)))
+    ;; end
+    (end-scissor-scrolling-page hud-bounds 1.0)
+    (set-flags! font-ctx (font-flags kerning large))
+    (let* ((draw-up-arrow? (and (not (zero? (-> *progress-pc-generic-store* current-menu-hover-index)))
+                                (>= (-> *progress-pc-generic-store* current-menu-hover-index) max-page-size)))
+           (last-page-remainder (mod (-> obj menu-options length) max-page-size))
+           (last-page-starting-index (if (zero? last-page-remainder)
+                                         (- (-> obj menu-options length) max-page-size)
+                                         (- (-> obj menu-options length) last-page-remainder)))
+           (draw-down-arrow? (and (> (-> obj menu-options length) max-page-size)
+                                  (< (-> *progress-pc-generic-store* current-menu-hover-index) last-page-starting-index))))
+      (draw-scrolling-page-up-down-arrows font-ctx draw-up-arrow? draw-down-arrow?))))
+  (none))
+
+(defun draw-generic-highlight ((y-pos int) (height int) (alpha float))
+  (let ((x-pos (if (= (get-aspect-ratio) 'aspect4x3)
+                   70
+                   50))
+        (width (if (= (get-aspect-ratio) 'aspect4x3)
+                   374
+                   500)))
+    ;; og:preserve-this
+    (#when PC_PORT
+      ;; added for better widescreen handling
+      (when (not (-> *pc-settings* use-vis?))
+        (set! x-pos (the int (adjust-game-x (the float x-pos))))
+        (set! width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) width)))))
+    (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id progress)
+                                 )
+      (draw-sprite2d-xy buffer x-pos y-pos width height
+        (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha)))))))
+
+(defmethod draw-option menu-generic-boolean-option ((obj menu-generic-boolean-option) (arg0 progress) (arg1 font-context) (option-index int) (selected? symbol))
+  (when (not (-> obj mounted?))
+    (on-mount! obj))
+  (let ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
+        (line-height 23.0))
+    (max! alpha 0.0)
+    (set! (-> arg1 alpha) alpha)
+    (set-flags! arg1 (font-flags kerning middle large))
+    (set-scale! arg1 0.65)
+    (+! (-> arg1 origin y) 5.0)
+    (cond
+      (selected?
+        (set-color! arg1 (font-color progress-force-selected))
+        (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 41 alpha)
+        (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
+        (+! (-> arg1 origin y) line-height)
+        (set! *temp-string* (clear *temp-string*))
+        (if (-> obj value)
+          (format *temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
+          (format *temp-string* "~35L~S ~33L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))
+      ;; hover case
+      (else
+        (cond
+          ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+            (set-color! arg1 (progress-selected 0))
+            (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
+          (else
+            (set-color! arg1 (font-color progress))))
+        (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
+        (+! (-> arg1 origin y) line-height)
+        (set! *temp-string* (clear *temp-string*))
+        (let ((actual-value (if (and (nonzero? (-> obj get-value-fn)) (!= (-> obj get-value-fn) #f))
+                              ((-> obj get-value-fn))
+                              #f)))
+          (if actual-value
+            (format *temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
+            (format *temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))))
+    (set-scale! arg1 0.5)
+    (print-game-text *temp-string* arg1 #f 44 (bucket-id progress)))
+  (none))
+
+(defmethod draw-option menu-generic-carousel-option ((obj menu-generic-carousel-option)
+                                                     (progress progress)
+                                                     (font-ctx font-context)
+                                                     (option-index int)
+                                                     (selected? symbol))
+  (when (not (-> obj mounted?))
+    (on-mount! obj))
+  (let ((alpha (fmax (* 2.0 (- 0.5 (-> progress menu-transition))) 0.0)))
+    (set! (-> font-ctx scale) 0.65)
+    (set! (-> font-ctx alpha) alpha)
+    (+! (-> font-ctx origin y) 2.5)
+    (set-flags! font-ctx (font-flags kerning middle large))
+    ;; the item label
+    (cond
+      (selected?
+       (set! (-> font-ctx color) (font-color progress-force-selected))
+       (draw-generic-highlight (the int (-> font-ctx origin y)) 44 alpha))
+      ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+       (set! (-> font-ctx color) (progress-selected 0))
+       (draw-generic-highlight (the int (-> font-ctx origin y)) 24 alpha)))
+    (format (clear *temp-string*) "~S" (lookup-text! *common-text* (-> obj name) #f))
+    (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
+    (+! (-> font-ctx origin y) 24.0)
+    (set! (-> font-ctx scale) 0.5)
+    (set! (-> font-ctx color) (font-color progress))
+    (when selected?
+      ;; left arrow
+      (+! (-> font-ctx origin x) -70.0)
+      (format (clear *temp-string*) "~33L~C" 163)
+      (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
+      (+! (-> font-ctx origin x) 70.0)
+      (+! (-> font-ctx origin x) 70.0)
+      ;; right arrow
+      (format (clear *temp-string*) "~33L~C" 161)
+      (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
+      (+! (-> font-ctx origin x) -70.0)
+      (set! (-> font-ctx color) (progress-selected 0)))
+    ;; the value
+    ;; TODO - bounds checking would be smart
+    (if selected?
+      (print-game-text (lookup-text! *common-text* (-> obj items (-> obj item-index)) #f) font-ctx #f 44 (bucket-id progress))
+      (let ((actual-index (if (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
+                              ((-> obj get-item-index-fn))
+                              0)))
+        (print-game-text (lookup-text! *common-text* (-> obj items actual-index) #f) font-ctx #f 44 (bucket-id progress)))))
+  (none))
+
+(defmethod draw-option menu-generic-link-option ((obj menu-generic-link-option) (arg0 progress) (arg1 font-context) (option-index int) (selected? symbol))
+  (when (not (-> obj mounted?))
+    (on-mount! obj))
+  (let ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
+        (line-height 23.0))
+    (max! alpha 0.0)
+    (set! (-> arg1 alpha) alpha)
+    (set-flags! arg1 (font-flags kerning middle large))
+    (set-scale! arg1 0.65)
+    (+! (-> arg1 origin y) 12.5)
+    (cond
+      ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+        (set-color! arg1 (progress-selected 0))
+        (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
+      (else
+        (set-color! arg1 (font-color progress))))
+    (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress)))
+  (none))
