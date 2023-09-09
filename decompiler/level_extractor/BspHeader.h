@@ -195,7 +195,6 @@ struct EntityActor {
 };
 
 struct DrawableActor : public Drawable {
-  s16 id;
   Vector bsphere;
 
   EntityActor actor;
@@ -898,7 +897,8 @@ struct BspHeader {
   void read_from_file(const decompiler::LinkedObjectFile& file,
                       const decompiler::DecompilerTypeSystem& dts,
                       DrawStats* stats,
-                      GameVersion version);
+                      GameVersion version,
+                      bool only_read_texture_remap = false);
 
   std::string print(const PrintSettings& settings) const;
 };

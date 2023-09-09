@@ -1896,13 +1896,12 @@ template <typename T>
 void fill_res_with_value_types(Res& res_tag, const Ref& data) {
   ASSERT(res_tag.inlined);
   res_tag.inlined_storage = bytes_from_plain_data(data, sizeof(T) * res_tag.count);
-  const auto* fp = (const T*)res_tag.inlined_storage.data();
 }
 
 void EntityActor::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
-                                 level_tools::DrawStats* stats,
-                                 GameVersion version) {
+                                 level_tools::DrawStats* /*stats*/,
+                                 GameVersion /*version*/) {
   trans.read_from_file(get_field_ref(ref, "trans", dts));
   aid = read_plain_data_field<u32>(ref, "aid", dts);
   etype = read_type_field(ref, "etype", dts, false);
@@ -1911,7 +1910,7 @@ void EntityActor::read_from_file(TypedRef ref,
   quat.read_from_file(get_field_ref(ref, "quat", dts));
 
   int res_length = read_plain_data_field<int32_t>(ref, "length", dts);
-  int res_allocated_length = read_plain_data_field<int32_t>(ref, "allocated-length", dts);
+  // int res_allocated_length = read_plain_data_field<int32_t>(ref, "allocated-length", dts);
 
   auto tags = deref_label(get_field_ref(ref, "tag", dts));
   auto data_base = deref_label(get_field_ref(ref, "data-base", dts));
@@ -2014,7 +2013,8 @@ void DrawableInlineArrayActor::read_from_file(TypedRef ref,
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
                                DrawStats* stats,
-                               GameVersion version) {
+                               GameVersion version,
+                               bool only_read_texture_remap) {
   TypedRef ref;
   ref.ref.byte_offset = 0;
   ref.ref.seg = 0;
@@ -2023,6 +2023,24 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
 
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+
+  texture_remap_table.clear();
+  s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
+  if (tex_remap_len > 0) {
+    auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
+    for (int entry = 0; entry < tex_remap_len; entry++) {
+      u64 low = deref_u32(tex_remap_data, 2 * entry);
+      u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
+      TextureRemap remap;
+      remap.original_texid = low;
+      remap.new_texid = high;
+      texture_remap_table.push_back(remap);
+    }
+  }
+
+  if (only_read_texture_remap) {
+    return;
+  }
 
   switch (version) {
     case GameVersion::Jak1:
@@ -2039,34 +2057,15 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats,
       version);
 
-  texture_remap_table.clear();
-
-  s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
-
-  if (tex_remap_len > 0) {
-    auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
-    for (int entry = 0; entry < tex_remap_len; entry++) {
-      u64 low = deref_u32(tex_remap_data, 2 * entry);
-      u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
-      TextureRemap remap;
-      remap.original_texid = low;
-      remap.new_texid = high;
-      texture_remap_table.push_back(remap);
-    }
-  }
-
   if (version > GameVersion::Jak1) {
     auto ff = get_field_ref(ref, "texture-flags", dts);
     memcpy_plain_data((u8*)texture_flags, ff, sizeof(u16) * kNumTextureFlags);
   }
 
   if (get_word_kind_for_field(ref, "actors", dts) == decompiler::LinkedWord::PTR) {
-    fmt::print("yes actors in {}\n", file_info.file_name);
     actors.read_from_file(
         get_and_check_ref_to_basic(ref, "actors", "drawable-inline-array-actor", dts), dts, stats,
         version);
-  } else {
-    fmt::print("no actors in {}\n", file_info.file_name);
   }
 }
 
