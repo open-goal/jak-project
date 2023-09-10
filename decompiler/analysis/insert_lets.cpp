@@ -2308,10 +2308,19 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
   }
 
   auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
+  auto tokens = origin->tokens().size();
   if (!origin) {
     return nullptr;
   }
-  auto origin_form = origin->base();
+  Form* origin_form;
+  // remove only the quad if there are multiple derefs
+  if (tokens > 1) {
+    origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
+    auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
+    orig->tokens().pop_back();
+  } else {
+    origin_form = origin->base();
+  }
 
   auto launch_state = func_elt->elts().at(func_elt->elts().size() - 3);
   auto mr_launch_state =
