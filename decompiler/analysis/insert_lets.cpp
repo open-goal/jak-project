@@ -2308,10 +2308,10 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
   }
 
   auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
-  auto tokens = origin->tokens().size();
   if (!origin) {
     return nullptr;
   }
+  auto tokens = origin->tokens().size();
   Form* origin_form;
   // remove only the quad if there are multiple derefs
   if (tokens > 1) {
