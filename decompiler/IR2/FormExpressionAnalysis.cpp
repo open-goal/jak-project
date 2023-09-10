@@ -3881,8 +3881,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
         macro.push_back(rate);
       }
 
-      macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
-      macro.push_back(pool.form<ConstantTokenElement>("#t"));
+      if (env.version > GameVersion::Jak1) {
+        macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
+        macro.push_back(pool.form<ConstantTokenElement>("#t"));
+      }
+
       new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")),
           macro);
