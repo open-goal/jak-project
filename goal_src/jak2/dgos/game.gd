@@ -239,7 +239,6 @@
   "autosplit-h.o" ;; added
   "autosplit.o" ;; added
   "speedruns-h.o" ;; added
-  "speedruns.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -327,6 +326,7 @@
   "board-states.o"
   "mech-h.o"
   "menu.o"
+  "speedruns.o" ;; added
   "drawable.o"
   "drawable-group.o"
   "drawable-inline-array.o"
