@@ -75,7 +75,7 @@ void main() {
 
   gl_Position = transformed;
   // scissoring area adjust
-  gl_Position.y *= SCISSOR_ADJUST;
+  gl_Position.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
 
   // wireframe check
   if (wireframe == 0) {
