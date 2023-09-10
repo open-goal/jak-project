@@ -91,7 +91,7 @@
     (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
 
-    ;; ADDED (also added in jak1)
+    ;; og:preserve-this ADDED (also added in jak1)
     ;; there's a bug in swamp-blimp where they vector<-cspace!
     ;; on some default-initialized-to-zero bones
     ;; we have to return 0s for this to avoid NaNs getting everywhere.
@@ -260,6 +260,7 @@
   )
 
 (defmethod setup-masks draw-control ((obj draw-control) (arg0 int) (arg1 int))
+  "TODO - use the enum types"
   (local-vars (v1-4 int) (a2-1 (array uint64)))
   (let ((a1-2 (logior (logclear (-> obj seg-mask) arg0) arg1)))
     (set! (-> obj seg-mask) a1-2)
@@ -416,8 +417,10 @@
           (+ s1-0 1)
           (let ((s5-0 pp))
             (set! pp (-> obj process))
+            ;; og:preserve-this scratchpad
             ((-> arg1 generate-frame-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s1-0 arg1)
             (if (-> arg1 prebind-function)
+                ;; og:preserve-this scratchpad
                 ((-> arg1 prebind-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s1-0 arg1)
                 )
             (dotimes (s1-1 1)
@@ -431,6 +434,7 @@
               )
             (dotimes (s1-2 2)
               (let* ((a0-11 (-> arg0 data (+ s1-2 1)))
+                     ;; og:preserve-this scratchpad
                      (a1-7 (+ (* s1-2 64) 2400 (scratchpad-object int)))
                      (t9-4 (-> a0-11 param0))
                      )
@@ -442,6 +446,7 @@
             (let ((s1-3 3))
               (dotimes (s0-0 s2-0)
                 (let ((a0-12 (-> arg0 data (+ s0-0 s1-3)))
+                      ;; og:preserve-this scratchpad
                       (a1-9 (+ (* 48 s0-0) 2528 (scratchpad-object int)))
                       )
                   (if (-> a0-12 param0)
@@ -468,6 +473,7 @@
           )
         )
       )
+  ;; og:preserve-this
   (#when PC_PORT (when *debug-segment*
     (if *display-bones*
       (draw-bone-lines (the-as process-drawable (-> obj process))))
@@ -598,7 +604,8 @@
             )
     )
   :code (behavior ((arg0 string))
-          (format 0 "ART ERROR: ~A for ~A~%" arg0 self)
+    ;; og:preserve-this
+    (format 0 "ART ERROR: ~A for ~A~%" arg0 self)
     (if (-> self entity)
         (logior! (-> self entity extra perm status) (entity-perm-status error))
         )
@@ -672,11 +679,7 @@
         )
       (set! sv-16 (-> s1-0 data (-> arg1 jgeo)))
       (set! sv-20 (-> s1-0 length))
-      (when (or (< (the-as int (-> arg1 jgeo)) 0)
-                (>= (the-as int (-> arg1 jgeo)) sv-20)
-                (not sv-16)
-                (!= (-> sv-16 type) art-joint-geo)
-                )
+      (when (or (< (-> arg1 jgeo) 0) (>= (-> arg1 jgeo) sv-20) (not sv-16) (!= (-> sv-16 type) art-joint-geo))
         (go process-drawable-art-error "joint-geo")
         (set! s2-0 (the-as draw-control #f))
         (goto cfg-50)
@@ -852,9 +855,8 @@
             (set-vector! s2-0 0.0 0.0 0.0 1.0)
             )
         (when (logtest? arg0 (align-opts adjust-x-vel))
-          (set! (-> a1-5 x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> pp clock frames-per-second))
-                               (* (-> s2-0 x) (-> pp clock seconds-per-frame))
-                               )
+          (set! (-> a1-5 x)
+                (+ (* (-> arg1 trans x) (-> arg2 x) (-> pp clock frames-per-second)) (* (-> s2-0 x) (seconds-per-frame)))
                 )
           (if (not (logtest? arg0 (align-opts adjust-xz-vel keep-other-velocities)))
               (set! (-> a1-5 z) 0.0)
@@ -863,15 +865,13 @@
         (if (and (logtest? arg0 (align-opts adjust-y-vel))
                  (not (and (logtest? arg0 (align-opts ignore-y-if-zero)) (= (-> arg1 trans y) 0.0)))
                  )
-            (set! (-> a1-5 y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> pp clock frames-per-second))
-                                 (* (-> s2-0 y) (-> pp clock seconds-per-frame))
-                                 )
+            (set! (-> a1-5 y)
+                  (+ (* (-> arg1 trans y) (-> arg2 y) (-> pp clock frames-per-second)) (* (-> s2-0 y) (seconds-per-frame)))
                   )
             )
         (when (logtest? arg0 (align-opts adjust-xz-vel))
-          (set! (-> a1-5 z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> pp clock frames-per-second))
-                               (* (-> s2-0 z) (-> pp clock seconds-per-frame))
-                               )
+          (set! (-> a1-5 z)
+                (+ (* (-> arg1 trans z) (-> arg2 z) (-> pp clock frames-per-second)) (* (-> s2-0 z) (seconds-per-frame)))
                 )
           (if (not (logtest? arg0 (align-opts adjust-x-vel keep-other-velocities)))
               (set! (-> a1-5 x) 0.0)
@@ -1208,6 +1208,7 @@
             (let ((s2-0 (-> s3-0 frame-group)))
               (when (not (and s2-0 (nonzero? s2-0) (= (logand (the-as int s2-0) 7) 4) (= (-> s2-0 type) art-joint-anim)))
                 (go process-drawable-art-error "joint-anim")
+                ;; og:preserve-this
                 (abandon-thread)
                 0
                 )
@@ -1274,6 +1275,7 @@
           (let ((s0-0 (-> s1-0 frame-group)))
             (when (not (and s0-0 (nonzero? s0-0) (= (logand (the-as int s0-0) 7) 4) (= (-> s0-0 type) art-joint-anim)))
               (go process-drawable-art-error "joint-anim")
+              ;; og:preserve-this
               (abandon-thread)
               0
               )
@@ -1490,7 +1492,7 @@
       (cond
         ((= (-> obj interp) 0.0)
          (when s5-0
-           (seek! (-> s5-0 frame-interp 1) 0.0 (* 8.0 (-> pp clock seconds-per-frame)))
+           (seek! (-> s5-0 frame-interp 1) 0.0 (* 8.0 (seconds-per-frame)))
            (if s3-0
                (set! (-> s3-0 frame-interp 1) (fmin (-> s3-0 frame-interp 1) (-> s5-0 frame-interp 1)))
                )

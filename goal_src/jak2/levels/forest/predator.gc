@@ -809,60 +809,58 @@
       )
 
 (defmethod predator-method-183 predator ((obj predator))
-  (with-pp
-    (cond
-      ((< (-> obj hit-points) 2)
-       (when (!= (-> obj dest-fade) 128.0)
-         (sound-play "pred-uncloak")
-         (stop! (-> obj sound))
-         (set! (-> obj sound) (the-as ambient-sound 0))
-         0
-         )
-       (set! (-> obj dest-fade) 128.0)
+  (cond
+    ((< (-> obj hit-points) 2)
+     (when (!= (-> obj dest-fade) 128.0)
+       (sound-play "pred-uncloak")
+       (stop! (-> obj sound))
+       (set! (-> obj sound) (the-as ambient-sound 0))
+       0
        )
-      (else
-        (set! (-> obj dest-fade) 0.0)
-        )
+     (set! (-> obj dest-fade) 128.0)
+     )
+    (else
+      (set! (-> obj dest-fade) 0.0)
       )
-    (seek! (-> obj fade) (-> obj dest-fade) (* 60.0 (-> pp clock seconds-per-frame)))
-    (set! (-> obj draw force-fade) (the-as uint (the int (-> obj fade))))
-    (cond
-      ((zero? (-> obj draw force-fade))
-       (setup-masks (-> obj draw) 8 0)
-       (setup-masks (-> obj draw) 0 4)
-       (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-       )
-      ((= (-> obj draw force-fade) 128)
-       (setup-masks (-> obj draw) 0 8)
-       (setup-masks (-> obj draw) 4 0)
-       (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-       )
-      (else
-        (setup-masks (-> obj draw) 8 0)
-        (setup-masks (-> obj draw) 4 0)
-        (logior! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-        )
-      )
-    (if (< 245760.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
-        (setup-masks (-> obj draw) 0 8)
-        )
-    (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
-      (when (>= (- (current-time) (-> obj shock-effect-time)) (seconds 0.04))
-        (set! (-> obj shock-effect-time) (current-time))
-        (process-drawable-shock-skel-effect
-          obj
-          (-> *lightning-spec-id-table* 18)
-          lightning-probe-callback
-          (-> *part-id-table* 166)
-          2048.0
-          -1
-          -1
-          )
-        )
-      )
-    0
-    (none)
     )
+  (seek! (-> obj fade) (-> obj dest-fade) (* 60.0 (seconds-per-frame)))
+  (set! (-> obj draw force-fade) (the-as uint (the int (-> obj fade))))
+  (cond
+    ((zero? (-> obj draw force-fade))
+     (setup-masks (-> obj draw) 8 0)
+     (setup-masks (-> obj draw) 0 4)
+     (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+     )
+    ((= (-> obj draw force-fade) 128)
+     (setup-masks (-> obj draw) 0 8)
+     (setup-masks (-> obj draw) 4 0)
+     (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+     )
+    (else
+      (setup-masks (-> obj draw) 8 0)
+      (setup-masks (-> obj draw) 4 0)
+      (logior! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+      )
+    )
+  (if (< 245760.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
+      (setup-masks (-> obj draw) 0 8)
+      )
+  (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
+    (when (>= (- (current-time) (-> obj shock-effect-time)) (seconds 0.04))
+      (set! (-> obj shock-effect-time) (current-time))
+      (process-drawable-shock-skel-effect
+        obj
+        (-> *lightning-spec-id-table* 18)
+        lightning-probe-callback
+        (-> *part-id-table* 166)
+        2048.0
+        -1
+        -1
+        )
+      )
+    )
+  0
+  (none)
   )
 
 (defstate active (predator)

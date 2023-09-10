@@ -59,8 +59,8 @@
     (set! (-> self control current-surface target-speed) (* (-> self control current-surface target-speed) f0-11))
     (set! (-> self control current-surface transv-max) (* (-> self control current-surface transv-max) f0-11))
     )
+  ;; og:preserve-this turbo jet board cheat
   (#when PC_PORT
-    ;; turbo jet board cheat
     (when (cheat-state-flag? turbo-board)
       (*! (-> self control current-surface target-speed) (-> *pc-cheat-state* turbo-board-speed))
       (*! (-> self control current-surface transv-max) (-> *pc-cheat-state* turbo-board-speed))
@@ -819,14 +819,11 @@
      )
     (else
       (let ((f0-10 (atan (-> arg0 x) (-> arg0 z))))
-        (vector-rotate-y!
-          arg0
-          arg0
-          (fmin
-            (* 0.03 (-> self clock time-adjust-ratio) (- f0-10))
-            (* (-> self control current-surface vel-turn) (-> self clock seconds-per-frame))
-            )
-          )
+        (vector-rotate-y! arg0 arg0 (fmin
+                                      (* 0.03 (-> self clock time-adjust-ratio) (- f0-10))
+                                      (* (-> self control current-surface vel-turn) (seconds-per-frame))
+                                      )
+                          )
         )
       )
     )
@@ -956,7 +953,7 @@
                   (set! (-> s3-1 z) (fmax 0.0 (fmin (-> s3-1 z) (-> s4-0 z))))
                   )
               (if (< 0.2 (-> self control blocked-factor))
-                  (vector-seek! s3-1 s4-0 (* 122880.0 (-> self clock seconds-per-frame)))
+                  (vector-seek! s3-1 s4-0 (* 122880.0 (seconds-per-frame)))
                   )
               (vector-matrix*! s2-0 s3-1 (-> self control c-R-w))
               (let ((f28-0 (vector-vector-xz-distance s3-1 s4-0)))
@@ -1005,7 +1002,7 @@
                 (set! (-> gp-0 z) 0.0)
                 )
             (let ((s4-2 (vector-! (new-stack-vector0) s5-0 gp-0)))
-              (let ((f0-45 (* f30-0 (-> self clock seconds-per-frame))))
+              (let ((f0-45 (* f30-0 (seconds-per-frame))))
                 (set! (-> s4-2 y) 0.0)
                 (let ((v1-104 s4-2))
                   (if (< f0-45 (sqrtf (+ (* (-> v1-104 x) (-> v1-104 x)) (* (-> v1-104 z) (-> v1-104 z)))))
@@ -1160,7 +1157,7 @@
            (s4-0 (forward-up-nopitch->quaternion (new-stack-quaternion0) gp-0 s3-0))
            (s3-1 (forward-up-nopitch->quaternion (new-stack-quaternion0) s5-0 s3-0))
            (f0-2 (acos (vector-dot gp-0 s5-0)))
-           (f1-2 (* (-> self control current-surface turnvv) (-> self clock seconds-per-frame)))
+           (f1-2 (* (-> self control current-surface turnvv) (seconds-per-frame)))
            )
       (quaternion-slerp!
         (-> self control dir-targ)
@@ -1433,7 +1430,7 @@
                 (.svf (&-> a1-9 quad) vf6)
                 )
               (let ((f0-13 (lerp-scale 1.0 0.0 (- (-> s2-0 y) (-> self control gspot-pos y)) 819.2 2048.0)))
-                (seek! (-> self leg-ik s5-0 user-blend) f0-13 (* 4.0 (-> self clock seconds-per-frame)))
+                (seek! (-> self leg-ik s5-0 user-blend) f0-13 (* 4.0 (seconds-per-frame)))
                 )
               (let ((a1-12 (-> gp-0 start-pos)))
                 (let ((v1-63 s2-0))
@@ -1510,11 +1507,7 @@
   (if (>= (current-time) (-> self control additional-decaying-velocity-decay-start-time))
       (vector-normalize!
         (-> self control additional-decaying-velocity)
-        (seek
-          (vector-length (-> self control additional-decaying-velocity))
-          0.0
-          (* 40960.0 (-> self clock seconds-per-frame))
-          )
+        (seek (vector-length (-> self control additional-decaying-velocity)) 0.0 (* 40960.0 (seconds-per-frame)))
         )
       )
   (cond
@@ -1531,10 +1524,10 @@
                (f0-3 (vector-dot (-> self control transv) v1-22))
                )
           (if (< f0-3 0.0)
-              (set! f30-0 (seek f30-0 0.0 (* -1.0 (-> self clock seconds-per-frame) f0-3)))
+              (set! f30-0 (seek f30-0 0.0 (* -1.0 (seconds-per-frame) f0-3)))
               )
           )
-        (let ((f0-7 (seek f30-0 0.0 (* 28672.0 (-> self clock seconds-per-frame)))))
+        (let ((f0-7 (seek f30-0 0.0 (* 28672.0 (seconds-per-frame)))))
           (vector-normalize! (-> self control additional-decaying-velocity) f0-7)
           )
         )
@@ -1834,23 +1827,23 @@
   (seek!
     (-> self hair 0 twist-max z)
     (lerp-scale 0.0 1820.4445 (vector-length (-> self control transv)) 0.0 122880.0)
-    (* 65536.0 (-> self clock seconds-per-frame))
+    (* 65536.0 (seconds-per-frame))
     )
   (seek!
     (-> self hair 0 twist-speed-x)
     (lerp-scale 0.5 4.0 (vector-length (-> self control transv)) 0.0 122880.0)
-    (* 10.0 (-> self clock seconds-per-frame))
+    (* 10.0 (seconds-per-frame))
     )
-  (let ((f0-9 (+ (-> self hair 0 twist z) (* (-> self hair 0 twist-speed-x) (-> self clock seconds-per-frame)))))
+  (let ((f0-9 (+ (-> self hair 0 twist z) (* (-> self hair 0 twist-speed-x) (seconds-per-frame)))))
     (set! (-> self hair 0 twist z) (- f0-9 (* (the float (the int (/ f0-9 1.0))) 1.0)))
     )
   (if (and (focus-test? self pilot) (nonzero? (-> self pilot)) (= (-> self pilot stance) 1))
       (seek!
         (-> self hair 0 twist-max w)
         (lerp-scale 0.0 9102.223 (vector-length (-> self control transv)) 0.0 122880.0)
-        (* 65536.0 (-> self clock seconds-per-frame))
+        (* 65536.0 (seconds-per-frame))
         )
-      (seek! (-> self hair 0 twist-max w) 0.0 (* 65536.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self hair 0 twist-max w) 0.0 (* 65536.0 (seconds-per-frame)))
       )
   (trs-set!
     (-> self hair 0)
@@ -1865,14 +1858,14 @@
   (seek!
     (-> self hair 1 twist-max z)
     (lerp-scale 0.0 5461.3335 (vector-length (-> self control transv)) 4096.0 122880.0)
-    (* 65536.0 (-> self clock seconds-per-frame))
+    (* 65536.0 (seconds-per-frame))
     )
   (seek!
     (-> self hair 1 twist-speed-x)
     (lerp-scale 1.0 8.0 (vector-length (-> self control transv)) 4096.0 122880.0)
-    (* 10.0 (-> self clock seconds-per-frame))
+    (* 10.0 (seconds-per-frame))
     )
-  (let ((f0-33 (+ (-> self hair 1 twist z) (* (-> self hair 1 twist-speed-x) (-> self clock seconds-per-frame)))))
+  (let ((f0-33 (+ (-> self hair 1 twist z) (* (-> self hair 1 twist-speed-x) (seconds-per-frame)))))
     (set! (-> self hair 1 twist z) (- f0-33 (* (the float (the int (/ f0-33 1.0))) 1.0)))
     )
   (trs-set!
@@ -1905,7 +1898,7 @@
               )
           )
         )
-    (seek! (-> self control bend-amount) f0-1 (* (-> self control bend-speed) (-> self clock seconds-per-frame)))
+    (seek! (-> self control bend-amount) f0-1 (* (-> self control bend-speed) (seconds-per-frame)))
     )
   (set! (-> self control dynam gravity-normal quad) (-> self control standard-dynamics gravity-normal quad))
   (vector-float*!
@@ -2053,10 +2046,10 @@
              ((-> s5-0 pilot-edge-grab?)
               (case (-> s5-0 pilot-edge-grab?)
                 (('target-jump)
-                 (seek! (-> s5-0 pilot-grab-interp) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+                 (seek! (-> s5-0 pilot-grab-interp) 1.0 (* 2.0 (seconds-per-frame)))
                  )
                 (else
-                  (seek! (-> s5-0 pilot-grab-interp) 1.0 (* 1.5 (-> self clock seconds-per-frame)))
+                  (seek! (-> s5-0 pilot-grab-interp) 1.0 (* 1.5 (seconds-per-frame)))
                   )
                 )
               (let* ((f0-11 (fmin 1.0 (* 1.5 (-> s5-0 pilot-grab-interp))))
@@ -2385,12 +2378,12 @@
         )
     (cond
       ((>= f0-1 (-> self excitement))
-       (seek! (-> self excitement) f0-1 (* 6.0 (-> self clock seconds-per-frame)))
+       (seek! (-> self excitement) f0-1 (* 6.0 (seconds-per-frame)))
        )
       ((focus-test? self dead ignore hit)
        )
       (else
-        (seek! (-> self excitement) f0-1 (* 0.25 (-> self clock seconds-per-frame)))
+        (seek! (-> self excitement) f0-1 (* 0.25 (seconds-per-frame)))
         )
       )
     )
@@ -3084,7 +3077,8 @@
       (set! arg0 (get-current-continue-forced *game-info*))
       )
   (set-continue! *game-info* arg0 #f)
-  (stack-size-set! (-> obj main-thread) 2048) ;; changed from 1024
+  ;; og:preserve-this changed from 1024
+  (stack-size-set! (-> obj main-thread) 2048)
   (logior! (-> obj mask) (process-mask target))
   (set! (-> obj state-hook) (the-as (function none :behavior target) nothing))
   (cond

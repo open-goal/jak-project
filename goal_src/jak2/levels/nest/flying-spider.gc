@@ -223,13 +223,8 @@
     )
   :post (behavior ()
     (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
-    (set! (-> self path-u) (seek-ease
-                             (-> self path-u)
-                             1.0
-                             (* (-> self path-du) (-> self clock seconds-per-frame))
-                             0.2
-                             (* 0.04 (-> self clock seconds-per-frame))
-                             )
+    (set! (-> self path-u)
+          (seek-ease (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)) 0.2 (* 0.04 (seconds-per-frame)))
           )
     (let ((f0-7 (-> self path-u)))
       (set-vector! (-> self root scale) f0-7 f0-7 f0-7 0.0)
@@ -274,7 +269,7 @@
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
-        (quaternion-slerp! (-> self root quat) (-> self root quat) gp-0 (* 2.0 (-> self clock seconds-per-frame)))
+        (quaternion-slerp! (-> self root quat) (-> self root quat) gp-0 (* 2.0 (seconds-per-frame)))
         (suspend)
         (ja :num! (seek!))
         )
@@ -721,35 +716,33 @@
   )
 
 (defmethod flying-spider-method-182 flying-spider ((obj flying-spider) (arg0 vector))
-  (with-pp
-    (cond
-      ((= (-> obj root gspot-pos y) -40959590.0)
-       (set! (-> arg0 y) 0.0)
-       (vector-normalize! arg0 1.0)
-       (quaternion-set! (-> obj root quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
-       (quaternion-normalize! (-> obj root quat))
-       )
-      (else
-        (let ((s4-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s4-0 quad) (-> *up-vector* quad))
-          (let ((s3-0 (new 'stack-no-clear 'quaternion)))
-            (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> obj gspot-normal) 4551.1113)
-            (vector-orient-by-quat! s4-0 s4-0 s3-0)
-            )
-          (let ((s3-1 (-> obj my-up-vector)))
-            (new 'stack-no-clear 'vector)
-            (vector-deg-seek s3-1 s3-1 s4-0 (* 910.2222 (-> pp clock seconds-per-frame)))
-            (vector-normalize! s3-1 1.0)
-            (set! (-> arg0 y) 0.0)
-            (vector-normalize! arg0 1.0)
-            (forward-up->quaternion (-> obj root quat) arg0 s3-1)
-            )
+  (cond
+    ((= (-> obj root gspot-pos y) -40959590.0)
+     (set! (-> arg0 y) 0.0)
+     (vector-normalize! arg0 1.0)
+     (quaternion-set! (-> obj root quat) 0.0 (-> arg0 x) 0.0 (+ 1.0 (-> arg0 z)))
+     (quaternion-normalize! (-> obj root quat))
+     )
+    (else
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-0 quad) (-> *up-vector* quad))
+        (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+          (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> obj gspot-normal) 4551.1113)
+          (vector-orient-by-quat! s4-0 s4-0 s3-0)
+          )
+        (let ((s3-1 (-> obj my-up-vector)))
+          (new 'stack-no-clear 'vector)
+          (vector-deg-seek s3-1 s3-1 s4-0 (* 910.2222 (seconds-per-frame)))
+          (vector-normalize! s3-1 1.0)
+          (set! (-> arg0 y) 0.0)
+          (vector-normalize! arg0 1.0)
+          (forward-up->quaternion (-> obj root quat) arg0 s3-1)
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 (defmethod nav-enemy-method-142 flying-spider ((obj flying-spider) (arg0 nav-control))
