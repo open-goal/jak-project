@@ -141,11 +141,11 @@ class LinkedObjectFile {
   std::unique_ptr<LabelDB> label_db;
 
   GameVersion version;
+  goos::Object to_form_script(int seg, int word_idx, std::vector<bool>* seen) const;
 
  private:
-  goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);
-  goos::Object to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
-  bool is_empty_list(int seg, int byte_idx);
+  goos::Object to_form_script_object(int seg, int byte_idx, std::vector<bool>* seen) const;
+  bool is_empty_list(int seg, int byte_idx) const;
 
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };

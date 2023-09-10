@@ -206,6 +206,9 @@ bool run_build_level(const std::string& input_file,
       const auto& files = db.obj_files_by_dgo.at(dgo_name);
       auto art_groups = find_art_groups(
           processed_art_groups, level_json.at("art_groups").get<std::vector<std::string>>(), files);
+      if (art_groups.empty()) {
+        continue;
+      }
       auto tex_remap = decompiler::extract_tex_remap(db, dgo_name);
       for (const auto& ag : art_groups) {
         if (ag.name.length() > 3 && !ag.name.compare(ag.name.length() - 3, 3, "-ag")) {

@@ -55,6 +55,7 @@ add_library(
         IR2/OpenGoalMapping.cpp
 
         level_extractor/BspHeader.cpp
+        level_extractor/extract_actors.cpp
         level_extractor/extract_collide_frags.cpp
         level_extractor/extract_common.cpp
         level_extractor/extract_level.cpp
