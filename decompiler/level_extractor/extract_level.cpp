@@ -239,6 +239,11 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
   }
+
+  if (bsp_header.collide_hash.num_items) {
+    ASSERT(!got_collide);
+    extract_collide_frags(bsp_header.collide_hash, all_ties, db.dts, level_data);
+  }
   level_data.level_name = level_name;
 
   return bsp_header;

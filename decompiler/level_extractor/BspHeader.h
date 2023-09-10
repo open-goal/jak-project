@@ -517,6 +517,8 @@ struct PrototypeBucketTie {
   math::Vector<u8, 4> jak2_tint_color;  // jak 2 only
   // todo collide-frag
   DrawableInlineArrayCollideFragment collide_frag;
+
+  std::vector<Ref> collide_hash_frags;  // jak 2 only
   // todo tie-colors
   // todo data
 
@@ -806,6 +808,16 @@ struct DrawableInlineArrayActor {
                       GameVersion version);
 };
 
+struct CollideHash {
+  Ref item_array;
+  int num_items = 0;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats,
+                      GameVersion version);
+};
+
 ////////////////////////////////
 // Main Level Type (bsp-header)
 ////////////////////////////////
@@ -893,6 +905,9 @@ struct BspHeader {
   //  (actor-birth-order (pointer uint32) :offset-assert 172)
   //  (split-box-indices (pointer uint16) :offset-assert 176)
   //  (unk-data-8 uint32 55 :offset-assert 180)
+
+  // jak 2 only
+  CollideHash collide_hash;
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
                       const decompiler::DecompilerTypeSystem& dts,
