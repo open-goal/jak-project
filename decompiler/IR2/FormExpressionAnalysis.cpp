@@ -3863,6 +3863,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
       }
       macro.push_back(part);
       macro.push_back(origin);
+
       auto mr_launch_state =
           match(Matcher::cast("sparticle-launch-state", Matcher::symbol("#f")), launch_state);
       auto mr_launch_control =
@@ -3879,6 +3880,9 @@ void FunctionCallElement::update_from_stack(const Env& env,
         macro.push_back(pool.form<ConstantTokenElement>(":rate"));
         macro.push_back(rate);
       }
+
+      macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
+      macro.push_back(pool.form<ConstantTokenElement>("#t"));
       new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")),
           macro);
