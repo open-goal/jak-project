@@ -584,6 +584,7 @@
     )
   )
 
+;; og:preserve-this
 (defun pc-upload-subtitle-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
   "Added PC-port function to send a mt4 texture."
   (pc-texture-anim-flag start-anim-array dma-buf)
@@ -625,6 +626,7 @@
     (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id subtitle)
                                  )
+      ;; og:preserve-this
       ;; (upload-vram-data s3-0 0 (-> arg0 palette) 2 8)
       (let ((s0-0 20))
         (pc-upload-subtitle-texture
@@ -656,7 +658,7 @@
                                  (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                                  (tex0-1 (new 'static 'gs-tex0 :tbp0 #x1 :tcc #x1 :cld #x1 :psm s0-0 :th v1-17 :tw sv-32 :tbw (shr gp-0 6)))
-                                 ;; added texture filtering for PC-port here:
+                                 ;; og:preserve-this added texture filtering for PC port here:
                                  (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
                                  (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                  (texflush 0)
@@ -671,6 +673,7 @@
              (a0-23 (+ a2-23 (-> arg0 width)))
              (a1-33 (+ a3-8 (-> arg0 height)))
              )
+        ;; og:preserve-this
         (#when PC_PORT
           (when (not (-> *pc-settings* use-vis?))
             (let ((corrected-width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) (-> arg0 width)))))
@@ -696,6 +699,7 @@
              (a0-30 (+ a1-38 (-> arg0 width)))
              (a2-28 (+ a3-11 (-> arg0 height)))
              )
+        ;; og:preserve-this
         (#when PC_PORT
           (when (not (-> *pc-settings* use-vis?))
             (let ((corrected-width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) (-> arg0 width)))))
@@ -726,7 +730,7 @@
              )
     (let ((v1-9 (-> self skel root-channel 0 frame-group)))
       (when v1-9
-        ;; send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
+        ;; og:preserve-this send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
         (#when PC_PORT
             (if (= (-> self type) scene-player)
                 (send-event (ppointer->process *subtitle2*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
@@ -735,6 +739,7 @@
             (let ((f30-0 (ja-aframe-num 0))
                   (s5-0 (the-as int (-> *setting-control* user-current subtitle-language)))
                   )
+              ;; og:preserve-this constant
               (if (and (= (the-as language-enum s5-0) (language-enum english)) (= (scf-get-territory) GAME_TERRITORY_SCEE))
                   (set! s5-0 7)
                   )
@@ -773,6 +778,7 @@
                              (+! (-> s2-0 origin y) 1.0)
                              (set! (-> s2-0 color) (font-color default))
                              (set! (-> s2-0 flags) (font-flags shadow kerning middle left large))
+                             ;; og:preserve-this
                              (#if PC_PORT
                                   (if (or (!= (-> self type) scene-player)
                                           (not (send-event (ppointer->process *subtitle2*) 'movie (-> (the scene-player self) anim name) s3-0 f30-0)))
@@ -1045,7 +1051,7 @@
         *screen-filter*
         (new 'static 'vector)
         (new 'static 'vector :w 128.0)
-        (* 30.0 (-> self clock seconds-per-frame))
+        (* 30.0 (seconds-per-frame))
         (bucket-id screen-filter)
         )
       (let ((gp-0 (current-time)))
@@ -1501,10 +1507,7 @@
            )
           (else
             (set! (-> self targ-speed)
-                  (fmax
-                    -10.0
-                    (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (-> self clock seconds-per-frame))))
-                    )
+                  (fmax -10.0 (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (seconds-per-frame)))))
                   )
             (if (< (- (current-time) (-> self speed-change-time)) (seconds 3))
                 (format
@@ -1549,7 +1552,8 @@
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
   (process-entity-set! self (the-as entity #f))
-  (stack-size-set! (-> self main-thread) 768) ;; changed from 512
+  ;; og:preserve-this changed from 512
+  (stack-size-set! (-> self main-thread) 768)
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)
     ((array)

@@ -41,31 +41,29 @@
   The vel is a maximum velocity limit.
   The frame count is the time constant (first order).
   There's some logic to avoid rapidly changing directions"
-  (with-pp
-    (let* ((f0-0 (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle arg0)))
-           (f1-2 (fmin (* arg1 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
-           (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
-           )
-      (let ((f0-2 (-> obj old-y-angle-diff)))
-        (set! f30-0
-              (cond
-                ((or (= f0-2 0.0)
-                     (and (< 0.0 f30-0) (< 0.0 f0-2))
-                     (or (and (< f30-0 0.0) (< f0-2 0.0)) (>= (- (current-time) (-> obj angle-change-time)) (seconds 0.2)))
-                     )
-                 (set! (-> obj angle-change-time) (current-time))
-                 f30-0
-                 )
-                (else
-                  (* 0.000000001 f30-0)
-                  )
+  (let* ((f0-0 (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle arg0)))
+         (f1-2 (fmin (* arg1 (seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
+         (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
+         )
+    (let ((f0-2 (-> obj old-y-angle-diff)))
+      (set! f30-0
+            (cond
+              ((or (= f0-2 0.0)
+                   (and (< 0.0 f30-0) (< 0.0 f0-2))
+                   (or (and (< f30-0 0.0) (< f0-2 0.0)) (>= (- (current-time) (-> obj angle-change-time)) (seconds 0.2)))
+                   )
+               (set! (-> obj angle-change-time) (current-time))
+               f30-0
+               )
+              (else
+                (* 0.000000001 f30-0)
                 )
               )
-        )
-      (set! (-> obj old-y-angle-diff) f30-0)
-      (let ((a1-2 (get-quaternion obj)))
-        (quaternion-rotate-y! a1-2 a1-2 f30-0)
-        )
+            )
+      )
+    (set! (-> obj old-y-angle-diff) f30-0)
+    (let ((a1-2 (get-quaternion obj)))
+      (quaternion-rotate-y! a1-2 a1-2 f30-0)
       )
     )
   )
@@ -203,6 +201,7 @@
             (cond
               ((!= s2-0 0.0)
                (let* ((v1-5 (vector-cross! (new 'stack-no-clear 'vector) s1-2 sv-272))
+                      ;; og:preserve-this inlined vector-dot
                       ; (f0-3 (-> sv-256 x))
                       ; (f1-3 (-> sv-256 y))
                       ; (f2-0 (-> sv-256 z))

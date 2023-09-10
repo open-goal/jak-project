@@ -76,6 +76,7 @@
             (let ((layer-data (-> obj compressed-masks layer-idx)))
               ;; only update if past this compressed layer and was moved.
               (if (and layer-data (>= (the-as int layer-data) (the-as int compressed-mask-data)))
+                  ;; og:preserve-this cast
                   (set! (-> obj compressed-masks layer-idx) (the (pointer int8) (&- layer-data (the-as uint decompressed-size))))
                   )
               )
@@ -88,6 +89,7 @@
         ;; there was no compressed data. Initialize masks to 0.
         (let ((data (-> obj bit-mask data)))
           (dotimes (qw-idx 416)
+            ;; og:preserve-this cast
             (set! (-> (the-as (pointer int128) (&+ data (* qw-idx 16)))) (the int128 0))
             )
           )
@@ -274,6 +276,7 @@
   (none)
   )
 
+;; og:preserve-this
 (defun pc-upload-map-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
   "Added function in the PC port to create a map texture. The format should be mt8 for the image and ct32 for the clut (16 x 16)"
   (pc-texture-anim-flag start-anim-array dma-buf)
@@ -339,19 +342,22 @@
     (let ((v1-1 (-> s4-0 0))
           (s3-0 (-> s4-0 1))
           )
+      ;; og:preserve-this
       ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-1 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
       ;; (dma-buffer-add-gs-set arg0 (texflush 1))
       ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ s3-0 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
-      ;; Added
+      ;; og:preserve-this added
       (pc-upload-map-texture arg0 (&+ s4-0 s3-0 16) (&+ s4-0 v1-1 16) 512 208 8 0)
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
-                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)) ;; pc port note : originally mmag and mmin 0
+                           ;; og:preserve-this originally mmag and mmin 0
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                            (texflush 1)
                            )
     (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-16 (+ #x1a000 (-> s4-0 1))))
+      ;; og:preserve-this
       ;;(texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-16 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
       (pc-upload-map-texture arg0 (&+ s4-0 v1-16 16) (&+ s4-0 (-> s4-0 0) 16) 512 208 8 0)
       )
@@ -360,6 +366,7 @@
     (let ((v1-25 (+ (-> s4-0 0) 1024))
           (s3-1 (+ #x34000 (-> s4-0 1)))
           )
+      ;; og:preserve-this
       ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-25 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
       ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ s3-1 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
       (pc-upload-map-texture arg0 (&+ s4-0 s3-1 16) (&+ s4-0 v1-25 16) 512 208 8 0)
@@ -371,6 +378,7 @@
                            )
     (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-37 (+ #x4e000 (-> s4-0 1))))
+      ;; og:preserve-this
       ;; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-37 16) (the-as uint s4-0))) 8 512 208 (gs-psm mt8))
       (pc-upload-map-texture arg0 (&+ s4-0 v1-37 16) (&+ s4-0 (+ (-> s4-0 0) 1024) 16) 512 208 8 0)
       )
@@ -384,9 +392,11 @@
   "Generate DMA to draw the city map. This has only 2 layers, but has scrolling."
 
   (let ((s4-0 (the-as (pointer uint32) (-> obj bigmap-image art-group))))
+    ;; og:preserve-this
     ; (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0))) 0 16 16 (gs-psm ct32))
     ; (dma-buffer-add-gs-set arg0 (texflush 0))
     (let ((v1-10 (+ (* (the int (-> obj scroll y)) 512) (-> s4-0 1))))
+      ;; og:preserve-this
       ;   (texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-10 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
       (pc-upload-map-texture
         arg0               ;; dma
@@ -400,11 +410,13 @@
       )
     (dma-buffer-add-gs-set arg0
                            (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x8 :psm #x13 :tw #x9 :th #x9 :cld #x1))
-                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)) ;; pc port note : originally mmag and mmin 0
+                           ;; og:preserve-this originally mmag and mmin 0
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                            (texflush 1)
                            )
     (sprite-dma obj arg0 (-> obj x0) (-> obj y0) (-> obj x1) (-> obj y2))
     (let ((v1-21 (+ (* (+ (the int (-> obj scroll y)) 208) 512) (-> s4-0 1))))
+      ;; og:preserve-this
       ;(texture-upload-dma obj arg0 (the-as (pointer uint32) (+ (+ v1-21 16) (the-as int s4-0))) 8 512 208 (gs-psm mt8))
       (pc-upload-map-texture
         arg0               ;; dma
@@ -498,6 +510,7 @@
           (set! (-> v1-21 y) (+ (-> a0-23 y) f0-1))
           )
         )
+      ;; og:preserve-this cast
       (let* ((t1-2 (the-as int (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
              (t2-0 (the-as int (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
              (a2-8 (+ t1-2 312))
@@ -672,164 +685,162 @@
 
 (defmethod draw bigmap ((obj bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
   (local-vars (sv-96 pointer) (sv-100 texture) (sv-104 matrix) (sv-112 int))
-  (with-pp
-    (when (and (= (file-status (-> obj bigmap-image) "world-map" (the-as int (-> obj load-index))) 'active)
-               (not (-> obj loading-flag))
-               )
-      (let ((f0-0 (-> *video-params* relative-x-scale)))
-        (cond
-          ((-> *blit-displays-work* horizontal-flip-flag)
-           (set! (-> obj x0) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
-           (set! (-> obj x1) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
-           )
-          (else
-            (set! (-> obj x0) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
-            (set! (-> obj x1) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
-            )
+  (when (and (= (file-status (-> obj bigmap-image) "world-map" (the-as int (-> obj load-index))) 'active)
+             (not (-> obj loading-flag))
+             )
+    (let ((f0-0 (-> *video-params* relative-x-scale)))
+      (cond
+        ((-> *blit-displays-work* horizontal-flip-flag)
+         (set! (-> obj x0) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
+         (set! (-> obj x1) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
+         )
+        (else
+          (set! (-> obj x0) (+ (the int (* (the float (+ arg0 -2048)) f0-0)) 2048))
+          (set! (-> obj x1) (+ (the int (* (the float (+ arg2 -2048)) f0-0)) 2048))
           )
         )
-      (set! (-> obj y0) arg1)
-      (set! (-> obj y1) arg3)
-      (set! (-> obj y2) (/ (+ arg1 arg3) 2))
-      (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id tex-all-map)
-                                   )
-        (dma-buffer-add-gs-set s4-1
-                               (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
-                               (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
-                               (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-                               )
-        (if (= (-> obj bigmap-index) 20)
-            (draw-city-map obj s4-1)
-            (draw-non-city-map obj s4-1)
-            )
-        )
-      (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id tex-all-map)
-                                   )
-        (when (= (-> obj y0) 1840)
-          (let ((s2-1 (-> s4-2 base))
-                (s3-1 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x15 :page #xc93)))
-                )
-            (when s3-1
-              (set! (-> (the-as (pointer uint128) s2-1) 0) (-> obj adgif-tmpl dma-vif quad))
-              (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
-              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s3-1)
-              (&+! (-> s4-2 base) 112)
+      )
+    (set! (-> obj y0) arg1)
+    (set! (-> obj y1) arg3)
+    (set! (-> obj y2) (/ (+ arg1 arg3) 2))
+    (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id tex-all-map)
+                                 )
+      (dma-buffer-add-gs-set s4-1
+                             (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                             (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                             (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                             )
+      (if (= (-> obj bigmap-index) 20)
+          (draw-city-map obj s4-1)
+          (draw-non-city-map obj s4-1)
+          )
+      )
+    (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id tex-all-map)
+                                 )
+      (when (= (-> obj y0) 1840)
+        (let ((s2-1 (-> s4-2 base))
+              (s3-1 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x15 :page #xc93)))
               )
-            (if (not s3-1)
-                (format 0 "ERROR: bigmap: mini-map-icons texture is #f~%")
-                )
+          (when s3-1
+            (set! (-> (the-as (pointer uint128) s2-1) 0) (-> obj adgif-tmpl dma-vif quad))
+            (set! (-> (the-as (pointer uint128) s2-1) 1) (-> obj adgif-tmpl quad 1))
+            (adgif-shader<-texture-simple! (the-as adgif-shader (&+ s2-1 32)) s3-1)
+            (&+! (-> s4-2 base) 112)
             )
-          (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list))))
-            (while s3-2
-              (let ((a2-3 (the-as connection-minimap s3-2)))
-                (when (logtest? (-> a2-3 class flags) (minimap-flag bigmap))
-                  (cond
-                    ((= (-> obj bigmap-index) 20)
-                     (draw-from-minimap obj s4-2 a2-3)
-                     )
-                    (else
-                      (if (not (logtest? (-> a2-3 class flags) (minimap-flag city-only)))
-                          (draw-from-minimap obj s4-2 a2-3)
-                          )
-                      )
+          (if (not s3-1)
+              (format 0 "ERROR: bigmap: mini-map-icons texture is #f~%")
+              )
+          )
+        (let ((s3-2 (the-as connection-pers (-> *minimap* engine alive-list))))
+          (while s3-2
+            (let ((a2-3 (the-as connection-minimap s3-2)))
+              (when (logtest? (-> a2-3 class flags) (minimap-flag bigmap))
+                (cond
+                  ((= (-> obj bigmap-index) 20)
+                   (draw-from-minimap obj s4-2 a2-3)
+                   )
+                  (else
+                    (if (not (logtest? (-> a2-3 class flags) (minimap-flag city-only)))
+                        (draw-from-minimap obj s4-2 a2-3)
+                        )
                     )
                   )
                 )
-              (set! s3-2 (-> s3-2 next))
               )
+            (set! s3-2 (-> s3-2 next))
             )
-          (let ((s3-3 (new 'stack-no-clear 'vector))
-                (f30-0 (-> *video-params* relative-x-scale))
-                )
-            (vector-z-quaternion! s3-3 (-> *target* control quat))
-            (vector-xz-normalize! s3-3 -1.0)
-            (set! (-> s3-3 y) 0.0)
-            (set! (-> s3-3 w) 0.0)
-            (set! sv-96 (-> s4-2 base))
-            (set! sv-100 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
-            (set! sv-104 (new 'stack-no-clear 'matrix))
-            (set! sv-112 (the int (* 56.0 f30-0)))
-            (when sv-100
-              (set-pos! obj (target-pos 0))
-              (if (-> *blit-displays-work* horizontal-flip-flag)
-                  (set! f30-0 (- f30-0))
-                  )
-              (set-vector! (-> (the-as matrix sv-104) vector 0) (* (-> s3-3 z) f30-0) 0.0 (- (-> s3-3 x)) 0.0)
-              (set-vector! (-> (the-as matrix sv-104) vector 1) 0.0 1.0 0.0 0.0)
-              (set-vector! (-> (the-as matrix sv-104) vector 2) (* (-> s3-3 x) f30-0) 0.0 (-> s3-3 z) 1.0)
-              (set-vector!
-                (-> (the-as matrix sv-104) trans)
-                (+ (the float (-> obj x0)) (* 2.0 f30-0 (the float (-> obj pos x))))
-                0.0
-                (- (the float (+ (* (-> obj pos y) 2) 1840)) (-> obj scroll y))
-                1.0
-                )
-              (set-vector! (-> obj corner 0) 0.0 0.0 -7.0 1.0)
-              (set-vector! (-> obj corner 1) 7.0 0.0 0.0 1.0)
-              (set-vector! (-> obj corner 2) -7.0 0.0 0.0 1.0)
-              (set-vector! (-> obj corner 3) 0.0 0.0 7.0 1.0)
-              (vector-matrix*! (the-as vector (-> obj corner)) (the-as vector (-> obj corner)) sv-104)
-              (vector-matrix*! (-> obj corner 1) (-> obj corner 1) sv-104)
-              (vector-matrix*! (-> obj corner 2) (-> obj corner 2) sv-104)
-              (vector-matrix*! (-> obj corner 3) (-> obj corner 3) sv-104)
-              (let ((v1-101 (-> obj adgif-tmpl dma-vif quad)))
-                (set! (-> (the-as (pointer uint128) sv-96)) v1-101)
-                )
-              (let ((v1-102 (-> obj adgif-tmpl quad 1)))
-                (set! (-> (the-as (pointer uint128) sv-96) 1) v1-102)
-                )
-              (adgif-shader<-texture-simple! (the-as adgif-shader (&+ sv-96 32)) sv-100)
-              (let ((v1-104 (-> obj draw-tmpl dma-vif quad)))
-                (set! (-> (the-as (pointer uint128) sv-96) 7) v1-104)
-                )
-              (let ((v1-105 (-> obj draw-tmpl quad 1)))
-                (set! (-> (the-as (pointer uint128) sv-96) 8) v1-105)
-                )
-              (set-vector! (the-as vector4w (&+ sv-96 144)) 0 255 255 128)
-              (set-vector! (the-as vector4w (&+ sv-96 160)) 0 0 0 0)
-              (set-vector!
-                (the-as vector4w (&+ sv-96 176))
-                (the int (* 16.0 (-> obj corner 0 x)))
-                (the int (* 16.0 (-> obj corner 0 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (the-as vector4w (&+ sv-96 192)) 256 0 0 0)
-              (set-vector!
-                (the-as vector4w (&+ sv-96 208))
-                (the int (* 16.0 (-> obj corner 1 x)))
-                (the int (* 16.0 (-> obj corner 1 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (the-as vector4w (&+ sv-96 224)) 0 256 0 0)
-              (set-vector!
-                (the-as vector4w (&+ sv-96 240))
-                (the int (* 16.0 (-> obj corner 2 x)))
-                (the int (* 16.0 (-> obj corner 2 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (the-as vector4w (&+ sv-96 256)) 256 256 0 0)
-              (set-vector!
-                (the-as vector4w (&+ sv-96 272))
-                (the int (* 16.0 (-> obj corner 3 x)))
-                (the int (* 16.0 (-> obj corner 3 z)))
-                #xffffff
-                0
-                )
-              (&+! (-> s4-2 base) 288)
+          )
+        (let ((s3-3 (new 'stack-no-clear 'vector))
+              (f30-0 (-> *video-params* relative-x-scale))
               )
+          (vector-z-quaternion! s3-3 (-> *target* control quat))
+          (vector-xz-normalize! s3-3 -1.0)
+          (set! (-> s3-3 y) 0.0)
+          (set! (-> s3-3 w) 0.0)
+          (set! sv-96 (-> s4-2 base))
+          (set! sv-100 (lookup-texture-by-id-fast (new 'static 'texture-id :index #x42 :page #xb)))
+          (set! sv-104 (new 'stack-no-clear 'matrix))
+          (set! sv-112 (the int (* 56.0 f30-0)))
+          (when sv-100
+            (set-pos! obj (target-pos 0))
+            (if (-> *blit-displays-work* horizontal-flip-flag)
+                (set! f30-0 (- f30-0))
+                )
+            (set-vector! (-> (the-as matrix sv-104) vector 0) (* (-> s3-3 z) f30-0) 0.0 (- (-> s3-3 x)) 0.0)
+            (set-vector! (-> (the-as matrix sv-104) vector 1) 0.0 1.0 0.0 0.0)
+            (set-vector! (-> (the-as matrix sv-104) vector 2) (* (-> s3-3 x) f30-0) 0.0 (-> s3-3 z) 1.0)
+            (set-vector!
+              (-> (the-as matrix sv-104) trans)
+              (+ (the float (-> obj x0)) (* 2.0 f30-0 (the float (-> obj pos x))))
+              0.0
+              (- (the float (+ (* (-> obj pos y) 2) 1840)) (-> obj scroll y))
+              1.0
+              )
+            (set-vector! (-> obj corner 0) 0.0 0.0 -7.0 1.0)
+            (set-vector! (-> obj corner 1) 7.0 0.0 0.0 1.0)
+            (set-vector! (-> obj corner 2) -7.0 0.0 0.0 1.0)
+            (set-vector! (-> obj corner 3) 0.0 0.0 7.0 1.0)
+            (vector-matrix*! (the-as vector (-> obj corner)) (the-as vector (-> obj corner)) sv-104)
+            (vector-matrix*! (-> obj corner 1) (-> obj corner 1) sv-104)
+            (vector-matrix*! (-> obj corner 2) (-> obj corner 2) sv-104)
+            (vector-matrix*! (-> obj corner 3) (-> obj corner 3) sv-104)
+            (let ((v1-101 (-> obj adgif-tmpl dma-vif quad)))
+              (set! (-> (the-as (pointer uint128) sv-96)) v1-101)
+              )
+            (let ((v1-102 (-> obj adgif-tmpl quad 1)))
+              (set! (-> (the-as (pointer uint128) sv-96) 1) v1-102)
+              )
+            (adgif-shader<-texture-simple! (the-as adgif-shader (&+ sv-96 32)) sv-100)
+            (let ((v1-104 (-> obj draw-tmpl dma-vif quad)))
+              (set! (-> (the-as (pointer uint128) sv-96) 7) v1-104)
+              )
+            (let ((v1-105 (-> obj draw-tmpl quad 1)))
+              (set! (-> (the-as (pointer uint128) sv-96) 8) v1-105)
+              )
+            (set-vector! (the-as vector4w (&+ sv-96 144)) 0 255 255 128)
+            (set-vector! (the-as vector4w (&+ sv-96 160)) 0 0 0 0)
+            (set-vector!
+              (the-as vector4w (&+ sv-96 176))
+              (the int (* 16.0 (-> obj corner 0 x)))
+              (the int (* 16.0 (-> obj corner 0 z)))
+              #xffffff
+              0
+              )
+            (set-vector! (the-as vector4w (&+ sv-96 192)) 256 0 0 0)
+            (set-vector!
+              (the-as vector4w (&+ sv-96 208))
+              (the int (* 16.0 (-> obj corner 1 x)))
+              (the int (* 16.0 (-> obj corner 1 z)))
+              #xffffff
+              0
+              )
+            (set-vector! (the-as vector4w (&+ sv-96 224)) 0 256 0 0)
+            (set-vector!
+              (the-as vector4w (&+ sv-96 240))
+              (the int (* 16.0 (-> obj corner 2 x)))
+              (the int (* 16.0 (-> obj corner 2 z)))
+              #xffffff
+              0
+              )
+            (set-vector! (the-as vector4w (&+ sv-96 256)) 256 256 0 0)
+            (set-vector!
+              (the-as vector4w (&+ sv-96 272))
+              (the int (* 16.0 (-> obj corner 3 x)))
+              (the int (* 16.0 (-> obj corner 3 z)))
+              #xffffff
+              0
+              )
+            (&+! (-> s4-2 base) 288)
             )
           )
         )
-      (+! (-> obj goal-time) (* 16.0 (-> pp clock seconds-per-frame)))
-      (set-dirty-mask! (-> *level* default-level) 4 #x1a400 0)
       )
-    0
+    (+! (-> obj goal-time) (* 16.0 (seconds-per-frame)))
+    (set-dirty-mask! (-> *level* default-level) 4 #x1a400 0)
     )
+  0
   )
 
 (defmethod handle-cpad-inputs bigmap ((obj bigmap))
@@ -924,10 +935,8 @@
   0
   )
 
-;; definition for symbol *map-save-ptr*, type (pointer uint64)
 (define *map-save-ptr* (the-as (pointer uint64) #f))
 
-;; definition for method 16 of type bigmap
 (defmethod dump-to-file bigmap ((obj bigmap))
   (if (not *map-save-ptr*)
       (set! *map-save-ptr* (the-as (pointer uint64) (malloc 'debug #xd0000)))
@@ -972,15 +981,9 @@
     )
   )
 
-;; failed to figure out what this is:
 (kmemopen global "bigmap")
 
-;; definition for symbol *bigmap*, type bigmap
+;; og:preserve-this
 (define-perm *bigmap* bigmap (new 'global 'bigmap))
 
-;; failed to figure out what this is:
 (kmemclose)
-
-
-
-

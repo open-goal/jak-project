@@ -624,8 +624,8 @@
         )
       )
     (logand! (-> self flags) -65)
-    (seek! (-> self speed) 81920.0 (* 1228800.0 (-> self clock seconds-per-frame)))
-    (seek! (-> self turning-acc) 4096.0 (* 1228800.0 (-> self clock seconds-per-frame)))
+    (seek! (-> self speed) 81920.0 (* 1228800.0 (seconds-per-frame)))
+    (seek! (-> self turning-acc) 4096.0 (* 1228800.0 (seconds-per-frame)))
     (let ((v1-20 (-> self nav)))
       (set! (-> v1-20 target-speed) (-> self speed))
       )
@@ -1175,29 +1175,27 @@
   )
 
 (defmethod nav-enemy-method-142 roboguard-level ((obj roboguard-level) (arg0 nav-control))
-  (with-pp
-    (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (let ((a1-1 (-> arg0 state)))
-        (set! (-> s3-0 quad) (-> a1-1 heading quad))
-        )
-      (set! (-> s3-0 y) 0.0)
-      (vector-normalize! s3-0 1.0)
-      (let ((gp-0 (new 'stack-no-clear 'quaternion))
-            (s5-1 (-> obj root quat))
-            )
-        (quaternion-set! gp-0 0.0 (-> s3-0 x) 0.0 (+ 1.0 (-> s3-0 z)))
-        (quaternion-normalize! gp-0)
-        (quaternion-pseudo-seek
-          s5-1
-          s5-1
-          gp-0
-          (* (fmax 0.5 (* 0.00024414062 (-> arg0 state speed))) (-> pp clock seconds-per-frame))
+  (let ((s3-0 (new 'stack-no-clear 'vector)))
+    (let ((a1-1 (-> arg0 state)))
+      (set! (-> s3-0 quad) (-> a1-1 heading quad))
+      )
+    (set! (-> s3-0 y) 0.0)
+    (vector-normalize! s3-0 1.0)
+    (let ((gp-0 (new 'stack-no-clear 'quaternion))
+          (s5-1 (-> obj root quat))
           )
+      (quaternion-set! gp-0 0.0 (-> s3-0 x) 0.0 (+ 1.0 (-> s3-0 z)))
+      (quaternion-normalize! gp-0)
+      (quaternion-pseudo-seek
+        s5-1
+        s5-1
+        gp-0
+        (* (fmax 0.5 (* 0.00024414062 (-> arg0 state speed))) (seconds-per-frame))
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 (defmethod nav-enemy-method-176 roboguard-level ((obj roboguard-level))

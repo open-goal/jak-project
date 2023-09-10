@@ -617,18 +617,15 @@
                                             45.0
                                             60.0
                                             )
-                                          (-> self clock seconds-per-frame)
+                                          (seconds-per-frame)
                                           )
                      )
                  (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (-> self base) gp-1)))
-                   (vector-normalize!
-                     s5-2
-                     (fmax 0.0 (- (vector-length s5-2) (* (-> self speed w) (-> self clock seconds-per-frame))))
-                     )
+                   (vector-normalize! s5-2 (fmax 0.0 (- (vector-length s5-2) (* (-> self speed w) (seconds-per-frame)))))
                    (when (< (vector-length s5-2) 81920.0)
-                     (+! (-> self speed y) (* 72817.78 (-> self clock seconds-per-frame)))
+                     (+! (-> self speed y) (* 72817.78 (seconds-per-frame)))
                      (set! (-> self speed y) (fmin (fmin 291271.12 (-> self speed y)) (-> self speed y)))
-                     (vector-rotate-y! s5-2 s5-2 (* (-> self speed y) (-> self speed z) (-> self clock seconds-per-frame)))
+                     (vector-rotate-y! s5-2 s5-2 (* (-> self speed y) (-> self speed z) (seconds-per-frame)))
                      )
                    (set! (-> self suck-y-offset)
                          (* 2048.0 (sin (* 873.81335 (the float (mod (- (current-time) (the-as int (-> self suck-time))) 75)))))
@@ -1500,37 +1497,35 @@ This commonly includes things such as:
   )
 
 (defmethod common-post money ((obj money))
-  (with-pp
-    (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) (* 40049.777 (-> pp clock seconds-per-frame)))
-    (let ((f30-0 (-> obj bob-amount)))
-      (when (< 0.0 f30-0)
-        (set! (-> obj root trans y)
-              (+ (-> obj base y)
-                 (-> obj suck-y-offset)
-                 (* f30-0
-                    (sin
-                      (* 109.22667
-                         (the float
-                              (mod (+ (- (current-time) (the-as int (-> obj birth-time))) (the-as time-frame (-> obj bob-offset))) 600)
-                              )
-                         )
-                      )
+  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) (* 40049.777 (seconds-per-frame)))
+  (let ((f30-0 (-> obj bob-amount)))
+    (when (< 0.0 f30-0)
+      (set! (-> obj root trans y)
+            (+ (-> obj base y)
+               (-> obj suck-y-offset)
+               (* f30-0
+                  (sin
+                    (* 109.22667
+                       (the float
+                            (mod (+ (- (current-time) (the-as int (-> obj birth-time))) (the-as time-frame (-> obj bob-offset))) 600)
+                            )
+                       )
                     )
-                 )
-              )
-        (update-transforms (-> obj root))
-        )
+                  )
+               )
+            )
+      (update-transforms (-> obj root))
       )
-    (ja-post)
-    (none)
     )
+  (ja-post)
+  (none)
   )
 
 (defstate notice-blue (money)
   :virtual #t
   :code (behavior ((arg0 handle))
     (until #f
-      (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 91022.22 (-> self clock seconds-per-frame)))
+      (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 91022.22 (seconds-per-frame)))
       (set! (-> self root trans quad) (-> self base quad))
       (add-blue-motion #t #t #t #f)
       (let ((f30-0 (-> self bob-amount)))
@@ -1713,25 +1708,19 @@ This commonly includes things such as:
   )
 
 (defmethod common-post gem ((obj gem))
-  (with-pp
-    (seek! (-> obj roty-speed) 20024.889 (* 65536.0 (-> pp clock seconds-per-frame)))
-    (quaternion-rotate-y!
-      (-> obj root quat)
-      (-> obj root quat)
-      (* (-> obj roty-speed) (-> pp clock seconds-per-frame))
-      )
-    (logclear! (-> obj draw status) (draw-control-status no-draw-temp uninited))
-    (do-joint-math (-> obj draw) (-> obj node-list) (-> obj skel))
-    (let ((a0-7 (-> obj part))
-          (a1-3 (-> obj draw skeleton bones 3))
-          )
-      (if (nonzero? a0-7)
-          (spawn-with-matrix a0-7 (the-as matrix a1-3))
-          )
-      )
-    0
-    (none)
+  (seek! (-> obj roty-speed) 20024.889 (* 65536.0 (seconds-per-frame)))
+  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) (* (-> obj roty-speed) (seconds-per-frame)))
+  (logclear! (-> obj draw status) (draw-control-status no-draw-temp uninited))
+  (do-joint-math (-> obj draw) (-> obj node-list) (-> obj skel))
+  (let ((a0-7 (-> obj part))
+        (a1-3 (-> obj draw skeleton bones 3))
+        )
+    (if (nonzero? a0-7)
+        (spawn-with-matrix a0-7 (the-as matrix a1-3))
+        )
     )
+  0
+  (none)
   )
 
 (defstate deploy (gem)
@@ -1796,7 +1785,7 @@ This commonly includes things such as:
               (vector-! (-> self root transv) s5-1 (-> self root trans))
               (vector-normalize! (-> self root transv) 40960.0)
               (set! (-> self root transv y) (if (< 0.0 (-> self root transv y))
-                                                (+ f30-0 (* 4.0 (-> self clock seconds-per-frame) (-> self root transv y)))
+                                                (+ f30-0 (* 4.0 (seconds-per-frame) (-> self root transv y)))
                                                 f30-0
                                                 )
                     )
@@ -1860,7 +1849,7 @@ This commonly includes things such as:
          )
         )
       )
-    (seek! (-> self roty-speed) 0.0 (* 16384.0 (-> self clock seconds-per-frame)))
+    (seek! (-> self roty-speed) 0.0 (* 16384.0 (seconds-per-frame)))
     (common-post self)
     (none)
     )
@@ -2279,12 +2268,10 @@ This commonly includes things such as:
   )
 
 (defmethod common-post ammo-collectable ((obj ammo-collectable))
-  (with-pp
-    (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) (* 40049.777 (-> pp clock seconds-per-frame)))
-    ((method-of-type collectable common-post) obj)
-    0
-    (none)
-    )
+  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) (* 40049.777 (seconds-per-frame)))
+  ((method-of-type collectable common-post) obj)
+  0
+  (none)
   )
 
 (defstate die (ammo-collectable)
@@ -2431,6 +2418,7 @@ This commonly includes things such as:
   (if arg5
       (mem-copy! (&-> sv-56 type) (&-> arg5 type) 40)
       )
+  ;; og:preserve-this pc port cheat
   (#when PC_PORT
     (when (and (pc-cheats? (-> *pc-settings* cheats) suck-in-all)
                (!= arg1 (pickup-type skill)))
@@ -2752,7 +2740,7 @@ This commonly includes things such as:
   :flag-assert         #xf00000080
   )
 
-
+;; og:preserve-this added macro
 (defmacro spawn-gem-near-target! (&key (count 5))
   `(dotimes (i ,count)
      (birth-pickup-at-point

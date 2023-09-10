@@ -32,7 +32,7 @@
          (vf19 :class vf)
          (vf9 :class vf)
          )
-        ;; modified for PC: these register would be loaded by the draw method of bsp.
+        ;; og:preserve-this modified for PC: these register would be loaded by the draw method of bsp.
         (let ((at-0 *math-camera*))
           (.lvf vf16 (&-> at-0 plane 0 quad))
           (.lvf vf17 (&-> at-0 plane 1 quad))
@@ -45,7 +45,7 @@
     (.add.mul.y.vf acc vf17 vf10 acc)
     (.add.mul.z.vf acc vf18 vf10 acc)
     (.sub.mul.w.vf vf9 vf19 vf0 acc)
-
+    ;; og:preserve-this
     ;; checking to see if we are inside all 4 planes.
 
     ;; using the inside part of the sphere
@@ -57,7 +57,7 @@
     )
   )
 
-
+;; og:preserve-this
 (defun sphere-cull-for-ocean ((arg0 vector))
   "Is the given sphere in the view frustum?
   PC-port ocean version"
@@ -71,7 +71,7 @@
          (vf19 :class vf)
          (vf9 :class vf)
          )
-        ;; modified for PC: these register would be loaded by the draw method of bsp.
+        ;; og:preserve-this modified for PC: these register would be loaded by the draw method of bsp.
         (cond
           ((-> *time-of-day-context* use-camera-other)
            (let ((at-0 *math-camera*))
@@ -123,7 +123,7 @@
          (vf9 :class vf)
          )
         (init-vf0-vector)
-        ;; modified for PC: these registers would be loaded in dma-add-process-drawable
+        ;; og:preserve-this modified for PC: these registers would be loaded in dma-add-process-drawable
         (let ((at-0 *math-camera*))
           (.lvf vf20 (&-> at-0 guard-plane 0 quad))
           (.lvf vf21 (&-> at-0 guard-plane 1 quad))
@@ -308,7 +308,11 @@
   )
 
 (defmethod collect-regions drawable ((obj drawable) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
-  "Collect a list of regions that we're in, recursively."
+  "Determines the number of [[drawable]]s in the `obj` that overlap the given `area-of-interest` this number is stored in the `region-list`'s item count
+@param area-of-interest The area defined by a sphere that we care about overlaps
+@param _count The amount of [[drawable]]s in the object to enumerate through
+@param! region-list Stores the overlapping regions and a count for how many were found
+@returns none"
   0
   (none)
   )
@@ -596,6 +600,7 @@
   "Print info about a prototype."
   (local-vars
     (sv-16 uint)
+    ;; og:preserve-this uint -> uint32
     (sv-32 uint32)
     (sv-48 uint32)
     (sv-64 int)
@@ -940,7 +945,7 @@
            )
       (init-vf0-vector)
       (set! sv-16 pd)
-
+      ;; og:preserve-this
       (reset! (-> *perf-stats* data (perf-stat-bucket foreground)))
 
       ;; skip drawing when in menu mode.
@@ -955,6 +960,7 @@
 
       ;; only if we should draw...
       (when (not (logtest? (-> dc status) (draw-control-status no-draw no-draw-temp uninited)))
+        ;; og:preserve-this scratchpad
         (let ((fg-bounds (-> (scratchpad-object foreground-work) bounds))
               (fg-lights (-> (scratchpad-object foreground-work) lights))
               )
@@ -1107,13 +1113,13 @@
                             )
                           )
                         (when (not (paused?))
-                          (vector-seek! current-shadow-dir target-shadow-dir (* 0.2 (-> pp clock seconds-per-frame)))
+                          (vector-seek! current-shadow-dir target-shadow-dir (* 0.2 (seconds-per-frame)))
                           (vector-normalize! current-shadow-dir 1.0)
                           )
                         (set! (-> dc shadow-ctrl settings shadow-dir w) shadow-dir-w)
                         )
                       )
-
+                    ;; og:preserve-this
                     (#when PC_PORT (add-debug-lights *display-lights* (bucket-id debug2) (-> lg lights) (-> dc origin)))
                     )
                   )
@@ -1153,6 +1159,7 @@
               (.lvf vf27 (&-> at-0 camera-rot trans quad))
               )
 
+            ;; og:preserve-this scratchpad
             ;; do distance math
             (let ((fg-dist (-> (scratchpad-object foreground-work) distance)))
               (.lvf vf15 (&-> fg-bounds quad))
@@ -1179,6 +1186,7 @@
                       (cond
                         ((>= (-> dc force-lod) 0)
                          (set! lod-idx (-> dc force-lod))
+                         ;; og:preserve-this force high lods
                          (if (#if (not PC_PORT)
                                   (< (-> dc lod-set lod (-> dc lod-set max-lod) dist) dist-w)
                                   (and (-> *pc-settings* ps2-lod-dist?) (< (-> dc lod-set lod (-> dc lod-set max-lod) dist) dist-w)))
@@ -1192,7 +1200,7 @@
                           )
                         )
                       )
-                    ;; lod hacks!
+                    ;; og:preserve-this lod hacks!
                     (with-pc
                       (when (not (-> *pc-settings* ps2-lod-dist?))
                         (set! lod-idx (minmax (-> *pc-settings* lod-force-actor) 0 (-> dc lod-set max-lod)))
@@ -1257,7 +1265,7 @@
                     (set! (-> pp clock) (-> sv-16 clock))
 
                     ;; draw!
-                    ;; PC port note : we ALWAYS disable the envmap hack when a process-drawable has warp effect enabled
+                    ;; og:preserve-this PC port note: we ALWAYS disable the envmap hack when a process-drawable has warp effect enabled
                     (when (or (= lod-idx (-> dc cur-lod)) (logtest? (-> dc status) (draw-control-status lod-set)))
                         (protect ((-> *pc-settings* force-envmap?))
                           (when (not (movie?))
@@ -1270,9 +1278,9 @@
                         )
                     )
 
-                  ;; trick to do joint math twice if we're changing lods.
+                  ;; og:preserve-this trick to do joint math twice if we're changing lods.
                   (when (and (< lod-idx (-> dc cur-lod)) (logtest? (-> dc status) (draw-control-status math-skel)))
-                    ;; NOTE : added this check for PC port to prevent memory corruption
+                    ;; og:preserve-this added this check for PC port to prevent memory corruption
                     (if (< (-> *matrix-engine* length) (-> *matrix-engine* allocated-length))
                         (let ((v1-159 *matrix-engine*))
                           (set! (-> v1-159 (-> v1-159 length)) (process->handle sv-16))
@@ -1288,6 +1296,7 @@
             )
           )
         )
+      ;; og:preserve-this
       (read! (-> *perf-stats* data (perf-stat-bucket foreground)))
       (none)
       )
@@ -1312,7 +1321,7 @@
 
   ;; only draw if we're enabled
   (when (not (logtest? (-> arg1 status) (draw-control-status no-draw no-draw-temp uninited)))
-
+    ;; og:preserve-this scratchpad
     ;; copy *hud-lights* to the scratchpad lights.
     (let ((v1-6 (-> (scratchpad-object foreground-work) lights))
           (a0-3 *hud-lights*)
@@ -1365,6 +1374,7 @@
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf base)))
       (with-profiler 'foreground *profile-foreground-color*
         (let ((s4-1 (-> arg1 global-buf)))
+          ;; og:preserve-this
           ; (let ((v1-29 (-> s4-1 base)))
           ;   (.sync.l)
           ;   (.cache dxwbin v1-29 0)
@@ -1463,6 +1473,7 @@
   (local-vars (a0-96 int) (a0-98 int))
   (with-pp
     (when *slow-frame-rate*
+      ;; og:preserve-this
       (dotimes (v1-2 128000000) ;; was 12800000
         (nop!)
         (nop!)
@@ -1512,6 +1523,7 @@
           (set! (-> pp clock) (-> *display* bg-clock))
           (set! (-> pp clock) (-> *display* real-clock))
           )
+    ;; og:preserve-this
     ;   (if (not (paused?))
     ;       (update-wind *wind-work* *wind-scales*)
     ;       )
@@ -1554,7 +1566,7 @@
       (foreground-execute-cpu-vu0-engines)
       (set! (-> pp clock) gp-6)
       )
-
+    ;; og:preserve-this
     ;; ??
     ; (when *add-sphere*
     ;   )
@@ -1729,7 +1741,7 @@
 
 (defun display-frame-start ((arg0 display) (arg1 int) (arg2 float))
   "Advance clocks, poll pads/mouse, set up buckets."
-  ;; workaround for PS2 HW bug
+  ;; og:preserve-this workaround for PS2 HW bug
   ; (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
   ;; tick frame clocks
   (set-time-ratios *display* 1.0)
@@ -1750,7 +1762,7 @@
   (tick! (-> arg0 bg-clock))
   (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
   (tick! (-> arg0 part-clock))
-
+  ;; og:preserve-this screenshot stuff
   ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
   ;   (let ((v1-43 (-> *screen-shot-work* size)))
   ;     (if (!= (-> *screen-shot-work* count) (* v1-43 v1-43))
@@ -1791,6 +1803,7 @@
       (debug-reset-buffers)
       (clear! *simple-sprite-system*)
       )
+    ;; og:preserve-this
     (set! (-> s5-1 bucket-group) (dma-buffer-add-buckets (-> s5-1 calc-buf) (enum-length bucket-id)))
     )
 
@@ -1800,6 +1813,7 @@
   (none)
   )
 
+;; og:preserve-this pc port function
 (defun pc-maybe-vsync ()
   "PC Port implementation of the block of code in display-sync that computes frame-time-ratio and maybe vsyncs."
   ;; for now, it's very simple.
@@ -2044,6 +2058,7 @@
       (tfrag-vu1-init-buffers)
       (tie-vu1-init-buffers)
       (merc-vu1-init-buffers)
+      ;; og:preserve-this
       ; (emerc-vu1-init-buffers)
       (generic-vu1-init-buffers)
 

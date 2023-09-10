@@ -153,6 +153,7 @@
           ,(lambda ((arg0 process-drawable) (arg1 vector) (arg2 cspace))
              (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
              (case (scf-get-territory)
+               ;; og:preserve-this constant
                ((GAME_TERRITORY_SCEE)
                 (case (-> *setting-control* user-current language)
                   (((language-enum spanish))
@@ -580,32 +581,30 @@
   )
 
 (defun title-progress ((arg0 symbol))
-  (with-pp
-    (setup
-      *screen-filter*
-      (new 'static 'vector :w 128.0)
-      (new 'static 'vector :w 128.0)
-      (-> pp clock seconds-per-frame)
-      (bucket-id screen-filter)
-      )
-    (set-setting! 'allow-progress #t 0.0 0)
-    (apply-settings *setting-control*)
-    (activate-progress *dproc* arg0)
-    (set-setting! 'allow-progress #f 0.0 0)
-    (dotimes (gp-1 5)
-      (suspend)
-      )
-    (disable *screen-filter*)
-    (remove-setting! 'allow-error)
-    (while (-> *blit-displays-work* menu-mode)
-      (suspend)
-      )
-    (set-setting! 'allow-error #f 0.0 0)
-    (apply-settings *setting-control*)
-    (set-blackout-frames (seconds 0.2))
-    0
-    (none)
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id screen-filter)
     )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings *setting-control*)
+  (activate-progress *dproc* arg0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-1 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (while (-> *blit-displays-work* menu-mode)
+    (suspend)
+    )
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
+  (none)
   )
 
 (defstate startup (title-control)
@@ -817,7 +816,7 @@
   :enter (-> (method-of-type title-control startup) enter)
   :exit (-> (method-of-type title-control startup) exit)
   :code (behavior ()
-    (title-fade-out (* 3.0 (-> self clock seconds-per-frame)))
+    (title-fade-out (* 3.0 (seconds-per-frame)))
     (title-progress 'title)
     (sleep-code)
     (none)
@@ -1319,6 +1318,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEE)
   (let ((v1-82 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-82
@@ -1342,6 +1342,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEI)
   (let ((v1-89 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-89
@@ -1365,6 +1366,7 @@
     )
   )
 
+;; og:preserve-this constant
 (when (= (scf-get-territory) GAME_TERRITORY_SCEK)
   (let ((v1-96 (get-field-spec-by-id (-> *part-id-table* 5469) (sp-field-id spt-userdata))))
     (if v1-96

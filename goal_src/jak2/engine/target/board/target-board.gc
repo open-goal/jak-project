@@ -393,7 +393,7 @@
       (case arg3
         ((1)
          (when (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-           (let* ((f30-0 (* 122880.0 (-> self control turn-to-magnitude) (-> self clock seconds-per-frame)))
+           (let* ((f30-0 (* 122880.0 (-> self control turn-to-magnitude) (seconds-per-frame)))
                   (a2-1 (-> self board ride-dir))
                   (v1-12 (vector-flatten! (new 'stack-no-clear 'vector) (-> self control to-target-pt-xz) a2-1))
                   )
@@ -686,12 +686,7 @@
                          )
                        1.0
                        )
-                     (vector+float*!
-                       s5-1
-                       (-> self control trans)
-                       (-> self control c-R-w vector 2)
-                       (* 40960.0 (-> self clock seconds-per-frame))
-                       )
+                     (vector+float*! s5-1 (-> self control trans) (-> self control c-R-w vector 2) (* 40960.0 (seconds-per-frame)))
                      (let* ((t9-8 vector-segment-overlap)
                             (a1-8 (-> gp-1 world-vertex))
                             (a2-3 (-> gp-1 world-vertex 1))
@@ -1069,14 +1064,11 @@
            )
       (when (not (or (= (-> self control current-surface vel-turn) 0.0) (< (-> gp-0 z) 0.0)))
         (let ((f0-22 (atan (-> gp-0 x) (-> gp-0 z))))
-          (vector-rotate-y!
-            gp-0
-            gp-0
-            (fmin
-              (* 0.03 (-> self clock time-adjust-ratio) (- f0-22))
-              (* (-> self control current-surface vel-turn) (-> self clock seconds-per-frame))
-              )
-            )
+          (vector-rotate-y! gp-0 gp-0 (fmin
+                                        (* 0.03 (-> self clock time-adjust-ratio) (- f0-22))
+                                        (* (-> self control current-surface vel-turn) (seconds-per-frame))
+                                        )
+                            )
           )
         )
       (let* ((f0-28 (* f30-0 (-> self board thrust-scale) (lerp-scale 0.4 1.0 f28-0 0.3 1.0)))
@@ -1109,9 +1101,9 @@
              )
             )
           )
-        (+! (-> gp-0 z) (* f0-28 (-> self clock seconds-per-frame)))
+        (+! (-> gp-0 z) (* f0-28 (seconds-per-frame)))
         (when (!= f1-23 0.0)
-          (let ((f0-33 (- 1.0 (/ (* f30-0 (-> self clock seconds-per-frame)) f1-23))))
+          (let ((f0-33 (- 1.0 (/ (* f30-0 (seconds-per-frame)) f1-23))))
             (set! (-> gp-0 x) (* (-> gp-0 x) f0-33))
             (set! (-> gp-0 z) (* (-> gp-0 z) f0-33))
             )
@@ -1236,17 +1228,17 @@
        )
       )
     (if (board-on-ground?)
-        (seek! (-> self board sound-air-knob) 0.0 (* 16.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self board sound-air-knob) 0.0 (* 16.0 (seconds-per-frame)))
         (seek!
           (-> self board sound-air-knob)
           (lerp-scale 0.0 1.0 (target-height-above-ground) 409.6 28672.0)
-          (* 2.0 (-> self clock seconds-per-frame))
+          (* 2.0 (seconds-per-frame))
           )
         )
     (let ((f30-0 (fabs (/ (-> self board turn-anim-frame) (-> *TARGET_BOARD-bank* turn-frames)))))
       (seek! (-> self board sound-bank-knob) f30-0 (if (< (-> self board sound-bank-knob) f30-0)
-                                                       (* 0.5 (-> self clock seconds-per-frame))
-                                                       (-> self clock seconds-per-frame)
+                                                       (* 0.5 (seconds-per-frame))
+                                                       (seconds-per-frame)
                                                        )
              )
       (set! (-> self board engine-sound-volume) (lerp-scale 0.8 1.0 f30-0 0.0 1.0))
@@ -1298,12 +1290,12 @@
      (seek!
        (-> self board spin-sound-volume)
        (lerp-scale 0.0 1.0 (fabs (-> self board trotyv)) 0.0 91022.22)
-       (* 8.0 (-> self clock seconds-per-frame))
+       (* 8.0 (seconds-per-frame))
        )
      (seek!
        (-> self board spin-sound-pitch)
        (lerp-scale 0.0 0.3 (fabs (-> self board trotyv)) 36408.89 91022.22)
-       (-> self clock seconds-per-frame)
+       (seconds-per-frame)
        )
      (when *sound-player-enable*
        (let ((v1-89 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -1324,17 +1316,14 @@
       )
   (when (= (-> self board upper-body mode) (joint-mod-mode rotate))
     (set! (-> self board upper-body-rotyv)
-          (* 0.95
-             (fmax
-               (fmin (-> self board upper-body-rotyv) (-> self board upper-body-rotyv-max))
-               (- (-> self board upper-body-rotyv-max))
-               )
+          (* 0.95 (fmax
+                    (fmin (-> self board upper-body-rotyv) (-> self board upper-body-rotyv-max))
+                    (- (-> self board upper-body-rotyv-max))
+                    )
              )
           )
-    (+! (-> self board upper-body-rotyv)
-        (* -10.0 (-> self clock seconds-per-frame) (-> self board upper-body-roty))
-        )
-    (let ((f1-21 (* (-> self board upper-body-rotyv) (-> self clock seconds-per-frame)))
+    (+! (-> self board upper-body-rotyv) (* -10.0 (seconds-per-frame) (-> self board upper-body-roty)))
+    (let ((f1-21 (* (-> self board upper-body-rotyv) (seconds-per-frame)))
           (f0-65 (-> self board upper-body-roty))
           )
       (+! (-> self board upper-body-roty) f1-21)
@@ -1373,9 +1362,9 @@
         (set! (-> self board up-vector 1 quad) (-> self board up-vector 0 quad))
         )
     (+! (-> self board shock-offsetv)
-        (+ (* -10.0 (-> self clock seconds-per-frame) (-> self board shock-offset))
+        (+ (* -10.0 (seconds-per-frame) (-> self board shock-offset))
            (if (board-on-ground?)
-               (* (-> self control dynam gravity-length) (-> self clock seconds-per-frame) f30-0)
+               (* (-> self control dynam gravity-length) (seconds-per-frame) f30-0)
                0.0
                )
            )
@@ -1391,7 +1380,7 @@
               )
           (!= (-> self control mod-surface mode) 'air)
           )
-     (+! (-> self board shock-offset) (* (-> self board shock-offsetv) (-> self clock seconds-per-frame)))
+     (+! (-> self board shock-offset) (* (-> self board shock-offsetv) (seconds-per-frame)))
      )
     )
   (set! (-> self board shock-offset)
@@ -1766,7 +1755,7 @@
                                  (or (= v1-126 'target-board-trickx) (= v1-126 'target-board-hold))
                                  )
           )
-     (seek! (-> self control dynam gravity-length) 245760.0 (* 30.0 (-> self clock seconds-per-frame)))
+     (seek! (-> self control dynam gravity-length) 245760.0 (* 30.0 (seconds-per-frame)))
      )
     ((= (-> self control mod-surface name) 'spin)
      (set! (-> self control dynam gravity-length)
@@ -1789,7 +1778,7 @@
          (set! (-> self control dynam gravity-length) 245760.0)
          )
        ((>= (- (current-time) (-> self control last-time-on-surface)) (seconds 0.1))
-        (seek! (-> self control dynam gravity-length) 245760.0 (* 245760.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self control dynam gravity-length) 245760.0 (* 245760.0 (seconds-per-frame)))
         )
        (else
          (set! (-> self control dynam gravity-length) 81920.0)
@@ -1983,12 +1972,12 @@
            (set! (-> self board trotyv)
                  (* 0.95 (fmax (fmin (-> self board trotyv) (-> self board trotyv-max)) (- (-> self board trotyv-max))))
                  )
-           (let ((f0-15 (* (-> self board trotyv) (-> self clock seconds-per-frame))))
+           (let ((f0-15 (* (-> self board trotyv) (seconds-per-frame))))
              (set! (-> self board troty) (the float (sar (shl (the int (+ (-> self board troty) f0-15)) 48) 48)))
              (set! (-> self board unknown-deg00) (-> self board troty-cum))
              (+! (-> self board troty-cum) f0-15)
              )
-           (seek! (-> self board trotyv-max) 91022.22 (* 91022.22 (-> self clock seconds-per-frame)))
+           (seek! (-> self board trotyv-max) 91022.22 (* 91022.22 (seconds-per-frame)))
            (mode-set! (-> self board main) (joint-mod-mode rotate))
            (twist-set! (-> self board main) (the-as float #f) (-> self board troty) (the-as float #f))
            (mode-set! (-> self board board 0 main) (joint-mod-mode rotate))
@@ -2067,7 +2056,7 @@
         (pre-collide-setup)
         (cond
           ((and (-> self next-state) (= (-> self next-state name) 'target-board-get-off))
-           (seek! (-> self board cushion-offset) 0.0 (* 20480.0 (-> self clock seconds-per-frame)))
+           (seek! (-> self board cushion-offset) 0.0 (* 20480.0 (seconds-per-frame)))
            )
           ((and (logtest? (-> self control mod-surface flags) (surface-flag air))
                 (not (logtest? (-> self control status) (collide-status on-surface)))
@@ -2075,22 +2064,18 @@
            (seek!
              (-> self board cushion-offset)
              (lerp-scale (-> *TARGET_BOARD-bank* cushion) 0.0 (target-height-above-ground) 0.0 12288.0)
-             (* 20480.0 (-> self clock seconds-per-frame))
+             (* 20480.0 (seconds-per-frame))
              )
            )
           ((focus-test? self on-water)
            (seek!
              (-> self board cushion-offset)
              (+ 2048.0 (-> *TARGET_BOARD-bank* cushion))
-             (* 20480.0 (-> self clock seconds-per-frame))
+             (* 20480.0 (seconds-per-frame))
              )
            )
           (else
-            (seek!
-              (-> self board cushion-offset)
-              (-> *TARGET_BOARD-bank* cushion)
-              (* 8192.0 (-> self clock seconds-per-frame))
-              )
+            (seek! (-> self board cushion-offset) (-> *TARGET_BOARD-bank* cushion) (* 8192.0 (seconds-per-frame)))
             )
           )
         (target-board-collision)
@@ -2212,9 +2197,9 @@
       (let* ((f30-0 (deg- (vector-y-angle (-> self board ride-dir)) (-> self board ride-rot-abs 0)))
              (f30-1 (* f30-0 (lerp-scale 10.0 100.0 (fabs f30-0) 1820.4445 3640.889)))
              )
-        (+! (-> self board ride-rtv-abs) (* f30-1 (-> self clock seconds-per-frame)))
+        (+! (-> self board ride-rtv-abs) (* f30-1 (seconds-per-frame)))
         (set! (-> self board ride-rtv-abs) (* 0.9 (-> self board ride-rtv-abs)))
-        (+! (-> self board ride-rot-abs 0) (* (-> self board ride-rtv-abs) (-> self clock seconds-per-frame)))
+        (+! (-> self board ride-rot-abs 0) (* (-> self board ride-rtv-abs) (seconds-per-frame)))
         (when (>= 0.0 (* f30-1 (deg- (vector-y-angle (-> self board ride-dir)) (-> self board ride-rot-abs 0))))
           (set! (-> self board ride-rtv-abs) 0.0)
           (set! (-> self board ride-rot-abs 0) (vector-y-angle (-> self board ride-dir)))
@@ -2329,7 +2314,7 @@
         (let ((f0-25 (vector-vector-distance (-> self control trans) s4-1)))
           (when #t
             (let ((s3-5 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> self control trans))))
-              (let ((f1-9 (* 12288.0 (-> self clock seconds-per-frame))))
+              (let ((f1-9 (* 12288.0 (seconds-per-frame))))
                 (if (and (not (-> self board ride-lock-on)) (< f1-9 f0-25))
                     (vector-normalize! s3-5 f1-9)
                     (set! (-> self board ride-lock-on) #t)
@@ -2429,9 +2414,7 @@
               (set! sv-768 (the-as int (-> s3-8 best-other-tri pat)))
               )
             (when (and (< (+ (the float (-> self board ride-vertex-length)) (/ 0.0 f28-3))
-                          (+ (-> self board ride-vertex-index)
-                             (/ (* (-> self board ride-speed) (-> self clock seconds-per-frame)) f28-3)
-                             )
+                          (+ (-> self board ride-vertex-index) (/ (* (-> self board ride-speed) (seconds-per-frame)) f28-3))
                           )
                        (>= f28-3 3686.4)
                        (and (or (>= f26-1 6963.2) (and (>= f26-1 2048.0) (zero? (shr (shl sv-768 54) 61))))
@@ -2446,9 +2429,7 @@
                 f26-1
                 sv-768
                 (+ (-> self board ride-vertex-index)
-                   (/ (* (-> self board ride-speed) (-> self clock seconds-per-frame))
-                      (vector-length (-> self board ride-segment))
-                      )
+                   (/ (* (-> self board ride-speed) (seconds-per-frame)) (vector-length (-> self board ride-segment)))
                    )
                 (+ (the float (-> self board ride-vertex-length)) (/ 0.0 f28-3))
                 )
@@ -2568,44 +2549,40 @@
 
 (defbehavior board-ride-add-thrust target ((arg0 vector) (arg1 float))
   (let* ((f30-0 (-> self board ride-speed))
-         (f0-4
-           (lerp-scale
-             (-> self control current-surface fric)
-             (* 0.2 (-> self control current-surface fric))
-             f30-0
-             0.0
-             (-> self control current-surface transv-max)
-             )
-           )
-         (f30-1 (seek f30-0 0.0 (* f0-4 (-> self clock seconds-per-frame))))
-         (f28-0 (vector-dot (-> self board ride-dir) arg0))
-         (f0-19
-           (+ f30-1
-              (* (if (< 0.0 f28-0)
-                     (* f28-0
-                        (lerp-scale
-                          (-> self control current-surface target-speed)
-                          0.0
-                          (-> self board ride-speed)
-                          0.0
-                          (-> self control current-surface transv-max)
-                          )
-                        arg1
-                        )
-                     (* 40960.0 arg1 f28-0)
-                     )
-                 (-> self clock seconds-per-frame)
+         (f0-4 (lerp-scale
+                 (-> self control current-surface fric)
+                 (* 0.2 (-> self control current-surface fric))
+                 f30-0
+                 0.0
+                 (-> self control current-surface transv-max)
                  )
-              )
-           )
+               )
+         (f30-1 (seek f30-0 0.0 (* f0-4 (seconds-per-frame))))
+         (f28-0 (vector-dot (-> self board ride-dir) arg0))
+         (f0-19 (+ f30-1 (* (if (< 0.0 f28-0)
+                                (* f28-0
+                                   (lerp-scale
+                                     (-> self control current-surface target-speed)
+                                     0.0
+                                     (-> self board ride-speed)
+                                     0.0
+                                     (-> self control current-surface transv-max)
+                                     )
+                                   arg1
+                                   )
+                                (* 40960.0 arg1 f28-0)
+                                )
+                            (seconds-per-frame)
+                            )
+                   )
+                )
          (v1-21 (-> self control to-target-pt-xz))
          (f1-6 (vector-dot (-> self control dynam gravity-normal) v1-21))
-         (f0-20
-           (if (< f1-6 0.0)
-               (+ f0-19 (* (- f1-6) (-> self control current-surface slope-down-factor) (-> self clock seconds-per-frame)))
-               (+ f0-19 (* (- f1-6) (-> self control current-surface slope-up-factor) (-> self clock seconds-per-frame)))
-               )
-           )
+         (f0-20 (if (< f1-6 0.0)
+                    (+ f0-19 (* (- f1-6) (-> self control current-surface slope-down-factor) (seconds-per-frame)))
+                    (+ f0-19 (* (- f1-6) (-> self control current-surface slope-up-factor) (seconds-per-frame)))
+                    )
+                )
          )
     (set! (-> self board ride-speed) (fmax 0.0 (fmin f0-20 (-> self control current-surface transv-max))))
     )
@@ -2644,9 +2621,7 @@
                   (set! f0-16 0.0)
                   )
               (set! (-> self board ride-lean-targ) f0-16)
-              (+! (-> self board ride-leanv)
-                  (* 100.0 (-> self clock seconds-per-frame) (- f0-16 (-> self board ride-lean)))
-                  )
+              (+! (-> self board ride-leanv) (* 100.0 (seconds-per-frame) (- f0-16 (-> self board ride-lean))))
               )
             )
           )
@@ -2654,9 +2629,9 @@
         (seek!
           (-> self board ride-lean-mag)
           (fabs (analog-input (the-as int (-> self control cpad leftx)) 128.0 32.0 110.0 1.0))
-          (* 2.0 (-> self clock seconds-per-frame))
+          (* 2.0 (seconds-per-frame))
           )
-        (+! (-> self board ride-lean) (* (-> self board ride-leanv) (-> self clock seconds-per-frame)))
+        (+! (-> self board ride-lean) (* (-> self board ride-leanv) (seconds-per-frame)))
         (cond
           ((< (-> self board ride-lean) -1.0)
            (set! (-> self board ride-lean) -1.0)
@@ -2673,7 +2648,7 @@
         (target-board-compute-edge)
         (do-rotations2)
         (pre-collide-setup)
-        (seek! (-> self board cushion-offset) 1638.4 (* 16384.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self board cushion-offset) 1638.4 (* 16384.0 (seconds-per-frame)))
         (let ((s5-3 (new 'stack-no-clear 'vector)))
           (set! (-> s5-3 quad) (-> self control transv quad))
           (let ((s4-1 (new 'stack-no-clear 'vector)))
@@ -2754,7 +2729,7 @@
                             (-> self board ride-vertex)
                             (-> self board ride-vertex-length)
                             (the-as float s4-1)
-                            (* (-> self board ride-speed) (-> self clock seconds-per-frame))
+                            (* (-> self board ride-speed) (seconds-per-frame))
                             )
                           )
                         )
@@ -2878,7 +2853,7 @@
                  0.0
                  (* 0.3 (-> self board transv-max))
                  )
-               (-> self clock seconds-per-frame)
+               (seconds-per-frame)
                )
             )
         (set! (-> self board turn-anim-vel)
@@ -2892,7 +2867,7 @@
                   )
                 )
               )
-        (+! (-> self board turn-anim-frame) (* (-> self board turn-anim-vel) (-> self clock seconds-per-frame)))
+        (+! (-> self board turn-anim-frame) (* (-> self board turn-anim-vel) (seconds-per-frame)))
         (set! (-> self board turn-anim-frame)
               (fmax
                 (fmin (-> self board turn-anim-frame) (-> *TARGET_BOARD-bank* turn-frames))
@@ -2934,14 +2909,14 @@
         (let ((f0-59
                 (fmin
                   (if (logtest? (-> self control status) (collide-status on-surface))
-                      (seek (-> self board turn-anim-duck) 0.0 (-> self clock seconds-per-frame))
+                      (seek (-> self board turn-anim-duck) 0.0 (seconds-per-frame))
                       (-> self board turn-anim-duck)
                       )
                   (lerp-scale 0.0 -1.0 (the float (- (current-time) (-> self control last-time-on-surface))) 30.0 120.0)
                   )
                 )
               )
-          (+! (-> self board turn-anim-duck) (* (-> self board turn-anim-duck-vel) (-> self clock seconds-per-frame)))
+          (+! (-> self board turn-anim-duck) (* (-> self board turn-anim-duck-vel) (seconds-per-frame)))
           (cond
             ((< (-> self board turn-anim-duck) f0-59)
              (set! (-> self board turn-anim-duck) f0-59)
@@ -2991,6 +2966,7 @@
         (let ((t9-4 format)
               (a0-29 #t)
               (a1-8 "trick: ~S (~D) ~,,0f")
+              ;; og:preserve-this
               (trick-name (enum->string board-tricks arg0)))
           (t9-4
             a0-29
@@ -3000,6 +2976,7 @@
             s3-1
             )
           )
+        ;; og:preserve-this jetboard trick tracker
         (let ((total-points s3-1))
           (when (nonzero? (-> obj trick-count))
             (format #t " + combo ~,,0f" (-> obj trick-points-array (+ (-> obj trick-count) -1)))
@@ -3038,6 +3015,7 @@
         )
       (send-event (ppointer->process (-> obj process)) 'get-pickup (pickup-type trick-point) f30-0)
       (sound-play "trick-score")
+      ;; og:preserve-this
       (#when PC_PORT
         (end-combo! *board-trick-tracker*))
       )

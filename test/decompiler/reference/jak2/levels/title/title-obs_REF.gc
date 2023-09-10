@@ -615,32 +615,30 @@
 ;; definition for function title-progress
 ;; WARN: Return type mismatch int vs none.
 (defun title-progress ((arg0 symbol))
-  (with-pp
-    (setup
-      *screen-filter*
-      (new 'static 'vector :w 128.0)
-      (new 'static 'vector :w 128.0)
-      (-> pp clock seconds-per-frame)
-      (bucket-id screen-filter)
-      )
-    (set-setting! 'allow-progress #t 0.0 0)
-    (apply-settings *setting-control*)
-    (activate-progress *dproc* arg0)
-    (set-setting! 'allow-progress #f 0.0 0)
-    (dotimes (gp-1 5)
-      (suspend)
-      )
-    (disable *screen-filter*)
-    (remove-setting! 'allow-error)
-    (while (-> *blit-displays-work* menu-mode)
-      (suspend)
-      )
-    (set-setting! 'allow-error #f 0.0 0)
-    (apply-settings *setting-control*)
-    (set-blackout-frames (seconds 0.2))
-    0
-    (none)
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id screen-filter)
     )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings *setting-control*)
+  (activate-progress *dproc* arg0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-1 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (while (-> *blit-displays-work* menu-mode)
+    (suspend)
+    )
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -855,7 +853,7 @@
   :enter (-> (method-of-type title-control startup) enter)
   :exit (-> (method-of-type title-control startup) exit)
   :code (behavior ()
-    (title-fade-out (* 3.0 (-> self clock seconds-per-frame)))
+    (title-fade-out (* 3.0 (seconds-per-frame)))
     (title-progress 'title)
     (sleep-code)
     (none)

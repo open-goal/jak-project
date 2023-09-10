@@ -3846,6 +3846,52 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
+  // detect launch-particles macro
+  {
+    if (unstacked.at(0)->to_form(env).is_symbol("sp-launch-particles-var")) {
+      auto system = arg_forms.at(0);
+      auto part = arg_forms.at(1);
+      auto origin = arg_forms.at(2);
+      auto launch_state = arg_forms.at(3);
+      auto launch_control = arg_forms.at(4);
+      auto rate = arg_forms.at(5);
+      std::vector<Form*> macro;
+
+      if (system->to_string(env) != "*sp-particle-system-2d*") {
+        macro.push_back(pool.form<ConstantTokenElement>(":system"));
+        macro.push_back(system);
+      }
+      macro.push_back(part);
+      macro.push_back(origin);
+
+      auto mr_launch_state =
+          match(Matcher::cast("sparticle-launch-state", Matcher::symbol("#f")), launch_state);
+      auto mr_launch_control =
+          match(Matcher::cast("sparticle-launch-control", Matcher::symbol("#f")), launch_control);
+      if (!mr_launch_state.matched) {
+        macro.push_back(pool.form<ConstantTokenElement>(":launch-state"));
+        macro.push_back(launch_state);
+      }
+      if (!mr_launch_control.matched) {
+        macro.push_back(pool.form<ConstantTokenElement>(":launch-control"));
+        macro.push_back(launch_control);
+      }
+      if (rate->to_string(env) != "1.0") {
+        macro.push_back(pool.form<ConstantTokenElement>(":rate"));
+        macro.push_back(rate);
+      }
+
+      if (env.version > GameVersion::Jak1) {
+        macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
+        macro.push_back(pool.form<ConstantTokenElement>("#t"));
+      }
+
+      new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")),
+          macro);
+    }
+  }
+
   result->push_back(new_form);
 }
 
@@ -3895,6 +3941,18 @@ GenericElement* DerefElement::try_as_curtime(FormPool& pool) {
   return nullptr;
 }
 
+GenericElement* DerefElement::try_as_seconds_per_frame(FormPool& pool) {
+  auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                 {DerefTokenMatcher::string("clock"),
+                                  DerefTokenMatcher::string("seconds-per-frame")}),
+                  this);
+  if (mr.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+  }
+  return nullptr;
+}
+
 void DerefElement::update_from_stack(const Env& env,
                                      FormPool& pool,
                                      FormStack& stack,
@@ -3934,6 +3992,13 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_curtime = try_as_curtime(pool);
   if (as_curtime) {
     result->push_back(as_curtime);
+    return;
+  }
+
+  // seconds-per-frame macro
+  auto as_seconds_per_frame = try_as_seconds_per_frame(pool);
+  if (as_seconds_per_frame) {
+    result->push_back(as_seconds_per_frame);
     return;
   }
 

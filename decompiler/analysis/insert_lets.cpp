@@ -2247,6 +2247,116 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   return elt;
 }
 
+FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((t9-0 sp-launch-particles-var)
+   *       (a0-1 *sp-particle-system-2d*)
+   *       (a1-0 (-> *part-id-table* 539))
+   *       (a2-0 *launch-matrix*)
+   *       )
+   *   (set! (-> a2-0 trans quad) (-> arg0 quad))
+   *   (t9-0 a0-1 a1-0 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control
+   * #f) 1.0)
+   *   )
+   * to:
+   * (launch-particles (-> *part-id-table* 539) arg0)
+   */
+
+  if (in->entries().size() != 4) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  auto func = in->entries().at(0);
+  if (func.src->elts().at(0)->to_string(env) != "sp-launch-particles-var") {
+    return nullptr;
+  }
+
+  auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  if (!set_elt) {
+    return nullptr;
+  }
+
+  auto func_elt = dynamic_cast<GenericElement*>(in->body()->at(1));
+  if (!func_elt) {
+    return nullptr;
+  }
+
+  auto part_system = in->entries().at(1);
+  auto system = part_system.src->at(0)->to_string(env);
+  if (system != "*sp-particle-system-2d*" && system != "*sp-particle-system-3d*") {
+    return nullptr;
+  }
+
+  auto part_form = in->entries().at(2).src;
+  auto part = dynamic_cast<DerefElement*>(part_form->elts().at(0));
+  if (!part) {
+    return nullptr;
+  }
+
+  auto part_id_table = part->base()->to_string(env);
+  if (part_id_table != "*part-id-table*") {
+    return nullptr;
+  }
+
+  auto launch_matrix = in->entries().at(3);
+  if (launch_matrix.src->at(0)->to_string(env) != "*launch-matrix*") {
+    return nullptr;
+  }
+
+  auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
+  if (!origin) {
+    return nullptr;
+  }
+  auto tokens = origin->tokens().size();
+  Form* origin_form;
+  // remove only the quad if there are multiple derefs
+  if (tokens > 1) {
+    origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
+    auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
+    orig->tokens().pop_back();
+  } else {
+    origin_form = origin->base();
+  }
+
+  auto launch_state = func_elt->elts().at(func_elt->elts().size() - 3);
+  auto mr_launch_state =
+      match(Matcher::cast("sparticle-launch-state", Matcher::symbol("#f")), launch_state);
+  auto launch_control = func_elt->elts().at(func_elt->elts().size() - 2);
+  auto mr_launch_control =
+      match(Matcher::cast("sparticle-launch-control", Matcher::symbol("#f")), launch_control);
+
+  auto rate = func_elt->elts().at(func_elt->elts().size() - 1)->to_string(env);
+
+  // build the macro
+  std::vector<Form*> macro;
+  if (system != "*sp-particle-system-2d*") {
+    macro.push_back(pool.form<ConstantTokenElement>(":system"));
+    macro.push_back(pool.form<ConstantTokenElement>(system));
+  }
+  macro.push_back(part_form);
+  if (!mr_launch_state.matched) {
+    macro.push_back(pool.form<ConstantTokenElement>(":launch-state"));
+    macro.push_back(launch_state);
+  }
+  if (!mr_launch_control.matched) {
+    macro.push_back(pool.form<ConstantTokenElement>(":launch-control"));
+    macro.push_back(launch_control);
+  }
+  macro.push_back(origin_form);
+  if (rate != "1.0") {
+    macro.push_back(pool.form<ConstantTokenElement>(":rate"));
+    macro.push_back(pool.form<ConstantTokenElement>(rate));
+  }
+  auto elt = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")), macro);
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
 FormElement* rewrite_multi_let(LetElement* in,
                                const Env& env,
                                FormPool& pool,
@@ -2268,6 +2378,14 @@ FormElement* rewrite_multi_let(LetElement* in,
     if (as_proc_new) {
       stats.proc_new++;
       return as_proc_new;
+    }
+  }
+
+  if (in->entries().size() >= 4) {
+    auto as_launch_particles = rewrite_launch_particles(in, env, pool);
+    if (as_launch_particles) {
+      stats.launch_particles++;
+      return as_launch_particles;
     }
   }
 

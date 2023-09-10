@@ -410,7 +410,7 @@ This commonly includes things such as:
      )
     (('hold)
      (set! (-> self escort-force (-> arg3 param 0) y)
-           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (seconds-per-frame)))
            )
      )
     (else
@@ -464,16 +464,15 @@ This commonly includes things such as:
               (target-pos 0)
               (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 quat)))
                     (f30-0 0.0)
-                    (s3-0
-                      (lambda ((arg0 rift-rider) (arg1 vector) (arg2 vector) (arg3 vector))
-                        (let ((f0-1 (vector-dot (vector-! (new 'stack-no-clear 'vector) arg2 arg1) arg3)))
-                          (if (< f0-1 0.0)
-                              (- f0-1)
-                              0.0
+                    (s3-0 (lambda ((arg0 rift-rider) (arg1 vector) (arg2 vector) (arg3 vector))
+                            (let ((f0-1 (vector-dot (vector-! (new 'stack-no-clear 'vector) arg2 arg1) arg3)))
+                              (if (< f0-1 0.0)
+                                  (- f0-1)
+                                  0.0
+                                  )
                               )
+                            )
                           )
-                        )
-                      )
                     )
                 (let ((s0-0 (new 'stack-no-clear 'vector))
                       (v1-13 0)
@@ -515,21 +514,16 @@ This commonly includes things such as:
                   (let ((s1-1 s3-0)
                         (s0-2 self)
                         )
-                    (+! f30-0
-                        (s1-1
-                          s0-2
-                          (the-as vector (send-event self 'get-position 'right (new 'stack-no-clear 'vector)))
-                          (the-as vector s2-0)
-                          s4-0
-                          )
+                    (+! f30-0 (s1-1
+                                s0-2
+                                (the-as vector (send-event self 'get-position 'right (new 'stack-no-clear 'vector)))
+                                (the-as vector s2-0)
+                                s4-0
+                                )
                         )
                     )
                   )
-                (seek!
-                  (-> self speed)
-                  (fmin 12288.0 (+ 2048.0 (vector-length s5-0)))
-                  (* 4096.0 (-> self clock seconds-per-frame))
-                  )
+                (seek! (-> self speed) (fmin 12288.0 (+ 2048.0 (vector-length s5-0))) (* 4096.0 (seconds-per-frame)))
                 (set! (-> self speed) (* (-> self speed) (lerp-scale 1.0 0.0 f30-0 24576.0 49152.0)))
                 (let ((f30-1 (-> self speed))
                       (s2-1 lerp-scale)
@@ -547,7 +541,7 @@ This commonly includes things such as:
             )
           )
         (vector-normalize! s5-0 (-> self speed))
-        (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+        (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (seconds-per-frame)))
         )
       )
     (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
@@ -561,7 +555,7 @@ This commonly includes things such as:
     (set! (-> a2-14 ignore-process1) #f)
     (set! (-> a2-14 ignore-pat) (-> v1-43 pat-ignore-mask))
     (set! (-> a2-14 action-mask) (collide-action solid))
-    (fill-cache-for-shape v1-43 (* (vector-length (-> v1-43 transv)) (-> self clock seconds-per-frame)) a2-14)
+    (fill-cache-for-shape v1-43 (* (vector-length (-> v1-43 transv)) (seconds-per-frame)) a2-14)
     )
   (rigid-body-object-method-37 self)
   (pusher-post)
@@ -695,7 +689,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (dotimes (gp-0 2)
-      (seek! (-> self escort-force gp-0 y) 0.0 (* 0.3 (-> self clock seconds-per-frame)))
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 0.3 (seconds-per-frame)))
       )
     (let ((f30-0 (get-furthest-point-on-path (-> self path) (-> self root trans))))
       (if (< 8.0 f30-0)
@@ -741,7 +735,7 @@ This commonly includes things such as:
       (sound-group sfx)
       (-> self root trans)
       )
-    (seek! (-> self hover-volume) 1.0 (-> self clock seconds-per-frame))
+    (seek! (-> self hover-volume) 1.0 (seconds-per-frame))
     (spawn (-> self part) (-> self root trans))
     (rift-rider-travel-post)
     (none)
@@ -817,7 +811,7 @@ This commonly includes things such as:
     )
   :code (the-as (function none :behavior rift-rider) sleep-code)
   :post (behavior ()
-    (seek! (-> self height) 4096.0 (* 6144.0 (-> self clock seconds-per-frame)))
+    (seek! (-> self height) 4096.0 (* 6144.0 (seconds-per-frame)))
     (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
     (+! (-> self dest-pos y) (-> self height))
     (set! (-> self path-pos) (fmin
@@ -831,13 +825,9 @@ This commonly includes things such as:
         (let ((s5-0 (new 'stack-no-clear 'vector)))
           (+! (-> v1-10 y) (-> self height))
           (vector-! s5-0 v1-10 (-> gp-0 trans))
-          (seek!
-            (-> self speed)
-            (fmin 12288.0 (+ -2048.0 (vector-length s5-0)))
-            (* 4096.0 (-> self clock seconds-per-frame))
-            )
+          (seek! (-> self speed) (fmin 12288.0 (+ -2048.0 (vector-length s5-0))) (* 4096.0 (seconds-per-frame)))
           (vector-normalize! s5-0 (-> self speed))
-          (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+          (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (seconds-per-frame)))
           )
         )
       (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
@@ -852,7 +842,7 @@ This commonly includes things such as:
               (-> gp-0 quat)
               (-> gp-0 quat)
               (-> (the-as process-drawable v1-19) root quat)
-              (* 0.5 (-> self clock seconds-per-frame))
+              (* 0.5 (seconds-per-frame))
               )
             )
         )
@@ -913,7 +903,7 @@ This commonly includes things such as:
     )
   :post (behavior ()
     (dotimes (gp-0 2)
-      (seek! (-> self escort-force gp-0 y) 0.0 (* 1.6 (-> self clock seconds-per-frame)))
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 1.6 (seconds-per-frame)))
       )
     (let ((v1-8 (-> self root))
           (a2-1 (new 'stack-no-clear 'collide-query))
@@ -923,7 +913,7 @@ This commonly includes things such as:
       (set! (-> a2-1 ignore-process1) #f)
       (set! (-> a2-1 ignore-pat) (-> v1-8 pat-ignore-mask))
       (set! (-> a2-1 action-mask) (collide-action solid))
-      (fill-cache-for-shape v1-8 (* (vector-length (-> v1-8 transv)) (-> self clock seconds-per-frame)) a2-1)
+      (fill-cache-for-shape v1-8 (* (vector-length (-> v1-8 transv)) (seconds-per-frame)) a2-1)
       )
     (rigid-body-object-method-37 self)
     (pusher-post)
@@ -1156,7 +1146,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 560) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 560)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1693,7 +1684,7 @@ This commonly includes things such as:
     )
   :post (behavior ()
     (when (not (-> self enable-move?))
-      (seek! (-> self speed) 2048.0 (* 12288.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self speed) 2048.0 (* 12288.0 (seconds-per-frame)))
       (let ((v1-4 (-> self nav)))
         (set! (-> v1-4 target-speed) (-> self speed))
         )
@@ -1764,13 +1755,9 @@ This commonly includes things such as:
         (vector-normalize! s4-0 1.0)
         (quaternion-set! s5-0 0.0 (-> s4-0 x) 0.0 (+ 1.0 (-> s4-0 z)))
         (quaternion-normalize! s5-0)
-        (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (-> self clock seconds-per-frame)))
+        (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (seconds-per-frame)))
         )
-      (seek!
-        (-> self observed-speed)
-        (vector-length (-> gp-2 transv))
-        (* 81920.0 (-> self clock seconds-per-frame))
-        )
+      (seek! (-> self observed-speed) (vector-length (-> gp-2 transv)) (* 81920.0 (seconds-per-frame)))
       )
     (spawn-energy)
     (stad-samos-post)
@@ -1901,7 +1888,7 @@ This commonly includes things such as:
         (fill-cache-integrate-and-collide gp-1 (-> gp-1 transv) a2-1 (meters 0))
         )
       (when (logtest? (-> gp-1 status) (collide-status touch-surface))
-        (let ((f0-1 (fmax 0.0 (+ 1.0 (* -11.999999 (-> self clock seconds-per-frame))))))
+        (let ((f0-1 (fmax 0.0 (+ 1.0 (* -11.999999 (seconds-per-frame))))))
           (vector-float*! (-> gp-1 transv) (-> gp-1 transv) f0-1)
           )
         )
@@ -2074,7 +2061,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) #x180) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) #x180)
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -2338,8 +2326,8 @@ This commonly includes things such as:
   :code (the-as (function none :behavior stadium-barrier) sleep-code)
   :post (behavior ()
     (if (!= (-> self flashf) 0.0)
-        (seek! (-> self flashf) 0.0 (* 8.0 (-> self clock seconds-per-frame)))
-        (seek! (-> self colorf) 0.0 (* 1.5 (-> self clock seconds-per-frame)))
+        (seek! (-> self flashf) 0.0 (* 8.0 (seconds-per-frame)))
+        (seek! (-> self colorf) 0.0 (* 1.5 (seconds-per-frame)))
         )
     (let ((a0-2 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'vector))
@@ -3241,7 +3229,7 @@ This commonly includes things such as:
     )
   )
 
-;; jp patch
+;; og:preserve-this jp patch
 (set-subtask-hook!
   *game-info*
   (game-task-node city-defend-stadium-introduction)

@@ -58,6 +58,7 @@ are needed or not, and skip segments if needed.
 additionally, some texture pages have a chunk system that allows more specific control.
 |#
 
+;; DECOMP BEGINS
 
 (defmethod print texture-page ((obj texture-page))
   "Print a texture page with name and size."
@@ -87,7 +88,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   (set! (-> arg0 length) (max 83 (-> arg0 length)))
   (set! (-> arg0 data 82 name) "texture")
   (+! (-> arg0 data 82 count) (-> obj length))
-  ;; note: in jak 1 this + was a - for reasons I do not understand.
+  ;; og:preserve-this note: in jak 1 this + was a - for reasons I do not understand.
   (let ((v1-7 (+ (asize-of obj) (* (-> obj dram-size) 4))))
     ;; also add the size of the texture objects.
     (dotimes (a0-6 (-> obj length))
@@ -578,6 +579,7 @@ additionally, some texture pages have a chunk system that allows more specific c
       (when tex
         (dotimes (mask-idx 3)
           (dotimes (mask-word 3)
+            ;; og:preserve-this
             (set! (-> tex masks data mask-idx mask data mask-word) 0)
             ;(set! (-> (the-as texture (+ (+ (* mask-idx 16) (* mask-word 4)) (the-as int tex))) masks data 0 mask x) 0)
             )
@@ -630,6 +632,7 @@ additionally, some texture pages have a chunk system that allows more specific c
       (when tex
         (dotimes (mask-idx 3)
           (dotimes (mask-word 3)
+            ;; og:preserve-this
             (set! (-> tex masks data mask-idx mask data mask-word) 0)
             ;(set! (-> (the-as texture (+ (+ (* mask-idx 16) (* mask-word 4)) (the-as int tex))) masks data 0 mask x) 0)
             )
@@ -661,6 +664,7 @@ additionally, some texture pages have a chunk system that allows more specific c
 
   ;; this assumes that the common-segment starts at 0.
   (let ((vram-loc 0))
+    ;; og:preserve-this constant
     ;; loop over all active levels
     (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
@@ -700,6 +704,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   "Lay out hud/map textures from all levels so all can fit into
    VRAM at the same time."
   (let ((level-idx 0))
+    ;; og:preserve-this constant
     (countdown (vram-loc LEVEL_TOTAL)
       (let ((lev (-> *level* level vram-loc)))
         (when (or (= (-> lev status) 'active)
@@ -742,6 +747,7 @@ additionally, some texture pages have a chunk system that allows more specific c
 
   ;; again, assume that common-segment starts at 0
   (let ((vram-loc 0))
+    ;; og:preserve-this constant
     ;; iterate over active levels
     (countdown (level-idx LEVEL_TOTAL)
       (let ((lev (-> *level* level level-idx)))
@@ -1073,6 +1079,7 @@ additionally, some texture pages have a chunk system that allows more specific c
         (+! num-chunks chunks-pending)
         )
 
+      ;; og:preserve-this
       ;; add a texflush.
       (dma-buffer-add-gs-set dma-buf (texflush 1))
 
@@ -1154,7 +1161,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   0
   )
 
-
+;; og:preserve-this pc port function
 (defun upload-vram-pages-pris-pc ((pool texture-pool)
                                   (dest-seg texture-pool-segment)
                                   (tpage texture-page)
@@ -1569,6 +1576,7 @@ additionally, some texture pages have a chunk system that allows more specific c
           (((tpage-category alpha))
            ;; alpha has some special cases
            (cond
+             ;; og:preserve-this constant
              ((= (-> lev index) LEVEL_MAX) ;; default level
               ;; if the auto-save-icon-flag is set, clear flag and upload next time.
               (if (not (-> *bigmap* auto-save-icon-flag))
@@ -1645,6 +1653,7 @@ additionally, some texture pages have a chunk system that allows more specific c
           (((tpage-category map))
            ;; map doesn't use masks for the default level.
            (cond
+             ;; og:preserve-this constant
              ((= (-> lev index) LEVEL_MAX)
               (set! (-> lev upload-size 8)
                     (upload-vram-pages pool (-> pool segment-common) tpage (tex-upload-mode seg0-1-2) bucket)
@@ -1671,6 +1680,7 @@ additionally, some texture pages have a chunk system that allows more specific c
         (let ((s2-0 (-> lev texture-anim-array cat)))
           (cond
             ((= cat (tpage-category warp))
+             ;; og:preserve-this constant
              ;; warps put all their update-texture-anim's with the default level:
              (when (= (-> lev index) LEVEL_MAX)
                (dotimes (s2-1 LEVEL_TOTAL)
@@ -1690,8 +1700,8 @@ additionally, some texture pages have a chunk system that allows more specific c
              ;; hack for a certain level here...
              (cond
                ((and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
-                (let ((f30-0 (-> pp clock seconds-per-frame)))
-                  (set! (-> pp clock seconds-per-frame) (* 10.0 (-> pp clock seconds-per-frame)))
+                (let ((f30-0 (seconds-per-frame)))
+                  (set! (-> pp clock seconds-per-frame) (* 10.0 (seconds-per-frame)))
                   (if s2-0
                       (update-texture-anim bucket s2-0)
                       )
@@ -1770,6 +1780,7 @@ additionally, some texture pages have a chunk system that allows more specific c
       )
     )
 
+  ;; og:preserve-this constant
   ;; clear upload-size
   (dotimes (lev-idx LEVEL_TOTAL)
     (let ((lev (-> *level* level lev-idx)))
@@ -1793,6 +1804,7 @@ additionally, some texture pages have a chunk system that allows more specific c
         )
       (when (and src-level (logtest? (-> *texture-pool* texture-enable-user) (-> tpage-info texture-user)))
         (cond
+          ;; og:preserve-this constant
           ((= (-> tpage-info level-index) LEVEL_MAX)
            ;; always upload default-level textures
            (add-level-tpage-dma
@@ -1818,6 +1830,7 @@ additionally, some texture pages have a chunk system that allows more specific c
       )
     )
 
+  ;; og:preserve-this constant
   ;; reset masks and closest array for the next frame!
   (dotimes (v1-16 LEVEL_TOTAL)
     (let ((a0-30 (-> *level* level v1-16)))
@@ -1849,6 +1862,7 @@ additionally, some texture pages have a chunk system that allows more specific c
   "Send the given texture-page to VRAM right now. This function doesn't return until
    it has happened, and only should be used during boot."
 
+   ;; og:preserve-this
    (#when PC_PORT
      ;; load it to the PC Port's texture pool.
      (__pc-texture-upload-now obj arg0)
@@ -1913,7 +1927,7 @@ additionally, some texture pages have a chunk system that allows more specific c
    Will try to move the whole thing, including the clut, assuming you provide a destination for it.
    Note that this uses the format/width stuff properly, so it will be slower, but won't scramble your texture."
 
-
+   ;; og:preserve-this
    (#when PC_PORT
      ;; as far as I know this is only used for fonts which have 1 mip level.
      (__pc-texture-relocate (/ dest-loc 64) (-> tex dest 0) dest-fmt)
@@ -2809,6 +2823,3 @@ additionally, some texture pages have a chunk system that allows more specific c
   )
 
 (define *texture-pool* (new 'global 'texture-pool))
-
-
-

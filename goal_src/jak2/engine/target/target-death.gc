@@ -123,6 +123,7 @@
         (reserve-free *art-control* (-> *art-control* reserve-buffer heap))
         )
     (when (logtest? (-> arg0 flags) (continue-flags demo demo-movie))
+      ;; og:preserve-this
       (#unless DEMO_HACK
         (set! (-> ctywide memory-mode) (load-buffer-mode small-edge)))
       0
@@ -895,7 +896,7 @@
       #t
       (let ((f28-1 (* 1.05 (/ (* -60.0 arg3) (* (the float (+ (-> (ja-group) frames num-frames) -1)) (ja-step 0))))))
         (until v1-29
-          (+! f30-1 (* (-> arg0 shove-back) f28-1 (-> self clock seconds-per-frame)))
+          (+! f30-1 (* (-> arg0 shove-back) f28-1 (seconds-per-frame)))
           (set! s1-1 (target-hit-push s3-0 s2-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
           (suspend)
           (ja :num! (seek!))
@@ -903,7 +904,7 @@
           )
         (while (and (or (not (logtest? (-> self control status) (collide-status on-surface))) s1-1) (!= s1-1 'stuck))
           (arg2)
-          (+! f30-1 (* (-> arg0 shove-back) f28-1 (-> self clock seconds-per-frame)))
+          (+! f30-1 (* (-> arg0 shove-back) f28-1 (seconds-per-frame)))
           (set! s1-1 (target-hit-push s3-0 s2-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
           (if (not s1-1)
               (logclear! (-> self focus-status) (focus-status hit))
@@ -1180,7 +1181,7 @@
                   )
                 (let* ((f1-10 (vector-length v1-157))
                        (f2-1 f1-10)
-                       (f0-40 (+ f0-39 (* 286720.0 (-> self clock seconds-per-frame))))
+                       (f0-40 (+ f0-39 (* 286720.0 (seconds-per-frame))))
                        )
                   (vector+!
                     (-> self control transv)
@@ -1781,7 +1782,7 @@
             (vector-seek!
               (-> self draw color-mult)
               (new 'static 'vector :x 0.5 :y 0.5 :z 0.5 :w 1.0)
-              (* 5.0 (-> self clock seconds-per-frame))
+              (* 5.0 (seconds-per-frame))
               )
             (suspend)
             (ja :num! (seek!))
@@ -1907,7 +1908,7 @@
                   (set! v1-24 'target-hit-ground-hard)
                   (goto cfg-17)
                   )
-                (vector-seek! (-> self draw color-mult) *zero-vector* (-> self clock seconds-per-frame))
+                (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
                 (let ((v1-49 (new-stack-vector0))
                       (f0-7 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                       )
@@ -1946,7 +1947,7 @@
                           :frame-num 0.0
                           )
               (until (ja-done? 0)
-                (vector-seek! (-> self draw color-mult) *identity-vector* (-> self clock seconds-per-frame))
+                (vector-seek! (-> self draw color-mult) *identity-vector* (seconds-per-frame))
                 (suspend)
                 (ja :num! (seek!))
                 )
@@ -2017,11 +2018,7 @@
                         )
             (until (ja-done? 0)
               (if (< (+ -10240.0 (-> self water height)) (-> self control trans y))
-                  (seek!
-                    (-> self control trans y)
-                    (+ -10240.0 (-> self water height))
-                    (* 81920.0 (-> self clock seconds-per-frame))
-                    )
+                  (seek! (-> self control trans y) (+ -10240.0 (-> self water height)) (* 81920.0 (seconds-per-frame)))
                   )
               (suspend)
               (ja :num! (seek!))

@@ -107,24 +107,20 @@
 
 
 (defmethod race-signal-method-29 race-signal ((obj race-signal))
-  (with-pp
-    (+! (-> obj y-offset)
-        (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (-> pp clock seconds-per-frame))))
-        )
-    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
-      (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
-      (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
-      )
-    (let ((v1-15 (handle->process (-> obj banner))))
-      (when v1-15
-        (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
-        (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
-        )
-      )
-    (ja-post)
-    0
-    (none)
+  (+! (-> obj y-offset) (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (seconds-per-frame)))))
+  (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
+    (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
+    (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
     )
+  (let ((v1-15 (handle->process (-> obj banner))))
+    (when v1-15
+      (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
+      (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
+      )
+    )
+  (ja-post)
+  0
+  (none)
   )
 
 (defbehavior race-signal-event-handler race-signal ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
