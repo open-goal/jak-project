@@ -741,10 +741,10 @@ inline u64 bool_to_symbol(const bool val) {
 //  return bool_to_symbol(false);
 //}
 
-void convert_utf8_temp_string_to_game(u32 src_str_ptr) {
+void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
   auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
   std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(str);
-  intern_from_c("*pc-encoded-temp-string*")->value() = make_string_from_c(converted.c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
 }
 
 void InitMachine_PCPort() {
@@ -762,8 +762,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
-  make_function_symbol_from_c("pc-convert-utf8-temp-string-to-game",
-                              (void*)convert_utf8_temp_string_to_game);
+  make_function_symbol_from_c("pc-encode-utf8-string", (void*)encode_utf8_string);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
