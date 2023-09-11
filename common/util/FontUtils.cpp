@@ -1163,7 +1163,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"~[~36L", "<COLOR_COLOR-36>"},
     {"~[~37L", "<COLOR_CREDITS-STAFF-TITLE-1>"},
     {"~[~38L", "<COLOR_CREDITS-STAFF-TITLE-2>"},
-    {"~[~39L", "<COLOR_COLOR-37>"}};
+    {"~[~39L", "<COLOR_COLOR-39>"}};
 
 static std::vector<EncodeInfo> s_encode_info_jak2 = {
     {"ˇ", {0x10}},      // caron
