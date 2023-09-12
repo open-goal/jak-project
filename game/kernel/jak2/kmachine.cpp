@@ -362,7 +362,8 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
-AutoSplitterBlock gAutoSplitterBlock;
+
+AutoSplitterBlock g_auto_splitter_block_jak2;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -662,7 +663,7 @@ void pc_set_levels(u32 lev_list) {
 }
 
 void init_autosplit_struct() {
-  gAutoSplitterBlock.pointer_to_symbol =
+  g_auto_splitter_block_jak2.pointer_to_symbol =
       (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
 }
 

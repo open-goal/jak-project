@@ -9,18 +9,20 @@
 
 (defmethod start-run! speedrun-info ((this speedrun-info))
   ;; randomize game id so the autosplitter knows to restart
-  (reset! *autosplit-info*)
+  (reset! *autosplit-info-jak2*)
   ;; turn on speedrun verification display
   (set! (-> this display-run-info?) #t)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
-  (set! (-> *setting-control* user-default auto-save) #t) ;; enable auto saving by default, no downside on PC
   ;; finalize any category specific setup code
   (case (-> this category)
     (((speedrun-category newgame-normal))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero")))
+  ;; enable auto saving by default, no downside on PC
+  ;; this has to come after the `initialize!` call as it sets it to false!
+  (set! (-> *setting-control* user-default auto-save) #t)
   (none))
 
 (defmethod enforce-settings! speedrun-info ((this speedrun-info))
@@ -45,7 +47,7 @@
   ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
     ;; Update auto-splitter struct
-    (update! *autosplit-info*)
+    (update! *autosplit-info-jak2*)
     ;; see if we should stop drawing the run info (when you escape the fortress!)
     (when (task-complete? *game-info* (game-task fortress-escape))
       (set! (-> this display-run-info?) #f))
