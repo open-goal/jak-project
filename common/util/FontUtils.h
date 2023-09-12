@@ -71,6 +71,7 @@ class GameTextFontBank {
                    std::vector<EncodeInfo>* encode_info,
                    std::vector<ReplaceInfo>* replace_info,
                    std::unordered_set<char>* passthrus);
+  ~GameTextFontBank();
 
   const std::vector<EncodeInfo>* encode_info() const { return m_encode_info; }
   const std::vector<ReplaceInfo>* replace_info() const { return m_replace_info; }
@@ -83,7 +84,7 @@ class GameTextFontBank {
   bool valid_char_range(const char in) const;
 
   std::string convert_utf8_to_game(std::string str, bool escape = false) const;
-  std::string convert_game_to_utf8(const char* in) const;
+  std::string convert_game_to_utf8(const char* in, bool korean) const;
 };
 
 extern GameTextFontBank g_font_bank_jak1_v1;

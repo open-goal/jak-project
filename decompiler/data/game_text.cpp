@@ -114,7 +114,8 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
 
     // escape characters
     if (font_bank_exists(version)) {
-      result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+      bool korean = version == GameTextVersion::JAK2 && result.language == 6;
+      result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str(), korean);
     } else {
       result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
     }
@@ -383,7 +384,7 @@ std::vector<SpoolSubtitleRange> process_spool_subtitles(ObjectFileData& data,
                     auto text = data.linked_data.get_goal_string_by_label(m_lbl);
                     // escape characters
                     if (font_bank_exists(version)) {
-                      msg.text = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+                      msg.text = get_font_bank(version)->convert_game_to_utf8(text.c_str(), m == 6);
                     } else {
                       msg.text = goos::get_readable_string(text.c_str());  // HACK!
                     }

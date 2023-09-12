@@ -72,76 +72,89 @@
   obj
   )
 
-(defun convert-korean-text ((arg0 string))
+(defun convert-korean-text ((src-str string))
   "Converts the provided [[string]] of [[game-text]] into korean. Returns a [[string]]"
   (local-vars (v1-21 int))
-  (let ((gp-0 (-> arg0 data)))
+  (let ((src-ptr (-> src-str data)))
     *expanded-text-line0*
-    (let ((s4-0 0))
+    (let ((src-i 0))
       0
-      (let ((s1-0 0)
-            (s5-0 (length arg0))
+      (let ((dst-i 0)
+            (src-len (length src-str))
             )
         (set! *expand-buf-number* (logxor *expand-buf-number* 1))
-        (let ((s3-0 (if (zero? *expand-buf-number*)
-                        *expanded-text-line0*
-                        *expanded-text-line1*
-                        )
-                    )
+        (let ((dst (if (zero? *expand-buf-number*)
+                       *expanded-text-line0*
+                       *expanded-text-line1*
+                       )
+                   )
               )
-          (let ((s2-0 (+ (-> s3-0 allocated-length) -1)))
-            (clear s3-0)
-            (while (< s4-0 s5-0)
+          (let ((dst-max (+ (-> dst allocated-length) -1)))
+            (clear dst)
+            (while (< src-i src-len)
               (cond
-                ((= (-> gp-0 s4-0) 3)
-                 (+! s4-0 1)
-                 (while (and (< s4-0 s5-0) (!= (-> gp-0 s4-0) 3) (!= (-> gp-0 s4-0) 4))
-                   (set! (-> s3-0 data s1-0) (-> gp-0 s4-0))
-                   (+! s4-0 1)
-                   (+! s1-0 1)
+                ;; code 3 = copy chars until we reach a code 4 or 3
+                ((= (-> src-ptr src-i) 3)
+                 (+! src-i 1)
+                 (while (and (< src-i src-len) (!= (-> src-ptr src-i) 3) (!= (-> src-ptr src-i) 4))
+                   (set! (-> dst data dst-i) (-> src-ptr src-i))
+                   (+! src-i 1)
+                   (+! dst-i 1)
                    )
                  )
                 (else
-                  (let ((v1-17 (+ s4-0 1)))
-                    (-> gp-0 v1-17)
-                    (set! s4-0 (+ v1-17 1))
+                  (let ((v1-17 (+ src-i 1)))
+                    (-> src-ptr v1-17) ;; character byte length. ignored or perhaps debug-only?
+                    (set! src-i (+ v1-17 1))
                     )
-                  (set! (-> s3-0 data s1-0) (the-as uint 126))
-                  (let ((v1-19 (+ s1-0 1)))
-                    (set! (-> s3-0 data v1-19) (the-as uint 89))
+                  ;; the idea here is we render the jamo all at the same position as the texture for each jamo accounts for their offset
+                  ;; and then advance when we're done.
+                  ;; we use a code of 4 to mark the beginning of a jamo sequence, a.k.a. one hangeul letter.
+                  ;; there is jamo at code-page 1 (#x100-#x1ff) and code-page 3 (#x300-#x3ff), though only a handful are in code-page 1.
+                  ;; since this requires two bytes per jamo, we assume the jamo is in code-page 3 by default and thus only have to read 1 byte per jamo.
+                  ;; however, if we read a code of '5' then that means it is in code-page 1, which means we read 2 bytes.
+                  ;; the jamo sequence terminates when we reach a code 3 (copy chars) or code 4 (new letter).
+                  ;; when the sequence terminates, we move the font trans forwards and move on with our life.
+
+                  ;; save font trans (~Y)
+                  (set! (-> dst data dst-i) (the-as uint 126))
+                  (let ((v1-19 (+ dst-i 1)))
+                    (set! (-> dst data v1-19) (the-as uint 89))
                     (let ((v1-20 (+ v1-19 1)))
-                      (while (and (< s4-0 s5-0) (< v1-20 s2-0) (!= (-> gp-0 s4-0) 3) (!= (-> gp-0 s4-0) 4))
+                      (while (and (< src-i src-len) (< v1-20 dst-max) (!= (-> src-ptr src-i) 3) (!= (-> src-ptr src-i) 4))
                         (cond
-                          ((= (-> gp-0 s4-0) 5)
-                           (set! (-> s3-0 data v1-20) (the-as uint 1))
-                           (+! s4-0 1)
+                          ((= (-> src-ptr src-i) 5)
+                           (set! (-> dst data v1-20) (the-as uint 1))
+                           (+! src-i 1)
                            (set! v1-21 (+ v1-20 1))
                            )
                           (else
-                            (set! (-> s3-0 data v1-20) (the-as uint 3))
+                            (set! (-> dst data v1-20) (the-as uint 3))
                             (set! v1-21 (+ v1-20 1))
                             )
                           )
-                        (set! (-> s3-0 data v1-21) (-> gp-0 s4-0))
-                        (+! s4-0 1)
+                        (set! (-> dst data v1-21) (-> src-ptr src-i))
+                        (+! src-i 1)
+                        ;; restore font trans (~Z)
                         (let ((v1-22 (+ v1-21 1)))
-                          (set! (-> s3-0 data v1-22) (the-as uint 126))
+                          (set! (-> dst data v1-22) (the-as uint 126))
                           (let ((v1-23 (+ v1-22 1)))
-                            (set! (-> s3-0 data v1-23) (the-as uint 90))
+                            (set! (-> dst data v1-23) (the-as uint 90))
                             (set! v1-20 (+ v1-23 1))
                             )
                           )
                         )
-                      (set! (-> s3-0 data v1-20) (the-as uint 126))
+                      ;; advance font trans by 26 (~+26H)
+                      (set! (-> dst data v1-20) (the-as uint 126))
                       (let ((v1-24 (+ v1-20 1)))
-                        (set! (-> s3-0 data v1-24) (the-as uint 43))
+                        (set! (-> dst data v1-24) (the-as uint 43))
                         (let ((v1-25 (+ v1-24 1)))
-                          (set! (-> s3-0 data v1-25) (the-as uint 50))
+                          (set! (-> dst data v1-25) (the-as uint 50))
                           (let ((v1-26 (+ v1-25 1)))
-                            (set! (-> s3-0 data v1-26) (the-as uint 54))
+                            (set! (-> dst data v1-26) (the-as uint 54))
                             (let ((v1-27 (+ v1-26 1)))
-                              (set! (-> s3-0 data v1-27) (the-as uint 72))
-                              (set! s1-0 (+ v1-27 1))
+                              (set! (-> dst data v1-27) (the-as uint 72))
+                              (set! dst-i (+ v1-27 1))
                               )
                             )
                           )
@@ -152,8 +165,8 @@
                 )
               )
             )
-          (set! (-> s3-0 data s1-0) (the-as uint 0))
-          s3-0
+          (set! (-> dst data dst-i) (the-as uint 0))
+          dst
           )
         )
       )

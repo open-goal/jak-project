@@ -547,7 +547,7 @@ void update_discord_rpc(u32 discord_info) {
       int gems = (int)info->gem_count;
       // convert encodings
       std::string status = get_font_bank(GameTextVersion::JAK2)
-                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data());
+                               ->convert_game_to_utf8(Ptr<String>(info->status).c()->data(), false);
 
       // get rid of special encodings like <COLOR_WHITE>
       std::regex r("<.*?>");
