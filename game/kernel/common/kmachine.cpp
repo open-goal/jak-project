@@ -447,15 +447,16 @@ u64 pc_get_mips2c(u32 name) {
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 
-u64 pc_get_display_name(u32 id) {
+u64 pc_get_display_name(u32 id, u32 str_dest_ptr) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
     name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
   }
   if (name.empty()) {
-    return s7.offset;
+    return bool_to_symbol(false);
   }
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+  return bool_to_symbol(true);
 }
 
 u32 pc_get_display_mode() {
@@ -591,21 +592,23 @@ void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
   }
 }
 
-u64 pc_get_controller_name(u32 id) {
+u64 pc_get_controller_name(u32 id, u32 str_dest_ptr) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
     name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
   }
   if (name.empty()) {
-    return s7.offset;
+    return bool_to_symbol(false);
   }
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+  return bool_to_symbol(true);
 }
 
-u64 pc_get_current_bind(s32 bind_assignment_info) {
+u64 pc_get_current_bind(s32 bind_assignment_info, u32 str_dest_ptr) {
   if (!Display::GetMainDisplay()) {
     // TODO - return something that lets the runtime use a translatable string if unknown
-    return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+    strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper("unknown").c_str());
+    return bool_to_symbol(true);
   }
 
   auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
@@ -619,12 +622,14 @@ u64 pc_get_current_bind(s32 bind_assignment_info) {
     auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
         port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
     if (name.empty()) {
-      return s7.offset;
+      return bool_to_symbol(false);
     }
-    return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+    strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+    return bool_to_symbol(true);
   }
   // TODO - return something that lets the runtime use a translatable string if unknown
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper("unknown").c_str());
+  return bool_to_symbol(true);
 }
 
 u64 pc_get_controller_count() {

@@ -483,40 +483,38 @@
   )
 
 (defmethod nav-enemy-method-142 ginsu ((obj ginsu) (arg0 nav-control))
-  (with-pp
-    (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (let ((a0-2 (handle->process (-> obj focus handle))))
-        (cond
-          (a0-2
-            (vector-! s3-0 (get-trans (the-as process-focusable a0-2) 0) (-> obj root trans))
-            )
-          (else
-            (let ((a0-7 (-> arg0 state)))
-              (set! (-> s3-0 quad) (-> a0-7 heading quad))
-              )
-            )
+  (let ((s3-0 (new 'stack-no-clear 'vector)))
+    (let ((a0-2 (handle->process (-> obj focus handle))))
+      (cond
+        (a0-2
+          (vector-! s3-0 (get-trans (the-as process-focusable a0-2) 0) (-> obj root trans))
           )
-        )
-      (set! (-> s3-0 y) 0.0)
-      (vector-normalize! s3-0 1.0)
-      (let ((s5-3 (new 'stack-no-clear 'quaternion))
-            (s4-0 (-> obj root quat))
+        (else
+          (let ((a0-7 (-> arg0 state)))
+            (set! (-> s3-0 quad) (-> a0-7 heading quad))
             )
-        (quaternion-set! s5-3 0.0 (sqrtf (* 0.5 (- 1.0 (-> s3-0 z)))) 0.0 (sqrtf (* 0.5 (+ 1.0 (-> s3-0 z)))))
-        (if (< (-> s3-0 x) 0.0)
-            (set! (-> s5-3 y) (- (-> s5-3 y)))
-            )
-        (quaternion-pseudo-seek
-          s4-0
-          s4-0
-          s5-3
-          (* (fmax 0.5 (* 0.00024414062 (-> obj nav state speed))) (-> pp clock seconds-per-frame))
           )
         )
       )
-    0
-    (none)
+    (set! (-> s3-0 y) 0.0)
+    (vector-normalize! s3-0 1.0)
+    (let ((s5-3 (new 'stack-no-clear 'quaternion))
+          (s4-0 (-> obj root quat))
+          )
+      (quaternion-set! s5-3 0.0 (sqrtf (* 0.5 (- 1.0 (-> s3-0 z)))) 0.0 (sqrtf (* 0.5 (+ 1.0 (-> s3-0 z)))))
+      (if (< (-> s3-0 x) 0.0)
+          (set! (-> s5-3 y) (- (-> s5-3 y)))
+          )
+      (quaternion-pseudo-seek
+        s4-0
+        s4-0
+        s5-3
+        (* (fmax 0.5 (* 0.00024414062 (-> obj nav state speed))) (seconds-per-frame))
+        )
+      )
     )
+  0
+  (none)
   )
 
 ;; WARN: disable def twice: 11. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.

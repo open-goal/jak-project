@@ -859,22 +859,12 @@
          (s4-0 (new 'stack-no-clear 'matrix))
          )
     (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-      (let ((f24-0 (analog-input
-                     (the-as int (-> *cpad-list* cpads 0 rightx))
-                     128.0
-                     32.0
-                     110.0
-                     (* 8192.0 (-> self clock seconds-per-frame))
-                     )
-                   )
-            (f1-2 (analog-input
-                    (the-as int (-> *cpad-list* cpads 0 righty))
-                    128.0
-                    32.0
-                    110.0
-                    (* 8192.0 (-> self clock seconds-per-frame))
-                    )
-                  )
+      (let ((f24-0
+              (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              )
+            (f1-2
+              (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              )
             (s2-0 (new-stack-matrix0))
             )
         (let ((v1-15 (new 'stack-no-clear 'vector)))
@@ -895,9 +885,7 @@
                 (set! f1-2 (- f1-2))
                 )
             (let* ((f1-3 (+ f24-0 f1-2))
-                   (f1-5
-                     (fmin (* 8192.0 (-> self clock seconds-per-frame)) (fmax (* -8192.0 (-> self clock seconds-per-frame)) f1-3))
-                     )
+                   (f1-5 (fmin (* 8192.0 (seconds-per-frame)) (fmax (* -8192.0 (seconds-per-frame)) f1-3)))
                    )
               (cond
                 ((and (< 0.0 f1-5) (< 0.0 f0-10) (< (-> self max-angle-curr) f28-0))
@@ -1824,6 +1812,7 @@
               ((or (< f0-7 0.0) (< 1.0 f0-7))
                )
               ((let ((f1-2 0.0))
+                ;; og:preserve-this inlined vector-dot
                 ;;  (let* ((v1-23 arg1)
                 ;;         (f2-0 (-> v1-23 x))
                 ;;         (f3-0 (-> v1-23 y))
@@ -2489,12 +2478,10 @@
                    128.0
                    32.0
                    110.0
-                   (* 182.04445
-                      (-> self clock seconds-per-frame)
-                      (if (logtest? (cam-slave-options-u32 GUN_CAM) (-> self options))
-                          120.0
-                          120.0
-                          )
+                   (* 182.04445 (seconds-per-frame) (if (logtest? (cam-slave-options-u32 GUN_CAM) (-> self options))
+                                                        120.0
+                                                        120.0
+                                                        )
                       )
                    )
                  )
@@ -2509,18 +2496,18 @@
           (set! f30-2 (- f30-2))
           )
       (if (-> self have-phony-joystick)
-          (set! f30-2 (* 21845.334 (-> self phony-joystick-x) (-> self clock seconds-per-frame)))
+          (set! f30-2 (* 21845.334 (-> self phony-joystick-x) (seconds-per-frame)))
           )
       (when (logtest? (cam-slave-options-u32 ALLOW_SHIFT_BUTTONS) (-> self options))
         (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
           (if (cpad-hold? (-> *CAMERA-bank* joypad) r1)
-              (+! f30-2 (+ (* 10922.667 (-> self clock seconds-per-frame))
+              (+! f30-2 (+ (* 10922.667 (seconds-per-frame))
                            (analog-input
                              (the-as int (-> *cpad-list* cpads (-> *CAMERA-bank* joypad) abutton 9))
                              0.0
                              32.0
                              230.0
-                             (* 21845.334 (-> self clock seconds-per-frame))
+                             (* 21845.334 (seconds-per-frame))
                              )
                            )
                   )
@@ -2528,13 +2515,13 @@
           )
         (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
           (if (cpad-hold? (-> *CAMERA-bank* joypad) l1)
-              (set! f30-2 (- f30-2 (+ (* 10922.667 (-> self clock seconds-per-frame))
+              (set! f30-2 (- f30-2 (+ (* 10922.667 (seconds-per-frame))
                                       (analog-input
                                         (the-as int (-> *cpad-list* cpads (-> *CAMERA-bank* joypad) abutton 8))
                                         0.0
                                         32.0
                                         230.0
-                                        (* 21845.334 (-> self clock seconds-per-frame))
+                                        (* 21845.334 (seconds-per-frame))
                                         )
                                       )
                              )
@@ -2548,7 +2535,7 @@
                  (fmax (-> self string-min-val z) (fmin (-> self string-max-val z) (vector-length (-> self view-flat))))
                  )
                )
-           (set! f30-2 (* 21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-82)) (-> self clock seconds-per-frame)))
+           (set! f30-2 (* 21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-82)) (seconds-per-frame)))
            )
          )
         ((and (= (-> self los-state) (slave-los-state cw)) (< f30-2 0.0))
@@ -2556,7 +2543,7 @@
                  (fmax (-> self string-min-val z) (fmin (-> self string-max-val z) (vector-length (-> self view-flat))))
                  )
                )
-           (set! f30-2 (* -21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-88)) (-> self clock seconds-per-frame)))
+           (set! f30-2 (* -21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-88)) (seconds-per-frame)))
            )
          )
         )
@@ -2996,28 +2983,28 @@
                     (seek!
                       (-> self string-min-val y)
                       (-> (the-as vector s5-0) y)
-                      (* (-> (the-as vector s5-0) w) (-> self clock seconds-per-frame))
+                      (* (-> (the-as vector s5-0) w) (seconds-per-frame))
                       )
                     )
                 (if (!= (-> (the-as vector s5-0) z) 4095996000.0)
                     (seek!
                       (-> self string-min-val z)
                       (-> (the-as vector s5-0) z)
-                      (* (-> (the-as vector s5-0) w) (-> self clock seconds-per-frame))
+                      (* (-> (the-as vector s5-0) w) (seconds-per-frame))
                       )
                     )
                 (if (!= (-> (the-as vector gp-1) y) 4095996000.0)
                     (seek!
                       (-> self string-max-val y)
                       (-> (the-as vector gp-1) y)
-                      (* (-> (the-as vector gp-1) w) (-> self clock seconds-per-frame))
+                      (* (-> (the-as vector gp-1) w) (seconds-per-frame))
                       )
                     )
                 (if (!= (-> (the-as vector gp-1) z) 4095996000.0)
                     (seek!
                       (-> self string-max-val z)
                       (-> (the-as vector gp-1) z)
-                      (* (-> (the-as vector gp-1) w) (-> self clock seconds-per-frame))
+                      (* (-> (the-as vector gp-1) w) (seconds-per-frame))
                       )
                     )
                 )
@@ -3428,14 +3415,9 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-        (let ((f0-16 (analog-input
-                       (the-as int (-> *cpad-list* cpads 0 rightx))
-                       128.0
-                       32.0
-                       110.0
-                       (* 21845.334 (-> self clock seconds-per-frame))
-                       )
-                     )
+        (let ((f0-16
+                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
+                )
               (gp-0 (new-stack-matrix0))
               (s3-0 (new-stack-vector0))
               (s5-0 (new-stack-vector0))
@@ -3454,13 +3436,7 @@
              (vector-negate! s3-0 s3-0)
              (set! (-> s4-0 quad) (-> s5-0 quad))
              (vector-normalize-copy! s4-0 s3-0 1.0)
-             (matrix-from-two-vectors-max-angle-partial!
-               gp-0
-               s5-0
-               s4-0
-               (* 10922.667 (-> self clock seconds-per-frame))
-               0.05
-               )
+             (matrix-from-two-vectors-max-angle-partial! gp-0 s5-0 s4-0 (* 10922.667 (seconds-per-frame)) 0.05)
              (vector-matrix*! (-> self view-flat) (-> self view-flat) gp-0)
              )
             )

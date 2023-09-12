@@ -5,6 +5,12 @@
 ;; name in dgo: sparticle-launcher
 ;; dgos: GAME, ENGINE
 
+;; og:preserve-this added macro
+(defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
+                            &key (rate DISPLAY_FPS_RATIO))
+  `(sp-launch-particles-var ,system ,particle ,origin ,launch-state ,launch-control ,rate)
+  )
+
 ;; decomp begins
 
 (define *particle-300hz-timer* 0)
@@ -86,6 +92,7 @@
     (dotimes (gp-0 s3-0)
       (let ((v1-2 (-> s4-0 gp-0)))
         (if (and (nonzero? v1-2) (string= arg0 (-> v1-2 name)))
+            ;; og:preserve-this
             ;;(return (&+ (-> s4-0 data) (* gp-0 4)))
             (return (&-> s4-0 gp-0))
             )
@@ -98,6 +105,7 @@
 (defun part-group-pointer? ((arg0 pointer))
   "Is the given pointer a pointer that was returned by lookup-part-group-pointer-by-name?"
   (let ((v1-0 *part-group-id-table*))
+    ;; og:preserve-this
     ;; just check if we are inside the array.
     (and (>= (the-as int arg0) (the-as int (-> v1-0 data)))
          (< (the-as int arg0) (the-as int (&-> v1-0 1024)))
@@ -129,7 +137,7 @@
 ;; particle init
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-;; this was rewritten from assembly
+;; og:preserve-this this was rewritten from assembly
 (defun sp-init-fields! ((arg0 (pointer float)) (arg1 (inline-array sp-field-init-spec)) (arg2 sp-field-id) (arg3 sp-field-id) (write-missing-fields symbol))
   (1+! arg2)
   (let ((cur-spec arg1))
@@ -191,6 +199,7 @@
 ;; launch queue
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;; og:preserve-this
 ;(#if (not PC_BIG_MEMORY)
     (defconstant SPARTICLE_QUEUE_SIZE 32)
     ;(defconstant SPARTICLE_QUEUE_SIZE 80))
@@ -205,7 +214,7 @@
   :flag-assert         #x900000020
   )
 
-
+;; og:preserve-this constant
 (deftype sp-launch-queue (basic)
   ((in-use int32                                 :offset-assert   4)
    (queue  sp-queued-launch-particles SPARTICLE_QUEUE_SIZE :inline :offset-assert  16)
@@ -252,7 +261,7 @@
   (set! (-> arg0 prims 9) (gs-reg64 alpha-1))
   (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
   
-  ;; clamp is actually zbuf for sparticles, not gs-clamp.
+  ;; og:preserve-this clamp is actually zbuf for sparticles, not gs-clamp.
   (set! (-> arg0 clamp) (the gs-clamp (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
   0
   (none)
@@ -275,8 +284,7 @@
 (define *particle-adgif-cache* (new 'global 'particle-adgif-cache))
 (set! (-> *particle-adgif-cache* used) 0)
 
-(define-extern particle-adgif (function adgif-shader texture-id none))
-(set! particle-adgif (the (function adgif-shader texture-id none) (__pc-get-mips2c "particle-adgif")))
+(def-mips2c particle-adgif (function adgif-shader texture-id none))
 
 ;;;;;;;;;;;;;;;;;;;
 ;; launch
@@ -286,6 +294,7 @@
   "Queue a launch from the given launcher, at the given position."
   (let ((v1-0 *sp-launch-queue*))
     
+    ;; og:preserve-this constant
     ;; make sure we have room in the queue
     (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
@@ -464,6 +473,7 @@
 
 (define *death-adgif* (the-as adgif-shader #f))
 
+;; WARN: Function sp-launch-particles-death has a return type of none, but the expression builder found a return statement.
 (defun sp-launch-particles-death ((arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 vector))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -593,14 +603,7 @@
     (when (> (-> gp-0 in-use) 0)
       (dotimes (s5-0 (-> gp-0 in-use))
         (let ((v1-4 (-> gp-0 queue s5-0)))
-          (sp-launch-particles-var
-            (-> v1-4 sp-system)
-            (-> v1-4 sp-launcher)
-            (-> v1-4 pos)
-            (the-as sparticle-launch-state #f)
-            (the-as sparticle-launch-control #f)
-            1.0
-            )
+          (launch-particles :system (-> v1-4 sp-system) (-> v1-4 sp-launcher) (-> v1-4 pos) :rate 1.0)
           )
         )
       (set! (-> gp-0 in-use) 0)
@@ -939,11 +942,11 @@
             )
           )
       
-      ;; can we see it?
+      ;; og:preserve-this can we see it?
       (#if (not PC_PORT)
           (sphere-in-view-frustum? (the-as sphere gp-1))
           (if (-> *pc-settings* ps2-parts?)
-              ;; pc port : launchers have larger bsphere if you have ps2 parts off
+              ;; og:preserve-this pc port: launchers have larger bsphere if you have ps2 parts off
               (sphere-in-view-frustum? (the-as sphere gp-1))
               (sphere-in-view-frustum? (the-as sphere (begin (*! (-> gp-1 w) 8.0) gp-1)))
               )
@@ -958,6 +961,7 @@
 (defmethod spawn sparticle-launch-control ((obj sparticle-launch-control) (arg0 vector))
   (set! (-> obj center quad) (-> arg0 quad))
   
+  ;; og:preserve-this
   ;; check if we are visible (remove this check to force particles to be drawn.)
   (if (not (or (is-visible? obj arg0)
                (logtest? (-> obj group flags) (sp-group-flag always-draw screen-space))
@@ -996,7 +1000,7 @@
           (set! f30-0 0.0)
           )
       
-      ;; if we have ps2 particles off, say we're at the camera
+      ;; og:preserve-this if we have ps2 particles off, say we're at the camera
       (with-pc
         (if (not (-> *pc-settings* ps2-parts?))
             (set! f30-0 0.0)))
@@ -1024,7 +1028,7 @@
                   (b! (!= (-> a1-4 type) a0-26) cfg-78 :delay (nop!))
                   )
                 
-                ;; PAL patch here
+                ;; og:preserve-this PAL patch here
                 ;; ??
                 (b! (zero? (logand (-> v1-29 flags) (sp-group-item-flag launch-asap bit6)))
                     cfg-36 :delay (nop!)
@@ -1037,16 +1041,16 @@
                   (set! (-> a3-0 spawn-time) (the-as uint s4-0))
                   (logior! (-> a3-0 flags) (sp-launch-state-flags particles-active))
                   (if (< 0.0 f0-2)
-                      (sp-launch-particles-var
-                        (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d))
+                      (launch-particles
+                        :system (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d))
                             *sp-particle-system-3d*
                             *sp-particle-system-2d*
                             )
                         a1-4
                         (-> a3-0 origin)
-                        a3-0
-                        obj
-                        f0-2
+                        :launch-state a3-0
+                        :launch-control obj
+                        :rate f0-2
                         )
                       )
                   )
@@ -1102,16 +1106,16 @@
                   (set! (-> a3-0 spawn-time) (the-as uint s4-0))
                   (logior! (-> a3-0 flags) (sp-launch-state-flags particles-active))
                   (if (< 0.0 f0-4)
-                      (sp-launch-particles-var
-                        (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d))
+                      (launch-particles
+                        :system (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d))
                             *sp-particle-system-3d*
                             *sp-particle-system-2d*
                             )
                         a1-4
                         (-> a3-0 origin)
-                        a3-0
-                        obj
-                        f0-4
+                        :launch-state a3-0
+                        :launch-control obj
+                        :rate f0-4
                         )
                       )
                   )
@@ -1283,7 +1287,12 @@
     )
   )
 
-(defun birth-func-copy-omega-to-z ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-3d) (arg3 sparticle-launcher) (arg4 sparticle-launch-state))
+(defun birth-func-copy-omega-to-z ((arg0 sparticle-system)
+                          (arg1 sparticle-cpuinfo)
+                          (arg2 sprite-vec-data-3d)
+                          (arg3 sparticle-launcher)
+                          (arg4 sparticle-launch-state)
+                          )
   (set! (-> arg2 qx-qy-qz-sy z) (+ -16384.0 (-> arg1 omega)))
   (set! (-> arg1 next-time) (-> arg4 sprite next-time))
   (set! (-> arg2 x-y-z-sx w) (* 163.85638 (the float (-> arg4 sprite next-time))))
@@ -1291,7 +1300,12 @@
   (none)
   )
 
-(defun birth-func-random-next-time ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-3d) (arg3 sparticle-launcher) (arg4 sparticle-launch-state))
+(defun birth-func-random-next-time ((arg0 sparticle-system)
+                           (arg1 sparticle-cpuinfo)
+                           (arg2 sprite-vec-data-3d)
+                           (arg3 sparticle-launcher)
+                           (arg4 sparticle-launch-state)
+                           )
   (set! (-> arg1 next-time) (the-as uint (the int (rand-vu-float-range 0.0 (-> arg1 user-float)))))
   0
   (none)

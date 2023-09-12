@@ -1174,7 +1174,7 @@ it returns a triangle and normal direction to push in.
           (s2-0 (new 'stack-no-clear 'vector))
           )
       ;; figure out how far we want to move
-      (vector-float*! s2-0 arg1 (* arg2 (-> pp clock seconds-per-frame)))
+      (vector-float*! s2-0 arg1 (* arg2 (seconds-per-frame)))
       ;; setup collision query
       (set! (-> s5-0 move-dist quad) (-> s2-0 quad))
       (set! (-> s5-0 best-dist) -100000000.0)
@@ -1283,27 +1283,25 @@ it returns a triangle and normal direction to push in.
 (defmethod integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector))
   ;; for the simple collide shape, just move, and ignore collision.
   (local-vars (at-0 int))
-  (with-pp
-    (rlet ((vf0 :class vf)
-           (vf1 :class vf)
-           (vf2 :class vf)
-           )
-      (init-vf0-vector)
-      (let ((t9-0 (method-of-object obj move-by-vector!))
-            (v1-1 (new 'stack-no-clear 'vector))
-            )
-        (.lvf vf1 (&-> arg0 quad))
-        (let ((f0-0 (-> pp clock seconds-per-frame)))
-          (.mov at-0 f0-0)
+  (rlet ((vf0 :class vf)
+          (vf1 :class vf)
+          (vf2 :class vf)
           )
-        (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-        (.svf (&-> v1-1 quad) vf1)
-        (t9-0 obj v1-1)
+    (init-vf0-vector)
+    (let ((t9-0 (method-of-object obj move-by-vector!))
+          (v1-1 (new 'stack-no-clear 'vector))
+          )
+      (.lvf vf1 (&-> arg0 quad))
+      (let ((f0-0 (seconds-per-frame)))
+        (.mov at-0 f0-0)
         )
-      (none)
+      (.mov vf2 at-0)
+      (.mov.vf vf1 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> v1-1 quad) vf1)
+      (t9-0 obj v1-1)
       )
+    (none)
     )
   )
 
@@ -1422,7 +1420,7 @@ it returns a triangle and normal direction to push in.
           )
       ;; and also rate limit it to prevent huge jumps in jak's animation when exiting an anim early.
       ;; in theory, this should follow the blending of animations, but this likely good enough.
-      (vector-seek! (-> obj cspace-offset) total-offset (* 16384.0 (-> pp clock seconds-per-frame)))
+      (vector-seek! (-> obj cspace-offset) total-offset (* 16384.0 (seconds-per-frame)))
       )
 
     ;; compute the total extra velocity to add to collide.
@@ -1525,7 +1523,7 @@ it returns a triangle and normal direction to push in.
                           )
                       )
                  ;; increase a blocked counter.
-                 (seek! (-> obj blocked-factor) 1.0 (* 4.0 (-> pp clock seconds-per-frame)))
+                 (seek! (-> obj blocked-factor) 1.0 (* 4.0 (seconds-per-frame)))
 
                  ;; and a "air block" counter.
                  (seek!
@@ -1534,15 +1532,15 @@ it returns a triangle and normal direction to push in.
                        1.0
                        0.0
                        )
-                   (* 4.0 (-> pp clock seconds-per-frame))
+                   (* 4.0 (seconds-per-frame))
                    )
                  ;; set block flag.
                  (logior! (-> obj status) (collide-status blocked))
                  )
                 (else
                   ;; not blocked, wind down counters.
-                  (seek! (-> obj blocked-factor) 0.0 (* 2.0 (-> pp clock seconds-per-frame)))
-                  (seek! (-> obj blocked-in-air-factor) 0.0 (* 2.0 (-> pp clock seconds-per-frame)))
+                  (seek! (-> obj blocked-factor) 0.0 (* 2.0 (seconds-per-frame)))
+                  (seek! (-> obj blocked-in-air-factor) 0.0 (* 2.0 (seconds-per-frame)))
                   )
                 )
               )
@@ -1700,59 +1698,57 @@ it returns a triangle and normal direction to push in.
 (defmethod integrate-no-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
   "Move, ignoring all collision."
   (local-vars (at-0 int))
-  (with-pp
-    (rlet ((vf0 :class vf)
-           (vf1 :class vf)
-           (vf2 :class vf)
-           )
-      (init-vf0-vector)
-      (update-transforms obj)
-      (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
-      (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
-      (set! (-> obj trans-old quad) (-> obj trans quad))
-      (set! (-> obj prev-status) (-> obj status))
-      (logclear! (-> obj status) (collide-status
-                                   on-surface
-                                   on-ground
-                                   touch-surface
-                                   touch-wall
-                                   touch-ceiling
-                                   touch-actor
-                                   on-special-surface
-                                   touch-edge
-                                   blocked
-                                   on-water
-                                   impact-surface
-                                   touch-background
-                                   stuck
-                                   glance
-                                   )
-                 )
-      (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
-        (let ((v1-13 (-> obj dynam gravity-normal)))
-          (set! (-> obj local-normal quad) (-> v1-13 quad))
-          (set! (-> obj surface-normal quad) (-> v1-13 quad))
-          (set! (-> obj poly-normal quad) (-> v1-13 quad))
+  (rlet ((vf0 :class vf)
+          (vf1 :class vf)
+          (vf2 :class vf)
           )
-        (set! (-> obj coverage) 0.0)
-        (set! (-> obj touch-angle) 0.0)
+    (init-vf0-vector)
+    (update-transforms obj)
+    (set! (-> obj trans-old-old-old quad) (-> obj trans-old-old quad))
+    (set! (-> obj trans-old-old quad) (-> obj trans-old quad))
+    (set! (-> obj trans-old quad) (-> obj trans quad))
+    (set! (-> obj prev-status) (-> obj status))
+    (logclear! (-> obj status) (collide-status
+                                  on-surface
+                                  on-ground
+                                  touch-surface
+                                  touch-wall
+                                  touch-ceiling
+                                  touch-actor
+                                  on-special-surface
+                                  touch-edge
+                                  blocked
+                                  on-water
+                                  impact-surface
+                                  touch-background
+                                  stuck
+                                  glance
+                                  )
+                )
+    (when (not (logtest? (-> obj root-prim prim-core action) (collide-action no-normal-reset)))
+      (let ((v1-13 (-> obj dynam gravity-normal)))
+        (set! (-> obj local-normal quad) (-> v1-13 quad))
+        (set! (-> obj surface-normal quad) (-> v1-13 quad))
+        (set! (-> obj poly-normal quad) (-> v1-13 quad))
         )
-      (let ((t9-1 (method-of-object obj move-by-vector!))
-            (a1-5 (new 'stack-no-clear 'vector))
-            )
-        (.lvf vf1 (&-> arg0 quad))
-        (let ((f0-2 (-> pp clock seconds-per-frame)))
-          (.mov at-0 f0-2)
-          )
-        (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-        (.svf (&-> a1-5 quad) vf1)
-        (t9-1 obj a1-5)
-        )
-      0
-      (none)
+      (set! (-> obj coverage) 0.0)
+      (set! (-> obj touch-angle) 0.0)
       )
+    (let ((t9-1 (method-of-object obj move-by-vector!))
+          (a1-5 (new 'stack-no-clear 'vector))
+          )
+      (.lvf vf1 (&-> arg0 quad))
+      (let ((f0-2 (seconds-per-frame)))
+        (.mov at-0 f0-2)
+        )
+      (.mov vf2 at-0)
+      (.mov.vf vf1 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> a1-5 quad) vf1)
+      (t9-1 obj a1-5)
+      )
+    0
+    (none)
     )
   )
 
@@ -1769,36 +1765,34 @@ it returns a triangle and normal direction to push in.
 
 (defmethod find-ground collide-shape-moving ((obj collide-shape-moving) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   "Find the ground, return #t if we found it, and fill out gspot in the collide-query."
-  (with-pp
-    (set! (-> obj gspot-pos quad) (-> obj trans quad))
-    (set! (-> arg0 start-pos quad) (-> obj trans quad))
-    (vector-reset! (-> arg0 move-dist))
-    (let ((f0-0 (-> obj transv y)))
-      (if (< f0-0 0.0)
-          (set! arg2 (- arg2 (fmax -40960.0 (* f0-0 (-> pp clock seconds-per-frame)))))
-          )
-      )
-    (+! (-> arg0 start-pos y) arg2)
-    (set! (-> arg0 move-dist y) (- (+ arg2 arg3)))
-    (let ((v1-7 arg0))
-      (set! (-> v1-7 radius) arg4)
-      (set! (-> v1-7 collide-with) arg1)
-      (set! (-> v1-7 ignore-process0) (-> obj process))
-      (set! (-> v1-7 ignore-process1) #f)
-      (set! (-> v1-7 ignore-pat) (logior (new 'static 'pat-surface :noendlessfall #x1) (-> obj pat-ignore-mask)))
-      (set! (-> v1-7 action-mask) (collide-action solid))
-      )
-    (cond
-      ((>= (fill-and-probe-using-line-sphere *collide-cache* arg0) 0.0)
-       (set! (-> obj gspot-pos y) (-> arg0 best-other-tri intersect y))
-       (set! (-> obj gspot-normal quad) (-> arg0 best-other-tri normal quad))
-       #t
-       )
-      (else
-        (set! (-> obj gspot-pos y) -40959590.0)
-        (set! (-> obj gspot-normal quad) (-> *y-vector* quad))
-        #f
+  (set! (-> obj gspot-pos quad) (-> obj trans quad))
+  (set! (-> arg0 start-pos quad) (-> obj trans quad))
+  (vector-reset! (-> arg0 move-dist))
+  (let ((f0-0 (-> obj transv y)))
+    (if (< f0-0 0.0)
+        (set! arg2 (- arg2 (fmax -40960.0 (* f0-0 (seconds-per-frame)))))
         )
+    )
+  (+! (-> arg0 start-pos y) arg2)
+  (set! (-> arg0 move-dist y) (- (+ arg2 arg3)))
+  (let ((v1-7 arg0))
+    (set! (-> v1-7 radius) arg4)
+    (set! (-> v1-7 collide-with) arg1)
+    (set! (-> v1-7 ignore-process0) (-> obj process))
+    (set! (-> v1-7 ignore-process1) #f)
+    (set! (-> v1-7 ignore-pat) (logior (new 'static 'pat-surface :noendlessfall #x1) (-> obj pat-ignore-mask)))
+    (set! (-> v1-7 action-mask) (collide-action solid))
+    )
+  (cond
+    ((>= (fill-and-probe-using-line-sphere *collide-cache* arg0) 0.0)
+      (set! (-> obj gspot-pos y) (-> arg0 best-other-tri intersect y))
+      (set! (-> obj gspot-normal quad) (-> arg0 best-other-tri normal quad))
+      #t
+      )
+    (else
+      (set! (-> obj gspot-pos y) -40959590.0)
+      (set! (-> obj gspot-normal quad) (-> *y-vector* quad))
+      #f
       )
     )
   )
@@ -2030,31 +2024,29 @@ it returns a triangle and normal direction to push in.
 (defmethod fill-cache-integrate-and-collide collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-query) (arg2 meters))
   "Helper to fill the collide cache and call integrate-and-collide."
   (local-vars (at-0 int))
-  (with-pp
-    (rlet ((vf0 :class vf)
-           (vf1 :class vf)
-           (vf2 :class vf)
-           )
-      (init-vf0-vector)
-      ;; scale the cache fill volume by frame rate
-      (let ((v1-0 (new 'stack-no-clear 'vector)))
-        (let ((a0-1 v1-0))
-          (.lvf vf1 (&-> arg0 quad))
-          (let ((f0-0 (-> pp clock seconds-per-frame)))
-            (.mov at-0 f0-0)
-            )
-          (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-          (.svf (&-> a0-1 quad) vf1)
+  (rlet ((vf0 :class vf)
+          (vf1 :class vf)
+          (vf2 :class vf)
           )
-        ;; fill the cache.
-        (fill-cache-for-shape obj (+ (vector-length v1-0) arg2) arg1)
+    (init-vf0-vector)
+    ;; scale the cache fill volume by frame rate
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (let ((a0-1 v1-0))
+        (.lvf vf1 (&-> arg0 quad))
+        (let ((f0-0 (seconds-per-frame)))
+          (.mov at-0 f0-0)
+          )
+        (.mov vf2 at-0)
+        (.mov.vf vf1 vf0 :mask #b1000)
+        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.svf (&-> a0-1 quad) vf1)
         )
-      ;; move.
-      (integrate-and-collide! obj arg0)
-      (none)
+      ;; fill the cache.
+      (fill-cache-for-shape obj (+ (vector-length v1-0) arg2) arg1)
       )
+    ;; move.
+    (integrate-and-collide! obj arg0)
+    (none)
     )
   )
 

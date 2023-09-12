@@ -5,9 +5,7 @@
 ;; name in dgo: ocean
 ;; dgos: ENGINE, GAME
 
-(def-mips2c init-ocean-far-regs (function none))
-(def-mips2c draw-large-polygon-ocean (function none))
-(def-mips2c render-ocean-quad (function (inline-array ocean-vertex) dma-buffer symbol))
+;; og:ignore-form:(defmethod ocean-method-18
 
 ;; DECOMP BEGINS
 
@@ -103,9 +101,11 @@
     )
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(def-mips2c init-ocean-far-regs (function none))
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(def-mips2c draw-large-polygon-ocean (function none))
+
+(def-mips2c render-ocean-quad (function (inline-array ocean-vertex) dma-buffer symbol))
 
 (defmethod add-colors! ocean ((obj ocean) (arg0 vector) (arg1 ocean-vertex))
   (let ((s3-0 (new 'stack-no-clear 'vector))
@@ -114,7 +114,7 @@
     (set! (-> s3-0 quad) (-> arg1 pos quad))
     (set! (-> s3-0 y) 0.0)
     (vector-normalize! s3-0 1.0)
-    (set! (-> s3-0 y) (+ 0.1 (-> s3-0 y)))
+    (+! (-> s3-0 y) 0.1)
     (vector-normalize! s3-0 1.0)
     (let ((s5-0 (new 'stack-no-clear 'vector4)))
       (let* ((f0-4 (vector-dot (-> s4-0 sun0-normal) s3-0))
@@ -141,6 +141,7 @@
 
 (defmethod ocean-method-60 ocean ((obj ocean) (arg0 dma-buffer))
   (local-vars (sv-48 float) (sv-52 vector) (sv-56 vector))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let ((f0-0 (-> obj start-corner z)))
       (let ((f1-1 (+ -5898240.0 f0-0)))
@@ -240,6 +241,7 @@
 
 (defmethod ocean-method-61 ocean ((obj ocean) (arg0 dma-buffer))
   (local-vars (sv-48 float) (sv-52 vector) (sv-56 vector))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((f0-1 (+ 18874368.0 (-> obj start-corner z)))
            (f1-2 (+ 5898240.0 f0-1))
@@ -339,6 +341,7 @@
 
 (defmethod ocean-method-62 ocean ((obj ocean) (arg0 dma-buffer))
   (local-vars (sv-48 float) (sv-52 vector) (sv-56 vector))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((f0-0 (-> obj start-corner x))
            (f1-1 (+ -5898240.0 f0-0))
@@ -438,6 +441,7 @@
 
 (defmethod ocean-method-63 ocean ((obj ocean) (arg0 dma-buffer))
   (local-vars (sv-48 float) (sv-52 vector) (sv-56 vector))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let ((f0-1 (+ 18874368.0 (-> obj start-corner x))))
       (let ((f1-2 (+ 5898240.0 f0-1)))
@@ -536,6 +540,7 @@
   )
 
 (defmethod ocean-method-64 ocean ((obj ocean) (arg0 dma-buffer))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((v1-1 (-> obj ocean-colors))
            (f30-0 (-> obj start-corner x))
@@ -644,6 +649,7 @@
   )
 
 (defmethod ocean-method-65 ocean ((obj ocean) (arg0 dma-buffer))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((v1-1 (-> obj ocean-colors))
            (f30-0 (+ 18874368.0 (-> obj start-corner x)))
@@ -752,6 +758,7 @@
   )
 
 (defmethod ocean-method-66 ocean ((obj ocean) (arg0 dma-buffer))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((v1-1 (-> obj ocean-colors))
            (f30-0 (-> obj start-corner x))
@@ -854,6 +861,7 @@
   )
 
 (defmethod ocean-method-67 ocean ((obj ocean) (arg0 dma-buffer))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let* ((v1-1 (-> obj ocean-colors))
            (f30-0 (+ 18874368.0 (-> obj start-corner x)))
@@ -956,6 +964,7 @@
   )
 
 (defmethod render-ocean-far ocean ((obj ocean) (arg1 dma-buffer) (facing int))
+  ;; og:preserve-this scratchpad
   (let ((vertices (scratchpad-object (inline-array ocean-vertex))))
     (let ((f0-0 (-> obj start-corner y)))
       (set! (-> vertices 0 pos y) f0-0)
@@ -1035,6 +1044,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defmethod init-buffer! ocean ((obj ocean) (arg0 dma-buffer))
   "Initialize [[ocean]] DMA buffer."
   (dma-buffer-add-gs-set arg0
@@ -1089,140 +1099,138 @@
   )
 
 (defmethod update-map ocean ((obj ocean))
-  (with-pp
-    (set! (-> obj heights) #f)
-    (set! (-> obj verts) #f)
-    (let ((s5-0 *mood-control*))
-      (set! (-> obj constant w) (if (and (-> s5-0 overide-weather-flag) (not (movie?)))
-                                    (-> s5-0 overide cloud)
-                                    (-> s5-0 current-interp cloud)
-                                    )
-            )
+  (set! (-> obj heights) #f)
+  (set! (-> obj verts) #f)
+  (let ((s5-0 *mood-control*))
+    (set! (-> obj constant w) (if (and (-> s5-0 overide-weather-flag) (not (movie?)))
+                                  (-> s5-0 overide cloud)
+                                  (-> s5-0 current-interp cloud)
+                                  )
+          )
+    )
+  (set! (-> obj constant w) (fmin 1.0 (* 2.0 (-> obj constant w))))
+  (let ((f0-5 1.0)
+        (f30-0 1.0)
+        )
+    (when (= (-> *bigmap* bigmap-index) 13)
+      (set! f0-5 0.333)
+      (set! f30-0 0.75)
       )
-    (set! (-> obj constant w) (fmin 1.0 (* 2.0 (-> obj constant w))))
-    (let ((f0-5 1.0)
-          (f30-0 1.0)
-          )
-      (when (= (-> *bigmap* bigmap-index) 13)
-        (set! f0-5 0.333)
-        (set! f30-0 0.75)
+    (set! (-> obj frame-speed) (* (+ 4.0 (-> *setting-control* user-current rain)) f0-5))
+    (set! (-> obj frame-speed2) (* (+ 5.0 (-> *setting-control* user-current rain)) f0-5))
+    (when (not (paused?))
+      (let ((f0-8 (+ (-> obj frame-num) (* (-> obj frame-speed) (seconds-per-frame)))))
+        (set! (-> obj frame-num) (- f0-8 (* (the float (the int (/ f0-8 64.0))) 64.0)))
         )
-      (set! (-> obj frame-speed) (* (+ 4.0 (-> *setting-control* user-current rain)) f0-5))
-      (set! (-> obj frame-speed2) (* (+ 5.0 (-> *setting-control* user-current rain)) f0-5))
-      (when (not (paused?))
-        (let ((f0-8 (+ (-> obj frame-num) (* (-> obj frame-speed) (-> pp clock seconds-per-frame)))))
-          (set! (-> obj frame-num) (- f0-8 (* (the float (the int (/ f0-8 64.0))) 64.0)))
-          )
-        (let ((f0-11 (+ (-> obj frame-num2) (* (-> obj frame-speed2) (-> pp clock seconds-per-frame)))))
-          (set! (-> obj frame-num2) (- f0-11 (* (the float (the int (/ f0-11 64.0))) 64.0)))
-          )
-        )
-      (let ((s5-1 (-> *display* frames (-> *display* on-screen) global-buf)))
-        (set! (-> obj heights) (the-as ocean-height-array (-> s5-1 base)))
-        (interp-wave obj (the-as ocean-wave-info (-> obj heights)) (the-as uint (-> obj frame-num)) (* 0.08325 f30-0))
-        (&+! (-> s5-1 base) 4096)
-        (set! (-> obj heights2) (the-as ocean-height-array (-> s5-1 base)))
-        (interp-wave
-          obj
-          (the-as ocean-wave-info (-> obj heights2))
-          (the-as uint (-> obj frame-num2))
-          (* 0.01665 f30-0)
-          )
-        (&+! (-> s5-1 base) 4096)
-        (ocean-method-15 obj (the-as matrix (-> obj heights)) (the-as matrix (-> obj heights2)))
-        (set! (-> obj verts) (the-as ocean-vert-array (-> s5-1 base)))
-        (&+! (-> s5-1 base) #x8000)
+      (let ((f0-11 (+ (-> obj frame-num2) (* (-> obj frame-speed2) (seconds-per-frame)))))
+        (set! (-> obj frame-num2) (- f0-11 (* (the float (the int (/ f0-11 64.0))) 64.0)))
         )
       )
-    (when (not (or (-> obj off) (-> *blit-displays-work* menu-mode)))
-      (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask ocean))
-        (mem-copy! (the-as pointer (-> obj cloud-lights)) (the-as pointer (-> *sky-work* cloud-lights)) 156)
-        (mem-copy! (the-as pointer (-> obj haze-lights)) (the-as pointer (-> *sky-work* haze-lights)) 124)
-        (vector4-scale!
-          (the-as vector4 (-> obj sky-color))
-          (the-as vector4 (-> *time-of-day-context* current-sky-color))
-          0.0078125
-          )
-        (generate-verts obj (-> obj verts) (-> obj heights))
-        (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-               (s5-2 (-> s4-0 base))
-               )
+    (let ((s5-1 (-> *display* frames (-> *display* on-screen) global-buf)))
+      (set! (-> obj heights) (the-as ocean-height-array (-> s5-1 base)))
+      (interp-wave obj (the-as ocean-wave-info (-> obj heights)) (the-as uint (-> obj frame-num)) (* 0.08325 f30-0))
+      (&+! (-> s5-1 base) 4096)
+      (set! (-> obj heights2) (the-as ocean-height-array (-> s5-1 base)))
+      (interp-wave
+        obj
+        (the-as ocean-wave-info (-> obj heights2))
+        (the-as uint (-> obj frame-num2))
+        (* 0.01665 f30-0)
+        )
+      (&+! (-> s5-1 base) 4096)
+      (ocean-method-15 obj (the-as matrix (-> obj heights)) (the-as matrix (-> obj heights2)))
+      (set! (-> obj verts) (the-as ocean-vert-array (-> s5-1 base)))
+      (&+! (-> s5-1 base) #x8000)
+      )
+    )
+  (when (not (or (-> obj off) (-> *blit-displays-work* menu-mode)))
+    (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask ocean))
+      (mem-copy! (the-as pointer (-> obj cloud-lights)) (the-as pointer (-> *sky-work* cloud-lights)) 156)
+      (mem-copy! (the-as pointer (-> obj haze-lights)) (the-as pointer (-> *sky-work* haze-lights)) 124)
+      (vector4-scale!
+        (the-as vector4 (-> obj sky-color))
+        (the-as vector4 (-> *time-of-day-context* current-sky-color))
+        0.0078125
+        )
+      (generate-verts obj (-> obj verts) (-> obj heights))
+      (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+             (s5-2 (-> s4-0 base))
+             )
           ;; TODO handle ocean::79 and ocean::89
           ;; diasble tod ocean stuff
           ;; (if (-> *time-of-day-context* sky)
           ;;     (ocean-method-89 obj s4-0)
           ;;     )
-          (draw-ocean-texture obj s4-0 (the-as int (-> obj verts)))
+        (draw-ocean-texture obj s4-0 (the-as int (-> obj verts)))
           ;; disable whatever this is
           ;; (ocean-method-79 obj s4-0)
-          (init-buffer! obj s4-0)
-          (if (-> obj far-on)
-              (draw-ocean-far obj s4-0)
-              )
-          (if (not (-> obj mid-off))
-              (draw-ocean-mid obj s4-0)
-              )
-          (end-buffer! obj s4-0)
-          (set-dirty-mask! (-> *level* default-level) 9 #xc0000 #x2a000)
-          (let ((a3-3 (-> s4-0 base)))
-            (let ((v1-87 (the-as object (-> s4-0 base))))
-              (set! (-> (the-as dma-packet v1-87) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> (the-as dma-packet v1-87) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-87) vif1) (new 'static 'vif-tag))
-              (set! (-> s4-0 base) (&+ (the-as pointer v1-87) 16))
+        (init-buffer! obj s4-0)
+        (if (-> obj far-on)
+            (draw-ocean-far obj s4-0)
+            )
+        (if (not (-> obj mid-off))
+            (draw-ocean-mid obj s4-0)
+            )
+        (end-buffer! obj s4-0)
+        (set-dirty-mask! (-> *level* default-level) 9 #xc0000 #x2a000)
+        (let ((a3-3 (-> s4-0 base)))
+          (let ((v1-87 (the-as object (-> s4-0 base))))
+            (set! (-> (the-as dma-packet v1-87) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+            (set! (-> (the-as dma-packet v1-87) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet v1-87) vif1) (new 'static 'vif-tag))
+            (set! (-> s4-0 base) (&+ (the-as pointer v1-87) 16))
+            )
+          (dma-bucket-insert-tag
+            (-> *display* frames (-> *display* on-screen) bucket-group)
+            (bucket-id ocean-mid-far)
+            s5-2
+            (the-as (pointer dma-tag) a3-3)
+            )
+          )
+        )
+      (when (not (or (-> obj near-off)
+                     (or (-> obj mid-off) (< 196608.0 (fabs (- (-> obj start-corner y) (-> *math-camera* trans y)))))
+                     )
+                 )
+        (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+               (s5-3 (-> s4-1 base))
+               )
+          (draw-ocean-texture obj s4-1 (the-as int (-> obj verts)))
+          (draw-ocean-near obj s4-1)
+          (end-buffer! obj s4-1)
+          (set-dirty-mask! (-> *level* default-level) 7 #xc0000 #x2a000)
+          (let ((a3-5 (-> s4-1 base)))
+            (let ((v1-113 (the-as object (-> s4-1 base))))
+              (set! (-> (the-as dma-packet v1-113) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+              (set! (-> (the-as dma-packet v1-113) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet v1-113) vif1) (new 'static 'vif-tag))
+              (set! (-> s4-1 base) (&+ (the-as pointer v1-113) 16))
               )
             (dma-bucket-insert-tag
               (-> *display* frames (-> *display* on-screen) bucket-group)
-              (bucket-id ocean-mid-far)
-              s5-2
-              (the-as (pointer dma-tag) a3-3)
-              )
-            )
-          )
-        (when (not (or (-> obj near-off)
-                       (or (-> obj mid-off) (< 196608.0 (fabs (- (-> obj start-corner y) (-> *math-camera* trans y)))))
-                       )
-                   )
-          (let* ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                 (s5-3 (-> s4-1 base))
-                 )
-            (draw-ocean-texture obj s4-1 (the-as int (-> obj verts)))
-            (draw-ocean-near obj s4-1)
-            (end-buffer! obj s4-1)
-            (set-dirty-mask! (-> *level* default-level) 7 #xc0000 #x2a000)
-            (let ((a3-5 (-> s4-1 base)))
-              (let ((v1-113 (the-as object (-> s4-1 base))))
-                (set! (-> (the-as dma-packet v1-113) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-113) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-113) vif1) (new 'static 'vif-tag))
-                (set! (-> s4-1 base) (&+ (the-as pointer v1-113) 16))
-                )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) bucket-group)
-                (bucket-id ocean-near)
-                s5-3
-                (the-as (pointer dma-tag) a3-5)
-                )
+              (bucket-id ocean-near)
+              s5-3
+              (the-as (pointer dma-tag) a3-5)
               )
             )
           )
         )
       )
-    (when (not (paused?))
-      (set! (-> obj off) #f)
-      (set! (-> obj mid-off) #f)
-      (set! (-> obj near-off) (if obj
-                                  (not (-> obj ocean-near-translucent?))
-                                  #f
-                                  )
-            )
-      )
-    0
-    (none)
     )
+  (when (not (paused?))
+    (set! (-> obj off) #f)
+    (set! (-> obj mid-off) #f)
+    (set! (-> obj near-off) (if obj
+                                (not (-> obj ocean-near-translucent?))
+                                #f
+                                )
+          )
+    )
+  0
+  (none)
   )
 
-;; PC Port hack
+;; og:preserve-this PC Port hack
 (define *ocean-generate-verts-vector* (new 'global 'vector))
 
 (set-vector! *ocean-generate-verts-vector*

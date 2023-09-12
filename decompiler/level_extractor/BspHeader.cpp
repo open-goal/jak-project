@@ -971,6 +971,19 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
         collide_frag.read_from_file(typed_ref_from_basic(p, dts), dts, stats, version);
       }
     }
+  } else {
+    if (get_word_kind_for_field(ref, "collide-hash-fragment-array", dts) ==
+        decompiler::LinkedWord::PTR) {
+      auto fr = deref_label(get_field_ref(ref, "collide-hash-fragment-array", dts));
+      fr.byte_offset -= 4;
+      auto collide_array = typed_ref_from_basic(fr, dts);
+      int length = read_plain_data_field<int32_t>(collide_array, "length", dts);
+      auto r = get_field_ref(collide_array, "fragments", dts);
+      for (int i = 0; i < length; i++) {
+        collide_hash_frags.push_back(deref_label(r));
+        r.byte_offset += 4;
+      }
+    }
   }
 
   auto next_slot = get_field_ref(ref, "next", dts);
@@ -1995,8 +2008,6 @@ void DrawableInlineArrayActor::read_from_file(TypedRef ref,
                                               DrawStats* stats,
                                               GameVersion version) {
   int num_actors = read_plain_data_field<int16_t>(ref, "length", dts);
-  fmt::print("total of {} actors\n", num_actors);
-
   auto data_ref = get_field_ref(ref, "data", dts);
   for (int i = 0; i < num_actors; i++) {
     Ref obj_ref = data_ref;
@@ -2008,6 +2019,14 @@ void DrawableInlineArrayActor::read_from_file(TypedRef ref,
     drawable_actors.emplace_back();
     drawable_actors.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, stats, version);
   }
+}
+
+void CollideHash::read_from_file(TypedRef ref,
+                                 const decompiler::DecompilerTypeSystem& dts,
+                                 level_tools::DrawStats* stats,
+                                 GameVersion version) {
+  num_items = read_plain_data_field<uint32_t>(ref, "num-items", dts);
+  item_array = deref_label(get_field_ref(ref, "item-array", dts));
 }
 
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
@@ -2066,6 +2085,12 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
     actors.read_from_file(
         get_and_check_ref_to_basic(ref, "actors", "drawable-inline-array-actor", dts), dts, stats,
         version);
+  }
+
+  if (version > GameVersion::Jak1 &&
+      get_word_kind_for_field(ref, "collide-hash", dts) == decompiler::LinkedWord::PTR) {
+    collide_hash.read_from_file(
+        get_and_check_ref_to_basic(ref, "collide-hash", "collide-hash", dts), dts, stats, version);
   }
 }
 
