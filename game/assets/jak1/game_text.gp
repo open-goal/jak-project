@@ -29,4 +29,6 @@
                                    "game/assets/jak1/text/game_base_text_hu-HU.json"))
   (file-json 15 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_ca-ES.json"))
   (file-json 16 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_is-IS.json"))
+  (file-json 19 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_pl-PL.json"
+                                   "game/assets/jak1/text/game_base_text_pl-PL.json"))
 )
