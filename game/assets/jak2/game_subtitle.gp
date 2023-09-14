@@ -42,5 +42,4 @@
     :language-id 7
     :text-version "jak2"
     :lines "game/assets/jak2/subtitle/subtitle_lines_en-US.json"
-    :meta "game/assets/jak2/subtitle/subtitle_meta_en-US.json")
-  )
+    :meta "game/assets/jak2/subtitle/subtitle_meta_en-US.json"))
