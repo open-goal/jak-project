@@ -40,6 +40,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Install Python Dependencies
+        run: pip install unidiff colorama
+
+      - name: Check for Removed goal_src/ Code
+        # FYI - if you run this `git diff` on windows, it creates a utf-16 LE file
+        run: |
+          git fetch origin
+          git diff origin/master > lint-changes.diff
+          python ./scripts/ci/lint-gsrc-removals.py
+
       - name: Check for Unresolved Conflicts
         run: python ./scripts/gsrc/check-for-conflicts.py
 
