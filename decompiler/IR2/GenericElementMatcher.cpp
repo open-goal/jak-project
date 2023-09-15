@@ -693,20 +693,23 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
     case Kind::LET: {
       auto as_let = dynamic_cast<LetElement*>(input->try_as_single_active_element());
       if (as_let) {
+        // fail if we have wrong number of entries/body elts or recursive marker
         if ((m_entry_matchers.size() != as_let->entries().size()) ||
             (m_sub_matchers.size() != as_let->body()->size()) ||
             (as_let->is_star() != m_let_is_star)) {
           return false;
         }
+        // match entries first
+        for (size_t i = 0; i < m_entry_matchers.size(); ++i) {
+          if (!m_entry_matchers.at(i).do_match(as_let->entries().at(i), maps_out, env)) {
+            return false;
+          }
+        }
+        // now match body
         for (int i = 0; i < m_sub_matchers.size(); ++i) {
           Form fake;
           fake.elts().push_back(as_let->body()->elts().at(i));
           if (!m_sub_matchers.at(i).do_match(&fake, maps_out, env)) {
-            return false;
-          }
-        }
-        for (size_t i = 0; i < m_entry_matchers.size(); ++i) {
-          if (!m_entry_matchers.at(i).do_match(as_let->entries().at(i), maps_out, env)) {
             return false;
           }
         }

@@ -1752,7 +1752,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       // lg::error("checking if (new-attack-id)...");
       auto l_elt = dynamic_cast<LetElement*>(in->body()->at(i));
       if (l_elt) {
-        static const auto match_let_for_new_attack_id = Matcher::let(
+        const auto match_let_for_new_attack_id = Matcher::let(
             false, {LetEntryMatcher::any(Matcher::symbol("*game-info*"), 0)},
             {Matcher::let(
                 false,
