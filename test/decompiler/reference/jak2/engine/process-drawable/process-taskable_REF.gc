@@ -125,6 +125,29 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
 ;; failed to figure out what this is:
 (defstate idle (process-taskable)
   :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (case event-type
+      (('attack)
+       (if (-> self bounce-away)
+           (send-event
+             proc
+             'shove
+             #f
+             (static-attack-info ((id (new-attack-id)) (shove-back (meters 3)) (shove-up (meters 1))))
+             )
+           )
+       )
+      (('touch)
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
+       )
+      (('say)
+       (let ((v0-0 (the-as object (current-time))))
+         (set! (-> self want-to-say) (the-as time-frame v0-0))
+         v0-0
+         )
+       )
+      )
+    )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (none)
@@ -451,3 +474,7 @@ This commonly includes things such as:
   (go (method-of-object obj hide))
   (none)
   )
+
+
+
+

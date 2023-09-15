@@ -785,25 +785,13 @@
           (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (get-trans gp-0 0) (-> self root trans))))
             (when (< (vector-length s5-2) 16384.0)
               (vector-normalize! s5-2 1.0)
-              (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-3 from) (process->ppointer self))
-                (set! (-> a1-3 num-params) 2)
-                (set! (-> a1-3 message) 'attack-or-shove)
-                (set! (-> a1-3 param 0) (the-as uint #f))
-                (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id damage))))
-                  (let* ((a0-6 *game-info*)
-                         (a2-1 (+ (-> a0-6 attack-id) 1))
-                         )
-                    (set! (-> a0-6 attack-id) a2-1)
-                    (set! (-> v1-13 id) a2-1)
-                    )
-                  (set! (-> v1-13 damage) 1.0)
-                  (set! (-> v1-13 vector quad) (-> s5-2 quad))
-                  (set! (-> v1-13 shove-back) 20480.0)
-                  (set! (-> v1-13 shove-up) 12288.0)
-                  (set! (-> a1-3 param 1) (the-as uint v1-13))
+              (send-event
+                gp-0
+                'attack-or-shove
+                #f
+                (static-attack-info
+                  ((id (new-attack-id)) (damage 1.0) (vector s5-2) (shove-back (meters 5)) (shove-up (meters 3)))
                   )
-                (send-event-function gp-0 a1-3)
                 )
               )
             )

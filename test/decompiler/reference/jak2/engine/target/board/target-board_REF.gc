@@ -567,12 +567,14 @@
                          (set! (-> a1-15 num-params) 2)
                          (set! (-> a1-15 message) 'attack)
                          (set! (-> a1-15 param 0) (-> arg3 param 0))
-                         (let ((v1-61 (new 'static 'attack-info :mask (attack-info-mask mode id penetrate-using))))
-                           (set! (-> v1-61 id) (-> self board attack-id))
-                           (set! (-> v1-61 mode) 'board)
-                           (set! (-> v1-61 penetrate-using) (-> self control penetrate-using))
-                           (set! (-> a1-15 param 1) (the-as uint v1-61))
-                           )
+                         (set! (-> a1-15 param 1)
+                               (the-as
+                                 uint
+                                 (static-attack-info
+                                   ((id (-> self board attack-id)) (mode 'board) (penetrate-using (-> self control penetrate-using)))
+                                   )
+                                 )
+                               )
                          (set! v0-0 (send-event-function arg0 a1-15))
                          )
                        (when v0-0
@@ -599,9 +601,9 @@
                   ((= v1-3 'shove)
                    (when (not (focus-test? self hit))
                      (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 160)
-                     (when (not (logtest? (-> self attack-info-rec mask) (attack-info-mask attacker)))
+                     (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
                        (set! (-> self attack-info-rec attacker) (process->handle arg0))
-                       (logior! (-> self attack-info-rec mask) (attack-info-mask attacker))
+                       (logior! (-> self attack-info-rec mask) (attack-mask attacker))
                        )
                      (go target-board-hit (the-as vector 'shove) (-> self attack-info-rec))
                      )

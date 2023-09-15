@@ -80,31 +80,28 @@
                      (vector-float*! s4-1 s4-1 -1.0)
                      )
                  )
-               (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-7 from) (process->ppointer self))
-                 (set! (-> a1-7 num-params) 2)
-                 (set! (-> a1-7 message) 'attack)
-                 (set! (-> a1-7 param 0) (-> event param 0))
-                 (let ((v1-14 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                   (set! (-> v1-14 id) (-> self attack-id))
-                   (set! (-> v1-14 vector quad) (-> s4-1 quad))
-                   (set! (-> v1-14 shove-back) 12288.0)
-                   (set! (-> v1-14 shove-up) 36864.0)
-                   (set! (-> v1-14 control) (if (focus-test? (the-as process-focusable gp-0) board)
-                                                1.0
-                                                0.0
-                                                )
-                         )
-                   (set! (-> a1-7 param 1) (the-as uint v1-14))
+               (when (send-event
+                       gp-0
+                       'attack
+                       (-> event param 0)
+                       (static-attack-info ((id (-> self attack-id))
+                                            (vector s4-1)
+                                            (shove-back (meters 3))
+                                            (shove-up (meters 9))
+                                            (control (if (focus-test? (the-as process-focusable gp-0) board)
+                                                         1.0
+                                                         0.0
+                                                         )
+                                                     )
+                                            )
+                                           )
+                       )
+                 (set! (-> self no-collision-timer) (current-time))
+                 (let ((v1-19 (-> self root root-prim)))
+                   (set! (-> v1-19 prim-core collide-as) (collide-spec))
+                   (set! (-> v1-19 prim-core collide-with) (collide-spec))
                    )
-                 (when (send-event-function gp-0 a1-7)
-                   (set! (-> self no-collision-timer) (current-time))
-                   (let ((v1-19 (-> self root root-prim)))
-                     (set! (-> v1-19 prim-core collide-as) (collide-spec))
-                     (set! (-> v1-19 prim-core collide-with) (collide-spec))
-                     )
-                   0
-                   )
+                 0
                  )
                )
              )

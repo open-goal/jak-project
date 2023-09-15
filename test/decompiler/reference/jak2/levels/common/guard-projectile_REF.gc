@@ -843,25 +843,16 @@
 (defstate impact (vehicle-grenade)
   :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touched)
-                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-2 from) (process->ppointer self))
-                        (set! (-> a1-2 num-params) 2)
-                        (set! (-> a1-2 message) 'attack)
-                        (set! (-> a1-2 param 0) (-> event param 0))
-                        (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                          (set! (-> v1-5 id) (-> self attack-id))
-                          (set! (-> v1-5 mode) 'explode)
-                          (set! (-> a1-2 param 1) (the-as uint v1-5))
-                          )
-                        (if (send-event-function proc a1-2)
-                            #t
-                            )
-                        )
-                      )
-                     )
-            )
+    (the-as
+      object
+      (case event-type
+        (('touched)
+         (if (send-event proc 'attack (-> event param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
+             #t
+             )
+         )
+        )
+      )
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))

@@ -5,11 +5,13 @@
  */
 
 #pragma once
+#include "Env.h"
 #include "Form.h"
 
 namespace decompiler {
 class DerefTokenMatcher;
 class GenericOpMatcher;
+class LetEntryMatcher;
 
 struct MatchResult {
   bool matched = false;
@@ -33,6 +35,8 @@ struct MatchResult {
 class Matcher {
  public:
   static Matcher any_reg(int match_id = -1);
+  static Matcher same_var(int match_id);
+  static Matcher var_name(const std::string& name);
   static Matcher any_label(int match_id = -1);
   static Matcher reg(Register reg);
   static inline Matcher s6() { return Matcher::reg(Register(Reg::GPR, Reg::S6)); }
@@ -69,6 +73,9 @@ class Matcher {
   static Matcher constant_token(const std::string& name);
   static Matcher or_expression(const std::vector<Matcher>& elts);
   static Matcher begin(const std::vector<Matcher>& elts);
+  static Matcher let(bool is_star,
+                     const std::vector<LetEntryMatcher>& entries,
+                     const std::vector<Matcher>& elts);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -97,30 +104,38 @@ class Matcher {
     BEGIN,
     REG,  // a specific register. like s6.
     QUOTED_SYMBOL,
+    SAME_VAR,
+    LET,
+    VAR_NAME,
     INVALID
   };
 
-  bool do_match(Form* input, MatchResult::Maps* maps_out) const;
+  bool do_match(Form* input, MatchResult::Maps* maps_out, const Env* const env) const;
 
  private:
   std::vector<Matcher> m_sub_matchers;
   std::vector<DerefTokenMatcher> m_token_matchers;
+  std::vector<LetEntryMatcher> m_entry_matchers;
   std::shared_ptr<GenericOpMatcher> m_gen_op_matcher;
   bool m_deref_is_addr_of = false;
+  bool m_let_is_star = false;
   Kind m_kind = Kind::INVALID;
-  int m_reg_out_id = -1;
-  int m_string_out_id = -1;
-  int m_form_match = -1;
-  int m_label_out_id = -1;
-  int m_int_out_id = -1;
+  union {
+    int m_out_id = -1;
+    int m_reg_out_id;
+    int m_string_out_id;
+    int m_form_match;
+    int m_label_out_id;
+    int m_int_out_id;
+  };
   std::optional<int> m_int_match;
   std::optional<float> m_float_match;
   std::optional<Register> m_reg;
   std::string m_str;
 };
 
-MatchResult match(const Matcher& spec, Form* input);
-MatchResult match(const Matcher& spec, FormElement* input);
+MatchResult match(const Matcher& spec, Form* input, const Env* const env = nullptr);
+MatchResult match(const Matcher& spec, FormElement* input, const Env* const env = nullptr);
 
 class DerefTokenMatcher {
  public:
@@ -159,7 +174,7 @@ class GenericOpMatcher {
 
   enum class Kind { FIXED, FUNC, CONDITION, OR, INVALID };
 
-  bool do_match(GenericOperator& input, MatchResult::Maps* maps_out) const;
+  bool do_match(GenericOperator& input, MatchResult::Maps* maps_out, const Env* const env) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -167,6 +182,24 @@ class GenericOpMatcher {
   IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
   std::vector<GenericOpMatcher> m_sub_matchers;
   Matcher m_func_matcher;
+};
+
+class LetEntryMatcher {
+ public:
+  static LetEntryMatcher name(std::optional<Matcher> src_matcher, const std::string& name);
+  static LetEntryMatcher any(std::optional<Matcher> src_matcher, int match_id = -1);
+
+  enum class Kind { ANY, NAME, INVALID };
+
+  bool do_match(const LetElement::Entry& input,
+                MatchResult::Maps* maps_out,
+                const Env* const env) const;
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  int m_reg_out_id = -1;
+  std::optional<Matcher> m_src_matcher;
+  std::string m_reg_name;
 };
 
 }  // namespace decompiler

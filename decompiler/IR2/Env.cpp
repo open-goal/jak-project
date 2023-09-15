@@ -123,6 +123,16 @@ std::string Env::get_variable_name(const RegisterAccess& access) const {
   return get_variable_and_cast(access).name;
 }
 
+std::string Env::get_variable_name_name_only(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    return var_info.name();
+
+  } else {
+    return std::string(access.reg().to_charp());
+  }
+}
+
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());

@@ -500,24 +500,21 @@
                    )
               (if (and s4-1
                        (and (or (and s5-2 (focus-test? (the-as process-focusable s5-2) dead))
-                                (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                                  (set! (-> a1-6 from) (process->ppointer self))
-                                  (set! (-> a1-6 num-params) 2)
-                                  (set! (-> a1-6 message) 'attack)
-                                  (set! (-> a1-6 param 0) (the-as uint #f))
-                                  (let ((v1-20 (new 'static 'attack-info :mask (attack-info-mask intersection mode id count penetrate-using))))
-                                    (set! (-> v1-20 id) (-> self control target-attack-id))
-                                    (set! (-> v1-20 mode) (-> self control danger-mode))
-                                    (set! (-> v1-20 count) (-> self control attack-count))
-                                    (set! (-> v1-20 penetrate-using) (penetrate touch punch mech mech-punch))
-                                    (set! (-> v1-20 intersection quad) (-> (the-as collide-query gp-1) best-other-tri intersect quad))
-                                    (set! (-> a1-6 param 1) (the-as uint v1-20))
-                                    )
-                                  (when (send-event-function (-> s4-1 cshape process) a1-6)
-                                    (set! (-> self control send-attack-dest) (process->handle s5-2))
-                                    (set! (-> self control send-attack-time) (current-time))
-                                    #t
-                                    )
+                                (when (send-event
+                                        (-> s4-1 cshape process)
+                                        'attack
+                                        #f
+                                        (static-attack-info ((id (-> self control target-attack-id))
+                                                             (mode (-> self control danger-mode))
+                                                             (count (-> self control attack-count))
+                                                             (penetrate-using (penetrate touch punch mech mech-punch))
+                                                             (intersection (-> (the-as collide-query gp-1) best-other-tri intersect))
+                                                             )
+                                                            )
+                                        )
+                                  (set! (-> self control send-attack-dest) (process->handle s5-2))
+                                  (set! (-> self control send-attack-time) (current-time))
+                                  #t
                                   )
                                 )
                             s5-2
@@ -1063,7 +1060,7 @@
          )
         )
       (combine! gp-0 arg1 self)
-      (when (not (logtest? (-> gp-0 mask) (attack-info-mask vector)))
+      (when (not (logtest? (-> gp-0 mask) (attack-mask vector)))
         (vector-z-quaternion! (-> gp-0 vector) (-> self control quat-for-control))
         (vector-xz-normalize! (-> gp-0 vector) (- (fabs (-> gp-0 shove-back))))
         (set! (-> gp-0 vector y) (-> gp-0 shove-up))

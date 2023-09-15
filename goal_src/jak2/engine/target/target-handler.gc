@@ -22,7 +22,7 @@
               'shove
               )
           )
-    (set! (-> s5-0 mask) (attack-info-mask attacker shove-back shove-up angle))
+    (set! (-> s5-0 mask) (attack-mask attacker shove-back shove-up angle))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (go arg3 'shove s5-0)
     )
@@ -54,7 +54,7 @@
                            (arg3 touching-shapes-entry)
                            (arg4 (state symbol attack-info target))
                            )
-  (let ((s4-0 (if (logtest? (-> arg1 mask) (attack-info-mask mode))
+  (let ((s4-0 (if (logtest? (-> arg1 mask) (attack-mask mode))
                   (-> arg1 mode)
                   )
               )
@@ -105,7 +105,7 @@
       (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer arg1) 160)
       (compute-intersect-info (-> self attack-info-rec) arg1 self arg2 arg3)
       (when (not (focus-test? self mech))
-        (if (and (not (target-log-attack (-> self attack-info-rec) (if (logtest? (attack-info-mask test) (-> arg1 mask))
+        (if (and (not (target-log-attack (-> self attack-info-rec) (if (logtest? (attack-mask test) (-> arg1 mask))
                                                                        'test
                                                                        'log
                                                                        )
@@ -116,12 +116,12 @@
             (return #f)
             )
         )
-      (if (logtest? (attack-info-mask test) (-> arg1 mask))
+      (if (logtest? (attack-mask test) (-> arg1 mask))
           (return #t)
           )
       (set! (-> self control attacked-by-id) (the-as int (-> self attack-info-rec id)))
       (cond
-        ((and (logtest? (-> self attack-info-rec mask) (attack-info-mask mode))
+        ((and (logtest? (-> self attack-info-rec mask) (attack-mask mode))
               (= (-> self attack-info-rec mode) 'damage)
               (not (and (= (-> self game mode) 'play)
                         (>= 0.0 (- (-> (the-as fact-info-target (-> self fact)) health) (-> self attack-info-rec damage)))
@@ -131,7 +131,7 @@
          (pickup-collectable!
            (-> self fact)
            (pickup-type health)
-           (if (logtest? (attack-info-mask damage) (-> self attack-info-rec mask))
+           (if (logtest? (attack-mask damage) (-> self attack-info-rec mask))
                (- (-> self attack-info-rec damage))
                (- (-> *FACT-bank* health-single-inc))
                )
@@ -153,7 +153,7 @@
                    (t3-0 *launch-matrix*)
                    )
                (set! (-> t3-0 trans quad)
-                     (-> (the-as vector (if (logtest? (-> self attack-info-rec mask) (attack-info-mask intersection))
+                     (-> (the-as vector (if (logtest? (-> self attack-info-rec mask) (attack-mask intersection))
                                             (-> self attack-info-rec intersection)
                                             (the-as vector (-> self control root-prim prim-core))
                                             )
@@ -176,7 +176,7 @@
              )
            )
          (target-timed-invulnerable
-           (the-as time-frame (if (logtest? (-> self attack-info-rec mask) (attack-info-mask invinc-time))
+           (the-as time-frame (if (logtest? (-> self attack-info-rec mask) (attack-mask invinc-time))
                                   (the-as int (-> self attack-info-rec invinc-time))
                                   (the-as int (-> *TARGET-bank* hit-invulnerable-timeout))
                                   )
@@ -256,20 +256,17 @@
                )
          (s3-1 (and s4-0 (focus-test? (the-as process-focusable s4-0) dead hit)))
          )
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) (process->ppointer self))
-      (set! (-> a1-2 num-params) 2)
-      (set! (-> a1-2 message) 'attack)
-      (set! (-> a1-2 param 0) (the-as uint arg2))
-      (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id count penetrate-using))))
-        (set! (-> v1-5 id) (the-as uint arg3))
-        (set! (-> v1-5 mode) arg1)
-        (set! (-> v1-5 count) (the-as uint arg4))
-        (set! (-> v1-5 penetrate-using) sv-224)
-        (set! (-> a1-2 param 1) (the-as uint v1-5))
-        )
-      (set! sv-96 (the-as symbol (send-event-function arg0 a1-2)))
-      )
+    (set! sv-96
+          (the-as
+            symbol
+            (send-event
+              arg0
+              'attack
+              arg2
+              (static-attack-info ((id (the-as uint arg3)) (mode arg1) (count (the-as uint arg4)) (penetrate-using sv-224)))
+              )
+            )
+          )
     (when sv-96
       (set! (-> self control send-attack-dest) (process->handle arg0))
       (set! (-> self control send-attack-time) (current-time))
@@ -1086,9 +1083,9 @@
         (b! (!= v1-0 'shove) cfg-21 :delay (nop!))
         (set! v0-0 (when (not (and (-> self next-state) (= (-> self next-state name) 'target-hit)))
                      (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 160)
-                     (when (not (logtest? (-> self attack-info-rec mask) (attack-info-mask attacker)))
+                     (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
                        (set! (-> self attack-info-rec attacker) (process->handle arg0))
-                       (logior! (-> self attack-info-rec mask) (attack-info-mask attacker))
+                       (logior! (-> self attack-info-rec mask) (attack-mask attacker))
                        )
                      (go target-hit 'shove (-> self attack-info-rec))
                      )

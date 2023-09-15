@@ -448,29 +448,22 @@
                          )
                        (< (fabs (-> s3-1 y)) (-> self wall-y))
                        )
-              (let ((evt (new 'stack-no-clear 'event-message-block)))
-                (set! (-> evt from) (process->ppointer self))
-                (set! (-> evt num-params) 2)
-                (set! (-> evt message) 'attack)
-                (set! (-> evt param 0) (the-as uint #f))
-                (let ((attack (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                  (let* ((game-info *game-info*)
-                         (attack-id (+ (-> game-info attack-id) 1))
-                         )
-                    (set! (-> game-info attack-id) attack-id)
-                    (set! (-> attack id) attack-id)
-                    )
-                  (set! (-> attack vector quad) (-> s4-0 dir quad))
-                  (set! (-> attack shove-back) 24576.0)
-                  (set! (-> attack shove-up) 12288.0)
-                  (set! (-> attack control) (if (focus-test? proc-focus board)
-                                                1.0
-                                                0.0
-                                                )
-                        )
-                  (set! (-> evt param 1) (the-as uint attack))
+              (send-event
+                proc-focus
+                'attack
+                #f
+                (static-attack-info
+                  ((id (new-attack-id))
+                   (vector (-> s4-0 dir))
+                   (shove-back (meters 6))
+                   (shove-up (meters 3))
+                   (control (if (focus-test? proc-focus board)
+                                1.0
+                                0.0
+                                )
+                            )
+                   )
                   )
-                (send-event-function proc-focus evt)
                 )
               (let* ((s4-1 (-> self l-bolt))
                      (s3-2 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp))
