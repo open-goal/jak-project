@@ -316,7 +316,6 @@ FormElement* rewrite_as_send_event(LetElement* in,
   // (let ((block-var (new 'stack-no-clear 'event-message-block))
   auto block_var = in->entries().at(0).dest;
   const auto& block_var_reg = block_var.reg();
-  auto block_var_name = env.get_variable_name(block_var);
   auto block_src = in->entries().at(0).src->try_as_element<StackStructureDefElement>();
   if (!block_src) {
     return nullptr;
@@ -1148,13 +1147,13 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, cond->else_ir);
 }
 
-bool var_name_equal(const Env& env, const std::string& a, std::optional<RegisterAccess> b) {
+bool var_equal(const Env& env, const RegisterAccess& a, std::optional<RegisterAccess> b) {
   ASSERT(b);
-  return env.get_variable_name_name_only(*b) == a;
+  return env.get_variable_name_name_only(*b) == env.get_variable_name_name_only(a);
 }
 
 Form* match_ja_set(const Env& env,
-                   const std::string& ch_var_name,
+                   const RegisterAccess& ch_var,
                    const std::string& field_name,
                    int arr_idx,
                    Form* in,
@@ -1179,9 +1178,9 @@ Form* match_ja_set(const Env& env,
     return nullptr;
   }
 
-  if (!var_name_equal(env, ch_var_name, mr.maps.regs.at(0))) {
-    lg::error("[{}] JA MACRO ERROR channel var not {} in set {} {}", env.func->name(), ch_var_name,
-              field_name, arr_idx);
+  if (!var_equal(env, ch_var, mr.maps.regs.at(0))) {
+    lg::error("[{}] JA MACRO ERROR channel var not {} in set {} {}", env.func->name(),
+              env.get_variable_name(ch_var), field_name, arr_idx);
     *bad = true;
     return nullptr;
   }
@@ -1226,8 +1225,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
 
   // look for setting a var to (-> self skel root-channel ,channel).
   // yes, channel is actually not always just 0!
-  auto ra = in->entries().at(0).dest;
-  auto var = env.get_variable_name(ra);
+  auto chan = in->entries().at(0).dest;
   auto mr_chan = match(
       Matcher::deref(Matcher::s6(), false,
                      {DerefTokenMatcher::string("skel"), DerefTokenMatcher::string("root-channel"),
@@ -1242,13 +1240,13 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   // there is just a LOT to match. and then to write!
   bool bad = false;
   int idx = 0;
-  auto set_fi = match_ja_set(env, var, "frame-interp", -1, in->body(), &idx, &bad);
-  auto set_dist = match_ja_set(env, var, "dist", -1, in->body(), &idx, &bad);
-  auto set_fg = match_ja_set(env, var, "frame-group", -1, in->body(), &idx, &bad);
-  auto set_p0 = match_ja_set(env, var, "param", 0, in->body(), &idx, &bad);
-  auto set_p1 = match_ja_set(env, var, "param", 1, in->body(), &idx, &bad);
-  auto set_nf = match_ja_set(env, var, "num-func", -1, in->body(), &idx, &bad);
-  auto set_fn = match_ja_set(env, var, "frame-num", -1, in->body(), &idx, &bad);
+  auto set_fi = match_ja_set(env, chan, "frame-interp", -1, in->body(), &idx, &bad);
+  auto set_dist = match_ja_set(env, chan, "dist", -1, in->body(), &idx, &bad);
+  auto set_fg = match_ja_set(env, chan, "frame-group", -1, in->body(), &idx, &bad);
+  auto set_p0 = match_ja_set(env, chan, "param", 0, in->body(), &idx, &bad);
+  auto set_p1 = match_ja_set(env, chan, "param", 1, in->body(), &idx, &bad);
+  auto set_nf = match_ja_set(env, chan, "num-func", -1, in->body(), &idx, &bad);
+  auto set_fn = match_ja_set(env, chan, "frame-num", -1, in->body(), &idx, &bad);
 
   // lastly, match the function call.
   enum { NO_FUNC, EVAL, NO_EVAL } func_status = NO_FUNC;
@@ -1261,7 +1259,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
               in->body()->at(idx));
     if (mr_func.matched) {
       // NOTE : it's actually fine for there to be no func. we just forgo setting the num! param.
-      if (!var_name_equal(env, var, mr_func.maps.regs.at(0))) {
+      if (!var_equal(env, chan, mr_func.maps.regs.at(0))) {
         return nullptr;
       }
 
@@ -1293,7 +1291,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
 
   // PSYCHE! there may actually be a second frame-num set. for some reason. sigh...
-  auto set_fn2 = match_ja_set(env, var, "frame-num", -1, in->body(), &idx, &bad);
+  auto set_fn2 = match_ja_set(env, chan, "frame-num", -1, in->body(), &idx, &bad);
 
   if (bad) {
     // an error occurred
@@ -1378,7 +1376,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
           auto mr = match(matcher_max_num, set_fn2);
           if (mr.matched &&
               ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
-               (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+               (!form_fg && var_equal(env, chan, mr.maps.regs.at(0))))) {
             num_form = pool.form<ConstantTokenElement>("max");
           } else {
             num_form = pool.form<GenericElement>(
@@ -1398,7 +1396,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
           auto mr = match(matcher_max_num, set_p0);
           if (mr.matched &&
               ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
-               (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+               (!form_fg && var_equal(env, chan, mr.maps.regs.at(0))))) {
             num_form = pool.form<GenericElement>(
                 GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)),
                 pool.form<ConstantTokenElement>("max"));
@@ -1432,7 +1430,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       // (the float (1- (-> ja-ch frame-group data 0 length)))
       auto mr = match(matcher_max_num, set_p0);
       if (!mr.matched || (form_fg && mr.maps.forms.at(1)->to_form(env) != form_fg->to_form(env)) ||
-          (!form_fg && !var_name_equal(env, var, mr.maps.regs.at(0)))) {
+          (!form_fg && !var_equal(env, chan, mr.maps.regs.at(0)))) {
         // did not match default
         seek_args.push_back(set_p0);
       }
@@ -1466,7 +1464,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   if (set_fn) {
     auto mr = match(matcher_max_num, set_fn);
     if (mr.matched && ((form_fg && mr.maps.forms.at(1)->to_form(env) == form_fg->to_form(env)) ||
-                       (!form_fg && var_name_equal(env, var, mr.maps.regs.at(0))))) {
+                       (!form_fg && var_equal(env, chan, mr.maps.regs.at(0))))) {
       set_fn = pool.form<ConstantTokenElement>("max");
     }
   }
@@ -1510,11 +1508,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
     return nullptr;
   }
 
-  auto test = in->to_form(env).print();
-
   // look for setting a var to (get-process *default-dead-pool* logo-slave #x4000)
   auto ra = in->entries().at(0).dest;
-  auto var = env.get_variable_name(ra);
   auto mr_get_proc = match(
       Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
       in->entries().at(0).src);
@@ -1690,8 +1685,6 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
     return nullptr;
   }
 
-  auto test = in->to_form(env).print();
-
   // (let ((block-var (new 'static 'attack-info))
   auto block_src = in->entries().at(0).src->try_as_element<DecompiledDataElement>();
   if (!block_src) {
@@ -1715,7 +1708,6 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
 
   auto block_var = in->entries().at(0).dest;
   const auto& block_var_reg = block_var.reg();
-  auto block_var_name = env.get_variable_name_name_only(block_var);
 
   enum AttackInfoFieldKind { DEFAULT, VECTOR, METERS, DEGREES };
 
@@ -2188,16 +2180,15 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   }
 
   // dma buffer part can be anything, really.
-  auto buf_reg = in->entries().at(0).dest;
-  auto buf_dst = env.get_variable_name(buf_reg);
-  auto bucket_dst = env.get_variable_name(in->entries().at(1).dest);
+  auto buf_dst = in->entries().at(0).dest;
+  auto bucket_dst = in->entries().at(1).dest;
   auto buf_src = in->entries().at(0).src;
   // check for (-> buf_dst base) now
   auto mr_buf_base = match(dma_buf_base_matcher, in->entries().at(1).src);
   if (!mr_buf_base.matched) {
     return nullptr;
   }
-  if (!var_name_equal(env, buf_dst, mr_buf_base.maps.regs.at(0))) {
+  if (!var_equal(env, buf_dst, mr_buf_base.maps.regs.at(0))) {
     lg::print("dma buf bad name\n");
     return nullptr;
   }
@@ -2219,7 +2210,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   if (last_part->entries().size() != 1 || last_part->body()->size() != 2) {
     return nullptr;
   }
-  auto buf_end_dst = env.get_variable_name(last_part->entries().at(0).dest);
+  auto buf_end_dst = last_part->entries().at(0).dest;
 
   auto dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
 
@@ -2227,7 +2218,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
     return nullptr;
   }
 
-  auto dmatag_dst = env.get_variable_name(dmatag_let->entries().at(0).dest);
+  auto dmatag_dst = dmatag_let->entries().at(0).dest;
 
   auto mr_last_part = match(dma_buf_base_matcher, last_part->entries().at(0).src);
   auto mr_dmatag = match(dma_buf_base_matcher, dmatag_let->entries().at(0).src);
@@ -2235,8 +2226,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
     lg::print("dma buf bad match 2\n");
     return nullptr;
   }
-  if (!var_name_equal(env, buf_dst, mr_last_part.maps.regs.at(0)) ||
-      !var_name_equal(env, buf_dst, mr_dmatag.maps.regs.at(0))) {
+  if (!var_equal(env, buf_dst, mr_last_part.maps.regs.at(0)) ||
+      !var_equal(env, buf_dst, mr_dmatag.maps.regs.at(0))) {
     lg::print("dma buf bad name 2\n");
     return nullptr;
   }
@@ -2256,7 +2247,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
       Matcher::set(Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
                    Matcher::integer(0x20000000)),
       set_dmatag_hdr);
-  if (!mr_dmatag_hdr.matched || !var_name_equal(env, dmatag_dst, mr_dmatag_hdr.maps.regs.at(0))) {
+  if (!mr_dmatag_hdr.matched || !var_equal(env, dmatag_dst, mr_dmatag_hdr.maps.regs.at(0))) {
     return nullptr;
   }
 
@@ -2264,7 +2255,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
       set_dmatag_w1->op()->store_size() != 4 || !set_dmatag_w1->op()->value().is_int(0) ||
       set_dmatag_w1->op()->addr().kind() != SimpleExpression::Kind::ADD ||
       set_dmatag_w1->op()->addr().args() != 2 || !set_dmatag_w1->op()->addr().get_arg(0).is_var() ||
-      !var_name_equal(env, dmatag_dst, set_dmatag_w1->op()->addr().get_arg(0).var()) ||
+      !var_equal(env, dmatag_dst, set_dmatag_w1->op()->addr().get_arg(0).var()) ||
       !set_dmatag_w1->op()->addr().get_arg(1).is_int(8)) {
     return nullptr;
   }
@@ -2272,7 +2263,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
       set_dmatag_w2->op()->store_size() != 4 || !set_dmatag_w2->op()->value().is_int(0) ||
       set_dmatag_w2->op()->addr().kind() != SimpleExpression::Kind::ADD ||
       set_dmatag_w2->op()->addr().args() != 2 || !set_dmatag_w2->op()->addr().get_arg(0).is_var() ||
-      !var_name_equal(env, dmatag_dst, set_dmatag_w2->op()->addr().get_arg(0).var()) ||
+      !var_equal(env, dmatag_dst, set_dmatag_w2->op()->addr().get_arg(0).var()) ||
       !set_dmatag_w2->op()->addr().get_arg(1).is_int(12)) {
     return nullptr;
   }
@@ -2282,8 +2273,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
                    Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR,
                                      {Matcher::any_reg(0), Matcher::integer(16)})),
       set_dmatag_push);
-  if (!mr_dmatag_push.matched || !var_name_equal(env, dmatag_dst, mr_dmatag_push.maps.regs.at(0)) ||
-      !var_name_equal(env, buf_dst, mr_dmatag_push.maps.regs.at(1))) {
+  if (!mr_dmatag_push.matched || !var_equal(env, dmatag_dst, mr_dmatag_push.maps.regs.at(0)) ||
+      !var_equal(env, buf_dst, mr_dmatag_push.maps.regs.at(1))) {
     return nullptr;
   }
 
@@ -2297,8 +2288,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
            Matcher::cast("(pointer dma-tag)", Matcher::any_reg(3))}),
       last_part->body()->at(1));
   if (!mr_bucket_add_tag_func.matched ||
-      !var_name_equal(env, bucket_dst, mr_bucket_add_tag_func.maps.regs.at(2)) ||
-      !var_name_equal(env, buf_end_dst, mr_bucket_add_tag_func.maps.regs.at(3))) {
+      !var_equal(env, bucket_dst, mr_bucket_add_tag_func.maps.regs.at(2)) ||
+      !var_equal(env, buf_end_dst, mr_bucket_add_tag_func.maps.regs.at(3))) {
     return nullptr;
   }
   auto mr_submatch = match(
@@ -2319,7 +2310,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   }
 
   auto elt = pool.alloc_element<WithDmaBufferAddBucketElement>(
-      buf_reg, buf_src, mr_bucket_add_tag_func.maps.forms.at(1),
+      buf_dst, buf_src, mr_bucket_add_tag_func.maps.forms.at(1),
       pool.alloc_sequence_form(nullptr, body));
   elt->parent_form = in->parent_form;
   return elt;
@@ -2348,7 +2339,7 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto func = in->entries().at(0);
+  auto& func = in->entries().at(0);
   if (func.src->elts().at(0)->to_string(env) != "sp-launch-particles-var") {
     return nullptr;
   }
@@ -2363,7 +2354,7 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto part_system = in->entries().at(1);
+  auto& part_system = in->entries().at(1);
   auto system = part_system.src->at(0)->to_string(env);
   if (system != "*sp-particle-system-2d*" && system != "*sp-particle-system-3d*") {
     return nullptr;
@@ -2380,7 +2371,7 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto launch_matrix = in->entries().at(3);
+  auto& launch_matrix = in->entries().at(3);
   if (launch_matrix.src->at(0)->to_string(env) != "*launch-matrix*") {
     return nullptr;
   }
@@ -2518,28 +2509,27 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   // (set! (-> v1-0 base) (&+ a0-2 16))
   u16 dma_qwc = 0;
   bool flusha = false;
-  auto check_vifcode_set = [&](StoreElement* store, const std::string& varname, int size,
-                               int addr) {
+  auto check_vifcode_set = [&](StoreElement* store, const RegisterAccess& var, int size, int addr) {
     return store->op()->kind() == StoreOp::Kind::INTEGER && store->op()->store_size() == size &&
            // store->op()->value().is_int(0) &&
            store->op()->addr().kind() == SimpleExpression::Kind::ADD &&
            store->op()->addr().args() == 2 && store->op()->addr().get_arg(0).is_var() &&
            store->op()->addr().get_arg(1).is_int(addr) &&
-           var_name_equal(env, varname, store->op()->addr().get_arg(0).var());
+           var_equal(env, var, store->op()->addr().get_arg(0).var());
   };
-  const auto match_buf_push = [&env](FormElement* elt, const std::string& reg_buf,
-                                     const std::string& reg_base, int amt) {
+  const auto match_buf_push = [&env](FormElement* elt, const RegisterAccess& reg_buf,
+                                     const RegisterAccess& reg_base, int amt) {
     auto mr = match(Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
                                                 {DerefTokenMatcher::string("base")}),
                                  Matcher::op_fixed(FixedOperatorKind::ADDITION_PTR,
                                                    {Matcher::any_reg(1), Matcher::integer(amt)})),
                     elt);
-    return mr.matched && var_name_equal(env, reg_buf, mr.maps.regs.at(0)) &&
-           var_name_equal(env, reg_base, mr.maps.regs.at(1));
+    return mr.matched && var_equal(env, reg_buf, mr.maps.regs.at(0)) &&
+           var_equal(env, reg_base, mr.maps.regs.at(1));
   };
   {
-    auto dmatag_buf = env.get_variable_name(let0->entries().at(0).dest);
-    auto dmatag_ptr = env.get_variable_name(let0->entries().at(1).dest);
+    auto dmatag_buf = let0->entries().at(0).dest;
+    auto dmatag_ptr = let0->entries().at(1).dest;
     auto set_dmatag_hdr = dynamic_cast<SetFormFormElement*>(let0->body()->at(0));
     auto set_dmatag_vif0 = dynamic_cast<StoreElement*>(let0->body()->at(1));
     auto let_dmatag_vif0 = dynamic_cast<LetElement*>(let0->body()->at(1));
@@ -2584,7 +2574,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
                   Matcher::deref(Matcher::cast("(pointer int64)", Matcher::any_reg(0)), false, {}),
                   Matcher::any_integer(1)),
               set_dmatag_hdr);
-    if (!mr_dmatag_hdr.matched || !var_name_equal(env, dmatag_ptr, mr_dmatag_hdr.maps.regs.at(0))) {
+    if (!mr_dmatag_hdr.matched || !var_equal(env, dmatag_ptr, mr_dmatag_hdr.maps.regs.at(0))) {
       lg::error("rewrite_dma_buffer_add_gs_set: bad dmatag set");
       return nullptr;
     }
@@ -2631,8 +2621,8 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   //   (set! (-> v1-1 base) (&+ a0-4 16))
   //   )
   {
-    auto giftag_buf = env.get_variable_name(let1->entries().at(0).dest);
-    auto giftag_ptr = env.get_variable_name(let1->entries().at(1).dest);
+    auto giftag_buf = let1->entries().at(0).dest;
+    auto giftag_ptr = let1->entries().at(1).dest;
     auto set_giftag_hdr = dynamic_cast<SetFormFormElement*>(let1->body()->at(0));
     auto let_giftag_regs = dynamic_cast<LetElement*>(let1->body()->at(1));
     auto set_giftag_push = dynamic_cast<SetFormFormElement*>(let1->body()->at(2));
@@ -2654,7 +2644,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
               set_giftag_hdr);
     if (!mr_giftag_hdr.matched || (mr_giftag_hdr.maps.ints.at(1) & 0x0fffffffffffffff) != 0x8001 ||
         ((mr_giftag_hdr.maps.ints.at(1) >> 60) & 0xf) != dma_qwc - 1 ||
-        !var_name_equal(env, giftag_ptr, mr_giftag_hdr.maps.regs.at(0))) {
+        !var_equal(env, giftag_ptr, mr_giftag_hdr.maps.regs.at(0))) {
       return nullptr;
     }
     auto giftag_regs_elt = let_giftag_regs->entries().at(0).src->try_as_element<CastElement>();
@@ -2713,8 +2703,8 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
   //   (set! (-> v1-2 base) (&+ a0-6 96))
   //   )
   {
-    auto gsregs_buf = env.get_variable_name(let2->entries().at(0).dest);
-    auto gsregs_ptr = env.get_variable_name(let2->entries().at(1).dest);
+    auto gsregs_buf = let2->entries().at(0).dest;
+    auto gsregs_ptr = let2->entries().at(1).dest;
     auto set_gsregs_push =
         dynamic_cast<SetFormFormElement*>(let2->body()->at(let2->body()->size() - 1));
     // check dma buffer base set
@@ -2724,7 +2714,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       return nullptr;
     }
     bool error = false;
-    auto get_int_from_form = [&](FormElement* elt, const std::string& ptr_name, int offset) {
+    auto get_int_from_form = [&](FormElement* elt, const RegisterAccess& ptr_name, int offset) {
       auto as_set = dynamic_cast<SetFormFormElement*>(elt);
       if (as_set) {
         auto mr_set = match(
@@ -2735,7 +2725,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
                     false, {}),
                 Matcher::any_integer(1)),
             as_set);
-        if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
+        if (!mr_set.matched || !var_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
           error = true;
           return (s64)0;
         }
@@ -2759,8 +2749,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
         auto store_in_let = dynamic_cast<StoreElement*>(as_let->body()->at(0));
         if (!store_in_let || !check_vifcode_set(store_in_let, ptr_name, 8, offset) ||
             !store_in_let->op()->value().is_var() ||
-            !var_name_equal(env, env.get_variable_name(as_let->entries().at(0).dest),
-                            store_in_let->op()->value().var())) {
+            !var_equal(env, as_let->entries().at(0).dest, store_in_let->op()->value().var())) {
           error = true;
           return (s64)0;
         }
@@ -2785,7 +2774,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
       error = true;
       return (s64)0;
     };
-    auto get_src_form = [&](FormPool& pool, FormElement* elt, const std::string& ptr_name,
+    auto get_src_form = [&](FormPool& pool, FormElement* elt, const RegisterAccess& ptr_name,
                             int offset) -> Form* {
       auto as_set = dynamic_cast<SetFormFormElement*>(elt);
       if (as_set) {
@@ -2797,7 +2786,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
                     false, {}),
                 Matcher::any()),
             as_set);
-        if (!mr_set.matched || !var_name_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
+        if (!mr_set.matched || !var_equal(env, gsregs_ptr, mr_set.maps.regs.at(0))) {
           return nullptr;
         }
         return as_set->src();
@@ -2817,8 +2806,7 @@ FormElement* rewrite_dma_buffer_add_gs_set(const std::vector<LetElement*>& in,
         auto store_in_let = dynamic_cast<StoreElement*>(as_let->body()->at(0));
         if (!store_in_let || !check_vifcode_set(store_in_let, ptr_name, 8, offset) ||
             !store_in_let->op()->value().is_var() ||
-            !var_name_equal(env, env.get_variable_name(as_let->entries().at(0).dest),
-                            store_in_let->op()->value().var())) {
+            !var_equal(env, as_let->entries().at(0).dest, store_in_let->op()->value().var())) {
           return nullptr;
         }
         return as_let->entries().at(0).src;
