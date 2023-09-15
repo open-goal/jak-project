@@ -1150,7 +1150,7 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
 
 bool var_name_equal(const Env& env, const std::string& a, std::optional<RegisterAccess> b) {
   ASSERT(b);
-  return env.get_variable_name(*b) == a;
+  return env.get_variable_name_name_only(*b) == a;
 }
 
 Form* match_ja_set(const Env& env,
@@ -1705,34 +1705,111 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
 
   const auto& label = block_src->label();
   const auto& words = env.file->words_by_seg.at(label.target_segment);
-  u32 mask = words.at((label.offset + 64) / 4).data;
+  // offset of `mask` field in `attack-info`
+  int mask_field_offset = 64;
+  if (env.version == GameVersion::Jak2) {
+    mask_field_offset = 88;
+  }
+  u32 mask = words.at((label.offset + mask_field_offset) / 4).data;
   u32 mask_implicit = 0;
 
   auto block_var = in->entries().at(0).dest;
   const auto& block_var_reg = block_var.reg();
-  auto block_var_name = env.get_variable_name(block_var);
+  auto block_var_name = env.get_variable_name_name_only(block_var);
 
-  const static std::map<std::string, std::pair<int, bool>> possible_args = {
-      {"vector", {1, true}},    {"mode", {5, false}},     {"shove-back", {6, false}},
-      {"shove-up", {7, false}}, {"control", {10, false}}, {"angle", {11, false}}};
+  enum AttackInfoFieldKind { DEFAULT, VECTOR, METERS, DEGREES };
+
+  const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak1 = {
+      {"vector", {1, VECTOR}},    {"mode", {5, DEFAULT}},     {"shove-back", {6, DEFAULT}},
+      {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}}, {"angle", {11, DEFAULT}},
+  };
+  const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak2 = {
+      {"vector", {1, VECTOR}},
+      {"intersection", {2, VECTOR}},
+      {"attacker", {3, DEFAULT}},
+      {"invinc-time", {5, DEFAULT}},
+      {"mode", {6, DEFAULT}},
+      {"shove-back", {7, DEFAULT}},
+      {"shove-up", {8, DEFAULT}},
+      {"speed", {9, DEFAULT}},
+      {"control", {11, DEFAULT}},
+      {"angle", {12, DEFAULT}},
+      {"id", {15, DEFAULT}},
+      {"count", {16, DEFAULT}},
+      {"penetrate-using", {17, DEFAULT}},
+      {"attacker-velocity", {18, VECTOR}},
+      {"damage", {19, DEFAULT}},
+      {"shield-damage", {20, DEFAULT}},
+      {"knock", {21, DEFAULT}},
+      {"test", {22, DEFAULT}},
+  };
+
+  const auto& possible_args =
+      env.version == GameVersion::Jak1 ? possible_args_jak1 : possible_args_jak2;
 
   std::vector<std::pair<std::string, Form*>> args_in_info;
   for (int i = 0; i < in->body()->size() - 1; ++i) {
     auto s_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(i));
+
+    //                      v--v
+    // (set! (-> v1-2 mode) arg2)
+    Form* s_src = nullptr;  // the source form. we use a separate variable since we might want to
+                            // change this (e.g. into (new-attack-id))
     if (!s_elt) {
       lg::error("attack info err elt {} not a set!: {}", i, in->body()->at(i)->to_string(env));
-      return nullptr;
+      lg::error("checking if (new-attack-id)...");
+      auto l_elt = dynamic_cast<LetElement*>(in->body()->at(i));
+      if (l_elt) {
+        auto mr_let = match(
+            Matcher::let(
+                false, {LetEntryMatcher::any(Matcher::symbol("*game-info*"), 0)},
+                {Matcher::let(
+                    false,
+                    {LetEntryMatcher::any(
+                        Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                                          {Matcher::deref(Matcher::same_var(0), false,
+                                                          {DerefTokenMatcher::string("attack-id")}),
+                                           Matcher::integer(1)}),
+                        1)},
+                    {Matcher::set(Matcher::deref(Matcher::same_var(0), false,
+                                                 {DerefTokenMatcher::string("attack-id")}),
+                                  Matcher::same_var(1)),
+                     Matcher::set(Matcher::deref(Matcher::reg(block_var_reg), false,
+                                                 {DerefTokenMatcher::string("id")}),
+                                  Matcher::same_var(1))})}),
+            l_elt);
+
+        if (mr_let.matched) {
+          s_src = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("new-attack-id")));
+          s_elt = dynamic_cast<SetFormFormElement*>(
+              dynamic_cast<LetElement*>(l_elt->body()->at(0))->body()->at(1));
+        }
+      }
+      if (!s_src) {
+        lg::error("attack info err elt {} not a (new-attack-id): {}", i,
+                  in->body()->at(i)->to_string(env));
+        return nullptr;
+      }
+    } else {
+      s_src = s_elt->src();
     }
 
     auto d_elt = s_elt->dst()->try_as_element<DerefElement>();
+    // (set! (-> v1-2 mode) arg2)
+    //       ^------------^
     if (!d_elt) {
       lg::error("attack info err elt {} dst not a deref: {}", i, s_elt->dst()->to_string(env));
       return nullptr;
     }
+    // (set! (-> v1-2 mode) arg2)
+    //           ^--^ ^--^
     if (d_elt->tokens().size() != 1 && d_elt->tokens().size() != 2) {
       lg::error("attack info err elt {} invalid token len: {}", i, d_elt->to_string(env));
       return nullptr;
     }
+    // (set! (-> v1-2 mode) arg2)
+    //                ^--^
     if (d_elt->tokens().at(0).kind() != DerefToken::Kind::FIELD_NAME) {
       lg::error("attack info err elt {} invalid token kind: {}", i, d_elt->to_string(env));
       return nullptr;
@@ -1740,7 +1817,8 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
     const auto& field_name = d_elt->tokens().at(0).field_name();
     auto arg_it = possible_args.find(field_name);
     if (arg_it == possible_args.end()) {
-      lg::error("attack info unknown field {}", field_name);
+      lg::error("attack info unknown field `{}`, static-attack-info could not be generated",
+                field_name);
       return nullptr;
     }
     if (arg_it->second.second &&
@@ -1753,25 +1831,25 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
     }
 
     if (arg_it->second.second) {
-      auto d_src = s_elt->src()->try_as_element<DerefElement>();
+      auto d_src = s_src->try_as_element<DerefElement>();
       if (d_src) {
         if (d_src->tokens().size() == 1 && d_src->tokens().at(0).is_field_name("quad")) {
           args_in_info.push_back({field_name, d_src->base()});
         } else {
           d_src->tokens().pop_back();
-          args_in_info.push_back({field_name, s_elt->src()});
+          args_in_info.push_back({field_name, s_src});
         }
       }
     } else {
       if ((field_name == "shove-back" || field_name == "shove-up") &&
-          s_elt->src()->to_form(env).is_float()) {
+          s_src->to_form(env).is_float()) {
         args_in_info.push_back(
             {field_name, pool.form<GenericElement>(GenericOperator::make_function(
                                                        pool.form<ConstantTokenElement>("meters")),
                                                    pool.form<ConstantTokenElement>(meters_to_string(
-                                                       s_elt->src()->to_form(env).as_float())))});
+                                                       s_src->to_form(env).as_float())))});
       } else {
-        args_in_info.push_back({field_name, s_elt->src()});
+        args_in_info.push_back({field_name, s_src});
       }
     }
     mask_implicit |= 1 << arg_it->second.first;
