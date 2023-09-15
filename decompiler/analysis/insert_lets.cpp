@@ -1752,24 +1752,23 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       // lg::error("checking if (new-attack-id)...");
       auto l_elt = dynamic_cast<LetElement*>(in->body()->at(i));
       if (l_elt) {
-        auto mr_let = match(
-            Matcher::let(
-                false, {LetEntryMatcher::any(Matcher::symbol("*game-info*"), 0)},
-                {Matcher::let(
-                    false,
-                    {LetEntryMatcher::any(
-                        Matcher::op_fixed(FixedOperatorKind::ADDITION,
-                                          {Matcher::deref(Matcher::same_var(0), false,
-                                                          {DerefTokenMatcher::string("attack-id")}),
-                                           Matcher::integer(1)}),
-                        1)},
-                    {Matcher::set(Matcher::deref(Matcher::same_var(0), false,
-                                                 {DerefTokenMatcher::string("attack-id")}),
-                                  Matcher::same_var(1)),
-                     Matcher::set(Matcher::deref(Matcher::reg(block_var_reg), false,
-                                                 {DerefTokenMatcher::string("id")}),
-                                  Matcher::same_var(1))})}),
-            l_elt);
+        static const auto match_let_for_new_attack_id = Matcher::let(
+            false, {LetEntryMatcher::any(Matcher::symbol("*game-info*"), 0)},
+            {Matcher::let(
+                false,
+                {LetEntryMatcher::any(
+                    Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                                      {Matcher::deref(Matcher::same_var(0), false,
+                                                      {DerefTokenMatcher::string("attack-id")}),
+                                       Matcher::integer(1)}),
+                    1)},
+                {Matcher::set(Matcher::deref(Matcher::same_var(0), false,
+                                             {DerefTokenMatcher::string("attack-id")}),
+                              Matcher::same_var(1)),
+                 Matcher::set(Matcher::deref(Matcher::reg(block_var_reg), false,
+                                             {DerefTokenMatcher::string("id")}),
+                              Matcher::same_var(1))})});
+        auto mr_let = match(match_let_for_new_attack_id, l_elt, &env);
 
         if (mr_let.matched) {
           s_src = pool.form<GenericElement>(

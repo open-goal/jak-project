@@ -326,7 +326,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
     case Kind::GENERIC_OP_WITH_REST: {
       auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
-        if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
+        if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out, env)) {
           return false;
         }
 
@@ -337,7 +337,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         }
 
         for (size_t i = 0; i < m_sub_matchers.size(); i++) {
-          if (!m_sub_matchers.at(i).do_match(as_generic->elts().at(i), maps_out)) {
+          if (!m_sub_matchers.at(i).do_match(as_generic->elts().at(i), maps_out, env)) {
             return false;
           }
         }
@@ -348,7 +348,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
 
     case Kind::OR: {
       for (auto& matcher : m_sub_matchers) {
-        if (matcher.do_match(input, maps_out)) {
+        if (matcher.do_match(input, maps_out, env)) {
           return true;
         }
       }
@@ -379,7 +379,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
         if (as_cast->type().print() == m_str) {
-          return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
+          return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out, env);
         }
       }
       return false;
@@ -389,7 +389,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
         maps_out->strings[m_string_out_id] = as_cast->type().print();
-        return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
+        return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out, env);
       }
       return false;
     } break;
@@ -547,7 +547,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         if (as_deref->is_addr_of() != m_deref_is_addr_of) {
           return false;
         }
-        if (!m_sub_matchers.at(0).do_match(as_deref->base(), maps_out)) {
+        if (!m_sub_matchers.at(0).do_match(as_deref->base(), maps_out, env)) {
           return false;
         }
         if (as_deref->tokens().size() != m_token_matchers.size()) {
@@ -568,11 +568,11 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       if (!as_set) {
         return false;
       }
-      if (!m_sub_matchers.at(0).do_match(as_set->dst(), maps_out)) {
+      if (!m_sub_matchers.at(0).do_match(as_set->dst(), maps_out, env)) {
         return false;
       }
 
-      if (!m_sub_matchers.at(1).do_match(as_set->src(), maps_out)) {
+      if (!m_sub_matchers.at(1).do_match(as_set->src(), maps_out, env)) {
         return false;
       } else {
         return true;
@@ -589,15 +589,15 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         return false;
       }
 
-      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out, env)) {
         return false;
       }
 
-      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out, env)) {
         return false;
       }
 
-      if (!m_sub_matchers.at(2).do_match(as_cond->else_ir, maps_out)) {
+      if (!m_sub_matchers.at(2).do_match(as_cond->else_ir, maps_out, env)) {
         return false;
       }
       return true;
@@ -613,11 +613,11 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         return false;
       }
 
-      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out, env)) {
         return false;
       }
 
-      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out, env)) {
         return false;
       }
 
@@ -634,7 +634,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       }
 
       for (size_t i = 0; i < m_sub_matchers.size(); i++) {
-        if (!m_sub_matchers.at(i).do_match(as_sc->entries.at(i).condition, maps_out)) {
+        if (!m_sub_matchers.at(i).do_match(as_sc->entries.at(i).condition, maps_out, env)) {
           return false;
         }
       }
@@ -648,11 +648,11 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         return false;
       }
 
-      if (!m_sub_matchers.at(0).do_match(as_while->condition, maps_out)) {
+      if (!m_sub_matchers.at(0).do_match(as_while->condition, maps_out, env)) {
         return false;
       }
 
-      if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out)) {
+      if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out, env)) {
         return false;
       }
       return true;
@@ -666,7 +666,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       for (int i = 0; i < input->size(); i++) {
         Form fake;
         fake.elts().push_back(input->elts().at(i));
-        if (!m_sub_matchers.at(i).do_match(&fake, maps_out)) {
+        if (!m_sub_matchers.at(i).do_match(&fake, maps_out, env)) {
           return false;
         }
       }
@@ -679,7 +679,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         return false;
       }
 
-      if (!m_sub_matchers.at(0).do_match(as_set->src(), maps_out)) {
+      if (!m_sub_matchers.at(0).do_match(as_set->src(), maps_out, env)) {
         return false;
       }
 
@@ -701,12 +701,12 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         for (int i = 0; i < m_sub_matchers.size(); ++i) {
           Form fake;
           fake.elts().push_back(as_let->body()->elts().at(i));
-          if (!m_sub_matchers.at(i).do_match(&fake, maps_out)) {
+          if (!m_sub_matchers.at(i).do_match(&fake, maps_out, env)) {
             return false;
           }
         }
         for (size_t i = 0; i < m_entry_matchers.size(); ++i) {
-          if (!m_entry_matchers.at(i).do_match(as_let->entries().at(i), maps_out)) {
+          if (!m_entry_matchers.at(i).do_match(as_let->entries().at(i), maps_out, env)) {
             return false;
           }
         }
@@ -728,7 +728,7 @@ Matcher Matcher::any_reg_cast_to_int_or_uint(int match_id) {
 
 MatchResult match(const Matcher& spec, Form* input, const Env* const env) {
   MatchResult result;
-  result.matched = spec.do_match(input, &result.maps);
+  result.matched = spec.do_match(input, &result.maps, env);
   return result;
 }
 
@@ -736,7 +736,7 @@ MatchResult match(const Matcher& spec, FormElement* input, const Env* const env)
   Form hack;
   hack.elts().push_back(input);
   MatchResult result;
-  result.matched = spec.do_match(&hack, &result.maps);
+  result.matched = spec.do_match(&hack, &result.maps, env);
   return result;
 }
 
@@ -850,7 +850,9 @@ GenericOpMatcher GenericOpMatcher::or_match(const std::vector<GenericOpMatcher>&
   return m;
 }
 
-bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_out) const {
+bool GenericOpMatcher::do_match(GenericOperator& input,
+                                MatchResult::Maps* maps_out,
+                                const Env* const env) const {
   switch (m_kind) {
     case Kind::FIXED:
       if (input.kind() == GenericOperator::Kind::FIXED_OPERATOR) {
@@ -859,7 +861,7 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
       return false;
     case Kind::FUNC:
       if (input.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
-        return m_func_matcher.do_match(input.func(), maps_out);
+        return m_func_matcher.do_match(input.func(), maps_out, env);
       }
       return false;
     case Kind::CONDITION:
@@ -869,7 +871,7 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
       return false;
     case Kind::OR:
       for (auto& m : m_sub_matchers) {
-        if (m.do_match(input, maps_out)) {
+        if (m.do_match(input, maps_out, env)) {
           return true;
         }
       }
@@ -913,7 +915,7 @@ bool LetEntryMatcher::do_match(const LetElement::Entry& input,
         }
       }
       if (m_src_matcher) {
-        return m_src_matcher->do_match(input.src, maps_out);
+        return m_src_matcher->do_match(input.src, maps_out, env);
       }
       return true;
     default:

@@ -110,7 +110,7 @@ class Matcher {
     INVALID
   };
 
-  bool do_match(Form* input, MatchResult::Maps* maps_out, const Env* const env = nullptr) const;
+  bool do_match(Form* input, MatchResult::Maps* maps_out, const Env* const env) const;
 
  private:
   std::vector<Matcher> m_sub_matchers;
@@ -174,7 +174,7 @@ class GenericOpMatcher {
 
   enum class Kind { FIXED, FUNC, CONDITION, OR, INVALID };
 
-  bool do_match(GenericOperator& input, MatchResult::Maps* maps_out) const;
+  bool do_match(GenericOperator& input, MatchResult::Maps* maps_out, const Env* const env) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -193,7 +193,7 @@ class LetEntryMatcher {
 
   bool do_match(const LetElement::Entry& input,
                 MatchResult::Maps* maps_out,
-                const Env* const env = nullptr) const;
+                const Env* const env) const;
 
  private:
   Kind m_kind = Kind::INVALID;
