@@ -1756,8 +1756,8 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
     Form* s_src = nullptr;  // the source form. we use a separate variable since we might want to
                             // change this (e.g. into (new-attack-id))
     if (!s_elt) {
-      lg::error("attack info err elt {} not a set!: {}", i, in->body()->at(i)->to_string(env));
-      lg::error("checking if (new-attack-id)...");
+      // lg::error("attack info err elt {} not a set!: {}", i, in->body()->at(i)->to_string(env));
+      // lg::error("checking if (new-attack-id)...");
       auto l_elt = dynamic_cast<LetElement*>(in->body()->at(i));
       if (l_elt) {
         auto mr_let = match(
@@ -1787,7 +1787,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
         }
       }
       if (!s_src) {
-        lg::error("attack info err elt {} not a (new-attack-id): {}", i,
+        lg::error("attack info err elt {} not a set! or (new-attack-id): {}", i,
                   in->body()->at(i)->to_string(env));
         return nullptr;
       }

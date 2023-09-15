@@ -248,6 +248,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       return true;
     case Kind::ANY_REG:
     case Kind::VAR_NAME:
+    case Kind::SAME_VAR:
     case Kind::REG: {
       bool got = false;
       RegisterAccess result;
