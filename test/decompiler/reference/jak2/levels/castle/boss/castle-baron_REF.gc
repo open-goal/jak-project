@@ -908,25 +908,13 @@ For example for an elevator pre-compute the distance between the first and last 
     (case arg2
       (('touch 'bonk 'attack)
        (when (and (-> obj next-state) (= (-> obj next-state name) 'hostile))
-         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-3 from) (process->ppointer pp))
-           (set! (-> a1-3 num-params) 2)
-           (set! (-> a1-3 message) 'attack)
-           (set! (-> a1-3 param 0) (the-as uint #f))
-           (let ((v1-8 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id damage))))
-             (let* ((a0-7 *game-info*)
-                    (a2-2 (+ (-> a0-7 attack-id) 1))
-                    )
-               (set! (-> a0-7 attack-id) a2-2)
-               (set! (-> v1-8 id) a2-2)
-               )
-             (set! (-> v1-8 mode) 'shock-green)
-             (set! (-> v1-8 shove-up) 8192.0)
-             (set! (-> v1-8 shove-back) 16384.0)
-             (set! (-> v1-8 damage) 1.0)
-             (set! (-> a1-3 param 1) (the-as uint v1-8))
+         (send-event
+           arg0
+           'attack
+           #f
+           (static-attack-info
+             ((id (new-attack-id)) (mode 'shock-green) (shove-up (meters 2)) (shove-back (meters 4)) (damage 1.0))
              )
-           (send-event-function arg0 a1-3)
            )
          (cond
            ((!= arg0 *target*)

@@ -131,34 +131,16 @@
 ;; definition for method 76 of type sig-under
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod enemy-method-76 sig-under ((obj sig-under) (arg0 process) (arg1 event-message-block))
-  (with-pp
-    (the-as
-      symbol
-      (cond
-        ((and (and (-> obj next-state) (= (-> obj next-state name) 'jump)) (type? arg0 under-break-floor))
-         (let ((v1-5 (-> arg1 param 0))
-               (a1-2 (new 'stack-no-clear 'event-message-block))
-               )
-           (set! (-> a1-2 from) (process->ppointer pp))
-           (set! (-> a1-2 num-params) 2)
-           (set! (-> a1-2 message) 'attack)
-           (set! (-> a1-2 param 0) v1-5)
-           (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask id penetrate-using))))
-             (let* ((a0-6 *game-info*)
-                    (a2-3 (+ (-> a0-6 attack-id) 1))
-                    )
-               (set! (-> a0-6 attack-id) a2-3)
-               (set! (-> v1-6 id) a2-3)
-               )
-             (set! (-> v1-6 penetrate-using) (penetrate flop))
-             (set! (-> a1-2 param 1) (the-as uint v1-6))
-             )
-           (send-event-function arg0 a1-2)
-           )
+  (the-as
+    symbol
+    (cond
+      ((and (and (-> obj next-state) (= (-> obj next-state name) 'jump)) (type? arg0 under-break-floor))
+       (let ((v1-5 (-> arg1 param 0)))
+         (send-event arg0 'attack v1-5 (static-attack-info ((id (new-attack-id)) (penetrate-using (penetrate flop)))))
          )
-        (else
-          ((method-of-type sig enemy-method-76) obj arg0 arg1)
-          )
+       )
+      (else
+        ((method-of-type sig enemy-method-76) obj arg0 arg1)
         )
       )
     )

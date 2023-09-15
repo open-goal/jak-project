@@ -522,60 +522,43 @@
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-1 object))
-  (with-pp
-    (case arg2
-      (('touched)
-       (let ((s5-0 arg0))
-         (when (if (type? s5-0 ginsu)
-                   s5-0
-                   )
-           (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-             (let ((a0-5 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-               (vector+! s5-1 s5-1 a0-5)
-               )
-             (vector-float*! s5-1 s5-1 0.5)
-             (spawn (-> obj part) s5-1)
-             )
-           (set! v0-1 (+ (current-time) (seconds 0.125)))
-           (set! (-> obj grind-timer) (the-as time-frame v0-1))
-           v0-1
-           )
-         )
-       )
-      (('touch 'bonk 'attack)
-       (cond
-         ((or (!= arg0 *target*) (focus-test? *target* dark))
-          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-          )
-         (else
-           (let ((v1-15 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> v1-15 from) (process->ppointer pp))
-             (set! (-> v1-15 num-params) 2)
-             (set! (-> v1-15 message) 'attack)
-             (set! (-> v1-15 param 0) (the-as uint #f))
-             (let ((a2-2 (new 'static 'attack-info :mask (attack-info-mask id))))
-               (let* ((a0-19 *game-info*)
-                      (a3-2 (+ (-> a0-19 attack-id) 1))
-                      )
-                 (set! (-> a0-19 attack-id) a3-2)
-                 (set! (-> a2-2 id) a3-2)
+  (case arg2
+    (('touched)
+     (let ((s5-0 arg0))
+       (when (if (type? s5-0 ginsu)
+                 s5-0
                  )
-               (set! (-> v1-15 param 1) (the-as uint a2-2))
-               )
-             (send-event-function arg0 v1-15)
+         (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
+           (let ((a0-5 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
+             (vector+! s5-1 s5-1 a0-5)
              )
-           #f
+           (vector-float*! s5-1 s5-1 0.5)
+           (spawn (-> obj part) s5-1)
            )
+         (set! v0-1 (+ (current-time) (seconds 0.125)))
+         (set! (-> obj grind-timer) (the-as time-frame v0-1))
+         v0-1
          )
        )
-      (('trigger)
-       (set! v0-1 #t)
-       (set! (-> obj ambush-started) (the-as symbol v0-1))
-       v0-1
-       )
-      (else
+     )
+    (('touch 'bonk 'attack)
+     (cond
+       ((or (!= arg0 *target*) (focus-test? *target* dark))
         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
+       (else
+         (send-event arg0 'attack #f (static-attack-info ((id (new-attack-id)))))
+         #f
+         )
+       )
+     )
+    (('trigger)
+     (set! v0-1 #t)
+     (set! (-> obj ambush-started) (the-as symbol v0-1))
+     v0-1
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )

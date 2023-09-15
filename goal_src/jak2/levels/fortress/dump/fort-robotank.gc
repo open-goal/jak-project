@@ -528,38 +528,37 @@
              (the-as
                object
                (when s5-0
-                 (let ((a0-48 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
-                       (a1-19 (new 'stack-no-clear 'event-message-block))
-                       )
-                   (set! (-> a1-19 from) (process->ppointer self))
-                   (set! (-> a1-19 num-params) 2)
-                   (set! (-> a1-19 message) 'attack-or-shove)
-                   (set! (-> a1-19 param 0) (-> arg3 param 0))
-                   (let ((v1-40 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                     (set! (-> v1-40 id) (-> self attack-id))
-                     (set! (-> v1-40 vector quad) (-> a0-48 quad))
-                     (set! (-> v1-40 shove-back) (if (and (-> self next-state) (= (-> self next-state name) 'idle))
-                                                     16384.0
-                                                     49152.0
-                                                     )
-                           )
-                     (set! (-> v1-40 shove-up) 24576.0)
-                     (set! (-> v1-40 control) (if (focus-test? s5-0 board)
-                                                  1.0
-                                                  0.0
+                 (let ((a0-48 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+                   (the-as
+                     object
+                     (when (send-event
+                             s5-0
+                             'attack-or-shove
+                             (-> arg3 param 0)
+                             (static-attack-info ((id (-> self attack-id))
+                                                  (vector a0-48)
+                                                  (shove-back (if (and (-> self next-state) (= (-> self next-state name) 'idle))
+                                                                  16384.0
+                                                                  49152.0
+                                                                  )
+                                                              )
+                                                  (shove-up (meters 6))
+                                                  (control (if (focus-test? s5-0 board)
+                                                               1.0
+                                                               0.0
+                                                               )
+                                                           )
                                                   )
-                           )
-                     (set! (-> a1-19 param 1) (the-as uint v1-40))
+                                                 )
+                             )
+                       (set! (-> self no-collision-timer) (current-time))
+                       (let ((v1-45 (-> self root root-prim)))
+                         (set! (-> v1-45 prim-core collide-as) (collide-spec))
+                         (set! (-> v1-45 prim-core collide-with) (collide-spec))
+                         )
+                       0
+                       )
                      )
-                   (the-as object (when (send-event-function s5-0 a1-19)
-                                    (set! (-> self no-collision-timer) (current-time))
-                                    (let ((v1-45 (-> self root root-prim)))
-                                      (set! (-> v1-45 prim-core collide-as) (collide-spec))
-                                      (set! (-> v1-45 prim-core collide-with) (collide-spec))
-                                      )
-                                    0
-                                    )
-                           )
                    )
                  )
                )

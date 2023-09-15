@@ -207,18 +207,11 @@
               )
          (when toucher
            (-> toucher root)
-           (let ((evt (new 'stack-no-clear 'event-message-block)))
-             (set! (-> evt from) (process->ppointer self))
-             (set! (-> evt num-params) 2)
-             (set! (-> evt message) 'attack)
-             (set! (-> evt param 0) (-> event param 0))
-             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask mode id damage))))
-               (set! (-> attack-info id) (-> self attack-id))
-               (set! (-> attack-info mode) 'explode)
-               (set! (-> attack-info damage) (-> self damage))
-               (set! (-> evt param 1) (the-as uint attack-info))
-               )
-             (send-event-function proc evt)
+           (send-event
+             proc
+             'attack
+             (-> event param 0)
+             (static-attack-info ((id (-> self attack-id)) (mode 'explode) (damage (-> self damage))))
              )
            )
          )

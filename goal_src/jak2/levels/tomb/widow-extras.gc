@@ -875,27 +875,14 @@ This commonly includes things such as:
            (f0-0 (vector-vector-distance-squared a0-1 (-> self root trans)))
            (f1-0 16384.0)
            )
-      (when (< f0-0 (* f1-0 f1-0))
-        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-1 from) (process->ppointer self))
-          (set! (-> a1-1 num-params) 2)
-          (set! (-> a1-1 message) 'attack)
-          (set! (-> a1-1 param 0) (the-as uint #f))
-          (let ((v1-7 (new 'static 'attack-info :mask (attack-info-mask mode shove-back shove-up id))))
-            (let* ((a0-3 *game-info*)
-                   (a2-1 (+ (-> a0-3 attack-id) 1))
-                   )
-              (set! (-> a0-3 attack-id) a2-1)
-              (set! (-> v1-7 id) a2-1)
-              )
-            (set! (-> v1-7 mode) 'explode)
-            (set! (-> v1-7 shove-up) 16384.0)
-            (set! (-> v1-7 shove-back) 8192.0)
-            (set! (-> a1-1 param 1) (the-as uint v1-7))
+      (if (< f0-0 (* f1-0 f1-0))
+          (send-event
+            *target*
+            'attack
+            #f
+            (static-attack-info ((id (new-attack-id)) (mode 'explode) (shove-up (meters 4)) (shove-back (meters 2))))
             )
-          (send-event-function *target* a1-1)
           )
-        )
       )
     (activate! *camera-smush-control* 819.2 37 210 1.0 0.995 (-> self clock))
     (ja-channel-set! 0)
@@ -1024,26 +1011,14 @@ This commonly includes things such as:
         object
         (cond
           ((or (= v1-0 'touch) (= v1-0 'bonk))
-           (when (< (-> self which-trajectory) 2)
-             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-1 from) (process->ppointer self))
-               (set! (-> a1-1 num-params) 2)
-               (set! (-> a1-1 message) 'attack)
-               (set! (-> a1-1 param 0) (the-as uint #f))
-               (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-                 (let* ((a0-2 *game-info*)
-                        (a2-2 (+ (-> a0-2 attack-id) 1))
-                        )
-                   (set! (-> a0-2 attack-id) a2-2)
-                   (set! (-> v1-5 id) a2-2)
-                   )
-                 (set! (-> v1-5 shove-up) 4096.0)
-                 (set! (-> v1-5 shove-back) 12288.0)
-                 (set! (-> a1-1 param 1) (the-as uint v1-5))
+           (if (< (-> self which-trajectory) 2)
+               (send-event
+                 *target*
+                 'attack
+                 #f
+                 (static-attack-info ((id (new-attack-id)) (shove-up (meters 1)) (shove-back (meters 3))))
                  )
-               (send-event-function *target* a1-1)
                )
-             )
            )
           ((= v1-0 'impact-control)
            (if (and (!= proc self) (!= proc (-> self parent)))
@@ -1815,7 +1790,7 @@ This commonly includes things such as:
                  (gp-1 (new 'stack-no-clear 'vector))
                  )
              (cond
-               ((logtest? (attack-info-mask attacker-velocity) (-> (the-as attack-info v1-2) mask))
+               ((logtest? (attack-mask attacker-velocity) (-> (the-as attack-info v1-2) mask))
                 (set! (-> gp-1 quad) (-> (the-as attack-info v1-2) attacker-velocity quad))
                 )
                (else
