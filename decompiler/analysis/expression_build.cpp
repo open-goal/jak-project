@@ -91,21 +91,31 @@ bool convert_to_expressions(
         needs_cast = true;
 
       } else {
-        bool found_early_return = false;
-        for (auto e : new_entries) {
-          e->apply([&](FormElement* elt) {
-            auto as_ret = dynamic_cast<ReturnElement*>(elt);
-            if (as_ret) {
-              found_early_return = true;
+        // note : a return type of "object" will accept ANYTHING as a return value
+        // "object" is the parent type of everything, including "none" (as of sep 2023)
+        // if a function wants to return an object, we can safely discard the cast
+        // since there is no possible level of polymorphism at this highest level.
+        if (f.type.last_arg() != TypeSpec("object")) {
+          bool found_early_return = false;
+          for (auto e : new_entries) {
+            e->apply([&](FormElement* elt) {
+              auto as_ret = dynamic_cast<ReturnElement*>(elt);
+              if (as_ret) {
+                found_early_return = true;
+              }
+            });
+            if (found_early_return) {
+              break;
             }
-          });
-          if (found_early_return) {
-            break;
           }
-        }
 
-        if (!found_early_return && f.type.last_arg() != return_type) {
-          needs_cast = true;
+          // the return value of this function is not an exact match
+          // we cast it to avoid complicated issues with polymorphism (e.g. methods)
+          // we don't run this if we find a (return statement because we do not handle
+          // type checking on those at the moment.
+          if (!found_early_return && f.type.last_arg() != return_type) {
+            needs_cast = true;
+          }
         }
       }
 

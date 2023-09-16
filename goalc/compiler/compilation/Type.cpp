@@ -577,7 +577,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   } else if (result && !dynamic_cast<None*>(result)) {
     RegVal* final_result;
     emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
-    if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
+    auto& result_type = result->type();
+    if (result_type != TypeSpec("none") && m_ts.lookup_type(result_type)->get_load_size() == 16) {
       ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
       final_result = result->to_xmm128(form, new_func_env.get());
       return_reg->change_class(RegClass::INT_128);
