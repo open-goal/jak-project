@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype plat-button (process-drawable)
   ((root-override           collide-shape-moving         :offset        112)
    (go-back-if-lost-player? symbol                       :offset-assert 176)
@@ -57,12 +56,12 @@
 
 (defstate plat-button-idle (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (when (can-activate? self)
          (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                   (the-as touching-shapes-entry (-> event param 0))
+                   (the-as touching-shapes-entry (-> block param 0))
                    (-> self root-override)
                    (the-as uint 1)
                    )
@@ -104,7 +103,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -124,7 +122,6 @@
       )
     (ja-post)
     (go-virtual plat-button-idle)
-    (none)
     )
   )
 
@@ -143,7 +140,6 @@
         (go-virtual plat-button-move-downward)
         (go-virtual plat-button-move-upward)
         )
-    (none)
     )
   :post (the-as (function none :behavior plat-button) rider-post)
   )
@@ -166,24 +162,21 @@
 
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
-                     (set! (-> self state-time) (-> *display* base-frame-counter))
-                     #f
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (or (= message 'touch) (= message 'attack))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      #f
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! 'allow-look-around #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (plat-button-camera-off)
     (remove-setting! 'allow-look-around)
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) 1.0)
@@ -232,7 +225,6 @@
     (if (and (-> self grab-player?) (< 0.2 (-> self path-pos)))
         (set! (-> self grab-player?) (not (process-release? *target*)))
         )
-    (none)
     )
   :code (the-as (function none :behavior plat-button) anim-loop)
   :post (the-as (function none :behavior plat-button) rider-post)
@@ -240,24 +232,21 @@
 
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
-                     (set! (-> self state-time) (-> *display* base-frame-counter))
-                     #f
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (or (= message 'touch) (= message 'attack))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      #f
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! 'allow-look-around #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (plat-button-camera-off)
     (remove-setting! 'allow-look-around)
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) 0.0)
@@ -306,7 +295,6 @@
     (if (and (-> self grab-player?) (< (-> self path-pos) 0.8))
         (set! (-> self grab-player?) (not (process-release? *target*)))
         )
-    (none)
     )
   :code (the-as (function none :behavior plat-button) anim-loop)
   :post (the-as (function none :behavior plat-button) rider-post)
@@ -328,7 +316,6 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 

@@ -10,7 +10,6 @@
 
 ;; DECOMP BEGINS
 
-
 (if (not (nmember "racerp" *kernel-packages*))
     (set! *kernel-packages* (cons "racerp" *kernel-packages*))
     )
@@ -82,40 +81,36 @@
 
 (defstate wait-for-start (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-1 structure))
-    (the-as
-      object
-      (case event-type
-        (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-         )
-        (('notify)
-         (set! v0-1 #t)
-         (set! (-> self auto-get-off) (the-as symbol v0-1))
-         v0-1
-         )
-        (('shadow)
-         (cond
-           ((-> event param 0)
-            (set! v0-1 (-> self shadow-backup))
-            (set! (-> self draw shadow) (the-as shadow-geo v0-1))
-            v0-1
-            )
-           (else
-             (set! (-> self draw shadow) #f)
-             #f
-             )
+    (case message
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       )
+      (('notify)
+       (set! v0-1 #t)
+       (set! (-> self auto-get-off) (the-as symbol v0-1))
+       v0-1
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (set! v0-1 (-> self shadow-backup))
+          (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+          v0-1
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           #f
            )
          )
-        )
+       )
       )
     )
   :exit (behavior ()
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     0
-    (none)
     )
   :code (behavior ()
     (label cfg-0)
@@ -201,7 +196,6 @@
         (go-virtual wait-for-return)
         (go-virtual idle)
         )
-    (none)
     )
   )
 
@@ -211,7 +205,6 @@
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (-> self path-target))
-    (none)
     )
   :exit (-> (method-of-type racer wait-for-start) exit)
   :code (behavior ()
@@ -259,15 +252,14 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior racer) ja-post)
   )
 
 (defstate pickup (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('draw)
        (ja-channel-set! 1)
        (ja :group! (-> self draw art-group data 3))
@@ -276,14 +268,14 @@
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
        )
       (('shadow)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (let ((v0-1 (the-as object (-> self shadow-backup))))
             (set! (-> self draw shadow) (the-as shadow-geo v0-1))
             v0-1
@@ -299,7 +291,6 @@
     )
   :enter (behavior ((arg0 (state collectable)))
     ((the-as (function none :behavior racer) (-> arg0 enter)))
-    (none)
     )
   :code (behavior ((arg0 (state collectable)))
     (ja-channel-set! 0)
@@ -332,45 +323,40 @@
         )
       )
     (go arg0)
-    (none)
     )
   )
 
 (defstate wait-for-return (racer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (or (= event-type 'touch) (= event-type 'attack))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (or (= message 'touch) (= message 'attack))
              (and (!= (-> self condition) 4) (send-event *target* 'end-mode))
              )
         (go-virtual pickup (the-as (state collectable) (method-of-object self idle)))
         )
-    (the-as
-      object
-      (cond
-        ((= event-type 'trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-         )
-        ((= event-type 'shadow)
-         (cond
-           ((-> event param 0)
-            (let ((v0-3 (the-as structure (-> self shadow-backup))))
-              (set! (-> self draw shadow) (the-as shadow-geo v0-3))
-              v0-3
-              )
+    (cond
+      ((= message 'trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       )
+      ((= message 'shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-3 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-3))
+            v0-3
             )
-           (else
-             (set! (-> self draw shadow) #f)
-             #f
-             )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           #f
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-racer)))
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -382,7 +368,6 @@
       (racer-effect)
       (suspend)
       )
-    (none)
     )
   )
 

@@ -47,9 +47,9 @@
 ;; failed to figure out what this is:
 (defstate idle (logtrap)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (or (= event-type 'touch) (= event-type 'attack))
-        (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (or (= message 'touch) (= message 'attack))
+        (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))
         )
     )
   :code (behavior ()
@@ -74,7 +74,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
@@ -145,7 +144,6 @@
         (ja :num! (seek! max 0.4))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior towertop) ja-post)
   )
@@ -199,14 +197,13 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
   :trans (the-as (function none :behavior lurkerm-tall-sail) rider-trans)
   :code (behavior ()
@@ -222,7 +219,6 @@
         (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior lurkerm-tall-sail) rider-post)
   )
@@ -305,14 +301,13 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
   :trans (the-as (function none :behavior lurkerm-short-sail) rider-trans)
   :code (behavior ()
@@ -328,7 +323,6 @@
         (ja :num! (seek! max (* 0.5 (-> self speed))))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior lurkerm-short-sail) rider-post)
   )
@@ -434,14 +428,13 @@
 
 ;; failed to figure out what this is:
 (defstate lurkerm-piston-idle (lurkerm-piston)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
   :trans (the-as (function none :behavior lurkerm-piston) rider-trans)
   :code (behavior ()
@@ -457,7 +450,6 @@
         (ja :num! (seek! max (-> self speed)))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior lurkerm-piston) rider-post)
   )
@@ -561,14 +553,13 @@
 
 ;; failed to figure out what this is:
 (defstate accordian-idle (accordian)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('stop)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (set! (-> self speed) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('stop)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (set! (-> self speed) 0.0)
+       )
+      )
     )
   :code (behavior ()
     (ja-no-eval :num! (loop!) :frame-num 0.0)
@@ -580,7 +571,6 @@
         (ja-post)
         )
       )
-    (none)
     )
   )
 
@@ -681,7 +671,6 @@
       (ja-eval)
       )
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   )
 
@@ -739,8 +728,8 @@
 
 ;; failed to figure out what this is:
 (defstate precurbridge-idle (precurbridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('go)
        (go precurbridge-activate)
        )
@@ -795,7 +784,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior precurbridge) ja-post)
   )
@@ -804,7 +792,6 @@
 (defstate precurbridge-activate (precurbridge)
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (the-as (function none :behavior precurbridge) rider-trans)
   :code (behavior ()
@@ -819,28 +806,24 @@
       (ja :num! (seek! max 0.25))
       )
     (go precurbridge-active #f)
-    (none)
     )
   :post (the-as (function none :behavior precurbridge) rider-post)
   )
 
 ;; failed to figure out what this is:
 (defstate precurbridge-active (precurbridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('bonk)
-         (let* ((gp-0 (the-as object (-> event param 0)))
-                (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-                (s5-0 (-> self root-override))
-                )
-           (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
-           ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
-           )
-         (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (let* ((gp-0 (the-as object (-> block param 0)))
+              (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
+              (s5-0 (-> self root-override))
+              )
+         (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
+         ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
          )
-        )
+       (activate! (-> self smush) -1.0 150 600 1.0 1.0)
+       )
       )
     )
   :trans (the-as (function none :behavior precurbridge) rider-trans)
@@ -875,7 +858,6 @@
       (ja :num! (loop! 0.4))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior precurbridge) rider-post)
   )
@@ -1139,7 +1121,6 @@
       (ja-post)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1165,7 +1146,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior maindoor) ja-post)
   )
@@ -1321,7 +1301,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior jngpusher) rider-post)
   )

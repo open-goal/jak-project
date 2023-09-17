@@ -60,7 +60,6 @@
              )
         (go-virtual citb-base-plat-active)
         )
-    (none)
     )
   :code (the-as (function none :behavior citb-base-plat) anim-loop)
   :post (the-as (function none :behavior citb-base-plat) ja-post)
@@ -76,7 +75,6 @@
         (go-virtual citb-base-plat-idle)
         )
     (rider-trans)
-    (none)
     )
   :code (the-as (function none :behavior citb-base-plat) anim-loop)
   :post (the-as (function none :behavior citb-base-plat) rider-post)
@@ -201,7 +199,6 @@
         (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
         )
     (plat-trans)
-    (none)
     )
   )
 
@@ -275,17 +272,16 @@
 
 (defstate citb-base-plat-idle (citb-stair-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (let ((v0-0 #t))
-                        (set! (-> self rise) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (let ((v0-0 #t))
+         (set! (-> self rise) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :trans (the-as (function none :behavior citb-stair-plat) #f)
   :code (behavior ()
@@ -317,7 +313,6 @@
       (transform-post)
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-stair-plat) #f)
   )
@@ -331,7 +326,6 @@
     (update-transforms! (-> self root-override))
     (logior! (-> self mask) (process-mask actor-pause))
     (anim-loop)
-    (none)
     )
   :post (the-as (function none :behavior citb-stair-plat) ja-post)
   )
@@ -460,11 +454,9 @@
           (go-virtual rigid-body-platform-float)
           )
       )
-    (none)
     )
   :code (behavior ()
     (anim-loop)
-    (none)
     )
   :post (the-as (function none :behavior citb-chain-plat) ja-post)
   )
@@ -477,11 +469,9 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -509,11 +499,9 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (anim-loop)
-    (none)
     )
   :post (the-as (function none :behavior citb-chain-plat) rigid-body-platform-post)
   )
@@ -546,7 +534,6 @@
       )
     (suspend)
     (go-virtual rigid-body-platform-idle)
-    (none)
     )
   :post (the-as (function none :behavior citb-chain-plat) rider-post)
   )
@@ -636,7 +623,6 @@
           (go-virtual citb-base-plat-idle)
           )
       )
-    (none)
     )
   )
 
@@ -698,7 +684,6 @@
       (* 65536.0 (get-current-phase (-> self sync)))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -761,7 +746,6 @@
         (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
         )
     (plat-trans)
-    (none)
     )
   )
 
@@ -833,13 +817,11 @@
              )
         (go citb-firehose-active)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-firehose) ja-post)
   )
@@ -860,13 +842,11 @@
           (go citb-firehose-blast)
           )
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-firehose) ja-post)
   )
@@ -885,13 +865,13 @@
   )
 
 (defstate citb-firehose-blast (citb-firehose)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (send-event
          proc
          'attack
-         (-> event param 0)
+         (-> block param 0)
          (static-attack-info ((mode 'damage) (shove-back (meters 6)) (shove-up (meters 3))))
          )
        )
@@ -923,7 +903,6 @@
       (ja :num! (seek!))
       )
     (go citb-firehose-active)
-    (none)
     )
   :post (the-as (function none :behavior citb-firehose) transform-post)
   )
@@ -994,8 +973,8 @@
 
 
 (defstate citb-exit-plat-idle (citb-exit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (let ((v1-3 (-> self entity extra perm)))
          (logior! (-> v1-3 status) (entity-perm-status user-set-from-cstage))
@@ -1011,7 +990,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1031,7 +1009,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-exit-plat) rider-post)
   )
@@ -1068,7 +1045,6 @@
         )
       (citb-exit-plat-move-player gp-0)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )
@@ -1085,7 +1061,6 @@
         )
       (citb-exit-plat-move-player gp-0)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-exit-plat) transform-post)
   )

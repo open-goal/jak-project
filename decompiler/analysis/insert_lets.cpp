@@ -1712,8 +1712,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   enum AttackInfoFieldKind { DEFAULT, VECTOR, METERS, DEGREES };
 
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak1 = {
-      {"vector", {1, VECTOR}},    {"mode", {5, DEFAULT}},     {"shove-back", {6, DEFAULT}},
-      {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}}, {"angle", {11, DEFAULT}},
+      {"vector", {1, VECTOR}},      {"attacker", {3, DEFAULT}}, {"mode", {5, DEFAULT}},
+      {"shove-back", {6, DEFAULT}}, {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}},
+      {"angle", {11, DEFAULT}},
   };
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak2 = {
       {"vector", {1, VECTOR}},

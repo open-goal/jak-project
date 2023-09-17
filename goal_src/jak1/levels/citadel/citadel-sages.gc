@@ -83,34 +83,33 @@
   )
 
 (defstate citb-sagecage-idle (citb-sagecage)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (local-vars (v0-3 basic))
-    (the-as object (case event-type
-                     (('disable-bars)
-                      (stop! (-> self sound))
-                      (sound-play "sagecage-off")
-                      (set! (-> self bars-on) #f)
-                      (the-as basic (citb-sagecage-update-collision))
-                      )
-                     (('enable-bars)
-                      (set! (-> self bars-on) #t)
-                      (the-as basic (citb-sagecage-update-collision))
-                      )
-                     (('start-cloning)
-                      (set! v0-3 #t)
-                      (set! (-> self cloning) (the-as symbol v0-3))
-                      v0-3
-                      )
-                     (('stop-cloning)
-                      (set! (-> self cloning) #f)
-                      (let ((v1-7 (-> self skel root-channel 0)))
-                        (set! v0-3 (-> self draw art-group data 3))
-                        (set! (-> v1-7 frame-group) (the-as art-joint-anim v0-3))
-                        )
-                      v0-3
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-3 object))
+    (case message
+      (('disable-bars)
+       (stop! (-> self sound))
+       (sound-play "sagecage-off")
+       (set! (-> self bars-on) #f)
+       (citb-sagecage-update-collision)
+       )
+      (('enable-bars)
+       (set! (-> self bars-on) #t)
+       (citb-sagecage-update-collision)
+       )
+      (('start-cloning)
+       (set! v0-3 #t)
+       (set! (-> self cloning) (the-as symbol v0-3))
+       v0-3
+       )
+      (('stop-cloning)
+       (set! (-> self cloning) #f)
+       (let ((v1-7 (-> self skel root-channel 0)))
+         (set! v0-3 (-> self draw art-group data 3))
+         (set! (-> v1-7 frame-group) (the-as art-joint-anim v0-3))
+         )
+       v0-3
+       )
+      )
     )
   :trans (the-as (function none :behavior citb-sagecage) rider-trans)
   :code (behavior ()
@@ -137,7 +136,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (rider-post)
@@ -145,7 +143,6 @@
       (update! (-> self sound))
       (citb-sagecage-draw-bars)
       )
-    (none)
     )
   )
 
@@ -368,7 +365,6 @@
     (send-event (handle->process (-> self cage)) 'disable-bars)
     (send-event (handle->process (-> self cage)) 'stop-cloning)
     ((-> (method-of-type process-taskable hidden) enter))
-    (none)
     )
   )
 
@@ -395,13 +391,13 @@
 
 (defstate play-anim (citb-sage)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('disable-bars)
        (send-event (handle->process (-> self cage)) 'disable-bars)
        )
       (else
-        ((-> (method-of-type process-taskable play-anim) event) proc arg1 event-type event)
+        ((-> (method-of-type process-taskable play-anim) event) proc argc message block)
         )
       )
     )
@@ -409,13 +405,13 @@
 
 (defstate idle (citb-sage)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
        (send-event (handle->process (-> self cage)) 'disable-bars)
        )
       (else
-        ((-> (method-of-type process-taskable idle) event) proc arg1 event-type event)
+        ((-> (method-of-type process-taskable idle) event) proc argc message block)
         )
       )
     )
@@ -431,14 +427,12 @@
             )
         )
     ((-> (method-of-type process-taskable idle) trans))
-    (none)
     )
   :post (behavior ()
     ((the-as (function none :behavior citb-sage) (-> (method-of-type process-taskable idle) post)))
     (if (-> self beam-on)
         (citb-sage-draw-beam)
         )
-    (none)
     )
   )
 
@@ -989,8 +983,8 @@
 
 (defstate play-anim (green-sagecage)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('spawn-robot)
        (let ((gp-0 (entity-by-name "robotboss-3")))
          (format 0 "robotboss ent ~A~%" gp-0)
@@ -1011,7 +1005,7 @@
          )
        )
       (else
-        ((-> (method-of-type citb-sage play-anim) event) proc arg1 event-type event)
+        ((-> (method-of-type citb-sage play-anim) event) proc argc message block)
         )
       )
     )
@@ -1074,7 +1068,6 @@
       )
     (set! (-> self draw bounds w) 10240.0)
     ((-> (method-of-type process-taskable play-anim) exit))
-    (none)
     )
   :trans (behavior ()
     (case (-> self which-movie)
@@ -1103,7 +1096,6 @@
        )
       )
     ((-> (method-of-type process-taskable play-anim) trans))
-    (none)
     )
   )
 
@@ -1125,7 +1117,6 @@
        )
       )
     ((-> (method-of-type citb-sage idle) trans))
-    (none)
     )
   )
 

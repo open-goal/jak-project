@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype citb-arm-section (process-drawable)
   ((sync           sync-info :inline :offset-assert 176)
    (cull-dir-local vector    :inline :offset-assert 192)
@@ -94,7 +93,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-arm-section) ja-post)
   )
@@ -153,7 +151,6 @@
         (restore-collide-with-as (-> self root-override))
         )
     (rider-post)
-    (none)
     )
   )
 
@@ -353,14 +350,13 @@
 
 
 (defstate citb-disc-idle (citb-disc)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 0.25))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 0.25))
+       #f
+       )
+      )
     )
   :trans (the-as (function none :behavior citb-disc) rider-trans)
   :code (behavior ()
@@ -375,7 +371,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-disc) rider-post)
   )
@@ -630,7 +625,6 @@
           )
       )
     (send-event (ppointer->process (-> self launcher)) 'trans (-> self basetrans))
-    (none)
     )
   )
 
@@ -724,12 +718,12 @@
 
 
 (defstate citb-robotboss-idle (citb-robotboss)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (sv-96 int) (sv-112 int))
     (the-as
-      object
+      symbol
       (cond
-        ((= event-type 'shield-off)
+        ((= message 'shield-off)
          (stop! (-> self sound))
          (if (-> self shield-on)
              (sound-play "robotcage-off")
@@ -737,17 +731,17 @@
          (set! (-> self shield-on) #f)
          #f
          )
-        ((= event-type 'shield-on)
+        ((= message 'shield-on)
          (let ((v0-3 #t))
            (set! (-> self shield-on) v0-3)
            v0-3
            )
          )
-        ((= event-type 'die)
+        ((= message 'die)
          (cleanup-for-death self)
          (the-as symbol (deactivate self))
          )
-        ((or (= event-type 'touch) (= event-type 'attack))
+        ((or (= message 'touch) (= message 'attack))
          (let ((s4-0 sound-play-by-name)
                (s3-0 (make-u128 #x7061 (the-as uint #x7a2d646c65696873)))
                (s2-0 (new-sound-id))
@@ -763,7 +757,7 @@
          (the-as symbol (send-event
                           proc
                           'shove
-                          (-> event param 0)
+                          (-> block param 0)
                           (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))
                           )
                  )
@@ -828,7 +822,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-robotboss) ja-post)
   )
@@ -837,7 +830,6 @@
   :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
@@ -907,8 +899,8 @@
   )
 
 (defstate citb-coil-idle (citb-coil)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go citb-coil-break)
        )
@@ -922,12 +914,10 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (ja-post)
-    (none)
     )
   )
 
@@ -941,7 +931,6 @@
       (ja :num! (seek!))
       )
     (go citb-coil-broken)
-    (none)
     )
   :post (the-as (function none :behavior citb-coil) ja-post)
   )
@@ -957,7 +946,6 @@
       (spawn (-> self part-off) (-> self root trans))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-coil) ja-post)
   )
@@ -1020,7 +1008,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-hose) ja-post)
   )
@@ -1035,7 +1022,6 @@
       (ja :num! (seek!))
       )
     (go citb-hose-idle)
-    (none)
     )
   :post (the-as (function none :behavior citb-hose) ja-post)
   )
@@ -1051,7 +1037,6 @@
       (ja :num! (seek!))
       )
     (anim-loop)
-    (none)
     )
   :post (the-as (function none :behavior citb-hose) ja-post)
   )
@@ -1214,8 +1199,8 @@
   )
 
 (defstate citb-generator-idle (citb-generator)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (if (-> self mushroom)
            (increment-success-for-hint (text-id citadel-generator))
@@ -1230,7 +1215,6 @@
     )
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (lods-assign! (-> self draw) (-> self normal-look))
@@ -1258,7 +1242,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior citb-generator) ja-post)
   )
@@ -1314,7 +1297,6 @@
         ; (set-continue! *game-info* "citadel-elevator")
         ; )
     (go citb-generator-broken)
-    (none)
     )
   :post (the-as (function none :behavior citb-generator) ja-post)
   )
@@ -1338,12 +1320,10 @@
         )
       )
     (anim-loop)
-    (none)
     )
   :post (behavior ()
     (spawn (-> self part-broken) (-> self root-override trans))
     (ja-post)
-    (none)
     )
   )
 
@@ -1445,8 +1425,8 @@
 
 
 (defstate citadelcam-idle (citadelcam)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (when (and (task-complete? *game-info* (game-task citadel-sage-blue))
                   (task-complete? *game-info* (game-task citadel-sage-red))
@@ -1461,7 +1441,6 @@
   :code (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (anim-loop)
-    (none)
     )
   )
 
@@ -1510,7 +1489,6 @@
       )
     (level-hint-spawn (text-id citadel-plat) "sksp0387" (the-as entity #f) *entity-pool* (game-task none))
     (go citadelcam-idle)
-    (none)
     )
   )
 
@@ -1556,7 +1534,6 @@
         )
       )
     (go-virtual battlecontroller-active)
-    (none)
     )
   )
 
@@ -1569,7 +1546,6 @@
           ((the-as (function none :behavior battlecontroller) t9-2))
           )
       )
-    (none)
     )
   )
 

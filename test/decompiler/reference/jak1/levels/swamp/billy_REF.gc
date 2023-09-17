@@ -107,15 +107,14 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior billy-snack) ja-post)
   )
 
 ;; failed to figure out what this is:
 (defstate billy-snack-idle (billy-snack)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('eat)
        (go billy-snack-eat)
        )
@@ -129,7 +128,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior billy-snack) ja-post)
   )
@@ -186,7 +184,6 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   :post (the-as (function none :behavior billy-rat) nav-enemy-common-post)
   )
@@ -204,7 +201,6 @@
       )
     (send-event (ppointer->process (-> self billy)) 'billy-rat-die)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -212,7 +208,6 @@
 (defstate billy-rat-eat (billy-rat)
   :trans (behavior ()
     (seek-to-point-toward-point! (-> self collide-info) (-> self destination) 131072.0 (seconds 0.01))
-    (none)
     )
   :code (behavior ()
     (send-event (handle->process (-> self snack)) 'eat)
@@ -227,7 +222,6 @@
     (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
     (go-virtual nav-enemy-chase)
-    (none)
     )
   :post (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
@@ -258,7 +252,6 @@
         (go billy-rat-eat)
         (go-virtual nav-enemy-chase)
         )
-    (none)
     )
   :post (the-as (function none :behavior billy-rat) nav-enemy-simple-post)
   )
@@ -279,7 +272,6 @@
           (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
           )
       )
-    (none)
     )
   )
 
@@ -288,7 +280,6 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -302,12 +293,10 @@
             )
         (go-virtual nav-enemy-victory)
         )
-    (none)
     )
   :post (behavior ()
     (swamp-rat-update-wiggle-target (-> self destination))
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -503,6 +492,7 @@
   )
 
 ;; definition for method 38 of type billy
+;; INFO: Return type mismatch object vs none.
 (defmethod process-taskable-method-38 billy ((obj billy))
   (case (current-status (-> obj tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
@@ -533,23 +523,22 @@
 
 ;; failed to figure out what this is:
 (defstate billy-done (billy)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('billy-rat-needs-destination)
-                      (let* ((gp-0 proc)
-                             (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
-                                       gp-0
-                                       )
-                                   )
-                             )
-                        (when v1-2
-                          (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
-                          (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
-                          )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('billy-rat-needs-destination)
+       (let* ((gp-0 proc)
+              (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) billy-rat))
+                        gp-0
                         )
-                      )
-                     )
-            )
+                    )
+              )
+         (when v1-2
+           (set! (-> (the-as billy-rat v1-2) dest-type) (the-as uint 1))
+           (get-random-point (-> self path-waypts) (-> (the-as billy-rat v1-2) destination))
+           )
+         )
+       )
+      )
     )
   :enter (behavior ()
     (init!
@@ -592,13 +581,11 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (billy-kill-all-but-farthy)
     (send-event *camera* 'change-target *target*)
     (send-event *camera* 'change-state *camera-base-mode* 0)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -628,12 +615,10 @@
         )
       )
     (spool-push *art-control* "billy-reject" 0 self -99.0)
-    (none)
     )
   :code (the-as (function none :behavior billy) process-taskable-anim-loop)
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -825,8 +810,8 @@
 
 ;; failed to figure out what this is:
 (defstate billy-playing (billy)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('billy-rat-die)
        (+! (-> self num-rats) -1)
        (let* ((f0-2 (rand-float-gen))
@@ -995,19 +980,16 @@
         (set! a1-8 (car gp-2))
         )
       )
-    (none)
     )
   :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (restore-load-state-and-cleanup *load-state*)
     (set! (-> *ACTOR-bank* birth-max) 1000)
     (remove-setting! 'music)
-    (none)
     )
   :trans (behavior ()
     (spool-push *art-control* "billy-resolution" 0 self -99.0)
     (spool-push *art-control* "billy-reject" 0 self -99.0)
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1020,11 +1002,9 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -1045,7 +1025,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1119,7 +1098,6 @@
   :exit (behavior ()
     (billy-kill-all-but-farthy)
     ((-> (method-of-type process-taskable play-anim) exit))
-    (none)
     )
   )
 
@@ -1153,7 +1131,6 @@
           )
         )
       )
-    (none)
     )
   )
 

@@ -7,8 +7,8 @@
 
 ;; DECOMP BEGINS
 
-;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
-;; WARN: Unsupported inline assembly instruction kind - [jr ra]
+;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod compute-alignment! align-control ((obj align-control))
   (local-vars (a0-9 symbol) (s7-0 none) (ra-0 int))
   (with-pp
@@ -24,23 +24,13 @@
             ((or a2-0 (begin (set! a1-0 'stack1) (= a0-4 a1-0)))
              )
             (else
-                                        ; TODO - support decompiling the return-from-thread
-                                        ; TODO - properly decompile the `go`to
-                                        ; (when (!= (-> v1-5 type) art-joint-anim)
-                                        ;  (let
-                                        ;   ((t9-0 (the-as (function object object object object) enter-state))
-                                        ;    (a0-7 "align joint-anim")
-                                        ;    )
-                                        ;   (set! (-> pp next-state) process-drawable-art-error)
-                                        ;   (t9-0 a0-7 (the-as none a1-0) a2-0)
-                                        ;   )
-                                        ;  (.lw ra-0 return-from-thread s7-0)
-                                        ;  (.jr ra-0)
-                                        ;  (nop!)
-                                        ;  0
-                                        ;  )
-             0
-             )
+              (when (!= (-> v1-5 type) art-joint-anim)
+                ;; og:preserve-this
+                (go process-drawable-art-error "align joint-anim")
+                (abandon-thread)
+                0
+                )
+              )
             )
           )
         )
@@ -133,7 +123,7 @@
   )
 
 (defmethod align! align-control ((obj align-control) (arg0 align-opts) (arg1 float) (arg2 float) (arg3 float))
-  (when (zero? (logand (-> obj flags) (align-flags disabled)))
+  (when (not (logtest? (-> obj flags) (align-flags disabled)))
     (let* ((a0-1 (-> obj process))
            (t9-0 (method-of-object a0-1 apply-alignment))
            (v1-4 (-> obj delta))
@@ -163,7 +153,7 @@
   )
 
 (defmethod align-vel-and-quat-only! align-control ((obj align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
-  (when (zero? (logand (-> obj flags) (align-flags disabled)))
+  (when (not (logtest? (-> obj flags) (align-flags disabled)))
     (let ((s5-0 (-> obj delta)))
       (let ((s3-0 (-> obj process root transv)))
         (if (logtest? arg0 (align-opts adjust-y-vel))
@@ -190,6 +180,3 @@
     )
   (-> obj process root)
   )
-
-
-

@@ -721,13 +721,11 @@
       (set! (-> self blend-to-type) (the-as uint 0))
       0
       )
-    (none)
     )
   :trans (behavior ()
     (if (not (logtest? (-> *camera* master-options) 2))
         (cam-slave-go cam-free-floating)
         )
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-32 int) (sv-48 int))
@@ -806,7 +804,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -828,7 +825,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -1156,12 +1152,9 @@
   (apply-all
     (-> self link)
     (lambda ((arg0 entity-actor) (arg1 (pointer symbol)))
-      (the-as
-        object
-        (when (and (= (-> arg0 etype) periscope) (not (logtest? (-> arg0 extra perm status) (entity-perm-status complete))))
-          (set! (-> arg1 0) #f)
-          #t
-          )
+      (when (and (= (-> arg0 etype) periscope) (not (logtest? (-> arg0 extra perm status) (entity-perm-status complete))))
+        (set! (-> arg1 0) #f)
+        #t
         )
       )
     (& sv-16)
@@ -1276,8 +1269,8 @@
 
 ;; failed to figure out what this is:
 (defstate periscope-idle (periscope)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('activate)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go periscope-activate)
@@ -1286,12 +1279,10 @@
     )
   :enter (behavior ()
     (clear-collide-with-as (-> self root-override))
-    (none)
     )
   :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :trans periscope-debug-trans
   :code (behavior ()
@@ -1309,7 +1300,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1318,7 +1308,6 @@
   :exit (behavior ()
     (sound-stop (-> self rise-sound-id))
     (sound-play "eco-tower-stop" :position (the-as symbol (-> self base)))
-    (none)
     )
   :trans periscope-debug-trans
   :code (behavior ()
@@ -1344,7 +1333,6 @@
       )
     (set! (-> self raised?) #t)
     (go periscope-wait-for-power-input)
-    (none)
     )
   :post periscope-post
   )
@@ -1369,7 +1357,6 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior periscope) ja-post)
   )
@@ -1382,8 +1369,8 @@
 
 ;; failed to figure out what this is:
 (defstate periscope-wait-for-player (periscope)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
                                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
@@ -1391,7 +1378,7 @@
                                 )
                   )
          (when ((method-of-type touching-shapes-entry prims-touching?)
-                (the-as touching-shapes-entry (-> event param 0))
+                (the-as touching-shapes-entry (-> block param 0))
                 (the-as collide-shape-moving (-> self root-override))
                 (the-as uint 1)
                 )
@@ -1416,7 +1403,6 @@
     )
   :exit (behavior ()
     (sound-stop (-> self grips-sound-id))
-    (none)
     )
   :code (behavior ()
     (hide-hud)
@@ -1505,7 +1491,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (behavior ()
     (if (-> self grips-moving?)
@@ -1514,7 +1499,6 @@
         )
     (periscope-draw-beam-impact)
     (ja-post)
-    (none)
     )
   )
 
@@ -1525,11 +1509,9 @@
     (periscope-find-reflection-angles)
     (set! (-> self turn) (-> self target-turn))
     (set! (-> self tilt) (-> self target-tilt))
-    (none)
     )
   :trans (behavior ()
     (hide-hud)
-    (none)
     )
   :code (behavior ()
     (set! (-> self lock-time) (-> *display* base-frame-counter))
@@ -1731,13 +1713,11 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (periscope-draw-beam)
     (periscope-update-joints)
     (ja-post)
-    (none)
     )
   )
 
@@ -1764,7 +1744,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post periscope-post
   )
@@ -1912,11 +1891,9 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (draw-power-beam (-> self reflector-trans) (-> self next-reflector-trans))
-    (none)
     )
   )
 
@@ -1936,8 +1913,8 @@
 
 ;; failed to figure out what this is:
 (defstate reflector-mirror-idle (reflector-mirror)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (sound-play "mirror-smash")
        (go reflector-mirror-broken #f)
@@ -1946,7 +1923,6 @@
     )
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new-stack-vector0)))
@@ -1971,7 +1947,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior reflector-mirror) ja-post)
   )
@@ -2031,7 +2006,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 

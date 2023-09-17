@@ -12,7 +12,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defpartgroup group-swamp-spike-up
   :id 289
   :duration (seconds 0.017)
@@ -264,22 +263,20 @@
           )
         )
       )
-    (none)
     )
   :post swamp-spike-post
   )
 
 (defstate swamp-spike-gate-up (swampgate)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (let ((v0-0 #t))
-                        (set! (-> self open-gate) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (let ((v0-0 #t))
+         (set! (-> self open-gate) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -305,7 +302,6 @@
       (ja :num! (seek!))
       )
     (go swamp-spike-gate-down)
-    (none)
     )
   :post (the-as (function none :behavior swampgate) swamp-spike-post)
   )
@@ -314,7 +310,6 @@
   :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior swampgate) swamp-spike-post)
   )
@@ -412,16 +407,15 @@
               )
 
 (defstate balance-plat-idle (balance-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('grow)
-                      (let ((v0-0 #t))
-                        (set! (-> self got-grow) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('grow)
+       (let ((v0-0 #t))
+         (set! (-> self got-grow) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :trans (the-as (function none :behavior balance-plat) rider-trans)
   :code (behavior ()
@@ -470,7 +464,6 @@
       (set! (-> self root-override trans y) (+ (-> self y-init) (-> self y-offset)))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior balance-plat) rider-post)
   )
@@ -624,16 +617,15 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   :post (the-as (function none :behavior swamp-rock) ja-post)
   )
 
 (defstate swamp-rock-idle (swamp-rock)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (if (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+       (if (and (>= argc 2) (= (-> block param 1) 'eco-yellow))
            (go swamp-rock-break)
            )
        )
@@ -645,7 +637,6 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -767,13 +758,11 @@
   :virtual #t
   :enter (behavior ()
     (ja-channel-set! 0)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior tar-plat) ja-post)
   )
@@ -801,7 +790,6 @@
         (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (-> *display* seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -810,7 +798,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior tar-plat) rigid-body-platform-post)
   )
@@ -912,7 +899,6 @@
         )
       )
     (go-virtual battlecontroller-active)
-    (none)
     )
   )
 
@@ -925,6 +911,5 @@
        (-> (method-of-type battlecontroller battlecontroller-die) code)
        )
      )
-    (none)
     )
   )

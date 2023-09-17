@@ -897,6 +897,7 @@
   )
 
 ;; definition for method 48 of type fisher
+;; INFO: Return type mismatch object vs none.
 (defmethod draw-npc-shadow fisher ((obj fisher))
   (-> obj draw shadow-ctrl)
   (cond
@@ -989,7 +990,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior fisher-fish) ja-post)
   )
@@ -1043,7 +1043,6 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   )
 
@@ -1101,7 +1100,6 @@
         (send-event (ppointer->process (-> self parent)) 'fisher-fish-die 1)
         )
       )
-    (none)
     )
   )
 
@@ -1267,6 +1265,7 @@
   )
 
 ;; definition for method 38 of type fisher
+;; INFO: Return type mismatch object vs none.
 (defmethod process-taskable-method-38 fisher ((obj fisher))
   (case (current-status (-> obj tasks))
     (((task-status need-reminder-a) (task-status need-reminder))
@@ -1419,14 +1418,12 @@
         (send-event *target* 'lose)
         )
       )
-    (none)
     )
   :exit (behavior ()
     (when (and *target* (the-as target #f))
       (send-event *target* 'end-mode)
       (process-grab? *target*)
       )
-    (none)
     )
   :trans (behavior ()
     (set! *camera-look-through-other* 2)
@@ -1478,7 +1475,6 @@
         )
       )
     (spool-push *art-control* "fisher-reject" 0 self -99.0)
-    (none)
     )
   :code (the-as (function none :behavior fisher) process-taskable-anim-loop)
   :post (the-as (function none :behavior fisher) ja-post)
@@ -1604,18 +1600,18 @@
 
 ;; failed to figure out what this is:
 (defstate fisher-playing (fisher)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-2 object))
-    (case event-type
+    (case message
       (('fisher-fish-die)
        (sound-play "fish-miss")
-       (set! v0-2 (+ (-> self missed) (-> event param 0)))
+       (set! v0-2 (+ (-> self missed) (-> block param 0)))
        (set! (-> self missed) (the-as int v0-2))
        v0-2
        )
       (('fisher-fish-caught)
        (send-event *target* 'bounce)
-       (set! v0-2 (+ (-> self caught) (-> event param 0)))
+       (set! v0-2 (+ (-> self caught) (-> block param 0)))
        (set! (-> self caught) (the-as int v0-2))
        v0-2
        )
@@ -1649,7 +1645,6 @@
       )
     (send-event *camera* 'change-to-entity-by-name "camera-152")
     (init! (-> self query) (the-as string #f) 40 150 25 #t (lookup-text! *common-text* (text-id quit) #f))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'ambient-volume)
@@ -1673,12 +1668,10 @@
     (send-event *camera* 'change-state *camera-base-mode* 0)
     (send-event *camera* 'clear-entity)
     0
-    (none)
     )
   :trans (behavior ()
     (spool-push *art-control* "fisher-resolution" 0 self -99.0)
     (spool-push *art-control* "fisher-reject" 0 self -99.0)
-    (none)
     )
   :code (behavior ()
     (set! *display-profile* #f)
@@ -1713,11 +1706,9 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -1729,7 +1720,6 @@
     (if (send-event *target* 'change-mode 'fishing self)
         (go fisher-playing)
         )
-    (none)
     )
   )
 
@@ -1746,7 +1736,6 @@
       #f
       (lookup-text! *common-text* (text-id quit) #f)
       )
-    (none)
     )
   )
 
@@ -1801,29 +1790,28 @@
 ;; failed to figure out what this is:
 (defstate play-accept (fisher)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 rgbaf))
-    (the-as object (case event-type
-                     (('emissive-on)
-                      (set-vector! (-> self draw color-mult) 0.6 0.6 0.6 1.0)
-                      (set! v0-0 (-> self draw color-emissive))
-                      (set! (-> v0-0 x) 0.6)
-                      (set! (-> v0-0 y) 0.6)
-                      (set! (-> v0-0 z) 0.6)
-                      (set! (-> v0-0 w) 0.0)
-                      v0-0
-                      )
-                     (('emissive-off)
-                      (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
-                      (set! v0-0 (-> self draw color-emissive))
-                      (set! (-> v0-0 x) 0.0)
-                      (set! (-> v0-0 y) 0.0)
-                      (set! (-> v0-0 z) 0.0)
-                      (set! (-> v0-0 w) 0.0)
-                      v0-0
-                      )
-                     )
-            )
+    (case message
+      (('emissive-on)
+       (set-vector! (-> self draw color-mult) 0.6 0.6 0.6 1.0)
+       (set! v0-0 (-> self draw color-emissive))
+       (set! (-> v0-0 x) 0.6)
+       (set! (-> v0-0 y) 0.6)
+       (set! (-> v0-0 z) 0.6)
+       (set! (-> v0-0 w) 0.0)
+       v0-0
+       )
+      (('emissive-off)
+       (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
+       (set! v0-0 (-> self draw color-emissive))
+       (set! (-> v0-0 x) 0.0)
+       (set! (-> v0-0 y) 0.0)
+       (set! (-> v0-0 z) 0.0)
+       (set! (-> v0-0 w) 0.0)
+       v0-0
+       )
+      )
     )
   :trans (behavior ()
     (when (-> self training)
@@ -1845,7 +1833,6 @@
           (t9-14)
           )
       )
-    (none)
     )
   )
 
@@ -1970,7 +1957,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (if (!= (ja-group) (get-art-elem self))
@@ -2000,7 +1986,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -2073,18 +2058,18 @@
 
 ;; failed to figure out what this is:
 (defstate target-fishing (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((= event-type 'bounce)
+      ((= message 'bounce)
        (set-zero! (-> self control unknown-smush00))
        (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0)
        )
-      ((= event-type 'lose)
-       (set! (-> self control unknown-uint20) (the-as uint event-type))
-       event-type
+      ((= message 'lose)
+       (set! (-> self control unknown-uint20) (the-as uint message))
+       message
        )
       (else
-        ((-> target-grab event) proc arg1 event-type event)
+        ((-> target-grab event) proc argc message block)
         )
       )
     )
@@ -2093,7 +2078,6 @@
     (logior! (-> self state-flags) (state-flags invulnerable))
     (set-zero! (-> self control unknown-smush00))
     (set! (-> self control unknown-uint20) (the-as uint #f))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags invulnerable))
@@ -2104,7 +2088,6 @@
         )
       )
     (-> target-periscope exit)
-    (none)
     )
   :code (behavior ((arg0 handle))
     (let ((v1-1 (handle->process arg0)))
@@ -2203,7 +2186,6 @@
        (anim-loop)
        )
       )
-    (none)
     )
   :post target-post
   )

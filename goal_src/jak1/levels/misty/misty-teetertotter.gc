@@ -9,7 +9,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype teetertotter (process-drawable)
   ((launched-player   basic  :offset-assert 176)
    (in-launch-window  basic  :offset-assert 180)
@@ -41,10 +40,10 @@
   )
 
 (defstate teetertotter-idle (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> arg3 param 1)
+       (case (-> block param 1)
          (('flop)
           (when (target-on-end-of-teetertotter? self)
             (set! (-> self in-launch-window) #f)
@@ -56,13 +55,7 @@
        )
       (('bonk)
        (when (target-on-end-of-teetertotter? self)
-         (level-hint-spawn
-           (text-id misty-teetertotter)
-           "sksp0070"
-           (the-as entity #f)
-           *entity-pool*
-           (game-task none)
-           )
+         (level-hint-spawn (text-id misty-teetertotter) "sksp0070" (the-as entity #f) *entity-pool* (game-task none))
          (go teetertotter-bend)
          )
        )
@@ -73,44 +66,40 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior teetertotter) transform-post)
   )
 
 (defstate teetertotter-launch (teetertotter)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as
-      object
-      (when (= arg2 'touch)
-        (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                  (the-as touching-shapes-entry (-> arg3 param 0))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (= message 'touch)
+      (if (and ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> block param 0))
+                (the-as collide-shape-moving (-> self root))
+                (the-as uint 1)
+                )
+               (-> self rock-is-dangerous)
+               )
+          (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'deadly))))
+          )
+      (when (and ((method-of-type touching-shapes-entry prims-touching?)
+                  (the-as touching-shapes-entry (-> block param 0))
                   (the-as collide-shape-moving (-> self root))
-                  (the-as uint 1)
+                  (the-as uint 2)
                   )
-                 (-> self rock-is-dangerous)
+                 (target-on-end-of-teetertotter? self)
+                 (not (-> self launched-player))
+                 (-> self in-launch-window)
                  )
-            (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'deadly))))
-            )
-        (when (and ((method-of-type touching-shapes-entry prims-touching?)
-                    (the-as touching-shapes-entry (-> arg3 param 0))
-                    (the-as collide-shape-moving (-> self root))
-                    (the-as uint 2)
-                    )
-                   (target-on-end-of-teetertotter? self)
-                   (not (-> self launched-player))
-                   (-> self in-launch-window)
-                   )
-          (when (send-event
-                  arg0
-                  'shove
-                  #f
-                  (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
-                  )
-            (let ((v0-0 #t))
-              (set! (-> self launched-player) v0-0)
-              v0-0
-              )
+        (when (send-event
+                proc
+                'shove
+                #f
+                (static-attack-info ((shove-back (meters 0)) (shove-up (meters 13)) (angle 'jump) (control 1.0)))
+                )
+          (let ((v0-0 #t))
+            (set! (-> self launched-player) v0-0)
+            v0-0
             )
           )
         )
@@ -130,7 +119,6 @@
       (ja :num! (seek!))
       )
     (go teetertotter-idle)
-    (none)
     )
   :post (the-as (function none :behavior teetertotter) rider-post)
   )
@@ -143,7 +131,6 @@
       (ja :num! (seek!))
       )
     (go teetertotter-idle)
-    (none)
     )
   :post (the-as (function none :behavior teetertotter) rider-post)
   )
@@ -220,7 +207,3 @@
   (go teetertotter-idle)
   (none)
   )
-
-
-
-

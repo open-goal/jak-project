@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype sun-iris-door (process-drawable)
   ((root-override          collide-shape         :offset        112)
    (timeout                float                 :offset-assert 176)
@@ -79,15 +78,15 @@
   )
 
 (defstate sun-iris-door-closed (sun-iris-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go sun-iris-door-opening)
        )
       (('move-to)
        (set! (-> self move-to?) #t)
-       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
-       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1)))
        )
       )
     )
@@ -97,14 +96,12 @@
           (go sun-iris-door-opening)
           )
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (when (-> self move-to?)
@@ -113,20 +110,19 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       (ja-post)
       )
-    (none)
     )
   )
 
 (defstate sun-iris-door-opening (sun-iris-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go sun-iris-door-closing)
        )
       (('move-to)
        (set! (-> self move-to?) #t)
-       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
-       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1)))
        )
       )
     )
@@ -139,7 +135,6 @@
       )
     (ja-post)
     (go sun-iris-door-open)
-    (none)
     )
   :post (behavior ()
     (cond
@@ -153,7 +148,6 @@
         (transform-post)
         )
       )
-    (none)
     )
   )
 
@@ -210,8 +204,8 @@
   )
 
 (defstate sun-iris-door-open (sun-iris-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (let ((v0-0 (the-as object (-> *display* base-frame-counter))))
          (set! (-> self state-time) (the-as time-frame v0-0))
@@ -223,8 +217,8 @@
        )
       (('move-to)
        (set! (-> self move-to?) #t)
-       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
-       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1)))
        )
       )
     )
@@ -232,12 +226,10 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (clear-collide-with-as (-> self root-override))
     (logior! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :trans (behavior ()
     (when (-> self proximity?)
@@ -250,14 +242,12 @@
              )
         (go sun-iris-door-closing)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (when (-> self move-to?)
@@ -266,20 +256,19 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       (ja-post)
       )
-    (none)
     )
   )
 
 (defstate sun-iris-door-closing (sun-iris-door)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go sun-iris-door-opening)
        )
       (('move-to)
        (set! (-> self move-to?) #t)
-       (set! (-> self move-to-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
-       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> arg3 param 1)))
+       (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+       (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1)))
        )
       )
     )
@@ -292,7 +281,6 @@
       )
     (ja-post)
     (go sun-iris-door-closed)
-    (none)
     )
   :post (behavior ()
     (cond
@@ -306,7 +294,6 @@
         (transform-post)
         )
       )
-    (none)
     )
   )
 
@@ -409,7 +396,3 @@
       )
   (none)
   )
-
-
-
-

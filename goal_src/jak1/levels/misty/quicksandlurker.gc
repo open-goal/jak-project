@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defpartgroup group-quicksandlurker-missile
   :id 198
   :bounds (static-bspherem 0 0 0 3)
@@ -302,19 +301,19 @@
 
 
 (defstate quicksandlurker-missile-idle (quicksandlurker-missile)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (when (cond
                ((= (-> proc type) target)
-                (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
+                (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'explode))))
                 )
                (else
                  (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-4 from) self)
                    (set! (-> a1-4 num-params) 4)
                    (set! (-> a1-4 message) 'attack)
-                   (set! (-> a1-4 param 0) (-> event param 0))
+                   (set! (-> a1-4 param 0) (-> block param 0))
                    (set! (-> a1-4 param 1) (the-as uint 'explode))
                    (let ((v1-12 (+ *global-attack-id* 1)))
                      (set! *global-attack-id* v1-12)
@@ -333,7 +332,6 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
@@ -362,11 +360,9 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (update-transforms! (-> self root-override))
-    (none)
     )
   )
 
@@ -389,7 +385,6 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -568,11 +563,9 @@
   :event (the-as (function process int symbol event-message-block object :behavior quicksandlurker) #f)
   :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :trans (behavior ()
     (if (and *target*
@@ -580,13 +573,11 @@
              )
         (go quicksandlurker-wait)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior quicksandlurker) ja-post)
   )
@@ -611,7 +602,6 @@
         (seek! (-> self y-offset) 1228.8 (* 20480.0 (-> *display* seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -644,7 +634,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -658,7 +647,6 @@
       (ja :num! (seek!))
       )
     (go quicksandlurker-wait)
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -672,7 +660,6 @@
         (go quicksandlurker-wait)
         )
     (quicksandlurker-check-hide-transition)
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -701,7 +688,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -750,7 +736,6 @@
         )
       )
     (go quicksandlurker-track)
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -777,7 +762,6 @@
         )
       )
     (go quicksandlurker-track)
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -786,11 +770,9 @@
   :event quicksandlurker-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :exit (behavior ()
     (restore-collide-with-as (-> self root-override))
-    (none)
     )
   :trans (behavior ()
     (if (not *target*)
@@ -814,7 +796,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -839,7 +820,6 @@
       (orient-to-face-target)
       (suspend)
       )
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -865,7 +845,6 @@
       (ja :num! (seek!))
       )
     (go quicksandlurker-track)
-    (none)
     )
   :post quicksandlurker-post
   )
@@ -884,7 +863,6 @@
       (ja :num! (seek!))
       )
     (cleanup-for-death self)
-    (none)
     )
   :post quicksandlurker-post
   )

@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype camera-voicebox (camera-slave)
   ()
   :heap-base #x9a0
@@ -112,8 +111,8 @@
 
 (defstate enter (voicebox)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual exit)
        )
@@ -124,7 +123,6 @@
     (if (< 0.1 (-> self blend))
         (point-toward-point-clear-roll-pitch! (-> self root) (target-pos 0))
         )
-    (none)
     )
   :code (behavior ()
     (set-setting! 'sound-flava #f 20.0 (music-flava assistant))
@@ -151,7 +149,6 @@
       )
     (set! (-> self blend) 0.0)
     (go-virtual idle)
-    (none)
     )
   :post (the-as (function none :behavior voicebox) ja-post)
   )
@@ -165,7 +162,6 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   :post (the-as (function none :behavior voicebox) ja-post)
   )
@@ -192,7 +188,6 @@
     (send-event (ppointer->process (-> self parent-override)) 'go empty-state)
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior voicebox) ja-post)
   )
@@ -212,10 +207,9 @@
   :event (-> cam-string event)
   :enter (-> cam-string enter)
   :trans (behavior ()
-    (if (zero? (logand (-> *camera* master-options) 2))
+    (if (not (logtest? (-> *camera* master-options) 2))
         (deactivate self)
         )
-    (none)
     )
   :code (-> cam-string code)
   )
@@ -230,7 +224,3 @@
       )
     )
   )
-
-
-
-

@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype snowcam (pov-camera)
   ((seq uint64  :offset-assert 224)
    )
@@ -105,7 +104,6 @@
         )
       )
     (go-virtual pov-camera-done-playing)
-    (none)
     )
   )
 
@@ -276,19 +274,18 @@
   )
 
 (defstate snow-eggtop-idle-up (snow-eggtop)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('notify)
-                      (case (-> event param 0)
-                        (('pickup)
-                         (if (type-type? (-> proc type) fuel-cell)
-                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 4)
-                             )
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (if (type-type? (-> proc type) fuel-cell)
+              (save-reminder (get-task-control (-> self entity extra perm task)) 1 4)
+              )
+          )
+         )
+       )
+      )
     )
   :trans (behavior ()
     (if (and (not (-> self child)) (task-complete? *game-info* (-> self entity extra perm task)))
@@ -296,7 +293,6 @@
         )
     (spawn (-> self part) (-> self root-override trans))
     (update! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
@@ -306,23 +302,22 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate snow-eggtop-activate (snow-eggtop)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notify)
        (when (= (-> proc type) snowcam)
          (cond
-           ((= (-> event param 0) 'die)
+           ((= (-> block param 0) 'die)
             (if *target*
                 (+! (-> *target* control trans y) 1024.0)
                 )
             (go snow-eggtop-idle-down)
             )
-           ((= (-> event param 0) 'cut)
+           ((= (-> block param 0) 'cut)
             (stop! (-> self sound))
             (set! (-> self play-sound?) #f)
             #f
@@ -336,13 +331,11 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (set! (-> self play-sound?) #t)
-    (none)
     )
   :exit (behavior ()
     (stop! (-> self sound))
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (the-as (function none :behavior snow-eggtop) rider-trans)
   :code (behavior ()
@@ -410,7 +403,6 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-eggtop) rider-post)
   )
@@ -429,7 +421,6 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -510,14 +501,13 @@
               )
 
 (defstate snowpusher-idle (snowpusher)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -542,7 +532,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior snowpusher) pusher-post)
   )
@@ -632,14 +621,13 @@
               )
 
 (defstate snow-spatula-idle (snow-spatula)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (baseplat-method-22 self)
-                      (sound-play "snow-spat-short" :vol 75 :pitch 0.75)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       (sound-play "snow-spat-short" :vol 75 :pitch 0.75)
+       )
+      )
     )
   :trans (the-as (function none :behavior snow-spatula) plat-trans)
   :code (behavior ()
@@ -676,7 +664,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-spatula) plat-post)
   )
@@ -904,8 +891,8 @@
   )
 
 (defstate snow-fort-gate-idle-closed (snow-fort-gate)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notice)
        (go snow-fort-gate-activate)
        )
@@ -916,7 +903,6 @@
       (level-hint-spawn (text-id snow-fort-hint) "sksp0345" (the-as entity #f) *entity-pool* (game-task none))
       (close-specific-task! (game-task snow-fort) (task-status need-hint))
       )
-    (none)
     )
   :code (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! min)
@@ -927,19 +913,16 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate snow-fort-gate-activate (snow-fort-gate)
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (stop! (-> self sound))
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -982,7 +965,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-fort-gate) transform-post)
   )
@@ -998,7 +980,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1174,8 +1155,8 @@
   )
 
 (defstate snow-gears-idle (snow-gears)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notice)
        (logclear! (-> self mask) (process-mask actor-pause))
        (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -1190,14 +1171,12 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate snow-gears-activate (snow-gears)
   :trans (behavior ()
     (snow-gears-method-20 self)
-    (none)
     )
   :code (behavior ()
     (sound-play "eng-start-up")
@@ -1219,7 +1198,6 @@
       (suspend)
       )
     (go snow-gears-halt)
-    (none)
     )
   :post (the-as (function none :behavior snow-gears) ja-post)
   )
@@ -1227,11 +1205,9 @@
 (defstate snow-gears-halt (snow-gears)
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :trans (behavior ()
     (snow-gears-method-20 self)
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max 0.35) :frame-num 0.0)
@@ -1248,7 +1224,6 @@
       (ja :num! (seek! max 0.85))
       )
     (go snow-gears-stopped)
-    (none)
     )
   :post (the-as (function none :behavior snow-gears) ja-post)
   )
@@ -1261,7 +1236,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1334,7 +1308,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1343,7 +1316,6 @@
   :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (the-as (function none :behavior snow-switch) rider-trans)
   :code (behavior ()
@@ -1403,7 +1375,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-switch) rider-post)
   )
@@ -1419,7 +1390,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1510,8 +1480,8 @@
               )
 
 (defstate snow-log-wait-for-master (snow-log)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go snow-log-activate)
        )
@@ -1548,13 +1518,12 @@
           )
         )
       )
-    (none)
     )
   )
 
 (defstate snow-log-hidden (snow-log)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (process-entity-status! self (entity-perm-status bit-3) #t)
@@ -1569,7 +1538,6 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1578,12 +1546,10 @@
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (the-as (function none :behavior snow-log) rider-trans)
   :code (behavior ()
@@ -1602,7 +1568,6 @@
         )
       )
     (go snow-log-active)
-    (none)
     )
   :post (the-as (function none :behavior snow-log) rider-post)
   )
@@ -1639,7 +1604,6 @@
           )
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-log) rider-post)
   )
@@ -1732,7 +1696,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1741,7 +1704,6 @@
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (the-as (function none :behavior snow-log-button) rider-trans)
   :code (behavior ()
@@ -1777,7 +1739,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior snow-log-button) rider-post)
   )
@@ -1792,7 +1753,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 

@@ -690,6 +690,7 @@
 
 ;; definition for function balloonlurker-post
 ;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs none.
 (defbehavior balloonlurker-post balloonlurker ()
   (set! (-> self anim-frame) (ja-frame-num 0))
   (cond
@@ -778,7 +779,6 @@
   :trans (behavior ()
     (ja :num! (loop!))
     (set! (-> self anim-frame) (ja-frame-num 0))
-    (none)
     )
   :code (behavior ()
     (when (not (ja-group? balloonlurker-idle-ja))
@@ -788,7 +788,6 @@
       )
     (ja-post)
     (anim-loop)
-    (none)
     )
   :post balloonlurker-post
   )
@@ -827,7 +826,6 @@
         (go balloonlurker-die)
         (go balloonlurker-patrol)
         )
-    (none)
     )
   :post balloonlurker-post
   )
@@ -839,7 +837,6 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self vulnerable) #f)
     (set! (-> self dead) #t)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-27 symbol) (sv-16 symbol) (sv-20 (pointer process-tree)) (sv-24 entity-actor))
@@ -892,7 +889,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   :post balloonlurker-post
   )
@@ -920,8 +916,8 @@
 
 ;; failed to figure out what this is:
 (defstate balloonlurker-pilot-idle (balloonlurker-pilot)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (send-event (ppointer->process (-> self parent-override)) 'die)
        (go balloonlurker-pilot-die)
@@ -936,14 +932,12 @@
       (suspend)
       (ja :num-func num-func-identity :frame-num (-> self parent-override 0 anim-frame))
       )
-    (none)
     )
   :post (behavior ()
     (set! (-> self root-override trans quad) (-> self parent-override 0 root-overlay trans quad))
     (quaternion-copy! (-> self root-override quat) (-> self parent-override 0 root-overlay quat))
     (update-transforms! (-> self root-override))
     (ja-post)
-    (none)
     )
   )
 
@@ -978,7 +972,6 @@
       (ja :num! (seek!))
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (vector-v++!
@@ -987,7 +980,6 @@
       )
     (integrate-no-collide! (-> self root-override) (-> self root-override transv))
     (ja-post)
-    (none)
     )
   )
 

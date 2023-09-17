@@ -84,8 +84,8 @@
 ;; failed to figure out what this is:
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
        (go-virtual open #f)
        )
@@ -96,31 +96,29 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('brightness)
-                      (let ((f0-0 (the-as float (-> event param 0)))
-                            (f1-0 (the-as float (-> event param 1)))
-                            )
-                        (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
-                        (let ((v0-0 (-> self draw color-emissive)))
-                          (set! (-> v0-0 x) f1-0)
-                          (set! (-> v0-0 y) f1-0)
-                          (set! (-> v0-0 z) f1-0)
-                          (set! (-> v0-0 w) f1-0)
-                          v0-0
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('brightness)
+       (let ((f0-0 (the-as float (-> block param 0)))
+             (f1-0 (the-as float (-> block param 1)))
+             )
+         (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
+         (let ((v0-0 (-> self draw color-emissive)))
+           (set! (-> v0-0 x) f1-0)
+           (set! (-> v0-0 y) f1-0)
+           (set! (-> v0-0 z) f1-0)
+           (set! (-> v0-0 w) f1-0)
+           v0-0
+           )
+         )
+       )
+      )
     )
   :code (behavior ((arg0 symbol))
     (case (-> self type)
@@ -145,7 +143,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -236,7 +233,6 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -322,7 +318,6 @@
       :to *entity-pool*
       )
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -338,7 +333,6 @@
       (transform-post)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -378,26 +372,23 @@
 
 ;; failed to figure out what this is:
 (defstate target-final-door (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    ((-> target-grab event) proc arg1 event-type event)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    ((-> target-grab event) proc argc message block)
     )
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
     (set! (-> self control unknown-surface00) *empty-mods*)
     (logior! (-> self state-flags) (state-flags invulnerable grabbed))
     (set-setting! 'allow-progress #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
     (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
     (target-exit)
     (remove-setting! 'allow-progress)
-    (none)
     )
   :trans (behavior ()
     (set-letterbox-frames (seconds 0.017))
-    (none)
     )
   :code (behavior ((arg0 basic) (arg1 handle))
     (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
@@ -485,7 +476,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-no-stick-post
   )

@@ -9,7 +9,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype ram-boss-proj (projectile)
   ((parent-override (pointer ram-boss)               :offset         12)
    (part2           sparticle-launch-control         :offset-assert 412)
@@ -630,8 +629,8 @@
   )
 
 (defstate ram-boss-proj-growing (ram-boss-proj)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('launch)
        (let ((v1-1 (-> self parent-override)))
          (set! (-> v1-1 0 proj-stoked) #f)
@@ -680,7 +679,6 @@
       (spawn (-> self part) (-> self root-override trans))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -696,7 +694,6 @@
     (+! (-> self target y) 4915.2)
     (set! (-> self target-base quad) (-> self target quad))
     (go-virtual projectile-moving)
-    (none)
     )
   )
 
@@ -720,7 +717,6 @@
     (sound-play "ramboss-hit")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -743,7 +739,6 @@
         )
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -1245,23 +1240,21 @@
 (defstate ram-boss-show-anims (ram-boss)
   :trans (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     0
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) transform-post)
   )
 
 (defstate ram-boss-idle (ram-boss)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('jump)
        (go ram-boss-jump-down proc)
        )
       (('touch 'attack)
-       (nav-enemy-send-attack proc (the-as touching-shapes-entry (-> event param 0)) 'generic)
+       (nav-enemy-send-attack proc (the-as touching-shapes-entry (-> block param 0)) 'generic)
        )
       )
     )
@@ -1269,7 +1262,6 @@
     ((-> (method-of-type nav-enemy nav-enemy-idle) enter))
     (set! (-> self frustration) 0)
     0
-    (none)
     )
   :code (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
@@ -1296,15 +1288,14 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate ram-boss-jump-down (ram-boss)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (nav-enemy-send-attack proc (the-as touching-shapes-entry (-> event param 0)) 'generic)
+       (nav-enemy-send-attack proc (the-as touching-shapes-entry (-> block param 0)) 'generic)
        )
       )
     )
@@ -1334,7 +1325,6 @@
         )
       )
     (set! (-> self collide-info transv y) 102400.0)
-    (none)
     )
   :trans (behavior ()
     (+! (-> self collide-info transv y) (* -544768.0 (-> *display* seconds-per-frame)))
@@ -1350,7 +1340,6 @@
     (if (logtest? (-> self collide-info status) (cshape-moving-flags onsurf))
         (go ram-boss-jump-down-hit-ground)
         )
-    (none)
     )
   :code (behavior ((arg0 basic))
     (ja-channel-push! 1 (seconds 0.8))
@@ -1367,7 +1356,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1384,7 +1372,6 @@
       )
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (go ram-boss-nav-start)
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1406,7 +1393,6 @@
       (set-heading-vec! (-> self collide-info) gp-0)
       )
     (go ram-boss-nav-start)
-    (none)
     )
   )
 
@@ -1420,7 +1406,6 @@
       (set-current-poly! (-> self nav) a1-1)
       )
     (go ram-boss-nav-resume)
-    (none)
     )
   )
 
@@ -1449,7 +1434,6 @@
         )
       )
     (go-virtual nav-enemy-idle)
-    (none)
     )
   )
 
@@ -1461,7 +1445,6 @@
     (set! (-> self state-timeout) (-> self nav-enemy-patrol-timeout))
     (set! (-> self nav-enemy-patrol-timeout) (seconds 1))
     (ja-channel-push! 1 (seconds 0.3))
-    (none)
     )
   :trans (behavior ()
     (when *target*
@@ -1472,7 +1455,6 @@
         )
       )
     ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
-    (none)
     )
   )
 
@@ -1485,7 +1467,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (vector-vector-distance (target-pos 0) (-> self collide-info trans))))
@@ -1512,7 +1493,6 @@
         )
       )
     0
-    (none)
     )
   )
 
@@ -1522,7 +1502,6 @@
   :trans (the-as (function none :behavior ram-boss) #f)
   :code (behavior ()
     (go ram-boss-tracking)
-    (none)
     )
   )
 
@@ -1557,7 +1536,6 @@
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self facing-y) (quaternion-y-angle (-> self collide-info quat)))
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-    (none)
     )
   :trans (behavior ()
     (set-jump-height-factor!
@@ -1632,7 +1610,6 @@
           )
       )
     0
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 -1.0))
@@ -1677,7 +1654,6 @@
             )
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1686,12 +1662,10 @@
   :enter (behavior ()
     (set! (-> self frustration) 0)
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-    (none)
     )
   :trans (behavior ()
     (set-jump-height-factor! self (the-as int #t))
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1701,7 +1675,6 @@
       (ja :num! (seek!))
       )
     (go ram-boss-tracking)
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1710,12 +1683,10 @@
   :enter (behavior ()
     (set! (-> self frustration) 0)
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-    (none)
     )
   :trans (behavior ()
     (set-jump-height-factor! self (the-as int #t))
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1725,7 +1696,6 @@
       (ja :num! (seek!))
       )
     (go ram-boss-tracking)
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1743,7 +1713,6 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self frustration) 0)
@@ -1759,7 +1728,6 @@
         )
       )
     (go-virtual nav-enemy-attack)
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1769,7 +1737,6 @@
   :event ram-boss-on-ground-event-handler
   :enter (behavior ()
     (go ram-boss-nav-resume)
-    (none)
     )
   )
 
@@ -1784,12 +1751,10 @@
         )
       )
     (set! (-> self proj-last-thrown-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (set-jump-height-factor! self (the-as int #t))
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -1810,7 +1775,6 @@
         )
       )
     (go ram-boss-tracking)
-    (none)
     )
   :post (the-as (function none :behavior ram-boss) nav-enemy-simple-post)
   )
@@ -1821,7 +1785,6 @@
     (nav-enemy-neck-control-inactive)
     (nav-enemy-method-53 self)
     (init-jm! self *ram-boss-nav-enemy-info-no-shield*)
-    (none)
     )
   :exit (behavior ()
     (nav-enemy-neck-control-look-at)
@@ -1834,7 +1797,6 @@
       (set! (-> v1-3 enable) #t)
       (set! (-> v1-3 transform scale quad) (the-as uint128 0))
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1853,7 +1815,6 @@
       (ja :num! (seek!))
       )
     (go ram-boss-tracking)
-    (none)
     )
   :post (behavior ()
     (compute-alignment! (-> self align))
@@ -1881,7 +1842,6 @@
       #f
       )
     (nav-enemy-common-post)
-    (none)
     )
   )
 
@@ -1901,6 +1861,5 @@
     (send-event (ppointer->process (-> self parent-override)) 'notify)
     (suspend)
     0
-    (none)
     )
   )

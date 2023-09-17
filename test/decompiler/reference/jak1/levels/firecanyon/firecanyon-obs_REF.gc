@@ -115,14 +115,13 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate balloon-idle (balloon)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (send-event proc 'heat -10.0)
        (go balloon-popping)
@@ -138,7 +137,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior balloon) ja-post)
   )
@@ -199,13 +197,12 @@
 
 ;; failed to figure out what this is:
 (defstate spike-up (spike)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('go-spike-up)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       #t
+       )
+      )
     )
   :trans (behavior ()
     (when (nonzero? (-> self num-alts))
@@ -233,7 +230,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -245,20 +241,18 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate spike-down (spike)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('go-spike-up)
-                      (go spike-up)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       (go spike-up)
+       #t
+       )
+      )
     )
   :trans (behavior ()
     (when (nonzero? (-> self num-alts))
@@ -286,14 +280,12 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -320,14 +312,12 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -637,17 +627,16 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (crate-darkeco-cluster)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'touch)
-       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'darkeco))))
+       (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'darkeco))))
        (go-virtual die)
        )
       )
@@ -657,7 +646,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 

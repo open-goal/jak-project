@@ -229,26 +229,23 @@
 
 ;; failed to figure out what this is:
 (defstate pelican-circle (pelican)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('dive)
-         (let ((v0-0 (the-as structure #t)))
-           (set! (-> self state-object) (the-as symbol v0-0))
-           v0-0
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('dive)
+       (let ((v0-0 (the-as structure #t)))
+         (set! (-> self state-object) (the-as symbol v0-0))
+         v0-0
          )
-        (('fuel-cell)
-         (handle->process (-> self fuel-cell))
+       )
+      (('fuel-cell)
+       (handle->process (-> self fuel-cell))
+       )
+      (('position)
+       (set! (-> self path-pos) (the-as float (-> block param 0)))
+       (let ((a1-3 (path-control-method-12 (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos))))
+         (set-heading-vec! (-> self root-override) a1-3)
          )
-        (('position)
-         (set! (-> self path-pos) (the-as float (-> event param 0)))
-         (let ((a1-3 (path-control-method-12 (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos))))
-           (set-heading-vec! (-> self root-override) a1-3)
-           )
-         )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -281,7 +278,6 @@
           (/ (* (-> *PELICAN-bank* circle-speed) (-> self path-max)) (path-distance (-> self path)))
           )
     (set-roll-to-grav-2! (-> self root-override) -2730.6667)
-    (none)
     )
   :trans (behavior ()
     (pelican-path-update 728177.75 30 1.0 (/ (-> self path-max) (path-distance (-> self path))) #f)
@@ -350,7 +346,6 @@
         )
       (go pelican-dive (-> self path-dive0) (-> self path-to-nest0) (-> *PELICAN-bank* to-nest0-time))
       )
-    (none)
     )
   :code (behavior ()
     (suspend)
@@ -359,23 +354,21 @@
       (the-as (function pelican int) (lambda () (rand-vu-int-range 2 4)))
       (the-as (function pelican int) (lambda () (rand-vu-int-range 3 5)))
       )
-    (none)
     )
   :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-dive (pelican)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('got-cell?)
-                      (-> self state-object)
-                      )
-                     (('fuel-cell)
-                      (handle->process (-> self fuel-cell))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('got-cell?)
+       (-> self state-object)
+       )
+      (('fuel-cell)
+       (handle->process (-> self fuel-cell))
+       )
+      )
     )
   :enter (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
     (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
@@ -403,11 +396,9 @@
       )
     (set! (-> self draw force-lod) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (set! (-> self draw force-lod) -1)
-    (none)
     )
   :trans (behavior ()
     (if (not (handle->process (-> self fuel-cell)))
@@ -418,7 +409,6 @@
     (if (= (-> self path-pos) (-> self path-max))
         (go pelican-to-nest (-> self path-cache) (the-as int (-> self time-cache)))
         )
-    (none)
     )
   :code (behavior ((arg0 path-control) (arg1 curve-control) (arg2 time-frame))
     (ja-channel-push! 1 (seconds 0.2))
@@ -445,7 +435,6 @@
       (ja :num! (seek!))
       )
     (anim-loop)
-    (none)
     )
   :post pelican-post
   )
@@ -457,7 +446,6 @@
     (set! (-> self path-pos) 0.0)
     (set! (-> self path-max) (the float (+ (-> self path curve num-cverts) -1)))
     (set! (-> self path-speed) (/ (* 300.0 (-> self path-max)) (the float arg1)))
-    (none)
     )
   :trans (behavior ()
     (pelican-path-update 546133.3 30 0.0 0.0 #f)
@@ -465,7 +453,6 @@
     (if (= (-> self path-pos) (-> self path-max))
         (go pelican-wait-at-nest #f)
         )
-    (none)
     )
   :code (behavior ((arg0 path-control) (arg1 int))
     (pelican-fly
@@ -476,61 +463,56 @@
                                    )
               )
       )
-    (none)
     )
   :post pelican-post
   )
 
 ;; failed to figure out what this is:
 (defstate pelican-wait-at-nest (pelican)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (case (-> event param 1)
-           (('explode)
-            (let ((a0-2 (handle->process (-> self fuel-cell))))
-              (if a0-2
-                  (send-event a0-2 'trans (-> self root-override trans))
-                  )
-              )
-            (go pelican-explode #f)
-            #f
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (case (-> block param 1)
+         (('explode)
+          (let ((a0-2 (handle->process (-> self fuel-cell))))
+            (if a0-2
+                (send-event a0-2 'trans (-> self root-override trans))
+                )
             )
-           (else
-             (let* ((gp-0 proc)
-                    (v1-13 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-                               gp-0
-                               )
-                           )
-                    (f30-0 8192.0)
-                    (gp-1 (-> self root-override))
-                    (s4-0 (-> (the-as process-drawable v1-13) root trans))
-                    )
-               (if (< f30-0
-                      (fabs
-                        (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-0 (-> gp-1 trans))))
-                        )
+          (go pelican-explode #f)
+          #f
+          )
+         (else
+           (let* ((gp-0 proc)
+                  (v1-13 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                             gp-0
+                             )
+                         )
+                  (f30-0 8192.0)
+                  (gp-1 (-> self root-override))
+                  (s4-0 (-> (the-as process-drawable v1-13) root trans))
+                  )
+             (if (< f30-0
+                    (fabs
+                      (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-0 (-> gp-1 trans))))
                       )
-                   (go pelican-spit)
-                   )
-               )
+                    )
+                 (go pelican-spit)
+                 )
              )
            )
          )
-        (('touch)
-         (the-as object (send-shove-back
-                          (-> self root-override)
-                          proc
-                          (the-as touching-shapes-entry (-> event param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
-                 )
+       )
+      (('touch)
+       (send-shove-back
+         (-> self root-override)
+         proc
+         (the-as touching-shapes-entry (-> block param 0))
+         0.7
+         6144.0
+         16384.0
          )
-        )
+       )
       )
     )
   :enter (behavior ((arg0 symbol))
@@ -563,13 +545,11 @@
     (if (nonzero? (-> self neck))
         (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
         )
-    (none)
     )
   :exit (behavior ()
     (if (nonzero? (-> self neck))
         (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (-> self state-vector))
@@ -582,7 +562,6 @@
     (do-push-aways! (-> self root-override))
     (seek-toward-heading-vec! (-> self root-override) (-> self path-vector) 131072.0 (seconds 1))
     (spool-push *art-control* "pelican-spit-ext" 0 self -99.0)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (cond
@@ -622,7 +601,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (behavior ()
     (when *target*
@@ -634,7 +612,6 @@
           )
       )
     (pelican-post)
-    (none)
     )
   )
 
@@ -727,43 +704,37 @@
           (send-event gp-3 'trans s5-3)
           )
         (send-event gp-3 'draw #t)
-        (send-event
-          gp-3
-          'event-hook
-          (lambda :behavior pelican
-            ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-            (the-as object (when (or (= arg2 'touch) (= arg2 'attack))
-                             (let ((v1-7 (birth-pickup-at-point
-                                           (-> self root-override trans)
-                                           (pickup-type fuel-cell)
-                                           (the float (-> self entity extra perm task))
-                                           #f
-                                           *entity-pool*
-                                           (the-as fact-info #f)
+        (send-event gp-3 'event-hook (lambda :behavior pelican
+                                       ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+                                       (when (or (= arg2 'touch) (= arg2 'attack))
+                                         (let ((v1-7 (birth-pickup-at-point
+                                                       (-> self root-override trans)
+                                                       (pickup-type fuel-cell)
+                                                       (the float (-> self entity extra perm task))
+                                                       #f
+                                                       *entity-pool*
+                                                       (the-as fact-info #f)
+                                                       )
+                                                     )
+                                               )
+                                           (when v1-7
+                                             (set! (-> (the-as collectable (-> v1-7 0)) collect-timeout) 0)
+                                             0
+                                             )
                                            )
+                                         (deactivate self)
                                          )
-                                   )
-                               (when v1-7
-                                 (set! (-> (the-as collectable (-> v1-7 0)) collect-timeout) 0)
-                                 0
-                                 )
-                               )
-                             (deactivate self)
-                             )
+                                       )
                     )
-            )
-          )
         )
       )
     (go pelican-from-nest)
-    (none)
     )
   :post (behavior ()
     (if (not (ja-group? pelican-sleep-ja))
         (quaternion-identity! (-> self root-override quat))
         )
     (pelican-post)
-    (none)
     )
   )
 
@@ -771,7 +742,6 @@
 (defstate pelican-from-nest (pelican)
   :enter (behavior ()
     (set! (-> self path-pos) 1.5)
-    (none)
     )
   :trans (behavior ()
     (pelican-path-update 131072.0 150 0.0 0.0 #f)
@@ -779,14 +749,12 @@
     (if (= (-> self path-pos) (-> self path-max))
         (go pelican-dive (-> self path-dive1) (-> self path-to-nest1) (-> *PELICAN-bank* to-nest1-time))
         )
-    (none)
     )
   :code (behavior ()
     (pelican-fly
       (the-as (function pelican int) (lambda () (rand-vu-int-range 2 4)))
       (the-as (function pelican int) zero-func)
       )
-    (none)
     )
   :post pelican-post
   )
@@ -810,7 +778,6 @@
       (eval-path-curve-div! (-> self path) gp-1 0.0 'interp)
       (set! (-> self state-float 1) (* 0.0073242188 (vector-vector-distance (-> self root-override trans) gp-1)))
       )
-    (none)
     )
   :trans (behavior ()
     (pelican-path-update 546133.3 30 0.0 0.0 #f)
@@ -829,7 +796,6 @@
         (-> self state-float 0)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 path-control) (arg1 time-frame))
     (pelican-fly
@@ -840,7 +806,6 @@
                                    )
               )
       )
-    (none)
     )
   :post pelican-post
   )
@@ -849,7 +814,6 @@
 (defstate pelican-wait-at-end (pelican)
   :code (behavior ((arg0 symbol))
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -901,7 +865,6 @@
     (clear-collide-with-as (-> self root-override))
     (ja-channel-set! 0)
     (anim-loop)
-    (none)
     )
   :post (the-as (function none :behavior pelican) ja-post)
   )

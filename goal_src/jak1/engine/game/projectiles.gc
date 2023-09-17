@@ -600,20 +600,20 @@
 
 (defstate projectile-moving (projectile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (when (-> self attack-mode)
          (when (cond
                  ((= (-> proc type) target)
-                  (send-event proc 'attack (-> event param 0) (static-attack-info ((mode (-> self attack-mode)))))
+                  (send-event proc 'attack (-> block param 0) (static-attack-info ((mode (-> self attack-mode)))))
                   )
                  (else
                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-2 from) self)
                      (set! (-> a1-2 num-params) 4)
                      (set! (-> a1-2 message) 'attack)
-                     (set! (-> a1-2 param 0) (-> event param 0))
+                     (set! (-> a1-2 param 0) (-> block param 0))
                      (set! (-> a1-2 param 1) (the-as uint (-> self attack-mode)))
                      (let ((v1-13 (+ *global-attack-id* 1)))
                        (set! *global-attack-id* v1-13)
@@ -643,7 +643,6 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -700,7 +699,6 @@
         )
       )
     (go-virtual projectile-dissipate)
-    (none)
     )
   )
 
@@ -760,7 +758,6 @@
     (sound-play "yellow-explode")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -784,7 +781,6 @@
     (sound-play "yellow-fizzle")
     (suspend)
     (go-virtual projectile-die)
-    (none)
     )
   )
 
@@ -833,7 +829,6 @@
           )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1229,7 +1224,6 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1237,6 +1231,5 @@
   :virtual #t
   :code (behavior ()
     (go-virtual projectile-die)
-    (none)
     )
   )

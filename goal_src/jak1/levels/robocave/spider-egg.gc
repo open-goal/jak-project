@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype spider-egg (process-drawable)
   ((root-override collide-shape-moving         :offset        112)
    (notify-actor  entity-actor                 :offset-assert 176)
@@ -43,36 +42,33 @@
               )
 
 (defstate spider-egg-idle (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (the-as object (case event-type
-                     (('touch)
-                      (the-as object (send-shove-back
-                                       (-> self root-override)
-                                       proc
-                                       (the-as touching-shapes-entry (-> event param 0))
-                                       0.7
-                                       6144.0
-                                       16384.0
-                                       )
-                              )
-                      )
-                     (('can-spawn?)
-                      (return #t)
-                      v0-0
-                      )
-                     (('notify-spawned)
-                      (go spider-egg-hatch)
-                      )
-                     (('attack)
-                      (go spider-egg-die)
-                      )
-                     )
-            )
+    (case message
+      (('touch)
+       (send-shove-back
+         (-> self root-override)
+         proc
+         (the-as touching-shapes-entry (-> block param 0))
+         0.7
+         6144.0
+         16384.0
+         )
+       )
+      (('can-spawn?)
+       (return #t)
+       v0-0
+       )
+      (('notify-spawned)
+       (go spider-egg-hatch)
+       )
+      (('attack)
+       (go spider-egg-die)
+       )
+      )
     )
   :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
@@ -111,15 +107,14 @@
         (ja-channel-push! 1 (seconds 0.1))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior spider-egg) ja-post)
   )
 
 (defstate spider-egg-hatch (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (case event-type
+    (case message
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -152,15 +147,14 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior spider-egg) ja-post)
   )
 
 (defstate spider-egg-die (spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (case event-type
+    (case message
       (('can-spawn?)
        (return (the-as object #f))
        v0-0
@@ -211,7 +205,6 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior spider-egg) ja-post)
   )
