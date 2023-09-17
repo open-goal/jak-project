@@ -293,6 +293,14 @@
       )
     (cond
       ((logtest? (-> arg0 flags) (continue-flags game-start))
+       ;; og:preserve-this Added to make fast-game-start work with hero-mode
+       (when (logtest? (-> arg0 flags) (continue-flags hero-mode))
+        (logior! (-> self game secrets) (game-secrets hero-mode))
+        (logior! (-> self game purchase-secrets) (game-secrets hero-mode))
+        ;; TODO - there might be a better way to do this, the way hero-mode is set kinda feels like a side-effect
+        ;; `update-task-masks` gets called during the `intro-start-hero` via `setting-control::apply-settings`
+        ;; Which runs the following line if hero-mode is enabled
+        (set! (-> *game-info* features) (game-feature gun gun-yellow gun-red gun-blue gun-dark)))
        (case *kernel-boot-message*
          (('kiosk)
           (let ((s5-5 (ppointer->handle (auto-save-command 'restore 0 0 *default-pool* #f))))

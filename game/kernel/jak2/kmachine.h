@@ -111,6 +111,6 @@ struct AutoSplitterBlock {
   u64 pointer_to_symbol = 0;
 };
 
-extern AutoSplitterBlock gAutoSplitterBlock;
+extern AutoSplitterBlock g_auto_splitter_block_jak2;
 
 }  // namespace jak2
