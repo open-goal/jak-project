@@ -251,13 +251,13 @@
 ;; failed to figure out what this is:
 (defstate enter (remote)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual exit)
        )
       (('speak-effect)
-       (let ((v0-0 (the-as object (-> event param 0))))
+       (let ((v0-0 (the-as object (-> block param 0))))
          (set! (-> self speak-effect?) (the-as basic v0-0))
          v0-0
          )
@@ -276,7 +276,6 @@
           (try-update-focus (-> self focus) (the-as process-focusable a1-1))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (remote-track)
@@ -285,7 +284,6 @@
           (point-toward-point-clear-roll-pitch! (-> self root) (get-trans (the-as process-focusable a0-1) 0))
           )
       )
-    (none)
     )
   :code (behavior ()
     (let* ((gp-0 (ppointer->process (-> self parent 0 parent)))
@@ -318,11 +316,9 @@
       )
     (set! (-> self blend) 0.0)
     (go-virtual idle)
-    (none)
     )
   :post (behavior ()
     (post-common self)
-    (none)
     )
   )
 
@@ -337,7 +333,6 @@
       (ja :num! (loop!))
       )
     (go-virtual exit)
-    (none)
     )
   :post (-> (method-of-type remote enter) post)
   )
@@ -351,7 +346,6 @@
     (send-event (ppointer->process (-> self parent)) 'change-state empty-state)
     (suspend)
     0
-    (none)
     )
   :post (-> (method-of-type remote enter) post)
   )
@@ -383,7 +377,6 @@
             )
         (deactivate self)
         )
-    (none)
     )
   :code (-> cam-string code)
   )
@@ -433,7 +426,6 @@
     (send-event (ppointer->process (-> self parent)) 'change-state empty-state)
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -533,8 +525,8 @@
 ;; failed to figure out what this is:
 (defstate wait (judge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (sound-play "judge-stop")
        (go-virtual exit)
@@ -563,7 +555,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -575,15 +566,14 @@
     (send-event *target* 'get-pickup (pickup-type trick-judge) (the float (-> self total-time)))
     (sound-play "judge-start")
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to self)))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (judge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (sound-play "judge-stop")
        (go-virtual exit)
@@ -599,7 +589,6 @@
       )
     (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
     (go-virtual exit)
-    (none)
     )
   )
 

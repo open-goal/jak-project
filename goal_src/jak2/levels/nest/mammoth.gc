@@ -349,8 +349,8 @@
 
 (defstate waiting (mammoth)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('cue-chase)
        (go-virtual wait-to-walk)
        )
@@ -367,7 +367,6 @@
       )
     0
     (logior! (-> self foot-flags) 15)
-    (none)
     )
   :code (behavior ()
     (move-to-ground (-> self root) 40960.0 122880.0 #t (collide-spec backgnd))
@@ -387,7 +386,6 @@
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior mammoth) nav-enemy-simple-post)
   )
@@ -409,7 +407,6 @@
       (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-5 enemy-flags))))
       )
     0
-    (none)
     )
   :code (behavior ()
     (next-path-index)
@@ -424,7 +421,6 @@
       (ja :num! (seek!))
       )
     (go-virtual walking)
-    (none)
     )
   :post mammoth-walk-post
   )
@@ -447,7 +443,6 @@
       )
     0
     (logior! (-> self foot-flags) 6)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -488,15 +483,14 @@
         )
       )
     #f
-    (none)
     )
   :post mammoth-walk-post
   )
 
 (defstate walking-attack (mammoth)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((v0-0 (the-as object (current-time))))
          (set! (-> self lightning-timer) (the-as time-frame v0-0))
@@ -504,7 +498,7 @@
          )
        )
       (else
-        (mammoth-walk-handler proc arg1 event-type event)
+        (mammoth-walk-handler proc argc message block)
         )
       )
     )
@@ -523,7 +517,6 @@
       )
     0
     (logior! (-> self foot-flags) 6)
-    (none)
     )
   :trans (behavior ()
     (when (and (< (- (current-time) (-> self lightning-timer)) (seconds 3)) (< (-> self spawn-timer) (current-time)))
@@ -532,7 +525,6 @@
         )
       (set! (-> self spawn-timer) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 0.0 0.1)))))
       )
-    (none)
     )
   :code (behavior ()
     (set-nav-destination)
@@ -563,7 +555,6 @@
         )
       )
     #f
-    (none)
     )
   :post mammoth-walk-post
   )
@@ -629,7 +620,6 @@
       (set! (-> v1-33 enemy-flags) (the-as enemy-flag (logclear (-> v1-33 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -691,11 +681,9 @@
         )
       )
     (go-virtual walking)
-    (none)
     )
   :post (behavior ()
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -732,7 +720,6 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post mammoth-walk-post
   )
@@ -832,16 +819,12 @@
     )
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-stare mammoth ((obj mammoth))
   (go (method-of-object obj walking))
-  (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile mammoth ((obj mammoth))
   (go (method-of-object obj walking))
-  (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1126,7 +1109,7 @@
             )
           )
         )
-      (the-as object (handle-copy! arg0 s5-0))
+      (handle-copy! arg0 s5-0)
       )
     )
   )

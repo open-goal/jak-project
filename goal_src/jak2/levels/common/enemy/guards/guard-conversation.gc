@@ -238,8 +238,8 @@
 
 (defstate dormant (guard-conversation)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (set! (-> self triggered?) #t)
        (go-virtual active)
@@ -255,20 +255,19 @@
 
 (defstate active (guard-conversation)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (let ((v0-0 #t))
-                        (set! (-> self triggered?) v0-0)
-                        v0-0
-                        )
-                      )
-                     (('untrigger)
-                      (set! (-> self triggered?) #f)
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (let ((v0-0 #t))
+         (set! (-> self triggered?) v0-0)
+         v0-0
+         )
+       )
+      (('untrigger)
+       (set! (-> self triggered?) #f)
+       #f
+       )
+      )
     )
   :trans (behavior ()
     (let ((gp-0 #t))
@@ -304,7 +303,6 @@
     (if (and (-> self triggered?) (>= (- (current-time) (-> self last-playing-time)) (seconds 6)))
         (guard-conversation-method-24 self)
         )
-    (none)
     )
   :code (the-as (function none :behavior guard-conversation) sleep-code)
   )
@@ -352,7 +350,6 @@
       (suspend)
       )
     (go-virtual die)
-    (none)
     )
   )
 
@@ -363,7 +360,6 @@
     (process-entity-status! self (entity-perm-status dead) #t)
     (suspend)
     0
-    (none)
     )
   )
 

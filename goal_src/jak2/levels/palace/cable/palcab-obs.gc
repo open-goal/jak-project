@@ -57,62 +57,58 @@
 
 (defstate idle (pal-electric-fan)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touch)
-         (let* ((s4-0 proc)
-                (gp-0 (if (type? s4-0 process-focusable)
-                          s4-0
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (let* ((s4-0 proc)
+              (gp-0 (if (type? s4-0 process-focusable)
+                        s4-0
+                        )
+                    )
+              )
+         (when (and gp-0 ((method-of-type touching-shapes-entry prims-touching?)
+                          (the-as touching-shapes-entry (-> block param 0))
+                          (-> self root)
+                          (the-as uint 1)
                           )
-                      )
-                )
-           (when (and gp-0 ((method-of-type touching-shapes-entry prims-touching?)
-                            (the-as touching-shapes-entry (-> event param 0))
-                            (-> self root)
-                            (the-as uint 1)
-                            )
-                      )
-             (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-               (let ((v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat))))
-                 (if (< 0.0 (vector-dot s4-1 v1-5))
-                     (vector-float*! s4-1 s4-1 -1.0)
-                     )
-                 )
-               (when (send-event
-                       gp-0
-                       'attack
-                       (-> event param 0)
-                       (static-attack-info ((id (-> self attack-id))
-                                            (vector s4-1)
-                                            (shove-back (meters 3))
-                                            (shove-up (meters 9))
-                                            (control (if (focus-test? (the-as process-focusable gp-0) board)
-                                                         1.0
-                                                         0.0
-                                                         )
-                                                     )
-                                            )
-                                           )
-                       )
-                 (set! (-> self no-collision-timer) (current-time))
-                 (let ((v1-19 (-> self root root-prim)))
-                   (set! (-> v1-19 prim-core collide-as) (collide-spec))
-                   (set! (-> v1-19 prim-core collide-with) (collide-spec))
+                    )
+           (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+             (let ((v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat))))
+               (if (< 0.0 (vector-dot s4-1 v1-5))
+                   (vector-float*! s4-1 s4-1 -1.0)
                    )
-                 0
+               )
+             (when (send-event
+                     gp-0
+                     'attack
+                     (-> block param 0)
+                     (static-attack-info ((id (-> self attack-id))
+                                          (vector s4-1)
+                                          (shove-back (meters 3))
+                                          (shove-up (meters 9))
+                                          (control (if (focus-test? (the-as process-focusable gp-0) board)
+                                                       1.0
+                                                       0.0
+                                                       )
+                                                   )
+                                          )
+                                         )
+                     )
+               (set! (-> self no-collision-timer) (current-time))
+               (let ((v1-19 (-> self root root-prim)))
+                 (set! (-> v1-19 prim-core collide-as) (collide-spec))
+                 (set! (-> v1-19 prim-core collide-with) (collide-spec))
                  )
+               0
                )
              )
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (and (nonzero? (-> self no-collision-timer))
@@ -128,7 +124,6 @@
       0
       )
     (rider-trans)
-    (none)
     )
   :code (the-as (function none :behavior pal-electric-fan) sleep-code)
   :post (behavior ()
@@ -201,7 +196,6 @@
         )
       (update! (-> self sound))
       (rider-post)
-      (none)
       )
     )
   )
@@ -405,7 +399,6 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self sound-played? 0) #f)
     (set! (-> self sound-played? 1) #f)
-    (none)
     )
   :trans (the-as (function none :behavior pal-cable-nut) rider-trans)
   :code (behavior ()
@@ -447,7 +440,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior pal-cable-nut) rider-post)
   )
@@ -676,7 +668,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
@@ -775,8 +766,8 @@ This commonly includes things such as:
 
 (defstate idle (pal-rot-gun)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual spin)
        )
@@ -787,8 +778,8 @@ This commonly includes things such as:
 
 (defstate spin (pal-rot-gun)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (sound-stop (-> self sound-id))
        (sound-stop (-> self shot-sound-id))
@@ -800,7 +791,6 @@ This commonly includes things such as:
     (set! (-> self fire-timer) (current-time))
     (set! (-> self gun-index) 0)
     0
-    (none)
     )
   :code (the-as (function none :behavior pal-rot-gun) sleep-code)
   :post (behavior ()
@@ -851,14 +841,13 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
 (defstate spin-down (pal-rot-gun)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual spin)
        )
@@ -866,13 +855,11 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (>= 0.0 (-> self spin-rate))
         (go-virtual idle)
         )
-    (none)
     )
   :code (the-as (function none :behavior pal-rot-gun) sleep-code)
   :post (behavior ()
@@ -896,7 +883,6 @@ This commonly includes things such as:
       #t
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -1001,7 +987,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior pal-windmill) ja-post)
   )
@@ -1049,8 +1034,8 @@ This commonly includes things such as:
 
 (defstate idle (pal-flip-step)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual fall)
        )
@@ -1063,7 +1048,6 @@ This commonly includes things such as:
              )
         (go-virtual fall)
         )
-    (none)
     )
   :code (the-as (function none :behavior pal-flip-step) sleep-code)
   )
@@ -1081,7 +1065,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go-virtual fallen)
-    (none)
     )
   )
 

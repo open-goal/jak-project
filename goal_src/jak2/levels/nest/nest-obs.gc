@@ -33,10 +33,10 @@
 
 (defstate up (nest-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as attack-info (-> event param 1))))
+       (let ((v1-1 (the-as attack-info (-> block param 1))))
          (when (or (= (-> v1-1 mode) 'spin) (= (-> v1-1 mode) 'spin-air))
            (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
              (set! (-> a1-3 from) (process->ppointer self))
@@ -69,7 +69,6 @@
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self set-camera) #f)
-    (none)
     )
   :trans (behavior ()
     (when (and (not (-> self set-camera)) (>= (- (current-time) (-> self state-time)) (seconds 0.6)))
@@ -80,7 +79,6 @@
       (set! (-> self set-camera) #t)
       )
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (set! (-> self y-rot-rate) 0.0)
@@ -117,7 +115,6 @@
     (process-release? *target*)
     (logior! (-> self mask) (process-mask actor-pause))
     (sleep-code)
-    (none)
     )
   :post (the-as (function none :behavior nest-switch) rider-post)
   )
@@ -201,8 +198,8 @@ This commonly includes things such as:
 
 (defstate idle (nest-piston)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual up)
        )
@@ -227,7 +224,6 @@ This commonly includes things such as:
       )
     (logior! (-> self mask) (process-mask actor-pause))
     (sleep-code)
-    (none)
     )
   :post (the-as (function none :behavior nest-piston) rider-post)
   )

@@ -332,7 +332,6 @@
     (if (send-event (ppointer->process *underb-master*) 'query 'bubbler)
         (go-virtual idle)
         )
-    (none)
     )
   :code (the-as (function none :behavior bubbler) sleep-code)
   )
@@ -340,8 +339,8 @@
 ;; failed to figure out what this is:
 (defstate idle (bubbler)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -383,7 +382,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior bubbler) sleep-code)
   )
@@ -494,7 +492,6 @@ This commonly includes things such as:
         (send-event (ppointer->process *underb-master*) 'request 'big-room 'under-plat 'up #t)
         )
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -505,7 +502,6 @@ This commonly includes things such as:
       (go-virtual idle-up)
       )
     (set! (-> self ridden) #f)
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -518,7 +514,6 @@ This commonly includes things such as:
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -533,7 +528,6 @@ This commonly includes things such as:
           (go-virtual going-down)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -550,7 +544,6 @@ This commonly includes things such as:
         (send-event (ppointer->process *underb-master*) 'request 'big-room 'under-plat 'up #f)
         )
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -563,7 +556,6 @@ This commonly includes things such as:
           (set! (-> gp-0 trans y) (-> self down-y))
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -577,7 +569,6 @@ This commonly includes things such as:
     (set! (-> self rider-started) #f)
     (set! (-> self ridden) #f)
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -588,7 +579,6 @@ This commonly includes things such as:
       (go-virtual idle-down)
       )
     (set! (-> self ridden) #f)
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -601,7 +591,6 @@ This commonly includes things such as:
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -620,7 +609,6 @@ This commonly includes things such as:
           (go-virtual going-up)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -635,7 +623,6 @@ This commonly includes things such as:
     (set! (-> self root transv y) 20480.0)
     (set! (-> self ridden) #f)
     0
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -657,7 +644,6 @@ This commonly includes things such as:
           (set! (-> gp-0 trans y) (-> self up-y))
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-rise-plat) sleep-code)
   :post (the-as (function none :behavior under-rise-plat) rider-post)
@@ -763,10 +749,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (under-buoy-base)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('mech-punch 'crush)
           (let ((a0-5 (ppointer->process (-> self parent))))
             (send-event a0-5 'base-hit)
@@ -784,7 +770,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (when (-> self release)
@@ -794,7 +779,6 @@ This commonly includes things such as:
           (go-virtual opened)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-buoy-base) sleep-code)
   :post (the-as (function none :behavior under-buoy-base) ja-post)
@@ -805,7 +789,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (the-as (function none :behavior under-buoy-base) sleep-code)
   :post (the-as (function none :behavior under-buoy-base) ja-post)
@@ -909,13 +892,11 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (let ((v1-0 (ppointer->process (-> self parent))))
       (set! (-> self root trans quad) (-> (the-as process-drawable v1-0) root trans quad))
       )
-    (none)
     )
   :code (the-as (function none :behavior under-buoy-chain) sleep-code)
   :post (the-as (function none :behavior under-buoy-chain) ja-post)
@@ -1144,10 +1125,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate waiting (under-buoy-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('mech-punch 'crush)
           (go-virtual running)
           )
@@ -1160,7 +1141,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     0
-    (none)
     )
   :code (the-as (function none :behavior under-buoy-plat) sleep-code)
   :post (the-as (function none :behavior under-buoy-plat) ja-post)
@@ -1177,7 +1157,6 @@ This commonly includes things such as:
     (sound-play "break-chain")
     (send-event (ppointer->process (-> self base)) 'release)
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1191,11 +1170,9 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (rigid-body-object-method-37 self)
-    (none)
     )
   )
 
@@ -1481,14 +1458,12 @@ This commonly includes things such as:
     (activate! *camera-smush-control* 819.2 37 210 1.0 0.995 (-> self clock))
     (ja-channel-set! 0)
     (ja-post)
-    (none)
     )
   :trans (behavior ()
     (when (not (-> self child))
       (cleanup-for-death self)
       (deactivate self)
       )
-    (none)
     )
   :code (the-as (function none :behavior under-mine) sleep-code)
   )
@@ -1496,8 +1471,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (under-mine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'bonk 'touched)
        (go-virtual explode)
        )
@@ -1572,7 +1547,6 @@ This commonly includes things such as:
           )
         (update (-> self chain) self)
         )
-      (none)
       )
     )
   :code (the-as (function none :behavior under-mine) sleep-code)
@@ -1585,7 +1559,6 @@ This commonly includes things such as:
       (set! (-> self chain-initialized) #t)
       (initialize-chain-joints (-> self chain))
       )
-    (none)
     )
   )
 
@@ -1774,7 +1747,6 @@ This commonly includes things such as:
       (under-lift-method-49 self #t)
       (set-setting! 'jump #f 0.0 0)
       )
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type elevator running) post)))
@@ -1783,7 +1755,6 @@ This commonly includes things such as:
           )
       )
     (sound-play "under-lift-lp" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   )
 
@@ -1804,7 +1775,6 @@ This commonly includes things such as:
       (under-lift-method-49 self #f)
       (remove-setting! 'jump)
       )
-    (none)
     )
   )
 
@@ -1910,13 +1880,13 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate idle (under-break-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual hit #f)
        )
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('mech-punch 'crush)
           (go-virtual hit #f)
           )
@@ -1943,7 +1913,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1952,7 +1921,6 @@ For example for an elevator pre-compute the distance between the first and last 
   :virtual #t
   :exit (behavior ()
     (ja-abort-spooled-anim (the-as spool-anim (-> self anim)) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :post (the-as (function none :behavior under-break-door) ja-post)
   )
@@ -2090,7 +2058,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2104,7 +2071,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior under-seaweed-a) ja-post)
   )
@@ -2211,7 +2177,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2225,7 +2190,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior under-seaweed-b) ja-post)
   )
@@ -2286,7 +2250,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2300,7 +2263,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior under-seaweed-c) ja-post)
   )
@@ -2361,7 +2323,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2375,7 +2336,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior under-seaweed-d) ja-post)
   )

@@ -469,6 +469,7 @@
     )
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-52 wasp ((obj wasp) (arg0 vector))
   (let ((s4-0 (-> obj root)))
     (case (-> obj incoming knocked-type)
@@ -522,18 +523,16 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile wasp ((obj wasp))
   (go (method-of-object obj hostile))
-  (none)
   )
 
 (defmethod react-to-focus wasp ((obj wasp))
   "@TODO - flesh out docs"
   (go-hostile obj)
-  (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-129 wasp ((obj wasp))
   (if (logtest? (-> obj fact enemy-options) (enemy-option user0))
       (set! (-> obj focus-pos quad) (-> obj plat-pos quad))
@@ -565,7 +564,6 @@
     (if (logtest? (-> self fact enemy-options) (enemy-option user0))
         (go-virtual shoot-bridge-wait)
         )
-    (none)
     )
   )
 
@@ -578,7 +576,6 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
@@ -591,14 +588,13 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
 (defstate shoot-bridge-wait (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual shoot-bridge-intro)
        )
@@ -627,7 +623,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
     (logclear! (-> self mask) (process-mask collectable))
     (logclear! (-> self enemy-flags) (enemy-flag look-at-move-dest))
-    (none)
     )
   :exit (behavior ()
     (let ((gp-0 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
@@ -640,15 +635,14 @@
         (the-as vector #t)
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior wasp) sleep-code)
   )
 
 (defstate shoot-bridge-intro (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
@@ -656,7 +650,6 @@
     )
   :enter (behavior ()
     (set! (-> self plat-pos quad) (-> self entity-group data 0 actor extra trans quad))
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-distance
@@ -667,20 +660,18 @@
            )
         (go-virtual shoot-bridge-hold)
         )
-    (none)
     )
   :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 (defstate shoot-bridge-hold (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
@@ -690,7 +681,6 @@
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -720,7 +710,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
   :post (behavior ()
@@ -731,14 +720,13 @@
       (hover-nav-control-method-11 (-> self hover) a1-0)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 (defstate shoot-bridge-attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -760,14 +748,13 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -789,7 +776,6 @@
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
     (go-virtual shoot-bridge-hostile)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -817,7 +803,6 @@
       (hover-nav-control-method-11 (-> self hover) a1-8)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -842,7 +827,6 @@
         )
       )
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (< (vector-vector-distance
@@ -854,7 +838,6 @@
       (cleanup-for-death self)
       (go empty-state)
       )
-    (none)
     )
   :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
   :post (behavior ()
@@ -866,7 +849,6 @@
           )
         )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -892,14 +874,13 @@
             )
         )
       )
-    (none)
     )
   )
 
 (defstate attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -921,14 +902,13 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -950,7 +930,6 @@
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -972,7 +951,6 @@
       (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (hover-enemy-hostile-post)
-    (none)
     )
   )
 
@@ -1023,7 +1001,6 @@
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
-    (none)
     )
   )
 
@@ -1085,7 +1062,6 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1108,7 +1084,6 @@
       )
     (send-event self 'death-end)
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior wasp) transform-post)
   )

@@ -141,6 +141,7 @@
 ;; definition for function vehicle-rider-event-handler
 ;; INFO: Used lq/sq
 (defbehavior vehicle-rider-event-handler vehicle-rider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
   (case arg2
     (('traffic-on)
      (logior! (-> self flags) 2)
@@ -186,10 +187,14 @@
      (go-virtual got-passed)
      )
     (('hide)
-     (logior! (-> self draw status) (draw-control-status no-draw))
+     (set! v0-0 (logior (-> self draw status) (draw-control-status no-draw)))
+     (set! (-> self draw status) (the-as draw-control-status v0-0))
+     v0-0
      )
     (('unhide)
-     (logclear! (-> self draw status) (draw-control-status no-draw))
+     (set! v0-0 (logclear (-> self draw status) (draw-control-status no-draw)))
+     (set! (-> self draw status) (the-as draw-control-status v0-0))
+     v0-0
      )
     (('rider-on)
      (logior! (-> self flags) 1)
@@ -202,72 +207,53 @@
      (vehicle-rider-method-35 self)
      )
     )
-  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate active (vehicle-rider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-rider)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :enter (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (ja :group! (-> self draw art-group data (-> self riding-anim)))
-    (none)
     )
   :code (the-as (function none :behavior vehicle-rider) sleep-code)
   :post (behavior ()
     (vehicle-rider-method-34 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate taunt (vehicle-rider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-rider)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :code (the-as (function none :behavior vehicle-rider) sleep-code)
   :post (behavior ()
     (go-virtual active)
     (vehicle-rider-method-34 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate got-passed (vehicle-rider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-rider)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :code (the-as (function none :behavior vehicle-rider) sleep-code)
   :post (behavior ()
     (go-virtual active)
     (vehicle-rider-method-34 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate inactive (vehicle-rider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-rider)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (the-as (function none :behavior vehicle-rider) sleep-code)
   )
@@ -287,6 +273,7 @@ This commonly includes things such as:
 
 ;; definition for function vehicle-rider-init-by-other
 ;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defbehavior vehicle-rider-init-by-other vehicle-rider ((arg0 traffic-object-spawn-params))
   (initialize-collision self)
   (set! (-> self root trans quad) (-> arg0 position quad))

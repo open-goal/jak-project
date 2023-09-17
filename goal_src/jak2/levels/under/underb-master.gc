@@ -39,8 +39,8 @@
 
 (defstate idle (under-warp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (set-under-fog-interp! 0.0)
        (go-virtual die-fast)
@@ -67,12 +67,10 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (under-warp-method-22 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -435,13 +433,11 @@
   :event underb-master-event-handler
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (if (-> self big-room-entered)
         (go-virtual big-room-player-under)
         )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -452,7 +448,6 @@
   :event underb-master-event-handler
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (if (-> self under-plat-player-on)
@@ -461,7 +456,6 @@
     (if (not (-> self big-room-entered))
         (go-virtual idle)
         )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -473,11 +467,9 @@
   :enter (behavior ()
     (set-setting! 'entity-name "camera-239" 0.0 0)
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #f)
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (target-pos 0)))
@@ -488,7 +480,6 @@
           (go-virtual big-room-player-falling)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -500,13 +491,11 @@
   :enter (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 600.0 0)
     (remove-setting! 'mode-name)
-    (none)
     )
   :trans (behavior ()
     (if (< (-> (target-pos 0) y) -245760.0)
         (go-virtual big-room-player-falling)
         )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -517,13 +506,11 @@
   :event underb-master-event-handler
   :enter (behavior ()
     (set-setting! 'mode-name 'cam-endlessfall 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
     (remove-setting! 'mode-name)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -541,7 +528,6 @@
             )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -555,18 +541,15 @@
     (set-setting! 'entity-name "camera-244" 0.0 0)
     (set! (-> self big-room-timer) (current-time))
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
-    (none)
     )
   :exit (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 600.0 0)
     (remove-setting! 'entity-name)
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (current-time) (-> self big-room-timer)) (seconds 1))
         (go-virtual idle)
         )
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -577,7 +560,6 @@
   :event underb-master-event-handler
   :enter (behavior ()
     (go-virtual idle)
-    (none)
     )
   :code (the-as (function none :behavior underb-master) sleep-code)
   :post underb-master-post
@@ -666,17 +648,15 @@
 
 (defstate startup (under-locking)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('test)
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('test)
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let ((v1-0 (-> self actor-group)))
@@ -759,19 +739,18 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-locking) sleep-code)
   )
 
 (defstate active (under-locking)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('test)
        (let ((v1-1 (-> self mode)))
          (cond
-           ((-> event param 0)
+           ((-> block param 0)
             (when (or (= v1-1 (under-locking-mode want-mech)) (= v1-1 (under-locking-mode want-exit-mech)))
               (let ((a0-4 *target*))
                 (and a0-4 (not (logtest? (focus-status mech) (-> a0-4 focus-status))))
@@ -860,7 +839,6 @@
          )
        )
       )
-    (none)
     )
   :code (the-as (function none :behavior under-locking) sleep-code)
   )
@@ -878,7 +856,6 @@
                                             0
                                             )
           )
-    (none)
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
@@ -923,7 +900,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (zero? (-> self state-time))
@@ -971,7 +947,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -984,7 +959,6 @@
           )
     (set! (-> self state-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
@@ -1024,7 +998,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (zero? (-> self state-time))
@@ -1073,7 +1046,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 

@@ -359,7 +359,7 @@
                  )
                (send-event (handle->process (-> *game-info* controller 0)) 'pause)
                (time-of-day-setup #t)
-               (the-as object (remove-setting! 'half-speed))
+               (remove-setting! 'half-speed)
                )
              )
           )
@@ -552,16 +552,15 @@
 
 (defstate idle (demo-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('pause)
-                      (let ((v0-0 2))
-                        (set! (-> *game-info* demo-state) (the-as uint v0-0))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('pause)
+       (let ((v0-0 2))
+         (set! (-> *game-info* demo-state) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (let ((v1-1 (-> *game-info* demo-state)))
@@ -860,7 +859,6 @@
         )
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (local-vars (v1-70 external-art-buffer))
@@ -981,7 +979,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1068,12 +1065,12 @@
   )
 
 (defstate target-demo (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('change-mode)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('grab)
-          (if (not (-> event param 1))
+          (if (not (-> block param 1))
               #t
               (go target-grab 'stance)
               )
@@ -1081,7 +1078,7 @@
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -1105,7 +1102,6 @@
             (ppointer->handle (process-spawn demo-control :init demo-control-init :to *entity-pool*))
             )
       )
-    (none)
     )
   :code (the-as (function symbol none :behavior target) sleep-code)
   :post target-no-move-post

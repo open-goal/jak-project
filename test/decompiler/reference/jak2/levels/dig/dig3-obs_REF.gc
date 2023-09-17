@@ -339,7 +339,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a2-1 (quaternion-vector-angle!
@@ -352,7 +351,6 @@
       (quaternion*! (-> self root quat) (-> self init-quat) a2-1)
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -479,7 +477,6 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -504,7 +501,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-7))
           )
       )
-    (none)
     )
   )
 
@@ -752,7 +748,6 @@ This commonly includes things such as:
           (go-virtual active)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior dig-spikey-sphere-door) sleep-code)
   )
@@ -804,7 +799,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go-virtual idle)
-    (none)
     )
   :post (the-as (function none :behavior dig-spikey-sphere-door) ja-post)
   )
@@ -1025,7 +1019,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior dig-balloon-lurker-trapeze) ja-post)
   )
@@ -1314,7 +1307,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior dig-balloon-lurker) transform-post)
   )
@@ -1360,7 +1352,6 @@ This commonly includes things such as:
   :trans (behavior ()
     (sound-play "wheel-plat-loop" :id (-> self wheel-sound-id))
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1374,7 +1365,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior dig-wheel-step) rider-post)
   )
@@ -1566,19 +1556,18 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (dig-tipping-rock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (set! (-> self last-ridden-time) (current-time))
        )
       )
-    (rigid-body-object-event-handler proc arg1 event-type event)
+    (rigid-body-object-event-handler proc argc message block)
     )
   :trans (the-as (function none :behavior dig-tipping-rock) rider-trans)
   :code (the-as (function none :behavior dig-tipping-rock) sleep-code)
   :post (behavior ()
     (rigid-body-object-method-37 self)
-    (none)
     )
   )
 
@@ -1837,8 +1826,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate waiting (dig-stomp-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('set-flag)
        (let ((v0-0 (the-as object #t)))
          (set! (-> self flag) (the-as basic v0-0))
@@ -1850,7 +1839,7 @@ This commonly includes things such as:
        #f
        )
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('flop)
           (when (not (-> self flag))
             (set! (-> self desty) (+ -12288.0 (-> self root trans y)))
@@ -1873,8 +1862,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate hit (dig-stomp-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('broken)
        (go-virtual active)
        )
@@ -1891,7 +1880,6 @@ This commonly includes things such as:
     (set! (-> self flag) #f)
     (send-event (ppointer->process (-> self parent)) 'clear-flag)
     (go-virtual waiting)
-    (none)
     )
   :post (the-as (function none :behavior dig-stomp-block) transform-post)
   )
@@ -1913,7 +1901,6 @@ This commonly includes things such as:
       (set! (-> gp-0 z) (rand-vu-float-range -10000.0 10000.0))
       (vector-float*! (-> self rbody state ang-momentum) gp-0 (-> self info info mass))
       )
-    (none)
     )
   )
 
@@ -2127,26 +2114,25 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (dig-stomp-block-controller)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('set-flag)
-                      (dotimes (gp-0 4)
-                        (if (-> self stomp-blocks gp-0)
-                            (send-event (ppointer->process (-> self stomp-blocks gp-0)) 'set-flag)
-                            )
-                        )
-                      #f
-                      )
-                     (('clear-flag)
-                      (dotimes (gp-1 4)
-                        (if (-> self stomp-blocks gp-1)
-                            (send-event (ppointer->process (-> self stomp-blocks gp-1)) 'clear-flag)
-                            )
-                        )
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-flag)
+       (dotimes (gp-0 4)
+         (if (-> self stomp-blocks gp-0)
+             (send-event (ppointer->process (-> self stomp-blocks gp-0)) 'set-flag)
+             )
+         )
+       #f
+       )
+      (('clear-flag)
+       (dotimes (gp-1 4)
+         (if (-> self stomp-blocks gp-1)
+             (send-event (ppointer->process (-> self stomp-blocks gp-1)) 'clear-flag)
+             )
+         )
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (change-parent self *pusher-pool*)
@@ -2157,7 +2143,6 @@ This commonly includes things such as:
         (set! (-> self stomp-blocks s5-0) (process-spawn dig-stomp-block gp-0 :to self))
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior dig-stomp-block-controller) sleep-code)
   :post (behavior ()
@@ -2189,7 +2174,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 

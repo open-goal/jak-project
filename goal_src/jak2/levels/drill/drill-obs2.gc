@@ -32,8 +32,8 @@
 
 (defstate down (drill-flip-step)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual swing-up)
        )
@@ -41,7 +41,7 @@
        #t
        )
       (('query)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('arrived?)
           #t
           )
@@ -54,19 +54,18 @@
     (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
 (defstate up (drill-flip-step)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual swing-down)
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -75,7 +74,6 @@
     (ja-channel-push! 1 0)
     (ja :group! (-> self draw art-group data 3) :num! min)
     (sleep-code)
-    (none)
     )
   :post (the-as (function none :behavior drill-flip-step) plat-post)
   )
@@ -85,7 +83,6 @@
   :event (the-as (function process int symbol event-message-block object :behavior drill-flip-step) plat-event)
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-12) #f)
-    (none)
     )
   :trans (behavior ()
     (if (>= (ja-aframe-num 0) 67.5)
@@ -93,7 +90,6 @@
         (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
         )
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
@@ -106,7 +102,6 @@
       (ja :num! (seek! max 0.75))
       )
     (go-virtual down)
-    (none)
     )
   :post (the-as (function none :behavior drill-flip-step) plat-post)
   )
@@ -116,7 +111,6 @@
   :event (the-as (function process int symbol event-message-block object :behavior drill-flip-step) plat-event)
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status bit-12) #t)
-    (none)
     )
   :trans (behavior ()
     (if (>= (ja-aframe-num 0) 26.0)
@@ -124,7 +118,6 @@
         (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
         )
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 2)
@@ -136,7 +129,6 @@
       (ja :num! (seek!))
       )
     (go-virtual up)
-    (none)
     )
   :post (the-as (function none :behavior drill-flip-step) plat-post)
   )
@@ -293,7 +285,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior drill-falling-door) sleep-code)
   )
@@ -305,7 +296,6 @@ This commonly includes things such as:
     (if (>= (-> self hit-state) 3)
         (go-virtual fall #f)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -333,7 +323,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -354,7 +343,6 @@ This commonly includes things such as:
         )
       )
     0
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status bit-12) #t)
@@ -376,7 +364,6 @@ This commonly includes things such as:
         )
       )
     (sleep-code)
-    (none)
     )
   :post (the-as (function none :behavior drill-falling-door) transform-post)
   )
@@ -472,7 +459,6 @@ This commonly includes things such as:
           (go-virtual open)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior drill-sliding-door) sleep-code)
   )
@@ -490,7 +476,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   )
 
@@ -617,7 +602,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type conveyor idle) post)))
@@ -626,7 +610,6 @@ This commonly includes things such as:
           )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -661,7 +644,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior drill-breakable-barrel) ja-post)
   )
@@ -725,11 +707,11 @@ This commonly includes things such as:
 
 (defstate idle (drill-metalhead-eggs)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let* ((s5-0 (-> event param 0))
-              (gp-0 (the-as object (-> event param 1)))
+       (let* ((s5-0 (-> block param 0))
+              (gp-0 (the-as object (-> block param 1)))
               (s4-0 proc)
               (v1-1 (if (type? s4-0 process-drawable)
                         s4-0
@@ -759,7 +741,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior drill-metalhead-eggs) ja-post)
   )
@@ -811,7 +792,6 @@ This commonly includes things such as:
       (task-node-close! (game-task-node drill-eggs-resolution))
       (talker-spawn-func (-> *talker-speech* 99) *entity-pool* (target-pos 0) (the-as region #f))
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
@@ -866,7 +846,6 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -885,7 +864,6 @@ This commonly includes things such as:
           )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1122,11 +1100,11 @@ This commonly includes things such as:
 
 (defstate idle (drill-bridge-shot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let* ((gp-0 (-> event param 0))
-              (s5-0 (the-as object (-> event param 1)))
+       (let* ((gp-0 (-> block param 0))
+              (s5-0 (the-as object (-> block param 1)))
               (s4-0 proc)
               (v1-1 (if (type? s4-0 process-drawable)
                         s4-0
@@ -1163,7 +1141,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior drill-bridge-shot) transform-post)
   )
@@ -1172,7 +1149,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((v1-1 (-> self root root-prim)))
@@ -1238,7 +1214,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior drill-bridge-shot) transform-post)
   )
@@ -1334,7 +1309,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior drill-drill) ja-post)
   )
@@ -1377,8 +1351,8 @@ This commonly includes things such as:
 
 (defstate up (drill-drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object #t)))
          (set! (-> self ridden?) (the-as symbol v0-0))
@@ -1386,7 +1360,7 @@ This commonly includes things such as:
          )
        )
       (else
-        ((-> (method-of-type drill-flip-step up) event) proc arg1 event-type event)
+        ((-> (method-of-type drill-flip-step up) event) proc argc message block)
         )
       )
     )
@@ -1403,7 +1377,6 @@ This commonly includes things such as:
     (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 0.4))
         (go-virtual swing-down)
         )
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type drill-flip-step up) post)))
@@ -1411,7 +1384,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-0))
           )
       )
-    (none)
     )
   )
 
@@ -1426,7 +1398,6 @@ This commonly includes things such as:
     (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 2))
         (send-event self 'trigger)
         )
-    (none)
     )
   )
 

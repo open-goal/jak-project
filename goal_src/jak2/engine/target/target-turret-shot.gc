@@ -196,8 +196,8 @@
 
 (defstate impact (turret-shot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (let* ((toucher-proc proc)
               (toucher (if (type? toucher-proc process-drawable)
@@ -210,14 +210,14 @@
            (send-event
              proc
              'attack
-             (-> event param 0)
+             (-> block param 0)
              (static-attack-info ((id (-> self attack-id)) (mode 'explode) (damage (-> self damage))))
              )
            )
          )
        )
       (else
-        (projectile-event-handler proc arg1 event-type event)
+        (projectile-event-handler proc argc message block)
         )
       )
     )
@@ -233,7 +233,6 @@
       )
     (suspend)
     (go-virtual die)
-    (none)
     )
   )
 

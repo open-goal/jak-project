@@ -1780,13 +1780,13 @@
 
 (defstate idle (onin-game-bubble)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go empty-state)
        )
       (('attack)
-       (if (-> event param 0)
+       (if (-> block param 0)
            (go empty-state)
            )
        )
@@ -1849,14 +1849,13 @@
         )
       )
     (go-virtual fall)
-    (none)
     )
   )
 
 (defstate fall (onin-game-bubble)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (not (-> self dead?))
          (sound-play "onin-pop")
@@ -1927,7 +1926,6 @@
       819.2
       1.0
       )
-    (none)
     )
   :code (behavior ()
     (while (and (not (and (< (-> self root transv y) 0.0) (< (-> self root trans y) 36044.8))) (not (-> self dead?)))
@@ -1989,14 +1987,12 @@
     (while (not (and (< (-> self root transv y) 0.0) (< (-> self root trans y) 31948.8)))
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (+! (-> self root transv y) (* (-> self gravity) (seconds-per-frame)))
     (set! (-> self root transv x) (* 0.999 (-> self root transv x)))
     (vector-v+! (-> self root trans) (-> self root trans) (-> self root transv))
     (spawn (-> self part) (-> self root trans))
-    (none)
     )
   )
 
@@ -2325,7 +2321,6 @@
     (ja-channel-set! 0)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -2336,14 +2331,13 @@
       (suspend)
       )
     (go-virtual active #t)
-    (none)
     )
   )
 
 (defstate active (onin-game)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('done)
        (sound-play "onin-splat")
        (set! (-> self last-type) -1)
@@ -2432,7 +2426,6 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -2502,7 +2495,6 @@
         (want-sound-banks *load-state* (the-as (pointer symbol) a1-29))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -2550,7 +2542,6 @@
       (-> *cpad-list* cpads 0 button0-rel 0)
       (pad-buttons up right down left l1 r1 triangle circle x square)
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (ja-channel-set! 0)
@@ -2561,12 +2552,10 @@
       )
     (talker-spawn-func (-> *talker-speech* 145) *entity-pool* (target-pos 0) (the-as region #f))
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (onin-game-method-25 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -2628,11 +2617,9 @@
         (set-blackout-frames (seconds 0.1))
         (sleep-code)
         )
-    (none)
     )
   :post (behavior ()
     (onin-game-method-26 self)
-    (none)
     )
   )
 
@@ -2692,7 +2679,6 @@
       (set-blackout-frames (seconds 0.1))
       (send-event (handle->process gp-4) 'complete)
       )
-    (none)
     )
   :post (-> (method-of-type onin-game lose) post)
   )

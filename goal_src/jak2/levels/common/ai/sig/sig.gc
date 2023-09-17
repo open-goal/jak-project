@@ -349,31 +349,23 @@
     )
   )
 
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 33]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 38]
 (defmethod general-event-handler sig ((obj sig) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'untrigger)
-         (sig-plasma-method-11 (-> obj plasma) #t)
+  (case arg2
+    (('untrigger)
+     (sig-plasma-method-11 (-> obj plasma) #t)
+     )
+    (('sig-path)
+     (when (and (not (focus-test? obj dead)) (nonzero? (-> obj hit-points)) (zero? (-> obj fated-time)))
+       (let ((a1-2 (-> arg3 param 0)))
+         (sig-method-249 obj (the-as sig-path a1-2))
          )
-        ((= v1-0 'sig-path)
-         (when (and (not (focus-test? obj dead)) (nonzero? (-> obj hit-points)) (zero? (-> obj fated-time)))
-           (let ((a1-2 (-> arg3 param 0)))
-             (sig-method-249 obj (the-as sig-path a1-2))
-             )
-           (go (method-of-object obj sig-path-run))
-           )
-         )
-        (else
-          ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
-          )
-        )
+       (go (method-of-object obj sig-path-run))
+       )
+     )
+    (else
+      ((method-of-type bot general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -715,7 +707,6 @@
       (go (method-of-object obj chase))
       )
     )
-  (none)
   )
 
 (defmethod react-to-focus sig ((obj sig))
@@ -746,7 +737,6 @@
       (go (method-of-object obj waiting-close))
       )
     )
-  (none)
   )
 
 ;; WARN: Return type mismatch object vs none.

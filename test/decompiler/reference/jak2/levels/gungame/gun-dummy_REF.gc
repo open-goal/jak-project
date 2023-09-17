@@ -2303,79 +2303,76 @@
 ;; failed to figure out what this is:
 (defstate idle (gun-dummy)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('combo)
-         (set! (-> self last-combo-time) (current-time))
-         #t
-         )
-        (('track)
-         (cond
-           ((-> event param 0)
-            (if (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
-                #t
-                'abort
-                )
-            )
-           (else
-             (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
-             )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('combo)
+       (set! (-> self last-combo-time) (current-time))
+       #t
+       )
+      (('track)
+       (cond
+         ((-> block param 0)
+          (if (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
+              #t
+              'abort
+              )
+          )
+         (else
+           (and (not (logtest? (-> self info flags) (tpath-flags citizen))) (> (-> self hit-points) 0))
            )
          )
-        (('attack)
-         (let ((attack-info (the-as attack-info (-> event param 1))))
-           (get-penetrate-using-from-attack-event (the-as process-drawable proc) event)
-           (when (or (not (logtest? (-> self info flags) (tpath-flags peace)))
-                     (and (logtest? (-> self info flags) (tpath-flags peace))
-                          (or (= (-> attack-info mode) 'eco-dark) (= (-> attack-info mode) 'explode))
-                          )
-                     )
-             (when (!= (-> attack-info id) (-> self incoming-attack-id))
-               (set! (-> self incoming-attack-id) (-> attack-info id))
-               (let ((proc-draw (if (type? proc process-drawable)
-                                    (the-as process-drawable proc)
-                                    )
-                                )
-                     )
-                 (when proc-draw
-                   (let ((cshape (-> proc-draw root)))
-                     (when (if (type? cshape collide-shape)
-                               cshape
-                               )
-                       (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
-                       (vector+!
-                         (-> self impact)
-                         (-> self impact)
-                         (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
-                         )
-                       )
-                     )
-                   (cond
-                     ((= (-> self hit-points) 2)
-                      (set! (-> self rot-y-offset) 262144.0)
-                      (set! (-> self spin-sound) (sound-play "target-spin"))
-                      )
-                     (else
-                       (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
-                                (< (- (current-time) (-> self last-combo-time)) (seconds 1))
-                                )
-                           (send-event (ppointer->process (-> self parent)) 'combo)
-                           )
-                       )
-                     )
-                   (if (> (-> self hit-points) 0)
-                       (+! (-> self hit-points) -1)
-                       )
-                   #t
+       )
+      (('attack)
+       (let ((attack-info (the-as attack-info (-> block param 1))))
+         (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)
+         (when (or (not (logtest? (-> self info flags) (tpath-flags peace)))
+                   (and (logtest? (-> self info flags) (tpath-flags peace))
+                        (or (= (-> attack-info mode) 'eco-dark) (= (-> attack-info mode) 'explode))
+                        )
                    )
+           (when (!= (-> attack-info id) (-> self incoming-attack-id))
+             (set! (-> self incoming-attack-id) (-> attack-info id))
+             (let ((proc-draw (if (type? proc process-drawable)
+                                  (the-as process-drawable proc)
+                                  )
+                              )
+                   )
+               (when proc-draw
+                 (let ((cshape (-> proc-draw root)))
+                   (when (if (type? cshape collide-shape)
+                             cshape
+                             )
+                     (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
+                     (vector+!
+                       (-> self impact)
+                       (-> self impact)
+                       (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
+                       )
+                     )
+                   )
+                 (cond
+                   ((= (-> self hit-points) 2)
+                    (set! (-> self rot-y-offset) 262144.0)
+                    (set! (-> self spin-sound) (sound-play "target-spin"))
+                    )
+                   (else
+                     (if (and (logtest? (process-mask projectile) (-> proc-draw mask))
+                              (< (- (current-time) (-> self last-combo-time)) (seconds 1))
+                              )
+                         (send-event (ppointer->process (-> self parent)) 'combo)
+                         )
+                     )
+                   )
+                 (if (> (-> self hit-points) 0)
+                     (+! (-> self hit-points) -1)
+                     )
+                 #t
                  )
                )
              )
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -2385,11 +2382,9 @@
     (set! (-> self rot-y-offset) 0.0)
     (set! (-> self first-time-command) #t)
     (set! (-> self done? value) (the-as object #f))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self info flags) (tpath-flags broken))
-    (none)
     )
   :code (behavior ()
     (while (not (-> self done? value))
@@ -2411,7 +2406,6 @@
       0
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (set! (-> self done? value) (not (path-playing? self)))
@@ -2440,7 +2434,6 @@
     (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> self rot-y-offset))
     (quaternion-slerp! (-> self root quat) (-> self root quat) (-> self quat-ground) (-> self inout-percent))
     (transform-post)
-    (none)
     )
   )
 

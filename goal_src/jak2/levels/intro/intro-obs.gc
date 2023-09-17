@@ -41,8 +41,8 @@
 
 (defstate idle (intro-flamer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -64,7 +64,6 @@
         )
       (set! (-> self flit-timer) (the-as uint (current-time)))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
@@ -84,7 +83,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (seek! (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)))
@@ -192,7 +190,6 @@
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -201,7 +198,6 @@
   :code (behavior ()
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -282,13 +278,13 @@ This commonly includes things such as:
 
 (defstate idle (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
@@ -297,8 +293,8 @@ This commonly includes things such as:
 
 (defstate active (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -306,7 +302,7 @@ This commonly includes things such as:
        (go-virtual die)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
@@ -333,13 +329,11 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (dotimes (gp-0 19)
       (debug-draw (-> self path-tbl gp-0))
       )
-    (none)
     )
   )
 
@@ -356,7 +350,6 @@ This commonly includes things such as:
       (suspend)
       )
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
@@ -432,7 +425,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior vil-windmill-sail) ja-post)
   )

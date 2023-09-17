@@ -60,8 +60,8 @@
 ;; failed to figure out what this is:
 (defstate waiting (fort-elec-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual pop-up)
        )
@@ -171,8 +171,8 @@
 ;; failed to figure out what this is:
 (defstate red (fort-led)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual green)
        )
@@ -182,15 +182,14 @@
     (setup-masks (-> self draw) 4 2)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate green (fort-led)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual red)
        )
@@ -200,7 +199,6 @@
     (setup-masks (-> self draw) 2 4)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -268,15 +266,15 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate active (elec-lock-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (if (elec-lock-gate-method-31 self (the-as symbol proc))
            (go-virtual pre-shutdown)
            )
        )
       (else
-        ((-> (method-of-type elec-gate active) event) proc arg1 event-type event)
+        ((-> (method-of-type elec-gate active) event) proc argc message block)
         )
       )
     )
@@ -307,7 +305,6 @@ This commonly includes things such as:
         )
       )
     (go-virtual shutdown)
-    (none)
     )
   :post (-> (method-of-type elec-lock-gate active) post)
   )
@@ -322,7 +319,6 @@ This commonly includes things such as:
           )
       )
     (set! (-> self all-gone?) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 #t))
@@ -396,7 +392,6 @@ This commonly includes things such as:
         )
       (set! (-> self all-gone?) gp-0)
       )
-    (none)
     )
   :code (behavior ()
     (until (-> self all-gone?)
@@ -415,7 +410,6 @@ This commonly includes things such as:
     (remove-setting! 'interp-time)
     (process-release? *target*)
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -442,6 +436,7 @@ This commonly includes things such as:
   )
 
 ;; definition for method 26 of type elec-lock-gate
+;; WARN: Return type mismatch object vs none.
 (defmethod set-state! elec-lock-gate ((obj elec-lock-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
 make the gate `idle`.

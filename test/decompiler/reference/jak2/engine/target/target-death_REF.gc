@@ -35,35 +35,35 @@
 
 ;; failed to figure out what this is:
 (defstate target-continue (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('change-mode)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('grab 'look-around)
           #f
           )
          (else
-           (set! (-> self mode-cache) (the-as basic (-> event param 0)))
-           (set! (-> self mode-param1) (if (>= arg1 2)
-                                           (process->handle (the-as process (-> event param 1)))
+           (set! (-> self mode-cache) (the-as basic (-> block param 0)))
+           (set! (-> self mode-param1) (if (>= argc 2)
+                                           (process->handle (the-as process (-> block param 1)))
                                            (the-as handle #f)
                                            )
                  )
-           (set! (-> self mode-param2) (-> event param 2))
-           (set! v0-0 (-> event param 3))
+           (set! (-> self mode-param2) (-> block param 2))
+           (set! v0-0 (-> block param 3))
            (set! (-> self mode-param3) (the-as uint v0-0))
            v0-0
            )
          )
        )
       (('want-continue)
-       (set! v0-0 (-> event param 0))
+       (set! v0-0 (-> block param 0))
        (set! (-> self control unknown-word04) (the-as uint v0-0))
        v0-0
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -92,7 +92,6 @@
     (set! (-> self teleport-time) (current-time))
     (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
     (set! (-> self game kiosk-timeout) (the-as uint (-> *display* game-clock frame-counter)))
-    (none)
     )
   :code (behavior ((arg0 continue-point))
     (local-vars (v1-96 symbol))
@@ -402,7 +401,6 @@
       (set! (-> self mode-cache) #f)
       )
     (go target-stance)
-    (none)
     )
   :post target-no-move-post
   )
@@ -763,6 +761,7 @@
   )
 
 ;; definition for function target-hit-setup-anim
+;; WARN: Return type mismatch object vs none.
 (defbehavior target-hit-setup-anim target ((arg0 attack-info))
   (let ((v1-0 (-> arg0 angle)))
     (cond
@@ -955,7 +954,6 @@
       )
     ((method-of-type focus clear-focused) (the-as focus (-> self gun track-target)))
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (= *cheat-mode* 'debug)
@@ -965,7 +963,6 @@
         (go target-stance)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (local-vars (sv-32 attack-info) (sv-36 vector))
@@ -1270,7 +1267,6 @@
         (go target-death (-> sv-32 mode))
         )
     (go target-hit-ground #f)
-    (none)
     )
   :post target-post
   )
@@ -1517,50 +1513,47 @@
 
 ;; failed to figure out what this is:
 (defstate target-death (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'end-mode)
-                        (let ((v0-0 (the-as object #t)))
-                          (set! (-> self control unknown-word04) (the-as uint v0-0))
-                          v0-0
-                          )
-                        )
-                       ((= v1-0 'change-mode)
-                        (case (-> event param 0)
-                          (('grab)
-                           (case (-> event param 1)
-                             (('dead)
-                              #t
-                              )
-                             (else
-                               #f
-                               )
-                             )
-                           )
-                          )
-                        )
-                       ((= v1-0 'notify)
-                        (when (type? proc pov-camera)
-                          (case (-> event param 0)
-                            (('die 'abort-request)
-                             (set! (-> self control unknown-word04) (the-as uint #t))
-                             (the-as object (set-blackout-frames (seconds 0.2)))
-                             )
-                            )
-                          )
-                        )
-                       ((= v1-0 'get-pickup)
-                        #f
-                        )
-                       ((= v1-0 'touched)
-                        #f
-                        )
-                       (else
-                         (target-generic-event-handler proc arg1 event-type event)
-                         )
-                       )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('end-mode)
+       (let ((v0-0 (the-as object #t)))
+         (set! (-> self control unknown-word04) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      (('change-mode)
+       (case (-> block param 0)
+         (('grab)
+          (case (-> block param 1)
+            (('dead)
+             #t
+             )
+            (else
+              #f
               )
+            )
+          )
+         )
+       )
+      (('notify)
+       (when (type? proc pov-camera)
+         (case (-> block param 0)
+           (('die 'abort-request)
+            (set! (-> self control unknown-word04) (the-as uint #t))
+            (set-blackout-frames (seconds 0.2))
+            )
+           )
+         )
+       )
+      (('get-pickup)
+       #f
+       )
+      (('touched)
+       #f
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
       )
     )
   :exit (behavior ()
@@ -1586,7 +1579,6 @@
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (send-event (ppointer->process (-> self gun gun)) 'reset)
     (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (-> target-hit trans)
   :code (behavior ((arg0 symbol))
@@ -2159,7 +2151,6 @@
       )
     (label cfg-167)
     (target-death-reset arg0 #f)
-    (none)
     )
   :post target-no-stick-post
   )

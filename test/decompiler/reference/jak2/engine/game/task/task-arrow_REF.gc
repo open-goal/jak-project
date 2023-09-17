@@ -221,11 +221,11 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
 ;; failed to figure out what this is:
 (defstate idle (task-arrow)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-2 object))
-    (case event-type
+    (case message
       (('set-position)
-       (let ((a0-3 (the-as object (-> event param 0))))
+       (let ((a0-3 (the-as object (-> block param 0))))
          (set! (-> self pos quad) (-> (the-as vector a0-3) quad))
          )
        (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-03))
@@ -246,8 +246,8 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
            )
        )
       (('modify-flags)
-       (let ((v1-16 (-> event param 0))
-             (a1-3 (-> event param 1))
+       (let ((v1-16 (-> block param 0))
+             (a1-3 (-> block param 1))
              )
          (set! v0-2 (logior (logclear (-> self flags) a1-3) v1-16))
          )
@@ -256,7 +256,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
        )
       (('map-icon)
        (kill-callback (-> *minimap* engine) (-> self minimap))
-       (let ((a2-1 (-> event param 0)))
+       (let ((a2-1 (-> block param 0)))
          (set! (-> self map-icon) a2-1)
          (set! v0-2 (add-icon! *minimap* self a2-1 (the-as int #f) (the-as vector #t) 0))
          )
@@ -271,7 +271,6 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
   :code (the-as (function none :behavior task-arrow) sleep-code)
   :post (behavior ()
     (draw-arrow self)
-    (none)
     )
   )
 
@@ -284,11 +283,9 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (draw-arrow self)
-    (none)
     )
   )
 
@@ -297,7 +294,6 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 

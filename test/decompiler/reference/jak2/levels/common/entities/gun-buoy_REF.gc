@@ -447,8 +447,8 @@
 ;; failed to figure out what this is:
 (defstate dormant-aware (gun-buoy)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('kill-player)
        (logior! (-> self flags) (gun-buoy-flags gubflags-2))
        (go-virtual ambush)
@@ -459,7 +459,6 @@
     (set! (-> self root trans quad) (-> self start-pos quad))
     (logclear! (-> self flags) (gun-buoy-flags gubflags-1))
     (logclear! (-> self flags) (gun-buoy-flags gubflags-2))
-    (none)
     )
   :trans (behavior ()
     (when (and (>= (- (current-time) (-> self state-time)) (-> self state-timeout))
@@ -471,7 +470,6 @@
           )
       (go-ambush self)
       )
-    (none)
     )
   )
 
@@ -549,7 +547,6 @@
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (when (< (fabs (-> self y-offset)) 409.6)
@@ -562,7 +559,6 @@
         )
       (go-virtual open-guns)
       )
-    (none)
     )
   :code (the-as (function none :behavior gun-buoy) sleep-code)
   :post (behavior ()
@@ -591,7 +587,6 @@
       (update-vol! (-> self sound) f30-0)
       )
     (gun-buoy-chase-post)
-    (none)
     )
   )
 
@@ -600,17 +595,14 @@
   :virtual #t
   :enter (behavior ()
     (logclear! (-> self flags) (gun-buoy-flags gubflags-0))
-    (none)
     )
   :exit (behavior ()
     (nav-enemy-method-167 self)
-    (none)
     )
   :trans (behavior ()
     (if (< (-> self y-offset) -81510.4)
         (go-virtual dormant-aware)
         )
-    (none)
     )
   :code (the-as (function none :behavior gun-buoy) sleep-code)
   :post (behavior ()
@@ -632,7 +624,6 @@
       (update-vol! (-> self sound) f30-0)
       )
     (gun-buoy-chase-post)
-    (none)
     )
   )
 
@@ -646,7 +637,6 @@
     (if (and *target* (< 102400.0 (vector-length (get-transv *target*))))
         (go-virtual attack)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -693,7 +683,6 @@
         (go-virtual exit-ambush)
         )
       )
-    (none)
     )
   :post gun-buoy-chase-post
   )
@@ -703,7 +692,6 @@
   :virtual #t
   :enter (behavior ()
     (set! (-> self stare-down-timer) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let ((v1-0 (-> self focus aware)))
@@ -719,7 +707,6 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "buoy-guns-in")
@@ -736,7 +723,6 @@
       )
     (set! (-> self gun-elev-jmod mode) (the-as joint-mod-mode #f))
     (sleep-code)
-    (none)
     )
   :post gun-buoy-chase-post
   )
@@ -744,8 +730,8 @@
 ;; failed to figure out what this is:
 (defstate warning (gun-buoy)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('kill-player)
        (logior! (-> self flags) (gun-buoy-flags gubflags-2))
        (go-virtual attack)
@@ -780,14 +766,12 @@
       )
     (set! (-> self warning-timer) (current-time))
     (set! (-> self warning-id) (sound-play "buoy-alarm"))
-    (none)
     )
   :exit (behavior ()
     (when (nonzero? (-> self warning-id))
       (sound-stop (-> self warning-id))
       (set! (-> self warning-id) (the-as sound-id -1))
       )
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (-> self focus aware)))
@@ -811,7 +795,6 @@
          )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior gun-buoy) sleep-code)
   :post (behavior ()
@@ -826,7 +809,6 @@
         )
       )
     (gun-buoy-chase-post)
-    (none)
     )
   )
 
@@ -851,7 +833,6 @@
       (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-7 enemy-flags))))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (-> self reaction-time))
@@ -873,7 +854,6 @@
             )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior gun-buoy) sleep-code)
   :post gun-buoy-chase-post
@@ -903,7 +883,6 @@
           (go-virtual exit-ambush)
           )
       )
-    (none)
     )
   :code (behavior ()
     (dotimes (gp-0 4)
@@ -924,7 +903,6 @@
         )
       )
     (go-virtual hostile)
-    (none)
     )
   :post gun-buoy-chase-post
   )
@@ -938,7 +916,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ()
     (set! *gun-buoy-victory-index* (rand-vu-int-range 0 (+ (-> *gun-buoy-victory-speech* length) -1)))
@@ -959,7 +936,6 @@
         )
       )
     (go-virtual exit-ambush)
-    (none)
     )
   :post gun-buoy-chase-post
   )
@@ -969,7 +945,6 @@
   :virtual #t
   :code (behavior ()
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -1063,13 +1038,11 @@
   )
 
 ;; definition for method 70 of type gun-buoy
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile gun-buoy ((obj gun-buoy))
   (if (logtest? (-> obj flags) (gun-buoy-flags gubflags-1))
       (go (method-of-object obj hostile))
       (go (method-of-object obj warning))
       )
-  (none)
   )
 
 ;; definition for method 61 of type gun-buoy

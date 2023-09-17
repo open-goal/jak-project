@@ -167,7 +167,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-3))
           )
       )
-    (none)
     )
   )
 
@@ -251,10 +250,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-conveyor-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as object (-> event param 1))))
+       (let ((v1-1 (the-as object (-> block param 1))))
          (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
            (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
            (when (and (-> self track-flag) (= (-> self speed) (-> self target-speed)))
@@ -329,7 +328,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior cas-conveyor-switch) sleep-code)
   :post (behavior ()
@@ -402,7 +400,6 @@ This commonly includes things such as:
         )
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -554,7 +551,6 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -576,35 +572,33 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate idle (cas-electric-fence)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touched)
-                      #f
-                      )
-                     (('attack)
-                      #f
-                      )
-                     (('track)
-                      #t
-                      )
-                     (('stop)
-                      (let ((v0-0 #t))
-                        (set! (-> self stop) v0-0)
-                        v0-0
-                        )
-                      )
-                     (('stopped?)
-                      (-> self stop)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       #f
+       )
+      (('attack)
+       #f
+       )
+      (('track)
+       #t
+       )
+      (('stop)
+       (let ((v0-0 #t))
+         (set! (-> self stop) v0-0)
+         v0-0
+         )
+       )
+      (('stopped?)
+       (-> self stop)
+       )
+      )
     )
   :code (the-as (function none :behavior cas-electric-fence) sleep-code)
   :post (behavior ()
@@ -712,7 +706,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
@@ -831,10 +824,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate up-idle (cas-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let ((v1-1 (the-as attack-info (-> event param 1))))
+       (let ((v1-1 (the-as attack-info (-> block param 1))))
          (case (-> v1-1 mode)
            (('flop)
             (when (or (not (or (= (-> v1-1 mode) 'spin) (= (-> v1-1 mode) 'punch)))
@@ -993,7 +986,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
@@ -1007,7 +999,6 @@ This commonly includes things such as:
           )
       )
     (sound-play "cas-elevate" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   :post (behavior ()
     (cas-elevator-method-49 self)
@@ -1035,7 +1026,6 @@ This commonly includes things such as:
         (-> gp-0 id)
         )
       )
-    (none)
     )
   )
 
@@ -1050,7 +1040,6 @@ This commonly includes things such as:
       )
     (sound-stop (-> self sound-id))
     (sound-play "cas-elevate-end")
-    (none)
     )
   :post (behavior ()
     (if (-> self bouncing)
@@ -1061,7 +1050,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
@@ -1161,70 +1149,69 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate idle (cas-rot-bridge)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 number))
-    (the-as object (case event-type
-                     (('move)
-                      (set! (-> self anim-index) (/ (the-as int (-> event param 0)) 8))
-                      (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
-                      (set! (-> self mask) (the-as process-mask v0-0))
-                      v0-0
-                      )
-                     (('get-pos)
-                      (set! (-> self test-index) (/ (the-as int (-> event param 0)) 8))
-                      (let ((f0-0 (ja-aframe-num 0)))
-                        (cond
-                          ((zero? (-> self test-index))
-                           (if (< f0-0 10.0)
-                               (set! f0-0 10.0)
-                               )
-                           (if (< 40.0 f0-0)
-                               (set! f0-0 40.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 1)
-                           (if (< f0-0 50.0)
-                               (set! f0-0 50.0)
-                               )
-                           (if (< 80.0 f0-0)
-                               (set! f0-0 80.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -50.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 2)
-                           (if (< f0-0 90.0)
-                               (set! f0-0 90.0)
-                               )
-                           (if (< 120.0 f0-0)
-                               (set! f0-0 120.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -90.0 f0-0)))
-                           )
-                          ((= (-> self test-index) 3)
-                           (if (< f0-0 10.0)
-                               (set! f0-0 10.0)
-                               )
-                           (if (< 40.0 f0-0)
-                               (set! f0-0 40.0)
-                               )
-                           (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
-                           )
-                          )
-                        )
-                      (-> self pos)
-                      )
-                     (('reset)
-                      (when (nonzero? (-> self anim-index))
-                        (ja-no-eval :group! (-> self draw art-group data 3) :num! min)
-                        (set! (-> self anim-index) (the-as uint 0))
-                        (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
-                        (set! (-> self mask) (the-as process-mask v0-0))
-                        v0-0
-                        )
-                      )
-                     )
+    (case message
+      (('move)
+       (set! (-> self anim-index) (/ (the-as int (-> block param 0)) 8))
+       (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
+       (set! (-> self mask) (the-as process-mask v0-0))
+       v0-0
+       )
+      (('get-pos)
+       (set! (-> self test-index) (/ (the-as int (-> block param 0)) 8))
+       (let ((f0-0 (ja-aframe-num 0)))
+         (cond
+           ((zero? (-> self test-index))
+            (if (< f0-0 10.0)
+                (set! f0-0 10.0)
+                )
+            (if (< 40.0 f0-0)
+                (set! f0-0 40.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
             )
+           ((= (-> self test-index) 1)
+            (if (< f0-0 50.0)
+                (set! f0-0 50.0)
+                )
+            (if (< 80.0 f0-0)
+                (set! f0-0 80.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -50.0 f0-0)))
+            )
+           ((= (-> self test-index) 2)
+            (if (< f0-0 90.0)
+                (set! f0-0 90.0)
+                )
+            (if (< 120.0 f0-0)
+                (set! f0-0 120.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -90.0 f0-0)))
+            )
+           ((= (-> self test-index) 3)
+            (if (< f0-0 10.0)
+                (set! f0-0 10.0)
+                )
+            (if (< 40.0 f0-0)
+                (set! f0-0 40.0)
+                )
+            (set! (-> self pos) (* 0.033333335 (+ -10.0 f0-0)))
+            )
+           )
+         )
+       (-> self pos)
+       )
+      (('reset)
+       (when (nonzero? (-> self anim-index))
+         (ja-no-eval :group! (-> self draw art-group data 3) :num! min)
+         (set! (-> self anim-index) (the-as uint 0))
+         (set! v0-0 (logclear (-> self mask) (process-mask sleep-code)))
+         (set! (-> self mask) (the-as process-mask v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (until #f
@@ -1338,7 +1325,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((f0-0 (ja-aframe-num 0)))
@@ -1431,7 +1417,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -1588,37 +1573,34 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (let ((gp-0 (the-as attack-info (-> event param 1))))
-           (when (or (= (-> gp-0 mode) 'spin) (= (-> gp-0 mode) 'spin-air))
-             (let* ((s5-0 (the-as object (-> event param 0)))
-                    (s4-0 (-> (the-as touching-shapes-entry s5-0) head))
-                    )
-               (while s4-0
-                 (let ((a0-2 (get-touched-prim s4-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s5-0))))
-                   (when (= (-> a0-2 prim-id) 1)
-                     (when (!= (-> gp-0 id) (-> self incoming-attack-id))
-                       (set! (-> self incoming-attack-id) (-> gp-0 id))
-                       (let ((s3-0 (-> self actor-group 0)))
-                         (dotimes (s2-0 (-> s3-0 length))
-                           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-6 from) (process->ppointer self))
-                             (set! (-> a1-6 num-params) 1)
-                             (set! (-> a1-6 message) 'move)
-                             (set! (-> a1-6 param 0) (* (-> self anim-index) 8))
-                             (let ((t9-1 send-event-function)
-                                   (v1-20 (-> s3-0 data s2-0 actor))
-                                   )
-                               (t9-1
-                                 (if v1-20
-                                     (-> v1-20 extra process)
-                                     )
-                                 a1-6
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((gp-0 (the-as attack-info (-> block param 1))))
+         (when (or (= (-> gp-0 mode) 'spin) (= (-> gp-0 mode) 'spin-air))
+           (let* ((s5-0 (the-as object (-> block param 0)))
+                  (s4-0 (-> (the-as touching-shapes-entry s5-0) head))
+                  )
+             (while s4-0
+               (let ((a0-2 (get-touched-prim s4-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s5-0))))
+                 (when (= (-> a0-2 prim-id) 1)
+                   (when (!= (-> gp-0 id) (-> self incoming-attack-id))
+                     (set! (-> self incoming-attack-id) (-> gp-0 id))
+                     (let ((s3-0 (-> self actor-group 0)))
+                       (dotimes (s2-0 (-> s3-0 length))
+                         (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-6 from) (process->ppointer self))
+                           (set! (-> a1-6 num-params) 1)
+                           (set! (-> a1-6 message) 'move)
+                           (set! (-> a1-6 param 0) (* (-> self anim-index) 8))
+                           (let ((t9-1 send-event-function)
+                                 (v1-20 (-> s3-0 data s2-0 actor))
                                  )
+                             (t9-1
+                               (if v1-20
+                                   (-> v1-20 extra process)
+                                   )
+                               a1-6
                                )
                              )
                            )
@@ -1626,14 +1608,14 @@ This commonly includes things such as:
                        )
                      )
                    )
-                 (set! s4-0 (-> s4-0 next))
                  )
+               (set! s4-0 (-> s4-0 next))
                )
-             #f
              )
+           #f
            )
          )
-        )
+       )
       )
     )
   :trans (the-as (function none :behavior cas-switch) rider-trans)
@@ -1694,7 +1676,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior cas-switch) rider-post)
   )
@@ -1862,20 +1843,19 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-trapdoor)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('attack)
-                      (let ((gp-0 (the-as object (-> event param 1))))
-                        (when (and (not (task-node-closed? (game-task-node castle-boss-resolution)))
-                                   (logtest? (-> (the-as attack-info gp-0) penetrate-using) (penetrate flop))
-                                   )
-                          (go-virtual die)
-                          #f
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((gp-0 (the-as object (-> block param 1))))
+         (when (and (not (task-node-closed? (game-task-node castle-boss-resolution)))
+                    (logtest? (-> (the-as attack-info gp-0) penetrate-using) (penetrate flop))
+                    )
+           (go-virtual die)
+           #f
+           )
+         )
+       )
+      )
     )
   :code (the-as (function none :behavior cas-trapdoor) sleep-code)
   )
@@ -1915,7 +1895,6 @@ This commonly includes things such as:
         :to self
         )
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "trapdoor")
@@ -1931,7 +1910,6 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior cas-trapdoor) ja-post)
   )
@@ -2018,8 +1996,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-chain-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (sound-play "cas-shelf-plat")
        (go-virtual drop)
@@ -2046,7 +2024,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go-virtual down)
-    (none)
     )
   :post (the-as (function none :behavior cas-chain-plat) transform-post)
   )
@@ -2157,26 +2134,23 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-rot-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touched)
-         (let* ((s4-0 (the-as object (-> event param 0)))
-                (s3-0 (-> (the-as touching-shapes-entry s4-0) head))
-                )
-           (while s3-0
-             (let ((a0-3 (get-touched-prim s3-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s4-0))))
-               (if (= (-> a0-3 prim-id) 1)
-                   (send-event proc 'attack (-> event param 0) (static-attack-info ((id (new-attack-id)))))
-                   )
-               )
-             (set! s3-0 (-> s3-0 next))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (let* ((s4-0 (the-as object (-> block param 0)))
+              (s3-0 (-> (the-as touching-shapes-entry s4-0) head))
+              )
+         (while s3-0
+           (let ((a0-3 (get-touched-prim s3-0 (the-as collide-shape (-> self root)) (the-as touching-shapes-entry s4-0))))
+             (if (= (-> a0-3 prim-id) 1)
+                 (send-event proc 'attack (-> block param 0) (static-attack-info ((id (new-attack-id)))))
+                 )
              )
+           (set! s3-0 (-> s3-0 next))
            )
-         #f
          )
-        )
+       #f
+       )
       )
     )
   :trans (behavior ()
@@ -2187,7 +2161,6 @@ This commonly includes things such as:
       :id (-> self sound-id)
       :position (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2201,7 +2174,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior cas-rot-blade) transform-post)
   )
@@ -2333,7 +2305,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior cas-flag-a) ja-post)
   )
@@ -2404,7 +2375,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior cas-flag-b) ja-post)
   )
@@ -2492,8 +2462,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (cas-robot-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual spawning)
        )
@@ -2501,7 +2471,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (seconds 0.6))
@@ -2515,7 +2484,6 @@ This commonly includes things such as:
         )
       (set! (-> self state-time) (current-time))
       )
-    (none)
     )
   :code (the-as (function none :behavior cas-robot-door) sleep-code)
   )
@@ -2523,23 +2491,21 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate spawning (cas-robot-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('roboguard-die)
-                      (let ((v0-0 (+ (-> self spawn-count) -1)))
-                        (set! (-> self spawn-count) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('roboguard-die)
+       (let ((v0-0 (+ (-> self spawn-count) -1)))
+         (set! (-> self spawn-count) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self spawn-count) 0)
     (set! (-> self spawn-count-total) 0)
     (set! (-> self player-dist) (-> self notice-dist))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (seconds 0.6))
@@ -2550,7 +2516,6 @@ This commonly includes things such as:
         )
       (set! (-> self state-time) (current-time))
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "robo-hatch-open")
@@ -2713,11 +2678,9 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     '()
-    (none)
     )
   )
 
@@ -2813,7 +2776,6 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   )
 
@@ -2986,7 +2948,6 @@ This commonly includes things such as:
         )
       (set! (-> self timer) (current-time))
       )
-    (none)
     )
   )
 

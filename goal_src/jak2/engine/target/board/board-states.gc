@@ -504,14 +504,13 @@
     (target-board-init)
     (remove-exit)
     (go target-board-get-on)
-    (none)
     )
   :post target-post
   )
 
 (defstate target-board-stance (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('lip)
        (when (and (= (-> self control ground-pat mode) (pat-mode halfpipe))
                   (< (-> self control poly-angle) 0.5)
@@ -528,7 +527,7 @@
                   )
          (set! (-> self board halfpipe-lip-time) (current-time))
          (set! (-> self board halfpipe-side-time) (current-time))
-         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> event param 0)))
+         (set! (-> self board halfpipe-lip-event) (the-as symbol (-> block param 0)))
          (let ((v0-2 (the-as object (logior (-> self control root-prim prim-core action) (collide-action no-normal-reset))))
                )
            (set! (-> self control root-prim prim-core action) (the-as collide-action v0-2))
@@ -539,20 +538,19 @@
       (('jump)
        (go
          target-board-jump
-         (the-as meters (-> event param 0))
-         (the-as meters (-> event param 1))
-         (the-as symbol (-> event param 2))
+         (the-as meters (-> block param 0))
+         (the-as meters (-> block param 1))
+         (the-as symbol (-> block param 2))
          )
        )
       (else
-        (target-board-handler proc arg1 event-type event)
+        (target-board-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self control mod-surface) *board-walk-mods*)
     (set! (-> self board mods-backup) (-> self control mod-surface))
-    (none)
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -577,7 +575,6 @@
       (set! (-> self board turn-anim-duck) 0.0)
       )
     (target-board-exit)
-    (none)
     )
   :trans (behavior ()
     (if (and (cpad-hold? (-> self control cpad number) l1)
@@ -657,7 +654,6 @@
         (set! (-> self board mods-backup) (-> self control mod-surface))
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (-> self board stance-info)))
@@ -756,7 +752,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-board-post
   )
@@ -766,12 +761,10 @@
   :enter (behavior ()
     (set! (-> self control mod-surface) *board-duck-mods*)
     (set! (-> self board mods-backup) (-> self control mod-surface))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self board turn-anim-duck-vel) -8.0)
     ((-> target-board-stance exit))
-    (none)
     )
   :trans (behavior ()
     (if (and (or (not (cpad-hold? (-> self control cpad number) l1))
@@ -863,18 +856,17 @@
         (set! (-> self board mods-backup) (-> self control mod-surface))
         )
       )
-    (none)
     )
   :code (-> target-board-stance code)
   :post target-board-post
   )
 
 (defstate target-board-jump (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (= event-type 'edge-grab) (< (- (current-time) (-> self state-time)) (seconds 0.1)))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'edge-grab) (< (- (current-time) (-> self state-time)) (seconds 0.1)))
         (return #f)
         )
-    (target-board-handler proc arg1 event-type event)
+    (target-board-handler proc argc message block)
     )
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
     (local-vars
@@ -1021,7 +1013,6 @@
           (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel)))))
           )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :exit target-board-exit
   :trans (behavior ()
@@ -1035,7 +1026,6 @@
     (mod-var-jump #t #f (cpad-hold? (-> self control cpad number) x) (-> self control transv))
     (set! (-> self board slow-transv quad) (-> self control transv quad))
     (set! (-> self board shock-offset) (* 0.8 (-> self board shock-offset)))
-    (none)
     )
   :code (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
     (case arg2
@@ -1089,14 +1079,13 @@
       (ja :num! (loop!))
       )
     #f
-    (none)
     )
   :post target-board-post
   )
 
 (defstate target-board-halfpipe (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('edge-grab)
        (format
          #t
@@ -1149,14 +1138,14 @@
          )
        )
       (('grenade)
-       (if (< (the-as float (-> event param 0))
+       (if (< (the-as float (-> block param 0))
               (vector-dot (-> self control dynam gravity-normal) (-> self control transv))
               )
            (go target-board-grenade (process->handle proc))
            )
        )
       (else
-        (target-board-handler proc arg1 event-type event)
+        (target-board-handler proc argc message block)
         )
       )
     )
@@ -1214,7 +1203,6 @@
             )
         (go target-board-turn-to (-> self control transv) (seconds 0.5))
         )
-    (none)
     )
   :exit (behavior ()
     (if (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -1234,7 +1222,6 @@
     (remove-setting! 'matrix-blend-max-partial)
     (logclear! (-> self control root-prim prim-core action) (collide-action no-normal-reset))
     (target-board-exit)
-    (none)
     )
   :trans (behavior ()
     (when (and (or (= (the-as int (-> self control did-move-to-pole-or-max-jump-height)) #t)
@@ -1316,7 +1303,6 @@
       (go target-board-stance)
       )
     (target-board-halfpipe-trans)
-    (none)
     )
   :code (behavior ()
     (cond
@@ -1349,7 +1335,6 @@
         ((the-as (function none :behavior target) (-> target-board-stance code)))
         )
       )
-    (none)
     )
   :post target-board-post
   )
@@ -1362,7 +1347,6 @@
         (set! (-> self control mod-surface) *board-jump-mods*)
         )
     (set! (-> self board mods-backup) (-> self control mod-surface))
-    (none)
     )
   :exit (-> target-board-halfpipe exit)
   :trans (behavior ()
@@ -1374,7 +1358,6 @@
       (set! (-> self control mod-surface) *board-air-mods*)
       (set! (-> self board mods-backup) (-> self control mod-surface))
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -1430,7 +1413,6 @@
           )
         )
       )
-    (none)
     )
   :post target-board-post
   )
@@ -1442,7 +1424,6 @@
     (set! (-> self control mod-surface) *board-jump-mods*)
     (set! (-> self board mods-backup) (-> self control mod-surface))
     (sound-play "board-k-jump")
-    (none)
     )
   :exit target-board-exit
   :trans (behavior ()
@@ -1462,7 +1443,6 @@
          )
        )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1481,7 +1461,6 @@
       (ja :num! (loop!))
       )
     #f
-    (none)
     )
   :post target-board-post
   )
@@ -1505,7 +1484,6 @@
     (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self board smack-surface-time) 0)
     0
-    (none)
     )
   :exit target-board-exit
   :trans target-board-jump-trans
@@ -1530,7 +1508,6 @@
       )
     enter-state
     (go target-board-falling)
-    (none)
     )
   :post target-board-post
   )
@@ -1573,7 +1550,6 @@
     (set! (-> self control unknown-sound-id00) (sound-play "board-flip"))
     (target-start-attack)
     (target-danger-set! 'board-spin #f)
-    (none)
     )
   :exit (behavior ()
     (target-danger-set! 'harmless #f)
@@ -1597,7 +1573,6 @@
       (-> v1-9 id)
       )
     ((-> target-board-halfpipe exit))
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -1615,7 +1590,6 @@
         )
       )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (let ((gp-0 (>= (-> self board flip-control) 0.0)))
@@ -1711,7 +1685,6 @@
         )
       )
     (go target-board-falling)
-    (none)
     )
   :post target-board-post
   )
@@ -1744,7 +1717,6 @@
     (set! (-> self control mod-surface) *board-flip-mods*)
     (set! (-> self board mods-backup) (-> self control mod-surface))
     (set! (-> self control dynam gravity-length) 147456.0)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self board unknown-float01) 0.0)
@@ -1764,7 +1736,6 @@
           )
       )
     ((-> target-board-halfpipe exit))
-    (none)
     )
   :trans (behavior ()
     (target-board-spin-check)
@@ -1783,7 +1754,6 @@
         )
       )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (let ((v1-0 (new 'stack-no-clear 'vector)))
@@ -1914,7 +1884,6 @@
         )
       )
     (go target-board-falling)
-    (none)
     )
   :post target-board-post
   )
@@ -1926,7 +1895,6 @@
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
     (sound-play "board-boots")
     ((-> target-board-hold exit))
-    (none)
     )
   :trans (behavior ()
     (target-board-spin-check)
@@ -1944,7 +1912,6 @@
       (go target-board-hit-ground)
       )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (let ((gp-0 (>= (-> self board unknown-float00) 0.0))
@@ -2022,7 +1989,6 @@
         )
       )
     (go target-board-falling)
-    (none)
     )
   :post target-board-post
   )
@@ -2034,7 +2000,6 @@
     (if (= (-> self control ground-pat mode) (pat-mode halfpipe))
         (go target-board-turn-to (-> self control transv) (seconds 0.5))
         )
-    (none)
     )
   :exit target-board-exit
   :trans (behavior ()
@@ -2058,7 +2023,6 @@
     (if (target-board-smack-surface?)
         0
         )
-    (none)
     )
   :code (behavior ()
     (set! (-> self control mod-surface) *board-walk-mods*)
@@ -2106,7 +2070,6 @@
         )
       )
     (go target-board-stance)
-    (none)
     )
   :post target-board-post
   )
@@ -2146,7 +2109,6 @@
       (vector-y-quaternion! (new-stack-vector0) (-> self control dir-targ))
       )
     (set! (-> self control turn-lockout-end-time) (+ (current-time) arg1))
-    (none)
     )
   :exit target-board-exit
   :trans (behavior ()
@@ -2173,20 +2135,19 @@
         )
       )
     (set! (-> self board turn-anim-targ) (* 10.0 (-> self board turn-anim-targ)))
-    (none)
     )
   :code (-> target-board-stance code)
   :post target-board-post
   )
 
 (defstate target-board-ride-edge (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('edge-grab 'push-transv 'push-trans)
        #f
        )
       (('end-mode)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (let ((v1-6 (/ (- (current-time) (-> self board ride-start-time)) 300)))
            (if (> v1-6 0)
                (add-to-trick-list (-> self board) (board-tricks board-rail) (* 100.0 (the float v1-6)))
@@ -2196,11 +2157,11 @@
        (go target-board-turn-to (-> self control transv) (seconds 0.2))
        )
       (else
-        (target-board-handler proc arg1 event-type event)
+        (target-board-handler proc argc message block)
         )
       )
     )
-  :enter (behavior ((arg0 symbol) (arg1 object) (arg2 object) (arg3 float))
+  :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (current-time))
     (logior! (-> self focus-status) (focus-status rail))
     (logior! (-> self control root-prim prim-core action) (collide-action can-ride))
@@ -2258,7 +2219,6 @@
           )
       (add-to-trick-list (-> self board) (board-tricks board-rail-jump) f0-24)
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self control status) (collide-status probe-hit))
@@ -2298,7 +2258,6 @@
         (vector+! (new 'stack-no-clear 'vector) gp-0 (new 'static 'vector :y 204.8 :w 1.0))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (when (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
@@ -2375,9 +2334,8 @@
         (launch-particles (-> *part-id-table* 431) gp-1)
         )
       )
-    (none)
     )
-  :code (behavior ((arg0 symbol) (arg1 object) (arg2 object) (arg3 float))
+  :code (behavior ((arg0 symbol))
     (let* ((v1-1 (-> self board ride-mode))
            (gp-0 (cond
                    ((zero? v1-1)
@@ -2417,22 +2375,20 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (target-board-ride-post)
-    (none)
     )
   )
 
 (defstate target-board-grenade (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('target)
        (handle->process (-> self control unknown-handle02))
        )
       (else
-        (target-board-handler proc arg1 event-type event)
+        (target-board-handler proc argc message block)
         )
       )
     )
@@ -2461,12 +2417,10 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (send-event (handle->process (-> self control unknown-handle02)) 'exit)
     ((-> target-board-halfpipe exit))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self board halfpipe-time) (current-time))
@@ -2490,7 +2444,6 @@
       (+! (-> self control transv z) (* 20480.0 (-> self control edge-grab-across-edge-dir z)))
       (go target-board-stance)
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (ja-channel-push! 1 (seconds 0.05))
@@ -2530,25 +2483,24 @@
       (ja-eval)
       )
     (sleep-code)
-    (none)
     )
   :post target-board-post
   )
 
 (defstate target-board-get-on (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'attack-or-shove 'attack-invinc)
        (target-attacked
-         event-type
-         (the-as attack-info (-> event param 1))
+         message
+         (the-as attack-info (-> block param 1))
          proc
-         (the-as touching-shapes-entry (-> event param 0))
+         (the-as touching-shapes-entry (-> block param 0))
          target-hit
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -2646,7 +2598,6 @@
         )
       )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :exit target-board-exit
   :code (behavior ()
@@ -2687,19 +2638,18 @@
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'board)
     (logior! (-> self control status) (collide-status on-surface))
     (go target-board-hit-ground)
-    (none)
     )
   :post target-board-post
   )
 
 (defstate target-board-pegasus (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('end-mode)
        (go target-jump 16384.0 16384.0 (the-as surface #f))
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -2708,7 +2658,6 @@
     (set! (-> self board shock-offsetv) 0.0)
     (set! (-> self state-time) (current-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
-    (none)
     )
   :exit target-board-exit
   :code (behavior ((arg0 handle))
@@ -2777,7 +2726,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (set! (-> self control bend-speed) 0.0)
@@ -2785,7 +2733,6 @@
     (vector-seek! (-> self control draw-offset) *null-vector* (* 16384.0 (seconds-per-frame)))
     (target-no-move-post)
     (target-board-effect)
-    (none)
     )
   )
 
@@ -2881,7 +2828,6 @@
         )
       )
     (set! (-> self board slow-transv quad) (-> self control transv quad))
-    (none)
     )
   :exit target-board-exit
   :code (behavior ((arg0 object) (arg1 symbol))
@@ -2975,7 +2921,6 @@
                                )
             )
         )
-    (none)
     )
   :post (behavior ()
     (set! (-> self control bend-speed) 0.0)
@@ -2983,33 +2928,32 @@
     (vector-seek! (-> self control draw-offset) *null-vector* (* 16384.0 (seconds-per-frame)))
     (target-post)
     (target-board-effect)
-    (none)
     )
   )
 
 (defstate target-board-grab (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((and (= event-type 'query) (= (-> event param 0) 'mode))
+      ((and (= message 'query) (= (-> block param 0) 'mode))
        (-> self state name)
        )
       (else
-        (case event-type
+        (case message
           (('end-mode)
            (go target-board-stance)
            )
           (('clone-anim)
-           (go target-board-clone-anim (process->handle (the-as process (-> event param 0))))
+           (go target-board-clone-anim (process->handle (the-as process (-> block param 0))))
            )
           (('change-mode)
-           (case (-> event param 0)
+           (case (-> block param 0)
              (('normal)
               (go target-grab 'stance)
               )
              )
            )
           (else
-            (target-generic-event-handler proc arg1 event-type event)
+            (target-generic-event-handler proc argc message block)
             )
           )
         )
@@ -3022,7 +2966,6 @@
     (logior! (-> self focus-status) (focus-status grabbed))
     (logclear! (-> self focus-status) (focus-status halfpipe))
     (set! (-> self board stick-off) #t)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self board stick-off) #f)
@@ -3030,7 +2973,6 @@
     (logclear! (-> self focus-status) (focus-status grabbed))
     (logclear! (-> self water flags) (water-flags jump-out))
     (target-board-exit)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((v1-2 (ja-group)))
@@ -3044,17 +2986,16 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post target-board-post
   )
 
 (defstate target-board-clone-anim (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (= event-type 'trans) (= (-> event param 0) 'restore))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'trans) (= (-> block param 0) 'restore))
         (set! (-> self control unknown-word04) (the-as uint #f))
         )
-    ((-> target-board-grab event) proc arg1 event-type event)
+    ((-> target-board-grab event) proc argc message block)
     )
   :enter (-> target-clone-anim enter)
   :exit (behavior ()
@@ -3064,7 +3005,6 @@
     ((-> target-clone-anim exit))
     ((-> target-board-start exit))
     (vector-reset! (-> self control transv))
-    (none)
     )
   :code (behavior ((arg0 handle))
     (set! (-> self control unknown-word04) (the-as uint (-> self control draw-offset y)))
@@ -3072,7 +3012,6 @@
     (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
     (clone-anim arg0 #t "")
     (go target-board-stance)
-    (none)
     )
   :post target-no-ja-move-post
   )
@@ -3096,7 +3035,6 @@
       )
     (logior! (-> self state-flags) (state-flags lleg-no-ik rleg-no-ik))
     (target-board-exit)
-    (none)
     )
   :trans (behavior ()
     (when (= *cheat-mode* 'debug)
@@ -3106,7 +3044,6 @@
         (go target-board-stance)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 attack-info))
     (logclear! (-> self water flags) (water-flags jump-out))
@@ -3241,7 +3178,6 @@
       )
     enter-state
     (go target-board-hit-ground)
-    (none)
     )
   :post (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -3271,6 +3207,5 @@
        )
       )
     (target-board-joint-points)
-    (none)
     )
   )

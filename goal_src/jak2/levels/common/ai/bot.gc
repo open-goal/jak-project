@@ -431,6 +431,7 @@
   3
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-129 bot ((obj bot))
   (local-vars (s5-1 process))
   (let ((s5-0 (-> obj focus)))
@@ -708,232 +709,205 @@
   (and (not (focus-test? obj dead grabbed)) (nonzero? (-> obj hit-points)) (zero? (-> obj fated-time)))
   )
 
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 17]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 23]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 87]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 111]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 128]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 141]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 180]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 186]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 192]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 32]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 224]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 232]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 238]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 213]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 302]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 312]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 348]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 252]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 267]
 ;; WARN: disable def twice: 280. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 5]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 9]
 (defmethod general-event-handler bot ((obj bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (local-vars (v0-0 none))
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'track)
-         #f
+  (local-vars (v0-0 object))
+  (case arg2
+    (('track)
+     #f
+     )
+    (('combo)
+     #f
+     )
+    (('query)
+     (case (-> arg3 param 0)
+       (('waypoint)
+        (-> obj waypoint waypoint-id)
+        )
+       (else
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
-        ((= v1-0 'combo)
-         #f
-         )
-        ((= v1-0 'query)
-         (case (-> arg3 param 0)
-           (('waypoint)
-            (-> obj waypoint waypoint-id)
-            )
-           (else
-             ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-             )
+       )
+     )
+    (('request)
+     (case (-> arg3 param 0)
+       (('waypoint)
+        (set! (-> obj waypoint-request) (the-as int (-> arg3 param 1)))
+        #t
+        )
+       (('health-meter)
+        (cond
+          ((-> arg3 param 1)
+           (set! v0-0 (logior (-> obj bot-flags) (bot-flags bf06)))
+           (set! (-> obj bot-flags) (the-as bot-flags v0-0))
            )
-         )
-        ((= v1-0 'request)
-         (case (-> arg3 param 0)
-           (('waypoint)
-            (set! (-> obj waypoint-request) (the-as int (-> arg3 param 1)))
-            #t
+          (else
+            (set! v0-0 (logclear (-> obj bot-flags) (bot-flags bf06)))
+            (set! (-> obj bot-flags) (the-as bot-flags v0-0))
             )
-           (('health-meter)
-            (cond
-              ((-> arg3 param 1)
-               (set! v0-0 (the-as none (logior (-> obj bot-flags) (bot-flags bf06))))
-               (set! (-> obj bot-flags) (the-as bot-flags v0-0))
-               )
-              (else
-                (set! v0-0 (the-as none (logclear (-> obj bot-flags) (bot-flags bf06))))
-                (set! (-> obj bot-flags) (the-as bot-flags v0-0))
-                )
-              )
-            v0-0
-            )
-           (('too-far-fail)
-            (when (not (logtest? (-> obj bot-flags) (bot-flags too-far-fail bf09)))
-              (logior! (-> obj bot-flags) (bot-flags bf09))
-              (logclear! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
-              (logclear! (-> obj focus-status) (focus-status dangerous))
-              (logclear! (-> obj enemy-flags) (enemy-flag check-water))
-              (logclear! (-> obj mask) (process-mask collectable))
-              (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
-              (logclear! (-> obj mask) (process-mask actor-pause))
-              (logclear! (-> obj enemy-flags) (enemy-flag notice))
-              (go (method-of-object obj failed))
-              )
-            )
-           (('move-to-vehicle)
-            (let ((a0-19 (-> arg3 param 2)))
-              (cond
-                ((>= (the-as int a0-19) 0)
-                 (let ((v1-29 (the-as object (-> arg3 param 1))))
-                   (cond
-                     ((focus-test? obj pilot)
-                      (if (= (-> obj vehicle-seat-index) a0-19)
-                          (= (the-as uint v1-29) (handle->process (-> obj vehicle-handle)))
-                          )
-                      )
-                     (else
-                       (set! (-> obj vehicle-seat-index) (the-as int a0-19))
-                       (set! (-> obj vehicle-handle) (process->handle (the-as uint v1-29)))
-                       (logior! (-> obj bot-flags) (bot-flags bf15))
-                       #t
-                       )
-                     )
-                   )
-                 )
-                (else
-                  (when (not (focus-test? obj pilot))
-                    (set! (-> obj vehicle-seat-index) -1)
-                    (set! (-> obj vehicle-handle) (the-as handle #f))
-                    (logclear! (-> obj bot-flags) (bot-flags bf15))
-                    #t
-                    )
-                  )
-                )
-              )
-            )
-           (('exit-vehicle)
-            (when (focus-test? obj pilot)
-              (let ((v1-43 (-> arg3 param 1))
-                    (s5-1 (-> arg3 param 2))
-                    )
-                (cond
-                  (v1-43
-                    (logior! (-> obj bot-flags) (bot-flags bf16))
-                    (when (and (>= (the-as int s5-1) 0) (!= s5-1 (-> obj nav-mesh-index)))
-                      (change-to (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor (the-as int s5-1)) obj)
-                      (set! (-> obj nav-mesh-index) (the-as int s5-1))
-                      )
-                    )
-                  (else
-                    (logclear! (-> obj bot-flags) (bot-flags bf16))
-                    )
-                  )
-                )
-              #t
-              )
-            )
-           (('slave-id)
-            (set! (-> obj slave-id) (the-as int (-> arg3 param 1)))
-            #t
-            )
-           (else
-             ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-             )
-           )
-         )
-        ((= v1-0 'notify)
-         (case (-> arg3 param 0)
-           (('attack)
-            (let ((s5-2 (-> arg3 param 1)))
-              (when (if (type? s5-2 process-focusable)
-                        s5-2
-                        )
-                (logior! (-> obj enemy-flags) (enemy-flag look-at-focus))
-                (set! (-> obj hit-focus-time) (current-time))
-                )
-              )
-            #t
-            )
-           (('mission-failed)
-            (logior! (-> obj bot-flags) (bot-flags bf09))
-            (logclear! (-> obj bot-flags) (bot-flags bf06))
-            #t
-            )
-           (('follow-dir)
-            (set! (-> obj follow-dir quad) (-> (the-as vector (-> arg3 param 1)) quad))
-            #t
-            )
-           (else
-             ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-             )
-           )
-         )
-        ((= v1-0 'set-task)
-         (let ((a1-11 (/ (the-as int (-> arg3 param 0)) 8)))
-           (logior! (-> obj bot-task-bits) (ash 1 a1-11))
-           )
-         #t
-         )
-        ((= v1-0 'clear-task)
-         (let ((a1-13 (/ (the-as int (-> arg3 param 0)) 8)))
-           (logclear! (-> obj bot-task-bits) (ash 1 a1-13))
-           )
-         #t
-         )
-        ((= v1-0 'skip)
-         (skip-waypoint obj)
-         )
-        ((= v1-0 'change-mode)
-         (when (= (-> arg3 param 0) 'grab)
-           (set! v0-0 (the-as none (alive? obj)))
-           (if (and (the-as symbol v0-0) (-> arg3 param 1))
-               (logior! (-> obj focus-status) (focus-status grabbed))
-               )
-           v0-0
-           )
-         )
-        ((= v1-0 'end-mode)
-         (when (focus-test? obj grabbed)
-           (logclear! (-> obj focus-status) (focus-status grabbed))
-           #t
-           )
-         )
-        ((= v1-0 'hide)
-         (cond
-           ((-> arg3 param 0)
-            (go (method-of-object obj hidden))
-            )
-           (else
-             (if (and (-> obj next-state) (= (-> obj next-state name) 'hidden))
-                 (react-to-focus obj)
-                 )
-             )
-           )
-         )
-        ((= v1-0 'draw)
-         (cond
-           ((-> arg3 param 0)
-            (set! v0-0 (the-as none (logclear (-> obj draw status) (draw-control-status no-draw))))
-            (set! (-> obj draw status) (the-as draw-control-status v0-0))
-            )
-           (else
-             (set! v0-0 (the-as none (logior (-> obj draw status) (draw-control-status no-draw))))
-             (set! (-> obj draw status) (the-as draw-control-status v0-0))
-             )
-           )
-         v0-0
-         )
-        (else
-          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+          )
+        v0-0
+        )
+       (('too-far-fail)
+        (when (not (logtest? (-> obj bot-flags) (bot-flags too-far-fail bf09)))
+          (logior! (-> obj bot-flags) (bot-flags bf09))
+          (logclear! (-> obj enemy-flags) (enemy-flag enable-on-active checking-water))
+          (logclear! (-> obj focus-status) (focus-status dangerous))
+          (logclear! (-> obj enemy-flags) (enemy-flag check-water))
+          (logclear! (-> obj mask) (process-mask collectable))
+          (logclear! (-> obj enemy-flags) (enemy-flag look-at-move-dest))
+          (logclear! (-> obj mask) (process-mask actor-pause))
+          (logclear! (-> obj enemy-flags) (enemy-flag notice))
+          (go (method-of-object obj failed))
           )
         )
+       (('move-to-vehicle)
+        (let ((a0-19 (-> arg3 param 2)))
+          (cond
+            ((>= (the-as int a0-19) 0)
+             (let ((v1-29 (the-as object (-> arg3 param 1))))
+               (cond
+                 ((focus-test? obj pilot)
+                  (if (= (-> obj vehicle-seat-index) a0-19)
+                      (= (the-as uint v1-29) (handle->process (-> obj vehicle-handle)))
+                      )
+                  )
+                 (else
+                   (set! (-> obj vehicle-seat-index) (the-as int a0-19))
+                   (set! (-> obj vehicle-handle) (process->handle (the-as uint v1-29)))
+                   (logior! (-> obj bot-flags) (bot-flags bf15))
+                   #t
+                   )
+                 )
+               )
+             )
+            (else
+              (when (not (focus-test? obj pilot))
+                (set! (-> obj vehicle-seat-index) -1)
+                (set! (-> obj vehicle-handle) (the-as handle #f))
+                (logclear! (-> obj bot-flags) (bot-flags bf15))
+                #t
+                )
+              )
+            )
+          )
+        )
+       (('exit-vehicle)
+        (when (focus-test? obj pilot)
+          (let ((v1-43 (-> arg3 param 1))
+                (s5-1 (-> arg3 param 2))
+                )
+            (cond
+              (v1-43
+                (logior! (-> obj bot-flags) (bot-flags bf16))
+                (when (and (>= (the-as int s5-1) 0) (!= s5-1 (-> obj nav-mesh-index)))
+                  (change-to (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor (the-as int s5-1)) obj)
+                  (set! (-> obj nav-mesh-index) (the-as int s5-1))
+                  )
+                )
+              (else
+                (logclear! (-> obj bot-flags) (bot-flags bf16))
+                )
+              )
+            )
+          #t
+          )
+        )
+       (('slave-id)
+        (set! (-> obj slave-id) (the-as int (-> arg3 param 1)))
+        #t
+        )
+       (else
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+         )
+       )
+     )
+    (('notify)
+     (case (-> arg3 param 0)
+       (('attack)
+        (let ((s5-2 (-> arg3 param 1)))
+          (when (if (type? s5-2 process-focusable)
+                    s5-2
+                    )
+            (logior! (-> obj enemy-flags) (enemy-flag look-at-focus))
+            (set! (-> obj hit-focus-time) (current-time))
+            )
+          )
+        #t
+        )
+       (('mission-failed)
+        (logior! (-> obj bot-flags) (bot-flags bf09))
+        (logclear! (-> obj bot-flags) (bot-flags bf06))
+        #t
+        )
+       (('follow-dir)
+        (set! (-> obj follow-dir quad) (-> (the-as vector (-> arg3 param 1)) quad))
+        #t
+        )
+       (else
+         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+         )
+       )
+     )
+    (('set-task)
+     (let ((a1-11 (/ (the-as int (-> arg3 param 0)) 8)))
+       (logior! (-> obj bot-task-bits) (ash 1 a1-11))
+       )
+     #t
+     )
+    (('clear-task)
+     (let ((a1-13 (/ (the-as int (-> arg3 param 0)) 8)))
+       (logclear! (-> obj bot-task-bits) (ash 1 a1-13))
+       )
+     #t
+     )
+    (('skip)
+     (skip-waypoint obj)
+     )
+    (('change-mode)
+     (when (= (-> arg3 param 0) 'grab)
+       (set! v0-0 (alive? obj))
+       (if (and (the-as symbol v0-0) (-> arg3 param 1))
+           (logior! (-> obj focus-status) (focus-status grabbed))
+           )
+       v0-0
+       )
+     )
+    (('end-mode)
+     (when (focus-test? obj grabbed)
+       (logclear! (-> obj focus-status) (focus-status grabbed))
+       #t
+       )
+     )
+    (('hide)
+     (cond
+       ((-> arg3 param 0)
+        (go (method-of-object obj hidden))
+        )
+       (else
+         (if (and (-> obj next-state) (= (-> obj next-state name) 'hidden))
+             (react-to-focus obj)
+             )
+         )
+       )
+     )
+    (('draw)
+     (cond
+       ((-> arg3 param 0)
+        (set! v0-0 (logclear (-> obj draw status) (draw-control-status no-draw)))
+        (set! (-> obj draw status) (the-as draw-control-status v0-0))
+        )
+       (else
+         (set! v0-0 (logior (-> obj draw status) (draw-control-status no-draw)))
+         (set! (-> obj draw status) (the-as draw-control-status v0-0))
+         )
+       )
+     v0-0
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )

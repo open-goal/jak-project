@@ -257,16 +257,16 @@
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-get-on (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('darkjak)
        (when (zero? (-> self darkjak want-stage))
-         (set! (-> self darkjak want-stage) (the-as darkjak-stage (-> event param 0)))
+         (set! (-> self darkjak want-stage) (the-as darkjak-stage (-> block param 0)))
          #t
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -286,7 +286,6 @@
           (the-as handle #f)
           )
         )
-    (none)
     )
   :code (behavior ((arg0 darkjak-stage))
     (send-event (handle->process (-> self notify)) 'notify 'attack 15)
@@ -388,23 +387,22 @@
           )
       )
     (go target-stance)
-    (none)
     )
   :post (-> target-grab post)
   )
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-get-off (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('pole-grab 'darkjak 'slide 'wade 'launch 'edge-grab)
        #f
        )
       (('change-mode)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('grab)
           (when (not (focus-test? self dead))
-            (if (not (-> event param 1))
+            (if (not (-> block param 1))
                 #t
                 (go target-grab 'stance)
                 )
@@ -413,7 +411,7 @@
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -440,12 +438,10 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still))
     (target-darkjak-end-mode)
-    (none)
     )
   :trans (-> target-darkjak-get-on trans)
   :code (behavior ()
@@ -592,7 +588,6 @@
     (vector-reset! (-> self control transv))
     ((-> target-darkjak-get-off exit))
     (go target-stance)
-    (none)
     )
   :post (-> target-grab post)
   )
@@ -604,7 +599,6 @@
   :exit (behavior ()
     (remove-setting! 'rapid-tracking)
     ((-> target-running-attack exit))
-    (none)
     )
   :trans (-> target-running-attack trans)
   :code (behavior ()
@@ -978,7 +972,6 @@
         (go target-falling #f)
         )
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -1040,14 +1033,14 @@
 
 ;; failed to figure out what this is:
 (defstate target-darkjak-bomb0 (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('pole-grab 'darkjak 'slide 'wade 'launch 'edge-grab 'jump 'shove 'attack 'attack-or-shove)
        #f
        )
       (('hit)
-       (let ((v1-1 (the-as object (-> event param 1))))
-         (when (and (= (-> event param 0) 'bomb)
+       (let ((v1-1 (the-as object (-> block param 1))))
+         (when (and (= (-> block param 0) 'bomb)
                     (logtest? (process-mask enemy) (-> (the-as process v1-1) mask))
                     (let ((v1-7 (ja-group)))
                       (and v1-7 (= v1-7 (-> self draw art-group data 418)))
@@ -1067,7 +1060,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -1079,7 +1072,6 @@
     (set! (-> self control unknown-sound-id00)
           (add-process *gui-control* self (gui-channel jak) (gui-action queue) "darkbom0" -99.0 0)
           )
-    (none)
     )
   :exit (behavior ()
     (set-action!
@@ -1106,11 +1098,9 @@
     (if (not (and (-> self next-state) (= (-> self next-state name) 'target-darkjak-get-off)))
         ((-> target-darkjak-get-off exit))
         )
-    (none)
     )
   :trans (behavior ()
     (update-clock! (-> self darkjak) 4)
-    (none)
     )
   :code (behavior ()
     (local-vars
@@ -1444,7 +1434,6 @@
     (logior! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (send-event (handle->process (-> self notify)) 'notify 'attack 16)
     (go target-darkjak-get-off)
-    (none)
     )
   :post target-no-stick-post
   )
@@ -1588,7 +1577,6 @@
         )
     (slide-down-test)
     (update-clock! (-> self darkjak) 8)
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (local-vars
@@ -1901,7 +1889,6 @@
     (set! (-> self gun surpress-time) (current-time))
     (send-event (handle->process (-> self notify)) 'notify 'attack 17)
     (go target-darkjak-get-off)
-    (none)
     )
   :post target-post
   )
@@ -1917,7 +1904,6 @@
       (logclear! (-> self darkjak stage) (darkjak-stage giant))
       (set! (-> self darkjak want-stage) (-> self darkjak stage))
       )
-    (none)
     )
   :code (behavior ()
     (send-event (handle->process (-> self notify)) 'notify 'attack 18)
@@ -1987,7 +1973,6 @@
       )
     (send-event *traffic-manager* 'increase-alert-level 4)
     (go target-stance)
-    (none)
     )
   :post (-> target-grab post)
   )

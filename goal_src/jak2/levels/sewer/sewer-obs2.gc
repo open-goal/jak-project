@@ -104,7 +104,6 @@
       (configure-collision self #t)
       (set-setting! 'jump #f 0.0 0)
       )
-    (none)
     )
   :post (behavior ()
     (let ((func (-> (method-of-type elevator running) post)))
@@ -113,7 +112,6 @@
           )
       )
     (sound-play "sew-elevator-lp" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   )
 
@@ -133,7 +131,6 @@
       (configure-collision self #f)
       (remove-setting! 'jump)
       )
-    (none)
     )
   )
 
@@ -244,10 +241,10 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defstate idle (sew-valve)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('spin 'punch 'flop 'uppercut)
           (if (!= (-> self water-height) (get-base-height *ocean-map-sewer*))
               (go-virtual turn)
@@ -281,18 +278,15 @@ For example for an elevator pre-compute the distance between the first and last 
           (script-eval (the-as pair data))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self joint enable) #f)
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self water-height) (get-base-height *ocean-map-sewer*))
         (go-virtual idle)
         )
-    (none)
     )
   :code (the-as (function none :behavior sew-valve) sleep-code)
   :post (behavior ()
@@ -316,7 +310,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -568,7 +561,6 @@ This commonly includes things such as:
         (setup-masks (-> self draw) 4 2)
         (setup-masks (-> self draw) 2 4)
         )
-    (none)
     )
   :code (the-as (function none :behavior sew-mar-statue) sleep-code)
   )
@@ -583,7 +575,6 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (the-as (function none :behavior sew-mar-statue) sleep-code)
   )
@@ -691,7 +682,6 @@ and translate the platform via the `smush`
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -805,8 +795,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-mine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (focus-proc (if (type? _proc process-focusable)
@@ -825,7 +815,7 @@ This commonly includes things such as:
              (send-event
                focus-proc
                'attack-or-shove
-               (-> event param 0)
+               (-> block param 0)
                (static-attack-info ((id (new-attack-id))
                                     (vector a0-4)
                                     (shove-back (meters 5))
@@ -854,7 +844,6 @@ This commonly includes things such as:
           )
       (set! (-> self last-time) (the-as time-frame gp-0))
       )
-    (none)
     )
   )
 
@@ -905,7 +894,6 @@ This commonly includes things such as:
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -1006,7 +994,6 @@ This commonly includes things such as:
       (set! (-> self root trans y) (+ (-> self center y) (* 819.2 f28-0)))
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -1132,8 +1119,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (if (-> self first-wall?)
@@ -1155,7 +1142,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1164,11 +1150,9 @@ This commonly includes things such as:
   :enter (behavior ((arg0 symbol))
     (set! (-> self deadly-radius) -1.0)
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (-> self deadly-radius)))
@@ -1177,7 +1161,6 @@ This commonly includes things such as:
         (attack-target! self)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (if (not (-> self first-wall?))
@@ -1236,7 +1219,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior sew-wall) ja-post)
   )
@@ -1385,7 +1367,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior sew-grill) ja-post)
   )
@@ -1552,7 +1533,6 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (let* ((target *target*)
@@ -1581,7 +1561,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1595,7 +1574,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior sew-scare-grunt) ja-post)
   )
@@ -1635,7 +1613,6 @@ This commonly includes things such as:
     (set! (-> self spooled-sound-id)
           (lookup-gui-connection-id *gui-control* (-> self anim name) (gui-channel art-load) (gui-action none))
           )
-    (none)
     )
   :exit (behavior ()
     (let* ((actor (-> self grill-actor))
@@ -1651,7 +1628,6 @@ This commonly includes things such as:
     ;; og:preserve-this fix bug where the spool anim never gets aborted
     (#when PC_PORT
         (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1672,7 +1648,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (behavior ()
     (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
@@ -1708,7 +1683,6 @@ This commonly includes things such as:
         )
       )
     (transform-post)
-    (none)
     )
   )
 

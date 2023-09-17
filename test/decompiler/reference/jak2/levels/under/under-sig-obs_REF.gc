@@ -169,7 +169,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-4 prim-core collide-with) (collide-spec))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
@@ -177,7 +176,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-3 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :trans (behavior ()
     (when (not (script-eval (the-as pair (-> self draw-test-script))))
@@ -185,7 +183,6 @@ For example for an elevator pre-compute the distance between the first and last 
       #t
       (go-virtual plat-path-active)
       )
-    (none)
     )
   :code (the-as (function none :behavior under-plat-shoot) sleep-code)
   )
@@ -193,109 +190,106 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate plat-path-active (under-plat-shoot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('bonk)
-         (the-as object (start-bouncing! self))
-         )
-        (('attack)
-         (when (zero? (-> self state-flip))
-           (let ((s5-0 (the-as object (-> event param 1))))
-             (when (!= (-> (the-as attack-info s5-0) id) (-> self incoming-attack-id))
-               (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-0) id))
-               (let* ((gp-0 proc)
-                      (s4-0 (if (type? gp-0 process-drawable)
-                                gp-0
-                                )
-                            )
-                      )
-                 (when s4-0
-                   (let* ((s3-0 (-> (the-as process-drawable s4-0) root))
-                          (gp-1 (if (type? (the-as collide-shape s3-0) collide-shape)
-                                    s3-0
-                                    )
-                                )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (start-bouncing! self)
+       )
+      (('attack)
+       (when (zero? (-> self state-flip))
+         (let ((s5-0 (the-as object (-> block param 1))))
+           (when (!= (-> (the-as attack-info s5-0) id) (-> self incoming-attack-id))
+             (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-0) id))
+             (let* ((gp-0 proc)
+                    (s4-0 (if (type? gp-0 process-drawable)
+                              gp-0
+                              )
                           )
-                     (when gp-1
-                       (when (logtest? (-> (the-as collide-shape gp-1) root-prim prim-core collide-as) (collide-spec projectile))
-                         (when (zero? (-> self state-flip))
-                           (sound-play "mtn-plat-flip1")
-                           (set! (-> self state-flip) (the-as uint 1))
-                           )
-                         (if (= (-> (find-offending-process-focusable s4-0 (the-as attack-info s5-0)) type) target)
-                             (set! (-> self time-flip) (the-as uint 1140))
-                             (set! (-> self time-flip) (the-as uint 570))
-                             )
-                         (set! (-> self hint-count) -1.0)
-                         (vector-! (-> self axe-flip) (-> gp-1 trans) (-> self root trans))
-                         (set! (-> self axe-flip y) 0.0)
-                         (vector-normalize! (-> self axe-flip) 1.0)
-                         (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
-                         (set! (-> self angle-flip-vel) -10.0)
-                         (set! (-> self state-time) (current-time))
+                    )
+               (when s4-0
+                 (let* ((s3-0 (-> (the-as process-drawable s4-0) root))
+                        (gp-1 (if (type? (the-as collide-shape s3-0) collide-shape)
+                                  s3-0
+                                  )
+                              )
+                        )
+                   (when gp-1
+                     (when (logtest? (-> (the-as collide-shape gp-1) root-prim prim-core collide-as) (collide-spec projectile))
+                       (when (zero? (-> self state-flip))
+                         (sound-play "mtn-plat-flip1")
+                         (set! (-> self state-flip) (the-as uint 1))
                          )
+                       (if (= (-> (find-offending-process-focusable s4-0 (the-as attack-info s5-0)) type) target)
+                           (set! (-> self time-flip) (the-as uint 1140))
+                           (set! (-> self time-flip) (the-as uint 570))
+                           )
+                       (set! (-> self hint-count) -1.0)
+                       (vector-! (-> self axe-flip) (-> gp-1 trans) (-> self root trans))
+                       (set! (-> self axe-flip y) 0.0)
+                       (vector-normalize! (-> self axe-flip) 1.0)
+                       (vector-rotate90-around-y! (-> self axe-flip) (-> self axe-flip))
+                       (set! (-> self angle-flip-vel) -10.0)
+                       (set! (-> self state-time) (current-time))
                        )
                      )
                    )
                  )
-               #f
                )
+             #f
              )
            )
          )
-        (('hint)
-         (when (>= (-> self hint-count) 0.0)
-           (+! (-> self hint-count) (seconds-per-frame))
-           (if (< 6.0 (-> self hint-count))
-               #f
-               )
-           )
-         )
-        (('track)
-         (cond
-           ((-> event param 0)
-            (if (zero? (-> self state-flip))
-                #t
-                'abort
-                )
-            )
-           ((and *target*
-                 (-> self disable-track-under)
-                 (< (-> *target* control trans y) (+ -20480.0 (-> self root trans y)))
-                 )
-            #f
-            )
-           (else
-             (zero? (-> self state-flip))
+       )
+      (('hint)
+       (when (>= (-> self hint-count) 0.0)
+         (+! (-> self hint-count) (seconds-per-frame))
+         (if (< 6.0 (-> self hint-count))
+             #f
              )
+         )
+       )
+      (('track)
+       (cond
+         ((-> block param 0)
+          (if (zero? (-> self state-flip))
+              #t
+              'abort
+              )
+          )
+         ((and *target*
+               (-> self disable-track-under)
+               (< (-> *target* control trans y) (+ -20480.0 (-> self root trans y)))
+               )
+          #f
+          )
+         (else
+           (zero? (-> self state-flip))
            )
          )
-        (('centipede)
-         (when (not (and (-> self next-state) (let ((v1-39 (-> self next-state name)))
-                                                (or (= v1-39 'die-falling) (= v1-39 'empty-state))
-                                                )
-                         )
-                    )
-           (vector-reset! (-> self root transv))
-           (let* ((gp-2 proc)
-                  (a0-11 (if (type? (the-as process-focusable gp-2) process-focusable)
-                             gp-2
-                             )
-                         )
+       )
+      (('centipede)
+       (when (not (and (-> self next-state) (let ((v1-39 (-> self next-state name)))
+                                              (or (= v1-39 'die-falling) (= v1-39 'empty-state))
+                                              )
+                       )
                   )
-             (when a0-11
-               (vector-! (-> self root transv) (-> self root trans) (get-trans (the-as process-focusable a0-11) 0))
-               (set! (-> self root transv y) 0.0)
-               (vector-normalize! (-> self root transv) 163840.0)
-               (set! (-> self root transv y) 20480.0)
-               )
+         (vector-reset! (-> self root transv))
+         (let* ((gp-2 proc)
+                (a0-11 (if (type? (the-as process-focusable gp-2) process-focusable)
+                           gp-2
+                           )
+                       )
+                )
+           (when a0-11
+             (vector-! (-> self root transv) (-> self root trans) (get-trans (the-as process-focusable a0-11) 0))
+             (set! (-> self root transv y) 0.0)
+             (vector-normalize! (-> self root transv) 163840.0)
+             (set! (-> self root transv y) 20480.0)
              )
-           (go-virtual die-falling)
            )
+         (go-virtual die-falling)
          )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -307,7 +301,6 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> self dest-angle) 180.0)
     (set! (-> self on-shake) #f)
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (the-as time-frame (-> self time-flip)))
@@ -363,7 +356,6 @@ For example for an elevator pre-compute the distance between the first and last 
           (t9-12)
           )
       )
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type plat plat-path-active) post)))
@@ -371,7 +363,6 @@ For example for an elevator pre-compute the distance between the first and last 
           ((the-as (function none) t9-0))
           )
       )
-    (none)
     )
   )
 
@@ -386,7 +377,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> v1-7 prim-core collide-with) (collide-spec))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (seconds 1))
@@ -400,7 +390,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (rand-vu-float-range 0.5 0.8)))
@@ -431,7 +420,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((v1-0 (-> self root)))
@@ -446,7 +434,6 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -531,17 +518,14 @@ otherwise, [[plat::34]]
 ;; failed to figure out what this is:
 (defstate idle (under-break-floor)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
-           (go-virtual die)
-           #f
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (logtest? (-> (the-as attack-info (-> block param 1)) penetrate-using) (penetrate flop))
+         (go-virtual die)
+         #f
          )
-        )
+       )
       )
     )
   :code (the-as (function none :behavior under-break-floor) sleep-code)
@@ -557,7 +541,6 @@ otherwise, [[plat::34]]
       )
     0
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (behavior ()
     ((lambda ()
@@ -591,7 +574,6 @@ otherwise, [[plat::34]]
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior under-break-floor) ja-post)
   )
@@ -601,7 +583,6 @@ otherwise, [[plat::34]]
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -715,7 +696,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -851,7 +831,6 @@ This commonly includes things such as:
     (ja :group! (-> self draw art-group data 3) :num! min)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -860,7 +839,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -982,8 +960,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle-closed (under-int-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual open)
        )
@@ -1009,7 +987,6 @@ This commonly includes things such as:
       )
     (logclear! (-> self skel status) (joint-control-status sync-math))
     (go-virtual idle-open)
-    (none)
     )
   :post (the-as (function none :behavior under-int-door) transform-post)
   )
@@ -1160,7 +1137,6 @@ This commonly includes things such as:
   :trans (behavior ()
     (plat-trans)
     (vector-lerp! (-> self root trans) (-> self move-start) (-> self move-end) (get-norm! (-> self sync) 0))
-    (none)
     )
   :code (the-as (function none :behavior under-plat-long) sleep-code)
   :post (the-as (function none :behavior under-plat-long) plat-post)
@@ -1308,22 +1284,19 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate active (under-plat-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (the-as (function none :behavior under-plat-wall) rider-trans)
   :code (behavior ()
@@ -1353,7 +1326,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior under-plat-wall) rider-post)
   )
@@ -1504,8 +1476,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate intro-shooting (under-pipe-growls)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('sig-shot)
        (when (>= (-> self volume) 0.6)
          (when (nonzero? (-> self approach-sound-id))
@@ -1559,7 +1531,6 @@ This commonly includes things such as:
     (set! (-> self volume) 0.0)
     (set! (-> self desired-volume) 1.0)
     (set! (-> self volume-seek-speed) (rand-vu-float-range 0.5 0.2))
-    (none)
     )
   :code (the-as (function none :behavior under-pipe-growls) sleep-code)
   :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)
@@ -1568,8 +1539,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate block-puzzle (under-pipe-growls)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('fade)
        (go-virtual block-puzzle-fade)
        )
@@ -1579,7 +1550,6 @@ This commonly includes things such as:
     (set! (-> self volume) 0.25)
     (set! (-> self desired-volume) 1.0)
     (set! (-> self volume-seek-speed) 0.8)
-    (none)
     )
   :code (behavior ()
     (sound-play "grunt-notice" :vol 40 :position (target-pos 0))
@@ -1609,7 +1579,6 @@ This commonly includes things such as:
       )
     (sound-play "grunt-notice" :vol 200 :position (target-pos 0))
     (sleep-code)
-    (none)
     )
   :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)
   )
@@ -1620,14 +1589,12 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self desired-volume) 0.0)
     (set! (-> self volume-seek-speed) 0.5)
-    (none)
     )
   :trans (behavior ()
     (when (= (-> self volume) (-> self desired-volume))
       (cleanup-for-death self)
       (go empty-state)
       )
-    (none)
     )
   :code (the-as (function none :behavior under-pipe-growls) sleep-code)
   :post (the-as (function none :behavior under-pipe-growls) under-pipe-growls-post)

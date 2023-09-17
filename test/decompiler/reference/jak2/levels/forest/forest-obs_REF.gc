@@ -60,16 +60,10 @@ This commonly includes things such as:
     (set! (-> t1-0 y) 24576.0)
     (set! (-> t1-0 z) 61440.0)
     (set! (-> t1-0 w) 1.0)
-    (let ((a3-0 arg0))
-      (set! (-> obj formation) (t9-3 a0-4 a1-4 a2-2 a3-0 t0-0 t1-0 5461.3335 (the-as handle #f)))
-      (let ((v1-8 (logior (-> obj formation flags) 4))
-            (a0-5 (-> obj formation))
-            )
-        (set! (-> a0-5 flags) v1-8)
-        (go (method-of-object obj spawning) a0-5 (the-as object a1-4) (the-as process a2-2) (the-as pointer a3-0))
-        )
-      )
+    (set! (-> obj formation) (t9-3 a0-4 a1-4 a2-2 arg0 t0-0 t1-0 5461.3335 (the-as handle #f)))
     )
+  (logior! (-> obj formation flags) 4)
+  (go (method-of-object obj spawning))
   (none)
   )
 
@@ -206,10 +200,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
-       (send-event proc 'touch (-> event param 0))
+       (send-event proc 'touch (-> block param 0))
        )
       (('attack)
        (let ((s4-0 *target*)
@@ -220,7 +214,7 @@ This commonly includes things such as:
                        )
                    s4-0
                    )
-           (let ((s5-1 (the-as attack-info (-> event param 1))))
+           (let ((s5-1 (the-as attack-info (-> block param 1))))
              (case (-> s5-1 mode)
                (('eco-red 'eco-yellow 'eco-blue 'eco-dark)
                 #f
@@ -267,7 +261,6 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self falling?) #f)
     (send-event (handle->process (-> self hud)) 'force-show)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -282,20 +275,18 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (sound-play "samos-hover" :id (-> self sound-id))
     (forest-youngsamos-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hit (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (cleanup-for-death self)
        (go empty-state)
@@ -307,7 +298,6 @@ This commonly includes things such as:
     (set! (-> self falling?) (the-as basic #t))
     (logior! (-> self focus-status) (focus-status disable))
     (set! (-> self focus-disable-timer) (the-as uint (+ (current-time) (seconds 3.5))))
-    (none)
     )
   :code (behavior ()
     (set! (-> self root transv quad) (-> self hit-dir quad))
@@ -353,7 +343,6 @@ This commonly includes things such as:
         )
       )
     (go-virtual idle)
-    (none)
     )
   :post forest-youngsamos-post
   )
@@ -361,8 +350,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate die (forest-youngsamos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (cleanup-for-death self)
        (go empty-state)
@@ -371,7 +360,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self falling?) (the-as basic #t))
-    (none)
     )
   :code (behavior ()
     (speech-control-method-12 *speech-control* self (speech-type speech-type-10))
@@ -424,7 +412,6 @@ This commonly includes things such as:
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
-    (none)
     )
   :post forest-youngsamos-post
   )
