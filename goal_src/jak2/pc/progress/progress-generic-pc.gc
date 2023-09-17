@@ -170,6 +170,8 @@
 
 ;; Component implementation
 
+;; - input handling
+
 (defmethod respond-progress menu-generic-scrolling-page ((obj menu-generic-scrolling-page) (progress progress) (selected? symbol))
   "Handle progress menu navigation logic."
   (if (or (= (-> obj selected-option-item) #f)
@@ -246,11 +248,11 @@
       ((cpad-pressed? 0 left l-analog-left)
        (dec! (-> obj item-index))
        (when (< (-> obj item-index) 0)
-        (set! (-> obj item-index) (dec (-> obj items length))))
+        (set! (-> obj item-index) (dec (num-items obj))))
        (sound-play "generic-beep"))
       ((cpad-pressed? 0 right l-analog-right)
        (inc! (-> obj item-index))
-       (when (>= (-> obj item-index) (-> obj items length))
+       (when (>= (-> obj item-index) (num-items obj))
         (set! (-> obj item-index) 0))
        (sound-play "generic-beep"))
       ((cpad-pressed? 0 confirm)
@@ -298,14 +300,14 @@
        (set! (-> obj value) (fmax (- (-> obj value) (-> obj step)) (-> obj min-value)))
        (when (< (seconds 0.03) (- (current-time) (-> obj last-sound-played)))
         (set! (-> obj last-sound-played) (current-time))
-        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
+        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 512 0 0 (sound-group sfx) #t)))
       ((and (< (-> obj value) (-> obj max-value))
             (cpad-hold? 0 right l-analog-right))
        ;; TODO - might not work well on higher frame-rates
        (set! (-> obj value) (fmin (+ (-> obj value) (-> obj step)) (-> obj max-value)))
        (when (< (seconds 0.03) (- (current-time) (-> obj last-sound-played)))
         (set! (-> obj last-sound-played) (current-time))
-        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
+        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 512 0 0 (sound-group sfx) #t)))
       ((cpad-pressed? 0 confirm)
        (when (and (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
         ((-> obj on-confirm) (-> obj value)))
@@ -317,3 +319,22 @@
        (when (and (nonzero? (-> obj get-value-fn)) (!= (-> obj get-value-fn) #f))
         (set! (-> obj value) ((-> obj get-value-fn)))))))
   0)
+
+;; - rest of component logic
+
+(defmethod num-items menu-generic-carousel-option ((this menu-generic-carousel-option))
+  "Get the number of items in the carousel"
+  (if (and (nonzero? (-> this items)) (!= (-> this items) #f))
+    (-> this items length)
+    (if (and (and (nonzero? (-> this get-max-size-fn)) (!= (-> this get-max-size-fn) #f))
+             (and (nonzero? (-> this get-item-label-fn)) (!= (-> this get-max-size-fn) #f)))
+      ((-> this get-max-size-fn))
+      0)))
+
+(defmethod get-item-label menu-generic-carousel-option ((this menu-generic-carousel-option) (item-index int))
+  "Gets the string label of the currently choosen item, preferring the `items` array if it exists"
+  (if (and (nonzero? (-> this items)) (!= (-> this items) #f))
+    (lookup-text! *common-text* (-> this items item-index) #f)
+    (if (and (nonzero? (-> this get-item-label-fn)) (!= (-> this get-max-size-fn) #f))
+      ((-> this get-item-label-fn) item-index)
+      "#ERROR")))

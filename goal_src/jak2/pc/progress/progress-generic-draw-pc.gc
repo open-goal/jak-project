@@ -262,11 +262,12 @@
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
        (set! (-> font-ctx color) (progress-selected 0))
        (draw-generic-highlight (the int (-> font-ctx origin y)) 24 alpha)))
-    (format (clear *temp-string*) "~S" (lookup-text! *common-text* (-> obj name) #f))
-    (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
+    (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
     (+! (-> font-ctx origin y) 24.0)
     (set! (-> font-ctx scale) 0.5)
     (set! (-> font-ctx color) (font-color progress))
+    ;; TODO - put this all in one print so the spacing is correct instead of messing with origin x
+    ;; TODO - hide arrows if only 1 option
     (when selected?
       ;; left arrow
       (+! (-> font-ctx origin x) -70.0)
@@ -280,13 +281,14 @@
       (+! (-> font-ctx origin x) -70.0)
       (set! (-> font-ctx color) (progress-selected 0)))
     ;; the value
-    ;; TODO - bounds checking would be smart
-    (if selected?
-      (print-game-text (lookup-text! *common-text* (-> obj items (-> obj item-index)) #f) font-ctx #f 44 (bucket-id progress))
-      (let ((actual-index (if (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
+    ;; TODO - no items found impl
+    (when (and (>= (-> obj item-index) 0) (< (-> obj item-index) (num-items obj)))
+      (if selected?
+        (print-game-text (get-item-label obj (-> obj item-index)) font-ctx #f 44 (bucket-id progress))
+        (let ((actual-index (if (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
                               ((-> obj get-item-index-fn))
                               0)))
-        (print-game-text (lookup-text! *common-text* (-> obj items actual-index) #f) font-ctx #f 44 (bucket-id progress)))))
+        (print-game-text (get-item-label obj actual-index) font-ctx #f 44 (bucket-id progress))))))
   (none))
 
 (defmethod draw-option menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (arg1 font-context) (option-index int) (selected? symbol))
@@ -308,7 +310,7 @@
     (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress)))
   (none))
 
-;; TODO - make "draw label" and "draw label with below options a generic func"
+;; TODO - make "draw label" and "draw label with 2 below options a generic func"
 
 (defmethod draw-option menu-generic-confirm-option ((obj menu-generic-confirm-option) (arg0 progress) (arg1 font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
@@ -385,13 +387,14 @@
     (set-flags! font-ctx (font-flags kerning middle large))
     (cond
       ;; TODO - remove magic numbers / test on 16x9
-      ;; TODO - implement show-decimal?
       (selected?
         (set-scale! font-ctx 0.5)
         (+! (-> font-ctx origin y) -15.0)
         (set-color! font-ctx (font-color progress-force-selected))
         (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 42 alpha)
-        (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) (the int (* 100.0 slider-value))) font-ctx #f 44 (bucket-id progress))
+        (if (= (-> obj show-decimal?) #t)
+          (print-game-text (string-format "~S: ~,,2f" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress))
+          (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress)))
         (set! (-> obj bar-sprite tex) (lookup-texture-by-id (new 'static 'texture-id :index #xb :page #xc93)))
         (set! (-> obj bar-sprite scale-x) 2.0)
         (set! (-> obj bar-sprite scale-y) 0.5)
@@ -443,6 +446,8 @@
             (draw-generic-highlight (the int (+ -2.5 (-> font-ctx origin y))) 22 alpha))
           (else
             (set-color! font-ctx (font-color progress))))
-        (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) (the int (* 100.0 slider-value))) font-ctx #f 44 (bucket-id progress))))
+        (if (= (-> obj show-decimal?) #t)
+          (print-game-text (string-format "~S: ~,,2f" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress))
+          (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress)))))
     )
   (none))
