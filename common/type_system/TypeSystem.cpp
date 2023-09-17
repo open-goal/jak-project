@@ -1538,8 +1538,8 @@ void TypeSystem::builtin_structure_inherit(StructureType* st) {
   st->inherit(get_type_of_type<StructureType>(st->get_parent()));
 }
 
-bool TypeSystem::tc(const TypeSpec& expected, const TypeSpec& actual) const {
-  return typecheck_and_throw(expected, actual, "", false, false);
+bool TypeSystem::tc(const TypeSpec& less_specific, const TypeSpec& more_specific) const {
+  return typecheck_and_throw(less_specific, more_specific, "", false, false);
 }
 
 /*!
