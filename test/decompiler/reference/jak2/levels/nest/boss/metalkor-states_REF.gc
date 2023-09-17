@@ -562,19 +562,8 @@
 ;; definition for function metalkor-handler
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 72]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 107]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 143]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 173]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 254]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 266]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 291]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 489]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 571]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 580]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 666]
 (defbehavior metalkor-handler metalkor ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-2 none))
+  (local-vars (v0-2 object))
   (the-as
     object
     (case arg2
@@ -593,7 +582,7 @@
                )
            )
          )
-       (metalkor-go-next-stage)
+       (the-as object (metalkor-go-next-stage))
        )
       (('track)
        (-> self trackable)
@@ -644,11 +633,11 @@
        (let ((gp-3 (-> self entity extra)))
          (cond
            ((send-event (handle->process (-> self flitter-gem-tracker)) 'spawn-with-gem?)
-            (set! v0-2 (the-as none (logclear (-> gp-3 perm status) (entity-perm-status save))))
+            (set! v0-2 (logclear (-> gp-3 perm status) (entity-perm-status save)))
             (set! (-> gp-3 perm status) (the-as entity-perm-status v0-2))
             )
            (else
-             (set! v0-2 (the-as none (logior (-> gp-3 perm status) (entity-perm-status save))))
+             (set! v0-2 (logior (-> gp-3 perm status) (entity-perm-status save)))
              (set! (-> gp-3 perm status) (the-as entity-perm-status v0-2))
              )
            )
@@ -678,7 +667,7 @@
           (metalkor-all-spinners-on)
           )
          (else
-           (set! v0-2 (the-as none (+ (-> self countdown-to-roar) -1)))
+           (set! v0-2 (+ (-> self countdown-to-roar) -1))
            (set! (-> self countdown-to-roar) (the-as int v0-2))
            v0-2
            )
@@ -759,12 +748,12 @@
                      (logtest? (penetrate dark-bomb) (-> (the-as attack-info s5-2) penetrate-using))
                      (= (-> self stage-hit-points) 0.0)
                      )
-                (set! v0-2 (the-as none (+ (current-time) (seconds 1))))
+                (set! v0-2 (+ (current-time) (seconds 1)))
                 (set! (-> self next-stage-timer) (the-as time-frame v0-2))
                 v0-2
                 )
                ((= (-> self stage-hit-points) 0.0)
-                (metalkor-go-next-stage)
+                (the-as object (metalkor-go-next-stage))
                 )
                ((and (-> self next-state) (= (-> self next-state name) 'hang-shoot-n-launch))
                 (metalkor-setup-hit-anim
@@ -781,13 +770,14 @@
                        (or (not (and v1-139 (= v1-139 (-> self draw art-group data 7)))) (>= (ja-aframe-num 0) 10.0))
                        )
                      )
-                (metalkor-setup-hit-anim
-                  (the-as attack-info s5-2)
-                  (the-as process-drawable arg0)
-                  (-> self draw art-group data 25)
-                  (-> self draw art-group data 27)
-                  (the-as float (-> self draw art-group data 26))
-                  )
+                (the-as object (metalkor-setup-hit-anim
+                                 (the-as attack-info s5-2)
+                                 (the-as process-drawable arg0)
+                                 (-> self draw art-group data 25)
+                                 (-> self draw art-group data 27)
+                                 (the-as float (-> self draw art-group data 26))
+                                 )
+                        )
                 )
                ((and (-> self next-state) (let ((v1-153 (-> self next-state name)))
                                             (or (= v1-153 'chase-target)
