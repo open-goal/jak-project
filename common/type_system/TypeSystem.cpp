@@ -84,7 +84,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
   } else {
     // newly defined!
 
-    // none/object get to skip these checks because they are roots.
+    // objects get to skip these checks because it is the root
     if (name != "object" && name != "none" && name != "_type_" && name != "_varargs_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         throw_typesystem_error(
@@ -1713,10 +1713,6 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) c
 std::string TypeSystem::lca_base(const std::string& a, const std::string& b) const {
   if (a == b) {
     return a;
-  }
-
-  if (a == "none" || b == "none") {
-    return "none";
   }
 
   auto a_up = get_path_up_tree(a);
