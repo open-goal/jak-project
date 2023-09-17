@@ -86,15 +86,22 @@
   arg0
   )
 
-(defun progress-intro-start ((arg0 symbol))
+(defun progress-intro-start ((hero-mode? symbol))
   (set! (-> *game-info* mode) 'play)
-  (if arg0
-      (initialize! *game-info* 'game (the-as game-save #f) "intro-start-hero")
-      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
-      )
+  (cond
+    ;; Start a new game differently if speedrunning mode is active
+    ((= (-> *pc-settings* speedrunner-mode?) #t)
+      (if hero-mode?
+        (set-category! *speedrun-info* (speedrun-category newgame-heromode))
+        (set-category! *speedrun-info* (speedrun-category newgame-normal)))
+      (start-run! *speedrun-info*))
+    ;; start the game normally
+    (else
+      (if hero-mode?
+        (initialize! *game-info* 'game (the-as game-save #f) "intro-start-hero")
+        (initialize! *game-info* 'game (the-as game-save #f) "intro-start"))))
   (set-master-mode 'game)
-  0
-  )
+  0)
 
 (defmethod init-defaults progress ((obj progress))
   "Initialize default menu settings."

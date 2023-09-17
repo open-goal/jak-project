@@ -743,7 +743,8 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
                          function.guessed_name.to_string() == "(method 74 hal)" ||
                          function.guessed_name.to_string() == "water-anim-event-handler" ||
                          function.guessed_name.to_string() == "(method 74 civilian)" ||
-                         function.guessed_name.to_string() == "(method 74 crimson-guard)";
+                         function.guessed_name.to_string() == "(method 74 crimson-guard)" ||
+                         function.guessed_name.to_string() == "metalkor-handler";
   }
 
   if (function.ir2.env.version == GameVersion::Jak1) {

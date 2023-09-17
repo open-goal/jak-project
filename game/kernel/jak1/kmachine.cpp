@@ -292,7 +292,7 @@ void InitIOP() {
   }
 }
 
-AutoSplitterBlock gAutoSplitterBlock;
+AutoSplitterBlock g_auto_splitter_block_jak1;
 
 /*!
  * Initialize GOAL Runtime. This is the main initialization which is called before entering
@@ -357,7 +357,8 @@ int InitMachine() {
   }
 
   // TODO - better place to put this?
-  gAutoSplitterBlock.pointer_to_symbol =
+  // TODO - yes, see jak2's code!
+  g_auto_splitter_block_jak1.pointer_to_symbol =
       (u64)g_ee_main_mem + intern_from_c("*autosplit-info-jak1*")->value;
 
   lg::info("InitListenerConnect");
