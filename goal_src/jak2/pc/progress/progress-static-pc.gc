@@ -10,43 +10,55 @@
 
 (set! (-> *main-options-debug* options 9) (new 'static 'menu-main-menu-option :name (text-id progress-music-player) :scale #t :next-state 'music-player))
 
+;; TODO - make the scale of the generic menus smaller so we can fit more on the screen, text is way bigger than it needs to be
+;; backing out of a nested generic menu causes a history issue, might be because of leaving with start too
+;; no generic-beep on triangle-cancel seems like an oversight -- it makes the sound in the reset/quit game entries
+;; pressing x on first entry when opening menu (without moving, doesnt work)
+;; no-option-found text for controllers/monitor selection
+;; wire up should-hide?
+
 (define *game-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
-    (progress-new-generic-scrolling-page (text-id progress-menu-input-options)
-      (progress-new-generic-scrolling-page (text-id progress-camera-options)
-        ;; TODO - macro for booleans, they are the most common option
+    (progress-new-generic-link-to-scrolling-page (text-id progress-menu-input-options)
+      (progress-new-generic-link-to-scrolling-page (text-id progress-camera-options)
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-first-horz)
           :truthy-text (text-id progress-normal)
           :falsey-text (text-id progress-inverted)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
+          :get-value-fn (lambda () (-> *pc-settings* first-camera-h-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* first-camera-h-inverted?) val)
+            (commit-to-file *pc-settings*)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-first-vert)
           :truthy-text (text-id progress-normal)
           :falsey-text (text-id progress-inverted)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
+          :get-value-fn (lambda () (-> *pc-settings* first-camera-v-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* first-camera-v-inverted?) val)
+            (commit-to-file *pc-settings*)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-horz)
           :truthy-text (text-id progress-normal)
           :falsey-text (text-id progress-inverted)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
+          :get-value-fn (lambda () (-> *pc-settings* third-camera-h-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* third-camera-h-inverted?) val)
+            (commit-to-file *pc-settings*)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-camera-options-third-vert)
           :truthy-text (text-id progress-normal)
           :falsey-text (text-id progress-inverted)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
-        ;; TODO - shouldn't be a bool!
-        (new 'static 'menu-generic-boolean-option
+          :get-value-fn (lambda () (-> *pc-settings* third-camera-v-inverted?))
+          :on-confirm (lambda ((val symbol))
+            (set! (-> *pc-settings* third-camera-v-inverted?) val)
+            (commit-to-file *pc-settings*)))
+        (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
-      (progress-new-generic-scrolling-page (text-id progress-menu-controller-options)
+          :on-confirm (lambda ((val symbol))
+            (reset-camera *pc-settings* #t)
+            (commit-to-file *pc-settings*))))
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options)
         ;; TODO - need a dynamic list option, slight modification here
         (new 'static 'menu-generic-carousel-option
           :name (text-id progress-controller-options-select-controller)
@@ -61,20 +73,21 @@
                       (text-id language-name-english-uk))
           :get-item-index-fn (lambda () 0)
           :on-confirm (lambda ((index int)) 0))
-        ;; TODO - disabled if controller has no rumble
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-vibration)
+          :should-disable? (lambda () (not (pc-current-controller-has-rumble?)))
           :truthy-text (text-id progress-on)
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () (-> *setting-control* user-default vibration))
           :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
-        ;; TODO - slider!
-        (new 'static 'menu-generic-boolean-option
+        (new 'static 'menu-generic-slider-option
           :name (text-id progress-controller-options-analog-deadzone)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () (-> *setting-control* user-default vibration))
-          :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
+          :min-value 0.0
+          :max-value 1.0
+          :step 0.01
+          :show-decimal? #t
+          :get-value-fn (lambda () 0.5)
+          :on-confirm (lambda ((val symbol)) (format 0 "ye")))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-ignore-if-unfocused)
           :truthy-text (text-id progress-on)
@@ -93,13 +106,12 @@
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () #t)
           :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
-        ;; TODO - shouldn't be a bool!
-        (new 'static 'menu-generic-boolean-option
+        (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
+          :on-confirm (lambda ((val symbol))
+            (reset-input *pc-settings* 'controller #t)
+            (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
+            (commit-to-file *pc-settings*))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-enable-keyboard)
         :truthy-text (text-id progress-on)
@@ -112,7 +124,7 @@
         :falsey-text (text-id progress-off)
         :get-value-fn (lambda () #t)
         :on-confirm (lambda ((val symbol)) #t))
-      (progress-new-generic-scrolling-page (text-id progress-menu-mouse-options) ;; TODO - disable based on mouse setting
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) ;; TODO - disable based on mouse setting
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-track-camera)
           :truthy-text (text-id progress-on)
@@ -139,37 +151,55 @@
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () #t)
           :on-confirm (lambda ((val symbol)) #t))
-        ;; TODO - shouldn't be a bool!
-        (new 'static 'menu-generic-boolean-option
+        (new 'static 'menu-generic-confirm-option
           :name (text-id progress-restore-defaults)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
+          :on-confirm (lambda ((val symbol))
+            (reset-input *pc-settings* 'mouse #t)
+            (update-mouse-controls! *pc-settings*)
+            (commit-to-file *pc-settings*))))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-input-options-auto-hide-cursor)
         :truthy-text (text-id progress-on)
         :falsey-text (text-id progress-off)
         :get-value-fn (lambda () #t)
         :on-confirm (lambda ((val symbol)) #t))
-      (progress-new-generic-scrolling-page (text-id progress-menu-mouse-options)
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-reassign-binds)
         (progress-new-generic-link (text-id progress-reassign-binds-controller)
           ;; TODO - make details list to use for keybinds
+          ;; TODO - shouldn't be a bool!
+          (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-restore-defaults)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () #t)
+          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
           )
         (progress-new-generic-link (text-id progress-reassign-binds-keyboard)
-          ;; TODO - make details list to use for keybinds
+          ;; TODO - make details list to use for keybinds;; TODO - shouldn't be a bool!
+        (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-restore-defaults)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () #t)
+          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
           )
         (progress-new-generic-link (text-id progress-reassign-binds-mouse)
-          ;; TODO - make details list to use for keybinds
+          ;; TODO - make details list to use for keybinds;; TODO - shouldn't be a bool!
+        (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+          :name (text-id progress-restore-defaults)
+          :truthy-text (text-id progress-on)
+          :falsey-text (text-id progress-off)
+          :get-value-fn (lambda () #t)
+          :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))
           )
         )
-      ;; TODO - shouldn't be a bool!
-      (new 'static 'menu-generic-boolean-option
+      (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
-        :truthy-text (text-id progress-on)
-        :falsey-text (text-id progress-off)
-        :get-value-fn (lambda () #t)
-        :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))
+        :on-confirm (lambda ((val symbol))
+          (reset-input *pc-settings* 'input #t)
+          (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
+          (update-mouse-controls! *pc-settings*)
+          (commit-to-file *pc-settings*)))
     )
     (new 'static 'menu-generic-boolean-option
       :name (text-id progress-subtitles)
@@ -207,24 +237,23 @@
                                         ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
                                         ;; fix it eventually
                                         (load-level-text-files (the-as int (-> *setting-control* user-default language)))))
-    (progress-new-generic-link (text-id progress-misc-game-options)
-      (progress-new-generic-scrolling-page (text-id progress-misc-game-options)
-        (new 'static 'menu-generic-boolean-option
-          :name (text-id progress-discord-rpc)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () #t)
-          :on-confirm (lambda ((val symbol))
-            (format 0 "TODO!~%")
-            (commit-to-file *pc-settings*)))
-        (new 'static 'menu-generic-boolean-option
-          :name (text-id progress-speedrunner-mode)
-          :truthy-text (text-id progress-on)
-          :falsey-text (text-id progress-off)
-          :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
-          :on-confirm (lambda ((val symbol))
-            (set! (-> *pc-settings* speedrunner-mode?) val)
-            (commit-to-file *pc-settings*)))))))
+    (progress-new-generic-link-to-scrolling-page (text-id progress-misc-game-options)
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-discord-rpc)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () #t)
+        :on-confirm (lambda ((val symbol))
+          (format 0 "TODO!~%")
+          (commit-to-file *pc-settings*)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-speedrunner-mode)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* speedrunner-mode?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* speedrunner-mode?) val)
+          (commit-to-file *pc-settings*))))))
 
 
 ;; TODO - update this

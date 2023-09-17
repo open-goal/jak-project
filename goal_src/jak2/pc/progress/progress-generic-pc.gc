@@ -71,6 +71,13 @@
   (set! (-> this selected-option-index) -1)
   (none))
 
+;; TODO - call parent methods
+
+(defmethod on-mount! menu-generic-confirm-option ((this menu-generic-confirm-option))
+  (set! (-> this mounted?) #t)
+  (set! (-> this confirmed?) #f)
+  (none))
+
 ;; Progress Code Overrides
 
 (defmethod respond-to-cpad progress ((obj progress))
@@ -259,10 +266,54 @@
   0)
 
 (defmethod respond-progress menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (selected? symbol))
-  (when (>= (-> *progress-pc-generic-store* current-menu-hover-index) 0)
+  (when (and selected? (cpad-pressed? 0 confirm))
+    (navigate! *progress-pc-generic-store* progress (-> obj target) (-> obj on-load))
+    (set! (-> progress selected-option) #f)
+    (sound-play "score-slide"))
+  0)
+
+(defmethod respond-progress menu-generic-confirm-option ((obj menu-generic-confirm-option) (progress progress) (selected? symbol))
+  (if selected?
+    (cond
+      ((cpad-pressed? 0 left l-analog-left right l-analog-right)
+       (if (-> obj confirmed?)
+         (set! (-> obj confirmed?) #f)
+         (set! (-> obj confirmed?) #t))
+       (sound-play "generic-beep"))
+      ((cpad-pressed? 0 confirm)
+       (when (and (-> obj confirmed?) (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
+        ((-> obj on-confirm)))
+       (sound-play "generic-beep")))
     (cond
       ((cpad-pressed? 0 confirm)
-       (navigate! *progress-pc-generic-store* progress (-> obj target) (-> obj on-load))
-       (set! (-> progress selected-option) #f)
-       (sound-play "score-slide"))))
+       (set! (-> obj confirmed?) #f))))
+  0)
+
+(defmethod respond-progress menu-generic-slider-option ((obj menu-generic-slider-option) (progress progress) (selected? symbol))
+  (if selected?
+    (cond
+      ((and (> (-> obj value) (-> obj min-value))
+            (cpad-hold? 0 left l-analog-left))
+       ;; TODO - might not work well on higher frame-rates
+       (set! (-> obj value) (fmax (- (-> obj value) (-> obj step)) (-> obj min-value)))
+       (when (< (seconds 0.03) (- (current-time) (-> obj last-sound-played)))
+        (set! (-> obj last-sound-played) (current-time))
+        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
+      ((and (< (-> obj value) (-> obj max-value))
+            (cpad-hold? 0 right l-analog-right))
+       ;; TODO - might not work well on higher frame-rates
+       (set! (-> obj value) (fmin (+ (-> obj value) (-> obj step)) (-> obj max-value)))
+       (when (< (seconds 0.03) (- (current-time) (-> obj last-sound-played)))
+        (set! (-> obj last-sound-played) (current-time))
+        (sound-play-by-name (static-sound-name "menu-slide") (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
+      ((cpad-pressed? 0 confirm)
+       (when (and (nonzero? (-> obj on-confirm)) (!= (-> obj on-confirm) #f))
+        ((-> obj on-confirm) (-> obj value)))
+       (sound-play "generic-beep")))
+    (cond
+      ((cpad-pressed? 0 confirm)
+       ;; set the value, this is so we edit the component's state and not the actual underlying value
+       ;; in other words, don't change the setting until the user has actually confirmed the change!
+       (when (and (nonzero? (-> obj get-value-fn)) (!= (-> obj get-value-fn) #f))
+        (set! (-> obj value) ((-> obj get-value-fn)))))))
   0)
