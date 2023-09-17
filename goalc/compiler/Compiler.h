@@ -658,6 +658,7 @@ class Compiler {
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_macro_expand(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Math
   Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
