@@ -226,6 +226,9 @@ const std::unordered_map<
         {"quote", {"", &Compiler::compile_quote}},
         {"mlet", {"", &Compiler::compile_mlet}},
         {"defconstant", {"", &Compiler::compile_defconstant}},
+        {"macro-expand",
+         {"Displays the expanded form of a macro without evaluating it.",
+          &Compiler::compile_macro_expand}},
 
         // OBJECT
         //        {"current-method-type", {"", &Compiler::compile_current_method_type}},
