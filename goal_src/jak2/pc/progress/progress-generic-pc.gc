@@ -198,21 +198,31 @@
           (when (< (-> *progress-pc-generic-store* current-menu-hover-index) 0)
           (set! (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> obj menu-options length)))))
         ((cpad-pressed? 0 confirm)
-         (format 0 "hello world A~%")
-         ;; ignore confirm if it's a link
-         (if (type? (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index)) menu-generic-link-option)
-           (set! selected-item? #t)
-           (when (< (-> *progress-pc-generic-store* current-menu-hover-index) (-> obj menu-options length))
-             (format 0 "hello world B~%")
-             (set! (-> obj selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
-             (set! (-> obj selected-option-item) (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index)))
-             (sound-play "generic-beep"))))
+         (let ((menu-option (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index))))
+          ;; if the option is disabled, return early
+          (when (and (type? menu-option menu-generic-option)
+                     (nonzero? (-> (the-as menu-generic-option menu-option) should-disable?))
+                     (!= (-> (the-as menu-generic-option menu-option) should-disable?) #f)
+                     ((-> (the-as menu-generic-option menu-option) should-disable?)))
+            (sound-play "roll-over")
+            (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
+            (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
+            (return 0))
+          ;; ignore confirm if it's a link
+          (if (type? menu-option menu-generic-link-option)
+            (set! selected-item? #t)
+            ;; TODO - this bounds check is too late!
+            (when (< (-> *progress-pc-generic-store* current-menu-hover-index) (-> obj menu-options length))
+              (format 0 "blarg~%")
+              (set! (-> obj selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
+              (set! (-> obj selected-option-item) menu-option)
+              (sound-play "generic-beep")))))
         ((cpad-pressed? 0 triangle)
         ;; we are in a sub-page, time to go back
         (when (has-history? *progress-pc-generic-store*)
           (back! *progress-pc-generic-store* progress)
-          (sound-play "score-slide")))
-      )
+          (sound-play "score-slide"))))
+      ;; menu option already selected
       (cond
         ((cpad-pressed? 0 confirm)
         (set! (-> obj selected-option-index) -1)
