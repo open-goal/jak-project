@@ -8,8 +8,8 @@ This gives us more freedom to write code how we want.
 
 (set! (-> *main-options-debug* options 9) (new 'static 'menu-main-menu-option :name (text-id progress-music-player) :scale #t :next-state 'music-player))
 
-;; wire up should-disable?
 ;; in jak 2, the options dont have to be all-caps anymore!
+;; encode controller/display names - current bug waiting to happen
 
 (define *game-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
@@ -52,7 +52,7 @@ This gives us more freedom to write code how we want.
           :on-confirm (lambda ((val symbol))
             (reset-camera *pc-settings* #t)
             (commit-to-file *pc-settings*))))
-      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options)
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-controller-options) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
         (new 'static 'menu-generic-carousel-option
           :name (text-id progress-controller-options-select-controller)
           :get-max-size-fn (lambda () (pc-get-controller-count))
@@ -63,7 +63,7 @@ This gives us more freedom to write code how we want.
           :on-confirm (lambda ((index int)) (pc-set-controller! 0 index)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-vibration)
-          :should-disable? (lambda () #t);;(not (pc-current-controller-has-rumble?)))
+          :should-disable? (lambda () (not (pc-current-controller-has-rumble?)))
           :truthy-text (text-id progress-on)
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () (-> *setting-control* user-default vibration))
@@ -88,6 +88,7 @@ This gives us more freedom to write code how we want.
             (commit-to-file *pc-settings*)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-hp)
+          :should-disable? (lambda () (not (pc-current-controller-has-led?)))
           :truthy-text (text-id progress-on)
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () (-> *pc-settings* controller-hp-led?))
@@ -96,6 +97,7 @@ This gives us more freedom to write code how we want.
             (commit-to-file *pc-settings*)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-controller-options-led-darkjak)
+          :should-disable? (lambda () (not (pc-current-controller-has-led?)))
           :truthy-text (text-id progress-on)
           :falsey-text (text-id progress-off)
           :get-value-fn (lambda () (-> *pc-settings* controller-eco-led?))
@@ -124,7 +126,7 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* mouse-enabled?) val)
           (commit-to-file *pc-settings*)))
-      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) ;; TODO - disable based on mouse setting
+      (progress-new-generic-link-to-scrolling-page (text-id progress-menu-mouse-options) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
         (new 'static 'menu-generic-boolean-option
           :name (text-id progress-mouse-options-track-camera)
           :truthy-text (text-id progress-on)
@@ -133,9 +135,9 @@ This gives us more freedom to write code how we want.
           :on-confirm (lambda ((val symbol))
             (set! (-> *pc-settings* mouse-camera?) val)
             (commit-to-file *pc-settings*)))
-        ;; TODO - hidden based on track camera option
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-horz-sens)
+          :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
           :min-value -30.0
           :max-value 30.0
           :step 0.10
@@ -144,9 +146,9 @@ This gives us more freedom to write code how we want.
           :on-confirm (lambda ((val float))
             (set! (-> *pc-settings* mouse-xsens) val)
             (commit-to-file *pc-settings*)))
-        ;; TODO - hidden based on track camera option
         (new 'static 'menu-generic-slider-option
           :name (text-id progress-mouse-options-vert-sens)
+          :should-disable? (lambda () (not (-> *pc-settings* mouse-camera?)))
           :min-value -30.0
           :max-value 30.0
           :step 0.10
@@ -178,40 +180,37 @@ This gives us more freedom to write code how we want.
           (set! (-> *pc-settings* auto-hide-cursor?) val)
           (commit-to-file *pc-settings*)))
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-reassign-binds)
-        (progress-new-generic-link (text-id progress-reassign-binds-controller)
-          ;; TODO - make details list to use for keybinds
-          ;; TODO - shouldn't be a bool!
+        (progress-new-generic-link (text-id progress-reassign-binds-controller) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
+          ;; TODO
           (progress-new-generic-option (new 'static 'menu-generic-boolean-option
             :name (text-id progress-restore-defaults)
             :truthy-text (text-id progress-on)
             :falsey-text (text-id progress-off)
             :get-value-fn (lambda () #t)
             :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))))
-        (progress-new-generic-link (text-id progress-reassign-binds-keyboard)
-          ;; TODO - make details list to use for keybinds;; TODO - shouldn't be a bool!
+        (progress-new-generic-link (text-id progress-reassign-binds-keyboard) :should-disable? (lambda () (not (-> *pc-settings* keyboard-enabled?)))
+          ;; TODO
           (progress-new-generic-option (new 'static 'menu-generic-boolean-option
             :name (text-id progress-restore-defaults)
             :truthy-text (text-id progress-on)
             :falsey-text (text-id progress-off)
             :get-value-fn (lambda () #t)
             :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))))
-        (progress-new-generic-link (text-id progress-reassign-binds-mouse)
-          ;; TODO - make details list to use for keybinds;; TODO - shouldn't be a bool!
+        (progress-new-generic-link (text-id progress-reassign-binds-mouse) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
+          ;; TODO
           (progress-new-generic-option (new 'static 'menu-generic-boolean-option
             :name (text-id progress-restore-defaults)
             :truthy-text (text-id progress-on)
             :falsey-text (text-id progress-off)
             :get-value-fn (lambda () #t)
-            :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))))
-        )
+            :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))))
       (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
         :on-confirm (lambda ((val symbol))
           (reset-input *pc-settings* 'input #t)
           (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
           (update-mouse-controls! *pc-settings*)
-          (commit-to-file *pc-settings*)))
-    )
+          (commit-to-file *pc-settings*))))
     (new 'static 'menu-generic-boolean-option
       :name (text-id progress-subtitles)
       :truthy-text (text-id progress-on)

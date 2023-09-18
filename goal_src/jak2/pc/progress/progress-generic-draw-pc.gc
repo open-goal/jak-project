@@ -128,6 +128,11 @@
     (restore-scissor hud-bounds buffer))
   (none))
 
+(defun-debug draw-generic-page-row-line ((y-coord int))
+  (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                               (bucket-id debug-no-zbuf2))
+    (draw-sprite2d-xy buf 0 y-coord 512 1 (static-rgba #xff #xff #xff #x40))))
+
 (defmethod draw-option menu-generic-scrolling-page ((obj menu-generic-scrolling-page) (progress progress) (font-ctx font-context) (arg3 int) (arg4 symbol))
   ;; (inspect obj)
   (when (or (zero? (-> obj mounted?)) (not (-> obj mounted?)))
@@ -166,10 +171,8 @@
                            (= (-> obj selected-option-index) menu-option-index))
               ;; move to the next line
               (set! (-> font-ctx origin y) (+ old-y-pos line-height))
-              ;; - debugging, draw the dividing lines
-              (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-                                           (bucket-id debug-no-zbuf2))
-                 (draw-sprite2d-xy buf 0 (the int (-> font-ctx origin y)) 512 1 (static-rgba #xff #xff #xff #x40)))
+              ;; - debugging, draw the dividing lines to center new items easier
+              (draw-generic-page-row-line (the int (-> font-ctx origin y)))
               (set! (-> font-ctx origin x) old-x-pos)
               ;; reset the font color
               (set-color! font-ctx (font-color progress)))))
@@ -268,6 +271,12 @@
       (selected?
        (set! (-> font-ctx color) (font-color progress-force-selected))
        (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 30 alpha))
+      ((and (nonzero? (-> obj should-disable?))
+            (!= (-> obj should-disable?) #f)
+            ((-> obj should-disable?)))
+       (set-color! font-ctx (font-color progress-option-off))
+       (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+         (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
        (set! (-> font-ctx color) (progress-selected 0))
        (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 16 alpha)))
@@ -289,7 +298,7 @@
           (print-game-text (get-item-label obj actual-index) font-ctx #f 44 (bucket-id progress)))))))
   (none))
 
-(defun draw-generic-simple-string-option ((progress progress) (font-ctx font-context) (option-index int) (str string))
+(defun draw-generic-simple-string-option ((option menu-generic-option) (progress progress) (font-ctx font-context) (option-index int) (str string))
   (let ((alpha (* 2.0 (- 0.5 (-> progress menu-transition))))
         (line-height 23.0))
     (max! alpha 0.0)
@@ -298,6 +307,12 @@
     (set-scale! font-ctx 0.45)
     (+! (-> font-ctx origin y) 14.0)
     (cond
+      ((and (nonzero? (-> option should-disable?))
+            (!= (-> option should-disable?) #f)
+            ((-> option should-disable?)))
+      (set-color! font-ctx (font-color progress-option-off))
+      (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+        (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
         (set-color! font-ctx (progress-selected 0))
         (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 17 alpha))
@@ -309,7 +324,7 @@
 (defmethod draw-option menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
     (on-mount! obj))
-  (draw-generic-simple-string-option progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))
+  (draw-generic-simple-string-option obj progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))
   (none))
 
 (defmethod draw-option menu-generic-confirm-option ((obj menu-generic-confirm-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
@@ -318,6 +333,7 @@
   ;; drawn different depending on whether or not the confirmation prompt is open
   (cond
     (selected?
+     ;; TODO - this is duplicate code with the boolean option, but i ran out of arguments, make a struct or something later
      (let ((alpha (* 2.0 (- 0.5 (-> progress menu-transition))))
            (line-height 18.0))
        (max! alpha 0.0)
@@ -338,6 +354,12 @@
          ;; hover case
          (else
            (cond
+             ((and (nonzero? (-> obj should-disable?))
+                   (!= (-> obj should-disable?) #f)
+                   ((-> obj should-disable?)))
+              (set-color! font-ctx (font-color progress-option-off))
+              (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+                (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
              ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
                (set-color! font-ctx (progress-selected 0))
                (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 alpha))
@@ -352,7 +374,7 @@
        (set-scale! font-ctx 0.35)
        (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))))
     (else
-     (draw-generic-simple-string-option progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))))
+     (draw-generic-simple-string-option obj progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))))
   (none))
 
 (defmethod draw-option menu-generic-slider-option ((obj menu-generic-slider-option) (arg0 progress) (font-ctx font-context) (option-index int) (selected? symbol))
@@ -426,6 +448,12 @@
       (else
         (+! (-> font-ctx origin y) -8.0)
         (cond
+          ((and (nonzero? (-> obj should-disable?))
+                (!= (-> obj should-disable?) #f)
+                ((-> obj should-disable?)))
+          (set-color! font-ctx (font-color progress-option-off))
+          (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
+            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
           ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
             (set-color! font-ctx (progress-selected 0))
             (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 18 alpha))
