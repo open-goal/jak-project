@@ -43,8 +43,7 @@
   (> (-> this history-stack-index) 0))
 
 (defmethod clear-history-if-empty! progress-pc-generic-store ((this progress-pc-generic-store))
-  ;; if we are have no history, just reset the entry.  This is so we don't preserve state
-  ;; after completely exiting the menu
+  "if we are have no history, just reset the entry.  This is so we don't preserve state after completely exiting the menu"
   (when (not (has-history? this))
     (set! (-> this history-stack-index) 0)
     (set! (-> this clear-screen?) #f)
@@ -54,6 +53,12 @@
       (set! (-> stack-entry ref) #f)
       (set! (-> stack-entry on-load) #f)
       (set! (-> stack-entry progress-id) #f)))
+  (none))
+
+(defmethod clear-history! progress-pc-generic-store ((this progress-pc-generic-store))
+  (set! (-> this history-stack-index) 0)
+  (set! (-> this clear-screen?) #f)
+  (set! (-> this current-menu-hover-index) 0)
   (none))
 
 (defmethod on-mount! menu-generic-option ((this menu-generic-option))
@@ -213,7 +218,6 @@
             (set! selected-item? #t)
             ;; TODO - this bounds check is too late!
             (when (< (-> *progress-pc-generic-store* current-menu-hover-index) (-> obj menu-options length))
-              (format 0 "blarg~%")
               (set! (-> obj selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
               (set! (-> obj selected-option-item) menu-option)
               (sound-play "generic-beep")))))
