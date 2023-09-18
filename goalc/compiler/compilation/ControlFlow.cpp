@@ -267,10 +267,10 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       // least common ancestor was none, but there is still the #f from the missing else case.
       // elevate cond to an `object` overall so we can capture that #f!
       // (`object` is the direct ancestor of `none` and the ancestor to all types overall)
-      // TODO : this may not be necessary? what does goal do here?
+      // TODO : what does goal do here?
       lca = TypeSpec("object");
     }
-    result->set_type(coerce_to_reg_type(m_ts.lowest_common_ancestor(case_result_types)));
+    result->set_type(coerce_to_reg_type(lca));
   }
 
   // maybe use 128-bit register
