@@ -58,14 +58,13 @@
 
 (defun draw-page-header ((font-ctx font-context) (text text-id))
   (let ((x-pos 70)
-        (y-pos 85)
+        (y-pos 80)
         (width 375))
     (when (= (get-aspect-ratio) 'aspect16x9)
       (set! x-pos 79)
       (set! y-pos 55)
       (set! width 356))
-    (set-scale! font-ctx 0.75)
-    (set! (-> font-ctx height) 20.0)
+    (set-scale! font-ctx 0.55)
     (set! (-> font-ctx origin y) (the float y-pos))
     (set-color! font-ctx (font-color progress))
     (print-game-text (lookup-text! *common-text* text #f) font-ctx #f 44 (bucket-id progress)))
@@ -139,9 +138,9 @@
   (when (not (-> *progress-pc-generic-store* clear-screen?))
     (let ((font-alpha (fmax 0.0 (* 2.0 (- 0.5 (-> progress menu-transition)))))
         (hud-bounds (new 'stack-no-clear 'hud-box))
-        (max-page-size (if (= (get-aspect-ratio) 'aspect16x9) 5 4))
-        (margin-top-bottom 10.0)
-        (line-height 45.0))
+        (max-page-size (if (= (get-aspect-ratio) 'aspect16x9) 5 5))
+        (margin-top-bottom 0.0)
+        (line-height 40.0))
     (set! (-> font-ctx alpha) font-alpha)
     (set-color! font-ctx (font-color progress))
     ;; header
@@ -167,6 +166,10 @@
                            (= (-> obj selected-option-index) menu-option-index))
               ;; move to the next line
               (set! (-> font-ctx origin y) (+ old-y-pos line-height))
+              ;; - debugging, draw the dividing lines
+              (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                           (bucket-id debug-no-zbuf2))
+                 (draw-sprite2d-xy buf 0 (the int (-> font-ctx origin y)) 512 1 (static-rgba #xff #xff #xff #x40)))
               (set! (-> font-ctx origin x) old-x-pos)
               ;; reset the font color
               (set-color! font-ctx (font-color progress)))))
@@ -201,22 +204,22 @@
       (draw-sprite2d-xy buffer x-pos y-pos width height
         (new 'static 'rgba :r #x40 :g #x80 :b #x80 :a (the int (* 64.0 alpha)))))))
 
-(defmethod draw-option menu-generic-boolean-option ((obj menu-generic-boolean-option) (arg0 progress) (arg1 font-context) (option-index int) (selected? symbol))
+(defmethod draw-option menu-generic-boolean-option ((obj menu-generic-boolean-option) (arg0 progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
     (on-mount! obj))
   (let ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
-        (line-height 23.0))
+        (line-height 18.0))
     (max! alpha 0.0)
-    (set! (-> arg1 alpha) alpha)
-    (set-flags! arg1 (font-flags kerning middle large))
-    (set-scale! arg1 0.65)
-    (+! (-> arg1 origin y) 5.0)
+    (set! (-> font-ctx alpha) alpha)
+    (set-flags! font-ctx (font-flags kerning middle large))
+    (set-scale! font-ctx 0.45)
+    (+! (-> font-ctx origin y) 7.0)
     (cond
       (selected?
-        (set-color! arg1 (font-color progress-force-selected))
-        (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 41 alpha)
-        (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
-        (+! (-> arg1 origin y) line-height)
+        (set-color! font-ctx (font-color progress-force-selected))
+        (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) 32 alpha)
+        (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
+        (+! (-> font-ctx origin y) line-height)
         (set! *temp-string* (clear *temp-string*))
         (if (-> obj value)
           (format *temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
@@ -227,16 +230,16 @@
           ((and (nonzero? (-> obj should-disable?))
                 (!= (-> obj should-disable?) #f)
                 ((-> obj should-disable?)))
-           (set-color! arg1 (font-color progress-option-off))
+           (set-color! font-ctx (font-color progress-option-off))
            (when (= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-            (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 0.5)))
+            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 0.5)))
           ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-            (set-color! arg1 (progress-selected 0))
-            (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
+            (set-color! font-ctx (progress-selected 0))
+            (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 alpha))
           (else
-            (set-color! arg1 (font-color progress))))
-        (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
-        (+! (-> arg1 origin y) line-height)
+            (set-color! font-ctx (font-color progress))))
+        (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
+        (+! (-> font-ctx origin y) line-height)
         (set! *temp-string* (clear *temp-string*))
         (let ((actual-value (if (and (nonzero? (-> obj get-value-fn)) (!= (-> obj get-value-fn) #f))
                               ((-> obj get-value-fn))
@@ -244,8 +247,8 @@
           (if actual-value
             (format *temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))
             (format *temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (-> obj truthy-text) #f) (lookup-text! *common-text* (-> obj falsey-text) #f))))))
-    (set-scale! arg1 0.5)
-    (print-game-text *temp-string* arg1 #f 44 (bucket-id progress)))
+    (set-scale! font-ctx 0.35)
+    (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress)))
   (none))
 
 (defmethod draw-option menu-generic-carousel-option ((obj menu-generic-carousel-option)
@@ -256,86 +259,78 @@
   (when (not (-> obj mounted?))
     (on-mount! obj))
   (let ((alpha (fmax (* 2.0 (- 0.5 (-> progress menu-transition))) 0.0)))
-    (set! (-> font-ctx scale) 0.65)
+    (set! (-> font-ctx scale) 0.45)
     (set! (-> font-ctx alpha) alpha)
-    (+! (-> font-ctx origin y) 2.5)
+    (+! (-> font-ctx origin y) 5.0)
     (set-flags! font-ctx (font-flags kerning middle large))
     ;; the item label
     (cond
       (selected?
        (set! (-> font-ctx color) (font-color progress-force-selected))
-       (draw-generic-highlight (the int (-> font-ctx origin y)) 44 alpha))
+       (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 30 alpha))
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
        (set! (-> font-ctx color) (progress-selected 0))
-       (draw-generic-highlight (the int (-> font-ctx origin y)) 24 alpha)))
+       (draw-generic-highlight (the int (- (-> font-ctx origin y) 1.0)) 16 alpha)))
     (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
-    (+! (-> font-ctx origin y) 24.0)
-    (set! (-> font-ctx scale) 0.5)
+    (+! (-> font-ctx origin y) 18.0)
+    (set! (-> font-ctx scale) 0.35)
     (set! (-> font-ctx color) (font-color progress))
-    ;; TODO - put this all in one print so the spacing is correct instead of messing with origin x
-    (when selected?
-      ;; left arrow
-      (+! (-> font-ctx origin x) -70.0)
-      (format (clear *temp-string*) "~33L~C" 163)
-      (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
-      (+! (-> font-ctx origin x) 70.0)
-      (+! (-> font-ctx origin x) 70.0)
-      ;; right arrow
-      (format (clear *temp-string*) "~33L~C" 161)
-      (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))
-      (+! (-> font-ctx origin x) -70.0)
-      (set! (-> font-ctx color) (progress-selected 0)))
     ;; the value
     ;; TODO - no items found impl
     (when (and (>= (-> obj item-index) 0) (< (-> obj item-index) (num-items obj)))
-      (if selected?
-        (print-game-text (get-item-label obj (-> obj item-index)) font-ctx #f 44 (bucket-id progress))
-        (let ((actual-index (if (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
+      (cond
+        (selected?
+         (format (clear *temp-string*) "~33L~C ~S ~33L~C" 163 (get-item-label obj (-> obj item-index)) 161)
+         (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress)))
+        (else
+         (let ((actual-index (if (and (nonzero? (-> obj get-item-index-fn)) (!= (-> obj get-item-index-fn) #f))
                               ((-> obj get-item-index-fn))
                               0)))
-        (print-game-text (get-item-label obj actual-index) font-ctx #f 44 (bucket-id progress))))))
+          (print-game-text (get-item-label obj actual-index) font-ctx #f 44 (bucket-id progress)))))))
   (none))
 
-(defmethod draw-option menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (arg1 font-context) (option-index int) (selected? symbol))
-  (when (not (-> obj mounted?))
-    (on-mount! obj))
+(defun draw-generic-simple-string-option ((progress progress) (font-ctx font-context) (option-index int) (str string))
   (let ((alpha (* 2.0 (- 0.5 (-> progress menu-transition))))
         (line-height 23.0))
     (max! alpha 0.0)
-    (set! (-> arg1 alpha) alpha)
-    (set-flags! arg1 (font-flags kerning middle large))
-    (set-scale! arg1 0.65)
-    (+! (-> arg1 origin y) 12.5)
+    (set! (-> font-ctx alpha) alpha)
+    (set-flags! font-ctx (font-flags kerning middle large))
+    (set-scale! font-ctx 0.45)
+    (+! (-> font-ctx origin y) 14.0)
     (cond
       ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-        (set-color! arg1 (progress-selected 0))
-        (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
+        (set-color! font-ctx (progress-selected 0))
+        (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 17 alpha))
       (else
-        (set-color! arg1 (font-color progress))))
-    (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress)))
+        (set-color! font-ctx (font-color progress))))
+    (print-game-text str font-ctx #f 44 (bucket-id progress)))
   (none))
 
-;; TODO - make "draw label" and "draw label with 2 below options a generic func"
+(defmethod draw-option menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
+  (when (not (-> obj mounted?))
+    (on-mount! obj))
+  (draw-generic-simple-string-option progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))
+  (none))
 
-(defmethod draw-option menu-generic-confirm-option ((obj menu-generic-confirm-option) (arg0 progress) (arg1 font-context) (option-index int) (selected? symbol))
+(defmethod draw-option menu-generic-confirm-option ((obj menu-generic-confirm-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
     (on-mount! obj))
   ;; drawn different depending on whether or not the confirmation prompt is open
   (cond
     (selected?
-     (let ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
-           (line-height 23.0))
+     (let ((alpha (* 2.0 (- 0.5 (-> progress menu-transition))))
+           (line-height 18.0))
        (max! alpha 0.0)
-       (set! (-> arg1 alpha) alpha)
-       (set-flags! arg1 (font-flags kerning middle large))
-       (set-scale! arg1 0.65)
-       (+! (-> arg1 origin y) 5.0)
+       (set! (-> font-ctx alpha) alpha)
+       (set-flags! font-ctx (font-flags kerning middle large))
+       (set-scale! font-ctx 0.45)
+       (+! (-> font-ctx origin y) 7.0)
        (cond
          (selected?
-           (set-color! arg1 (font-color progress-force-selected))
-           (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 41 alpha)
-           (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
-           (+! (-> arg1 origin y) line-height)
+           (set-color! font-ctx (font-color progress-force-selected))
+           (draw-generic-highlight (the int (- (-> font-ctx origin y) 2.0)) 32 alpha)
+           (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
+           (+! (-> font-ctx origin y) line-height)
            (set! *temp-string* (clear *temp-string*))
            (if (-> obj confirmed?)
              (format *temp-string* "~33L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
@@ -344,36 +339,21 @@
          (else
            (cond
              ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-               (set-color! arg1 (progress-selected 0))
-               (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
+               (set-color! font-ctx (progress-selected 0))
+               (draw-generic-highlight (the int (+ -1.0 (-> font-ctx origin y))) 15 alpha))
              (else
-               (set-color! arg1 (font-color progress))))
-           (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress))
-           (+! (-> arg1 origin y) line-height)
+               (set-color! font-ctx (font-color progress))))
+           (print-game-text (lookup-text! *common-text* (-> obj name) #f) font-ctx #f 44 (bucket-id progress))
+           (+! (-> font-ctx origin y) line-height)
            (set! *temp-string* (clear *temp-string*))
            (if (-> obj confirmed?)
              (format *temp-string* "~1L~S~35L ~S" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f))
              (format *temp-string* "~35L~S ~1L~S~1L" (lookup-text! *common-text* (text-id progress-yes) #f) (lookup-text! *common-text* (text-id progress-no) #f)))))
-       (set-scale! arg1 0.5)
-       (print-game-text *temp-string* arg1 #f 44 (bucket-id progress))))
+       (set-scale! font-ctx 0.35)
+       (print-game-text *temp-string* font-ctx #f 44 (bucket-id progress))))
     (else
-     (let ((alpha (* 2.0 (- 0.5 (-> arg0 menu-transition))))
-           (line-height 23.0))
-       (max! alpha 0.0)
-       (set! (-> arg1 alpha) alpha)
-       (set-flags! arg1 (font-flags kerning middle large))
-       (set-scale! arg1 0.65)
-       (+! (-> arg1 origin y) 12.5)
-       (cond
-         ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
-           (set-color! arg1 (progress-selected 0))
-           (draw-generic-highlight (the int (+ -1.0 (-> arg1 origin y))) 22 alpha))
-         (else
-           (set-color! arg1 (font-color progress))))
-       (print-game-text (lookup-text! *common-text* (-> obj name) #f) arg1 #f 44 (bucket-id progress)))))
+     (draw-generic-simple-string-option progress font-ctx option-index (lookup-text! *common-text* (-> obj name) #f))))
   (none))
-
-;; TODO standardize text scale (and reduce it to maximize page size)
 
 (defmethod draw-option menu-generic-slider-option ((obj menu-generic-slider-option) (arg0 progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (when (not (-> obj mounted?))
@@ -384,7 +364,7 @@
                           ((-> obj get-value-fn))
                           (-> obj value))))
     (set! (-> font-ctx alpha) alpha)
-    (set-scale! font-ctx 0.6)
+    (set-scale! font-ctx 0.45)
     (+! (-> font-ctx origin y) 20.0)
     (case (get-aspect-ratio)
       (('aspect4x3))
@@ -393,10 +373,10 @@
     (cond
       ;; TODO - remove magic numbers / test on 16x9
       (selected?
-        (set-scale! font-ctx 0.5)
+        (set-scale! font-ctx 0.35)
         (+! (-> font-ctx origin y) -15.0)
         (set-color! font-ctx (font-color progress-force-selected))
-        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 42 alpha)
+        (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 35 alpha)
         (if (= (-> obj show-decimal?) #t)
           (print-game-text (string-format "~S: ~,,2f" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress))
           (print-game-text (string-format "~S: ~D" (lookup-text! *common-text* (-> obj name) #f) slider-value) font-ctx #f 44 (bucket-id progress)))
@@ -423,7 +403,7 @@
         (set! (-> obj bar-cursor-sprite pos z) #x3fffff)
         (set! (-> obj bar-cursor-sprite pos w) 0)
         ;; bar
-        (set-hud-piece-position! (-> obj bar-sprite) 135 (+ (the int (-> font-ctx origin y)) 20))
+        (set-hud-piece-position! (-> obj bar-sprite) 135 (+ (the int (-> font-ctx origin y)) 18))
         ;; calculate the percentage of the bar based on the range
         ;; (actual + abs(range-min)) / (range-max + abs(range-min)) = percentage
         (let* ((percentage (/ (+ slider-value (fabs (-> obj min-value)))
@@ -432,12 +412,12 @@
                (cursor-x-pos (the int (+ 135 (* 230.0 percentage))))
                (bar-remainder (- 365 cursor-x-pos)))
           ;; cursor position
-          (set-hud-piece-position! (-> obj bar-cursor-sprite) cursor-x-pos (+ (the int (-> font-ctx origin y)) 16))
+          (set-hud-piece-position! (-> obj bar-cursor-sprite) cursor-x-pos (+ (the int (-> font-ctx origin y)) 14))
           (with-dma-buffer-add-bucket ((buffer (-> *display* frames (-> *display* on-screen) global-buf))
                                      (bucket-id progress))
             (draw (-> obj bar-sprite) buffer (-> *level* default-level))
             ;; bar mask
-            (draw-sprite2d-xy buffer (+ cursor-x-pos 10) (+ (the int (-> font-ctx origin y)) 25) (+ bar-remainder 9) 6
+            (draw-sprite2d-xy buffer (+ cursor-x-pos 10) (+ (the int (-> font-ctx origin y)) 23) (+ bar-remainder 9) 6
               (new 'static 'rgba :r (the int (* 0.0 alpha slider-value))
                                 :g (the int (* 0.0 alpha slider-value))
                                 :b (the int (* 0.0 alpha slider-value))
@@ -448,7 +428,7 @@
         (cond
           ((= option-index (-> *progress-pc-generic-store* current-menu-hover-index))
             (set-color! font-ctx (progress-selected 0))
-            (draw-generic-highlight (the int (+ -2.5 (-> font-ctx origin y))) 22 alpha))
+            (draw-generic-highlight (the int (+ -2.0 (-> font-ctx origin y))) 18 alpha))
           (else
             (set-color! font-ctx (font-color progress))))
         (if (= (-> obj show-decimal?) #t)
