@@ -32,8 +32,26 @@ jobs:
         run: |
           chmod +x ./third-party/run-clang-format/run-clang-format.py
           ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp --color always
-  other:
-    name: 📝 Other Checks
+
+  required-checks:
+    name: 📝 Required Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Check for Unresolved Conflicts
+        run: python ./scripts/gsrc/check-for-conflicts.py
+
+      - name: Check for Incorrect Asserts
+        run: python ./scripts/ci/check-for-asserts.py
+
+      - name: Check for Invalid Translation Characters
+        run: python ./scripts/ci/lint-characters.py
+
+  optional-checks:
+    name: 📝 Optional Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,12 +67,3 @@ jobs:
           git fetch origin
           git diff origin/master > lint-changes.diff
           python ./scripts/ci/lint-gsrc-removals.py
-
-      - name: Check for Unresolved Conflicts
-        run: python ./scripts/gsrc/check-for-conflicts.py
-
-      - name: Check for Incorrect Asserts
-        run: python ./scripts/ci/check-for-asserts.py
-
-      - name: Check for Invalid Translation Characters
-        run: python ./scripts/ci/lint-characters.py
