@@ -254,7 +254,7 @@ RegVal* FunctionEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   IRegister ireg;
   ireg.reg_class = reg_class;
   ireg.id = m_iregs.size();
-  auto rv = std::make_unique<RegVal>(ireg, coerce_to_reg_type(ts));
+  auto rv = std::make_unique<RegVal>(ireg, ts);
   m_iregs.push_back(std::move(rv));
   ASSERT(reg_class != RegClass::INVALID);
   return m_iregs.back().get();
