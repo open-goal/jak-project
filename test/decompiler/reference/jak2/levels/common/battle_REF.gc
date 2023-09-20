@@ -260,7 +260,7 @@
     (get-spawn-delay (_type_) int 35)
     (get-best-spawner (_type_) battle-spawner 36)
     (spawner-free? (_type_ battle-spawner) symbol 37)
-    (spawn-from-breed (_type_ battle-breed transformq) handle 38)
+    (spawn-from-breed (_type_ battle-breed enemy-init-by-other-params) handle 38)
     (spawn-from-spawner (_type_ battle-spawner symbol) none 39)
     (spawn-initial-creatures (_type_) none 40)
     (get-random-breed (_type_ battle-spawner) battle-breed 41)
@@ -1219,7 +1219,7 @@
 
 ;; definition for method 38 of type battle
 ;; WARN: Return type mismatch int vs handle.
-(defmethod spawn-from-breed battle ((obj battle) (arg0 battle-breed) (arg1 transformq))
+(defmethod spawn-from-breed battle ((obj battle) (arg0 battle-breed) (arg1 enemy-init-by-other-params))
   (let* ((s3-0 (-> arg0 breed-type))
          (s4-0 (get-process *default-dead-pool* s3-0 #x4000))
          (v1-1 (when s4-0
@@ -1281,15 +1281,15 @@
           )
         )
       )
-    (let ((s1-1 (new 'stack-no-clear 'transformq))
+    (let ((s1-1 (new 'stack-no-clear 'enemy-init-by-other-params))
           (s2-1 (!= s2-0 #f))
           (s0-1 (get-random-breed obj arg0))
           )
       (set! (-> s1-1 trans quad) (-> s3-0 quad))
       (quaternion-copy! (-> s1-1 quat) s4-0)
-      (set! (-> s1-1 scale x) (the-as float (-> arg0 entity)))
-      (set! (-> s1-1 scale y) (the-as float #t))
-      (set! (-> s1-1 scale z) (the-as float s2-1))
+      (set! (-> s1-1 entity) (-> arg0 entity))
+      (set! (-> s1-1 directed?) #t)
+      (set! (-> s1-1 no-initial-move-to-ground?) s2-1)
       (let ((v0-7 (spawn-from-breed obj s0-1 s1-1)))
         (when (handle->process v0-7)
           (set! (-> arg0 creature) v0-7)
