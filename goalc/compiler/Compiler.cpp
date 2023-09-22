@@ -393,7 +393,8 @@ void Compiler::setup_goos_forms() {
 
     std::vector<std::pair<std::string, s64>> sorted_values;
     for (auto& val : enum_type->entries()) {
-      sorted_values.emplace_back(val.first, val.second);
+      sorted_values.emplace_back(val.first,
+                                 enum_type->is_bitfield() ? (u64)1 << val.second : val.second);
     }
 
     std::sort(sorted_values.begin(), sorted_values.end(),

@@ -130,7 +130,7 @@ u32 sync_path() {
   return 0;
 }
 
-bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id) {
+bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id) {
   int arr_idx = mask_id / 32;
   int arr_ofs = mask_id % 32;
 
@@ -142,15 +142,20 @@ bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int
     case GfxGlobalSettings::CollisionRendererMode::Material:
       return (g_global_settings.collision_material_mask[arr_idx] >> arr_ofs) & 1;
     case GfxGlobalSettings::CollisionRendererMode::Skip:
-      ASSERT(arr_idx == 0);
-      return (g_global_settings.collision_skip_mask >> arr_ofs) & 1;
+      if (mask_id == -1) {
+        return g_global_settings.collision_skip_nomask_allowed;
+      } else {
+        return g_global_settings.collision_skip_mask & mask_id;
+      }
+    case GfxGlobalSettings::CollisionRendererMode::SkipHide:
+      return g_global_settings.collision_skip_hide_mask & mask_id;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);
       return false;
   }
 }
 
-void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id) {
+void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id) {
   int arr_idx = mask_id / 32;
   int arr_ofs = mask_id % 32;
 
@@ -165,8 +170,14 @@ void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int
       g_global_settings.collision_material_mask[arr_idx] |= 1 << arr_ofs;
       break;
     case GfxGlobalSettings::CollisionRendererMode::Skip:
-      ASSERT(arr_idx == 0);
-      g_global_settings.collision_skip_mask |= 1 << arr_ofs;
+      if (mask_id == -1) {
+        g_global_settings.collision_skip_nomask_allowed = true;
+      } else {
+        g_global_settings.collision_skip_mask |= mask_id;
+      }
+      break;
+    case GfxGlobalSettings::CollisionRendererMode::SkipHide:
+      g_global_settings.collision_skip_hide_mask |= mask_id;
       break;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);
@@ -174,7 +185,7 @@ void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int
   }
 }
 
-void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id) {
+void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id) {
   int arr_idx = mask_id / 32;
   int arr_ofs = mask_id % 32;
 
@@ -189,8 +200,14 @@ void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, i
       g_global_settings.collision_material_mask[arr_idx] &= ~(1 << arr_ofs);
       break;
     case GfxGlobalSettings::CollisionRendererMode::Skip:
-      ASSERT(arr_idx == 0);
-      g_global_settings.collision_skip_mask &= ~(1 << arr_ofs);
+      if (mask_id == -1) {
+        g_global_settings.collision_skip_nomask_allowed = false;
+      } else {
+        g_global_settings.collision_skip_mask &= ~mask_id;
+      }
+      break;
+    case GfxGlobalSettings::CollisionRendererMode::SkipHide:
+      g_global_settings.collision_skip_hide_mask &= ~mask_id;
       break;
     default:
       lg::error("{} invalid params {} {}", __PRETTY_FUNCTION__, fmt::underlying(mode), mask_id);

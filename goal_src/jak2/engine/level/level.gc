@@ -2959,18 +2959,23 @@ into 7 sections, which might explain the weird sizes in the center.
     )
 
   ;; og:preserve-this added
-  (let ((lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX)))
+  (let ((lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX))
+        (active-lev-names (new 'stack-no-clear 'array 'string LEVEL_MAX)))
     (dotimes (i LEVEL_MAX)
+      (set! (-> active-lev-names i) "none")
+      (set! (-> lev-names i) "none")
       (cond
-        ((= (-> obj level i status) 'inactive)
-         (set! (-> lev-names i) "none")
-         )
-        (else
+        ((or (= (-> obj level i status) 'active)
+             (= (-> obj level i status) 'alive)
+             (= (-> obj level i status) 'loaded))
           (set! (-> lev-names i) (symbol->string (-> obj level i nickname)))
+          (if (-> obj level i display?)
+              (set! (-> active-lev-names i) (symbol->string (-> obj level i nickname))))
           )
         )
       )
     (__pc-set-levels lev-names)
+    (__pc-set-active-levels active-lev-names)
     )
   0
   (none)

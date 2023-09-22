@@ -662,6 +662,22 @@ void pc_set_levels(u32 lev_list) {
   Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
+void pc_set_active_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_active_levels(levels);
+}
+
 void init_autosplit_struct() {
   g_auto_splitter_block_jak2.pointer_to_symbol =
       (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
@@ -761,6 +777,7 @@ void InitMachine_PCPort() {
       make_string_from_c);
 
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-active-levels", (void*)pc_set_active_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
   make_function_symbol_from_c("pc-encode-utf8-string", (void*)encode_utf8_string);

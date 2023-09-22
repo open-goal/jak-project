@@ -1010,6 +1010,8 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
   m_render_state.bucket_for_vis_copy = (int)jak2::BucketId::BUCKET_2;
   m_render_state.num_vis_to_copy = jak2::LEVEL_MAX;
 
+  ++m_collide_renderer.current_time;
+
   for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
     auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
@@ -1030,7 +1032,8 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
 
     // hack to draw the collision mesh in the middle the drawing
     if (bucket_id + 1 == (int)jak2::BucketId::TEX_L0_ALPHA &&
-        Gfx::g_global_settings.collision_enable) {
+        Gfx::g_global_settings.collision_enable &&
+        m_collide_renderer.last_render_time != m_collide_renderer.current_time) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }

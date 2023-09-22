@@ -2800,10 +2800,12 @@ Process is recycled and moved to reserved, if it deactivates."
         ((logtest? (-> obj alert-state flags) (traffic-alert-flag alert-ending))
          (cond
            ((> (guard-count obj) 0)
+            (format *stdcon* "waiting for guards... ~D remain~%" (guard-count obj))
             (set! (-> obj alert-state start-time) (current-time))
             )
            (else
              (when (>= (- (current-time) (-> obj alert-state start-time)) (seconds 3))
+               (format *stdcon* "alert ending~%")
                (set! s5-0 #f)
                (set! (-> obj alert-state level) (the-as uint 0))
                (logclear! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
@@ -2819,6 +2821,7 @@ Process is recycled and moved to reserved, if it deactivates."
             (if (and *target* (-> *target* next-state) (= (-> *target* next-state name) 'target-hide))
                 (set! v1-39 (- v1-39 (the-as time-frame (* (- (current-time) (-> *target* state-time)) 2))))
                 )
+            (format *stdcon* "alert time remaining: ~e sec~%" v1-39)
             (if (> v1-39 0)
                 0
                 (logior! (-> obj alert-state flags) (traffic-alert-flag alert-ending))
