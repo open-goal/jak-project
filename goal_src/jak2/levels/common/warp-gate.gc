@@ -506,8 +506,8 @@
 
 (defstate idle (warp-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
        (go-virtual hidden)
        )
@@ -603,38 +603,34 @@
       (ja :num! (loop! (-> self anim-speed)))
       )
     #f
-    (none)
     )
   )
 
 (defstate use (warp-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('effect)
-                      (process-spawn
-                        part-tracker
-                        :init part-tracker-init
-                        (-> *part-group-id-table* 130)
-                        0
-                        #f
-                        #f
-                        #f
-                        (-> self node-list data 4 bone transform)
-                        :to *entity-pool*
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('effect)
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 130)
+         0
+         #f
+         #f
+         #f
+         (-> self node-list data 4 bone transform)
+         :to *entity-pool*
+         )
+       )
+      )
     )
   :exit (behavior ()
     (remove-setting! 'mode-name)
     (remove-setting! 'interp-time)
-    (none)
     )
   :trans (behavior ()
     (send-event *camera* 'joystick 0.0 0.0)
-    (none)
     )
   :code (behavior ((arg0 continue-point))
     (local-vars (v1-38 symbol))
@@ -709,7 +705,6 @@
       )
     (logior! (-> self mask) (process-mask actor-pause))
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -826,8 +821,8 @@ This commonly includes things such as:
         )
 
 (defstate target-warp-out (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('death-end)
        (let ((v0-0 (the-as object (logior (-> self draw status) (draw-control-status no-draw)))))
          (set! (-> self draw status) (the-as draw-control-status v0-0))
@@ -840,7 +835,7 @@ This commonly includes things such as:
            )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -861,11 +856,9 @@ This commonly includes things such as:
       (vector-! (new 'stack-no-clear 'vector) arg1 (-> self control trans))
       (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ))
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf6))
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 vector) (arg2 target))
     (ja-channel-push! 1 (seconds 0.2))
@@ -960,7 +953,6 @@ This commonly includes things such as:
       (ja :num! (seek! (ja-aframe 40.0 0)))
       )
     (sleep-code)
-    (none)
     )
   :post target-no-stick-post
   )
@@ -970,7 +962,6 @@ This commonly includes things such as:
   :enter (behavior ((arg0 vector) (arg1 vector) (arg2 target))
     (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as float arg2))
     ((-> target-warp-out enter) arg0 arg1 arg2)
-    (none)
     )
   :exit (-> target-warp-out exit)
   :trans (behavior ()
@@ -983,7 +974,6 @@ This commonly includes things such as:
     (if (logtest? (-> self control status) (collide-status on-surface))
         (go target-hit-ground #f)
         )
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 vector) (arg2 target))
     (let ((a0-1 (-> self control did-move-to-pole-or-max-jump-height)))
@@ -1097,7 +1087,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (target-falling-anim -1 (seconds 0.33))
-    (none)
     )
   :post target-no-move-post
   )
@@ -1253,7 +1242,6 @@ This commonly includes things such as:
         )
       )
     (sound-play "air-train" :id (-> self hover-sound) :position (-> self root trans))
-    (none)
     )
   )
 
@@ -1275,7 +1263,6 @@ This commonly includes things such as:
     (set! (-> self hover-sound) (new 'static 'sound-id))
     (script-eval (-> self on-activate))
     (sleep-code)
-    (none)
     )
   )
 

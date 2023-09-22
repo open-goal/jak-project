@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *ram-sg* ram ram-lod0-jg ram-cock-ja
               ((ram-lod0-mg (meters 20)) (ram-lod1-mg (meters 40)) (ram-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 5 0 8.5)
@@ -179,18 +178,18 @@
   )
 
 (defstate ram-idle (ram)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (if ((method-of-type touching-shapes-entry prims-touching?)
-            (the-as touching-shapes-entry (-> event param 0))
+            (the-as touching-shapes-entry (-> block param 0))
             (-> self root-override)
             (the-as uint 1)
             )
            (send-event
              proc
              'attack
-             (-> event param 0)
+             (-> block param 0)
              (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2))))
              )
            )
@@ -199,14 +198,12 @@
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
     (if (-> self give-fuel-cell-anim)
         (spool-push *art-control* (-> self give-fuel-cell-anim name) 0 self -99.0)
         )
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-16 symbol))
@@ -248,14 +245,13 @@
         (go ram-fun-idle)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior ram) rider-post)
   )
 
 (defstate ram-fun-idle (ram)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notify)
        (when (= (-> proc type) ram-boss)
          (if (ram-method-22 self)
@@ -269,7 +265,6 @@
     (if (-> self give-fuel-cell-anim)
         (spool-push *art-control* (-> self give-fuel-cell-anim name) 0 self -99.0)
         )
-    (none)
     )
   :code (behavior ()
     (if (-> self give-fuel-cell?)
@@ -281,15 +276,14 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate ram-give-fuel-cell (ram)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notify)
-       (if (and (= (-> proc type) snowcam) (= (-> event param 0) 'die))
+       (if (and (= (-> proc type) snowcam) (= (-> block param 0) 'die))
            (go ram-fun-idle)
            )
        )
@@ -298,7 +292,6 @@
   :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :code (behavior ()
     (set! (-> self give-fuel-cell?) #f)
@@ -329,7 +322,6 @@
       0
       )
     (go ram-fun-idle)
-    (none)
     )
   )
 

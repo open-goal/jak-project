@@ -20,13 +20,14 @@
 (define *CAM_POINT_WATCH-bank* (new 'static 'cam-point-watch-bank :speed 1600.0 :rot-speed (degrees 0.6)))
 
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'teleport)
-                         #f
-                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -35,7 +36,6 @@
       (set! (-> self blend-from-type) (the-as uint 1))
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-1))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -84,7 +84,6 @@
       0
       )
     #f
-    (none)
     )
   )
 
@@ -436,13 +435,14 @@
   )
 
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'teleport)
-                         #f
-                         (the-as symbol (cam-standard-event-handler proc arg1 event-type event))
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('teleport)
+       #f
+       )
+      (else
+        (cam-standard-event-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -451,7 +451,6 @@
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-1))
       (send-event *camera-combiner* 'stop-tracking)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -469,6 +468,5 @@
       (suspend)
       )
     #f
-    (none)
     )
   )

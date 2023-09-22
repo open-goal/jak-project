@@ -121,8 +121,8 @@
 
 (defstate idle (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (set! (-> self state-time) (current-time))
        (go-virtual active)
@@ -135,15 +135,14 @@
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
     (set! (-> self transition) 0.0)
-    (none)
     )
   :code (the-as (function none :behavior fort-roboscreen) sleep-code)
   )
 
 (defstate active (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual deactive)
        )
@@ -174,7 +173,6 @@
       (the-as (function gui-connection symbol) #f)
       (the-as process #f)
       )
-    (none)
     )
   :exit (behavior ()
     (set-action!
@@ -197,7 +195,6 @@
       (the-as (function gui-connection symbol) #f)
       (the-as process #f)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -210,19 +207,17 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (fort-roboscreen-method-24 self)
     (ja-post)
-    (none)
     )
   )
 
 (defstate deactive (fort-roboscreen)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -243,12 +238,10 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (fort-roboscreen-method-24 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -262,7 +255,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -512,12 +504,10 @@
     (dotimes (v1-0 3)
       (set! (-> self ring-jmod v1-0 twist z) (the-as float #t))
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3) :num! zero)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (when (< (-> self ring-timer) (current-time))
@@ -531,7 +521,6 @@
       (set! (-> self ring-timer) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.6 1.8)))))
       )
     (fort-robotank-reticle-post)
-    (none)
     )
   )
 
@@ -542,7 +531,6 @@
     (dotimes (v1-0 3)
       (set! (-> self ring-jmod v1-0 twist z) (the-as float #f))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.04))
@@ -555,7 +543,6 @@
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   :post fort-robotank-reticle-post
   )
@@ -1141,7 +1128,6 @@
   :event robotank-turret-handler
   :enter (behavior ()
     (set! (-> self gun-timer) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (logtest? (-> self flags) (robotank-turret-flags rotflags-4))
@@ -1157,7 +1143,6 @@
           (go-virtual fire)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1171,7 +1156,6 @@
         )
       )
     #f
-    (none)
     )
   :post turret-post
   )
@@ -1193,7 +1177,6 @@
         (set! (-> self aim-pos-1 quad) (-> self aim-pos 0 quad))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 *target*))
@@ -1211,7 +1194,6 @@
         (go-virtual ready)
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1288,7 +1270,6 @@
         )
       )
     #f
-    (none)
     )
   :post turret-post
   )
@@ -1306,7 +1287,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 

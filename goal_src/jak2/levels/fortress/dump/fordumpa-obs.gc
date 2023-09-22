@@ -34,8 +34,8 @@
 
 (defstate idle (fort-elec-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (go-virtual die)
        'push
@@ -67,7 +67,6 @@
       )
     (talker-spawn-func (-> *talker-speech* 86) *entity-pool* (target-pos 0) (the-as region #f))
     (sleep-code)
-    (none)
     )
   :post (-> (method-of-type fort-elec-switch idle) post)
   )
@@ -94,7 +93,6 @@
         )
       (set! (-> v1-0 state mode) (the-as lightning-mode v0-1))
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
@@ -225,7 +223,6 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -245,8 +242,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 512) ;; added
   (local-vars (sv-16 res-tag))
+  (stack-size-set! (-> obj top-thread) 512) ;; og:preserve-this added
   (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -372,8 +369,8 @@ This commonly includes things such as:
 
 (defstate idle (fort-fence)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('break)
        (go-virtual breaking)
        )
@@ -410,7 +407,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior fort-fence) sleep-code)
   )
@@ -428,7 +424,6 @@ This commonly includes things such as:
       (set! (-> v1-4 prim-core collide-as) (collide-spec))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((a0-0 (-> self anim)))
@@ -438,7 +433,6 @@ This commonly includes things such as:
         (ja :group! (-> self exit-anim) :num! min)
         )
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -451,7 +445,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior fort-fence) transform-post)
   )

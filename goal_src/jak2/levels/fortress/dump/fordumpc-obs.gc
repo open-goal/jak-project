@@ -65,11 +65,11 @@
 
 (defstate idle (fort-dump-bomb-a)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (let* ((s5-0 (-> event param 0))
-              (gp-0 (the-as attack-info (-> event param 1)))
+       (let* ((s5-0 (-> block param 0))
+              (gp-0 (the-as attack-info (-> block param 1)))
               (s4-0 proc)
               (v1-1 (if (type? s4-0 process-drawable)
                         (the-as process-drawable s4-0)
@@ -86,7 +86,6 @@
   :code (the-as (function none :behavior fort-dump-bomb-a) sleep-code)
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
-    (none)
     )
   )
 
@@ -145,7 +144,6 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -235,11 +233,11 @@ This commonly includes things such as:
 
 (defstate idle (fort-missile-target)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'touch)
-       (let* ((gp-0 (-> event param 0))
-              (s5-0 (the-as attack-info (-> event param 1)))
+       (let* ((gp-0 (-> block param 0))
+              (s5-0 (the-as attack-info (-> block param 1)))
               (s4-0 proc)
               (v1-1 (if (type? s4-0 projectile)
                         (the-as projectile s4-0)
@@ -315,7 +313,6 @@ This commonly includes things such as:
         (set! (-> self part-mat 1 trans quad) (-> s4-0 quad))
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -373,13 +370,11 @@ This commonly includes things such as:
       )
     (send-event (ppointer->process (-> self parent)) 'died)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (sound-play "missile-steam" :id (the-as sound-id (-> self sound-id)))
     (spawn-with-matrix (-> self part) (the-as matrix (-> self part-mat)))
     (spawn-with-matrix (-> self part) (-> self part-mat 1))
-    (none)
     )
   )
 
@@ -489,8 +484,8 @@ This commonly includes things such as:
 
 (defstate idle (fort-missile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -500,15 +495,14 @@ This commonly includes things such as:
     (if (and (task-node-closed? (game-task-node fortress-dump-deal)) *target*)
         (go-virtual targets-active)
         )
-    (none)
     )
   :code (the-as (function none :behavior fort-missile) sleep-code)
   )
 
 (defstate targets-active (fort-missile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -537,7 +531,6 @@ This commonly includes things such as:
     (if *target*
         (set! (-> self hud) (ppointer->handle (process-spawn hud-rocketsensor :init hud-init-by-other :to *target*)))
         )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -577,18 +570,16 @@ This commonly includes things such as:
         )
       )
     (go-virtual missile-countdown)
-    (none)
     )
   :post (behavior ()
     (set! (-> *game-info* counter) (the float (-> self bomb-count)))
-    (none)
     )
   )
 
 (defstate missile-countdown (fort-missile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('halt)
        (go-virtual dormant)
        )
@@ -601,7 +592,6 @@ This commonly includes things such as:
     (set-fordumpc-light-flag! #f)
     (send-event (handle->process (-> self hud)) 'hide-and-die)
     (sound-stop (-> self alarm-sound-id))
-    (none)
     )
   :code (behavior ()
     (send-event (handle->process (-> self hud)) 'hide-and-die)
@@ -711,18 +701,16 @@ This commonly includes things such as:
         )
       )
     (go-virtual die)
-    (none)
     )
   :post (behavior ()
     (sound-play "fort-alarm" :id (-> self alarm-sound-id))
-    (none)
     )
   )
 
 (defstate die (fort-missile)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('halt)
        (go-virtual dormant)
        )
@@ -731,7 +719,7 @@ This commonly includes things such as:
          (if (if (type? s4-0 process-drawable)
                  s4-0
                  )
-             (send-event proc 'attack (-> event param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
+             (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
              )
          )
        )
@@ -740,12 +728,10 @@ This commonly includes things such as:
   :enter (behavior ()
     (set-setting! 'allow-pause #f 0.0 0)
     (set-setting! 'allow-progress #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'allow-pause)
     (remove-setting! 'allow-progress)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -916,7 +902,6 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 

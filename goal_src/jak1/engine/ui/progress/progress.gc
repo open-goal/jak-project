@@ -874,8 +874,8 @@
   )
 
 (defstate progress-waiting (progress)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('go-away)
        (go progress-gone)
        )
@@ -895,7 +895,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -906,7 +905,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1716,99 +1714,98 @@
   )
 
 (defstate progress-normal (progress)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (the-as object (case event-type
-                     (('go-away)
-                      (go progress-going-out)
-                      )
-                     (('notify)
-                      (cond
-                        ((= (-> event param 0) 'done)
-                         (case (-> self display-state)
-                           (((progress-screen memcard-saving))
-                            (cond
-                              ((= (-> self display-state-stack 0) (progress-screen title))
-                               (let ((gp-1 (-> *setting-control* default auto-save)))
-                                 (sound-volume-off)
-                                 (set! (-> *game-info* mode) 'play)
-                                 (cond
-                                  ;; Start a new game differently if speedrunning mode is active
-                                  ((= (-> *pc-settings* speedrunner-mode?) #t)
-                                   (speedrun-start-full-game-run))
-                                  ;; start the game normally
-                                  (else
-                                    (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
-                                    (set! (-> *setting-control* default auto-save) gp-1)))
-                                 )
-                               (the-as object (set-master-mode 'game))
-                               )
-                              (else
-                                (set! v0-0 -1)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                v0-0
-                                )
-                              )
-                            )
-                           (((progress-screen memcard-formatting))
-                            (set! (-> self force-transition) #t)
-                            (set! v0-0 15)
-                            (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                            v0-0
-                            )
-                           (((progress-screen memcard-creating))
-                            (cond
-                              ((= (-> self display-state-stack 0) (progress-screen title))
-                               (set! v0-0 18)
-                               (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                               )
-                              (else
-                                (set! v0-0 17)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                )
-                              )
-                            v0-0
-                            )
-                           )
-                         )
-                        ((= (-> event param 0) 'error)
-                         (format #t "ERROR NOTIFY: ~S ~D~%" (enum->string mc-status-code (-> event param 1)) (-> self display-state))
-                         (case (-> event param 1)
-                           ((14)
-                            (set! v0-0 7)
-                            (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                            v0-0
-                            )
-                           (else
-                             (case (-> self display-state)
-                               (((progress-screen memcard-formatting))
-                                (set! v0-0 24)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                v0-0
-                                )
-                               (((progress-screen memcard-creating))
-                                (set! v0-0 25)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                v0-0
-                                )
-                               (((progress-screen memcard-saving))
-                                (set! v0-0 21)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                v0-0
-                                )
-                               (((progress-screen memcard-loading))
-                                (set! v0-0 20)
-                                (set! (-> self next-display-state) (the-as progress-screen v0-0))
-                                v0-0
-                                )
-                               )
-                             )
-                           )
-                         )
-                        )
-                      )
-                     )
+    (case message
+      (('go-away)
+       (go progress-going-out)
+       )
+      (('notify)
+       (cond
+         ((= (-> block param 0) 'done)
+          (case (-> self display-state)
+            (((progress-screen memcard-saving))
+             (cond
+               ((= (-> self display-state-stack 0) (progress-screen title))
+                (let ((gp-1 (-> *setting-control* default auto-save)))
+                  (sound-volume-off)
+                  (set! (-> *game-info* mode) 'play)
+                  (cond
+                    ;; Start a new game differently if speedrunning mode is active
+                    ((= (-> *pc-settings* speedrunner-mode?) #t)
+                      (speedrun-start-full-game-run))
+                    ;; start the game normally
+                    (else
+                      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
+                      (set! (-> *setting-control* default auto-save) gp-1)))
+                  )
+                (set-master-mode 'game)
+                )
+               (else
+                 (set! v0-0 -1)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 v0-0
+                 )
+               )
+             )
+            (((progress-screen memcard-formatting))
+             (set! (-> self force-transition) #t)
+             (set! v0-0 15)
+             (set! (-> self next-display-state) (the-as progress-screen v0-0))
+             v0-0
+             )
+            (((progress-screen memcard-creating))
+             (cond
+               ((= (-> self display-state-stack 0) (progress-screen title))
+                (set! v0-0 18)
+                (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                )
+               (else
+                 (set! v0-0 17)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 )
+               )
+             v0-0
+             )
             )
+          )
+         ((= (-> block param 0) 'error)
+          (format #t "ERROR NOTIFY: ~S ~D~%" (enum->string mc-status-code (-> block param 1)) (-> self display-state))
+          (case (-> block param 1)
+            ((14)
+             (set! v0-0 7)
+             (set! (-> self next-display-state) (the-as progress-screen v0-0))
+             v0-0
+             )
+            (else
+              (case (-> self display-state)
+                (((progress-screen memcard-formatting))
+                 (set! v0-0 24)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 v0-0
+                 )
+                (((progress-screen memcard-creating))
+                 (set! v0-0 25)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 v0-0
+                 )
+                (((progress-screen memcard-saving))
+                 (set! v0-0 21)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 v0-0
+                 )
+                (((progress-screen memcard-loading))
+                 (set! v0-0 20)
+                 (set! (-> self next-display-state) (the-as progress-screen v0-0))
+                 v0-0
+                 )
+                )
+              )
+            )
+          )
+         )
+       )
+      )
     )
   :code (behavior ()
     (loop
@@ -1951,7 +1948,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self display-level-index))
@@ -2119,7 +2115,6 @@
       )
     (adjust-sprites self)
     (adjust-icons self)
-    (none)
     )
   )
 
@@ -2133,7 +2128,6 @@
     (sound-play "select-menu")
     (set-blackout-frames 0)
     (set! *pause-lock* #f)
-    (none)
     )
   :code (behavior ()
     (loop
@@ -2151,7 +2145,6 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (-> progress-normal post)
   )
@@ -2167,7 +2160,6 @@
        (set! (-> self transition-speed) 30.0)
        )
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -2185,14 +2177,13 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (-> progress-normal post)
   )
 
 (defstate progress-debug (progress)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('go-away)
        (go progress-going-out)
        )
@@ -2244,7 +2235,6 @@
       (load-game-text-info (-> *text-group-names* (-> self current-debug-group)) '*common-text* *common-text-heap*)
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -2393,6 +2383,5 @@
       (draw-debug-text-box gp-4)
       (print-game-text (-> *common-text* data (-> self current-debug-string) text) gp-4 #f 128 22)
       )
-    (none)
     )
   )

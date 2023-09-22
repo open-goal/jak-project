@@ -243,8 +243,8 @@
 ;; failed to figure out what this is:
 (defstate idle (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
@@ -303,7 +303,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior elec-gate) sleep-code)
   :post (behavior ()
@@ -311,15 +310,14 @@
     (if (nonzero? (-> self part-off))
         (spawn-particles self (-> self part-off))
         )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate active (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shutdown)
        (go-virtual shutdown)
        )
@@ -409,7 +407,6 @@
         (blocking-plane-spawn (the-as curve-control #f) vec-pair f0-6)
         )
       )
-    (none)
     )
   :trans (behavior ()
     (local-vars
@@ -678,7 +675,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior elec-gate) sleep-code)
   :post (behavior ()
@@ -688,7 +684,6 @@
         )
     (update! (-> self sound))
     (elec-gate-post)
-    (none)
     )
   )
 
@@ -703,7 +698,6 @@
     (if (-> self on-stop)
         (script-eval (-> self on-stop) :vector (-> self root trans))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((go-idle? #t))
@@ -775,7 +769,6 @@
           (go-virtual idle)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior elec-gate) sleep-code)
   :post (behavior ()
@@ -784,7 +777,6 @@
         (spawn-particles self (-> self part-off))
         )
     (elec-gate-post)
-    (none)
     )
   )
 

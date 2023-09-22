@@ -683,11 +683,9 @@
       )
     (set! (-> self last-fire-time) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 2.0 3.0)))))
     (go-virtual ambush-fly)
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
   )
 
@@ -717,7 +715,6 @@
             )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior crimson-guard-hover) hover-enemy-fly-code)
   :post (-> (method-of-type hover-enemy ambush) post)
@@ -726,8 +723,8 @@
 ;; failed to figure out what this is:
 (defstate ambush-attack (crimson-guard-hover)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (when (< (-> self shots-fired) 2)
          (let ((s5-0 (new 'stack-no-clear 'projectile-init-by-other-params))
@@ -757,7 +754,7 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
@@ -773,19 +770,16 @@
       )
     (set! (-> self shots-fired) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
-    (none)
     )
   :trans (behavior ()
     ((-> (method-of-type crimson-guard-hover ambush) trans))
     (if (or (skip-check-los? (-> self los) 60) (not (enemy-method-95 self (-> self focus-pos) 9102.223)))
         (go-virtual ambush-fly)
         )
-    (none)
     )
   :code (behavior ()
     (sound-play "hover-warn")
@@ -805,7 +799,6 @@
       (ja :num! (seek!))
       )
     (go-virtual ambush-fly)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -827,7 +820,6 @@
       (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     ((the-as (function none) (-> (method-of-type crimson-guard-hover ambush) post)))
-    (none)
     )
   )
 
@@ -842,7 +834,6 @@
       )
     (talker-spawn-func (-> *talker-speech* 10) *entity-pool* (target-pos 0) (the-as region #f))
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
@@ -865,7 +856,6 @@
             )
         )
       )
-    (none)
     )
   )
 
@@ -878,13 +868,11 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (current-time) (-> self state-time)) (seconds 4))
         (go-hostile self)
         )
-    (none)
     )
   :code (the-as (function none :behavior crimson-guard-hover) hover-enemy-fly-code)
   :post (behavior ()
@@ -916,15 +904,14 @@
       (hover-nav-control-method-11 (-> self hover) gp-0)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack (crimson-guard-hover)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (when (< (-> self shots-fired) 2)
          (let ((s5-0 (new 'stack-no-clear 'projectile-init-by-other-params))
@@ -954,7 +941,7 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
@@ -963,18 +950,15 @@
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
     (set! (-> self shots-fired) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
-    (none)
     )
   :trans (behavior ()
     (if (or (skip-check-los? (-> self los) 60) (not (enemy-method-95 self (-> self focus-pos) 9102.223)))
         (go-hostile self)
         )
-    (none)
     )
   :code (behavior ()
     (sound-play "hover-warn")
@@ -1001,7 +985,6 @@
       (ja :num! (seek!))
       )
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -1023,7 +1006,6 @@
       (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (hover-enemy-hostile-post)
-    (none)
     )
   )
 
@@ -1036,7 +1018,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   )
 
@@ -1087,7 +1068,6 @@
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
-    (none)
     )
   )
 
@@ -1114,7 +1094,6 @@
       )
     (send-event self 'death-end)
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior crimson-guard-hover) transform-post)
   )
@@ -1158,7 +1137,6 @@
         (-> gp-0 ppointer)
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1185,7 +1163,6 @@
         )
       )
     (sleep-code)
-    (none)
     )
   )
 
@@ -1240,7 +1217,6 @@
         )
       )
     (sound-stop (-> self sound-id))
-    (none)
     )
   )
 
@@ -1408,6 +1384,7 @@
   )
 
 ;; definition for method 52 of type crimson-guard-hover
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-52 crimson-guard-hover ((obj crimson-guard-hover) (arg0 vector))
   (let ((s4-0 (-> obj root)))
     (case (-> obj incoming knocked-type)

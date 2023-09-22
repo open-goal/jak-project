@@ -88,7 +88,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior dummy-vehicle) ja-post)
   )
@@ -222,7 +221,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior gar-curtain) transform-post)
   )
@@ -751,14 +749,14 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defstate defend-stadium-wait (rift-rider)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (sound-play "rift-lift-off")
        (go-virtual defend-stadium-move)
        )
       (else
-        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        (defend-stadium-rift-rider-handler proc argc message block)
         )
       )
     )
@@ -776,11 +774,9 @@ This commonly includes things such as:
     (set! (-> self height) 49152.0)
     (set! (-> self hover-volume) 0.0)
     (set! (-> self dest-pos quad) (-> self root trans quad))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (dotimes (gp-0 2)
@@ -815,7 +811,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior rift-rider) sleep-code)
   :post (behavior ()
@@ -833,24 +828,23 @@ This commonly includes things such as:
     (seek! (-> self hover-volume) 1.0 (seconds-per-frame))
     (spawn (-> self part) (-> self root trans))
     (rift-rider-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate defend-stadium-land (rift-rider)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('get-position)
-       (set! (-> (the-as vector (-> event param 1)) quad) (-> self root trans quad))
-       (set! (-> (the-as vector (-> event param 1)) y)
+       (set! (-> (the-as vector (-> block param 1)) quad) (-> self root trans quad))
+       (set! (-> (the-as vector (-> block param 1)) y)
              (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
              )
-       (-> event param 1)
+       (-> block param 1)
        )
       (else
-        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        (defend-stadium-rift-rider-handler proc argc message block)
         )
       )
     )
@@ -886,13 +880,11 @@ This commonly includes things such as:
     (rigid-body-object-method-39 self)
     (rigid-body-object-method-41 self)
     (logclear! (-> self rbody state flags) (rigid-body-flag enable-collision))
-    (none)
     )
   :exit (behavior ()
     (rigid-body-object-method-38 self)
     (rigid-body-object-method-40 self)
     (logior! (-> self rbody state flags) (rigid-body-flag enable-collision))
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-xz-distance
@@ -903,7 +895,6 @@ This commonly includes things such as:
            )
         (go-virtual defend-stadium-complete)
         )
-    (none)
     )
   :code (the-as (function none :behavior rift-rider) sleep-code)
   :post (behavior ()
@@ -945,7 +936,6 @@ This commonly includes things such as:
       )
     (spawn (-> self part) (-> self root trans))
     (pusher-post)
-    (none)
     )
   )
 
@@ -971,7 +961,6 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -981,13 +970,11 @@ This commonly includes things such as:
   :event defend-stadium-rift-rider-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (< (-> self height) (-> self init-height))
         (go-virtual defend-stadium-explode)
         )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -997,7 +984,6 @@ This commonly includes things such as:
       )
     (rigid-body-object-method-39 self)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (dotimes (gp-0 2)
@@ -1015,7 +1001,6 @@ This commonly includes things such as:
       )
     (rigid-body-object-method-37 self)
     (pusher-post)
-    (none)
     )
   )
 
@@ -1055,7 +1040,6 @@ This commonly includes things such as:
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1219,7 +1203,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior spotlight) ja-post)
   )
@@ -1708,7 +1691,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go-virtual raise-rift-rider)
-    (none)
     )
   :post stad-samos-post
   )
@@ -1757,7 +1739,6 @@ This commonly includes things such as:
     (set! (-> self speed) 12288.0)
     (set! (-> self observed-speed) 0.0)
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (and (nonzero? (-> self state-time)) (>= (- (current-time) (-> self state-time)) (seconds 1)))
@@ -1798,7 +1779,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (send-event (handle->process (-> self hud)) 'force-show)
@@ -1817,12 +1797,10 @@ This commonly includes things such as:
       (ja :num! (seek! max 0.75))
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (spawn-energy)
     (stad-samos-post)
-    (none)
     )
   )
 
@@ -1855,7 +1833,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1867,7 +1844,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (not (-> self enable-move?))
@@ -1948,7 +1924,6 @@ This commonly includes things such as:
       )
     (spawn-energy)
     (stad-samos-post)
-    (none)
     )
   )
 
@@ -1994,7 +1969,6 @@ This commonly includes things such as:
         )
       )
     (set! (-> self falling?) #t)
-    (none)
     )
   :exit (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -2012,7 +1986,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((v1-0 (-> self rift-rider-actor)))
@@ -2023,7 +1996,6 @@ This commonly includes things such as:
           (go empty-state)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -2060,7 +2032,6 @@ This commonly includes things such as:
       )
     (spawn-lightning self)
     (go-virtual move-rift-rider)
-    (none)
     )
   :post (behavior ()
     (if (-> self falling?)
@@ -2082,23 +2053,21 @@ This commonly includes things such as:
         )
       )
     (stad-samos-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die (stad-samos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('death-end)
-                      (let ((v0-0 (logior (-> self draw status) (draw-control-status no-draw))))
-                        (set! (-> self draw status) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('death-end)
+       (let ((v0-0 (logior (-> self draw status) (draw-control-status no-draw))))
+         (set! (-> self draw status) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status ignore))
@@ -2119,7 +2088,6 @@ This commonly includes things such as:
         )
       )
     (kill-lightning self)
-    (none)
     )
   :code (behavior ()
     (send-event *camera* 'change-target self)
@@ -2182,7 +2150,6 @@ This commonly includes things such as:
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
-    (none)
     )
   :post stad-samos-post
   )
@@ -2456,7 +2423,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   )
 
@@ -2557,7 +2523,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (sound-play "stadium-shield")
-    (none)
     )
   :code (the-as (function none :behavior stadium-barrier) sleep-code)
   :post (behavior ()
@@ -2576,7 +2541,6 @@ This commonly includes things such as:
     (if (and (= (-> self colorf) 0.0) (= (-> self flashf) 0.0))
         (go-virtual die)
         )
-    (none)
     )
   )
 
@@ -2585,7 +2549,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -2860,50 +2823,47 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (stad-force-field)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (let ((v1-1 (the-as object (-> event param 1)))
-               (a1-1 (-> event param 0))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((v1-1 (the-as object (-> block param 1)))
+             (a1-1 (-> block param 0))
+             )
+         (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
+           (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
+           (stad-force-field-method-29 self (the-as touching-shapes-entry a1-1))
+           (send-event
+             proc
+             'shove
+             (-> block param 0)
+             (static-attack-info
+               ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
                )
-           (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
-             (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
-             (stad-force-field-method-29 self (the-as touching-shapes-entry a1-1))
-             (send-event
-               proc
-               'shove
-               (-> event param 0)
-               (static-attack-info
-                 ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
-                 )
-               )
-             (when (< (-> self next-message-time) (current-time))
-               (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
-               (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
-               )
+             )
+           (when (< (-> self next-message-time) (current-time))
+             (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+             (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
              )
            )
          )
-        (('touch)
-         (let ((a1-5 (-> event param 0)))
-           (stad-force-field-method-29 self (the-as touching-shapes-entry a1-5))
-           )
-         (send-event
-           proc
-           'shove
-           (-> event param 0)
-           (static-attack-info
-             ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
-             )
-           )
-         (when (< (-> self next-message-time) (current-time))
-           (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
-           (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+       )
+      (('touch)
+       (let ((a1-5 (-> block param 0)))
+         (stad-force-field-method-29 self (the-as touching-shapes-entry a1-5))
+         )
+       (send-event
+         proc
+         'shove
+         (-> block param 0)
+         (static-attack-info
+           ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
            )
          )
-        )
+       (when (< (-> self next-message-time) (current-time))
+         (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+         (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+         )
+       )
       )
     )
   :code (the-as (function none :behavior stad-force-field) sleep-code)
@@ -3120,8 +3080,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (stad-keira)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go empty-state)
        )
@@ -3139,7 +3099,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -3181,7 +3140,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -3238,8 +3196,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (stad-brutter)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go empty-state)
        )
@@ -3257,7 +3215,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -3299,7 +3256,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 

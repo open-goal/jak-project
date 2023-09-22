@@ -46,7 +46,6 @@
       (quaternion-rotate-y! (-> self root quat) (-> self init-quat) (+ -2730.6667 (* 5461.3335 f0-0)))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -201,7 +200,6 @@ This commonly includes things such as:
       (set! (-> v1-0 state mode) (the-as lightning-mode a0-0))
       )
     (go-virtual running)
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -216,7 +214,6 @@ This commonly includes things such as:
       )
     (+! (-> self path-u) (* (-> self path-du) (seconds-per-frame)))
     (ja-post)
-    (none)
     )
   )
 
@@ -225,13 +222,11 @@ This commonly includes things such as:
   :virtual #t
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (>= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (none)
     )
   :code (the-as (function none :behavior fort-elec-belt-inst) sleep-code)
   :post (behavior ()
@@ -392,7 +387,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -420,7 +414,6 @@ This commonly includes things such as:
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -527,18 +520,17 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (fort-elec-belt)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('get-point-norm)
-                      (get-point-at-percent-along-path!
-                        (-> self path)
-                        (the-as vector (-> event param 0))
-                        (the-as float (-> event param 1))
-                        'interp
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('get-point-norm)
+       (get-point-at-percent-along-path!
+         (-> self path)
+         (the-as vector (-> block param 0))
+         (the-as float (-> block param 1))
+         'interp
+         )
+       )
+      )
     )
   :trans (behavior ()
     (set-forrescb-electricity-scale! 1.0 0)
@@ -554,7 +546,6 @@ This commonly includes things such as:
         )
       (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
       )
-    (none)
     )
   :code (the-as (function none :behavior fort-elec-belt) sleep-code)
   )

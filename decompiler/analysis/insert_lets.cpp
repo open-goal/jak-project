@@ -1147,13 +1147,13 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, cond->else_ir);
 }
 
-bool var_equal(const Env& env, const RegisterAccess& a, std::optional<RegisterAccess> b) {
+bool var_equal(const Env& env, RegisterAccess a, std::optional<RegisterAccess> b) {
   ASSERT(b);
   return env.get_variable_name_name_only(*b) == env.get_variable_name_name_only(a);
 }
 
 Form* match_ja_set(const Env& env,
-                   const RegisterAccess& ch_var,
+                   RegisterAccess ch_var,
                    const std::string& field_name,
                    int arr_idx,
                    Form* in,
@@ -1712,8 +1712,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   enum AttackInfoFieldKind { DEFAULT, VECTOR, METERS, DEGREES };
 
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak1 = {
-      {"vector", {1, VECTOR}},    {"mode", {5, DEFAULT}},     {"shove-back", {6, DEFAULT}},
-      {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}}, {"angle", {11, DEFAULT}},
+      {"vector", {1, VECTOR}},      {"attacker", {3, DEFAULT}}, {"mode", {5, DEFAULT}},
+      {"shove-back", {6, DEFAULT}}, {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}},
+      {"angle", {11, DEFAULT}},
   };
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak2 = {
       {"vector", {1, VECTOR}},

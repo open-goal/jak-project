@@ -9,7 +9,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype bully-broken-cage (process-drawable)
   ((parent-override (pointer bully)  :offset  12)
    )
@@ -225,7 +224,6 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (none)
     )
   :post (the-as (function none :behavior bully-broken-cage) ja-post)
   )
@@ -241,126 +239,120 @@
   (none)
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 48]
 ;; WARN: disable def twice: 148. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 229]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 248]
 (defbehavior bully-default-event-handler bully ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-0 none))
-  (the-as
-    object
-    (case arg2
-      (('touch 'touched 'attack)
-       (cond
-         ((= (-> arg0 type) bully)
-          (let ((v1-3 (new 'stack-no-clear 'vector)))
-            (vector-! v1-3 (-> self root-override trans) (-> (the-as process-drawable arg0) root trans))
-            (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z)))
-            )
-          (set! (-> self bounced?) #t)
-          (set! v0-0 (the-as none 100))
-          (set! (-> self bounce-volume) (the-as int v0-0))
-          v0-0
+  (local-vars (v0-0 object))
+  (case arg2
+    (('touch 'touched 'attack)
+     (cond
+       ((= (-> arg0 type) bully)
+        (let ((v1-3 (new 'stack-no-clear 'vector)))
+          (vector-! v1-3 (-> self root-override trans) (-> (the-as process-drawable arg0) root trans))
+          (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z)))
           )
-         ((= (-> arg0 type) target)
-          (cond
-            ((= (-> arg3 param 1) 'flop)
-             (go bully-die)
-             (return (the-as object #t))
-             v0-0
-             )
-            ((or (= arg2 'touch) (= arg2 'attack))
-             (cond
-               ((>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 6144.0)
-                (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
-                       (f28-0 (* 8192.0 f0-6))
-                       (f30-0 (* 8192.0 f0-6))
-                       (s4-0 (new 'stack-no-clear 'vector))
-                       )
-                  (vector-! s4-0 (target-pos 0) (-> self root-override trans))
-                  (let ((f26-0 (atan (-> s4-0 x) (-> s4-0 z))))
-                    (when (< 0.0 (-> self travel-speed))
-                      (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
-                        (if (< (fabs f0-11) 8192.0)
-                            (set! f26-0 (if (>= f0-11 0.0)
-                                            (+ 8192.0 f26-0)
-                                            (+ -8192.0 f26-0)
-                                            )
-                                  )
-                            )
-                        )
+        (set! (-> self bounced?) #t)
+        (set! v0-0 100)
+        (set! (-> self bounce-volume) (the-as int v0-0))
+        v0-0
+        )
+       ((= (-> arg0 type) target)
+        (cond
+          ((= (-> arg3 param 1) 'flop)
+           (go bully-die)
+           (return #t)
+           v0-0
+           )
+          ((or (= arg2 'touch) (= arg2 'attack))
+           (cond
+             ((>= (- (-> (target-pos 0) y) (-> self root-override trans y)) 6144.0)
+              (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
+                     (f28-0 (* 8192.0 f0-6))
+                     (f30-0 (* 8192.0 f0-6))
+                     (s4-0 (new 'stack-no-clear 'vector))
+                     )
+                (vector-! s4-0 (target-pos 0) (-> self root-override trans))
+                (let ((f26-0 (atan (-> s4-0 x) (-> s4-0 z))))
+                  (when (< 0.0 (-> self travel-speed))
+                    (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
+                      (if (< (fabs f0-11) 8192.0)
+                          (set! f26-0 (if (>= f0-11 0.0)
+                                          (+ 8192.0 f26-0)
+                                          (+ -8192.0 f26-0)
+                                          )
+                                )
+                          )
                       )
-                    (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
                     )
-                  (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
-                    (level-hint-spawn
-                      (text-id sunken-bully-dive-hint)
-                      "sksp0131"
-                      (the-as entity #f)
-                      *entity-pool*
-                      (game-task none)
-                      )
-                    (set! (-> self bounced?) #t)
-                    (set! v0-0 (the-as none 100))
-                    (set! (-> self bounce-volume) (the-as int v0-0))
-                    v0-0
+                  (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0)
+                  )
+                (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
+                  (level-hint-spawn
+                    (text-id sunken-bully-dive-hint)
+                    "sksp0131"
+                    (the-as entity #f)
+                    *entity-pool*
+                    (game-task none)
                     )
+                  (set! (-> self bounced?) #t)
+                  (set! v0-0 100)
+                  (set! (-> self bounce-volume) (the-as int v0-0))
+                  v0-0
                   )
                 )
-               (else
-                 (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
-                   (when (send-event
-                           arg0
-                           'attack
-                           (-> arg3 param 0)
-                           (static-attack-info ((shove-up (* 12288.0 f0-21)) (shove-back (* 16384.0 f0-21))))
-                           )
-                     (level-hint-spawn
-                       (text-id sunken-bully-dive-hint)
-                       "sksp0131"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     (set! (-> self hit-player?) #t)
-                     (set! (-> self bounced?) #t)
-                     (set! (-> self bounce-volume) 100)
-                     (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-                     (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
+              )
+             (else
+               (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
+                 (when (send-event
+                         arg0
+                         'attack
+                         (-> arg3 param 0)
+                         (static-attack-info ((shove-up (* 12288.0 f0-21)) (shove-back (* 16384.0 f0-21))))
+                         )
+                   (level-hint-spawn
+                     (text-id sunken-bully-dive-hint)
+                     "sksp0131"
+                     (the-as entity #f)
+                     *entity-pool*
+                     (game-task none)
                      )
+                   (set! (-> self hit-player?) #t)
+                   (set! (-> self bounced?) #t)
+                   (set! (-> self bounce-volume) 100)
+                   (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+                   (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
                    )
                  )
                )
              )
-            )
+           )
           )
-         (else
-           (when (= arg2 'touched)
-             (cond
-               ((= (-> arg0 type) target)
-                (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
-                )
-               (else
-                 (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-14 from) self)
-                   (set! (-> a1-14 num-params) 4)
-                   (set! (-> a1-14 message) 'attack)
-                   (set! (-> a1-14 param 0) (-> arg3 param 0))
-                   (set! (-> a1-14 param 1) (the-as uint 'explode))
-                   (let ((v1-48 (+ *global-attack-id* 1)))
-                     (set! *global-attack-id* v1-48)
-                     (set! (-> a1-14 param 2) (the-as uint v1-48))
-                     )
-                   (set! (-> a1-14 param 3) (the-as uint 0))
-                   (send-event-function arg0 a1-14)
+        )
+       (else
+         (when (= arg2 'touched)
+           (cond
+             ((= (-> arg0 type) target)
+              (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode))))
+              )
+             (else
+               (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-14 from) self)
+                 (set! (-> a1-14 num-params) 4)
+                 (set! (-> a1-14 message) 'attack)
+                 (set! (-> a1-14 param 0) (-> arg3 param 0))
+                 (set! (-> a1-14 param 1) (the-as uint 'explode))
+                 (let ((v1-48 (+ *global-attack-id* 1)))
+                   (set! *global-attack-id* v1-48)
+                   (set! (-> a1-14 param 2) (the-as uint v1-48))
                    )
+                 (set! (-> a1-14 param 3) (the-as uint 0))
+                 (send-event-function arg0 a1-14)
                  )
                )
              )
            )
          )
        )
-      )
+     )
     )
   )
 
@@ -464,14 +456,12 @@
       (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((v1-1 (-> self draw shadow-ctrl)))
       (logclear! (-> v1-1 settings flags) (shadow-flags disable-draw))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (when (and (and *target* (>= (-> self fact-override idle-distance)
@@ -483,7 +473,6 @@
       (start-hint-timer (text-id sunken-bully-dive-hint))
       (go bully-notice)
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (ja-channel-push! 1 (seconds 0.075))
@@ -497,7 +486,6 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   :post bully-post
   )
@@ -516,7 +504,6 @@
           )
       (set-target! (-> self neck) (target-pos 5))
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self travel-speed) 0.0)
@@ -554,7 +541,6 @@
       (ja :num! (seek!))
       )
     (go bully-start-spinning)
-    (none)
     )
   :post bully-post
   )
@@ -575,7 +561,6 @@
       (set! (-> self travel-ry) (atan (-> gp-0 x) (-> gp-0 z)))
       )
     (+! (-> self travel-ry) (rand-vu-float-range -910.2222 910.2222))
-    (none)
     )
   :trans (behavior ()
     (when *target*
@@ -615,7 +600,6 @@
       #f
       )
     (nav-control-method-27 (-> self nav))
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-34 symbol) (v1-52 symbol))
@@ -650,7 +634,6 @@
         )
       (ja :group! bully-spin-ja :num! min)
       )
-    (none)
     )
   :post bully-post
   )
@@ -662,7 +645,6 @@
     (set! (-> self reaction-delay) (rand-vu-int-range (seconds 2) (seconds 3)))
     (set! (-> self travel-speed) 0.0)
     (set! (-> self bounced?) #f)
-    (none)
     )
   :trans (behavior ()
     (when *target*
@@ -676,7 +658,6 @@
           )
       (set-target! (-> self neck) (target-pos 5))
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-17 symbol) (v1-35 symbol))
@@ -721,7 +702,6 @@
         (go bully-idle #f)
         )
     (go bully-start-spinning)
-    (none)
     )
   :post bully-post
   )
@@ -746,7 +726,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior bully) transform-post)
   )

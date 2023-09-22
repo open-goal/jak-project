@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *med-res-ogre-sg* medres-ogre medres-ogre-lod0-jg medres-ogre-idle-ja
               ((medres-ogre-lod0-mg (meters 999999)))
               :bounds (static-spherem -200 0 -450 350)
@@ -241,7 +240,6 @@
       (spool-push *art-control* (-> self anim name) 0 self -99.0)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -278,12 +276,10 @@
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #t)
-    (none)
     )
   :post (behavior ()
     (ja-post)
     (update-direction-from-time-of-day (-> self draw shadow-ctrl))
-    (none)
     )
   )
 
@@ -321,7 +317,6 @@
       )
     (process-entity-status! self (entity-perm-status bit-3) #f)
     (go-virtual idle #f)
-    (none)
     )
   :post (-> (method-of-type gondola ride-up) post)
   )
@@ -400,8 +395,8 @@
 
 (defstate idle (pistons)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('update)
        (go-virtual active (process->handle proc) #f)
        )
@@ -412,7 +407,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -475,17 +469,16 @@
 
 (defstate idle (gondolacables)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('update)
-                      (process-entity-status! self (entity-perm-status complete) #t)
-                      (let ((v0-0 1))
-                        (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('update)
+       (process-entity-status! self (entity-perm-status complete) #t)
+       (let ((v0-0 1))
+         (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (loop
@@ -495,7 +488,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior gondolacables) ja-post)
   )

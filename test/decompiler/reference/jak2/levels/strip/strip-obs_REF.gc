@@ -82,49 +82,46 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior strip-handler strip-hazard ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as
-    object
-    (case arg2
-      (('touch 'attack)
-       (let* ((s4-0 arg0)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        (the-as process-focusable s4-0)
-                        )
-                    )
-              )
-         (when gp-0
-           (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-             (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root quat)))
-                    (f0-1 (vector-dot s4-1 v1-4))
-                    )
-               (if (< 0.0 f0-1)
-                   (vector-float*! s4-1 s4-1 -1.0)
-                   )
-               )
-             (when (send-event gp-0 'attack (-> arg3 param 0) (static-attack-info ((id (-> self attack-id))
-                                                                                   (vector s4-1)
-                                                                                   (shove-back (-> self shove-vec z))
-                                                                                   (shove-up (-> self shove-vec y))
-                                                                                   (control (if (focus-test? gp-0 board)
-                                                                                                1.0
-                                                                                                0.0
-                                                                                                )
-                                                                                            )
-                                                                                   )
-                                                                                  )
-                               )
-               (set! (-> self no-collision-timer) (the-as uint (current-time)))
-               (let ((v1-18 (-> self root root-prim)))
-                 (set! (-> v1-18 prim-core collide-as) (collide-spec))
-                 (set! (-> v1-18 prim-core collide-with) (collide-spec))
+  (case arg2
+    (('touch 'attack)
+     (let* ((s4-0 arg0)
+            (gp-0 (if (type? s4-0 process-focusable)
+                      (the-as process-focusable s4-0)
+                      )
+                  )
+            )
+       (when gp-0
+         (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+           (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root quat)))
+                  (f0-1 (vector-dot s4-1 v1-4))
+                  )
+             (if (< 0.0 f0-1)
+                 (vector-float*! s4-1 s4-1 -1.0)
                  )
-               0
+             )
+           (when (send-event gp-0 'attack (-> arg3 param 0) (static-attack-info ((id (-> self attack-id))
+                                                                                 (vector s4-1)
+                                                                                 (shove-back (-> self shove-vec z))
+                                                                                 (shove-up (-> self shove-vec y))
+                                                                                 (control (if (focus-test? gp-0 board)
+                                                                                              1.0
+                                                                                              0.0
+                                                                                              )
+                                                                                          )
+                                                                                 )
+                                                                                )
+                             )
+             (set! (-> self no-collision-timer) (the-as uint (current-time)))
+             (let ((v1-18 (-> self root root-prim)))
+               (set! (-> v1-18 prim-core collide-as) (collide-spec))
+               (set! (-> v1-18 prim-core collide-with) (collide-spec))
                )
+             0
              )
            )
          )
        )
-      )
+     )
     )
   )
 
@@ -170,7 +167,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior strip-hazard) transform-post)
   )
@@ -277,7 +273,6 @@ This commonly includes things such as:
       )
     (quaternion-rotate-local-x! (-> self root quat) (-> self root quat) (* (-> self spin) (seconds-per-frame)))
     (strip-trans)
-    (none)
     )
   )
 
@@ -414,7 +409,6 @@ This commonly includes things such as:
       )
     (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 4)))
     (update! (-> self sound))
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -429,7 +423,6 @@ This commonly includes things such as:
         )
       (spawn (-> self part) gp-0)
       )
-    (none)
     )
   )
 
@@ -538,7 +531,6 @@ This commonly includes things such as:
       )
     (update-trans! (-> self sound) (vector<-cspace! (new 'static 'vector) (-> self node-list data 3)))
     (update! (-> self sound))
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -557,7 +549,6 @@ This commonly includes things such as:
         (spawn (-> self part) s5-0)
         )
       )
-    (none)
     )
   )
 
@@ -856,46 +847,43 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (grenade-point)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch 'attack)
-                      (send-event proc 'ramp)
-                      (when (logtest? (-> self level task-mask) (task-mask task1))
-                        (cond
-                          ((send-event proc 'grenade (-> self speed))
-                           (if (-> self camera-name)
-                               (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
-                               )
-                           )
-                          ((>= (- (current-time) (-> self enter-time)) (seconds 3))
-                           (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
-                           )
-                          )
-                        (set! (-> self enter-time) (current-time))
-                        )
-                      #f
-                      )
-                     (('exit)
-                      (the-as object (remove-setting! 'entity-name))
-                      )
-                     (('die)
-                      (go-virtual die #t)
-                      )
-                     (('kill)
-                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
-                      (cleanup-for-death self)
-                      (the-as object (deactivate self))
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (send-event proc 'ramp)
+       (when (logtest? (-> self level task-mask) (task-mask task1))
+         (cond
+           ((send-event proc 'grenade (-> self speed))
+            (if (-> self camera-name)
+                (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
+                )
             )
+           ((>= (- (current-time) (-> self enter-time)) (seconds 3))
+            (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
+            )
+           )
+         (set! (-> self enter-time) (current-time))
+         )
+       #f
+       )
+      (('exit)
+       (remove-setting! 'entity-name)
+       )
+      (('die)
+       (go-virtual die #t)
+       )
+      (('kill)
+       (process-entity-status! self (entity-perm-status subtask-complete) #t)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self lightning-time) (+ (current-time) -1))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
-    (none)
     )
   :code (the-as (function none :behavior grenade-point) sleep-code)
   :post (behavior ()
@@ -943,22 +931,20 @@ This commonly includes things such as:
         )
       )
     (update! (-> self sound))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate die (grenade-point)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('kill)
-                      (process-entity-status! self (entity-perm-status subtask-complete) #t)
-                      (cleanup-for-death self)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('kill)
+       (process-entity-status! self (entity-perm-status subtask-complete) #t)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ((arg0 symbol))
     (play-communicator-speech! (-> *talker-speech* 194))
@@ -978,7 +964,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1375,8 +1360,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate impact (grenade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (let* ((s4-0 proc)
               (v1-1 (if (type? s4-0 process-drawable)
@@ -1404,7 +1389,7 @@ This commonly includes things such as:
                (set! (-> v1-5 action-mask) (collide-action solid))
                )
              (if (< (fill-and-probe-using-line-sphere *collide-cache* a1-2) 0.0)
-                 (send-event proc 'attack (-> event param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
+                 (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
                  )
              )
            )
@@ -1421,7 +1406,6 @@ This commonly includes things such as:
     (set! (-> self state-time) (current-time))
     (send-event (handle->process (-> self end-target)) 'die)
     (remove-setting! 'point-of-interest)
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -1447,7 +1431,6 @@ This commonly includes things such as:
       )
     0
     (deactivate self)
-    (none)
     )
   )
 
@@ -1456,7 +1439,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
@@ -1781,13 +1763,13 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (drill-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        #f
        )
       (else
-        (strip-handler proc arg1 event-type event)
+        (strip-handler proc argc message block)
         )
       )
     )
@@ -1798,7 +1780,6 @@ This commonly includes things such as:
           )
       )
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1818,7 +1799,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type strip-hazard idle) post)))
@@ -1833,7 +1813,6 @@ This commonly includes things such as:
       (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 7))
       )
     (update! (-> self plat-sound))
-    (none)
     )
   )
 

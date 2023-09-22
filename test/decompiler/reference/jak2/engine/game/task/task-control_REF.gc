@@ -1509,8 +1509,8 @@
 ;; failed to figure out what this is:
 (defstate idle (fail-mission)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('reset)
        (cond
          ((logtest? (-> self flags) (fail-mission-flags famflags-1))
@@ -1525,7 +1525,7 @@
          )
        )
       (('query)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('reset)
           (logtest? (-> self flags) (fail-mission-flags famflags-1))
           )
@@ -1538,7 +1538,6 @@
     (update-rates! (-> *display* entity-clock) 1.0)
     (update-rates! (-> *display* target-clock) 1.0)
     (update-rates! (-> *display* camera-clock) 1.0)
-    (none)
     )
   :code (behavior ()
     (when (and *target* (focus-test? *target* dead))
@@ -1644,7 +1643,6 @@
        #f
        )
       )
-    (none)
     )
   )
 
@@ -1664,31 +1662,28 @@
 ;; failed to figure out what this is:
 (defstate resetting (fail-mission)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('reset)
-                      #t
-                      )
-                     (('query)
-                      (case (-> event param 0)
-                        (('reset)
-                         #t
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('reset)
+       #t
+       )
+      (('query)
+       (case (-> block param 0)
+         (('reset)
+          #t
+          )
+         )
+       )
+      )
     )
   :enter (behavior ()
     '()
-    (none)
     )
   :exit (behavior ()
     (if (= *master-mode* 'freeze)
         (set-master-mode 'game)
         )
     (process-release? *target*)
-    (none)
     )
   :code (behavior ()
     (local-vars (a1-10 string))
@@ -1754,7 +1749,6 @@
     (persist-with-delay *setting-control* 'speech-control (seconds 3) 'speech-control #f 0.0 0)
     (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.0 0)
     (persist-with-delay *setting-control* 'sfx-volume (seconds 3) 'music-volume 'abs 0.0 0)
-    (none)
     )
   )
 
@@ -2114,7 +2108,6 @@
             )
         (deactivate self)
         )
-    (none)
     )
   :code (behavior ()
     (while (or (not *target*) (not *spawn-actors*))
@@ -2141,7 +2134,6 @@
           )
       )
     (go-virtual active)
-    (none)
     )
   )
 
@@ -2156,7 +2148,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((t9-0 (-> self info code-hook)))
@@ -2171,7 +2162,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -2218,7 +2208,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -2228,7 +2217,6 @@
   :event task-manager-event-handler
   :exit (behavior ()
     (disable *screen-filter*)
-    (none)
     )
   :code (behavior ()
     (while (not (-> self allow-fail))
@@ -2317,7 +2305,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -2363,6 +2350,5 @@
           )
         )
       )
-    (none)
     )
   )

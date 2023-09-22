@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype basebutton (process-drawable)
   ((root-override     collide-shape-moving         :offset        112)
    (down?             symbol                       :offset-assert 176)
@@ -70,16 +69,15 @@
         (go-virtual basebutton-down-idle)
         (go-virtual basebutton-up-idle)
         )
-    (none)
     )
   )
 
 (defstate basebutton-up-idle (basebutton)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> event param 1)
+       (case (-> block param 1)
          (('flop)
           (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
           (sound-play "silo-button")
@@ -92,19 +90,17 @@
        (go-virtual basebutton-going-down)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> block param 0)) (the-as quaternion (-> block param 1)))
        )
       )
     )
   :enter (behavior ()
     (press! self #f)
-    (none)
     )
   :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
-    (none)
     )
   :code (the-as (function none :behavior basebutton) anim-loop)
   :post (behavior ()
@@ -114,26 +110,24 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       (rider-post)
       )
-    (none)
     )
   )
 
 (defstate basebutton-going-down (basebutton)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> block param 0)) (the-as quaternion (-> block param 1)))
        )
       )
     )
   :enter (behavior ()
     (press! self #t)
-    (none)
     )
   :trans (the-as (function none :behavior basebutton) rider-trans)
   :code (behavior ()
@@ -144,7 +138,6 @@
       )
     (basebutton-method-29 self (-> self event-down) (-> self notify-actor))
     (go-virtual basebutton-down-idle)
-    (none)
     )
   :post (behavior ()
     (when (-> self move-to?)
@@ -153,32 +146,29 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       )
     (rider-post)
-    (none)
     )
   )
 
 (defstate basebutton-down-idle (basebutton)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (sound-play "silo-button")
        (go-virtual basebutton-going-up)
        )
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> block param 0)) (the-as quaternion (-> block param 1)))
        )
       )
     )
   :enter (behavior ()
     (press! self #t)
-    (none)
     )
   :trans (behavior ()
     (if (-> self move-to?)
         (rider-trans)
         )
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -195,7 +185,6 @@
         (go-virtual basebutton-going-up)
         )
       )
-    (none)
     )
   :post (behavior ()
     (when (-> self move-to?)
@@ -204,16 +193,15 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       (rider-post)
       )
-    (none)
     )
   )
 
 (defstate basebutton-going-up (basebutton)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('move-to)
-       (move-to-vec-or-quat! self (the-as vector (-> event param 0)) (the-as quaternion (-> event param 1)))
+       (move-to-vec-or-quat! self (the-as vector (-> block param 0)) (the-as quaternion (-> block param 1)))
        )
       (('trigger)
        (sound-play "silo-button")
@@ -223,7 +211,6 @@
     )
   :enter (behavior ()
     (press! self #f)
-    (none)
     )
   :trans (the-as (function none :behavior basebutton) rider-trans)
   :code (behavior ()
@@ -234,7 +221,6 @@
       )
     (basebutton-method-29 self (-> self event-up) (-> self notify-actor))
     (go-virtual basebutton-up-idle)
-    (none)
     )
   :post (behavior ()
     (when (-> self move-to?)
@@ -243,7 +229,6 @@
       (quaternion-copy! (-> self root-override quat) (-> self move-to-quat))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -473,7 +458,6 @@
   :virtual #t
   :trans (behavior ()
     (send-event *camera* 'joystick 0.0 0.0)
-    (none)
     )
   :code (behavior ((arg0 int) (arg1 level))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -522,7 +506,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -551,8 +534,8 @@
         )
 
 (defstate target-warp-out (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('death-end)
        (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status hidden)))))
          (set! (-> self draw status) (the-as draw-status v0-0))
@@ -560,7 +543,7 @@
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -575,11 +558,9 @@
     (vector-reset! (-> self control transv))
     (logior! (-> self state-flags) (state-flags use-alt-cam-pos))
     (set! (-> self alt-cam-pos quad) (-> arg1 quad))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags use-alt-cam-pos))
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 vector))
     (send-event *camera* 'change-state cam-fixed 0)
@@ -668,7 +649,6 @@
       (ja :num! (seek! (ja-aframe 40.0 0)))
       )
     (anim-loop)
-    (none)
     )
   :post target-no-stick-post
   )

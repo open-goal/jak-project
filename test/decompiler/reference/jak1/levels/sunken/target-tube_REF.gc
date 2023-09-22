@@ -456,13 +456,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-tube-start (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
-      ((and (= event-type 'query) (= (-> event param 0) 'mode))
+      ((and (= message 'query) (= (-> block param 0) 'mode))
        'tube
        )
       (else
-        (case event-type
+        (case message
           (('end-mode)
            (go
              target-jump
@@ -472,20 +472,20 @@
              )
            )
           (('touched)
-           (send-event proc 'attack (-> event param 0) 'tube 0 0)
+           (send-event proc 'attack (-> block param 0) 'tube 0 0)
            #f
            )
           (('attack 'attack-or-shove 'attack-invinc)
            (target-attacked
              'attack-or-shove
-             (the-as attack-info (-> event param 1))
+             (the-as attack-info (-> block param 1))
              proc
-             (the-as touching-shapes-entry (-> event param 0))
+             (the-as touching-shapes-entry (-> block param 0))
              target-tube-hit
              )
            )
           (else
-            (target-generic-event-handler proc arg1 event-type event)
+            (target-generic-event-handler proc argc message block)
             )
           )
         )
@@ -515,7 +515,6 @@
       (send-event (handle->process (-> self tube tube)) 'end-mode)
       (target-exit)
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (send-event *camera* 'set-slave-option #x6000)
@@ -567,7 +566,6 @@
         (go target-tube)
         )
       )
-    (none)
     )
   :post target-post
   )
@@ -631,7 +629,6 @@
   :enter (behavior ()
     (set! (-> self control unknown-surface00) *tube-mods*)
     (set! (-> self control surf) *tube-surface*)
-    (none)
     )
   :exit (-> target-tube-start exit)
   :trans (behavior ()
@@ -646,7 +643,6 @@
              )
         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
         )
-    (none)
     )
   :code (behavior ()
     (case (ja-group)
@@ -668,11 +664,9 @@
       (target-tube-turn-anim)
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (target-tube-post)
-    (none)
     )
   )
 
@@ -684,7 +678,6 @@
     (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
     (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (set! (-> self control unknown-surface00) *tube-jump-mods*)
-    (none)
     )
   :exit (-> target-tube-start exit)
   :trans (behavior ()
@@ -697,7 +690,6 @@
       (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control unknown-float01)))))
       (-> *display* seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (ja-channel-push! 1 (seconds 0.05))
@@ -729,7 +721,6 @@
       (suspend)
       (ja :group! (-> self draw art-group data 38) :num! (loop!))
       )
-    (none)
     )
   :post (-> target-tube post)
   )
@@ -746,7 +737,6 @@
       (-> self tube sidetube)
       (-> self tube foretube)
       )
-    (none)
     )
   :exit (behavior ()
     (if (!= (-> self next-state name) 'target-tube-death)
@@ -754,7 +744,6 @@
         )
     (logclear! (-> self state-flags) (state-flags sf02 do-not-notice grabbed first-person-mode))
     ((-> target-tube-start exit))
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (let ((gp-0 (-> self attack-info)))
@@ -846,7 +835,6 @@
           )
       )
     (go target-tube)
-    (none)
     )
   :post target-post
   )
@@ -860,7 +848,6 @@
     (remove-setting! 'process-mask)
     (apply-settings *setting-control*)
     ((-> target-tube-start exit))
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (local-vars (v1-40 symbol))
@@ -891,7 +878,6 @@
       (set! v1-40 (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1)) (not (movie?))))
       )
     (go target-tube)
-    (none)
     )
   :post target-no-stick-post
   )
@@ -985,7 +971,6 @@
     (eval-path-curve-div! (-> self path) (-> self root trans) 0.2 'interp)
     (path-control-method-12 (-> self path) (-> self rot) 0.2)
     (set! (-> self pos) 0.2)
-    (none)
     )
   :trans (behavior ()
     (if (and (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
@@ -999,7 +984,6 @@
              )
         (go-virtual slide-control-ride)
         )
-    (none)
     )
   :code (the-as (function none :behavior slide-control) anim-loop)
   )
@@ -1007,8 +991,8 @@
 ;; failed to figure out what this is:
 (defstate slide-control-ride (slide-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('end-mode)
        (go-virtual slide-control-watch)
        )
@@ -1022,10 +1006,10 @@
          (if gp-0
              (find-target-point (-> (the-as process-drawable gp-0) root trans))
              )
-         (set! (-> (the-as vector (-> event param 0)) quad) (-> self trans quad))
-         (set! (-> (the-as vector (-> event param 1)) quad) (-> self rot quad))
-         (set! (-> (the-as vector (-> event param 2)) quad) (-> self side quad))
-         (eval-path-curve-div! (-> self path) (the-as vector (-> event param 3)) (+ 0.2 (-> self pos)) 'interp)
+         (set! (-> (the-as vector (-> block param 0)) quad) (-> self trans quad))
+         (set! (-> (the-as vector (-> block param 1)) quad) (-> self rot quad))
+         (set! (-> (the-as vector (-> block param 2)) quad) (-> self side quad))
+         (eval-path-curve-div! (-> self path) (the-as vector (-> block param 3)) (+ 0.2 (-> self pos)) 'interp)
          (if (>= (-> self pos) (+ -0.2 (the float (+ (-> self path curve num-cverts) -1))))
              (send-event gp-0 'end-mode)
              )
@@ -1038,12 +1022,10 @@
     (set! (-> self pos) 0.0)
     (set! (-> self target) (process->handle *target*))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self target) (the-as handle #f))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self target))))
@@ -1057,7 +1039,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior slide-control) anim-loop)
   )

@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype puffer (process-drawable)
   ((root-override        collide-shape-moving         :offset        112)
    (fact-info-override   fact-info-enemy              :offset        144)
@@ -81,47 +80,43 @@
               :shadow puffer-main-shadow-mg
               )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
 (defbehavior puffer-default-event-handler puffer ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as
-    object
-    (case arg2
-      (('touch 'attack)
-       (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
-         (let* ((gp-0 arg0)
-                (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
-                          gp-0
-                          )
-                      )
-                )
-           (when v1-7
-             (let ((f0-4 (atan
-                           (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
-                           (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
-                           )
+  (case arg2
+    (('touch 'attack)
+     (when (and (= arg2 'attack) (!= (-> self cprims-type) 2))
+       (let* ((gp-0 arg0)
+              (v1-7 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable))
+                        gp-0
+                        )
+                    )
+              )
+         (when v1-7
+           (let ((f0-4 (atan
+                         (- (-> (the-as process-drawable v1-7) root trans x) (-> self root-override trans x))
+                         (- (-> (the-as process-drawable v1-7) root trans z) (-> self root-override trans z))
                          )
-                   )
-               (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
-               )
+                       )
+                 )
+             (quaternion-axis-angle! (-> self root-override quat) 0.0 1.0 0.0 f0-4)
              )
            )
-         (go puffer-die)
-         (return (the-as object #t))
          )
-       (when (= (-> arg0 type) target)
-         (when (send-event
-                 arg0
-                 'attack
-                 (-> arg3 param 0)
-                 (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
-                 )
-           (set! (-> self hit-player?) #t)
-           (set! (-> self hit-player-time) (-> *display* base-frame-counter))
-           (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
-           )
+       (go puffer-die)
+       (return #t)
+       )
+     (when (= (-> arg0 type) target)
+       (when (send-event
+               arg0
+               'attack
+               (-> arg3 param 0)
+               (static-attack-info ((shove-up (meters 1.5)) (shove-back (meters 2.5))))
+               )
+         (set! (-> self hit-player?) #t)
+         (set! (-> self hit-player-time) (-> *display* base-frame-counter))
+         (set-collide-offense (-> self root-override) 2 (collide-offense no-offense))
          )
        )
-      )
+     )
     )
   )
 
@@ -505,7 +500,6 @@
       (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
     0
-    (none)
     )
   :code (behavior ()
     (loop
@@ -521,7 +515,6 @@
       (puffer-method-26 self)
       (suspend)
       )
-    (none)
     )
   :post puffer-post
   )
@@ -538,7 +531,6 @@
     (set! (-> self picked-point-time) (-> *display* base-frame-counter))
     (set! (-> self pick-new-point-delay) (rand-vu-int-range (seconds 3) (seconds 10)))
     (set! (-> self last-on-screen-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (if (and (not (and *target* (>= (-> self fact-info-override idle-distance)
@@ -586,14 +578,12 @@
       )
     (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
     (puffer-method-28 self)
-    (none)
     )
   :code (behavior ()
     (loop
       (puffer-method-26 self)
       (suspend)
       )
-    (none)
     )
   :post puffer-post
   )
@@ -604,13 +594,11 @@
     (set! (-> self attacking?) #t)
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-turn-speed) 21845.334)
-    (none)
     )
   :exit (behavior ()
     (shut-down! (-> self neck))
     (set! (-> self attacking?) #f)
     (set! (-> self travel-turn-speed) 16384.0)
-    (none)
     )
   :trans (behavior ()
     (if (not (puffer-method-25 self (-> self give-up-dist)))
@@ -634,23 +622,21 @@
       )
     (vector-v+! (-> self root-override trans) (-> self root-override trans) (-> self root-override transv))
     (puffer-method-28 self)
-    (none)
     )
   :code (behavior ()
     (loop
       (puffer-method-26 self)
       (suspend)
       )
-    (none)
     )
   :post puffer-post
   )
 
 (defstate puffer-die (puffer)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (the-as
       uint
-      (case event-type
+      (case message
         (('death-start)
          (the-as uint (drop-pickup (-> self fact-info-override) #t *entity-pool* (-> self fact-info-override) 0))
          )
@@ -674,7 +660,6 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (none)
     )
   :post (the-as (function none :behavior puffer) ja-post)
   )

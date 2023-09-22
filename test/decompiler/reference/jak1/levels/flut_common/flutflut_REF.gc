@@ -90,31 +90,27 @@
 ;; failed to figure out what this is:
 (defstate wait-for-start (flutflut)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('trans)
-         (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       )
+      (('notify)
+       (let ((v0-1 (the-as structure #t)))
+         (set! (-> self auto-get-off) (the-as symbol v0-1))
+         v0-1
          )
-        (('notify)
-         (let ((v0-1 (the-as structure #t)))
-           (set! (-> self auto-get-off) (the-as symbol v0-1))
-           v0-1
-           )
-         )
-        (('touch 'attack)
-         (set! (-> self touch-time) (-> *display* base-frame-counter))
-         #f
-         )
-        )
+       )
+      (('touch 'attack)
+       (set! (-> self touch-time) (-> *display* base-frame-counter))
+       #f
+       )
       )
     )
   :exit (behavior ()
     (set! (-> self root-override root-prim prim-core action) (collide-action))
     (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
     0
-    (none)
     )
   :code (behavior ()
     (loop
@@ -184,7 +180,6 @@
         (go-virtual wait-for-return)
         (go-virtual idle)
         )
-    (none)
     )
   )
 
@@ -195,7 +190,6 @@
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-target)))
-    (none)
     )
   :exit (-> (method-of-type flutflut wait-for-start) exit)
   :code (behavior ()
@@ -243,7 +237,6 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   :post (the-as (function none :behavior flutflut) ja-post)
   )
@@ -251,8 +244,8 @@
 ;; failed to figure out what this is:
 (defstate pickup (flutflut)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('draw)
        (ja-channel-set! 1)
        (ja :group! (-> self draw art-group data 3))
@@ -261,7 +254,7 @@
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
@@ -270,7 +263,6 @@
     )
   :enter (behavior ((arg0 (state flutflut)))
     ((-> arg0 enter))
-    (none)
     )
   :code (behavior ((arg0 (state flutflut)))
     (ja-channel-set! 0)
@@ -295,28 +287,23 @@
         )
       )
     (go arg0)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate wait-for-return (flutflut)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (and (or (= event-type 'touch) (= event-type 'attack)) (send-event *target* 'end-mode))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (or (= message 'touch) (= message 'attack)) (send-event *target* 'end-mode))
         (go-virtual pickup (method-of-object self idle))
         )
-    (the-as
-      object
-      (if (= event-type 'trans)
-          (vector+! (the-as vector (-> event param 0)) (-> self root-override trans) (-> self extra-trans))
-          )
-      )
+    (if (= message 'trans)
+        (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+        )
     )
   :enter (behavior ()
     (blocking-plane-destroy)
     (blocking-plane-spawn (the-as curve-control (-> self path-flut)))
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -328,7 +315,6 @@
       (flutflut-effect)
       (suspend)
       )
-    (none)
     )
   )
 

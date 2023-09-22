@@ -14,7 +14,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype helix-slide-door (process-drawable)
   ((root-override collide-shape  :offset 112)
    )
@@ -96,8 +95,8 @@
 
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (let ((a0-1 (-> self sound)))
          (set! (-> a0-1 spec pitch-mod) 2057)
@@ -105,7 +104,7 @@
          )
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block)
         )
       )
     )
@@ -119,7 +118,6 @@
       (set! (-> a0-0 spec pitch-mod) 1524)
       (update-vol! a0-0 58)
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type dark-eco-pool water-vol-idle) trans)))
@@ -128,7 +126,6 @@
           )
       )
     (update! (-> self sound))
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type dark-eco-pool water-vol-idle) post)))
@@ -137,13 +134,12 @@
           )
       )
     (ja-post)
-    (none)
     )
   )
 
 (defstate helix-slide-door-idle-open (helix-slide-door)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go helix-slide-door-close)
        )
@@ -153,7 +149,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -166,7 +161,6 @@
       )
     (transform-post)
     (go helix-slide-door-idle-closed)
-    (none)
     )
   :post (the-as (function none :behavior helix-slide-door) transform-post)
   )
@@ -177,7 +171,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -239,13 +232,12 @@
         )
       )
     (go helix-button-idle-up)
-    (none)
     )
   )
 
 (defstate helix-button-idle-up (helix-button)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (when *target*
          (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
@@ -270,7 +262,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -418,7 +409,6 @@
       (suspend)
       )
     (go helix-button-idle-down)
-    (none)
     )
   :post (the-as (function none :behavior helix-button) rider-post)
   )
@@ -498,7 +488,6 @@
         )
       )
     (go helix-button-idle-down)
-    (none)
     )
   :post (the-as (function none :behavior helix-button) rider-post)
   )
@@ -508,7 +497,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -603,16 +591,15 @@
   )
 
 (defstate helix-water-idle (helix-water)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (go helix-water-activated)
-                      )
-                     (('music)
-                      (the-as object (set-setting! 'music 'danger 0.0 0))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go helix-water-activated)
+       )
+      (('music)
+       (set-setting! 'music 'danger 0.0 0)
+       )
+      )
     )
   :code (behavior ()
     (set! (-> self root trans y) (-> self start-y))
@@ -624,14 +611,13 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior helix-water) ja-post)
   )
 
 (defstate helix-water-activated (helix-water)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('notify)
        (when (= (-> proc type) launcherdoor)
          (remove-setting! 'music)
@@ -668,7 +654,6 @@
         )
     (send-event (ppointer->process (-> self dark-eco)) 'move-to (-> self root trans))
     (helix-water-method-21 self)
-    (none)
     )
   :code (behavior ()
     (send-event (ppointer->process (-> self dark-eco)) 'trigger)
@@ -676,7 +661,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior helix-water) ja-post)
   )

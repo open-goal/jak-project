@@ -40,20 +40,19 @@
 ;; failed to figure out what this is:
 (defstate idle (minecartsteel)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch 'attack)
-                      (when (= (-> proc type) target)
-                        (let ((a2-1 (new 'stack 'collide-overlap-result)))
-                          (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
-                              (send-event proc 'no-look-around (seconds 1.5))
-                              )
-                          )
-                        )
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (when (= (-> proc type) target)
+         (let ((a2-1 (new 'stack 'collide-overlap-result)))
+           (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
+               (send-event proc 'no-look-around (seconds 1.5))
+               )
+           )
+         )
+       #f
+       )
+      )
     )
   :trans (the-as (function none :behavior minecartsteel) rider-trans)
   :code (behavior ()
@@ -69,7 +68,6 @@
       (update! (-> self sound))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior minecartsteel) rider-post)
   )

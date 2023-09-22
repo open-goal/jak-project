@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *deathcam-sg* deathcam deathcam-lod0-jg deathcam-idle-ja
               ((deathcam-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
@@ -56,7 +55,6 @@
     (remove-setting! 'sfx-volume)
     (remove-setting! 'ambient-volume)
     (remove-setting! 'music)
-    (none)
     )
   :code (behavior ((arg0 continue-point))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -455,7 +453,6 @@
     (suspend)
     (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
     (go target-stance)
-    (none)
     )
   :post target-no-move-post
   )
@@ -822,7 +819,6 @@
         (logclear! (-> self state-flags) (state-flags being-attacked dying))
         )
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (= *cheat-mode* 'debug)
@@ -831,7 +827,6 @@
         (go target-stance)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (logclear! (-> self water flags) (water-flags wt16))
@@ -969,7 +964,6 @@
           )
       )
     (go target-hit-ground #f)
-    (none)
     )
   :post target-post
   )
@@ -1030,43 +1024,40 @@
   )
 
 (defstate target-death (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'end-mode)
-                        (let ((v0-0 (the-as object #t)))
-                          (set! (-> self control unknown-uint20) (the-as uint v0-0))
-                          v0-0
-                          )
-                        )
-                       ((= v1-0 'change-mode)
-                        (case (-> event param 0)
-                          (('grab)
-                           #t
-                           )
-                          )
-                        )
-                       ((= v1-0 'notify)
-                        (when (type-type? (-> proc type) pov-camera)
-                          (case (-> event param 0)
-                            (('die 'abort-request)
-                             (set! (-> self control unknown-uint20) (the-as uint #t))
-                             (the-as object (set-blackout-frames (seconds 0.2)))
-                             )
-                            )
-                          )
-                        )
-                       ((= v1-0 'get-pickup)
-                        #f
-                        )
-                       ((= v1-0 'touched)
-                        #f
-                        )
-                       (else
-                         (target-generic-event-handler proc arg1 event-type event)
-                         )
-                       )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('end-mode)
+       (let ((v0-0 (the-as object #t)))
+         (set! (-> self control unknown-uint20) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      (('change-mode)
+       (case (-> block param 0)
+         (('grab)
+          #t
+          )
+         )
+       )
+      (('notify)
+       (when (type-type? (-> proc type) pov-camera)
+         (case (-> block param 0)
+           (('die 'abort-request)
+            (set! (-> self control unknown-uint20) (the-as uint #t))
+            (set-blackout-frames (seconds 0.2))
+            )
+           )
+         )
+       )
+      (('get-pickup)
+       #f
+       )
+      (('touched)
+       #f
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
       )
     )
   :exit (behavior ()
@@ -1078,7 +1069,6 @@
     (set! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noentity #x1))
     (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
     (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
-    (none)
     )
   :trans (-> target-hit trans)
   :code (behavior ((arg0 symbol))
@@ -1405,7 +1395,6 @@
     (initialize! (-> self game) 'dead (the-as game-save #f) (the-as string #f))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (anim-loop)
-    (none)
     )
   :post target-no-stick-post
   )

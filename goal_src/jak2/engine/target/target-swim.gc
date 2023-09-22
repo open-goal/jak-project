@@ -13,7 +13,6 @@
     (set! (-> self state-time) (current-time))
     (set! (-> self control mod-surface) *wade-mods*)
     (set-zero! (-> self water bob))
-    (none)
     )
   :exit (behavior ()
     (target-state-hook-exit)
@@ -22,7 +21,6 @@
       (set! (-> v1-1 channel-offset) 0)
       )
     0
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -65,7 +63,6 @@
              )
         (go target-gun-stance)
         )
-    (none)
     )
   :code (-> target-stance code)
   :post target-post
@@ -75,7 +72,6 @@
   :event target-standard-event-handler
   :enter (behavior ()
     ((-> target-wade-stance enter))
-    (none)
     )
   :exit (-> target-wade-stance exit)
   :trans (behavior ()
@@ -113,7 +109,6 @@
     (if (and (cpad-pressed? (-> self control cpad number) square) (can-hands? #t))
         (go target-running-attack)
         )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 105)
@@ -336,7 +331,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -379,7 +373,6 @@
     (set! (-> self control mod-surface) *swim-mods*)
     (logior! (-> self water flags) (water-flags swim-ground))
     (logior! (-> self state-flags) (state-flags lleg-no-ik rleg-no-ik))
-    (none)
     )
   :exit (behavior ()
     (target-state-hook-exit)
@@ -412,7 +405,6 @@
         (-> v1-15 id)
         )
       )
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -467,7 +459,6 @@
         )
     (target-swim-tilt 0.0 2.0 0.0 1.0)
     (sound-play "swim-bubbles" :id (-> self control board-jump-and-swim-sound))
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -521,7 +512,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-swim-post
   )
@@ -533,7 +523,6 @@
     (die-on-next-update! (-> self water bob))
     (set! (-> self control unknown-word04) (the-as uint (current-time)))
     (logior! (-> self state-flags) (state-flags lleg-no-ik rleg-no-ik))
-    (none)
     )
   :exit (-> target-swim-stance exit)
   :trans (behavior ()
@@ -588,7 +577,6 @@
       )
     (target-swim-tilt 0.0 2.0 0.0 1.0)
     (sound-play "swim-bubbles" :id (-> self control board-jump-and-swim-sound))
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -641,17 +629,16 @@
         )
       )
     #f
-    (none)
     )
   :post target-swim-post
   )
 
 (defstate target-swim-down (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (t0-7 symbol))
-    (case event-type
+    (case message
       (('attack 'attack-invinc 'attack-or-shove)
-       (let ((v1-1 (the-as attack-info (-> event param 1))))
+       (let ((v1-1 (the-as attack-info (-> block param 1))))
          (set! t0-7 (or (not (logtest? (-> v1-1 mask) (attack-mask mode)))
                         (case (-> v1-1 mode)
                           (('bot 'lava 'melt 'dark-eco-pool)
@@ -688,7 +675,7 @@
       (('slide)
        )
       )
-    (target-standard-event-handler proc arg1 event-type event)
+    (target-standard-event-handler proc argc message block)
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
@@ -700,7 +687,6 @@
     (set! (-> self water swim-time) (current-time))
     (set! (-> self control unknown-word04) (the-as uint #f))
     (set! (-> self neck flex-blend) 0.0)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -734,7 +720,6 @@
         )
       )
     (set! (-> self neck flex-blend) 1.0)
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (current-time) (-> self water swim-time)) (seconds 0.5))
@@ -757,7 +742,6 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 60)
@@ -867,7 +851,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-swim-post
   )
@@ -876,7 +859,6 @@
   :event (-> target-swim-down event)
   :enter (behavior ()
     ((-> target-swim-down enter))
-    (none)
     )
   :exit (-> target-swim-down exit)
   :trans (behavior ()
@@ -908,7 +890,6 @@
         )
     (sound-play "water-bubbles" :id (-> self control bubbles-sound))
     ((-> target-swim-down trans))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -992,7 +973,6 @@
     (start-bobbing! (-> self water) -4096.0 600 1500)
     (set! (-> self water bob start-time) (+ (current-time) (seconds -0.05)))
     (go target-swim-stance)
-    (none)
     )
   :post target-swim-post
   )
@@ -1012,7 +992,6 @@
         )
       )
     ((-> target-jump trans))
-    (none)
     )
   :code (-> target-jump code)
   :post target-post
@@ -1026,7 +1005,6 @@
     (die-on-next-update! (-> self water bob))
     (set! (-> self water align-offset) 0.0)
     (logior! (-> self water flags) (water-flags jump-out))
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (die-on-next-update! (-> self water bob))
@@ -1061,7 +1039,6 @@
         )
       (go target-swim-jump-jump (+ f0-7 arg0) (+ f0-7 arg1) (the-as surface #f))
       )
-    (none)
     )
   :post target-swim-post
   )

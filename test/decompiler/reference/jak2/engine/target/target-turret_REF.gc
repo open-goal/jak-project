@@ -1073,8 +1073,8 @@
 ;; failed to figure out what this is:
 (defstate idle (base-turret)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'bonk)
        (send-event proc 'target-turret-get-off 90)
        (send-event
@@ -1087,14 +1087,14 @@
        )
       (('touch)
        (send-event proc 'target-turret-get-off 90)
-       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
        #f
        )
       (('exit)
        #t
        )
       (else
-        (turret-handler proc arg1 event-type event)
+        (turret-handler proc argc message block)
         )
       )
     )
@@ -1102,7 +1102,6 @@
     (set-zero! (-> self smush-control))
     (base-turret-method-43 self)
     (set! (-> self focus-status) (focus-status disable ignore inactive))
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
@@ -1181,7 +1180,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (cond
@@ -1206,26 +1204,24 @@
         )
       )
     (transform-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate setup (base-turret)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('change-mode)
        (go-virtual active)
        )
       (else
-        (turret-handler proc arg1 event-type event)
+        (turret-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set-setting! 'mode-name 'cam-turret 0.0 0)
-    (none)
     )
   :code (the-as (function none :behavior base-turret) sleep-code)
   :post (the-as (function none :behavior base-turret) transform-post)
@@ -1242,110 +1238,107 @@
 ;; failed to figure out what this is:
 (defstate active (base-turret)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'draw)
-                        (cond
-                          ((-> event param 0)
-                           (ja-channel-set! 1)
-                           (ja :group! (-> self draw art-group data 2))
-                           (transform-post)
-                           )
-                          (else
-                            (ja-channel-set! 0)
-                            (transform-post)
-                            )
-                          )
-                        )
-                       ((= v1-0 'fire-down)
-                        (cond
-                          ((>= (-> self heat) 1.0)
-                           (let ((v1-8 (- (current-time) (-> self fire-time)))
-                                 (a0-7 6)
-                                 (a1-1 (-> self fire-time-interval))
-                                 )
-                             (when (>= v1-8 (* a0-7 a1-1))
-                               (set! (-> self fire-time) (current-time))
-                               (the-as object (base-turret-method-45 self a1-1 event-type))
-                               )
-                             )
-                           )
-                          (else
-                            (when (>= (- (current-time) (-> self fire-time)) (-> self fire-time-interval))
-                              (set! (-> self fire-time) (current-time))
-                              (the-as object (base-turret-method-45 self arg1 event-type))
-                              )
-                            )
-                          )
-                        )
-                       ((= v1-0 'fire-pressed)
-                        (set! (-> self fire-time) (current-time))
-                        (the-as object (base-turret-method-45 self arg1 event-type))
-                        )
-                       ((= v1-0 'bonk)
-                        #f
-                        )
-                       ((or (= v1-0 'touch) (= v1-0 'attack))
-                        (let* ((gp-0 (-> event param 0))
-                               (s5-0 (the-as object (-> event param 1)))
-                               (s4-0 proc)
-                               (v1-21 (if (type? s4-0 projectile)
-                                          s4-0
-                                          )
-                                      )
-                               )
-                          (when (and gp-0 v1-21)
-                            (case (-> (the-as attack-info s5-0) mode)
-                              (('wasp-shot 'guard-shot)
-                               (seek! (-> self health) 0.0 0.25)
-                               (activate! (-> self smush-control) 0.2 15 75 1.0 0.9 (-> *display* entity-clock))
-                               (sound-play "turret-take-hit")
-                               (let ((v0-1 (the-as object (+ (current-time) (seconds 0.08)))))
-                                 (set! (-> self red-filter-timer) (the-as time-frame v0-1))
-                                 v0-1
-                                 )
-                               )
-                              (('drill-ship-shot)
-                               (seek! (-> self health) 0.0 0.5)
-                               (activate! (-> self smush-control) 0.2 24 144 1.0 0.9 (-> *display* entity-clock))
-                               (sound-play "turret-take-hit")
-                               )
-                              )
-                            )
-                          )
-                        )
-                       ((= v1-0 'test)
-                        (set! (-> self health) (seek (-> self health) 0.0 (the-as float (-> event param 0))))
-                        )
-                       ((= v1-0 'exit-valid)
-                        (let ((v1-33 (-> self path-mode)))
-                          (cond
-                            ((or (zero? v1-33) (= v1-33 5) (= v1-33 1))
-                             (base-turret-method-41 self (the-as vector (-> event param 0)))
-                             #t
-                             )
-                            (else
-                              #f
-                              )
-                            )
-                          )
-                        )
-                       ((= v1-0 'exit)
-                        (let ((v1-37 (-> self path-mode)))
-                          (when (if (or (zero? v1-37) (= v1-37 5) (= v1-37 1))
-                                    #t
-                                    )
-                            (go-virtual shutdown)
-                            #f
-                            )
-                          )
-                        )
-                       (else
-                         (turret-handler proc arg1 event-type event)
-                         )
-                       )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('draw)
+       (cond
+         ((-> block param 0)
+          (ja-channel-set! 1)
+          (ja :group! (-> self draw art-group data 2))
+          (transform-post)
+          )
+         (else
+           (ja-channel-set! 0)
+           (transform-post)
+           )
+         )
+       )
+      (('fire-down)
+       (cond
+         ((>= (-> self heat) 1.0)
+          (let ((v1-8 (- (current-time) (-> self fire-time)))
+                (a0-7 6)
+                (a1-1 (-> self fire-time-interval))
+                )
+            (when (>= v1-8 (* a0-7 a1-1))
+              (set! (-> self fire-time) (current-time))
+              (base-turret-method-45 self a1-1 message)
               )
+            )
+          )
+         (else
+           (when (>= (- (current-time) (-> self fire-time)) (-> self fire-time-interval))
+             (set! (-> self fire-time) (current-time))
+             (base-turret-method-45 self argc message)
+             )
+           )
+         )
+       )
+      (('fire-pressed)
+       (set! (-> self fire-time) (current-time))
+       (base-turret-method-45 self argc message)
+       )
+      (('bonk)
+       #f
+       )
+      (('touch 'attack)
+       (let* ((gp-0 (-> block param 0))
+              (s5-0 (the-as object (-> block param 1)))
+              (s4-0 proc)
+              (v1-21 (if (type? s4-0 projectile)
+                         s4-0
+                         )
+                     )
+              )
+         (when (and gp-0 v1-21)
+           (case (-> (the-as attack-info s5-0) mode)
+             (('wasp-shot 'guard-shot)
+              (seek! (-> self health) 0.0 0.25)
+              (activate! (-> self smush-control) 0.2 15 75 1.0 0.9 (-> *display* entity-clock))
+              (sound-play "turret-take-hit")
+              (let ((v0-1 (the-as object (+ (current-time) (seconds 0.08)))))
+                (set! (-> self red-filter-timer) (the-as time-frame v0-1))
+                v0-1
+                )
+              )
+             (('drill-ship-shot)
+              (seek! (-> self health) 0.0 0.5)
+              (activate! (-> self smush-control) 0.2 24 144 1.0 0.9 (-> *display* entity-clock))
+              (sound-play "turret-take-hit")
+              )
+             )
+           )
+         )
+       )
+      (('test)
+       (set! (-> self health) (seek (-> self health) 0.0 (the-as float (-> block param 0))))
+       )
+      (('exit-valid)
+       (let ((v1-33 (-> self path-mode)))
+         (cond
+           ((or (zero? v1-33) (= v1-33 5) (= v1-33 1))
+            (base-turret-method-41 self (the-as vector (-> block param 0)))
+            #t
+            )
+           (else
+             #f
+             )
+           )
+         )
+       )
+      (('exit)
+       (let ((v1-37 (-> self path-mode)))
+         (when (if (or (zero? v1-37) (= v1-37 5) (= v1-37 1))
+                   #t
+                   )
+           (go-virtual shutdown)
+           #f
+           )
+         )
+       )
+      (else
+        (turret-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -1367,7 +1360,6 @@
       (set! (-> v1-14 prim-core action) (collide-action solid))
       (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
       )
-    (none)
     )
   :exit (behavior ()
     (set-filter-color! 1.0 1.0 1.0)
@@ -1377,13 +1369,11 @@
       )
     0
     (send-event (handle->process (-> self hud)) 'hide-and-die)
-    (none)
     )
   :trans (behavior ()
     (if (<= (the int (-> self health)) 0)
         (go-virtual die)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
@@ -1451,7 +1441,6 @@
       (suspend)
       )
     (go-virtual shutdown)
-    (none)
     )
   :post (behavior ()
     (when (nonzero? (-> self red-filter-timer))
@@ -1553,7 +1542,6 @@
       )
     (seek! (-> self heat-target) 0.0 (* 0.4 (seconds-per-frame)))
     (transform-post)
-    (none)
     )
   )
 
@@ -1568,7 +1556,6 @@
     (sound-stop (-> self sound-id 2))
     (set-zero! (-> self smush-control))
     (logclear! (-> self skel status) (joint-control-status sync-math))
-    (none)
     )
   :trans (behavior ()
     (when (< 0.99 (vector-dot
@@ -1587,7 +1574,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
@@ -1609,7 +1595,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (= (-> self path-mode) 5)
@@ -1660,15 +1645,14 @@
           )
     (base-turret-method-40 self)
     (transform-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate dormant (base-turret)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'bonk)
        (send-event proc 'target-turret-get-off 90)
        (send-event
@@ -1681,14 +1665,14 @@
        )
       (('touch)
        (send-event proc 'target-turret-get-off 90)
-       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
        #f
        )
       (('exit)
        #t
        )
       (else
-        (turret-handler proc arg1 event-type event)
+        (turret-handler proc argc message block)
         )
       )
     )
@@ -1696,7 +1680,6 @@
     (set-zero! (-> self smush-control))
     (base-turret-method-43 self)
     (set! (-> self focus-status) (focus-status disable ignore inactive))
-    (none)
     )
   :code (the-as (function none :behavior base-turret) sleep-code)
   )
@@ -1775,7 +1758,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -2279,10 +2261,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defstate cam-turret (camera-slave)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior camera-slave)
-    cam-standard-event-handler
-    )
+  :event cam-standard-event-handler
   :enter (behavior ()
     (when (not (-> self enter-has-run))
       (set! (-> self saved-pt quad) (-> self trans quad))
@@ -2290,13 +2269,11 @@ This commonly includes things such as:
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
       0
       )
-    (none)
     )
   :trans (behavior ()
     (if (not (logtest? (-> *camera* master-options) (cam-master-options-u32 HAVE_TARGET)))
         (cam-slave-go cam-free-floating)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2315,7 +2292,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -2354,13 +2330,13 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defstate target-turret-stance (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('change-mode)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('grab)
           (when (not (focus-test? self dead))
-            (if (-> event param 1)
+            (if (-> block param 1)
                 (set! (-> self turret grabbed?) #t)
                 )
             #t
@@ -2384,17 +2360,17 @@ This commonly includes things such as:
        )
       (('attack 'attack-invinc)
        (let ((gp-0
-               (the-as object (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> event param 1)) 160))
+               (the-as object (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> block param 1)) 160))
                )
              )
          ((method-of-type attack-info compute-intersect-info)
           (the-as attack-info gp-0)
-          (-> event param 1)
+          (-> block param 1)
           self
           (if (type? proc process-drawable)
               proc
               )
-          (the-as touching-shapes-entry (-> event param 0))
+          (the-as touching-shapes-entry (-> block param 0))
           )
          (case (-> (the-as attack-info gp-0) mode)
            (('turret)
@@ -2445,7 +2421,7 @@ This commonly includes things such as:
          )
        )
       (else
-        (target-generic-event-handler proc arg1 event-type event)
+        (target-generic-event-handler proc argc message block)
         )
       )
     )
@@ -2458,7 +2434,6 @@ This commonly includes things such as:
     (logior! (-> self state-flags) (state-flags sf2 sf5))
     (logior! (-> self focus-status) (focus-status disable grabbed))
     (set! (-> self control mod-surface) *empty-mods*)
-    (none)
     )
   :exit (behavior ()
     (target-exit)
@@ -2470,11 +2445,9 @@ This commonly includes things such as:
           (deactivate (-> v1-6 0))
           )
       )
-    (none)
     )
   :trans (behavior ()
     '()
-    (none)
     )
   :code (behavior ((arg0 handle))
     (local-vars
@@ -2517,11 +2490,9 @@ This commonly includes things such as:
       )
     (send-event self 'end-mode)
     (go target-turret-get-off)
-    (none)
     )
   :post (behavior ()
     (target-turret-post)
-    (none)
     )
   )
 
@@ -2536,7 +2507,6 @@ This commonly includes things such as:
   :event target-generic-event-handler
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags sf6))
-    (none)
     )
   :code (behavior ((arg0 handle))
     (when (zero? (-> self turret))
@@ -2607,7 +2577,6 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go target-turret-stance arg0)
-    (none)
     )
   :post target-no-move-post
   )
@@ -2618,7 +2587,6 @@ This commonly includes things such as:
   :exit (behavior ()
     (target-exit)
     (logclear! (-> self state-flags) (state-flags sf6))
-    (none)
     )
   :code (behavior ()
     (set! (-> self control mod-surface) *empty-mods*)
@@ -2715,10 +2683,8 @@ This commonly includes things such as:
         (go target-falling (the-as symbol a0-61))
         )
       )
-    (none)
     )
   :post (behavior ()
     (target-no-move-post)
-    (none)
     )
   )

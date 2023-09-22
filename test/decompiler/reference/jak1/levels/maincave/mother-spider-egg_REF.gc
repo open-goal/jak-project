@@ -236,8 +236,8 @@
 
 ;; failed to figure out what this is:
 (defstate mother-spider-egg-falling (mother-spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (go mother-spider-egg-die-while-falling)
        )
@@ -245,7 +245,6 @@
     )
   :enter (behavior ()
     (set! (-> self falling-start-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0
@@ -264,7 +263,6 @@
         )
       )
     (draw-egg-shadow self (-> self shadow-pos) #t)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 0)
@@ -275,45 +273,40 @@
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior mother-spider-egg) transform-post)
   )
 
 ;; failed to figure out what this is:
 (defstate mother-spider-egg-on-ground (mother-spider-egg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (the-as object (send-shove-back
-                                       (-> self root-override)
-                                       proc
-                                       (the-as touching-shapes-entry (-> event param 0))
-                                       0.7
-                                       6144.0
-                                       16384.0
-                                       )
-                              )
-                      )
-                     (('attack)
-                      (go mother-spider-egg-die)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-shove-back
+         (-> self root-override)
+         proc
+         (the-as touching-shapes-entry (-> block param 0))
+         0.7
+         6144.0
+         16384.0
+         )
+       )
+      (('attack)
+       (go mother-spider-egg-die)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (not (draw-egg-shadow self (-> self shadow-pos) #t))
         (set! (-> self shadow-pos quad) (-> self fall-dest quad))
         )
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
         (go mother-spider-egg-hatch)
         )
     (draw-egg-shadow self (-> self shadow-pos) #f)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -349,7 +342,6 @@
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior mother-spider-egg) transform-post)
   )
@@ -370,7 +362,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (send-event (ppointer->process (-> self parent-override)) 'trigger)
@@ -398,7 +389,6 @@
       )
     0
     (go mother-spider-egg-die-exit)
-    (none)
     )
   :post (the-as (function none :behavior mother-spider-egg) transform-post)
   )
@@ -431,7 +421,6 @@
       (ja :num! (seek!))
       )
     (go mother-spider-egg-die-exit)
-    (none)
     )
   :post (the-as (function none :behavior mother-spider-egg) ja-post)
   )
@@ -445,7 +434,6 @@
           )
       (eval-position! (-> self traj) f0-2 (-> self root-override trans))
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -473,7 +461,6 @@
       (ja :num! (seek!))
       )
     (go mother-spider-egg-die-exit)
-    (none)
     )
   :post (the-as (function none :behavior mother-spider-egg) ja-post)
   )
@@ -493,7 +480,6 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   )
 

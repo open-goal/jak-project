@@ -143,7 +143,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type basebutton down-idle) trans)))
@@ -154,7 +153,6 @@
     (if (and (not (task-node-closed? (game-task-node mountain-shard-dice))) (< 1 *dice-back-way-num*))
         (go-virtual going-up)
         )
-    (none)
     )
   )
 
@@ -163,7 +161,6 @@
   :enter (behavior ()
     (sound-play "dice-button")
     (press! self #t)
-    (none)
     )
   )
 
@@ -360,7 +357,6 @@
       )
     (sound-play "dice-sink")
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self draw color-mult quad) (-> self color quad))
@@ -413,7 +409,6 @@
       (set! (-> self active) (-> self first))
       (go-virtual idle)
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-dice) sleep-code)
   :post (the-as (function none :behavior mtn-dice) transform-post)
@@ -714,10 +709,10 @@
 
 (defstate idle (mtn-dice)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (sv-192 vector))
     (cond
-      ((= event-type 'print-info)
+      ((= message 'print-info)
        (dotimes (gp-1 6)
          (let ((s5-1 (-> self face-matrix gp-1)))
            (format #t "(static-mtn-dice-info (")
@@ -730,7 +725,7 @@
          )
        #f
        )
-      ((= event-type 'trigger)
+      ((= message 'trigger)
        (mem-set32! (the-as pointer *dice-blocked-array*) 13 0)
        (set! (-> *dice-blocked-array* 1) (the-as uint 256))
        (set! *dice-back-way-num* 0)
@@ -742,7 +737,7 @@
            (go-virtual restart)
            )
        )
-      ((= event-type 'hint)
+      ((= message 'hint)
        (when (>= (-> self hint-count) 0.0)
          (+! (-> self hint-count) (seconds-per-frame))
          (if (< 6.0 (-> self hint-count))
@@ -750,7 +745,7 @@
              )
          )
        )
-      ((= event-type 'touch)
+      ((= message 'touch)
        (let* ((s3-0 proc)
               (s2-0 proc)
               (s4-1 (if (type? s2-0 process-focusable)
@@ -764,7 +759,7 @@
                     )
               )
          (when s3-1
-           (let* ((s2-2 (the-as object (-> event param 0)))
+           (let* ((s2-2 (the-as object (-> block param 0)))
                   (s1-0 (-> (the-as touching-shapes-entry s2-2) head))
                   )
              (while s1-0
@@ -798,7 +793,7 @@
                                   (s0-2 (vector-! s0-1 sv-192 v1-42))
                                   )
                              (vector-float*! s0-2 s0-2 0.5)
-                             (send-event proc 'shove (-> event param 0) (static-attack-info ((id (new-attack-id)) (vector s0-2))))
+                             (send-event proc 'shove (-> block param 0) (static-attack-info ((id (new-attack-id)) (vector s0-2))))
                              )
                            )
                          )
@@ -813,9 +808,9 @@
            )
          )
        )
-      ((= event-type 'attack)
+      ((= message 'attack)
        (when (= (-> self active) 1)
-         (let ((v1-56 (the-as object (-> event param 1))))
+         (let ((v1-56 (the-as object (-> block param 1))))
            (when (!= (-> (the-as attack-info v1-56) id) (-> self incoming-attack-id))
              (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-56) id))
              (let ((s3-2 proc)
@@ -829,7 +824,7 @@
                      (empty)
                      )
                  )
-               (let* ((gp-3 (-> event param 0))
+               (let* ((gp-3 (-> block param 0))
                       (a1-26 (mtn-dice-method-26 self s4-2 (the-as touching-shapes-entry gp-3)))
                       )
                  (cond
@@ -858,7 +853,6 @@
     (set! (-> self curtime) 0)
     (set! (-> self first-touch-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (nonzero? (-> self curtime))
@@ -867,7 +861,6 @@
     (set! (-> self curtime) (current-time))
     (when (and (zero? (-> self active)) (dice-wrong-way?))
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-dice) sleep-code)
   :post (behavior ()
@@ -908,7 +901,6 @@
     (when (= (-> self first) 1)
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -918,17 +910,14 @@
     (set! (-> self curtime) 0)
     (set! (-> self first-touch-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     '()
-    (none)
     )
   :code (the-as (function none :behavior mtn-dice) sleep-code)
   :post (behavior ()
     (rider-trans)
     (rider-post)
-    (none)
     )
   )
 
@@ -952,7 +941,6 @@
     (set! (-> self state-time) (current-time))
     (set! (-> self time-anim) 1.0)
     (set! (-> self speed-anim) -0.5)
-    (none)
     )
   :trans (behavior ()
     (set! (-> self draw color-mult quad) (-> self color quad))
@@ -1002,12 +990,10 @@
         )
       (go-virtual idle)
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-dice) sleep-code)
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
@@ -1018,7 +1004,6 @@
     (set! (-> self speed-anim) 0.0)
     (set! (-> self state-time) (current-time))
     (sound-play "dice-sink")
-    (none)
     )
   :trans (behavior ()
     (set! (-> self draw color-mult quad) (-> self color quad))
@@ -1037,7 +1022,6 @@
         )
       (go-virtual idle)
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-dice) sleep-code)
   :post (the-as (function none :behavior mtn-dice) transform-post)
@@ -1554,7 +1538,6 @@ This commonly includes things such as:
     (set! (-> self path-pos) (get-norm! (-> self sync) 0))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1568,7 +1551,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior mtn-plat-updown) plat-post)
   )
@@ -1686,8 +1668,8 @@ This commonly includes things such as:
 
 (defstate wait (mtn-plat-eject)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('eject)
        (go-virtual eject)
        )
@@ -1702,7 +1684,6 @@ This commonly includes things such as:
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (ja-channel-push! 1 0)
     (ja-no-eval :group! (-> self draw art-group data 3) :num! (loop!) :frame-num 0.0)
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-eject) sleep-code)
   :post (behavior ()
@@ -1711,7 +1692,6 @@ This commonly includes things such as:
       (vector+! (-> self root trans) (-> self root trans) gp-1)
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -1805,7 +1785,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior mtn-plat-long) plat-post)
   )
@@ -1892,8 +1871,8 @@ This commonly includes things such as:
 
 (defstate idle (mtn-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual open)
        )
@@ -1931,7 +1910,6 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior mtn-gate) transform-post)
   )
@@ -2110,7 +2088,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -2146,10 +2123,10 @@ This commonly includes things such as:
 
 (defstate idle (mtn-aval-rocks)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('draw)
-       (if (-> event param 0)
+       (if (-> block param 0)
            (go-virtual fall)
            )
        )
@@ -2163,7 +2140,6 @@ This commonly includes things such as:
        (go-virtual fall)
        )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -2171,17 +2147,16 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate fall (mtn-aval-rocks)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (a2-3 int))
-    (case event-type
+    (case message
       (('touch 'attack)
-       (let ((s3-0 (-> event param 0))
+       (let ((s3-0 (-> block param 0))
              (s4-0 0)
              )
          (when s3-0
@@ -2205,7 +2180,7 @@ This commonly includes things such as:
            (set! (-> a1-4 from) (process->ppointer self))
            (set! (-> a1-4 num-params) 2)
            (set! (-> a1-4 message) 'attack)
-           (set! (-> a1-4 param 0) (-> event param 0))
+           (set! (-> a1-4 param 0) (-> block param 0))
            (let ((v1-11 (new 'static 'attack-info :mask (attack-mask shove-up id damage))))
              (set! a2-3 (cond
                           ((nonzero? s4-0)
@@ -2230,7 +2205,7 @@ This commonly includes things such as:
          )
        )
       (('draw)
-       (if (not (-> event param 0))
+       (if (not (-> block param 0))
            (go-virtual idle)
            )
        )
@@ -2254,7 +2229,6 @@ This commonly includes things such as:
       (set! (-> v1-10 params mask) (the-as uint 17))
       (-> v1-10 id)
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 2)
@@ -2297,7 +2271,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (local-vars (sv-16 vector-array) (sv-20 vector) (sv-48 float) (sv-52 symbol))
@@ -2397,7 +2370,6 @@ This commonly includes things such as:
         )
       (seek! (-> sv-16 data gp-0 w) 0.0 1.0)
       )
-    (none)
     )
   )
 
@@ -2565,8 +2537,8 @@ This commonly includes things such as:
 
 (defstate waiting (mtn-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (mtn-plat-flags mtpflags-0)))))
          (set! (-> self flags) (the-as mtn-plat-flags v0-0))
@@ -2574,14 +2546,13 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self ride-timer) (current-time))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (none)
     )
   :trans (behavior ()
     (logclear! (-> self flags) (mtn-plat-flags mtpflags-0))
@@ -2606,7 +2577,6 @@ This commonly includes things such as:
         (go-virtual running)
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-return) sleep-code)
   :post (the-as (function none :behavior mtn-plat-return) plat-post)
@@ -2614,8 +2584,8 @@ This commonly includes things such as:
 
 (defstate running (mtn-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (mtn-plat-flags mtpflags-0)))))
          (set! (-> self flags) (the-as mtn-plat-flags v0-0))
@@ -2623,7 +2593,7 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -2632,7 +2602,6 @@ This commonly includes things such as:
         (go-virtual waiting-for-no-player)
         )
     (plat-trans)
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-return) sleep-code)
   :post (behavior ()
@@ -2644,14 +2613,13 @@ This commonly includes things such as:
       'interp
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting-for-no-player (mtn-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (current-time))))
          (set! (-> self ride-timer) (the-as time-frame v0-0))
@@ -2659,7 +2627,7 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -2676,7 +2644,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-return) sleep-code)
   :post (the-as (function none :behavior mtn-plat-return) plat-post)
@@ -2757,12 +2724,11 @@ This commonly includes things such as:
 
 (defstate running (mtn-plat-gap)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (plat-event proc arg1 event-type event)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (plat-event proc argc message block)
     )
   :trans (behavior ()
     (plat-trans)
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-gap) sleep-code)
   :post (behavior ()
@@ -2774,31 +2740,28 @@ This commonly includes things such as:
       'interp
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting (mtn-plat-gap)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (set! (-> self dest-pos) 0.0)
        (go-virtual running)
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self path-pos) 1.0)
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (none)
     )
   :trans (behavior ()
     (plat-trans)
-    (none)
     )
   :code (the-as (function none :behavior mtn-plat-gap) sleep-code)
   :post (the-as (function none :behavior mtn-plat-gap) plat-post)
@@ -2827,8 +2790,8 @@ This commonly includes things such as:
 
 (defstate idle (mtn-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual open)
        )
@@ -2850,15 +2813,14 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (go-virtual waiting)
-    (none)
     )
   :post (the-as (function none :behavior mtn-button) rider-post)
   )
 
 (defstate waiting (mtn-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk)
        (go-virtual pressed #f)
        )
@@ -2870,7 +2832,6 @@ This commonly includes things such as:
                 :frame-num 0.0
                 )
     (transform-post)
-    (none)
     )
   :code (the-as (function none :behavior mtn-button) sleep-code)
   )
@@ -2900,7 +2861,6 @@ This commonly includes things such as:
     (transform-post)
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (sleep-code)
-    (none)
     )
   )
 
@@ -3005,7 +2965,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior mtn-gear-device) ja-post)
   )
@@ -3227,7 +3186,6 @@ This commonly includes things such as:
         )
       )
     (go-virtual waiting)
-    (none)
     )
   :post (the-as (function none :behavior trans-plat) plat-post)
   )
@@ -3253,7 +3211,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-5))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (while (-> self child)
@@ -3264,7 +3221,6 @@ This commonly includes things such as:
           (t9-2)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -3289,7 +3245,6 @@ This commonly includes things such as:
           (t9-2)
           )
       )
-    (none)
     )
   )
 
@@ -3304,7 +3259,6 @@ This commonly includes things such as:
     (if (logtest? (-> self flags) (mtn-plat-flags mtpflags-0))
         (process-release? *target*)
         )
-    (none)
     )
   )
 
@@ -3315,7 +3269,6 @@ This commonly includes things such as:
     (if (>= (- (current-time) (-> self ride-timer)) (seconds 1))
         (go-virtual waiting)
         )
-    (none)
     )
   )
 

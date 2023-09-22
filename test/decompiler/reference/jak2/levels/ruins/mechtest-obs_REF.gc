@@ -48,8 +48,8 @@
 ;; failed to figure out what this is:
 (defstate idle (mechblock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('carry? 'carry-info)
        (-> self carry)
        )
@@ -57,15 +57,15 @@
        (cond
          ((-> self allow-drag?)
           (carry!
-            (the-as carry-info (-> event param 0))
+            (the-as carry-info (-> block param 0))
             (-> self carry)
-            (the-as vector (-> event param 1))
-            (the-as vector (-> event param 2))
+            (the-as vector (-> block param 1))
+            (the-as vector (-> block param 2))
             )
           (go-virtual drag)
           )
          (else
-           (drag! (the-as carry-info (-> event param 0)) (-> self carry))
+           (drag! (the-as carry-info (-> block param 0)) (-> self carry))
            (go-virtual carry)
            )
          )
@@ -82,7 +82,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -95,7 +94,6 @@
       (set! (-> v1-3 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :trans (behavior ()
     (when (or (not *target*) (< 40960.0 (vector-vector-distance (-> self origin) (-> *target* control trans))))
@@ -108,7 +106,6 @@
       (set! (-> self drop-point quad) (-> self origin quad))
       (go-virtual fall)
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
@@ -120,20 +117,19 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate carry (mechblock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('carry? 'carry-info)
        (-> self carry)
        )
       (('drop)
-       (set! (-> self root transv quad) (-> (the-as vector (-> event param 1)) quad))
+       (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
        (set! (-> self drop-point quad) (-> self root trans quad))
        (go-virtual fall)
        )
@@ -145,21 +141,20 @@
     (carry-info-method-9 (-> self carry))
     (carry-info-method-13 (-> self carry))
     (update-transforms (-> self root))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate drag (mechblock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (at-0 int))
     (rlet ((vf0 :class vf)
            (vf1 :class vf)
            (vf2 :class vf)
            )
       (init-vf0-vector)
-      (case event-type
+      (case message
         (('carry? 'carry-info)
          (-> self carry)
          )
@@ -167,7 +162,7 @@
          (if (handle->process (-> self carry other))
              (drop! (the-as carry-info (send-event (handle->process (-> self carry other)) 'carry-info)) (-> self carry))
              )
-         (set! (-> self root transv quad) (-> (the-as vector (-> event param 1)) quad))
+         (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
          (set! (-> self drop-point quad) (-> self root trans quad))
          (go-virtual fall)
          )
@@ -176,7 +171,7 @@
                (s5-0 (new 'stack-no-clear 'vector))
                )
            (set! (-> s5-0 quad) (-> s4-0 trans quad))
-           (set! (-> s4-0 transv quad) (-> (the-as vector (-> event param 0)) quad))
+           (set! (-> s4-0 transv quad) (-> (the-as vector (-> block param 0)) quad))
            (let ((s2-0 (-> self nav))
                  (s1-0 (-> s4-0 root-prim prim-core))
                  (s3-0 (new 'stack-no-clear 'vector))
@@ -267,7 +262,7 @@
              (set! (-> v1-50 prim-core collide-with) (collide-spec))
              )
            0
-           (vector-! (the-as vector (-> event param 1)) (-> s4-0 trans) s5-0)
+           (vector-! (the-as vector (-> block param 1)) (-> s4-0 trans) s5-0)
            )
          )
         )
@@ -279,35 +274,31 @@
     (carry-info-method-9 (-> self carry))
     (translate! (-> self carry))
     (update-transforms (-> self root))
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate fall (mechblock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('carry-info)
-         (-> self carry)
-         )
-        (('carry? 'pickup)
-         (the-as basic #f)
-         )
-        (('touched)
-         (when (and (!= (-> proc type) target)
-                    (send-event proc 'attack (-> event param 0) (static-attack-info ((id (-> self attack-id)) (mode 'crush))))
-                    )
-           (sound-play "block-hit")
-           (let ((v0-0 (the-as basic (-> proc entity))))
-             (set! (-> self hit-something?) (the-as symbol v0-0))
-             v0-0
-             )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('carry-info)
+       (-> self carry)
+       )
+      (('carry? 'pickup)
+       (the-as basic #f)
+       )
+      (('touched)
+       (when (and (!= (-> proc type) target)
+                  (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'crush))))
+                  )
+         (sound-play "block-hit")
+         (let ((v0-0 (the-as basic (-> proc entity))))
+           (set! (-> self hit-something?) (the-as symbol v0-0))
+           v0-0
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
@@ -321,7 +312,6 @@
         )
     (set! (-> self root status) (collide-status))
     (set! (-> self root root-prim local-sphere w) (-> self carry carry-radius))
-    (none)
     )
   :trans (behavior ()
     (when (or (and (logtest? (-> self root status) (collide-status on-surface)) (< 0.8 (-> self root surface-angle)))
@@ -413,7 +403,6 @@
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior mechblock) sleep-code)
   :post (behavior ()
@@ -452,7 +441,6 @@
       )
     (transform-post)
     (carry-info-method-9 (-> self carry))
-    (none)
     )
   )
 

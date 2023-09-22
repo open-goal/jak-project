@@ -138,8 +138,8 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go qbert-plat-on-die)
        )
@@ -162,7 +162,6 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior qbert-plat) ja-post)
   )
@@ -171,7 +170,6 @@
 (defstate qbert-plat-on-die (qbert-plat)
   :code (behavior ()
     '()
-    (none)
     )
   )
 
@@ -268,7 +266,6 @@
       (suspend)
       0
       )
-    (none)
     )
   :post (the-as (function none :behavior qbert-plat) ja-post)
   )
@@ -281,7 +278,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior qbert-plat) ja-post)
   )
@@ -294,7 +290,6 @@
     (if (-> self on?)
         (logior! (-> self draw status) (draw-status hidden))
         )
-    (none)
     )
   :trans (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
@@ -309,7 +304,6 @@
         )
       (set! (-> self player-is-riding?) gp-1)
       )
-    (none)
     )
   :post (behavior ()
     ((the-as
@@ -320,7 +314,6 @@
     (if (-> self on?)
         (logior! (-> self draw status) (draw-status hidden))
         )
-    (none)
     )
   )
 
@@ -429,13 +422,13 @@
 
 ;; failed to figure out what this is:
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (start-hint-timer (text-id sunken-qbert-plat-hint))
        (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
        (when (not (-> self puzzle-beaten?))
-         (let ((v1-2 (-> event param 0)))
+         (let ((v1-2 (-> block param 0)))
            (when (!= v1-2 (-> self last-plat-triggered))
              (set! (-> self last-plat-triggered) (the-as int v1-2))
              (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
@@ -585,7 +578,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -746,7 +738,6 @@
         )
       )
     (go qbert-plat-master-idle)
-    (none)
     )
   )
 
@@ -777,7 +768,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 

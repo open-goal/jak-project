@@ -454,7 +454,6 @@
   :enter (behavior ()
     (format #t "errol-rider::got-passed~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-54))
-    (none)
     )
   )
 
@@ -468,7 +467,6 @@
   :enter (behavior ()
     (format #t "errol-rider::taunt race-errol-pass~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-53))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
@@ -495,7 +493,6 @@
         )
       )
     (go-virtual active)
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (ppointer->process (-> self parent))))
@@ -505,7 +502,6 @@
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -842,54 +838,51 @@
 ;; failed to figure out what this is:
 (defstate idle (turbo-ring)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touched)
-         (let* ((s4-0 (-> (the-as vehicle proc) root))
-                (gp-0 (if (type? s4-0 collide-shape-moving)
-                          s4-0
-                          )
-                      )
-                )
-           (when gp-0
-             (let ((s4-1 (new 'stack-no-clear 'vehicle-control-point)))
-               (set! (-> s4-1 local-pos quad) (-> gp-0 trans quad))
-               (set! (-> s4-1 normal quad) (-> gp-0 trans-old-old quad))
-               (set! (-> s4-1 local-pos w) 1.0)
-               (set! (-> s4-1 normal w) 1.0)
-               (let ((f30-0 (vector4-dot (-> self plane) (-> s4-1 local-pos)))
-                     (f28-0 (vector4-dot (-> self plane) (-> s4-1 normal)))
-                     (f0-5 (fmax
-                             (vector-vector-distance-squared (-> self root trans) (-> s4-1 local-pos))
-                             (vector-vector-distance-squared (-> self root trans) (-> s4-1 normal))
-                             )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (let* ((s4-0 (-> (the-as vehicle proc) root))
+              (gp-0 (if (type? s4-0 collide-shape-moving)
+                        s4-0
+                        )
+                    )
+              )
+         (when gp-0
+           (let ((s4-1 (new 'stack-no-clear 'vehicle-control-point)))
+             (set! (-> s4-1 local-pos quad) (-> gp-0 trans quad))
+             (set! (-> s4-1 normal quad) (-> gp-0 trans-old-old quad))
+             (set! (-> s4-1 local-pos w) 1.0)
+             (set! (-> s4-1 normal w) 1.0)
+             (let ((f30-0 (vector4-dot (-> self plane) (-> s4-1 local-pos)))
+                   (f28-0 (vector4-dot (-> self plane) (-> s4-1 normal)))
+                   (f0-5 (fmax
+                           (vector-vector-distance-squared (-> self root trans) (-> s4-1 local-pos))
+                           (vector-vector-distance-squared (-> self root trans) (-> s4-1 normal))
                            )
-                     (f1-0 40960.0)
+                         )
+                   (f1-0 40960.0)
+                   )
+               (when (< f0-5 (* f1-0 f1-0))
+                 (when (or (and (< f30-0 0.0) (>= f28-0 0.0)) (and (< f28-0 0.0) (>= f30-0 0.0)))
+                   (send-event proc 'turbo-ring (-> self boost))
+                   (set! (-> self touch-time) (current-time))
+                   (process-spawn
+                     part-tracker
+                     :init part-tracker-init
+                     (-> *part-group-id-table* 1059)
+                     0
+                     #f
+                     #f
+                     #f
+                     (-> self mat)
+                     :to *entity-pool*
                      )
-                 (when (< f0-5 (* f1-0 f1-0))
-                   (when (or (and (< f30-0 0.0) (>= f28-0 0.0)) (and (< f28-0 0.0) (>= f30-0 0.0)))
-                     (send-event proc 'turbo-ring (-> self boost))
-                     (set! (-> self touch-time) (current-time))
-                     (process-spawn
-                       part-tracker
-                       :init part-tracker-init
-                       (-> *part-group-id-table* 1059)
-                       0
-                       #f
-                       #f
-                       #f
-                       (-> self mat)
-                       :to *entity-pool*
-                       )
-                     (when (logtest? (-> gp-0 root-prim prim-core collide-as) (collide-spec jak))
-                       (set! (-> self player-got) #t)
-                       (send-event (ppointer->process (-> self parent)) 'turbo-ring-pickup (-> self id))
-                       (if (not (-> self persistent))
-                           (the-as symbol (kill-callback (-> *minimap* engine) (-> self minimap)))
-                           )
-                       )
+                   (when (logtest? (-> gp-0 root-prim prim-core collide-as) (collide-spec jak))
+                     (set! (-> self player-got) #t)
+                     (send-event (ppointer->process (-> self parent)) 'turbo-ring-pickup (-> self id))
+                     (if (not (-> self persistent))
+                         (kill-callback (-> *minimap* engine) (-> self minimap))
+                         )
                      )
                    )
                  )
@@ -897,7 +890,7 @@
              )
            )
          )
-        )
+       )
       )
     )
   :code (the-as (function none :behavior turbo-ring) sleep-code)
@@ -914,7 +907,6 @@
         )
     (spawn-with-matrix (-> self part) (-> self mat))
     0
-    (none)
     )
   )
 
@@ -931,7 +923,6 @@
     (until (>= (- (current-time) (-> self state-time)) (seconds 2))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -1548,15 +1539,14 @@
   TASK_MANAGER_EVENT_HOOK
   (lambda :behavior task-manager
     ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (the-as object (case arg2
-                     (('race-win 'race-lose)
-                      (let ((v0-0 1))
-                        (set! (-> self sub-state) (the-as uint v0-0))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+    (case arg2
+      (('race-win 'race-lose)
+       (let ((v0-0 1))
+         (set! (-> self sub-state) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      )
     )
   )
 

@@ -1339,7 +1339,6 @@ The scale will be linearly-interpolated based on the distance from the camera"
       (deactivate self)
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -1388,23 +1387,20 @@ Touching it flips the `play?` field which will trigger the cutscene"
 
 (defstate idle (ruins-precipice)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('trigger)
-         (when (not (-> self play?))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (when (not (-> self play?))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        (('touch 'attack)
-         (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+       )
+      (('touch 'attack)
+       (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        )
+       )
       )
     )
   :code (behavior ()
@@ -1435,7 +1431,6 @@ Touching it flips the `play?` field which will trigger the cutscene"
       (suspend)
       )
     #f
-    (none)
     )
   )
 

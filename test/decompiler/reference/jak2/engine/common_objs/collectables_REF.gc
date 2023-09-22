@@ -716,18 +716,8 @@
 
 ;; definition for function collectable-standard-event-handler
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 108]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 144]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 179]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 191]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 213]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 256]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 271]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 288]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 309]
 (defbehavior collectable-standard-event-handler collectable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-4 none))
+  (local-vars (v0-4 object))
   (when (and (or (= arg2 'touch) (= arg2 'attack))
              (and (logtest? (-> self flags) (collectable-flag pickup))
                   (>= (- (current-time) (the-as int (-> self birth-time))) (the-as time-frame (-> self collect-timeout)))
@@ -739,137 +729,136 @@
     (process-contact-action arg0)
     (go-virtual pickup #f (process->handle arg0))
     )
-  (the-as object (cond
-                   ((= arg2 'trans)
-                    (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
-                    (update-transforms (-> self root))
-                    (ja-post)
-                    )
-                   ((= arg2 'jump)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (set! (-> self jump-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
-                    (go-virtual jump)
-                    )
-                   ((= arg2 'pickup)
-                    (when (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
-                      (if (and (> arg1 0) (-> arg3 param 0))
-                          (move-to-point! (-> self root) (the-as vector (-> arg3 param 0)))
-                          )
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (process-contact-action arg0)
-                      (go-virtual pickup #f (the-as handle #f))
-                      )
-                    )
-                   ((= arg2 'suck)
-                    (when (not (and (-> self next-state) (let ((v1-60 (-> self next-state name)))
-                                                           (or (= v1-60 'suck) (= v1-60 'pickup))
-                                                           )
-                                    )
-                               )
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (go-virtual suck (process->handle (the-as process (-> arg3 param 0))))
-                      )
-                    )
-                   ((= arg2 'die)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go-virtual die)
-                    )
-                   ((= arg2 'movie-pos)
-                    (set! v0-4 (the-as none (-> arg3 param 0)))
-                    (set! (-> self movie-pos-index) (the-as int v0-4))
-                    v0-4
-                    )
-                   ((= arg2 'actor-pause)
-                    (cond
-                      ((-> arg3 param 0)
-                       (logior! (-> self mask) (process-mask actor-pause))
-                       (set! v0-4 (the-as none #t))
-                       (set! (-> self actor-pause) (the-as symbol v0-4))
-                       v0-4
-                       )
-                      (else
-                        (logclear! (-> self mask) (process-mask actor-pause))
-                        (set! (-> self actor-pause) #f)
-                        #f
-                        )
-                      )
-                    )
-                   ((= arg2 'fade)
-                    (logior! (-> self flags) (collectable-flag fadeout))
-                    (set! (-> self fadeout-timeout) (the-as seconds 30))
-                    (set! v0-4 (the-as none (current-time)))
-                    (set! (-> self birth-time) (the-as time-frame v0-4))
-                    v0-4
-                    )
-                   ((= arg2 'anim)
-                    (cond
-                      ((-> arg3 param 0)
-                       (set! v0-4 (the-as none (logclear (-> self flags) (collectable-flag no-bob))))
-                       (set! (-> self flags) (the-as collectable-flag v0-4))
-                       )
-                      (else
-                        (set! v0-4 (the-as none (logior (-> self flags) (collectable-flag no-bob))))
-                        (set! (-> self flags) (the-as collectable-flag v0-4))
-                        )
-                      )
-                    v0-4
-                    )
-                   ((= arg2 'collide-shape)
-                    (cond
-                      ((-> arg3 param 0)
-                       (let ((v1-97 (-> self root root-prim)))
-                         (set! (-> v1-97 prim-core collide-as) (-> self root backup-collide-as))
-                         (set! v0-4 (the-as none (-> self root backup-collide-with)))
-                         (set! (-> v1-97 prim-core collide-with) (the-as collide-spec v0-4))
-                         )
-                       v0-4
-                       )
-                      (else
-                        (let ((v1-99 (-> self root root-prim)))
-                          (set! (-> v1-99 prim-core collide-as) (collide-spec))
-                          (set! (-> v1-99 prim-core collide-with) (collide-spec))
-                          )
-                        0
-                        )
-                      )
-                    )
-                   ((= arg2 'get-notify)
-                    (cond
-                      ((= (-> arg3 param 0) #t)
-                       (let ((v1-103 (ppointer->process (-> self parent))))
-                         (cond
-                           ((logtest? (-> v1-103 mask) (process-mask process-tree))
-                            (set! (-> self notify) (the-as handle #f))
-                            #f
-                            )
-                           (else
-                             (set! v0-4 (the-as none (process->handle v1-103)))
-                             (set! (-> self notify) (the-as handle v0-4))
-                             v0-4
-                             )
-                           )
-                         )
-                       )
-                      ((= (-> arg3 param 0) #f)
-                       (set! (-> self notify) (the-as handle #f))
-                       #f
-                       )
-                      (else
-                        (set! v0-4 (the-as none (process->handle (the-as process (-> arg3 param 0)))))
-                        (set! (-> self notify) (the-as handle v0-4))
-                        v0-4
-                        )
-                      )
-                    )
-                   ((= arg2 'effect)
-                    (when (not (-> arg3 param 0))
-                      (set! (-> self collect-effect) (the-as basic 0))
-                      (set! (-> self collect-effect2) (the-as basic 0))
-                      0
-                      )
-                    )
-                   )
+  (cond
+    ((= arg2 'trans)
+     (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (update-transforms (-> self root))
+     (ja-post)
+     )
+    ((= arg2 'jump)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (set! (-> self jump-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (go-virtual jump)
+     )
+    ((= arg2 'pickup)
+     (when (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+       (if (and (> arg1 0) (-> arg3 param 0))
+           (move-to-point! (-> self root) (the-as vector (-> arg3 param 0)))
+           )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-contact-action arg0)
+       (go-virtual pickup #f (the-as handle #f))
+       )
+     )
+    ((= arg2 'suck)
+     (when (not (and (-> self next-state) (let ((v1-60 (-> self next-state name)))
+                                            (or (= v1-60 'suck) (= v1-60 'pickup))
+                                            )
+                     )
+                )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual suck (process->handle (the-as process (-> arg3 param 0))))
+       )
+     )
+    ((= arg2 'die)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go-virtual die)
+     )
+    ((= arg2 'movie-pos)
+     (set! v0-4 (-> arg3 param 0))
+     (set! (-> self movie-pos-index) (the-as int v0-4))
+     v0-4
+     )
+    ((= arg2 'actor-pause)
+     (cond
+       ((-> arg3 param 0)
+        (logior! (-> self mask) (process-mask actor-pause))
+        (set! v0-4 #t)
+        (set! (-> self actor-pause) (the-as symbol v0-4))
+        v0-4
+        )
+       (else
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (set! (-> self actor-pause) #f)
+         #f
+         )
+       )
+     )
+    ((= arg2 'fade)
+     (logior! (-> self flags) (collectable-flag fadeout))
+     (set! (-> self fadeout-timeout) (the-as seconds 30))
+     (set! v0-4 (current-time))
+     (set! (-> self birth-time) (the-as time-frame v0-4))
+     v0-4
+     )
+    ((= arg2 'anim)
+     (cond
+       ((-> arg3 param 0)
+        (set! v0-4 (logclear (-> self flags) (collectable-flag no-bob)))
+        (set! (-> self flags) (the-as collectable-flag v0-4))
+        )
+       (else
+         (set! v0-4 (logior (-> self flags) (collectable-flag no-bob)))
+         (set! (-> self flags) (the-as collectable-flag v0-4))
+         )
+       )
+     v0-4
+     )
+    ((= arg2 'collide-shape)
+     (cond
+       ((-> arg3 param 0)
+        (let ((v1-97 (-> self root root-prim)))
+          (set! (-> v1-97 prim-core collide-as) (-> self root backup-collide-as))
+          (set! v0-4 (-> self root backup-collide-with))
+          (set! (-> v1-97 prim-core collide-with) (the-as collide-spec v0-4))
           )
+        v0-4
+        )
+       (else
+         (let ((v1-99 (-> self root root-prim)))
+           (set! (-> v1-99 prim-core collide-as) (collide-spec))
+           (set! (-> v1-99 prim-core collide-with) (collide-spec))
+           )
+         0
+         )
+       )
+     )
+    ((= arg2 'get-notify)
+     (cond
+       ((= (-> arg3 param 0) #t)
+        (let ((v1-103 (ppointer->process (-> self parent))))
+          (cond
+            ((logtest? (-> v1-103 mask) (process-mask process-tree))
+             (set! (-> self notify) (the-as handle #f))
+             #f
+             )
+            (else
+              (set! v0-4 (process->handle v1-103))
+              (set! (-> self notify) (the-as handle v0-4))
+              v0-4
+              )
+            )
+          )
+        )
+       ((= (-> arg3 param 0) #f)
+        (set! (-> self notify) (the-as handle #f))
+        #f
+        )
+       (else
+         (set! v0-4 (process->handle (the-as process (-> arg3 param 0))))
+         (set! (-> self notify) (the-as handle v0-4))
+         v0-4
+         )
+       )
+     )
+    ((= arg2 'effect)
+     (when (not (-> arg3 param 0))
+       (set! (-> self collect-effect) (the-as basic 0))
+       (set! (-> self collect-effect2) (the-as basic 0))
+       0
+       )
+     )
+    )
   )
 
 ;; failed to figure out what this is:
@@ -879,7 +868,6 @@
     (if (task-complete? *game-info* (-> self entity extra perm task))
         (go-virtual wait)
         )
-    (none)
     )
   :code (the-as (function none :behavior collectable) sleep-code)
   )
@@ -915,7 +903,6 @@
         (logior! (-> self mask) (process-mask actor-pause))
         )
     (go-virtual wait)
-    (none)
     )
   )
 
@@ -940,7 +927,6 @@
              )
         (go-virtual suck (process->handle *target*))
         )
-    (none)
     )
   :exit (behavior ()
     (vector-reset! (-> self root transv))
@@ -953,7 +939,6 @@
     (logclear! (-> self root root-prim prim-core action) (collide-action solid))
     (set! (-> self root root-prim prim-core collide-with) (collide-spec jak player-list tobot))
     (set! (-> self root root-prim prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
-    (none)
     )
   :trans (behavior ()
     (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
@@ -981,7 +966,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -989,7 +973,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1009,7 +992,6 @@
     (set! (-> self suck-y-offset) 0.0)
     (logclear! (-> self mask) (process-mask actor-pause))
     (logior! (-> self flags) (collectable-flag pickup suck-in))
-    (none)
     )
   :code (behavior ((arg0 handle))
     (until #f
@@ -1020,15 +1002,14 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate wait (collectable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('eco-blue)
        (when (and (not (logtest? (-> self flags) (collectable-flag do-fadeout no-eco-blue)))
                   (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
@@ -1044,7 +1025,7 @@
          )
        )
       (else
-        (collectable-standard-event-handler proc arg1 event-type event)
+        (collectable-standard-event-handler proc argc message block)
         )
       )
     )
@@ -1057,7 +1038,6 @@
       (process-contact-action *target*)
       (go-virtual pickup #f (process->handle *target*))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1081,7 +1061,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1119,15 +1098,14 @@
         )
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate notice-blue (collectable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (when (and (or (= event-type 'touch) (= event-type 'attack))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (and (or (= message 'touch) (= message 'attack))
                (and (logtest? (-> self flags) (collectable-flag pickup))
                     (>= (- (current-time) (the-as int (-> self birth-time))) (the-as time-frame (-> self collect-timeout)))
                     (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
@@ -1148,13 +1126,11 @@
           )
     (set! (-> self suck-y-offset) 0.0)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1167,7 +1143,6 @@
           (go-virtual wait)
           )
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (until #f
@@ -1178,64 +1153,60 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate pickup (collectable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('set-movie-pos)
-                      (let ((v1-2 (res-lump-struct (-> self entity) 'movie-pos structure)))
-                        (when v1-2
-                          (set! (-> (the-as vector v1-2) quad) (-> (the-as vector (-> event param 0)) quad))
-                          v1-2
-                          )
-                        )
-                      )
-                     (('actor-pause)
-                      (cond
-                        ((-> event param 0)
-                         (logior! (-> self mask) (process-mask actor-pause))
-                         (let ((v0-1 (the-as object #t)))
-                           (set! (-> self actor-pause) (the-as symbol v0-1))
-                           v0-1
-                           )
-                         )
-                        (else
-                          (logclear! (-> self mask) (process-mask actor-pause))
-                          (set! (-> self actor-pause) #f)
-                          #f
-                          )
-                        )
-                      )
-                     (('fade)
-                      (process-entity-status! self (entity-perm-status dead) #t)
-                      (send-event (handle->process (-> self notify)) 'notify 'die)
-                      (the-as object (deactivate self))
-                      )
-                     (('effect)
-                      (when (not (-> event param 0))
-                        (set! (-> self collect-effect) (the-as basic 0))
-                        (set! (-> self collect-effect2) (the-as basic 0))
-                        0
-                        )
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-movie-pos)
+       (let ((v1-2 (res-lump-struct (-> self entity) 'movie-pos structure)))
+         (when v1-2
+           (set! (-> (the-as vector v1-2) quad) (-> (the-as vector (-> block param 0)) quad))
+           v1-2
+           )
+         )
+       )
+      (('actor-pause)
+       (cond
+         ((-> block param 0)
+          (logior! (-> self mask) (process-mask actor-pause))
+          (let ((v0-1 (the-as object #t)))
+            (set! (-> self actor-pause) (the-as symbol v0-1))
+            v0-1
             )
+          )
+         (else
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (set! (-> self actor-pause) #f)
+           #f
+           )
+         )
+       )
+      (('fade)
+       (process-entity-status! self (entity-perm-status dead) #t)
+       (send-event (handle->process (-> self notify)) 'notify 'die)
+       (deactivate self)
+       )
+      (('effect)
+       (when (not (-> block param 0))
+         (set! (-> self collect-effect) (the-as basic 0))
+         (set! (-> self collect-effect2) (the-as basic 0))
+         0
+         )
+       )
+      )
     )
   :enter (behavior ((arg0 symbol) (arg1 handle))
     (do-pickup self arg1)
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 handle))
     (while (-> self child)
       (suspend)
       )
     (go-virtual die)
-    (none)
     )
   )
 
@@ -1244,7 +1215,6 @@
   :virtual #t
   :code (behavior ()
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
@@ -1288,25 +1258,23 @@
 ;; failed to figure out what this is:
 (defstate die (eco)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('fade)
-                      (process-entity-status! self (entity-perm-status dead) #t)
-                      (send-event (handle->process (-> self notify)) 'notify 'die)
-                      (the-as object (deactivate self))
-                      )
-                     (('die)
-                      (go-virtual die)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('fade)
+       (process-entity-status! self (entity-perm-status dead) #t)
+       (send-event (handle->process (-> self notify)) 'notify 'die)
+       (deactivate self)
+       )
+      (('die)
+       (go-virtual die)
+       )
+      )
     )
   :exit (behavior ()
     (process-entity-status! self (entity-perm-status no-kill) #f)
     (if (-> self actor-pause)
         (logior! (-> self mask) (process-mask actor-pause))
         )
-    (none)
     )
   :code (behavior ()
     (process-entity-status! self (entity-perm-status no-kill) #t)
@@ -1342,7 +1310,6 @@
         (logclear! (-> self draw status) (draw-control-status no-draw))
         )
     (go-virtual wait)
-    (none)
     )
   )
 
@@ -1358,7 +1325,6 @@
           ((the-as (function none) t9-2))
           )
       )
-    (none)
     )
   )
 
@@ -1576,7 +1542,6 @@ This commonly includes things such as:
              )
         (send-event self 'suck *target*)
         )
-    (none)
     )
   )
 
@@ -1746,7 +1711,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1755,7 +1719,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ((arg0 symbol) (arg1 handle))
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
@@ -1972,7 +1935,6 @@ This commonly includes things such as:
     (logior! (-> self root root-prim prim-core action) (collide-action solid))
     (set! (-> self root reaction) projectile-bounce-reaction)
     (set! (-> self root penetrated-by) (the-as penetrate -1))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self roty-speed) (fmin 262144.0 (-> self roty-speed)))
@@ -1984,7 +1946,6 @@ This commonly includes things such as:
           (t9-2)
           )
       )
-    (none)
     )
   :trans (the-as (function none :behavior gem) #f)
   :code (the-as (function none :behavior gem) sleep-code)
@@ -2074,7 +2035,6 @@ This commonly includes things such as:
       )
     (seek! (-> self roty-speed) 0.0 (* 16384.0 (seconds-per-frame)))
     (common-post self)
-    (none)
     )
   )
 
@@ -2187,7 +2147,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -2711,7 +2670,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 

@@ -142,8 +142,8 @@
 
 (defstate idle (gem-tracker)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('spawn-with-gem?)
        (!= (gem-tracker-get-slot (the-as process #f)) -1)
        )
@@ -151,9 +151,9 @@
        (!= (gem-tracker-get-slot proc) -1)
        )
       (('change-gem 'flitter-change-gem 'wasp-change-gem)
-       (let ((v1-3 (gem-tracker-get-slot (the-as process (-> event param 0)))))
+       (let ((v1-3 (gem-tracker-get-slot (the-as process (-> block param 0)))))
          (when (!= v1-3 -1)
-           (let ((gp-1 (-> event param 1)))
+           (let ((gp-1 (-> block param 1)))
              (set! (-> self gems v1-3) (process->handle (the-as process gp-1)))
              (if (type? gp-1 gem)
                  (send-event (the-as process-tree gp-1) 'get-notify self)
@@ -163,7 +163,7 @@
          )
        )
       (('notify)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('pickup)
           (+! (-> self gems-collected) 1)
           (let ((v1-14 (-> self entity extra perm)))
@@ -1656,10 +1656,7 @@ This commonly includes things such as:
           (let ((s5-2 (-> v1-48 data 0 actor)))
             (let ((a0-52 (search-process-tree
                            *active-pool*
-                           (the-as
-                             (function process-tree object)
-                             (lambda ((arg0 gem-tracker)) (= (-> arg0 type) flitter-gem-tracker) (none))
-                             )
+                           (lambda ((arg0 gem-tracker)) (= (-> arg0 type) flitter-gem-tracker) (none))
                            )
                          )
                   )
@@ -1673,11 +1670,7 @@ This commonly includes things such as:
                   )
               )
             (let ((a0-63
-                    (search-process-tree *active-pool* (the-as
-                                                         (function process-tree object)
-                                                         (lambda ((arg0 gem-tracker)) (= (-> arg0 type) wasp-gem-tracker) (none))
-                                                         )
-                                         )
+                    (search-process-tree *active-pool* (lambda ((arg0 gem-tracker)) (= (-> arg0 type) wasp-gem-tracker) (none)))
                     )
                   )
               (if a0-63

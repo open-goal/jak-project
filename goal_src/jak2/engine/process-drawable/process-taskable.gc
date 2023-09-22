@@ -55,6 +55,7 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod process-taskable-method-37 process-taskable ((obj process-taskable))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
     (cond
@@ -75,16 +76,15 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
 
 (defstate hide (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('say)
-                      (let ((v0-0 (current-time)))
-                        (set! (-> self want-to-say) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('say)
+       (let ((v0-0 (current-time)))
+         (set! (-> self want-to-say) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
@@ -94,7 +94,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
       (set! (-> v1-6 prim-core collide-with) (collide-spec))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw-bounds))
@@ -102,7 +101,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
       (set! (-> v1-3 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :trans (behavior ()
     (let ((v1-1 (get-current-task-event (-> self task))))
@@ -114,15 +112,14 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
           (go-virtual idle)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior process-taskable) sleep-code)
   )
 
 (defstate idle (process-taskable)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (if (-> self bounce-away)
            (send-event
@@ -134,7 +131,7 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
            )
        )
       (('touch)
-       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> event param 0)) 0.7 6144.0 16384.0)
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
        )
       (('say)
        (let ((v0-0 (the-as object (current-time))))
@@ -146,11 +143,9 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (get-current-task-event (-> self task))))
@@ -269,11 +264,9 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
         )
       )
     (process-taskable-method-37 self)
-    (none)
     )
   :code (behavior ()
     (process-taskable-anim-loop (the-as (function process-taskable object) true-func))
-    (none)
     )
   :post (behavior ()
     (if (and (-> self hide-during-movie) (movie?))
@@ -284,7 +277,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
       (target-look-at-me! :trans (get-trans self 2))
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -295,7 +287,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
     (set! (-> self want-to-say) 0)
     (process-entity-status! self (entity-perm-status no-kill) #t)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self last-talk) (-> *display* game-clock frame-counter))
@@ -310,7 +301,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
       (set! (-> v1-13 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-13 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :code (behavior ((arg0 game-task-event))
     (when (-> arg0 scene)
@@ -330,7 +320,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
         )
       )
     (go-virtual hide)
-    (none)
     )
   )
 
@@ -345,7 +334,6 @@ Seen take in - `true-func` which takes no args TODO - seems fishy
         )
       )
     (go-virtual hide)
-    (none)
     )
   :post (-> (method-of-type process-taskable idle) post)
   )

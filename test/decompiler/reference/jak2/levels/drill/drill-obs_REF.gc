@@ -158,8 +158,8 @@ and translate the platform via the `smush`
 ;; failed to figure out what this is:
 (defstate idle (drill-plat-falling)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden 'edge-grabbed)
        (start-bouncing! self)
        (go-virtual falling)
@@ -169,7 +169,6 @@ and translate the platform via the `smush`
   :enter (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! min)
     (logior! (-> self root root-prim prim-core action) (collide-action rideable))
-    (none)
     )
   :trans drill-plat-falling-trans
   :code (the-as (function none :behavior drill-plat-falling) sleep-code)
@@ -184,7 +183,6 @@ and translate the platform via the `smush`
         (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
         )
     (drill-plat-falling-trans)
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group)
@@ -196,7 +194,6 @@ and translate the platform via the `smush`
       (ja :num! (seek!))
       )
     (go-virtual idle)
-    (none)
     )
   :post (the-as (function none :behavior drill-plat-falling) plat-post)
   )
@@ -367,7 +364,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   )
 
@@ -402,7 +398,6 @@ This commonly includes things such as:
       )
     (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type elevator running) post)))
@@ -411,7 +406,6 @@ This commonly includes things such as:
           )
       )
     (set-extent! (-> self shaft 0) (-> self root trans))
-    (none)
     )
   )
 
@@ -430,7 +424,6 @@ This commonly includes things such as:
     (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
     (-> self skel root-channel 0)
     (ja-post)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -449,7 +442,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -626,7 +618,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (set! (-> self running-sound-id) (sound-play "mech-lift"))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'pilot)
@@ -637,7 +628,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (sound-stop (-> self running-sound-id))
-    (none)
     )
   :code (behavior ()
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
@@ -660,7 +650,6 @@ For example for an elevator pre-compute the distance between the first and last 
     (sound-stop (-> self sound-id))
     (logclear! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (sleep-code)
-    (none)
     )
   )
 
@@ -804,63 +793,60 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate idle (fire-floor)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touch 'attack)
-         (let* ((s4-0 proc)
-                (gp-0 (if (type? s4-0 process-focusable)
-                          s4-0
-                          )
-                      )
-                )
-           (when gp-0
-             (when (or (focus-test? (the-as process-focusable gp-0) mech)
-                       (>= (- (current-time) (-> self no-collision-timer))
-                           (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
-                           )
-                       )
-               (let ((f0-0 (get-norm! (-> self sync) 0)))
-                 (when (and (< (-> self generous) f0-0) (< f0-0 (- (-> self flames-end-tt) (-> self generous))))
-                   (let ((s4-1 (new 'stack-no-clear 'vector)))
-                     (vector-matrix*! s4-1 (get-trans (the-as process-focusable gp-0) 0) (-> self world-to-local))
-                     (when (and (>= (-> s4-1 x) 0.0)
-                                (>= (-> self deadly-width) (-> s4-1 x))
-                                (>= (-> s4-1 z) 0.0)
-                                (>= (-> self deadly-length) (-> s4-1 z))
-                                (>= (-> s4-1 y) -2048.0)
-                                (>= 2048.0 (-> s4-1 y))
-                                )
-                       (let ((s4-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-                         (let* ((v1-23 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat)))
-                                (f0-8 (vector-dot s4-2 v1-23))
-                                )
-                           (if (< 0.0 f0-8)
-                               (vector-float*! s4-2 s4-2 -1.0)
-                               )
-                           )
-                         (when (send-event
-                                 gp-0
-                                 'attack
-                                 (-> event param 0)
-                                 (static-attack-info ((id (-> self attack-id))
-                                                      (mode 'burnup)
-                                                      (vector s4-2)
-                                                      (shove-back (meters 0.1))
-                                                      (shove-up (meters 3))
-                                                      (control (if (focus-test? (the-as process-focusable gp-0) board)
-                                                                   1.0
-                                                                   0.0
-                                                                   )
-                                                               )
-                                                      )
-                                                     )
-                                 )
-                           (let ((v0-0 (current-time)))
-                             (set! (-> self no-collision-timer) v0-0)
-                             v0-0
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (let* ((s4-0 proc)
+              (gp-0 (if (type? s4-0 process-focusable)
+                        s4-0
+                        )
+                    )
+              )
+         (when gp-0
+           (when (or (focus-test? (the-as process-focusable gp-0) mech)
+                     (>= (- (current-time) (-> self no-collision-timer))
+                         (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
+                         )
+                     )
+             (let ((f0-0 (get-norm! (-> self sync) 0)))
+               (when (and (< (-> self generous) f0-0) (< f0-0 (- (-> self flames-end-tt) (-> self generous))))
+                 (let ((s4-1 (new 'stack-no-clear 'vector)))
+                   (vector-matrix*! s4-1 (get-trans (the-as process-focusable gp-0) 0) (-> self world-to-local))
+                   (when (and (>= (-> s4-1 x) 0.0)
+                              (>= (-> self deadly-width) (-> s4-1 x))
+                              (>= (-> s4-1 z) 0.0)
+                              (>= (-> self deadly-length) (-> s4-1 z))
+                              (>= (-> s4-1 y) -2048.0)
+                              (>= 2048.0 (-> s4-1 y))
+                              )
+                     (let ((s4-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+                       (let* ((v1-23 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable gp-0) root quat)))
+                              (f0-8 (vector-dot s4-2 v1-23))
+                              )
+                         (if (< 0.0 f0-8)
+                             (vector-float*! s4-2 s4-2 -1.0)
                              )
+                         )
+                       (when (send-event
+                               gp-0
+                               'attack
+                               (-> block param 0)
+                               (static-attack-info ((id (-> self attack-id))
+                                                    (mode 'burnup)
+                                                    (vector s4-2)
+                                                    (shove-back (meters 0.1))
+                                                    (shove-up (meters 3))
+                                                    (control (if (focus-test? (the-as process-focusable gp-0) board)
+                                                                 1.0
+                                                                 0.0
+                                                                 )
+                                                             )
+                                                    )
+                                                   )
+                               )
+                         (let ((v0-0 (current-time)))
+                           (set! (-> self no-collision-timer) v0-0)
+                           v0-0
                            )
                          )
                        )
@@ -871,7 +857,7 @@ For example for an elevator pre-compute the distance between the first and last 
              )
            )
          )
-        )
+       )
       )
     )
   :trans (behavior ()
@@ -881,7 +867,6 @@ For example for an elevator pre-compute the distance between the first and last 
       (set! (-> a1-0 tlist) *touching-list*)
       (find-overlapping-shapes (-> self root) a1-0)
       )
-    (none)
     )
   :code (the-as (function none :behavior fire-floor) sleep-code)
   :post (behavior ()
@@ -959,7 +944,6 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     (debug-draw (-> self path))
     (transform-post)
-    (none)
     )
   )
 
@@ -1297,13 +1281,13 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate up-idle (drill-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('track)
        #t
        )
       (else
-        ((-> (method-of-type basebutton up-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton up-idle) event) proc argc message block)
         )
       )
     )
@@ -1314,7 +1298,6 @@ This commonly includes things such as:
           )
       )
     (setup-masks (-> self draw) 4 2)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type basebutton up-idle) trans)))
@@ -1323,13 +1306,11 @@ This commonly includes things such as:
           )
       )
     (set-switch-color self #f)
-    (none)
     )
   :code (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! (identity 1.0))
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -1354,7 +1335,6 @@ This commonly includes things such as:
           (set! (-> self down-frame) 2.0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type basebutton going-down) trans)))
@@ -1363,7 +1343,6 @@ This commonly includes things such as:
           )
       )
     (set-switch-color self #f)
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :num! (seek! (-> self down-frame) (-> self anim-speed)))
@@ -1378,7 +1357,6 @@ This commonly includes things such as:
           )
       )
     (go-virtual down-idle)
-    (none)
     )
   )
 
@@ -1393,7 +1371,6 @@ This commonly includes things such as:
           )
       )
     (setup-masks (-> self draw) 2 4)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type basebutton down-idle) trans)))
@@ -1402,7 +1379,6 @@ This commonly includes things such as:
           )
       )
     (set-switch-color self #t)
-    (none)
     )
   :code (behavior ()
     (ja :group! (-> self draw art-group data 2) :num! (identity (-> self down-frame)))
@@ -1419,7 +1395,6 @@ This commonly includes things such as:
         (go-virtual going-up)
         )
       )
-    (none)
     )
   )
 
@@ -1433,7 +1408,6 @@ This commonly includes things such as:
           )
       )
     (setup-masks (-> self draw) 4 2)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type basebutton going-up) trans)))
@@ -1442,7 +1416,6 @@ This commonly includes things such as:
           )
       )
     (set-switch-color self #f)
-    (none)
     )
   :code (behavior ()
     (local-vars
@@ -1473,7 +1446,6 @@ This commonly includes things such as:
     (send-event! self (-> self event-up))
     (sound-play "drill-switch")
     (go-virtual up-idle)
-    (none)
     )
   )
 
@@ -1642,7 +1614,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let* ((f0-2 (+ (* 0.0033333334 (the float (- (current-time) (-> self state-time))))
@@ -1734,7 +1705,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior drill-laser) sleep-code)
   )
@@ -1783,100 +1753,91 @@ This commonly includes things such as:
   (game-task-node drill-ship-resolution)
   TASK_MANAGER_INIT_HOOK
   (lambda ()
-    (speech-table-set!
-      *speech-control*
-      (speech-type speech-type-6)
-      (new 'static 'speech-type-info
-        :min-delay (seconds 4)
-        :max-delay (seconds 8)
-        :list (new 'static 'boxed-array :type string
-          "kg001"
-          "kg006"
-          "kg001a"
-          "kg013"
-          "kg018"
-          "kg023"
-          "kg078a"
-          "kg079a"
-          "kg080a"
-          "kg081a"
-          "kg082a"
-          "kg083a"
-          "kg084a"
-          "kg085a"
-          "kg086a"
-          "kg088a"
-          "kg091a"
-          "kg023a"
-          "kg006a"
-          "kg092a"
-          "kg093a"
-          "kg094a"
-          "kg095a"
-          "kg103a"
-          "kg104a"
-          "kg112a"
-          "kg134"
-          "kg136"
-          "kg138"
-          "kg139"
-          "kg140"
-          "kg141"
-          "kg130"
-          "kg135"
-          "kg156"
-          "kg157"
-          )
-        )
-      )
-    (speech-table-set!
-      *speech-control*
-      (speech-type speech-type-9)
-      (new 'static 'speech-type-info
-        :priority 1
-        :min-delay (seconds 1)
-        :max-delay (seconds 2)
-        :list (new 'static 'boxed-array :type string
-          "kg133"
-          "kg142"
-          "kg144"
-          "kg145"
-          "kg146"
-          "kg147"
-          "kg148"
-          "kg149"
-          "kg150"
-          "kg138"
-          "kg151"
-          "kg152"
-          "kg153"
-          "kg154"
-          "kg155"
-          "kg159"
-          "kg163"
-          "kg164"
-          )
-        )
-      )
-    (the-as
-      object
-      (speech-table-set! *speech-control* (speech-type speech-type-10) (new 'static 'speech-type-info
-                                                                         :priority 10
-                                                                         :max-delay (seconds 1)
-                                                                         :list (new 'static 'boxed-array :type string
-                                                                           "kg166"
-                                                                           "kg167"
-                                                                           "kg168"
-                                                                           "kg169"
-                                                                           "kg171"
-                                                                           "kg172"
-                                                                           "kg173"
-                                                                           "kg174"
-                                                                           "kg175"
-                                                                           )
+    (speech-table-set! *speech-control* (speech-type speech-type-6) (new 'static 'speech-type-info
+                                                                      :min-delay (seconds 4)
+                                                                      :max-delay (seconds 8)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg001"
+                                                                        "kg006"
+                                                                        "kg001a"
+                                                                        "kg013"
+                                                                        "kg018"
+                                                                        "kg023"
+                                                                        "kg078a"
+                                                                        "kg079a"
+                                                                        "kg080a"
+                                                                        "kg081a"
+                                                                        "kg082a"
+                                                                        "kg083a"
+                                                                        "kg084a"
+                                                                        "kg085a"
+                                                                        "kg086a"
+                                                                        "kg088a"
+                                                                        "kg091a"
+                                                                        "kg023a"
+                                                                        "kg006a"
+                                                                        "kg092a"
+                                                                        "kg093a"
+                                                                        "kg094a"
+                                                                        "kg095a"
+                                                                        "kg103a"
+                                                                        "kg104a"
+                                                                        "kg112a"
+                                                                        "kg134"
+                                                                        "kg136"
+                                                                        "kg138"
+                                                                        "kg139"
+                                                                        "kg140"
+                                                                        "kg141"
+                                                                        "kg130"
+                                                                        "kg135"
+                                                                        "kg156"
+                                                                        "kg157"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-9) (new 'static 'speech-type-info
+                                                                      :priority 1
+                                                                      :min-delay (seconds 1)
+                                                                      :max-delay (seconds 2)
+                                                                      :list (new 'static 'boxed-array :type string
+                                                                        "kg133"
+                                                                        "kg142"
+                                                                        "kg144"
+                                                                        "kg145"
+                                                                        "kg146"
+                                                                        "kg147"
+                                                                        "kg148"
+                                                                        "kg149"
+                                                                        "kg150"
+                                                                        "kg138"
+                                                                        "kg151"
+                                                                        "kg152"
+                                                                        "kg153"
+                                                                        "kg154"
+                                                                        "kg155"
+                                                                        "kg159"
+                                                                        "kg163"
+                                                                        "kg164"
+                                                                        )
+                                                                      )
+                       )
+    (speech-table-set! *speech-control* (speech-type speech-type-10) (new 'static 'speech-type-info
+                                                                       :priority 10
+                                                                       :max-delay (seconds 1)
+                                                                       :list (new 'static 'boxed-array :type string
+                                                                         "kg166"
+                                                                         "kg167"
+                                                                         "kg168"
+                                                                         "kg169"
+                                                                         "kg171"
+                                                                         "kg172"
+                                                                         "kg173"
+                                                                         "kg174"
+                                                                         "kg175"
                                                                          )
-                         )
-      )
+                                                                       )
+                       )
     )
   )
 
@@ -1885,7 +1846,7 @@ This commonly includes things such as:
   *game-info*
   (game-task-node drill-ship-resolution)
   TASK_MANAGER_CLEANUP_HOOK
-  (lambda () (the-as object (speech-control-method-9 *speech-control*)))
+  (lambda () (speech-control-method-9 *speech-control*))
   )
 
 ;; definition for function drill-login

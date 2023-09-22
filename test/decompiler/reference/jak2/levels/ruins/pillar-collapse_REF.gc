@@ -67,11 +67,11 @@
 ;; failed to figure out what this is:
 (defstate idle (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (task-node-closed? (game-task-node ruins-mech-introduction))
-         (let* ((gp-1 (the-as attack-info (-> event param 1)))
+         (let* ((gp-1 (the-as attack-info (-> block param 1)))
                 (s4-0 (-> gp-1 id))
                 (s5-0 (vector-x-quaternion! (new-stack-vector0) (-> self root quat)))
                 (a0-6 (vector-z-quaternion! (new-stack-vector0) (-> self root quat)))
@@ -136,13 +136,11 @@
             )
           )
       )
-    (none)
     )
   :exit (behavior ()
     (while (-> self child)
       (deactivate (-> self child 0))
       )
-    (none)
     )
   :code (behavior ()
     (if (task-node-closed? (game-task-node ruins-mech-introduction))
@@ -152,7 +150,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior ruins-pillar-collapse) transform-post)
   )
@@ -164,7 +161,6 @@
   :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
   :code (behavior ()
     (go-virtual idle)
-    (none)
     )
   :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
   )
@@ -180,7 +176,6 @@
         (go-virtual fall #f)
         )
     (go-virtual idle)
-    (none)
     )
   :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
   )
@@ -188,10 +183,10 @@
 ;; failed to figure out what this is:
 (defstate fall (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (let* ((s5-0 (-> event param 0))
+       (let* ((s5-0 (-> block param 0))
               (s4-0 proc)
               (gp-0 (if (type? s4-0 process-focusable)
                         s4-0

@@ -37,13 +37,12 @@
 
 (defstate idle (piston)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('sync)
-                      (-> self sync)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('sync)
+       (-> self sync)
+       )
+      )
     )
   :trans (behavior ()
     (cond
@@ -70,7 +69,6 @@
         (go-virtual running)
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior piston) sleep-code)
   )
@@ -88,7 +86,6 @@
     (let ((f1-1 (- (-> self range-top) (-> self range-bottom))))
       (set! (-> self root trans y) (+ (-> self init-height) (+ (-> self range-bottom) f1-1)))
       )
-    (none)
     )
   :code (the-as (function none :behavior piston) transform-and-sleep)
   )
@@ -100,7 +97,6 @@
     (if (logtest? (actor-option user18) (-> self fact options))
         (set! (-> self sound-time 0) (+ (get-timeframe-offset! (-> self sync) 0) (seconds -0.1)))
         )
-    (none)
     )
   :trans (the-as (function none :behavior piston) rider-trans)
   :code (the-as (function none :behavior piston) sleep-code)
@@ -116,7 +112,6 @@
       (+! (-> self sound-time 0) (the int (* 0.5 (the float (-> self sync period)))))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -246,8 +241,8 @@ This commonly includes things such as:
 
 (defstate idle (turbine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('rise)
        (go-virtual risen)
        )
@@ -258,7 +253,6 @@ This commonly includes things such as:
         (go-virtual risen)
         )
     (rider-trans)
-    (none)
     )
   :code (the-as (function none :behavior turbine) sleep-code)
   :post (behavior ()
@@ -270,7 +264,6 @@ This commonly includes things such as:
       )
     (update! (-> self sound))
     (rider-post)
-    (none)
     )
   )
 
@@ -278,7 +271,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self dest-height) (+ (-> self root trans y) (-> self rise-height)))
-    (none)
     )
   :trans (the-as (function none :behavior turbine) rider-trans)
   :code (the-as (function none :behavior turbine) sleep-code)
@@ -291,7 +283,6 @@ This commonly includes things such as:
       )
     (update! (-> self sound))
     (rider-post)
-    (none)
     )
   )
 
@@ -388,8 +379,8 @@ This commonly includes things such as:
 
 (defstate idle-up (liftcat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden 'edge-grabbed)
        (go-virtual going-down)
        )
@@ -405,18 +396,16 @@ This commonly includes things such as:
 
 (defstate going-down (liftcat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('query)
-                      1
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('query)
+       1
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (sound-play "liftcat")
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -433,7 +422,6 @@ This commonly includes things such as:
           (set! (-> gp-0 trans y) (-> self down-y))
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior liftcat) sleep-code)
   :post (the-as (function none :behavior liftcat) rider-post)
@@ -441,17 +429,15 @@ This commonly includes things such as:
 
 (defstate idle-down (liftcat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('query)
-                      2
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('query)
+       2
+       )
+      )
     )
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (the-as (function none :behavior liftcat) sleep-code)
   )
@@ -584,7 +570,6 @@ This commonly includes things such as:
         (quaternion*! (-> self root quat) (-> self init-quat) a2-1)
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -637,11 +622,9 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (rider-post)
-    (none)
     )
   )
 
@@ -737,44 +720,41 @@ This commonly includes things such as:
 
 (defstate idle (slider)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touch 'attack)
-         (when (>= (- (current-time) (the-as int (-> self collide-off-timer))) (seconds 2))
-           (let* ((s4-0 proc)
-                  (s3-0 (if (type? s4-0 process-focusable)
-                            s4-0
-                            )
-                        )
-                  )
-             (when s3-0
-               (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-                 (let* ((v1-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s3-0) 0)))
-                        (f0-1 (vector-dot s4-1 v1-7))
-                        )
-                   (if (< 0.0 f0-1)
-                       (vector-float*! s4-1 s4-1 -1.0)
-                       )
-                   )
-                 (sound-play "slide-zap")
-                 (send-event
-                   proc
-                   'attack-or-shove
-                   (-> event param 0)
-                   (static-attack-info ((id (-> self attack-id)) (vector s4-1) (shove-back (meters 8)) (shove-up (meters 3))))
-                   )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (when (>= (- (current-time) (the-as int (-> self collide-off-timer))) (seconds 2))
+         (let* ((s4-0 proc)
+                (s3-0 (if (type? s4-0 process-focusable)
+                          s4-0
+                          )
+                      )
+                )
+           (when s3-0
+             (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+               (let* ((v1-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s3-0) 0)))
+                      (f0-1 (vector-dot s4-1 v1-7))
+                      )
+                 (if (< 0.0 f0-1)
+                     (vector-float*! s4-1 s4-1 -1.0)
+                     )
                  )
-               (let ((v0-0 (current-time)))
-                 (set! (-> self collide-off-timer) (the-as uint v0-0))
-                 v0-0
+               (sound-play "slide-zap")
+               (send-event
+                 proc
+                 'attack-or-shove
+                 (-> block param 0)
+                 (static-attack-info ((id (-> self attack-id)) (vector s4-1) (shove-back (meters 8)) (shove-up (meters 3))))
                  )
+               )
+             (let ((v0-0 (current-time)))
+               (set! (-> self collide-off-timer) (the-as uint v0-0))
+               v0-0
                )
              )
            )
          )
-        )
+       )
       )
     )
   :code (the-as (function none :behavior slider) sleep-code)
@@ -816,7 +796,6 @@ This commonly includes things such as:
     (sound-play "slide-lightning" :id (the-as sound-id (-> self sound-id)))
     (update! (-> self sound))
     (transform-post)
-    (none)
     )
   )
 
@@ -1006,7 +985,6 @@ This commonly includes things such as:
     (quaternion-normalize! (-> self root quat))
     (update! (-> self sound))
     (ja-post)
-    (none)
     )
   )
 
@@ -1196,7 +1174,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 

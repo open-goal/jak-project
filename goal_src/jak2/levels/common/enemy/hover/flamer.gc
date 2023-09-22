@@ -565,6 +565,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod flamer-method-191 flamer ((obj flamer))
   (cond
     ((and (-> obj draw shadow)
@@ -731,7 +732,6 @@
 
 (defmethod go-stare flamer ((obj flamer))
   (go-hostile obj)
-  (none)
   )
 
 (defstate wait-for-formation (flamer)
@@ -751,7 +751,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (-> (method-of-type flamer idle) post)
   )
@@ -765,7 +764,6 @@
           )
       )
     (set! (-> self root trans quad) (-> self idle-pos quad))
-    (none)
     )
   )
 
@@ -778,7 +776,6 @@
           )
       )
     (set! (-> self root trans quad) (-> self idle-pos quad))
-    (none)
     )
   :trans (behavior ()
     (when (and (>= (- (current-time) (-> self state-time)) (-> self state-timeout)) (flamer-method-183 self))
@@ -787,7 +784,6 @@
           (go-virtual active)
           )
       )
-    (none)
     )
   )
 
@@ -802,14 +798,12 @@
     (flamer-method-190 self)
     (set! (-> self ground-mode) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (flamer-method-183 self)
         (go-virtual active)
         )
     (flamer-method-184 self)
-    (none)
     )
   )
 
@@ -823,7 +817,6 @@
       )
     (set! (-> self ground-mode) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (flamer-method-183 self)
@@ -832,7 +825,6 @@
     (if (>= 819.2 (vector-vector-xz-distance (-> self root trans) (-> self idle-pos)))
         (go-virtual idle)
         )
-    (none)
     )
   :post flamer-attack-post
   )
@@ -869,7 +861,6 @@
     (sound-play "flamer-ambush")
     (quaternion-copy! (-> self root quat) (-> self init-quat))
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy ambush) exit)))
@@ -881,7 +872,6 @@
     (logior! (-> self enemy-flags) (enemy-flag notice))
     (set! (-> self flit-joint twist-min-y) (the-as float #t))
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy ambush) trans)))
@@ -903,13 +893,11 @@
         )
       (flamer-method-186 self f30-0)
       )
-    (none)
     )
   :code (the-as (function none :behavior flamer) flamer-fly-code)
   :post (behavior ()
     (flamer-method-187 self)
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -943,19 +931,16 @@
       )
     0
     (set! (-> self ground-mode) 1)
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-xz-distance (-> self root trans) (-> self dest-pos)) 409.6)
         (go-virtual exit-ambush-path)
         )
-    (none)
     )
   :code (the-as (function none :behavior flamer) flamer-fly-code)
   :post (behavior ()
     (flamer-method-187 self)
     (flamer-flit-post)
-    (none)
     )
   )
 
@@ -972,12 +957,10 @@
       )
     0
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self enemy-flags) (enemy-flag notice))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self path-pos) (- (-> self path-pos) (* 0.33333334 (seconds-per-frame))))
@@ -1000,7 +983,6 @@
       (get-point-at-percent-along-path! (-> self path) (-> self base-pos) f30-0 'interp)
       (flamer-method-186 self f30-0)
       )
-    (none)
     )
   :code (the-as (function none :behavior flamer) flamer-fly-code)
   :post (behavior ()
@@ -1012,7 +994,6 @@
     (vector-seek! (-> self root trans) (-> self base-pos) (* 16384.0 (seconds-per-frame)))
     (flamer-method-184 self)
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -1025,7 +1006,6 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
   )
 
@@ -1047,7 +1027,6 @@
     (flamer-method-189 self)
     (set! (-> self ground-mode) 0)
     (set! (-> self flit-timer) (+ (current-time) (seconds -3)))
-    (none)
     )
   :trans (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -1071,20 +1050,18 @@
           (go-virtual attack)
           )
       )
-    (none)
     )
   :code (the-as (function none :behavior flamer) flamer-fly-code)
   :post (behavior ()
     (flamer-method-187 self)
     (flamer-flit-post)
-    (none)
     )
   )
 
 (defstate attack (flamer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((s5-0 (handle->process (-> self focus handle))))
          (when s5-0
@@ -1120,13 +1097,12 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1154,7 +1130,6 @@
       )
     (set! (-> self last-fire-time) (current-time))
     (go-virtual hostile)
-    (none)
     )
   :post flamer-attack-post
   )
@@ -1257,7 +1232,6 @@
       )
     (set-gravity-length (-> self root dynam) 368640.0)
     (set! (-> self hit-surface?) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (-> self root)))
@@ -1287,7 +1261,6 @@
         (go-hostile self)
         )
       )
-    (none)
     )
   :post (behavior ()
     (seek! (-> self sound-volume) 0.0 (* 0.5 (seconds-per-frame)))
@@ -1297,7 +1270,6 @@
           ((the-as (function none) t9-2))
           )
       )
-    (none)
     )
   )
 
@@ -1324,7 +1296,6 @@
     0
     (nav-enemy-method-167 self)
     (enemy-method-103 self)
-    (none)
     )
   )
 

@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype balloon (process-drawable)
   ((root-override collide-shape  :offset 112)
    )
@@ -110,15 +109,14 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate balloon-idle (balloon)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (send-event arg0 'heat -10.0)
+       (send-event proc 'heat -10.0)
        (go balloon-popping)
        )
       )
@@ -132,7 +130,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior balloon) ja-post)
   )
@@ -180,12 +177,11 @@
               )
 
 (defstate spike-up (spike)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (if (= v1-0 'go-spike-up)
-                         #t
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       #t
+       )
       )
     )
   :trans (behavior ()
@@ -214,7 +210,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -226,18 +221,16 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate spike-down (spike)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (= v1-0 'go-spike-up)
-                       (go spike-up)
-                       #t
-                       )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-spike-up)
+       (go spike-up)
+       #t
+       )
       )
     )
   :trans (behavior ()
@@ -266,14 +259,12 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -299,14 +290,12 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (transform-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -597,16 +586,15 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate idle (crate-darkeco-cluster)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'touch)
-       (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'darkeco))))
+       (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'darkeco))))
        (go-virtual die)
        )
       )
@@ -616,7 +604,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 

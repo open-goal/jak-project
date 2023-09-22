@@ -71,17 +71,14 @@
 ;; failed to figure out what this is:
 (defstate idle (fort-trap-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
-           (go-virtual die)
-           #f
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (logtest? (-> (the-as attack-info (-> block param 1)) penetrate-using) (penetrate flop))
+         (go-virtual die)
+         #f
          )
-        )
+       )
       )
     )
   :code (the-as (function none :behavior fort-trap-door) sleep-code)
@@ -112,7 +109,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     ((lambda ()
@@ -158,7 +154,6 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (the-as (function none :behavior fort-trap-door) ja-post)
   )

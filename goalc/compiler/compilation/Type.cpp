@@ -559,22 +559,24 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // compile the function!
   Val* result = nullptr;
   bool first_thing = true;
+  const goos::Object* result_obj = nullptr;
   for_each_in_list(lambda.body, [&](const goos::Object& o) {
     result = compile_error_guard(o, func_block_env);
-    if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(o, func_block_env);
-    }
+    result_obj = &o;
     if (first_thing) {
       first_thing = false;
       // you could probably cheat and do a (begin (blorp) (declare ...)) to get around this.
       new_func_env->settings.is_set = true;
     }
   });
+  if (result_obj && !dynamic_cast<None*>(result)) {
+    result = result->to_reg(*result_obj, func_block_env);
+  }
 
   if (new_func_env->is_asm_func) {
     // don't add return automatically!
     lambda_ts.add_arg(new_func_env->asm_func_return_type);
-  } else if (result && !dynamic_cast<None*>(result)) {
+  } else if (result && !dynamic_cast<None*>(result) && result->type() != TypeSpec("none")) {
     RegVal* final_result;
     emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
     if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
@@ -746,7 +748,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // special case (-> <state> enter) should return the appropriate function type.
           if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
             if (field_name == "enter" || field_name == "code") {
-              result->set_type(state_to_go_function(in_type, TypeSpec("none")));
+              result->set_type(state_to_go_function(in_type, TypeSpec("object")));
             }
           }
 

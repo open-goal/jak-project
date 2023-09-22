@@ -93,7 +93,6 @@ otherwise, [[plat::34]]
   :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
   :trans (behavior ()
     (execute-effects self)
-    (none)
     )
   :code (behavior ()
     (plat-trans)
@@ -114,7 +113,6 @@ otherwise, [[plat::34]]
         )
       )
     #f
-    (none)
     )
   )
 
@@ -123,7 +121,6 @@ otherwise, [[plat::34]]
   :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self path-pos) (get-norm! (-> self sync) 0))
@@ -132,7 +129,6 @@ otherwise, [[plat::34]]
         (sound-play "eco-plat-hover" :id (-> self sound-id) :position (-> self root trans))
         )
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -146,7 +142,6 @@ otherwise, [[plat::34]]
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior plat) plat-post)
   )
@@ -246,8 +241,8 @@ This commonly includes things such as:
 
 (defstate idle (drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack 'bonk)
        (let* ((proc-temp proc)
               (proc-focus (if (type? proc-temp process-focusable)
@@ -293,15 +288,14 @@ This commonly includes things such as:
       (go-virtual fall #f)
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior drop-plat) plat-post)
   )
 
 (defstate fall (drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('edge-grabbed)
        (if (>= (- (current-time) (-> self state-time)) (seconds 0.5))
            (send-event proc 'end-mode)
@@ -314,11 +308,9 @@ This commonly includes things such as:
     )
   :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (the-as (function none :behavior drop-plat) rider-trans)
   :code (behavior ((arg0 symbol))
@@ -341,7 +333,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (the-as (function none :behavior drop-plat) rider-post)
   )

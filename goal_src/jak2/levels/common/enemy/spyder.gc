@@ -718,7 +718,6 @@
       (set! (-> self shock-effect-end) (+ (current-time) (seconds 1)))
       (set! (-> self dest-fade) 128.0)
       )
-    (none)
     )
   )
 
@@ -733,7 +732,6 @@
     (dotimes (gp-0 4)
       (enable-set! (-> self joint-ik gp-0) #t)
       )
-    (none)
     )
   )
 
@@ -872,7 +870,6 @@
       (set! (-> self dest-fade) 128.0)
       (sound-play "spyder-uncloak")
       )
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
@@ -882,7 +879,6 @@
       )
     (logclear! (-> self status-flags) (spyder-flags spflags-5))
     (look-at-target! self (enemy-flag lock-focus))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -913,7 +909,6 @@
           )
         )
       )
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -925,7 +920,6 @@
       )
     0
     (spyder-travel-post)
-    (none)
     )
   )
 
@@ -942,7 +936,6 @@
       (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (vector-vector-xz-distance (-> self root trans) (-> self move-dest))))
@@ -950,7 +943,6 @@
           (go-hostile self)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -971,11 +963,9 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (spyder-travel-post)
-    (none)
     )
   )
 
@@ -1008,13 +998,14 @@
 
 (defstate attack (spyder)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (if (= v1-0 'event-attack)
-                         (the-as object (spyder-method-183 self (the-as matrix (-> self fire-info)) 307200.0))
-                         (enemy-event-handler proc arg1 event-type event)
-                         )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-attack)
+       (spyder-method-183 self (the-as matrix (-> self fire-info)) 307200.0)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
       )
     )
   :enter (behavior ()
@@ -1032,7 +1023,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -1040,7 +1030,6 @@
       (set! (-> v1-2 max-rotation-rate) (-> *spyder-nav-enemy-info* maximum-rotation-rate))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
@@ -1049,7 +1038,6 @@
     (if (or (>= 2 (the-as int (-> self focus aware))) (not (get-enemy-target self)))
         (go-stare self)
         )
-    (none)
     )
   :code (behavior ()
     (when (not (enemy-method-96 self 2730.6667 #t))
@@ -1142,15 +1130,12 @@
       )
     0
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (spyder-face-player-post)
-    (none)
     )
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile spyder ((obj spyder))
   (if (and (not (logtest? (-> obj status-flags) (spyder-flags spflags-1)))
            (-> obj next-state)
@@ -1161,7 +1146,6 @@
       (go (method-of-object obj attack))
       )
   (go (method-of-object obj hostile))
-  (none)
   )
 
 (defstate knocked (spyder)
@@ -1176,7 +1160,6 @@
     (dotimes (gp-0 4)
       (enable-set! (-> self joint-ik gp-0) #f)
       )
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy knocked) exit)))
@@ -1190,7 +1173,6 @@
         (enable-set! (-> self joint-ik gp-0) #t)
         )
       )
-    (none)
     )
   )
 
@@ -1198,11 +1180,9 @@
   :virtual #t
   :enter (behavior ()
     (set! (-> self draw bounds w) 30310.4)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self draw bounds w) 20480.0)
-    (none)
     )
   )
 

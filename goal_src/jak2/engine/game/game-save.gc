@@ -1808,7 +1808,6 @@ auto-save-post
       )
     (format #t "got buffer #x~X~%" (-> self buffer base))
     (go-virtual get-card)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -1863,7 +1862,6 @@ auto-save-post
         (go-virtual done)
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -1908,7 +1906,6 @@ auto-save-post
        )
       )
     (go-virtual done)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -1941,7 +1938,6 @@ auto-save-post
       )
     (label cfg-10)
     (go-virtual done)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -1999,7 +1995,6 @@ auto-save-post
        )
       )
     (go-virtual done)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -2064,15 +2059,14 @@ auto-save-post
     #f
     (label cfg-18)
     (go-virtual done)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
 (defstate restore (auto-save)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('progress-allowed?)
        #t
        )
@@ -2147,23 +2141,21 @@ auto-save-post
     (apply-settings *setting-control*)
     (sleep-code)
     (go-virtual done)
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
 
 (defstate error (auto-save)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('progress-allowed?)
-                      #t
-                      )
-                     (('die)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('progress-allowed?)
+       #t
+       )
+      (('die)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
@@ -2259,7 +2251,6 @@ auto-save-post
            )
        )
       )
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )
@@ -2291,7 +2282,6 @@ auto-save-post
       (mem-copy! (the-as pointer gp-0) (the-as pointer (-> self info)) 300)
       (send-event (handle->process (-> self notify)) 'notify 'done (mc-status-code ok) gp-0)
       )
-    (none)
     )
   :post (the-as (function none :behavior auto-save) auto-save-post)
   )

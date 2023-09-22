@@ -146,6 +146,9 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
       // scary part - modify the function type!
       handler_func->type = get_state_handler_type(handler_kind, state_type);
+      // hack - lets pretend every handler (except event) returns none but remove the (none) at the
+      // end since the 'real' return type is object and thus anything is valid in the final form
+      handler_func->ir2.skip_final_none = true;
     } else if (handler_atom && handler_atom->is_sym_val()) {
       auto sym_type = env.dts->lookup_symbol_type(handler_atom->get_str());
       auto expected_type = get_state_handler_type(handler_kind, state_type);

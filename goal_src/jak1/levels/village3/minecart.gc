@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *minecartsteel-sg* minecartsteel minecartsteel-lod0-jg minecartsteel-idle-ja
               ((minecartsteel-lod0-mg (meters 20))
                (minecartsteel-lod1-mg (meters 40))
@@ -34,19 +33,18 @@
 
 (defstate idle (minecartsteel)
   :virtual #t
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (let ((v1-0 arg2))
-      (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                       (when (= (-> arg0 type) target)
-                         (let ((a2-1 (new 'stack 'collide-overlap-result)))
-                           (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
-                               (send-event arg0 'no-look-around (seconds 1.5))
-                               )
-                           )
-                         )
-                       #f
-                       )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (when (= (-> proc type) target)
+         (let ((a2-1 (new 'stack 'collide-overlap-result)))
+           (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
+               (send-event proc 'no-look-around (seconds 1.5))
+               )
+           )
+         )
+       #f
+       )
       )
     )
   :trans (the-as (function none :behavior minecartsteel) rider-trans)
@@ -63,7 +61,6 @@
       (update! (-> self sound))
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior minecartsteel) rider-post)
   )
@@ -148,7 +145,3 @@
   (minecartsteel-initialize-by-other arg0 0.0)
   (none)
   )
-
-
-
-

@@ -9,7 +9,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype springbox (process-drawable)
   ((spring-height meters  :offset-assert 176)
    (smush         float   :offset-assert 180)
@@ -34,10 +33,10 @@
               )
 
 (defstate bouncer-wait (springbox)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk)
-       (when (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f)
+       (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f)
          (sound-play "trampoline")
          (go bouncer-fire)
          )
@@ -48,7 +47,7 @@
            )
        )
       (('attack)
-       (when (and (= (-> arg3 param 1) 'flop) (send-event arg0 'jump (-> self spring-height) (-> self spring-height) #f))
+       (when (and (= (-> block param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
          (go bouncer-fire)
          #f
          )
@@ -62,19 +61,18 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate bouncer-smush (springbox)
-  :event (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (set! (-> self state-time) (-> *display* base-frame-counter))
        #f
        )
       (else
-        ((-> bouncer-wait event) arg0 arg1 arg2 arg3)
+        ((-> bouncer-wait event) proc argc message block)
         )
       )
     )
@@ -101,7 +99,6 @@
           (go bouncer-wait)
           )
       )
-    (none)
     )
   :post (the-as (function none :behavior springbox) transform-post)
   )
@@ -115,7 +112,6 @@
       (ja :num! (seek!))
       )
     (go bouncer-wait)
-    (none)
     )
   :post (the-as (function none :behavior springbox) transform-post)
   )
@@ -147,7 +143,3 @@
   (go bouncer-wait)
   (none)
   )
-
-
-
-

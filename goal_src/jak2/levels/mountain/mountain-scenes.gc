@@ -1643,27 +1643,25 @@
 
 (defstate idle (mtn-plat-buried-rocks)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (process-spawn scene-player :init scene-player-init "mtn-plat-buried-rocks-a" #t #f)
-                      )
-                     (('done)
-                      (go-virtual done #f)
-                      )
-                     (('die)
-                      (cleanup-for-death self)
-                      (the-as object (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (process-spawn scene-player :init scene-player-init "mtn-plat-buried-rocks-a" #t #f)
+       )
+      (('done)
+       (go-virtual done #f)
+       )
+      (('die)
+       (cleanup-for-death self)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ()
     (ja-post)
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1690,7 +1688,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1820,11 +1817,11 @@ otherwise, [[plat::34]]
 
 (defstate plat-idle (mtn-plat-buried)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk)
        (if (not (logtest? (-> self options) (actor-option blocked)))
-           (plat-event proc arg1 event-type event)
+           (plat-event proc argc message block)
            )
        )
       (('trigger)
@@ -1835,7 +1832,7 @@ otherwise, [[plat::34]]
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -1851,13 +1848,11 @@ otherwise, [[plat::34]]
           (func)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (if (not (logtest? (-> self options) (actor-option blocked)))
         (execute-effects self)
         )
-    (none)
     )
   )
 
@@ -3000,7 +2995,6 @@ This commonly includes things such as:
   :code (the-as (function none :behavior mtn-lens-floor) transform-and-sleep-code)
   :post (behavior ()
     (spawn-with-cspace (-> self part) (-> self node-list data 3))
-    (none)
     )
   )
 

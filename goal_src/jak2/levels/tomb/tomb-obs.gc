@@ -47,7 +47,6 @@
       (set! (-> self sound-id) (new 'static 'sound-id))
       0
       )
-    (none)
     )
   :trans (behavior ()
     (rlet ((acc :class vf)
@@ -94,7 +93,6 @@
         (set! (-> self last-pos) f30-0)
         )
       (plat-trans)
-      (none)
       )
     )
   :code (behavior ()
@@ -109,7 +107,6 @@
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior tomb-plat-wall) plat-post)
   )
@@ -207,34 +204,33 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs object.
 (defbehavior tomb-stair-block-collision tomb-stair-block-spikes ((arg0 symbol))
   (let ((v1-1 (-> self root root-prim)))
-    (the-as object (cond
-                     (arg0
-                       (set! (-> v1-1 prim-core collide-with) (collide-spec jak bot player-list))
-                       (let ((v0-0 (the-as int (-> v1-1 specific 1))))
-                         (set! (-> v1-1 specific 0) (the-as uint v0-0))
-                         v0-0
-                         )
-                       )
-                     (else
-                       (set! (-> v1-1 prim-core collide-with) (collide-spec))
-                       (set! (-> v1-1 specific 0) (the-as uint 0))
-                       0
-                       )
-                     )
-            )
+    (cond
+      (arg0
+        (set! (-> v1-1 prim-core collide-with) (collide-spec jak bot player-list))
+        (let ((v0-0 (the-as int (-> v1-1 specific 1))))
+          (set! (-> v1-1 specific 0) (the-as uint v0-0))
+          v0-0
+          )
+        )
+      (else
+        (set! (-> v1-1 prim-core collide-with) (collide-spec))
+        (set! (-> v1-1 specific 0) (the-as uint 0))
+        0
+        )
+      )
     )
   )
 
 (defstate idle (tomb-stair-block-spikes)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('sound)
        (sound-play "tomb-spikes")
        )
       (('set-position)
        (let ((v0-1 (the-as object (-> self root trans))))
-         (set! (-> (the-as vector v0-1) quad) (-> (the-as vector (-> event param 0)) quad))
+         (set! (-> (the-as vector v0-1) quad) (-> (the-as vector (-> block param 0)) quad))
          v0-1
          )
        )
@@ -468,20 +464,17 @@ This commonly includes things such as:
         :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
         )
     (transform-post)
-    (none)
     )
   :trans (behavior ()
     (lift-pool 1)
     (drop-pool 0)
     (position-spikes 1200)
-    (none)
     )
   :code (behavior ()
     (suspend)
     (suspend)
     (transform-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -491,13 +484,11 @@ This commonly includes things such as:
     (set! (-> self camera-state) 0)
     (set! (-> self state-time) (current-time))
     (task-node-close! (game-task-node tomb-poles-block))
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
     (remove-setting! 'interp-time)
     (remove-setting! 'string-startup-vector)
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -518,7 +509,6 @@ This commonly includes things such as:
        (process-release? *target*)
        )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-5 symbol) (v1-51 symbol))
@@ -565,15 +555,14 @@ This commonly includes things such as:
       (set! v1-51 (or (not *target*) (process-release? *target*)))
       )
     (go-virtual sunk)
-    (none)
     )
   :post (the-as (function none :behavior tomb-stair-block) rider-post)
   )
 
 (defstate moving (tomb-stair-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('cue-chase)
        (set-action!
          *gui-control*
@@ -596,13 +585,11 @@ This commonly includes things such as:
           )
     (set! (-> self camera-state) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
     (remove-setting! 'interp-time)
     (remove-setting! 'string-startup-vector)
-    (none)
     )
   :trans (behavior ()
     (rider-trans)
@@ -643,7 +630,6 @@ This commonly includes things such as:
       )
     (lift-pool 0)
     (drop-pool 1)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-1 symbol))
@@ -669,15 +655,14 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (the-as (function none :behavior tomb-stair-block) rider-post)
   )
 
 (defstate idle (tomb-stair-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('cue-chase)
        (set-action!
          *gui-control*
@@ -723,7 +708,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((f0-3 (seek (-> self root trans y) (+ -104448.0 (-> self initial-y)) 409.6)))
@@ -733,7 +717,6 @@ This commonly includes things such as:
     (lift-pool 0)
     (drop-pool 1)
     (position-spikes 1500)
-    (none)
     )
   :code (the-as (function none :behavior tomb-stair-block) sleep-code)
   :post (the-as (function none :behavior tomb-stair-block) transform-post)
@@ -779,7 +762,6 @@ This commonly includes things such as:
             )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior tomb-stair-block) sleep-code)
   )
@@ -1053,7 +1035,6 @@ This commonly includes things such as:
           )
       )
     (set! (-> self speed) 0.0)
-    (none)
     )
   :code (behavior ()
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
@@ -1067,7 +1048,6 @@ This commonly includes things such as:
       (ja :num! (loop! (* 0.00007771238 (-> self speed))))
       )
     #f
-    (none)
     )
   :post (behavior ()
     (set! (-> self last-pos quad) (-> self basetrans quad))
@@ -1077,7 +1057,6 @@ This commonly includes things such as:
           )
       )
     (set! (-> self speed) (* (- (-> self last-pos y) (-> self basetrans y)) (-> self clock frames-per-second)))
-    (none)
     )
   )
 
@@ -1338,8 +1317,8 @@ This commonly includes things such as:
 
 (defstate close (tomb-boulder-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('reset)
        (if (task-node-closed? (game-task-node tomb-poles-boulder))
            (go-virtual close)
@@ -1356,7 +1335,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1369,7 +1347,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -1441,8 +1418,8 @@ This commonly includes things such as:
 
 (defstate hidden (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (go-virtual run-intro)
        )
@@ -1450,7 +1427,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   )
@@ -1465,11 +1441,9 @@ This commonly includes things such as:
     (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
     (set! (-> self path-pos) 0.0)
     (set-vector! (-> self root scale) 0.0 0.0 0.0 0.0)
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 1.0)
@@ -1477,7 +1451,6 @@ This commonly includes things such as:
       (go-virtual waiting)
       )
     (plat-trans)
-    (none)
     )
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   :post (behavior ()
@@ -1493,14 +1466,13 @@ This commonly includes things such as:
       (set-vector! (-> self root scale) f30-0 f30-0 f30-0 f30-0)
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
          (set! (-> self flags) (the-as tomb-plat-flags v0-0))
@@ -1508,14 +1480,13 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self ride-timer) (current-time))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (none)
     )
   :trans (behavior ()
     (logclear! (-> self flags) (tomb-plat-flags topflags-0))
@@ -1530,7 +1501,6 @@ This commonly includes things such as:
           )
       (go-virtual running)
       )
-    (none)
     )
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   :post (the-as (function none :behavior tomb-plat-return) plat-post)
@@ -1538,8 +1508,8 @@ This commonly includes things such as:
 
 (defstate running (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (logior (-> self flags) (tomb-plat-flags topflags-0)))))
          (set! (-> self flags) (the-as tomb-plat-flags v0-0))
@@ -1547,20 +1517,18 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) (-> self dest-pos))
         (go-virtual waiting-for-no-player)
         )
     (plat-trans)
-    (none)
     )
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   :post (behavior ()
@@ -1573,14 +1541,13 @@ This commonly includes things such as:
       'interp
       )
     (plat-post)
-    (none)
     )
   )
 
 (defstate waiting-for-no-player (tomb-plat-return)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (let ((v0-0 (the-as object (current-time))))
          (set! (-> self ride-timer) (the-as time-frame v0-0))
@@ -1588,7 +1555,7 @@ This commonly includes things such as:
          )
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -1605,7 +1572,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (the-as (function none :behavior tomb-plat-return) sleep-code)
   :post (the-as (function none :behavior tomb-plat-return) plat-post)
@@ -1789,8 +1755,8 @@ This commonly includes things such as:
 
 (defstate idle (tomb-sphinx)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (go-virtual active)
        )
@@ -1801,8 +1767,8 @@ This commonly includes things such as:
 
 (defstate active (tomb-sphinx)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('door-left)
        (set! (-> self move-dir) -1.0)
        (go-virtual doors-open)
@@ -1815,7 +1781,6 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-96 vector))
@@ -1870,7 +1835,6 @@ This commonly includes things such as:
           )
         )
       #f
-      (none)
       )
     )
   )
@@ -1879,7 +1843,6 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-96 vector) (sv-112 vector))
@@ -1954,7 +1917,6 @@ This commonly includes things such as:
           )
         )
       #f
-      (none)
       )
     )
   )

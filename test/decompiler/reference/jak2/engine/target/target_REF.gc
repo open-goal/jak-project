@@ -37,7 +37,6 @@
     (suspend)
     (suspend)
     (go target-stance)
-    (none)
     )
   :post target-no-move-post
   )
@@ -48,13 +47,11 @@
   :enter (behavior ()
     (set! (-> self control mod-surface) *walk-mods*)
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still))
     (set! (-> self control bend-target) 0.0)
     (target-state-hook-exit)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -136,7 +133,6 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code target-stance-anim
   :post target-post
@@ -151,12 +147,10 @@
         )
     (set! (-> self state-time) (current-time))
     (set! (-> self control mod-surface) *walk-mods*)
-    (none)
     )
   :exit (behavior ()
     (target-effect-exit)
     (target-state-hook-exit)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -245,11 +239,9 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code (behavior ()
     (target-walk-anim -300)
-    (none)
     )
   :post target-post
   )
@@ -261,7 +253,6 @@
     (vector-turn-to (-> self control transv))
     (set! (-> self control mod-surface) *turn-around-mods*)
     (set! (-> self control bend-target) 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-state-hook-exit)
@@ -269,7 +260,6 @@
     (set! (-> self control ctrl-xz-vel) 0.0)
     (set-quaternion! (-> self control) (-> self control dir-targ))
     (set! (-> self control bend-target) 0.0)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -296,7 +286,6 @@
         (go target-falling #f)
         )
     (slide-down-test)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.04))
@@ -315,7 +304,6 @@
     (set-forward-vel (-> self control ctrl-xz-vel))
     (target-state-hook-exit)
     (go target-walk)
-    (none)
     )
   :post target-no-stick-post
   )
@@ -325,11 +313,9 @@
   :event target-walk-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *jump-mods*)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control unknown-time-frame13) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (or (logtest? (-> self control status) (collide-status on-surface))
@@ -343,7 +329,6 @@
           (go target-duck-stance #f)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -362,7 +347,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -436,13 +420,13 @@
 
 ;; failed to figure out what this is:
 (defstate target-slide-down-to-ground (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('slide)
        #f
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
@@ -452,13 +436,11 @@
     (set! (-> self control sliding-start-time) 0)
     (set! (-> self control force-turn-to-strength) 1.0)
     (set! (-> self control force-turn-to-speed) 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-effect-exit)
     (target-exit)
     (set! (-> self control unknown-time-frame13) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (and (or (and (logtest? (-> self control status) (collide-status on-surface))
@@ -530,7 +512,6 @@
           )
       )
     (set! (-> self control ctrl-xz-vel) (* 40960.0 (-> self darkjak-giant-interp)))
-    (none)
     )
   :code (-> target-walk code)
   :post (behavior ()
@@ -568,7 +549,6 @@
       )
     (set! (-> self control turn-lockout-end-time) (+ (current-time) (seconds 0.1)))
     (target-post)
-    (none)
     )
   )
 
@@ -799,7 +779,6 @@
     (set! (-> self control bend-target) 1.0)
     (set! (-> self control mod-surface) *duck-mods*)
     (target-collide-set! 'duck 1.0)
-    (none)
     )
   :exit (behavior ()
     (if (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -818,7 +797,6 @@
     (if (= (-> self control collide-mode) 'duck)
         (target-collide-set! 'normal 0.0)
         )
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -873,7 +851,6 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((v1-2 (ja-group)))
@@ -955,7 +932,6 @@
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -974,7 +950,6 @@
           (set! (-> self control mod-surface) *duck-mods*)
           )
       )
-    (none)
     )
   :exit (-> target-duck-stance exit)
   :trans (behavior ()
@@ -1030,7 +1005,6 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (let ((gp-0 (if (using-gun? self)
@@ -1075,7 +1049,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -1140,7 +1113,6 @@
     (set! (-> self control unknown-float35)
           (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
           )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1204,7 +1176,6 @@
       (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
       (seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 surface))
     (let ((f28-0 20.0)
@@ -1328,7 +1299,6 @@
       )
     (target-falling-anim -1 (seconds 0.2))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -1339,7 +1309,6 @@
   :enter (behavior ((arg0 float) (arg1 float))
     ((-> target-jump enter) arg0 arg1 (the-as surface #f))
     (set! (-> self control mod-surface) *forward-jump-mods*)
-    (none)
     )
   :exit target-exit
   :trans (-> target-jump trans)
@@ -1390,7 +1359,6 @@
       (ja :group! (-> self draw art-group data 27) :num! (loop!))
       )
     #f
-    (none)
     )
   :post target-post
   )
@@ -1415,7 +1383,6 @@
     (if (!= (-> self control mod-surface) *slide-jump-mods*)
         (set! (-> self control mod-surface) *double-jump-mods*)
         )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1460,7 +1427,6 @@
       (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
       (seconds-per-frame)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (sound-play "jump-double")
@@ -1527,7 +1493,6 @@
       )
     (target-falling-anim -1 (seconds 0.2))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -1569,7 +1534,6 @@
     (set! (-> self control unknown-float35)
           (fmax 0.0 (fmin 0.5 (* 0.00008138021 (+ -409.6 (-> self control ctrl-xz-vel)))))
           )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1618,7 +1582,6 @@
       (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control ctrl-xz-vel)))))
       (seconds-per-frame)
       )
-    (none)
     )
   :code (-> target-jump code)
   :post target-post
@@ -1637,7 +1600,6 @@
       (else
         )
       )
-    (none)
     )
   :exit target-exit
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
@@ -1671,7 +1633,6 @@
         )
       )
     (go target-duck-high-jump-jump arg0 arg1 arg2)
-    (none)
     )
   :post target-post
   )
@@ -1694,7 +1655,6 @@
         (set! (-> self control mod-surface) *high-jump-mods*)
         )
       )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -1722,7 +1682,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (when (using-gun? self)
@@ -1819,7 +1778,6 @@
         #f
         )
       )
-    (none)
     )
   :post target-post
   )
@@ -1838,7 +1796,6 @@
       )
     (set! (-> self control unknown-word04) (the-as uint arg0))
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (target-falling-trans
@@ -1849,7 +1806,6 @@
                              )
               )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (case arg0
@@ -1877,7 +1833,6 @@
        )
       )
     (target-falling-anim -1 (seconds 0.33))
-    (none)
     )
   :post target-post
   )
@@ -1980,11 +1935,9 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still lleg-no-ik rleg-no-ik))
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
@@ -2031,12 +1984,10 @@
         )
     (fall-test target-falling -4096000.0)
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-hit-ground-anim #f (are-still?))
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2105,19 +2056,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> event param 0))
+           (the-as touching-shapes-entry (-> block param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (when (target-send-attack
                   proc
                   (-> self control danger-mode)
-                  (the-as touching-shapes-entry (-> event param 0))
+                  (the-as touching-shapes-entry (-> block param 0))
                   (the-as int (-> self control target-attack-id))
                   (the-as int (-> self control attack-count))
                   (-> self control penetrate-using)
@@ -2130,12 +2081,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler proc arg1 event-type event)
+           (target-dangerous-event-handler proc argc message block)
            )
          )
        )
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -2150,7 +2101,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -2173,7 +2124,6 @@
     (quaternion-copy! (-> self control unknown-quaternion04) (-> self control dir-targ))
     (set! (-> self control unknown-float41) 0.0)
     (set! (-> self control unknown-float42) 0.0)
-    (none)
     )
   :exit (behavior ()
     (if (zero? (-> self gun track-target-hold-time))
@@ -2181,7 +2131,6 @@
         )
     (set! (-> self control last-attack-end-time) (current-time))
     (target-exit)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (-> self draw art-group data 40)))
@@ -2327,7 +2276,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2361,19 +2309,19 @@
 
 ;; failed to figure out what this is:
 (defstate target-running-attack (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (cond
          (((method-of-type touching-shapes-entry prims-touching?)
-           (the-as touching-shapes-entry (-> event param 0))
+           (the-as touching-shapes-entry (-> block param 0))
            (-> self control)
            (the-as uint 1920)
            )
           (let ((gp-1 (target-send-attack
                         proc
                         (-> self control danger-mode)
-                        (the-as touching-shapes-entry (-> event param 0))
+                        (the-as touching-shapes-entry (-> block param 0))
                         (the-as int (-> self control target-attack-id))
                         (the-as int (-> self control attack-count))
                         (-> self control penetrate-using)
@@ -2423,12 +2371,12 @@
             )
           )
          (else
-           (target-dangerous-event-handler proc arg1 event-type event)
+           (target-dangerous-event-handler proc argc message block)
            )
          )
        )
       (('gun-combo)
-       (if (-> event param 0)
+       (if (-> block param 0)
            (go target-stance)
            )
        #t
@@ -2437,7 +2385,7 @@
        #f
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -2478,7 +2426,6 @@
         (set! (-> self control bend-target) 1.0)
         )
     (set! (-> self upper-body twist z) 0.0)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -2487,7 +2434,6 @@
     (set! (-> *run-attack-mods* turnvv) 0.0)
     (set! (-> self control last-running-attack-end-time) (current-time))
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (!= (-> self state-time) (current-time))
@@ -2562,7 +2508,6 @@
         (talker-spawn-func (-> *talker-speech* 328) *entity-pool* (target-pos 0) (the-as region #f))
         )
       )
-    (none)
     )
   :code (behavior ()
     (if (logtest? (water-flags touch-water) (-> self water flags))
@@ -2825,7 +2770,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-post
   )
@@ -2883,15 +2827,15 @@
 
 ;; failed to figure out what this is:
 (defstate target-attack-air (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (let ((v0-0 (target-bonk-event-handler proc argc message block)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
         (else
-          (target-dangerous-event-handler proc arg1 event-type event)
+          (target-dangerous-event-handler proc argc message block)
           )
         )
       )
@@ -2969,14 +2913,12 @@
       )
     (set! (-> self control dynam gravity-length) 122880.0)
     (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
-    (none)
     )
   :exit (behavior ()
     (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (set! (-> self control last-attack-end-time) (current-time))
     (target-exit)
-    (none)
     )
   :trans (behavior ()
     (when (logtest? (-> self control status) (collide-status on-surface))
@@ -3017,12 +2959,10 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-attack-air-anim)
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
@@ -3090,7 +3030,6 @@
         )
     (set! (-> self control unknown-sound-id00) (new 'static 'sound-id))
     0
-    (none)
     )
   :exit (behavior ()
     (if (not (and (-> self next-state) (= (-> self next-state name) 'target-darkjak-bomb1)))
@@ -3106,7 +3045,6 @@
           )
         )
     (target-exit)
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (let* ((v1-2 (ja-group))
@@ -3192,17 +3130,16 @@
         )
       )
     (go target-attack-uppercut-jump arg0 arg1)
-    (none)
     )
   :post target-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-attack-uppercut-jump (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3234,7 +3171,7 @@
        #t
        )
       (else
-        (target-dangerous-event-handler proc arg1 event-type event)
+        (target-dangerous-event-handler proc argc message block)
         )
       )
     )
@@ -3253,7 +3190,6 @@
     (set! (-> self gun combo-window-state) (-> self state name))
     (set! (-> self gun track-target-hold-time) 0)
     0
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -3305,7 +3241,6 @@
         (target-danger-set! 'harmless #f)
         )
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (when (or (= (-> self skel top-anim frame-group) (-> self draw art-group data 267))
@@ -3376,22 +3311,21 @@
       )
     (set! (-> self gun surpress-time) (current-time))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-flop (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v1-0 symbol))
-    (let ((v0-0 (target-bonk-event-handler proc arg1 event-type event)))
+    (let ((v0-0 (target-bonk-event-handler proc argc message block)))
       (cond
         (v0-0
           (empty)
           v0-0
           )
-        ((begin (set! v1-0 event-type) (= v1-0 'slide))
+        ((begin (set! v1-0 message) (= v1-0 'slide))
          #f
          )
         ((= v1-0 'swim)
@@ -3407,7 +3341,7 @@
            )
          )
         (else
-          (target-dangerous-event-handler proc arg1 event-type event)
+          (target-dangerous-event-handler proc argc message block)
           )
         )
       )
@@ -3451,7 +3385,6 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-2 (get-channel (-> self skel top-anim) 0)))
@@ -3468,7 +3401,6 @@
     (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
     (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad))
     (set! (-> self neck flex-blend) 1.0)
-    (none)
     )
   :trans (behavior ()
     (delete-back-vel)
@@ -3534,7 +3466,6 @@
       (target-start-attack)
       (target-danger-set! 'flop #f)
       )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float) (arg2 float))
     (if (using-gun? self)
@@ -3660,27 +3591,26 @@
         )
       )
     #f
-    (none)
     )
   :post target-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-flop-hit-ground (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (cond
       ((and (-> self next-state) (= (-> self next-state name) 'target-flop-hit-ground))
-       (case event-type
+       (case message
          (('swim 'slide)
           #f
           )
          (else
-           (target-standard-event-handler proc arg1 event-type event)
+           (target-standard-event-handler proc argc message block)
            )
          )
        )
       (else
-        (target-jump-event-handler proc arg1 event-type event)
+        (target-jump-event-handler proc argc message block)
         )
       )
     )
@@ -3710,7 +3640,6 @@
       (else
         )
       )
-    (none)
     )
   :exit target-exit
   :trans (behavior ()
@@ -3743,25 +3672,23 @@
           )
       )
     (slide-down-test)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (target-hit-ground-anim arg0 (are-still?))
     (go target-falling #f)
-    (none)
     )
   :post target-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-roll (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (if (= event-type 'touched)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (= message 'touched)
         (send-event proc 'roll)
         )
-    (case event-type
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3775,7 +3702,7 @@
        #t
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
@@ -3797,7 +3724,6 @@
     (set! (-> self control unknown-word04) (the-as uint 0))
     (set! (-> self control did-move-to-pole-or-max-jump-height) 0.0)
     (set! (-> self gun track-target-hold-time) 0)
-    (none)
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (= (-> self next-state name) 'target-roll)))
@@ -3806,7 +3732,6 @@
       )
     (target-exit)
     (target-collide-set! 'normal 0.0)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 0))
@@ -3919,17 +3844,16 @@
           )
     (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.2)))
     (go target-duck-stance 'roll)
-    (none)
     )
   :post target-post
   )
 
 ;; failed to figure out what this is:
 (defstate target-roll-flip (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('gun-combo)
-       (when (-> event param 0)
+       (when (-> block param 0)
          (forward-up-nopitch->quaternion
            (-> self control dir-targ)
            (vector-! (new 'stack-no-clear 'vector) (-> self gun track-trans) (-> self control trans))
@@ -3941,7 +3865,7 @@
        #t
        )
       (else
-        (target-jump-event-handler proc arg1 event-type event)
+        (target-jump-event-handler proc argc message block)
         )
       )
     )
@@ -3953,12 +3877,10 @@
     (set! (-> self gun combo-window-start) (current-time))
     (set! (-> self gun combo-window-state) (-> self state name))
     (target-collide-set! 'duck 1.0)
-    (none)
     )
   :exit (behavior ()
     (target-exit)
     (target-collide-set! 'normal 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (and (or (smack-surface? #f)
@@ -3983,7 +3905,6 @@
              )
         (go target-attack-air #f)
         )
-    (none)
     )
   :code (behavior ((arg0 float) (arg1 float))
     (local-vars (v1-37 symbol))
@@ -4111,7 +4032,6 @@
           )
         )
       )
-    (none)
     )
   :post target-post
   )

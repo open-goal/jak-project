@@ -628,16 +628,6 @@
 
 ;; definition for method 74 of type rhino
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 10]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 25]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 30]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 45]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 151]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 216]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 272]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 318]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 323]
 (defmethod general-event-handler rhino ((obj rhino) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
@@ -655,187 +645,182 @@
     (sv-256 vector)
     (sv-272 matrix)
     )
-  (let ((v1-0 arg2))
-    (the-as
-      object
-      (cond
-        ((= v1-0 'charge)
-         (if (-> obj wall)
-             (go (method-of-object obj charge))
-             )
+  (case arg2
+    (('charge)
+     (if (-> obj wall)
+         (go (method-of-object obj charge))
          )
-        ((= v1-0 'hit)
-         (cond
-           ((zero? (-> obj hit-points))
-            (set! (-> *rhino-nav-enemy-info* die-anim) 15)
-            (set! (-> obj frame-die-smush) 11.0)
-            (kill-prefer-falling obj)
-            )
-           (else
-             ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-             )
-           )
-         )
-        ((= v1-0 'hit-flinch)
-         (cond
-           ((zero? (-> obj hit-points))
-            (set! (-> *rhino-nav-enemy-info* die-anim) 14)
-            (set! (-> obj frame-die-smush) 16.0)
-            (kill-prefer-falling obj)
-            )
-           (else
-             (let* ((s5-0 arg0)
-                    (s2-0 (if (type? s5-0 process-drawable)
-                              s5-0
-                              )
-                          )
-                    (s3-0 (new 'stack-no-clear 'vector))
-                    (s4-0 (new 'stack-no-clear 'vector))
-                    (s5-1 (new 'stack-no-clear 'vector))
-                    )
-               (vector-z-quaternion! s3-0 (-> obj root quat))
-               (vector-x-quaternion! s4-0 (-> obj root quat))
-               (vector-! s5-1 (-> (the-as process-focusable s2-0) root trans) (-> obj root trans))
-               (set! (-> s5-1 y) 0.0)
-               (vector-normalize! s5-1 1.0)
-               (let* ((f30-0 (vector-dot s3-0 s5-1))
-                      (f28-0 (vector-dot s4-0 s5-1))
-                      (a0-16 (cond
-                               ((>= f30-0 (cos 8192.0))
-                                (-> obj draw art-group data 16)
-                                )
-                               ((>= (cos 24576.0) f30-0)
-                                (-> obj draw art-group data 19)
-                                )
-                               ((>= f28-0 (cos 8192.0))
-                                (-> obj draw art-group data 17)
-                                )
-                               ((>= (cos 24576.0) f28-0)
-                                (-> obj draw art-group data 18)
-                                )
-                               (else
-                                 (-> obj draw art-group data 16)
-                                 )
-                               )
-                             )
-                      (v0-9 (ja-channel-float! (the-as art-joint-anim a0-16) 0.0 0.0 0.0))
-                      )
-                 (when v0-9
-                   (set! (-> obj skel interp-select 0) (the-as int (the-as uint #x1c9002228)))
-                   (set! (-> obj skel interp-select 1) 0)
-                   (set! (-> v0-9 param 0) 1.0)
-                   (set! (-> v0-9 param 1) 1.0)
-                   (set! (-> v0-9 param 2) 3.0)
-                   (set! (-> v0-9 num-func) num-func-interp1-play!)
-                   )
-                 )
-               )
-             (+! (-> obj num-hit-flinch) 1)
-             'back
-             )
-           )
-         )
-        ((= v1-0 'event-slide-poof)
-         (let ((s5-2 (-> arg3 param 1)))
-           (cond
-             ((= (-> obj root ground-pat material) (pat-material grass))
-              (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                (when s4-1
-                  (let ((t9-14 (method-of-type part-tracker activate)))
-                    (t9-14 (the-as part-tracker s4-1) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                    )
-                  (let ((s3-1 run-function-in-process)
-                        (s2-1 s4-1)
-                        (s1-0 part-tracker-init)
-                        (s0-0 (-> *part-group-id-table* 351))
-                        )
-                    (set! sv-96 0)
-                    (set! sv-112 (the-as symbol #f))
-                    (set! sv-128 (the-as symbol #f))
-                    (set! sv-144 (the-as symbol #f))
-                    (set! sv-176 *launch-matrix*)
-                    (set! sv-160 (-> sv-176 trans))
-                    (let ((v1-52 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data s5-2)) quad)))
-                      (set! (-> sv-160 quad) v1-52)
-                      )
-                    ((the-as (function object object object object object object object object none) s3-1)
-                     s2-1
-                     s1-0
-                     s0-0
-                     sv-96
-                     sv-112
-                     sv-128
-                     sv-144
-                     sv-176
-                     )
-                    )
-                  (-> s4-1 ppointer)
-                  )
-                )
-              )
-             (else
-               (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
-                 (when s4-2
-                   (let ((t9-18 (method-of-type part-tracker activate)))
-                     (t9-18 (the-as part-tracker s4-2) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                     )
-                   (let ((s3-2 run-function-in-process)
-                         (s2-2 s4-2)
-                         (s1-1 part-tracker-init)
-                         (s0-1 (-> *part-group-id-table* 350))
-                         )
-                     (set! sv-192 0)
-                     (set! sv-208 (the-as symbol #f))
-                     (set! sv-224 (the-as symbol #f))
-                     (set! sv-240 (the-as symbol #f))
-                     (set! sv-272 *launch-matrix*)
-                     (set! sv-256 (-> sv-272 trans))
-                     (let ((v1-64 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data s5-2)) quad)))
-                       (set! (-> sv-256 quad) v1-64)
-                       )
-                     ((the-as (function object object object object object object object object none) s3-2)
-                      s2-2
-                      s1-1
-                      s0-1
-                      sv-192
-                      sv-208
-                      sv-224
-                      sv-240
-                      sv-272
-                      )
-                     )
-                   (-> s4-2 ppointer)
-                   )
-                 )
-               )
-             )
-           )
-         )
-        ((= v1-0 'interesting)
-         (+! (-> obj interest) 1)
-         (let ((v1-67 (process->ppointer obj)))
-           (set-setting! 'handle-of-interest v1-67 0.0 (-> v1-67 0 pid))
-           )
-         )
-        ((= v1-0 'uninteresting)
-         (+! (-> obj interest) -1)
-         (when (<= (-> obj interest) 0)
-           (set! (-> obj interest) 0)
-           (remove-setting! 'handle-of-interest)
-           )
-         )
-        ((= v1-0 'death-end)
-         (let ((v1-74 (-> obj root root-prim)))
-           (set! (-> v1-74 prim-core collide-as) (collide-spec))
-           (set! (-> v1-74 prim-core collide-with) (collide-spec))
-           )
-         0
+     )
+    (('hit)
+     (cond
+       ((zero? (-> obj hit-points))
+        (set! (-> *rhino-nav-enemy-info* die-anim) 15)
+        (set! (-> obj frame-die-smush) 11.0)
+        (kill-prefer-falling obj)
+        )
+       (else
          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
          )
-        (else
-          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-          )
+       )
+     )
+    (('hit-flinch)
+     (cond
+       ((zero? (-> obj hit-points))
+        (set! (-> *rhino-nav-enemy-info* die-anim) 14)
+        (set! (-> obj frame-die-smush) 16.0)
+        (kill-prefer-falling obj)
         )
+       (else
+         (let* ((s5-0 arg0)
+                (s2-0 (if (type? s5-0 process-drawable)
+                          s5-0
+                          )
+                      )
+                (s3-0 (new 'stack-no-clear 'vector))
+                (s4-0 (new 'stack-no-clear 'vector))
+                (s5-1 (new 'stack-no-clear 'vector))
+                )
+           (vector-z-quaternion! s3-0 (-> obj root quat))
+           (vector-x-quaternion! s4-0 (-> obj root quat))
+           (vector-! s5-1 (-> (the-as process-focusable s2-0) root trans) (-> obj root trans))
+           (set! (-> s5-1 y) 0.0)
+           (vector-normalize! s5-1 1.0)
+           (let* ((f30-0 (vector-dot s3-0 s5-1))
+                  (f28-0 (vector-dot s4-0 s5-1))
+                  (a0-16 (cond
+                           ((>= f30-0 (cos 8192.0))
+                            (-> obj draw art-group data 16)
+                            )
+                           ((>= (cos 24576.0) f30-0)
+                            (-> obj draw art-group data 19)
+                            )
+                           ((>= f28-0 (cos 8192.0))
+                            (-> obj draw art-group data 17)
+                            )
+                           ((>= (cos 24576.0) f28-0)
+                            (-> obj draw art-group data 18)
+                            )
+                           (else
+                             (-> obj draw art-group data 16)
+                             )
+                           )
+                         )
+                  (v0-9 (ja-channel-float! (the-as art-joint-anim a0-16) 0.0 0.0 0.0))
+                  )
+             (when v0-9
+               (set! (-> obj skel interp-select 0) (the-as int (the-as uint #x1c9002228)))
+               (set! (-> obj skel interp-select 1) 0)
+               (set! (-> v0-9 param 0) 1.0)
+               (set! (-> v0-9 param 1) 1.0)
+               (set! (-> v0-9 param 2) 3.0)
+               (set! (-> v0-9 num-func) num-func-interp1-play!)
+               )
+             )
+           )
+         (+! (-> obj num-hit-flinch) 1)
+         'back
+         )
+       )
+     )
+    (('event-slide-poof)
+     (let ((s5-2 (-> arg3 param 1)))
+       (cond
+         ((= (-> obj root ground-pat material) (pat-material grass))
+          (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
+            (when s4-1
+              (let ((t9-14 (method-of-type part-tracker activate)))
+                (t9-14 (the-as part-tracker s4-1) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                )
+              (let ((s3-1 run-function-in-process)
+                    (s2-1 s4-1)
+                    (s1-0 part-tracker-init)
+                    (s0-0 (-> *part-group-id-table* 351))
+                    )
+                (set! sv-96 0)
+                (set! sv-112 (the-as symbol #f))
+                (set! sv-128 (the-as symbol #f))
+                (set! sv-144 (the-as symbol #f))
+                (set! sv-176 *launch-matrix*)
+                (set! sv-160 (-> sv-176 trans))
+                (let ((v1-52 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data s5-2)) quad)))
+                  (set! (-> sv-160 quad) v1-52)
+                  )
+                ((the-as (function object object object object object object object object none) s3-1)
+                 s2-1
+                 s1-0
+                 s0-0
+                 sv-96
+                 sv-112
+                 sv-128
+                 sv-144
+                 sv-176
+                 )
+                )
+              (-> s4-1 ppointer)
+              )
+            )
+          )
+         (else
+           (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
+             (when s4-2
+               (let ((t9-18 (method-of-type part-tracker activate)))
+                 (t9-18 (the-as part-tracker s4-2) obj (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
+                 )
+               (let ((s3-2 run-function-in-process)
+                     (s2-2 s4-2)
+                     (s1-1 part-tracker-init)
+                     (s0-1 (-> *part-group-id-table* 350))
+                     )
+                 (set! sv-192 0)
+                 (set! sv-208 (the-as symbol #f))
+                 (set! sv-224 (the-as symbol #f))
+                 (set! sv-240 (the-as symbol #f))
+                 (set! sv-272 *launch-matrix*)
+                 (set! sv-256 (-> sv-272 trans))
+                 (let ((v1-64 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data s5-2)) quad)))
+                   (set! (-> sv-256 quad) v1-64)
+                   )
+                 ((the-as (function object object object object object object object object none) s3-2)
+                  s2-2
+                  s1-1
+                  s0-1
+                  sv-192
+                  sv-208
+                  sv-224
+                  sv-240
+                  sv-272
+                  )
+                 )
+               (-> s4-2 ppointer)
+               )
+             )
+           )
+         )
+       )
+     )
+    (('interesting)
+     (+! (-> obj interest) 1)
+     (let ((v1-67 (process->ppointer obj)))
+       (set-setting! 'handle-of-interest v1-67 0.0 (-> v1-67 0 pid))
+       )
+     )
+    (('uninteresting)
+     (+! (-> obj interest) -1)
+     (when (<= (-> obj interest) 0)
+       (set! (-> obj interest) 0)
+       (remove-setting! 'handle-of-interest)
+       )
+     )
+    (('death-end)
+     (let ((v1-74 (-> obj root root-prim)))
+       (set! (-> v1-74 prim-core collide-as) (collide-spec))
+       (set! (-> v1-74 prim-core collide-with) (collide-spec))
+       )
+     0
+     ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -853,7 +838,6 @@
           )
       )
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
-    (none)
     )
   :exit (behavior ()
     (local-vars (v0-1 enemy-flag))
@@ -869,7 +853,6 @@
           )
       )
     (set! (-> self enemy-flags) v0-1)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -893,7 +876,6 @@
             )
         )
       )
-    (none)
     )
   )
 
@@ -905,7 +887,6 @@
     (dispose! self)
     (set! (-> self hit-points) 0)
     0
-    (none)
     )
   :code (behavior ()
     (set! (-> self smush-target) (the-as smush-control #t))
@@ -939,7 +920,6 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1007,7 +987,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (go-hostile self)
-    (none)
     )
   )
 
@@ -1049,40 +1028,37 @@
                    )
                )
          )
-    (the-as
-      object
-      (when (and (the-as uint touch-entry) v1-0)
-        (cond
-          ((and (focus-test? obj dangerous) ((method-of-type touching-shapes-entry prims-touching-action?)
-                                             touch-entry
-                                             (-> obj root)
-                                             (collide-action deadly)
-                                             (collide-action)
-                                             )
-                )
-           (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
-                            touch-entry
-                            (-> obj root)
-                            (collide-action persistent-attack)
-                            (collide-action)
-                            )
-                           (-> obj persistent-attack-id)
-                           (-> obj attack-id)
-                           )
-                       )
-                 )
-             (enemy-method-104 obj arg0 touch-entry a3-2)
-             )
+    (when (and (the-as uint touch-entry) v1-0)
+      (cond
+        ((and (focus-test? obj dangerous) ((method-of-type touching-shapes-entry prims-touching-action?)
+                                           touch-entry
+                                           (-> obj root)
+                                           (collide-action deadly)
+                                           (collide-action)
+                                           )
+              )
+         (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                          touch-entry
+                          (-> obj root)
+                          (collide-action persistent-attack)
+                          (collide-action)
+                          )
+                         (-> obj persistent-attack-id)
+                         (-> obj attack-id)
+                         )
+                     )
+               )
+           (enemy-method-104 obj arg0 touch-entry a3-2)
            )
-          (((method-of-type touching-shapes-entry prims-touching-action?)
-            touch-entry
-            (-> obj root)
-            (collide-action no-standon)
-            (collide-action)
-            )
-           (send-shoves (-> obj root) arg0 touch-entry 0.7 6144.0 16384.0)
-           )
+         )
+        (((method-of-type touching-shapes-entry prims-touching-action?)
+          touch-entry
+          (-> obj root)
+          (collide-action no-standon)
+          (collide-action)
           )
+         (send-shoves (-> obj root) arg0 touch-entry 0.7 6144.0 16384.0)
+         )
         )
       )
     )
@@ -1128,7 +1104,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   )
 
@@ -1141,7 +1116,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   )
 
@@ -1172,7 +1146,6 @@
     (if (and (= (-> self victory-count) 3) (not (-> self stomach-touched-once?)))
         (talker-spawn-func (-> *talker-speech* 59) *entity-pool* (target-pos 0) (the-as region #f))
         )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self can-hit?) #f)
@@ -1192,7 +1165,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -1293,7 +1265,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1344,13 +1315,11 @@
         )
       )
     0
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (current-time) (-> self state-time)) (seconds 1.5))
         (go-virtual active)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
@@ -1366,11 +1335,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1389,7 +1356,6 @@
     (nav-enemy-method-166 self)
     (set! (-> self state-time) (current-time))
     (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -1475,7 +1441,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1488,7 +1453,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1500,7 +1464,6 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1534,7 +1497,6 @@
       (set! (-> a0-10 target-post quad) (-> v1-17 quad))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -1542,11 +1504,9 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -1567,7 +1527,6 @@
           (go-hostile self)
           )
       )
-    (none)
     )
   :post (the-as (function none :behavior rhino) nav-enemy-travel-post)
   )
@@ -1632,7 +1591,6 @@
     (set! (-> self angle-speed) 0.0)
     (set! (-> self num-hit-flinch) 0)
     0
-    (none)
     )
   :exit (behavior ()
     (let ((v1-1 (-> self nav state)))
@@ -1644,7 +1602,6 @@
       )
     0
     (set! (-> self in-stop-run) #f)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1713,7 +1670,6 @@
         (go-virtual victory)
         (go-virtual hostile)
         )
-    (none)
     )
   :post (the-as (function none :behavior rhino) nav-enemy-travel-post)
   )
@@ -1747,11 +1703,9 @@
       (vector-xz-normalize! s5-1 163840.0)
       (vector+! (-> self dest) gp-0 s5-1)
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self wall) #f)
-    (none)
     )
   :code (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1796,7 +1750,6 @@
       (ja :num! (seek!))
       )
     (go-virtual victory)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -1808,7 +1761,6 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1825,7 +1777,6 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   )
 
@@ -1842,7 +1793,6 @@
       (set! (-> v1-5 speed) 0.0)
       )
     0
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -1937,7 +1887,6 @@
         )
       )
     #f
-    (none)
     )
   )
 

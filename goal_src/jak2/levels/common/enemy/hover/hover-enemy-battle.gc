@@ -39,7 +39,7 @@
   :flag-assert         #x13003000a8
   (:methods
     (idle () _type_ :state 14)
-    (spawning (object object process pointer) _type_ :state 15)
+    (spawning () _type_ :state 15)
     (die () _type_ :state 16)
     (hover-enemy-manager-init! (_type_ (array hover-enemy-battle-command)) none 17)
     (spawn-enemy (_type_ uint) none 18)
@@ -142,13 +142,13 @@
 
 (defstate idle (hover-enemy-manager)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
-       (go-virtual spawning proc arg1 (the-as process event-type) (the-as pointer event))
+       (go-virtual spawning)
        )
       (else
-        (hover-enemy-manager-handler proc arg1 event-type event)
+        (hover-enemy-manager-handler proc argc message block)
         )
       )
     )
@@ -158,25 +158,24 @@
 
 (defstate spawning (hover-enemy-manager)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('spawning?)
        #t
        )
       (else
-        (hover-enemy-manager-handler proc arg1 event-type event)
+        (hover-enemy-manager-handler proc argc message block)
         )
       )
     )
-  :enter (behavior ((arg0 object) (arg1 object) (arg2 process) (arg3 pointer))
-    (let ((a0-1 (-> self formation)))
-      (if a0-1
-          (set-anchor-proc a0-1 (process->handle *target*))
+  :enter (behavior ()
+    (let ((a0-0 (-> self formation)))
+      (if a0-0
+          (set-anchor-proc a0-0 (process->handle *target*))
           )
       )
-    (none)
     )
-  :code (behavior ((arg0 object) (arg1 object) (arg2 process) (arg3 pointer))
+  :code (behavior ()
     (let ((gp-0 (-> self command-table)))
       (dotimes (s5-0 (-> gp-0 length))
         (case (-> gp-0 s5-0 command)
@@ -202,7 +201,6 @@
         )
       )
     (go-virtual die)
-    (none)
     )
   :post hover-enemy-manager-post
   )
@@ -215,7 +213,6 @@
       (suspend)
       )
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
@@ -312,7 +309,6 @@
   (none)
   )
 
-;; WARN: Return type mismatch process-tree vs process.
 (defun hover-manager-spawn ((arg0 turret) (arg1 entity-actor) (arg2 (array hover-enemy-battle-command)))
-  (the-as process (ppointer->process (process-spawn hover-enemy-manager arg1 arg2 :to arg0)))
+  (ppointer->process (process-spawn hover-enemy-manager arg1 arg2 :to arg0))
   )

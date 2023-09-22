@@ -11,7 +11,6 @@
 
 ;; DECOMP BEGINS
 
-
 (defskelgroup *med-res-snow1-sg* medres-snowback 0 2
               ((1 (meters 999999)))
               :bounds (static-spherem -360 100 100 380)
@@ -19,11 +18,11 @@
               )
 
 (defstate cam-robotboss (camera-slave)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('set-pivot)
        (let ((v0-0 (the-as object (-> self pivot-pt))))
-         (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> event param 0)) quad))
+         (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> block param 0)) quad))
          v0-0
          )
        )
@@ -31,7 +30,7 @@
        #f
        )
       (else
-        (cam-standard-event-handler proc arg1 event-type event)
+        (cam-standard-event-handler proc argc message block)
         )
       )
     )
@@ -47,14 +46,12 @@
         (set! (-> self blend-to-type) (the-as uint 2))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (when (not (logtest? (-> *camera* master-options) 2))
       (set! *camera-base-mode* cam-string)
       (cam-slave-go cam-free-floating)
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -85,7 +82,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -157,61 +153,56 @@
   )
 
 ;; ERROR: Failed load: (set! a0-3 (l.wu (+ gp-1 -4))) at op 13
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 28]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 79]
 (defbehavior ecoclaw-handler ecoclaw ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as
-    object
-    (case arg2
-      (('open)
-       (let ((gp-1 (-> arg3 param 0)))
-         (set! (-> self particles 0 kind)
-               (the-as basic (if (and (nonzero? gp-1) (type-type? (rtype-of gp-1) sparticle-launch-group))
-                                 gp-1
-                                 )
-                       )
-               )
-         )
-       (set! (-> self particles 0 trans quad) (-> self root trans quad))
-       (set! (-> self particles 0 trans y) (+ 12288.0 (-> self particles 0 trans y)))
-       )
-      (('beam-on)
-       (let ((s5-0 (-> arg3 param 0)))
-         (set! (-> self particles 1 kind)
-               (the-as basic (if (and (nonzero? s5-0) (type-type? (rtype-of s5-0) sparticle-launch-group))
-                                 s5-0
-                                 )
-                       )
-               )
-         )
-       (set! (-> self particles 1 trans quad) (-> self root trans quad))
-       (+! (-> self particles 1 trans y) 24576.0)
-       (let ((s5-1 (-> arg3 param 1)))
-         (set! (-> self particles 2 kind)
-               (the-as basic (if (and (nonzero? s5-1) (type-type? (rtype-of s5-1) sparticle-launch-group))
-                                 s5-1
-                                 )
-                       )
-               )
-         )
-       (set! (-> self particles 2 trans quad) (-> (the-as vector (-> arg3 param 2)) quad))
-       (set! (-> self particles 2 trans y) (+ 81920.0 (-> self particles 2 trans y)))
-       )
-      (('beam-off)
-       (set! (-> self particles 1 kind) #f)
-       (set! (-> self particles 2 kind) #f)
-       (let ((a0-10 (handle->process (-> self particles 1 tracker))))
-         (if a0-10
-             (deactivate a0-10)
+  (case arg2
+    (('open)
+     (let ((gp-1 (-> arg3 param 0)))
+       (set! (-> self particles 0 kind)
+             (the-as basic (if (and (nonzero? gp-1) (type-type? (rtype-of gp-1) sparticle-launch-group))
+                               gp-1
+                               )
+                     )
              )
-         )
-       (let ((a0-14 (handle->process (-> self particles 2 tracker))))
-         (if a0-14
-             (deactivate a0-14)
-             )
-         )
        )
-      )
+     (set! (-> self particles 0 trans quad) (-> self root trans quad))
+     (set! (-> self particles 0 trans y) (+ 12288.0 (-> self particles 0 trans y)))
+     )
+    (('beam-on)
+     (let ((s5-0 (-> arg3 param 0)))
+       (set! (-> self particles 1 kind)
+             (the-as basic (if (and (nonzero? s5-0) (type-type? (rtype-of s5-0) sparticle-launch-group))
+                               s5-0
+                               )
+                     )
+             )
+       )
+     (set! (-> self particles 1 trans quad) (-> self root trans quad))
+     (+! (-> self particles 1 trans y) 24576.0)
+     (let ((s5-1 (-> arg3 param 1)))
+       (set! (-> self particles 2 kind)
+             (the-as basic (if (and (nonzero? s5-1) (type-type? (rtype-of s5-1) sparticle-launch-group))
+                               s5-1
+                               )
+                     )
+             )
+       )
+     (set! (-> self particles 2 trans quad) (-> (the-as vector (-> arg3 param 2)) quad))
+     (set! (-> self particles 2 trans y) (+ 81920.0 (-> self particles 2 trans y)))
+     )
+    (('beam-off)
+     (set! (-> self particles 1 kind) #f)
+     (set! (-> self particles 2 kind) #f)
+     (let ((a0-10 (handle->process (-> self particles 1 tracker))))
+       (if a0-10
+           (deactivate a0-10)
+           )
+       )
+     (let ((a0-14 (handle->process (-> self particles 2 tracker))))
+       (if a0-14
+           (deactivate a0-14)
+           )
+       )
+     )
     )
   )
 
@@ -245,7 +236,6 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -256,7 +246,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior ecoclaw) ja-post)
   )
@@ -270,7 +259,6 @@
           )
       (suspend)
       )
-    (none)
     )
   :post (the-as (function none :behavior ecoclaw) ja-post)
   )
@@ -309,10 +297,10 @@
 
 (defstate idle (silodoor)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
-       (set! (-> self part-opened) (the-as float (-> event param 0)))
+       (set! (-> self part-opened) (the-as float (-> block param 0)))
        )
       (('hide)
        (go-virtual hidden)
@@ -337,14 +325,12 @@
         )
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (if (and (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 57344.0) (not (ja-min? 0)))
         (rider-post)
         (transform-post)
         )
-    (none)
     )
   )
 
@@ -363,7 +349,6 @@
     (ja :num-func num-func-identity :frame-num 0.0)
     (set! (-> self part-opened) 0.0)
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -504,7 +489,6 @@
           )
       )
     ((-> (method-of-type process-taskable play-anim) exit))
-    (none)
     )
   )
 
