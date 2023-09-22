@@ -403,6 +403,13 @@
   (pc-get-collision-mask (pc-collision-mode skip) arg)
   )
 
+(defun dm-collision-filter-skiphide-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode skiphide) arg (not (pc-get-collision-mask (pc-collision-mode skiphide) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode skiphide) arg)
+  )
+
 (defun debug-menu-make-collision-renderer-menu ((ctx debug-menu-context))
   (let ((menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer menu")))
       ;; master toggle
@@ -434,8 +441,15 @@
               filter-menu)))
       (debug-menu-append-item menu (new-dm-submenu "Filter skip"
           (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer filter skip menu")))
+              (debug-menu-append-item filter-menu (new-dm-flag "(no skip)" -1 dm-collision-filter-skip-pick-func))
               (doenum (name val pc-pat-skip-hack)
                   (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skip-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Hide skip"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer hide skip menu")))
+              (doenum (name val pc-pat-skip-hack)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skiphide-pick-func))
                   )
               filter-menu)))
 

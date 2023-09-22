@@ -325,24 +325,34 @@ void handle_collide_fragment(const TypedRef& collide_fragment,
                          4 * (max_pat + 1));
 
   for (const auto& p : polys) {
+    math::Vector4f verts_in[3];
     for (int vi = 0; vi < 3; vi++) {
       int v = p.vert_index[vi];
-      auto& vert_out = out->emplace_back();
-      vert_out.flags = 0;
-      math::Vector4f pt(u32(verts.at(v * 3)) * 16 + bbox_min.data[0],
-                        u32(verts.at(v * 3 + 1)) * 16 + bbox_min.data[1],
-                        u32(verts.at(v * 3 + 2)) * 16 + bbox_min.data[2], 1.f);
+      verts_in[vi] = {u32(verts.at(v * 3)) * 16 + bbox_min.data[0],
+                      u32(verts.at(v * 3 + 1)) * 16 + bbox_min.data[1],
+                      u32(verts.at(v * 3 + 2)) * 16 + bbox_min.data[2], 1.f};
       if (matrix) {
-        pt = transform_tie(*matrix, pt);
+        verts_in[vi] = transform_tie(*matrix, verts_in[vi]);
       }
-      vert_out.x = pt.x();
-      vert_out.y = pt.y();
-      vert_out.z = pt.z();
+    }
+
+    math::Vector3f v10 = verts_in[1].xyz() - verts_in[0].xyz();
+    math::Vector3f v20 = verts_in[2].xyz() - verts_in[0].xyz();
+    auto normal = (v10.cross(v20).normalized() * INT16_MAX).cast<s16>();
+    for (int i = 0; i < 3; i++) {
+      auto& vert_out = out->emplace_back();
+      vert_out.x = verts_in[i].x();
+      vert_out.y = verts_in[i].y();
+      vert_out.z = verts_in[i].z();
+      vert_out.nx = normal.x();
+      vert_out.ny = normal.y();
+      vert_out.nz = normal.z();
+      vert_out.flags = 0;  // todo
       vert_out.pad = 0;
       vert_out.pad2 = 0;
       vert_out.pat = pats.at(p.pat);
     }
-  };
+  }
 }
 
 void extract_collide_frags(const level_tools::CollideHash& chash,

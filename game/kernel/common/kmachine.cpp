@@ -769,7 +769,7 @@ void pc_renderer_tree_set_lod(Gfx::RendererTreeType tree, int lod) {
   }
 }
 
-void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
+void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask, u32 symptr) {
   if (symbol_to_bool(symptr)) {
     Gfx::CollisionRendererSetMask(mode, mask);
   } else {
@@ -777,7 +777,7 @@ void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int ma
   }
 }
 
-u32 pc_get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
+u32 pc_get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask) {
   return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + true_symbol_offset(g_game_version)
                                                    : s7.offset;
 }
