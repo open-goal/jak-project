@@ -4841,7 +4841,6 @@ FormElement* try_make_logtest_mouse_macro(Form* in, FormPool& pool) {
       t = REL;
     }
 
-    printf("t is %d\n", t);
     if (t != NIL) {
       auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
       if (logtest_elt) {
