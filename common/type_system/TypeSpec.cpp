@@ -136,3 +136,12 @@ void TypeSpec::add_or_modify_tag(const std::string& tag_name, const std::string&
   }
   m_tags.push_back({tag_name, tag_value});
 }
+
+void TypeSpec::delete_tag(const std::string& tag_name) {
+  for (size_t i = 0; i < m_tags.size(); ++i) {
+    if (m_tags.at(i).name == tag_name) {
+      m_tags.erase(m_tags.begin() + i);
+      return;
+    }
+  }
+}

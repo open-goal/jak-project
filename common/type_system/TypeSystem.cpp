@@ -1590,7 +1590,7 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
       if (!got) {
         success = false;
       } else {
-        if (*got != tag.value) {
+        if (!tc(tag.value, *got)) {
           success = false;
         }
       }
