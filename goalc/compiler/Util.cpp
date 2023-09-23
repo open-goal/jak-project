@@ -214,14 +214,14 @@ void Compiler::for_each_in_list(const goos::Object& list,
 /*!
  * Convert a goos::Object that's a string to a std::string. Must be a string.
  */
-std::string Compiler::as_string(const goos::Object& o) {
+const std::string& Compiler::as_string(const goos::Object& o) {
   return o.as_string()->data;
 }
 
 /*!
  * Convert a goos::Object that's a symbol to a std::string. Must be a string.
  */
-std::string Compiler::symbol_string(const goos::Object& o) {
+const std::string& Compiler::symbol_string(const goos::Object& o) {
   return o.as_symbol()->name;
 }
 

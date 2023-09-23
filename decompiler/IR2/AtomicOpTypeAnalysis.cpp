@@ -1421,53 +1421,68 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   if (in_tp.kind == TP_Type::Kind::FIND_PARENT_METHOD_FUNCTION) {
     bool can_use_call_parent = true;
-    // should be calling this from a method:
-    if (env.func->guessed_name.kind != FunctionName::FunctionKind::METHOD) {
+    TypeSpec call_parent_result_type;
+    const auto& guessed_name = env.func->guessed_name;
+
+    if (guessed_name.kind == FunctionName::FunctionKind::METHOD ||
+        guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+      // should call something like:
+      // (find-parent-method sharkey 39)
+      const auto& type_arg = input.get(Register(Reg::GPR, Reg::A0));
+      if (can_use_call_parent && type_arg.kind != TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        lg::warn(
+            "Can't use call-parent-method because the first argument to find-parent-method is a "
+            "{}, which should be a type",
+            type_arg.print());
+        can_use_call_parent = false;
+      }
+
+      if (can_use_call_parent && type_arg.get_type_objects_typespec() != guessed_name.type_name) {
+        lg::warn(
+            "Can't use call-parent-method because the first argument type is wrong: got {}, but "
+            "expected {}",
+            type_arg.get_type_objects_typespec().print(), guessed_name.type_name);
+        can_use_call_parent = false;
+      }
+      const auto& id_arg = input.get(Register(Reg::GPR, Reg::A1));
+      int expected_id = -1;
+      if (guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+        auto state_info = dts.ts.lookup_method(guessed_name.type_name, guessed_name.state_name);
+        expected_id = state_info.id;
+        call_parent_result_type =
+            state_info.type.substitute_for_method_call(guessed_name.type_name);
+      } else {
+        expected_id = guessed_name.method_id;
+        call_parent_result_type = env.func->type;  // same type as this method!
+      }
+      if (can_use_call_parent && !id_arg.is_integer_constant(expected_id)) {
+        lg::warn(
+            "Can't use call-parent-method because the second argument is wrong: got {}, but "
+            "expected a constant integer {}",
+            id_arg.print(), expected_id);
+        can_use_call_parent = false;
+      }
+
+    } else {
       can_use_call_parent = false;
       lg::warn(
           "Can't use call-parent-method because find-parent-method was called in {}, which isn't a "
-          "method.",
+          "method or state handler.",
           env.func->name());
-    }
-    // should call something like:
-    // (find-parent-method sharkey 39)
-    const auto& type_arg = input.get(Register(Reg::GPR, Reg::A0));
-    if (can_use_call_parent && type_arg.kind != TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
-      lg::warn(
-          "Can't use call-parent-method because the first argument to find-parent-method is a {}, "
-          "which should be a type",
-          type_arg.print());
-      can_use_call_parent = false;
-    }
-
-    if (can_use_call_parent && type_arg.get_type_objects_typespec() != env.func->method_of_type) {
-      lg::warn(
-          "Can't use call-parent-method because the first argument type is wrong: got {}, but "
-          "expected {}",
-          type_arg.get_type_objects_typespec().print(), env.func->method_of_type);
-      can_use_call_parent = false;
-    }
-    const auto& id_arg = input.get(Register(Reg::GPR, Reg::A1));
-    if (can_use_call_parent && !id_arg.is_integer_constant(env.func->guessed_name.method_id)) {
-      lg::warn(
-          "Can't use call-parent-method because the second argument is wrong: got {}, but expected "
-          "a constant integer {}",
-          id_arg.print(), env.func->guessed_name.method_id);
-      can_use_call_parent = false;
     }
 
     if (can_use_call_parent) {
-      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(env.func->type);
+      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(call_parent_result_type);
       use_normal_last_arg = false;
     }
   }
 
-  if (use_normal_last_arg) {
-    end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
-  }
-
   if (in_type.arg_count() < 1) {
     throw std::runtime_error("Called a function, but we do not know its type");
+  }
+
+  if (use_normal_last_arg) {
+    end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
   }
 
   // set the call type!

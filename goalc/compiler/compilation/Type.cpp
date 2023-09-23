@@ -1309,6 +1309,47 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
   return get_none();
 }
 
+Val* Compiler::compile_method_id_of_type(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}}, {});
+  auto arg = args.unnamed.at(0);
+  if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
+    auto info = m_ts.lookup_method(symbol_string(arg), symbol_string(args.unnamed.at(1)));
+    return compile_integer(info.id, env);
+  } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+    throw_compiler_error(
+        form, "The method-id-of-type form is ambiguous when used on a forward declared type.");
+  } else {
+    throw_compiler_error(form, "unknown type");
+  }
+}
+
+Val* Compiler::compile_cast_to_method_type(const goos::Object& form,
+                                           const goos::Object& rest,
+                                           Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}, {}}, {});
+  auto arg = args.unnamed.at(0);
+  if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
+    auto info = m_ts.lookup_method(symbol_string(arg), symbol_string(args.unnamed.at(1)));
+
+    auto base = compile_error_guard(args.unnamed.at(2), env);
+    auto result = env->function_env()->alloc_val<AliasVal>(info.type, base);
+    if (base->settable()) {
+      result->mark_as_settable();
+    }
+
+    return result;
+  } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+    throw_compiler_error(
+        form, "The cast-to-method-type form is ambiguous when used on a forward declared type.");
+  } else {
+    throw_compiler_error(form, "unknown type");
+  }
+}
+
 Val* Compiler::compile_method_of_object(const goos::Object& form,
                                         const goos::Object& rest,
                                         Env* env) {
