@@ -1299,8 +1299,8 @@ class DerefElement : public FormElement {
 
  private:
   ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
-  GenericElement* try_as_curtime(FormPool& pool);
-  GenericElement* try_as_seconds_per_frame(FormPool& pool);
+  GenericElement* try_as_curtime(const Env& env, FormPool& pool);
+  GenericElement* try_as_seconds_per_frame(const Env& env, FormPool& pool);
 
   Form* m_base = nullptr;
   bool m_is_addr_of = false;

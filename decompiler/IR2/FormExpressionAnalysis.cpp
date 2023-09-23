@@ -3942,27 +3942,47 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
   return nullptr;
 }
 
-GenericElement* DerefElement::try_as_curtime(FormPool& pool) {
-  auto mr = match(Matcher::deref(Matcher::s6(), false,
-                                 {DerefTokenMatcher::string("clock"),
-                                  DerefTokenMatcher::string("frame-counter")}),
-                  this);
-  if (mr.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+GenericElement* DerefElement::try_as_curtime(const Env& env, FormPool& pool) {
+  if (env.version == GameVersion::Jak1) {
+    auto mr = match(Matcher::deref(Matcher::symbol("*display*"), false,
+                                   {DerefTokenMatcher::string("base-frame-counter")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+    }
+  } else {
+    auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                   {DerefTokenMatcher::string("clock"),
+                                    DerefTokenMatcher::string("frame-counter")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("current-time")));
+    }
   }
 
   return nullptr;
 }
 
-GenericElement* DerefElement::try_as_seconds_per_frame(FormPool& pool) {
-  auto mr = match(Matcher::deref(Matcher::s6(), false,
-                                 {DerefTokenMatcher::string("clock"),
-                                  DerefTokenMatcher::string("seconds-per-frame")}),
-                  this);
-  if (mr.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+GenericElement* DerefElement::try_as_seconds_per_frame(const Env& env, FormPool& pool) {
+  if (env.version == GameVersion::Jak1) {
+    auto mr = match(Matcher::deref(Matcher::symbol("*display*"), false,
+                                   {DerefTokenMatcher::string("seconds-per-frame")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+    }
+  } else {
+    auto mr = match(Matcher::deref(Matcher::s6(), false,
+                                   {DerefTokenMatcher::string("clock"),
+                                    DerefTokenMatcher::string("seconds-per-frame")}),
+                    this);
+    if (mr.matched) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("seconds-per-frame")));
+    }
   }
   return nullptr;
 }
@@ -4003,14 +4023,14 @@ void DerefElement::update_from_stack(const Env& env,
   }
 
   // current-time macro
-  auto as_curtime = try_as_curtime(pool);
+  auto as_curtime = try_as_curtime(env, pool);
   if (as_curtime) {
     result->push_back(as_curtime);
     return;
   }
 
   // seconds-per-frame macro
-  auto as_seconds_per_frame = try_as_seconds_per_frame(pool);
+  auto as_seconds_per_frame = try_as_seconds_per_frame(env, pool);
   if (as_seconds_per_frame) {
     result->push_back(as_seconds_per_frame);
     return;
