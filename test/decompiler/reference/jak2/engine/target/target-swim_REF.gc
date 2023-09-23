@@ -452,13 +452,11 @@
         ((and v1-2 (or (= v1-2 jakb-swim-up-ja) (= v1-2 jakb-swim-down-to-up-ja)))
          (ja-channel-push! 1 (seconds 0.075))
          (ja-no-eval :group! jakb-swim-up-to-stance-ja
-                     :num! (seek!
-                       (the float (+ (-> (the-as art-joint-anim jakb-swim-up-to-stance-ja) frames num-frames) -1))
-                       (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-                           1.0
-                           2.0
-                           )
-                       )
+                     :num! (seek! max (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
+                                    1.0
+                                    2.0
+                                    )
+                            )
                      :frame-num 0.0
                      )
          (until (ja-done? 0)
@@ -575,10 +573,7 @@
            (and v1-8 (= v1-8 jakb-swim-up-to-stance-ja))
            )
          (ja-channel-push! 1 (seconds 0.15))
-         (ja-no-eval :group! jakb-swim-walk-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-swim-walk-ja) frames num-frames) -1)))
-                     :frame-num (ja-aframe 19.0 0)
-                     )
+         (ja-no-eval :group! jakb-swim-walk-ja :num! (seek!) :frame-num (ja-aframe 19.0 0))
          (until (ja-done? 0)
            (compute-alignment! (-> self align))
            (if (not (logtest? (-> self align flags) (align-flags disabled)))
@@ -596,10 +591,7 @@
         )
       )
     (until #f
-      (ja-no-eval :group! jakb-swim-walk-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-swim-walk-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jakb-swim-walk-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (compute-alignment! (-> self align))
         (if (not (logtest? (-> self align flags) (align-flags disabled)))
@@ -733,66 +725,61 @@
           (f30-0 0.0)
           )
       (let ((v1-2 (ja-group)))
-        (set! f30-0
-              (cond
-                ((and v1-2
-                      (or (= v1-2 jakb-swim-stance-ja)
-                          (= v1-2 jakb-swim-walk-ja)
-                          (= v1-2 jakb-swim-up-to-stance-ja)
-                          (= v1-2 jakb-swim-up-ja)
-                          (= v1-2 jakb-swim-down-to-up-ja)
-                          )
-                      )
-                 (let ((t9-0 ja-channel-push!)
-                       (a0-16 1)
-                       (v1-7 (ja-group))
-                       )
-                   (t9-0 a0-16 (the-as time-frame (if (and v1-7 (= v1-7 jakb-swim-down-to-up-ja))
-                                                      105
-                                                      22
-                                                      )
-                                       )
-                         )
-                   )
-                 (ja-no-eval :group! jakb-swim-walk-to-down-ja
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-swim-walk-to-down-ja) frames num-frames) -1)))
-                             :frame-num 0.0
-                             )
-                 (until (ja-done? 0)
-                   (compute-alignment! (-> self align))
-                   (align! (-> self align) (align-opts adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
-                   (if (= (ja-aframe-num 0) 73.0)
-                       (spawn-ripples (-> self water) 0.7 (-> self control trans) 1 *null-vector* #f)
-                       )
-                   (suspend)
-                   (ja :num! (seek!))
-                   )
-                 (ja :group! jakb-swim-down-ja :num! min)
-                 f30-0
-                 )
-                (else
-                  (let ((v1-50 (ja-group)))
-                    (cond
-                      ((and v1-50 (or (= v1-50 jakb-flop-down-ja)
-                                      (= v1-50 jakb-moving-flop-down-ja)
-                                      (= v1-50 jakb-flop-down-loop-ja)
-                                      (= v1-50 jakb-moving-flop-down-loop-ja)
-                                      )
+        (set! f30-0 (cond
+                      ((and v1-2 (or (= v1-2 jakb-swim-stance-ja)
+                                     (= v1-2 jakb-swim-walk-ja)
+                                     (= v1-2 jakb-swim-up-to-stance-ja)
+                                     (= v1-2 jakb-swim-up-ja)
+                                     (= v1-2 jakb-swim-down-to-up-ja)
+                                     )
                             )
-                       (ja-channel-push! 1 (seconds 0.075))
-                       (set! gp-0 120)
-                       (ja :group! jakb-swim-down-ja :num! (identity (ja-aframe 124.0 0)))
-                       -16384.0
+                       (let ((t9-0 ja-channel-push!)
+                             (a0-16 1)
+                             (v1-7 (ja-group))
+                             )
+                         (t9-0 a0-16 (the-as time-frame (if (and v1-7 (= v1-7 jakb-swim-down-to-up-ja))
+                                                            105
+                                                            22
+                                                            )
+                                             )
+                               )
+                         )
+                       (ja-no-eval :group! jakb-swim-walk-to-down-ja :num! (seek!) :frame-num 0.0)
+                       (until (ja-done? 0)
+                         (compute-alignment! (-> self align))
+                         (align! (-> self align) (align-opts adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
+                         (if (= (ja-aframe-num 0) 73.0)
+                             (spawn-ripples (-> self water) 0.7 (-> self control trans) 1 *null-vector* #f)
+                             )
+                         (suspend)
+                         (ja :num! (seek!))
+                         )
+                       (ja :group! jakb-swim-down-ja :num! min)
+                       f30-0
                        )
                       (else
-                        (ja-channel-push! 1 (seconds 0.075))
-                        (ja :group! jakb-swim-down-ja :num! min)
-                        f30-0
+                        (let ((v1-50 (ja-group)))
+                          (cond
+                            ((and v1-50 (or (= v1-50 jakb-flop-down-ja)
+                                            (= v1-50 jakb-moving-flop-down-ja)
+                                            (= v1-50 jakb-flop-down-loop-ja)
+                                            (= v1-50 jakb-moving-flop-down-loop-ja)
+                                            )
+                                  )
+                             (ja-channel-push! 1 (seconds 0.075))
+                             (set! gp-0 120)
+                             (ja :group! jakb-swim-down-ja :num! (identity (ja-aframe 124.0 0)))
+                             -16384.0
+                             )
+                            (else
+                              (ja-channel-push! 1 (seconds 0.075))
+                              (ja :group! jakb-swim-down-ja :num! min)
+                              f30-0
+                              )
+                            )
+                          )
                         )
                       )
-                    )
-                  )
-                )
               )
         )
       (until #f
@@ -882,10 +869,7 @@
       (let ((s5-0 #t)
             (gp-0 #f)
             )
-        (ja-no-eval :group! jakb-swim-down-to-up-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-swim-down-to-up-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! jakb-swim-down-to-up-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (target-swim-tilt
             (if (< 8192.0 (-> self water swim-depth))
