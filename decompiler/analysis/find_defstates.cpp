@@ -94,8 +94,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
           temp.to_string(env));
     }
 
-    auto var = mr.maps.regs.at(0);
-    auto name = mr.maps.strings.at(1);
+    auto& var = mr.maps.regs.at(0);
+    auto& name = mr.maps.strings.at(1);
     auto val = mr.maps.forms.at(2);
 
     auto handler_kind = handler_name_to_kind(name);
@@ -149,7 +149,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
       // hack - lets pretend every handler (except event) returns none but remove the (none) at the
       // end since the 'real' return type is object and thus anything is valid in the final form
       handler_func->ir2.skip_final_none = true;
-    } else if (handler_atom && handler_atom->is_sym_val()) {
+    } else if (handler_atom && handler_atom->is_sym_val() && !handler_atom->is_sym_val("#f")) {
       // value of a symbol.
       // NOTE : we
       auto sym_type = env.dts->lookup_symbol_type(handler_atom->get_str());
