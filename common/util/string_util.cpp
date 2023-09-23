@@ -205,7 +205,28 @@ std::string to_lower(const std::string& str) {
   std::transform(str.begin(), str.end(), new_str.begin(), ::tolower);
   return new_str;
 }
+
 bool hex_char(char c) {
   return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
+}
+
+std::string titlize(const std::string& str) {
+  // Iterate through the string, capitalizing any character that either comes first, or is preceeded
+  // by whitespace
+  const auto trimmed_string = trim(str);
+  std::string new_str = "";
+  bool capitalize_next_char = true;
+  for (const auto& character : trimmed_string) {
+    if (capitalize_next_char) {
+      new_str.push_back(toupper(character));
+      capitalize_next_char = false;
+    } else {
+      if (character == ' ') {
+        capitalize_next_char = true;
+      }
+      new_str.push_back(character);
+    }
+  }
+  return new_str;
 }
 }  // namespace str_util
