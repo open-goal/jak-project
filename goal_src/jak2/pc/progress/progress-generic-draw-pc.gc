@@ -430,6 +430,8 @@
                                      (bucket-id progress))
             (draw (-> obj bar-sprite) buffer (-> *level* default-level))
             ;; bar mask
+            ;; TODO - bar remainder isnt correct on custom aspect ratios since those internally still return `aspect4x3` for (get-aspect-ratio), this is a larger issue though
+            ;; perhaps just standardize menu size in general and ditch aspect ratio differences.
             (draw-sprite2d-xy buffer (+ cursor-x-pos 10) (+ (the int (-> font-ctx origin y)) (if (= (get-aspect-ratio) 'aspect4x3) 23 20)) (+ bar-remainder (if (= (get-aspect-ratio) 'aspect4x3) 9 6)) 6
               (new 'static 'rgba :r (the int (* 0.0 alpha slider-value))
                                 :g (the int (* 0.0 alpha slider-value))
@@ -535,7 +537,7 @@
       (+! (-> font-ctx origin x) 5.0))
     (print-game-text (get-keybind-string obj) font-ctx #f 44 (bucket-id progress))
     ;; Now print the right aligned text
-    (set! (-> font-ctx origin x) (if (= (get-aspect-ratio) 'aspect16x9) 430.0 438.0))
+    (set! (-> font-ctx origin x) (the float (adjust-game-x (if (= (get-aspect-ratio) 'aspect16x9) 430.0 438.0))))
     (+! (-> font-ctx origin y) 6.0)
     (set-flags! font-ctx (font-flags kerning right large))
     (let ((bind (pc-get-current-bind (-> obj bind-info) *pc-cpp-temp-string*)))
