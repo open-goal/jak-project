@@ -33,8 +33,8 @@
     (set! (-> self state-time) (current-time))
     (while (< (- (current-time) (-> self state-time)) (seconds 0.05))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! (-> self draw art-group data 63)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 63)) frames num-frames) -1)))
+      (ja-no-eval :group! jakb-trip-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-trip-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -61,16 +61,16 @@
           )
         )
       (ja-channel-push! 1 (seconds 0.3))
-      (ja-no-eval :group! (-> self draw art-group data 25)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) frames num-frames) -1)))
+      (ja-no-eval :group! jakb-painful-land-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-painful-land-ja) frames num-frames) -1)))
                   :frame-num (ja-aframe 40.0 0)
                   )
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
-      (ja-no-eval :group! (-> self draw art-group data 26)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 26)) frames num-frames) -1)))
+      (ja-no-eval :group! jakb-painful-land-end-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-painful-land-end-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -144,7 +144,7 @@
       (when (and a0-0 (= (-> *setting-control* user-current spooling) (process->ppointer self)))
         (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
         (ja-channel-set! 1)
-        (ja :group! (-> self draw art-group data 5) :num! min)
+        (ja :group! jakb-stance-loop-ja :num! min)
         )
       )
     (set! (-> self spool-anim) #f)
@@ -181,8 +181,8 @@
       )
     (ja-play-spooled-anim
       (-> self spool-anim)
-      (the-as art-joint-anim (-> self draw art-group data 5))
-      (the-as art-joint-anim (-> self draw art-group data 5))
+      (the-as art-joint-anim jakb-stance-loop-ja)
+      (the-as art-joint-anim jakb-stance-loop-ja)
       (lambda ((arg0 process-drawable)) (!= (-> *cpad-list* cpads 0 stick0-speed) 0.0))
       )
     (go target-stance)
@@ -386,13 +386,10 @@
         (+! gp-0 (- (current-time) (-> self clock old-frame-counter)))
         (suspend)
         )
-      (if (or (> gp-0 0) (let ((v1-10 (ja-group)))
-                           (and v1-10 (or (= v1-10 (-> self draw art-group data 23))
-                                          (= v1-10 (-> self draw art-group data 27))
-                                          (= v1-10 (-> self draw art-group data 30))
-                                          )
-                                )
-                           )
+      (if (or (> gp-0 0)
+              (let ((v1-10 (ja-group)))
+                (and v1-10 (or (= v1-10 jakb-jump-ja) (= v1-10 jakb-jump-loop-ja) (= v1-10 jakb-duck-high-jump-ja)))
+                )
               )
           (target-hit-ground-anim #f (are-still?))
           )
@@ -406,7 +403,7 @@
              ((logtest? (water-flags swimming) (-> self water flags))
               (ja-channel-push! 1 (seconds 0.15))
               (until #f
-                (ja :group! (-> self draw art-group data 96) :num! min)
+                (ja :group! jakb-swim-stance-ja :num! min)
                 (until (and (ja-done? 0) (= (-> self skel root-channel 0) (-> self skel channel)))
                   (if (!= gp-2 (-> self control unknown-spool-anim00))
                       (goto cfg-82)
@@ -423,16 +420,16 @@
               (let* ((v1-49 (-> self gun gun-type))
                      (s5-2 (cond
                              ((= v1-49 (pickup-type eco-blue))
-                              (-> self draw art-group data 255)
+                              jakb-gun-stance-blue-ja
                               )
                              ((= v1-49 (pickup-type eco-yellow))
-                              (-> self draw art-group data 254)
+                              jakb-gun-stance-yellow-ja
                               )
                              ((= v1-49 (pickup-type eco-dark))
-                              (-> self draw art-group data 253)
+                              jakb-gun-stance-dark-ja
                               )
                              (else
-                               (-> self draw art-group data 244)
+                               jakb-gun-stance-ja
                                )
                              )
                            )
@@ -456,8 +453,8 @@
              (else
                (target-stance-push 1)
                (until #f
-                 (ja-no-eval :group! (-> self draw art-group data 5)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
+                 (ja-no-eval :group! jakb-stance-loop-ja
+                             :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-stance-loop-ja) frames num-frames) -1)))
                              :frame-num 0.0
                              )
                  (until (ja-done? 0)
@@ -474,7 +471,7 @@
            )
           (('shock-in)
            (ja-channel-push! 1 (seconds 0.2))
-           (ja-no-eval :group! (-> self draw art-group data 73) :num! (seek! (ja-aframe 15.0 0)) :frame-num 0.0)
+           (ja-no-eval :group! jakb-shocked-ja :num! (seek! (ja-aframe 15.0 0)) :frame-num 0.0)
            (until (ja-done? 0)
              (if (!= gp-2 (-> self control unknown-spool-anim00))
                  (goto cfg-82)
@@ -483,10 +480,7 @@
              (ja :num! (seek! (ja-aframe 15.0 0)))
              )
            (until #f
-             (ja-no-eval :group! (-> self draw art-group data 73)
-                         :num! (seek! (ja-aframe 26.0 0))
-                         :frame-num (ja-aframe 16.0 0)
-                         )
+             (ja-no-eval :group! jakb-shocked-ja :num! (seek! (ja-aframe 26.0 0)) :frame-num (ja-aframe 16.0 0))
              (until (ja-done? 0)
                (if (!= gp-2 (-> self control unknown-spool-anim00))
                    (goto cfg-82)
@@ -499,8 +493,8 @@
            )
           (('shock-out)
            (ja-channel-push! 1 (seconds 0.2))
-           (ja-no-eval :group! (-> self draw art-group data 73)
-                       :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 73)) frames num-frames) -1)))
+           (ja-no-eval :group! jakb-shocked-ja
+                       :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-shocked-ja) frames num-frames) -1)))
                        :frame-num (ja-aframe 17.0 0)
                        )
            (until (ja-done? 0)
@@ -607,7 +601,7 @@
           )
     (let ((v1-8 (ja-group)))
       (cond
-        ((and v1-8 (= v1-8 (-> self draw art-group data 107)))
+        ((and v1-8 (= v1-8 jakb-pole-jump-loop-ja))
          (while (not (-> self control did-move-to-pole-or-max-jump-height))
            (ja :num! (seek!))
            (suspend)
@@ -623,8 +617,8 @@
           )
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data 104)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 104)) frames num-frames) -1)))
+    (ja-no-eval :group! jakb-pole-cycle-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-pole-cycle-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -638,8 +632,8 @@
                                                  )
                                         )
             )
-      (ja-no-eval :group! (-> self draw art-group data 104)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 104)) frames num-frames) -1)))
+      (ja-no-eval :group! jakb-pole-cycle-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-pole-cycle-ja) frames num-frames) -1)))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -658,8 +652,8 @@
   :exit (-> target-pole-cycle exit)
   :code (behavior ((arg0 object) (arg1 object) (arg2 float))
     (let ((f0-2 (+ 1.0 (fmin 17.0 (ja-aframe-num 0)))))
-      (ja-no-eval :group! (-> self draw art-group data 105)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 105)) frames num-frames) -1)))
+      (ja-no-eval :group! jakb-pole-flip-up-ja
+                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-pole-flip-up-ja) frames num-frames) -1)))
                   :frame-num (ja-aframe f0-2 0)
                   )
       )
@@ -686,7 +680,7 @@
     )
   :code (behavior ((arg0 float) (arg1 float))
     (send-event *camera* 'damp-up)
-    (ja :group! (-> self draw art-group data 107) :num! min)
+    (ja :group! jakb-pole-jump-loop-ja :num! min)
     (let ((f0-1 (target-height-above-ground))
           (f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
           )
@@ -698,10 +692,10 @@
         )
       )
     (ja-channel-push! 1 (seconds 0.25))
-    (ja-no-eval :group! (-> self draw art-group data 27) :num! (loop!) :frame-num 0.0)
+    (ja-no-eval :group! jakb-jump-loop-ja :num! (loop!) :frame-num 0.0)
     (until #f
       (suspend)
-      (ja :group! (-> self draw art-group data 27) :num! (loop!))
+      (ja :group! jakb-jump-loop-ja :num! (loop!))
       )
     #f
     )
@@ -713,10 +707,7 @@
   :exit (-> target-pole-cycle exit)
   :code (behavior ((arg0 float) (arg1 float) (arg2 float))
     (let ((f30-1 (+ 4.0 (ja-aframe-num 0))))
-      (ja-no-eval :group! (-> self draw art-group data 106)
-                  :num! (seek! (ja-aframe 16.0 0))
-                  :frame-num (ja-aframe f30-1 0)
-                  )
+      (ja-no-eval :group! jakb-pole-flip-forward-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num (ja-aframe f30-1 0))
       )
     (until (ja-done? 0)
       (suspend)
@@ -887,17 +878,14 @@
       (cond
         ((= (-> gp-0 pilot-edge-grab?) 'target-double-jump)
          (ja-channel-push! 1 (seconds 0.05))
-         (ja-no-eval :group! (-> self draw art-group data 23) :num! (seek! (ja-aframe 14.0 0) 0.75) :frame-num 0.0)
+         (ja-no-eval :group! jakb-jump-ja :num! (seek! (ja-aframe 14.0 0) 0.75) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 14.0 0) 0.75))
            )
          (sound-play "jump-double")
          (ja-channel-push! 1 (seconds 0.05))
-         (ja-no-eval :group! (-> self draw art-group data 23)
-                     :num! (seek! (ja-aframe 14.0 0))
-                     :frame-num (ja-aframe 5.0 0)
-                     )
+         (ja-no-eval :group! jakb-jump-ja :num! (seek! (ja-aframe 14.0 0)) :frame-num (ja-aframe 5.0 0))
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 14.0 0)))
@@ -905,7 +893,7 @@
          )
         ((-> gp-0 pilot-edge-grab?)
          (ja-channel-push! 1 (seconds 0.05))
-         (ja-no-eval :group! (-> self draw art-group data 23) :num! (seek! (ja-aframe 14.0 0)) :frame-num 0.0)
+         (ja-no-eval :group! jakb-jump-ja :num! (seek! (ja-aframe 14.0 0)) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe 14.0 0)))
@@ -914,9 +902,9 @@
         (else
           (while (< 0.0 (-> self control hand-to-edge-dist))
             (let ((v1-60 (ja-group)))
-              (when (not (and v1-60 (= v1-60 (-> self draw art-group data 27))))
+              (when (not (and v1-60 (= v1-60 jakb-jump-loop-ja)))
                 (ja-channel-push! 1 (seconds 0.15))
-                (ja :group! (-> self draw art-group data 27) :num! min)
+                (ja :group! jakb-jump-loop-ja :num! min)
                 )
               )
             (suspend)
@@ -957,7 +945,7 @@
                 ((using-gun? self)
                  (push-anim-to-targ
                    (-> self skel top-anim)
-                   (the-as art-joint-anim (-> self draw art-group data 281))
+                   (the-as art-joint-anim jakb-gun-edge-grab-to-jump-ja)
                    0.0
                    0
                    30
@@ -965,10 +953,10 @@
                    0.0
                    #f
                    )
-                 (-> self draw art-group data 281)
+                 jakb-gun-edge-grab-to-jump-ja
                  )
                 (else
-                  (-> self draw art-group data 38)
+                  jakb-edge-grab-to-jump-ja
                   )
                 )
               )
@@ -1010,7 +998,7 @@
       (if (using-gun? self)
           (push-anim-to-targ
             (-> self skel top-anim)
-            (the-as art-joint-anim (-> self draw art-group data 280))
+            (the-as art-joint-anim jakb-gun-edge-grab-off-ja)
             0.0
             0
             30
@@ -1019,7 +1007,7 @@
             #f
             )
           )
-      (ja-no-eval :group! (-> self draw art-group data 39) :num! (seek! (ja-aframe 191.0 0)) :frame-num 0.0)
+      (ja-no-eval :group! jakb-edge-grab-off-ja :num! (seek! (ja-aframe 191.0 0)) :frame-num 0.0)
       (until (ja-done? 0)
         (compute-alignment! (-> self align))
         (when (not (logtest? (-> self align flags) (align-flags disabled)))
@@ -1084,14 +1072,14 @@
       (else
         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
         (ja-channel-push! 1 1)
-        (ja :group! (-> self draw art-group data 25) :num! min)
+        (ja :group! jakb-painful-land-ja :num! min)
         (until (and (ja-done? 0) (= (-> self skel root-channel 0) (-> self skel channel)))
           (suspend)
           (if (= (-> self skel root-channel 0) (-> self skel channel))
               (ja :num! (seek!))
               )
           )
-        (ja :group! (-> self draw art-group data 26) :num! min)
+        (ja :group! jakb-painful-land-end-ja :num! min)
         (until (and (ja-done? 0) (= (-> self skel root-channel 0) (-> self skel channel)))
           (suspend)
           (if (= (-> self skel root-channel 0) (-> self skel channel))
@@ -1210,7 +1198,7 @@
     (if (and (using-gun? self)
              (and (-> self next-state) (= (-> self next-state name) 'target-stance))
              (let ((v1-85 (ja-group)))
-               (and v1-85 (= v1-85 (-> self draw art-group data 5)))
+               (and v1-85 (= v1-85 jakb-stance-loop-ja))
                )
              )
         (go target-gun-stance)
@@ -1232,8 +1220,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 81)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 81)) frames num-frames) -1)))
+    (ja-no-eval :group! jakb-wall-hide-ja
+                :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-ja) frames num-frames) -1)))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1246,13 +1234,9 @@
         (set! (-> a0-5 frame-interp 1) f0-7)
         (set! (-> a0-5 frame-interp 0) f0-7)
         )
-      (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> self draw art-group data 88)))
+      (set! (-> a0-5 frame-group) (the-as art-joint-anim jakb-wall-hide-body-ja))
       (set! (-> a0-5 param 0) 1.0)
-      (joint-control-channel-group-eval!
-        a0-5
-        (the-as art-joint-anim (-> self draw art-group data 88))
-        num-func-loop!
-        )
+      (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim jakb-wall-hide-body-ja) num-func-loop!)
       )
     (set! (-> self control unknown-word04) (the-as uint 0.5))
     (set! (-> self control did-move-to-pole-or-max-jump-height) 0.5)
@@ -1278,7 +1262,7 @@
           )
       (until #f
         (let ((s5-0 (rand-vu-int-range 30 600)))
-          (ja :group! (-> self draw art-group data 85))
+          (ja :group! jakb-wall-hide-head-ja)
           (let ((s4-0 (current-time)))
             (until (>= (- (current-time) s4-0) s5-0)
               (gp-0)
@@ -1290,8 +1274,8 @@
           (cond
             ((or (cpad-hold? 1 r3) (-> self control unknown-float35))
              (let ((f30-1 (rand-vu-float-range 0.25 0.75)))
-               (ja-no-eval :group! (-> self draw art-group data 82)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 82)) frames num-frames) -1)))
+               (ja-no-eval :group! jakb-wall-hide-scared-ja
+                           :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-scared-ja) frames num-frames) -1)))
                            :frame-num 0.0
                            )
                (until (ja-done? 0)
@@ -1301,11 +1285,8 @@
                  )
                (let ((s5-1 (rand-vu-int-range 1 10)))
                  (dotimes (s4-1 s5-1)
-                   (ja-no-eval :group! (-> self draw art-group data 83)
-                               :num! (seek!
-                                 (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 83)) frames num-frames) -1))
-                                 f30-1
-                                 )
+                   (ja-no-eval :group! jakb-wall-hide-scared-loop-ja
+                               :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-scared-loop-ja) frames num-frames) -1)) f30-1)
                                :frame-num 0.0
                                )
                    (until (ja-done? 0)
@@ -1316,8 +1297,8 @@
                    )
                  )
                )
-             (ja-no-eval :group! (-> self draw art-group data 84)
-                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 84)) frames num-frames) -1)))
+             (ja-no-eval :group! jakb-wall-hide-scared-return-ja
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-scared-return-ja) frames num-frames) -1)))
                          :frame-num 0.0
                          )
              (until (ja-done? 0)
@@ -1327,11 +1308,8 @@
                )
              )
             ((rand-vu-percent? 0.5)
-             (ja-no-eval :group! (-> self draw art-group data 86)
-                         :num! (seek!
-                           (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 86)) frames num-frames) -1))
-                           f30-0
-                           )
+             (ja-no-eval :group! jakb-wall-hide-head-left-ja
+                         :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-head-left-ja) frames num-frames) -1)) f30-0)
                          :frame-num 0.0
                          )
              (until (ja-done? 0)
@@ -1347,9 +1325,9 @@
                  (suspend)
                  )
                )
-             (ja-no-eval :group! (-> self draw art-group data 86)
+             (ja-no-eval :group! jakb-wall-hide-head-left-ja
                          :num! (seek! 0.0 f30-0)
-                         :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 86)) frames num-frames) -1))
+                         :frame-num (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-head-left-ja) frames num-frames) -1))
                          )
              (until (ja-done? 0)
                (gp-0)
@@ -1358,9 +1336,9 @@
                )
              )
             (else
-              (ja-no-eval :group! (-> self draw art-group data 87)
+              (ja-no-eval :group! jakb-wall-hide-head-right-ja
                           :num! (seek! 0.0 f30-0)
-                          :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 87)) frames num-frames) -1))
+                          :frame-num (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-head-right-ja) frames num-frames) -1))
                           )
               (until (ja-done? 0)
                 (gp-0)
@@ -1375,11 +1353,8 @@
                   (suspend)
                   )
                 )
-              (ja-no-eval :group! (-> self draw art-group data 87)
-                          :num! (seek!
-                            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 87)) frames num-frames) -1))
-                            f30-0
-                            )
+              (ja-no-eval :group! jakb-wall-hide-head-right-ja
+                          :num! (seek! (the float (+ (-> (the-as art-joint-anim jakb-wall-hide-head-right-ja) frames num-frames) -1)) f30-0)
                           :frame-num 0.0
                           )
               (until (ja-done? 0)
@@ -1409,7 +1384,7 @@
     (set! (-> self control mod-surface) *turn-around-mods*)
     (ja-channel-push! 1 (seconds 0.15))
     (set-forward-vel 0.0)
-    (ja-no-eval :group! (-> self draw art-group data 20) :num! (seek! (ja-aframe 15.0 0) 3.0) :frame-num 0.0)
+    (ja-no-eval :group! jakb-duck-stance-ja :num! (seek! (ja-aframe 15.0 0) 3.0) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 15.0 0) 3.0))
