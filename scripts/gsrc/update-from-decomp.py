@@ -38,8 +38,8 @@
 import argparse
 import os
 from code_retention.all_types_retention import update_alltypes_named_blocks
+from code_retention.code_retention import is_line_start_of_form, has_form_ended
 from utils import get_gsrc_path_from_filename
-from code_retention.code_retention import *
 import shutil
 from pathlib import Path
 import subprocess
@@ -47,11 +47,6 @@ import subprocess
 parser = argparse.ArgumentParser("update-from-decomp")
 parser.add_argument("--game", help="The name of the game", type=str)
 parser.add_argument("--file", help="The name of the file", type=str)
-parser.add_argument(
-    "--preserve",
-    help="Attempt to preserve comments and marked blocks",
-    action="store_true",
-)
 parser.add_argument(
     "--debug", help="Output debug metadata on every block", action="store_true"
 )
@@ -86,8 +81,6 @@ with open(gsrc_path) as f:
         if "og:update-with-merge" in line:
             update_with_merge = True
         lines.append(line)
-    if args.preserve:
-        comments, debug_lines = process_original_lines(lines)
 
 # If we are going to `update_with_merge` then make a backup of the file, and
 # an empty file to use as the common ancestor.
@@ -190,25 +183,14 @@ with open(decomp_file_path) as f:
 
 # Step 3: Start merging the new code + comments
 final_lines = []
-if args.preserve:
-    merge_retained_code_and_new_code(gsrc_path, decomp_lines, final_lines)
-else:
-    with open(gsrc_path) as f:
-        lines = f.readlines()
-        for line in lines:
-            final_lines.append(line)
-            if line.lower().startswith(";; decomp begins"):
-                break
-        for line in decomp_lines:
-            final_lines.append(line)
-
-# Step 3.b: Handle any remaining top level comments
-# If we can't find a code line that meets a threshold, default to their line number
-# - Why is this done after: if a comment is associated with nothing but code, we have no
-#   guarantee where it should go, so we have to wait until all code is populated
-# This is SUPER inefficient, so hopefully we've processed nearly all comments by this point
-if args.preserve:
-    handle_dangling_blocks(comments, final_lines, debug_lines)
+with open(gsrc_path) as f:
+    lines = f.readlines()
+    for line in lines:
+        final_lines.append(line)
+        if line.lower().startswith(";; decomp begins"):
+            break
+    for line in decomp_lines:
+        final_lines.append(line)
 
 # Step 4.a: Remove excessive new-lines from the end of the output, only leave a single empty new-line
 lines_to_ignore = 0
