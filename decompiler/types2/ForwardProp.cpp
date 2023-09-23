@@ -2511,7 +2511,6 @@ void CallOp::propagate_types2(types2::Instruction& instr,
   bool use_normal_last_arg = true;
 
   if (in_tp.kind == TP_Type::Kind::FIND_PARENT_METHOD_FUNCTION) {
-    printf("in for %s\n", env.func->name().c_str());
     bool can_use_call_parent = true;
     TypeSpec call_parent_result_type;
     const auto& guessed_name = env.func->guessed_name;

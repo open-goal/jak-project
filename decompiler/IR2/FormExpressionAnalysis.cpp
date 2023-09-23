@@ -3920,9 +3920,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
             arg_forms.at(1)->to_string(env) == std::to_string(state_info.id)) {
           new_form = pool.alloc_element<GenericElement>(
               GenericOperator::make_function(pool.form<ConstantTokenElement>("find-parent-state")));
-        } else {
-          printf("BAD match [%s] [%s]\n", arg_forms.at(0)->to_string(env).c_str(),
-                 arg_forms.at(1)->to_string(env).c_str());
         }
       }
     }
