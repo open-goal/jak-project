@@ -492,8 +492,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
   new_func_env->set_segment(env->function_env()->segment_for_static_data());
   new_func_env->method_of_type_name = symbol_string(type_name);
-  new_func_env->method_id =
-      m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name)).id;
+  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
+  new_func_env->method_id = method_info.id;
+  new_func_env->method_function_type = method_info.type;
 
   // set up arguments
   if (lambda.params.size() > 8) {
@@ -519,7 +520,6 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     reset_args_for_coloring.push_back(ireg_arg);
   }
 
-  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
   auto behavior = method_info.type.try_get_tag("behavior");
   if (behavior) {
     auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
@@ -1480,4 +1480,16 @@ Val* Compiler::compile_current_method_id(const goos::Object& form,
     throw_compiler_error(form, "current-method-id wasn't called from a method.");
   }
   return compile_integer(*fe->method_id, env);
+}
+
+Val* Compiler::compile_current_method_type(const goos::Object& form,
+                                           const goos::Object& rest,
+                                           Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  auto* fe = env->function_env();
+  if (!fe->method_id || fe->method_of_type_name.empty()) {
+    throw_compiler_error(form, "current-method-type wasn't called from a method.");
+  }
+  return compile_get_symbol_value(form, fe->method_of_type_name, env);
 }

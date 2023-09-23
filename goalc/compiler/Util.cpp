@@ -290,6 +290,11 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
       src.as_pair()->cdr.is_empty_list()) {
     return env->function_env()->method_of_type_name;
   }
+  if (src.is_pair() && src.as_pair()->car.is_symbol("current-method-function-type") &&
+      src.as_pair()->cdr.is_empty_list()) {
+    return env->function_env()->method_function_type.substitute_for_method_call(
+        env->function_env()->method_of_type_name);
+  }
   return ::parse_typespec(&m_ts, src);
 }
 

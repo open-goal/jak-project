@@ -232,7 +232,7 @@ const std::unordered_map<
           &Compiler::compile_macro_expand}},
 
         // OBJECT
-        //        {"current-method-type", {"", &Compiler::compile_current_method_type}},
+        {"current-method-type", {"", &Compiler::compile_current_method_type}},
 
         // MATH
         {"+", {"", &Compiler::compile_add}},
