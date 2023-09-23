@@ -276,7 +276,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         } else if (m_kind == Kind::VAR_NAME) {
           return env && env->get_variable_name_name_only(result) == m_str;
         } else if (m_reg_out_id != -1) {
-          if (m_kind == Kind::SAME_VAR && maps_out->regs.size() > m_reg_out_id &&
+          if (m_kind == Kind::SAME_VAR && (int)maps_out->regs.size() > m_reg_out_id &&
               maps_out->regs.at(m_reg_out_id)) {
             return env && env->get_variable_name_name_only(result) ==
                               env->get_variable_name_name_only(*maps_out->regs.at(m_reg_out_id));
@@ -695,7 +695,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       if (as_let) {
         // fail if we have wrong number of entries/body elts or recursive marker
         if ((m_entry_matchers.size() != as_let->entries().size()) ||
-            (m_sub_matchers.size() != as_let->body()->size()) ||
+            ((int)m_sub_matchers.size() != as_let->body()->size()) ||
             (as_let->is_star() != m_let_is_star)) {
           return false;
         }
@@ -706,7 +706,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
           }
         }
         // now match body
-        for (int i = 0; i < m_sub_matchers.size(); ++i) {
+        for (int i = 0; i < (int)m_sub_matchers.size(); ++i) {
           Form fake;
           fake.elts().push_back(as_let->body()->elts().at(i));
           if (!m_sub_matchers.at(i).do_match(&fake, maps_out, env)) {
@@ -908,7 +908,7 @@ bool LetEntryMatcher::do_match(const LetElement::Entry& input,
     case Kind::ANY:
     case Kind::NAME:
       if (m_reg_out_id != -1) {
-        if (m_kind == Kind::NAME && maps_out->regs.size() > m_reg_out_id &&
+        if (m_kind == Kind::NAME && (int)maps_out->regs.size() > m_reg_out_id &&
             maps_out->regs.at(m_reg_out_id)) {
           return env && env->get_variable_name_name_only(input.dest) ==
                             env->get_variable_name_name_only(*maps_out->regs.at(m_reg_out_id));
