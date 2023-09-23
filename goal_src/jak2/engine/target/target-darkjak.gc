@@ -334,10 +334,7 @@
       (cond
         ((task-node-open? (game-task-node city-help-kid-battle))
          (ja-channel-push! 1 (seconds 0.1))
-         (ja-no-eval :group! (-> self draw art-group data 390)
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 390)) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! jakb-darkjak-get-on-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (set! (-> self darkjak-interp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 10.0 25.0))
            (set-setting! 'bg-a 'abs (* 0.45 (-> self darkjak-interp)) 0)
@@ -347,7 +344,7 @@
          )
         (else
           (ja-channel-push! 1 (seconds 0.1))
-          (ja-no-eval :group! (-> self draw art-group data 412) :num! (seek! (ja-aframe 17.0 0)) :frame-num 0.0)
+          (ja-no-eval :group! jakb-darkjak-get-on-fast-ja :num! (seek! (ja-aframe 17.0 0)) :frame-num 0.0)
           (until (ja-done? 0)
             (set! (-> self darkjak-interp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 5.0 15.0))
             (set-setting! 'bg-a 'abs (* 0.45 (-> self darkjak-interp)) 0)
@@ -451,7 +448,7 @@
          (go target-swim-stance)
          )
         ((let ((v1-10 (ja-group)))
-           (not (and v1-10 (= v1-10 (-> self draw art-group data 412))))
+           (not (and v1-10 (= v1-10 jakb-darkjak-get-on-fast-ja)))
            )
          (let ((gp-0 0))
            (while (not (logtest? (-> self control status) (collide-status on-surface)))
@@ -472,7 +469,7 @@
       (else
         (let ((v1-30 (ja-group)))
           (cond
-            ((and v1-30 (= v1-30 (-> self draw art-group data 412)))
+            ((and v1-30 (= v1-30 jakb-darkjak-get-on-fast-ja))
              (ja-no-eval :num! (seek! 0.0))
              (while (not (ja-done? 0))
                (seek! (-> self darkjak-interp) 0.0 (* 2.0 (seconds-per-frame)))
@@ -482,18 +479,14 @@
              (ja-channel-push! 1 (seconds 0.1))
              )
             ((let ((v1-43 (ja-group)))
-               (and v1-43
-                    (or (= v1-43 (-> self draw art-group data 401))
-                        (= v1-43 (-> self draw art-group data 416))
-                        (= v1-43 (-> self draw art-group data 417))
-                        (= v1-43 (-> self draw art-group data 418))
-                        )
+               (and v1-43 (or (= v1-43 jakb-darkjak-bomb-pre-ja)
+                              (= v1-43 jakb-darkjak-bomb-ja)
+                              (= v1-43 jakb-darkjak-bomb-loop-ja)
+                              (= v1-43 jakb-darkjak-bomb-land-ja)
+                              )
                     )
                )
-             (ja-no-eval :group! (-> self draw art-group data 411)
-                         :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 411)) frames num-frames) -1)))
-                         :frame-num 0.0
-                         )
+             (ja-no-eval :group! jakb-darkjak-bomb-end-ja :num! (seek!) :frame-num 0.0)
              (until (ja-done? 0)
                (set! (-> self darkjak-interp) (lerp-scale 1.0 0.0 (ja-aframe-num 0) 90.0 115.0))
                (if (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
@@ -512,7 +505,7 @@
                )
              )
             ((let ((v1-88 (ja-group)))
-               (and v1-88 (= v1-88 (-> self draw art-group data 411)))
+               (and v1-88 (= v1-88 jakb-darkjak-bomb-end-ja))
                )
              (ja-no-eval :num! (seek!))
              (while (not (ja-done? 0))
@@ -534,10 +527,7 @@
              )
             (else
               (ja-channel-push! 1 (seconds 0.05))
-              (ja-no-eval :group! (-> self draw art-group data 408)
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 408)) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! jakb-darkjak-get-off-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (set! (-> self darkjak-interp) (lerp-scale 1.0 0.0 (ja-aframe-num 0) 10.0 60.0))
                 (if (and (>= (ja-aframe-num 0) 24.0)
@@ -555,10 +545,7 @@
                 (suspend)
                 (ja :num! (seek!))
                 )
-              (ja-no-eval :group! (-> self draw art-group data 415)
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 415)) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! jakb-darkjak-get-off-end-ja :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (set! (-> self darkjak-interp) (lerp-scale 1.0 0.0 (ja-aframe-num 0) 10.0 60.0))
                 (if (and (>= (ja-aframe-num 0) 24.0)
@@ -620,17 +607,17 @@
        (let ((gp-1 (cond
                      ((zero? (-> self control unknown-word000))
                       (set! (-> self control unknown-word000) 1)
-                      (-> self draw art-group data 402)
+                      jakb-darkjak-attack-combo1-ja
                       )
                      (else
                        (set! (-> self control unknown-word000) 0)
-                       (-> self draw art-group data 409)
+                       jakb-darkjak-attack-combo1b-ja
                        )
                      )
                    )
              )
          (ja-channel-push! 1 (seconds 0.02))
-         (ja-no-eval :group! gp-1 :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1))))
+         (ja-no-eval :group! gp-1 :num! (seek!))
          )
        (target-start-attack)
        (target-danger-set! 'punch #f)
@@ -642,7 +629,7 @@
          (t9-6
            a0-8
            a1-4
-           (if (and v1-33 (= v1-33 (-> self draw art-group data 402)))
+           (if (and v1-33 (= v1-33 jakb-darkjak-attack-combo1-ja))
                22
                18
                )
@@ -709,17 +696,13 @@
                  (target-danger-set! 'punch #f)
                  (let ((v1-18 (ja-group)))
                    (cond
-                     ((and v1-18 (or (= v1-18 (-> self draw art-group data 402)) (= v1-18 (-> self draw art-group data 409))))
+                     ((and v1-18 (or (= v1-18 jakb-darkjak-attack-combo1-ja) (= v1-18 jakb-darkjak-attack-combo1b-ja)))
                       (ja-channel-push! 1 (seconds 0.1))
-                      (ja-no-eval :group! (-> self draw art-group data 404)
-                                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 404)) frames num-frames) -1)))
-                                  )
+                      (ja-no-eval :group! jakb-darkjak-attack-combo2-ja :num! (seek!))
                       )
                      (else
                        (ja-channel-push! 1 (seconds 0.1))
-                       (ja-no-eval :group! (-> self draw art-group data 413)
-                                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 413)) frames num-frames) -1)))
-                                   )
+                       (ja-no-eval :group! jakb-darkjak-attack-combo3c-ja :num! (seek!))
                        )
                      )
                    )
@@ -755,7 +738,7 @@
           ((and (nonzero? sv-32)
                 (>= sv-16 -40960.0)
                 (let ((v1-84 (ja-group)))
-                  (not (and (and v1-84 (= v1-84 (-> self draw art-group data 406))) (>= (ja-aframe-num 0) 77.0)))
+                  (not (and (and v1-84 (= v1-84 jakb-darkjak-attack-combo3-ja)) (>= (ja-aframe-num 0) 77.0)))
                   )
                 (send-event (handle->process (-> self control unknown-combo-tracker00 target)) 'combo)
                 )
@@ -840,36 +823,36 @@
                  (let ((gp-2 (ja-group))
                        (f30-2 (ja-aframe-num 0))
                        )
-                   (if (or (and (= gp-2 (-> self draw art-group data 402))
+                   (if (or (and (= gp-2 jakb-darkjak-attack-combo1-ja)
                                 (>= f30-2 11.0)
-                                (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 402)) frames num-frames) -1))
+                                (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo1-ja) frames num-frames) -1))
                                     (ja-frame-num 0)
                                     )
                                 )
-                           (and (= gp-2 (-> self draw art-group data 409))
+                           (and (= gp-2 jakb-darkjak-attack-combo1b-ja)
                                 (>= f30-2 11.0)
-                                (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 409)) frames num-frames) -1))
+                                (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo1b-ja) frames num-frames) -1))
                                     (ja-frame-num 0)
                                     )
                                 )
-                           (and (= gp-2 (-> self draw art-group data 404))
+                           (and (= gp-2 jakb-darkjak-attack-combo2-ja)
                                 (>= f30-2 49.0)
-                                (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 404)) frames num-frames) -1))
+                                (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo2-ja) frames num-frames) -1))
                                     (ja-frame-num 0)
                                     )
                                 )
-                           (and (= gp-2 (-> self draw art-group data 406))
+                           (and (= gp-2 jakb-darkjak-attack-combo3-ja)
                                 (or (and (>= f30-2 62.0) (>= 77.0 f30-2))
                                     (and (>= f30-2 82.0)
-                                         (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 406)) frames num-frames) -1))
+                                         (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo3-ja) frames num-frames) -1))
                                              (ja-frame-num 0)
                                              )
                                          )
                                     )
                                 )
-                           (and (= gp-2 (-> self draw art-group data 413))
+                           (and (= gp-2 jakb-darkjak-attack-combo3c-ja)
                                 (>= f30-2 62.0)
-                                (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 413)) frames num-frames) -1))
+                                (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo3c-ja) frames num-frames) -1))
                                     (ja-frame-num 0)
                                     )
                                 )
@@ -939,9 +922,9 @@
       (let ((gp-4 (ja-group))
             (f0-53 (ja-aframe-num 0))
             )
-        (if (and (= gp-4 (-> self draw art-group data 406))
+        (if (and (= gp-4 jakb-darkjak-attack-combo3-ja)
                  (>= f0-53 80.0)
-                 (>= (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 406)) frames num-frames) -1))
+                 (>= (the float (+ (-> (the-as art-joint-anim jakb-darkjak-attack-combo3-ja) frames num-frames) -1))
                      (ja-frame-num 0)
                      )
                  )
@@ -1034,7 +1017,7 @@
          (when (and (= (-> block param 0) 'bomb)
                     (logtest? (process-mask enemy) (-> (the-as process v1-1) mask))
                     (let ((v1-7 (ja-group)))
-                      (and v1-7 (= v1-7 (-> self draw art-group data 418)))
+                      (and v1-7 (= v1-7 jakb-darkjak-bomb-land-ja))
                       )
                     (>= (ja-aframe-num 0) 35.0)
                     (not (-> self darkjak clock-on))
@@ -1109,10 +1092,7 @@
     (set! sv-20 1.0)
     (ja-channel-push! 1 (seconds 0.15))
     (when (jump-hit-ground-stuck?)
-      (ja-no-eval :group! (-> self draw art-group data 401)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 401)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jakb-darkjak-bomb-pre-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (set! (-> self alt-cam-pos x) (-> self control trans x))
         (set! (-> self alt-cam-pos z) (-> self control trans z))
@@ -1124,10 +1104,7 @@
     (set-setting! 'music-volume 'rel 0.0 0)
     (set-setting! 'sfx-volume 'rel 0.0 0)
     (set-setting! 'ambient-volume 'rel 0.0 0)
-    (ja-no-eval :group! (-> self draw art-group data 416)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 416)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jakb-darkjak-bomb-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (compute-alignment! (-> self align))
       (align! (-> self align) (align-opts adjust-y-vel) 1.0 1.0 1.0)
@@ -1137,10 +1114,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! (-> self draw art-group data 417)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 417)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jakb-darkjak-bomb-loop-ja :num! (seek!) :frame-num 0.0)
     (let ((f30-0 (the float (target-time-to-ground))))
       (until v1-100
         (set! (-> self alt-cam-pos x) (-> self control trans x))
@@ -1193,7 +1167,7 @@
       (suspend)
       )
     (set-forward-vel 0.0)
-    (ja-no-eval :group! (-> self draw art-group data 418) :num! (seek! (ja-aframe 35.0 0)) :frame-num 0.0)
+    (ja-no-eval :group! jakb-darkjak-bomb-land-ja :num! (seek! (ja-aframe 35.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 35.0 0)))
@@ -1416,7 +1390,7 @@
     (remove-setting! 'music-volume)
     (remove-setting! 'sfx-volume)
     (remove-setting! 'ambient-volume)
-    (ja-no-eval :group! (-> self draw art-group data 411) :num! (seek! (ja-aframe 90.0 0)) :frame-num 0.0)
+    (ja-no-eval :group! jakb-darkjak-bomb-end-ja :num! (seek! (ja-aframe 90.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
       (target-darkjak-bomb-collide (the-as float (& sv-16)) sv-20)
       (suspend)
@@ -1773,33 +1747,32 @@
             )
           )
         )
-      (set! (-> self control mod-surface)
-            (new 'static 'surface
-              :name 'uppercut
-              :turnv 524288.0
-              :tiltv 32768.0
-              :tiltvv 262144.0
-              :transv-max 32768.0
-              :target-speed 32768.0
-              :fric 0.2
-              :nonlin-fric-dist 1.0
-              :slip-factor 1.0
-              :slide-factor 1.0
-              :slope-up-factor 1.0
-              :slope-down-factor 1.0
-              :slope-slip-angle 1.0
-              :impact-fric 1.0
-              :bend-factor 1.0
-              :bend-speed 1.0
-              :alignv 1.0
-              :slope-up-traction 1.0
-              :align-speed 1.0
-              :turnvf 15.0
-              :tiltvf 150.0
-              :tiltvvf 15.0
-              :mode 'air
-              :flags (surface-flag air attack spin gun-off laser-hide)
-              )
+      (set! (-> self control mod-surface) (new 'static 'surface
+                                            :name 'uppercut
+                                            :turnv 524288.0
+                                            :tiltv 32768.0
+                                            :tiltvv 262144.0
+                                            :transv-max 32768.0
+                                            :target-speed 32768.0
+                                            :fric 0.2
+                                            :nonlin-fric-dist 1.0
+                                            :slip-factor 1.0
+                                            :slide-factor 1.0
+                                            :slope-up-factor 1.0
+                                            :slope-down-factor 1.0
+                                            :slope-slip-angle 1.0
+                                            :impact-fric 1.0
+                                            :bend-factor 1.0
+                                            :bend-speed 1.0
+                                            :alignv 1.0
+                                            :slope-up-traction 1.0
+                                            :align-speed 1.0
+                                            :turnvf 15.0
+                                            :tiltvf 150.0
+                                            :tiltvvf 15.0
+                                            :mode 'air
+                                            :flags (surface-flag air attack spin gun-off laser-hide)
+                                            )
             )
       (set! sv-64 0)
       (set! sv-72 (current-time))
@@ -1814,8 +1787,8 @@
         (set! sv-104 a0-33)
         )
       (ja-channel-push! 2 (seconds 0.05))
-      (ja :group! (-> self draw art-group data 419))
-      (ja :chan 1 :group! (-> self draw art-group data 420))
+      (ja :group! jakb-darkjak-attack-ice-loop-ja)
+      (ja :chan 1 :group! jakb-darkjak-attack-ice-loop2-ja)
       (while (or (< sv-64 sv-48) (< (- (current-time) sv-80) (seconds 1.5)))
         (let ((v1-77 (new-stack-vector0)))
           (let ((f0-8 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
@@ -1861,10 +1834,7 @@
       )
     (set! (-> self control mod-surface) *double-jump-mods*)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 421)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 421)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jakb-darkjak-attack-ice-end-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (ja-blend-eval)
       (compute-alignment! (-> self align))
@@ -1939,7 +1909,7 @@
           (set-setting! 'string-spline-accel-player 'abs (meters 0.035) 0)
           )
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! (-> self draw art-group data 412) :num! (seek! (ja-aframe 17.0 0)) :frame-num 0.0)
+        (ja-no-eval :group! jakb-darkjak-get-on-fast-ja :num! (seek! (ja-aframe 17.0 0)) :frame-num 0.0)
         (until (ja-done? 0)
           (cond
             (gp-2

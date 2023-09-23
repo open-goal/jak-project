@@ -270,7 +270,5 @@ void CollideMeshRenderer::render(SharedRenderState* render_state, ScopedProfiler
 
     prof.add_draw_call();
     prof.add_tri(lev->level->collision.vertices.size() / 3);
-
-    last_render_time = current_time;
   }
 }

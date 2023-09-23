@@ -117,16 +117,10 @@
 
 (defstate idle (sinking-plat)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sinking-plat)
-    rigid-body-object-event-handler
-    )
+  :event rigid-body-object-event-handler
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -170,17 +164,14 @@
           )
       )
     )
-  :code (the-as (function none :behavior beam) sleep-code)
+  :code sleep-code
   )
 
 (defstate collapse (beam)
   :virtual #t
   :code (behavior ()
     (sound-play "beam-slip")
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -189,7 +180,7 @@
     (suspend)
     0
     )
-  :post (the-as (function none :behavior beam) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -247,7 +238,7 @@ and translate the platform via the `smush`
 
 (defstate fall (ruins-bridge)
   :virtual #t
-  :trans (the-as (function none :behavior ruins-bridge) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (set! (-> self draw bounds y) -102400.0)

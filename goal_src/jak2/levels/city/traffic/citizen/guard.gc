@@ -697,7 +697,7 @@
 
 (defstate get-up-front (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -733,14 +733,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-front))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-front))) frames num-frames)
-                          -1
-                          )
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -765,7 +758,7 @@
 
 (defstate get-up-back (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -801,12 +794,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-back))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-back))) frames num-frames) -1)
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1195,7 +1183,7 @@
 
 (defstate knocked-off-vehicle (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     '()
     )
@@ -1298,7 +1286,7 @@
 
 (defstate close-attack-active (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag36))))
@@ -1336,10 +1324,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((gp-0 #f))
-      (ja-no-eval :group! (-> self draw art-group data 18)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 18) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (< 7.0 (ja-frame-num 0)) (not gp-0))
           (let ((v1-22 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
@@ -1651,7 +1636,7 @@
 
 (defstate search (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1786,7 +1771,7 @@
 
 (defstate hostile (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (when *debug-segment*
       (when (not (-> self nav))
@@ -1992,7 +1977,7 @@
 
 (defstate close-attack (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> self focus-status) (focus-status dangerous))
@@ -2035,10 +2020,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((gp-0 #f))
-      (ja-no-eval :group! (-> self draw art-group data 18)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 18) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (< 7.0 (ja-frame-num 0)) (not gp-0))
           (let ((v1-22 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
@@ -2059,7 +2041,7 @@
 
 (defstate gun-shoot (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (set! (-> self other-side) (if (< (rand-vu) 0.5)
@@ -2140,14 +2122,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 0 anim-index))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-shoot 0 anim-index))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -2215,14 +2190,7 @@
     (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 2 anim-index))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-shoot 2 anim-index))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-1
-                    )
+                  :num! (seek! max f30-1)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -2300,7 +2268,7 @@
 
 (defstate roll-right (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (vector-reset! (-> self root transv))
     (vector-x-quaternion! (-> self root transv) (-> self root quat))
@@ -2411,7 +2379,7 @@
 
 (defstate roll-left (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (vector-reset! (-> self root transv))
     (vector-x-quaternion! (-> self root transv) (-> self root quat))
@@ -2502,7 +2470,7 @@
 
 (defstate arrest (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (nav-enemy-method-167 self)
@@ -2541,13 +2509,7 @@
     (speech-control-method-12 *speech-control* self (speech-type speech-type-13))
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
-      (ja-no-eval :group! (-> self draw art-group data 19)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1))
-                    f30-0
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 19) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
         (suspend)
@@ -2561,10 +2523,7 @@
               )
           (goto cfg-17)
           )
-      (ja-no-eval :group! (-> self draw art-group data 20)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 20) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -2574,13 +2533,7 @@
     (label cfg-17)
     (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! (-> self draw art-group data 24)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1))
-                    f30-1
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 24) :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
         (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
         (suspend)
@@ -2597,7 +2550,7 @@
 
 (defstate waiting-ambush (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (nav-enemy-method-167 self)
@@ -2636,23 +2589,14 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
-      (ja-no-eval :group! (-> self draw art-group data 19)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 19)) frames num-frames) -1))
-                    f30-0
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 19) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
       )
     (while (not (logtest? (-> self flags) (citizen-flag target-in-sight)))
-      (ja-no-eval :group! (-> self draw art-group data 20)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 20)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 20) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -2660,13 +2604,7 @@
       )
     (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! (-> self draw art-group data 24)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 24)) frames num-frames) -1))
-                    f30-1
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 24) :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-1))
@@ -3071,7 +3009,7 @@
 
 (defstate attack (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (set! (-> self joint-enable) #t)
@@ -3170,10 +3108,7 @@
                      )
                  (cond
                    ((< f0-6 0.0)
-                    (ja-no-eval :group! (-> self draw art-group data 25)
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) frames num-frames) -1)))
-                                :frame-num 0.0
-                                )
+                    (ja-no-eval :group! (-> self draw art-group data 25) :num! (seek!) :frame-num 0.0)
                     (until (ja-done? 0)
                       (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* f30-0 (seconds-per-frame)))
                       (suspend)
@@ -3181,10 +3116,7 @@
                       )
                     )
                    (else
-                     (ja-no-eval :group! (-> self draw art-group data 25)
-                                 :num! (seek! 0.0)
-                                 :frame-num (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 25)) frames num-frames) -1))
-                                 )
+                     (ja-no-eval :group! (-> self draw art-group data 25) :num! (seek! 0.0) :frame-num max)
                      (until (ja-done? 0)
                        (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* f30-0 (seconds-per-frame)))
                        (suspend)
@@ -3235,10 +3167,7 @@
               )
              (else
                (ja-channel-push! 1 (seconds 0.1))
-               (ja-no-eval :group! (-> self draw art-group data 21)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 21)) frames num-frames) -1)))
-                           :frame-num 0.0
-                           )
+               (ja-no-eval :group! (-> self draw art-group data 21) :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
@@ -3305,10 +3234,7 @@
                    )
                  (set! (-> v1-182 state mode) (the-as lightning-mode a0-62))
                  )
-               (ja-no-eval :group! (-> self draw art-group data 23)
-                           :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 23)) frames num-frames) -1)))
-                           :frame-num 0.0
-                           )
+               (ja-no-eval :group! (-> self draw art-group data 23) :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
                  (suspend)
                  (ja :num! (seek!))
@@ -3601,7 +3527,7 @@
 
 (defstate exit-transport (crimson-guard)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior crimson-guard) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self nav flags) (nav-control-flag output-sphere-hash))

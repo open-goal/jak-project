@@ -895,14 +895,7 @@
           (gp-0 #t)
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info die-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -931,14 +924,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -946,10 +932,7 @@
         (ja :num! (seek! max f30-0))
         )
       (let ((gp-0 #t))
-        (ja-no-eval :group! rhino-victory-hit2-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-victory-hit2-ja) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! rhino-victory-hit2-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (when (and gp-0 (>= (ja-frame-num 0) 5.0))
             (activate! *camera-smush-control* 819.2 37 600 1.0 0.1 (-> self clock))
@@ -1168,10 +1151,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group! rhino-victory-begin-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-victory-begin-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! rhino-victory-begin-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1186,10 +1166,7 @@
           (collide-action solid no-standon)
           )
     (until #f
-      (ja-no-eval :group! rhino-victory-loop-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-victory-loop-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! rhino-victory-loop-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -1232,10 +1209,7 @@
       (set! (-> self attack-id) a0-29)
       )
     (let ((gp-1 #t))
-      (ja-no-eval :group! rhino-victory-end-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-victory-end-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! rhino-victory-end-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and gp-1 (>= (ja-frame-num 0) 12.0))
           (activate! *camera-smush-control* 819.2 37 600 1.0 0.1 (-> self clock))
@@ -1271,7 +1245,7 @@
 ;; failed to figure out what this is:
 (defstate run-away (rhino)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rhino) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (nav-enemy-method-166 self)
@@ -1324,10 +1298,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (until #f
-      (ja-no-eval :group! rhino-charge-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-charge-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! rhino-charge-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -1470,7 +1441,7 @@
 ;; failed to figure out what this is:
 (defstate attack (rhino)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rhino) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> self focus-status) (focus-status dangerous))
@@ -1511,10 +1482,7 @@
   :code (behavior ()
     (let ((gp-0 #f))
       (ja-channel-push! 1 (seconds 0.05))
-      (ja-no-eval :group! rhino-attack-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-attack-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! rhino-attack-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
             (set! gp-0 #t)
@@ -1528,7 +1496,7 @@
           )
       )
     )
-  :post (the-as (function none :behavior rhino) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 ;; definition for method 142 of type rhino
@@ -1549,7 +1517,7 @@
 ;; failed to figure out what this is:
 (defstate stop-run (rhino)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rhino) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (new 'stack-no-clear 'vector)
@@ -1605,10 +1573,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! rhino-skid-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-skid-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! rhino-skid-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (set! (-> self skid-speed) (fmax 0.0 (- (-> self skid-speed) (* 32768.0 (seconds-per-frame)))))
       (suspend)
@@ -1641,10 +1606,7 @@
                 )
           )
         )
-      (ja-no-eval :group! (-> self draw art-group data v1-30)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data v1-30)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data v1-30) :num! (seek!) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (set! (-> self skid-speed) (fmax 0.0 (- (-> self skid-speed) (* 32768.0 (seconds-per-frame)))))
@@ -1671,13 +1633,13 @@
         (go-virtual hostile)
         )
     )
-  :post (the-as (function none :behavior rhino) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 ;; failed to figure out what this is:
 (defstate charge (rhino)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rhino) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set-setting! 'sound-mode #f 0.0 1)
     (set-setting! 'sound-excitement 'abs 0.0 0)
@@ -1724,27 +1686,18 @@
         )
       )
     (ja-channel-push! 1 (seconds 0.05))
-    (ja-no-eval :group! rhino-attack-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-attack-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! rhino-attack-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (ja-channel-push! 1 (seconds 0.05))
-    (ja-no-eval :group! rhino-charge-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-charge-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! rhino-charge-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
-    (ja-no-eval :group! rhino-charge-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim rhino-charge-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! rhino-charge-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1840,10 +1793,7 @@
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -1869,14 +1819,7 @@
           )
         (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info victory-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-2
-                        )
+                      :num! (seek! max f30-2)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)

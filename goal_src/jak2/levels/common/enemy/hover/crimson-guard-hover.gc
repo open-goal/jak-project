@@ -616,10 +616,7 @@
 
 (defstate ambush-fly (crimson-guard-hover)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crimson-guard-hover)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :trans (behavior ()
     (when (hover-nav-control-method-23 (-> self hover))
       (hover-enemy-method-153 self)
@@ -640,7 +637,7 @@
         )
       )
     )
-  :code (the-as (function none :behavior crimson-guard-hover) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (-> (method-of-type hover-enemy ambush) post)
   )
 
@@ -708,13 +705,7 @@
     (sound-play "hover-warn")
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -782,10 +773,7 @@
 
 (defstate kick-attack (crimson-guard-hover)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crimson-guard-hover)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     )
@@ -794,7 +782,7 @@
         (go-hostile self)
         )
     )
-  :code (the-as (function none :behavior crimson-guard-hover) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer self))
@@ -890,13 +878,7 @@
       )
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -944,16 +926,7 @@
   :code (behavior ()
     (local-vars (v1-35 enemy-flag) (v1-43 enemy-flag))
     (ja-channel-push! 1 (seconds 0.5))
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-recover-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -990,10 +963,7 @@
 
 (defstate die-now (crimson-guard-hover)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior crimson-guard-hover)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (let ((v1-3 (-> self root root-prim)))
@@ -1011,7 +981,7 @@
     (send-event self 'death-end)
     (cleanup-for-death self)
     )
-  :post (the-as (function none :behavior crimson-guard-hover) transform-post)
+  :post transform-post
   )
 
 (defstate flying-death (crimson-guard-hover)
@@ -1057,20 +1027,14 @@
     (ja-channel-push! 1 (seconds 0.2))
     (cond
       ((< (-> self flying-death-spin-dest) 0.0)
-       (ja-no-eval :group! crimson-guard-hover-death-left-ja
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim crimson-guard-hover-death-left-ja) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! crimson-guard-hover-death-left-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! crimson-guard-hover-death-right-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim crimson-guard-hover-death-right-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! crimson-guard-hover-death-right-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))

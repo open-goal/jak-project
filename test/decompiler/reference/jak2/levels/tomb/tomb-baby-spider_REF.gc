@@ -183,14 +183,7 @@
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
-                    :num! (seek!
-                      (the float
-                           (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
-                              -1
-                              )
-                           )
-                      f30-0
-                      )
+                    :num! (seek! max f30-0)
                     :frame-num 0.0
                     )
         (until (ja-done? 0)
@@ -207,14 +200,7 @@
           0
           (nav-enemy-method-167 self)
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -224,14 +210,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -251,14 +230,7 @@
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.05))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info walk-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -292,26 +264,14 @@
               )
             )
           )
-        (ja-no-eval :group! tomb-baby-spider-notice-spin-ja
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-notice-spin-ja) frames num-frames) -1))
-                      f30-0
-                      )
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! tomb-baby-spider-notice-spin-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (seek-to-point-toward-point! (-> self root) gp-0 (* 1.8 (-> self nav max-rotation-rate)) (seconds 0.02))
           (suspend)
           (ja :num! (seek! max f30-0))
           )
         )
-      (ja-no-eval :group! tomb-baby-spider-notice-land-ja
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-notice-land-ja) frames num-frames) -1))
-                    f30-0
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! tomb-baby-spider-notice-land-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -324,10 +284,7 @@
 ;; failed to figure out what this is:
 (defstate attack (tomb-baby-spider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior tomb-baby-spider)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (nav-enemy-method-166 self)
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -371,29 +328,20 @@
       )
     0
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! tomb-baby-spider-attack0-start-ja
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-attack0-start-ja) frames num-frames) -1))
-                  0.8
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! tomb-baby-spider-attack0-start-ja :num! (seek! max 0.8) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 0.8))
       )
     (go-virtual attack-stop)
     )
-  :post (the-as (function none :behavior tomb-baby-spider) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate attack-stop (tomb-baby-spider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior tomb-baby-spider)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 (-> self nav)))
       (set! (-> v1-0 target-speed) 0.0)
@@ -411,10 +359,7 @@
     0
     )
   :code (behavior ()
-    (ja-no-eval :group! tomb-baby-spider-attack0-stop-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim tomb-baby-spider-attack0-stop-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! tomb-baby-spider-attack0-stop-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -477,7 +422,7 @@
       )
     (go-virtual hostile)
     )
-  :post (the-as (function none :behavior tomb-baby-spider) nav-enemy-face-focus-post)
+  :post nav-enemy-face-focus-post
   )
 
 ;; failed to figure out what this is:

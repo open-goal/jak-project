@@ -1330,7 +1330,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate in-ditch (citizen)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior citizen) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1357,21 +1357,13 @@ This commonly includes things such as:
   :exit (behavior ()
     '()
     )
-  :trans (the-as (function none :behavior citizen) #f)
+  :trans #f
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (cond
       ((focus-test? self touch-water)
        (until #f
-         (ja-no-eval :group! (-> self draw art-group data (-> self water-anim))
-                     :num! (seek!
-                       (the float
-                            (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self water-anim))) frames num-frames) -1)
-                            )
-                       0.5
-                       )
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! (-> self draw art-group data (-> self water-anim)) :num! (seek! max 0.5) :frame-num 0.0)
          (until (ja-done? 0)
            (let ((gp-0 (new 'stack-no-clear 'vector)))
              (set! (-> gp-0 quad) (-> self root trans quad))
@@ -1391,14 +1383,7 @@ This commonly includes things such as:
       (else
         (until #f
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        0.1
-                        )
+                      :num! (seek! max 0.1)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -1418,7 +1403,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate wait (citizen)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior citizen) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1443,14 +1428,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    (-> self speed-scale)
-                    )
+                  :num! (seek! max (-> self speed-scale))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1471,7 +1449,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate active (citizen)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior citizen) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1605,7 +1583,7 @@ This commonly includes things such as:
   :exit (behavior ()
     '()
     )
-  :code (the-as (function none :behavior citizen) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:

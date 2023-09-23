@@ -43,10 +43,7 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -54,7 +51,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior race-signal-banner) ja-post)
+  :post ja-post
   )
 
 ;; definition for function race-signal-banner-init-by-other
@@ -199,7 +196,7 @@
 (defstate idle (race-signal)
   :virtual #t
   :event race-signal-event-handler
-  :code (the-as (function none :behavior race-signal) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (race-signal-method-29 self)
     )
@@ -621,28 +618,19 @@
 ;; failed to figure out what this is:
 (defstate taunt (stadium-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior stadium-racer)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (cond
       ((zero? (rand-vu-int-count 2))
-       (ja-no-eval :group! (-> self draw art-group data 6)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 7)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -790,7 +778,7 @@
        )
       )
     )
-  :code (the-as (function none :behavior turbo-pickup) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     0

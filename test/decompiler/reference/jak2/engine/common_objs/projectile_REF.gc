@@ -548,7 +548,7 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; definition for function projectile-bounce-falling-post
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defbehavior projectile-bounce-falling-post projectile-bounce ((arg0 projectile-bounce))
+(defbehavior projectile-bounce-falling-post projectile-bounce ()
   (let ((gp-0 (-> self root))
         (s4-0 (new 'stack-no-clear 'collide-query))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -574,18 +574,15 @@ If we've met or exceeded the projectiles maximum allowed hits, switch to the [[p
 ;; failed to figure out what this is:
 (defstate sitting (projectile-bounce)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior projectile-bounce)
-    projectile-event-handler
-    )
+  :event projectile-event-handler
   :trans (behavior ()
     (noop self)
     (if (>= (- (current-time) (-> self spawn-time)) (-> self timeout))
         (go-virtual impact)
         )
     )
-  :code (the-as (function none :behavior projectile-bounce) sleep-code)
-  :post (the-as (function none :behavior projectile-bounce) projectile-bounce-falling-post)
+  :code sleep-code
+  :post projectile-bounce-falling-post
   )
 
 ;; definition for method 41 of type projectile-bounce

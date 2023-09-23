@@ -373,10 +373,7 @@
     (cond
       ((-> self restart-fly-anims)
        (ja-channel-push! 3 (seconds 0.2))
-       (ja-no-eval :group! gp-0
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) (-> self fly-anim-speed))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! gp-0 :num! (seek! max (-> self fly-anim-speed)) :frame-num 0.0)
        (let ((a0-4 (-> self skel root-channel 1)))
          (let ((f0-4 0.0))
            (set! (-> a0-4 frame-interp 1) f0-4)
@@ -645,21 +642,12 @@
 
 (defstate knocked-recover (hover-enemy)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hover-enemy) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (local-vars (v1-38 enemy-flag) (v1-46 enemy-flag))
     (ja-channel-push! 1 (seconds 0.5))
     (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info knocked-land-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info knocked-land-anim)))
-                              frames
-                              num-frames
-                              )
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -775,16 +763,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data (-> self flying-death-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self flying-death-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data (-> self flying-death-anim)) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))

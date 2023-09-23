@@ -460,10 +460,7 @@
 ;; failed to figure out what this is:
 (defstate taunt (errol-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior errol-racer)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :enter (behavior ()
     (format #t "errol-rider::taunt race-errol-pass~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-53))
@@ -472,20 +469,14 @@
     (ja-channel-push! 1 (seconds 0.05))
     (cond
       ((zero? (rand-vu-int-count 2))
-       (ja-no-eval :group! (-> self draw art-group data 5)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 6)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -893,7 +884,7 @@
        )
       )
     )
-  :code (the-as (function none :behavior turbo-ring) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (and (-> self player-got)
              (>= (- (current-time) (-> self touch-time)) (seconds 3))

@@ -713,10 +713,7 @@ The faster it's moving the fast it flaps it's wings, etc
 (defstate pegasus-debug (pegasus)
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((cam-dbg-vec (new 'stack-no-clear 'vector)))
           (let ((vec (new 'stack-no-clear 'vector)))
@@ -748,7 +745,7 @@ The faster it's moving the fast it flaps it's wings, etc
       )
     #f
     )
-  :post (the-as (function none :behavior pegasus) ja-post)
+  :post ja-post
   )
 
 (defstate die (pegasus)
@@ -763,10 +760,7 @@ The faster it's moving the fast it flaps it's wings, etc
       (let ((event-result (send-event-function (handle->process (-> self incoming attacker-handle)) evt)))
         (-> self speed)
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! pegasus-board-attack-pegasus-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim pegasus-board-attack-pegasus-ja) frames num-frames) -1)) 1.5)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! pegasus-board-attack-pegasus-ja :num! (seek! max 1.5) :frame-num 0.0)
         (until (ja-done? 0)
           (let ((frame-num (ja-aframe-num 0))
                 (speed (-> self speed))
@@ -835,7 +829,7 @@ The faster it's moving the fast it flaps it's wings, etc
       )
     #f
     )
-  :post (the-as (function none :behavior pegasus) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 (defbehavior pegasus-fly-code pegasus ((arg0 int))
@@ -997,7 +991,7 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 (defstate pegasus-tired (pegasus)
-  :event (the-as (function process int symbol event-message-block object :behavior pegasus) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((func (-> (method-of-type enemy flee) enter)))
       (if func
@@ -1112,10 +1106,7 @@ The faster it's moving the fast it flaps it's wings, etc
     (let ((anim-group (ja-group)))
       (when (not (and anim-group (= anim-group pegasus-idle-ja)))
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! pegasus-fly-to-idle-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim pegasus-fly-to-idle-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! pegasus-fly-to-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1164,14 +1155,7 @@ The faster it's moving the fast it flaps it's wings, etc
     (let ((anim-length (get-rand-float-range self 0.8 1.2)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    anim-length
-                    )
+                  :num! (seek! max anim-length)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1182,13 +1166,7 @@ The faster it's moving the fast it flaps it's wings, etc
         (suspend)
         (ja :num! (seek! max anim-length))
         )
-      (ja-no-eval :group! pegasus-idle-takeoff-in-air-ja
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim pegasus-idle-takeoff-in-air-ja) frames num-frames) -1))
-                    anim-length
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! pegasus-idle-takeoff-in-air-ja :num! (seek! max anim-length) :frame-num 0.0)
       (until (ja-done? 0)
         (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
             (react-to-focus self)

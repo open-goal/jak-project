@@ -68,7 +68,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior dummy-vehicle) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -172,10 +172,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 0.5)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.5) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.5))
@@ -183,7 +180,7 @@ This commonly includes things such as:
       )
     #f
     )
-  :post (the-as (function none :behavior gar-curtain) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -649,9 +646,9 @@ This commonly includes things such as:
 
 (defstate idle (rift-rider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rift-rider) #f)
-  :trans (the-as (function none :behavior rift-rider) #f)
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :event #f
+  :trans #f
+  :code sleep-code
   )
 
 (defstate defend-stadium-wait (rift-rider)
@@ -666,8 +663,8 @@ This commonly includes things such as:
         )
       )
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
-  :post (the-as (function none :behavior rift-rider) transform-post)
+  :code sleep-code
+  :post transform-post
   )
 
 (defstate defend-stadium-move (rift-rider)
@@ -717,7 +714,7 @@ This commonly includes things such as:
         )
       )
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
     (+! (-> self dest-pos y) (-> self height))
@@ -800,7 +797,7 @@ This commonly includes things such as:
         (go-virtual defend-stadium-complete)
         )
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (seek! (-> self height) 4096.0 (* 6144.0 (seconds-per-frame)))
     (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
@@ -1073,10 +1070,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -1084,7 +1078,7 @@ This commonly includes things such as:
       )
     #f
     )
-  :post (the-as (function none :behavior spotlight) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1494,14 +1488,7 @@ This commonly includes things such as:
           )
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self stand-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1598,12 +1585,7 @@ This commonly includes things such as:
     (send-event (handle->process (-> self hud)) 'force-show)
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data (-> self raise-ship-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self raise-ship-anim))) frames num-frames) -1)
-                       )
-                  0.75
-                  )
+                :num! (seek! max 0.75)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1811,14 +1793,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1828,16 +1803,7 @@ This commonly includes things such as:
       )
     (vector-reset! (-> self root transv))
     (set! (-> self falling?) #f)
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-land-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-land-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-land-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1910,14 +1876,7 @@ This commonly includes things such as:
       (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data (-> self death-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1925,14 +1884,7 @@ This commonly includes things such as:
     (if (-> self skel effect)
         (logior! (-> self skel effect flags) (effect-control-flag ecf1))
         )
-    (ja-no-eval :group! (-> self draw art-group data (-> self death-end-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-end-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-end-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -2288,7 +2240,7 @@ This commonly includes things such as:
   :enter (behavior ()
     (sound-play "stadium-shield")
     )
-  :code (the-as (function none :behavior stadium-barrier) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (!= (-> self flashf) 0.0)
         (seek! (-> self flashf) 0.0 (* 8.0 (seconds-per-frame)))
@@ -2603,7 +2555,7 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior stad-force-field) sleep-code)
+  :code sleep-code
   )
 
 (defmethod run-logic? stad-force-field ((obj stad-force-field))
@@ -2777,10 +2729,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.25) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.25))
@@ -2876,10 +2825,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.25) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.25))
@@ -2965,7 +2911,7 @@ This commonly includes things such as:
 
 (defstate idle (brutter-balloon)
   :virtual #t
-  :code (the-as (function none :behavior brutter-balloon) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.

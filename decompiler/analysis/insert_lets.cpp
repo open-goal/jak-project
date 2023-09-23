@@ -1330,14 +1330,19 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
                 Matcher::any_reg(0), false,
                 {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("frames"),
                  DerefTokenMatcher::string("num-frames")});
+  auto matcher_new_group_max_frames =
+      env.version == GameVersion::Jak1
+          ? Matcher::deref(Matcher::any(1), false,
+                           {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
+                            DerefTokenMatcher::string("length")})
+          : Matcher::deref(
+                Matcher::any(1), false,
+                {DerefTokenMatcher::string("frames"), DerefTokenMatcher::string("num-frames")});
   auto matcher_max_num = Matcher::cast(
-      "float", Matcher::op_fixed(FixedOperatorKind::ADDITION,
-                                 {form_fg ? Matcher::deref(Matcher::any(1), false,
-                                                           {DerefTokenMatcher::string("data"),
-                                                            DerefTokenMatcher::integer(0),
-                                                            DerefTokenMatcher::string("length")})
-                                          : matcher_cur_group_max_frames,
-                                  Matcher::integer(-1)}));
+      "float",
+      Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                        {form_fg ? matcher_new_group_max_frames : matcher_cur_group_max_frames,
+                         Matcher::integer(-1)}));
 
   // DONE CHECKING EVERYTHING!!! Now write the goddamn macro.
   std::vector<Form*> args;

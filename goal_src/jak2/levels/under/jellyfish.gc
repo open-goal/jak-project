@@ -391,7 +391,7 @@
       (go-virtual stare)
       )
     )
-  :code (the-as (function none :behavior jellyfish) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (debug-draw (-> self path))
     (hover-enemy-dest-post)
@@ -467,7 +467,7 @@
 
 (defstate threaten (jellyfish)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! *jellyfish-mech-reserved* #t)
     )
@@ -480,10 +480,7 @@
   :code (behavior ()
     (set! (-> self restart-fly-anims) #t)
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! jellyfish-notice-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-ja) frames num-frames) -1)) 1.4)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-notice-ja :num! (seek! max 1.4) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! max 1.4))
@@ -515,7 +512,7 @@
 
 (defstate charge-attack (jellyfish)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! *jellyfish-mech-reserved* #t)
     (look-at-target! self (enemy-flag death-start))
@@ -556,19 +553,13 @@
       )
     )
   :code (behavior ()
-    (ja-no-eval :group! jellyfish-notice-charge-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-charge-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-notice-charge-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (until #f
-      (ja-no-eval :group! jellyfish-notice-charge-loop-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-notice-charge-loop-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jellyfish-notice-charge-loop-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -601,7 +592,7 @@
 
 (defstate grab-mech (jellyfish)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! *jellyfish-mech-reserved* #t)
     (set! (-> self attach-lerp) 0.0)
@@ -653,10 +644,7 @@
     (set-vector! (-> self grab-offset) 0.0 14336.0 0.0 0.0)
     (set! (-> self grab-start-pos quad) (-> self root trans quad))
     (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
-    (ja-no-eval :group! jellyfish-grab-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-start-ja) frames num-frames) -1)) 1.2)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-grab-start-ja :num! (seek! max 1.2) :frame-num 0.0)
     (until (ja-done? 0)
       (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 0.0 14.0))
       (suspend)
@@ -673,10 +661,7 @@
         )
     (set! (-> self grab-start-pos quad) (-> self root trans quad))
     (quaternion-copy! (-> self grab-start-quat) (-> self root quat))
-    (ja-no-eval :group! jellyfish-grab-attach-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-attach-ja) frames num-frames) -1)) 1.2)
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-grab-attach-ja :num! (seek! max 1.2) :frame-num 0.0)
     (until (ja-done? 0)
       (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 14.0 23.0))
       (suspend)
@@ -692,10 +677,7 @@
       )
     (let ((gp-3 *target*))
       (dotimes (s5-2 2)
-        (ja-no-eval :group! jellyfish-grab-attach-loop-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-attach-loop-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! jellyfish-grab-attach-loop-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (if (and gp-3 (focus-test? gp-3 mech) (not (logtest? (-> gp-3 focus-status) (focus-status dead ignore))))
               (send-event
@@ -718,10 +700,7 @@
     (dotimes (gp-4 3)
       (initialize-chain-joints (-> self tentacles gp-4))
       )
-    (ja-no-eval :group! jellyfish-grab-detach-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-grab-detach-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-grab-detach-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (set! (-> self attach-lerp) (lerp-scale 0.0 1.0 (ja-aframe-num 0) 48.0 65.0))
       (suspend)
@@ -749,16 +728,13 @@
 
 (defstate die (jellyfish)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (logclear! (-> self focus-status) (focus-status dangerous))
     (enemy-method-52 self (-> self root transv))
     (let ((gp-0 (current-time)))
-      (ja-no-eval :group! jellyfish-die-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-die-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! jellyfish-die-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((s5-0 (ja-group))
               (f0-4 (ja-aframe-num 0))
@@ -794,12 +770,12 @@
       )
     (cleanup-for-death self)
     )
-  :post (the-as (function none :behavior jellyfish) enemy-falling-post)
+  :post enemy-falling-post
   )
 
 (defstate die-now (jellyfish)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior jellyfish) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (let ((v1-3 (-> self root root-prim)))
@@ -808,10 +784,7 @@
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (ja-no-eval :group! jellyfish-die-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim jellyfish-die-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! jellyfish-die-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))

@@ -15,9 +15,6 @@ class CollideMeshRenderer {
   void render(SharedRenderState* render_state, ScopedProfilerNode& prof);
   ~CollideMeshRenderer();
 
-  int current_time = 0;
-  int last_render_time = 0;
-
  private:
   void init_pat_colors(GameVersion version);
 

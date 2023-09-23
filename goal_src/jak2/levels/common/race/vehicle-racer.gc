@@ -889,10 +889,7 @@
 
 (defstate waiting-race (vehicle-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-racer)
-    vehicle-event-handler
-    )
+  :event vehicle-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self flags) (rigid-body-object-flag ignition))
@@ -932,8 +929,8 @@
         )
       )
     )
-  :trans (the-as (function none :behavior vehicle-racer) #f)
-  :code (the-as (function none :behavior vehicle-racer) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (when (logtest? (-> self flags) (rigid-body-object-flag waiting-for-player))
       (set! (-> self camera-dist2) (vector-vector-distance-squared (-> self root trans) (camera-pos)))
@@ -950,17 +947,14 @@
 
 (defstate waiting-for-start (vehicle-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-racer)
-    vehicle-event-handler
-    )
+  :event vehicle-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self damage-factor) (-> self info damage-factor))
     (vehicle-method-143 self)
     (logior! (-> self flags) (rigid-body-object-flag ignition))
     )
-  :code (the-as (function none :behavior vehicle-racer) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (vector-reset! (-> self target-acceleration))
     (logclear! (-> self flags) (rigid-body-object-flag player-impulse-force player-contact-force))
@@ -977,10 +971,7 @@
 
 (defstate racing (vehicle-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-racer)
-    vehicle-event-handler
-    )
+  :event vehicle-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self flags) (rigid-body-object-flag riding ignition))
@@ -1009,8 +1000,8 @@
         )
       )
     )
-  :trans (the-as (function none :behavior vehicle-racer) #f)
-  :code (the-as (function none :behavior vehicle-racer) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (vehicle-racer-method-152 self)
     )
@@ -1018,10 +1009,7 @@
 
 (defstate race-finished (vehicle-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior vehicle-racer)
-    vehicle-event-handler
-    )
+  :event vehicle-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self flags) (the-as
@@ -1033,8 +1021,8 @@
     (set! (-> self controls brake) 0.0)
     (set! (-> self controls steering) 0.0)
     )
-  :trans (the-as (function none :behavior vehicle-racer) #f)
-  :code (the-as (function none :behavior vehicle-racer) sleep-code)
+  :trans #f
+  :code sleep-code
   :post (behavior ()
     (vehicle-racer-method-155 self)
     )

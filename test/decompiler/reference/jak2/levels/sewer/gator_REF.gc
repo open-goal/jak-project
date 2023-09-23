@@ -395,7 +395,7 @@
 ;; failed to figure out what this is:
 (defstate attack-forward (gator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior gator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((_self self))
@@ -480,14 +480,8 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.07))
-    (ja-no-eval :group! (-> self draw art-group data 15)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
-                :frame-num (ja-aframe 0.0 0)
-                )
-    (ja-no-eval :group! (ja-group)
-                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 15) :num! (seek!) :frame-num (ja-aframe 0.0 0))
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (let ((target-pos (new 'stack-no-clear 'vector)))
         (let ((nav-state (-> self nav state)))
@@ -502,7 +496,7 @@
       )
     (react-to-focus self)
     )
-  :post (the-as (function none :behavior gator) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 ;; failed to figure out what this is:
