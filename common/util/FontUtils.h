@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include <common/versions/versions.h>
+#include "common/versions/versions.h"
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
 // somehow, since the encoding changes.
