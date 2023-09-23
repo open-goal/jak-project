@@ -212,6 +212,7 @@ const std::unordered_map<
         {"none", {"", &Compiler::compile_none}},
         {"size-of", {"", &Compiler::compile_size_of}},
         {"psize-of", {"", &Compiler::compile_psize_of}},
+        {"current-method-id", {"", &Compiler::compile_current_method_id}},
 
         // LAMBDA
         {"lambda", {"", &Compiler::compile_lambda}},

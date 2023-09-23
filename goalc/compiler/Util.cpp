@@ -316,17 +316,6 @@ bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   return false;
 }
 
-emitter::HWRegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
-  switch (m_ts.lookup_type(ts)->get_preferred_reg_class()) {
-    case RegClass::GPR_64:
-      return emitter::HWRegKind::GPR;
-    case RegClass::FLOAT:
-      return emitter::HWRegKind::XMM;
-    default:
-      throw std::runtime_error("Unknown preferred register kind");
-  }
-}
-
 bool Compiler::is_none(Val* in) {
   return dynamic_cast<None*>(in);
 }

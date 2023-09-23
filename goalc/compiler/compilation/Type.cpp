@@ -492,6 +492,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
   new_func_env->set_segment(env->function_env()->segment_for_static_data());
   new_func_env->method_of_type_name = symbol_string(type_name);
+  new_func_env->method_id =
+      m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name)).id;
 
   // set up arguments
   if (lambda.params.size() > 8) {
@@ -1466,4 +1468,16 @@ Compiler::ConstPropResult Compiler::const_prop_size_of(const goos::Object& form,
 
 Val* Compiler::compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_integer((get_size_for_size_of(form, rest) + 0xf) & ~0xf, env);
+}
+
+Val* Compiler::compile_current_method_id(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  auto* fe = env->function_env();
+  if (!fe->method_id) {
+    throw_compiler_error(form, "current-method-id wasn't called from a method.");
+  }
+  return compile_integer(*fe->method_id, env);
 }

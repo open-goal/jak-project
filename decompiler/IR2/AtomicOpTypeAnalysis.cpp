@@ -93,6 +93,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         return TP_Type::make_run_function_in_process_function();
       } else if (m_string == "set-to-run" && env.func->name() != "enter-state") {
         return TP_Type::make_set_to_run_function();
+      } else if (m_string == "find-parent-method") {
+        return TP_Type::make_find_parent_method_function();
       }
 
       // look up the type of the symbol
@@ -1355,10 +1357,6 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     in_type = TypeSpec("function", new_arg_types);
   }
 
-  if (in_type.arg_count() < 1) {
-    throw std::runtime_error("Called a function, but we do not know its type");
-  }
-
   if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
     // we're calling a varags function, which is format. We can determine the argument count
     // by looking at the format string, if we can get it.
@@ -1418,11 +1416,63 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
                                arg_type.print());
     }
   }
+
+  bool use_normal_last_arg = true;
+
+  if (in_tp.kind == TP_Type::Kind::FIND_PARENT_METHOD_FUNCTION) {
+    bool can_use_call_parent = true;
+    // should be calling this from a method:
+    if (env.func->guessed_name.kind != FunctionName::FunctionKind::METHOD) {
+      can_use_call_parent = false;
+      lg::warn(
+          "Can't use call-parent-method because find-parent-method was called in {}, which isn't a "
+          "method.",
+          env.func->name());
+    }
+    // should call something like:
+    // (find-parent-method sharkey 39)
+    const auto& type_arg = input.get(Register(Reg::GPR, Reg::A0));
+    if (can_use_call_parent && type_arg.kind != TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      lg::warn(
+          "Can't use call-parent-method because the first argument to find-parent-method is a {}, "
+          "which should be a type",
+          type_arg.print());
+      can_use_call_parent = false;
+    }
+
+    if (can_use_call_parent && type_arg.get_type_objects_typespec() != env.func->method_of_type) {
+      lg::warn(
+          "Can't use call-parent-method because the first argument type is wrong: got {}, but "
+          "expected {}",
+          type_arg.get_type_objects_typespec().print(), env.func->method_of_type);
+      can_use_call_parent = false;
+    }
+    const auto& id_arg = input.get(Register(Reg::GPR, Reg::A1));
+    if (can_use_call_parent && !id_arg.is_integer_constant(env.func->guessed_name.method_id)) {
+      lg::warn(
+          "Can't use call-parent-method because the second argument is wrong: got {}, but expected "
+          "a constant integer {}",
+          id_arg.print(), env.func->guessed_name.method_id);
+      can_use_call_parent = false;
+    }
+
+    if (can_use_call_parent) {
+      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(env.func->type);
+      use_normal_last_arg = false;
+    }
+  }
+
+  if (use_normal_last_arg) {
+    end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
+  }
+
+  if (in_type.arg_count() < 1) {
+    throw std::runtime_error("Called a function, but we do not know its type");
+  }
+
   // set the call type!
   m_call_type = in_type;
   m_call_type_set = true;
-
-  end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
 
   if (in_tp.kind == TP_Type::Kind::NON_OBJECT_NEW_METHOD &&
       in_type.last_arg() == TypeSpec("array")) {

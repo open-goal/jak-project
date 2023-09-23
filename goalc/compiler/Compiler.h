@@ -246,7 +246,6 @@ class Compiler {
 
   TypeSpec parse_typespec(const goos::Object& src, Env* env);
   bool is_local_symbol(const goos::Object& obj, Env* env);
-  emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
@@ -705,6 +704,7 @@ class Compiler {
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   ConstPropResult const_prop_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_current_method_id(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // State
   Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);
