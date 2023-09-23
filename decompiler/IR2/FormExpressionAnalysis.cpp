@@ -2621,6 +2621,16 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
+FormElement* SetFormFormElement::make_set_time(const Env& env, FormPool& pool, FormStack& stack) {
+  auto matcher = match(
+      Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}), m_src);
+  if (matcher.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("set-time!")), m_dst);
+  }
+  return nullptr;
+}
+
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   ASSERT(m_popped);
   ASSERT(m_real_push_count == 0);
@@ -2688,6 +2698,12 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   } InplaceCallInfo;
 
   const static InplaceCallInfo in_place_calls[] = {{"seek", "seek!", 0}, {"seekl", "seekl!", 0}};
+
+  auto as_set_time = make_set_time(env, pool, stack);
+  if (as_set_time) {
+    stack.push_form_element(as_set_time, true);
+    return;
+  }
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
@@ -5226,6 +5242,48 @@ FormElement* ConditionElement::make_geq_zero_unsigned_check_generic(
   return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
                                             casted);
 }
+
+FormElement* ConditionElement::make_time_elapsed(const Env& env,
+                                                 FormPool& pool,
+                                                 const std::vector<Form*>& source_forms,
+                                                 const std::vector<TypeSpec>& types) {
+  // geq case:
+  // (>= (- (current-time) (-> self state-time)) (seconds 5))
+  // to
+  // (time-elapsed? (-> self state-time) (seconds 5))
+
+  // lt case:
+  // (< (- (current-time) (-> self state-time)) (seconds 5))
+  // to
+  // (not (time-elapsed? (-> self state-time) (seconds 5)))
+  auto matcher = match(
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SUBTRACTION),
+                  {Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}),
+                   Matcher::any(0)}),
+      source_forms.at(0));
+  if (matcher.matched) {
+    auto time_elapsed = matcher.maps.forms.at(0);
+    auto time = source_forms.at(1);
+    std::vector<Form*> args;
+    args.push_back(time_elapsed);
+    args.push_back(time);
+    if (m_kind == IR2_Condition::Kind::LESS_THAN_SIGNED ||
+        m_kind == IR2_Condition::Kind::LESS_THAN_UNSIGNED) {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
+          pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
+              make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env)));
+    } else {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
+          make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env));
+    }
+  }
+
+  return nullptr;
+}
+
 FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
@@ -5251,23 +5309,43 @@ FormElement* ConditionElement::make_generic(const Env& env,
     case IR2_Condition::Kind::NOT_EQUAL:
       return make_not_equal_check_generic(env, pool, source_forms, types);
 
-    case IR2_Condition::Kind::LESS_THAN_SIGNED:
+    case IR2_Condition::Kind::LESS_THAN_SIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::LT),
           make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env));
-    case IR2_Condition::Kind::LESS_THAN_UNSIGNED:
+    }
+    case IR2_Condition::Kind::LESS_THAN_UNSIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::LT),
           make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
+    }
 
-    case IR2_Condition::Kind::GEQ_SIGNED:
+    case IR2_Condition::Kind::GEQ_SIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env));
-    case IR2_Condition::Kind::GEQ_UNSIGNED:
+    }
+    case IR2_Condition::Kind::GEQ_UNSIGNED: {
+      auto time_elapsed = make_time_elapsed(env, pool, source_forms, types);
+      if (time_elapsed) {
+        return time_elapsed;
+      }
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env));
+    }
 
     case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
       return make_less_than_zero_signed_check_generic(env, pool, source_forms, types);

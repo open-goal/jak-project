@@ -438,6 +438,7 @@ class SetFormFormElement : public FormElement {
   const std::optional<TypeSpec>& cast_for_define() const { return m_cast_for_define; }
   void set_cast_for_set(const std::optional<TypeSpec>& ts) { m_cast_for_set = ts; }
   void set_cast_for_define(const std::optional<TypeSpec>& ts) { m_cast_for_define = ts; }
+  FormElement* make_set_time(const Env& env, FormPool& pool, FormStack& stack);
 
  private:
   int m_real_push_count = 0;
@@ -598,6 +599,10 @@ class ConditionElement : public FormElement {
                                                   FormPool& pool,
                                                   const std::vector<Form*>& source_forms,
                                                   const std::vector<TypeSpec>& types);
+  FormElement* make_time_elapsed(const Env& env,
+                                 FormPool& pool,
+                                 const std::vector<Form*>& source_forms,
+                                 const std::vector<TypeSpec>& types);
   bool allow_in_if() const override { return false; }
 
  private:
