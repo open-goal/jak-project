@@ -878,11 +878,12 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
+      auto obj_unique_name = obj.to_unique_name();
+
       // lg::print("art-group {}:\n", obj.to_unique_name());
       auto name = obj.linked_data.get_goal_string_by_label(words.at(2).label_id());
       int length = words.at(3).data;
       // lg::print("  length: {}\n", length);
-      std::unordered_map<int, std::string> art_group_elts;
       for (int i = 0; i < length; ++i) {
         const auto& word = words.at(8 + i);
         if (word.kind() == LinkedWord::Kind::SYM_PTR && word.symbol_name() == "#f") {
@@ -891,8 +892,19 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
         const auto& label = obj.linked_data.labels.at(word.label_id());
         auto elt_name =
             obj.linked_data.get_goal_string_by_label(words.at(label.offset / 4 + 1).label_id());
+        auto unique_name = elt_name;
+
+        auto ag_name = obj_unique_name;
+        int elt_index = i;
+        auto& word_master_ag = words.at(label.offset / 4 + 7);
+        auto& word_master_idx = words.at(label.offset / 4 + 8);
+        if (word_master_ag.kind() == LinkedWord::Kind::PTR &&
+            word_master_idx.kind() == LinkedWord::Kind::PLAIN_DATA) {
+          ag_name = obj.linked_data.get_goal_string_by_label(word_master_ag.label_id()) + "-ag";
+          elt_index = word_master_idx.data;
+        }
+
         std::string elt_type = words.at(label.offset / 4 - 1).symbol_name();
-        std::string unique_name = elt_name;
         if (elt_type == "art-joint-geo") {
           // the skeleton!
           unique_name += "-jg";
@@ -908,10 +920,9 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
           throw std::runtime_error(
               fmt::format("unknown art elt type {} in {}", elt_type, obj.to_unique_name()));
         }
-        art_group_elts[i] = unique_name;
-        // lg::print("  {}: {} ({}) -> {}\n", i, elt_name, elt_type, unique_name);
+        // lg::print("  {}: {} ({}) -> {} @ {}\n", i, elt_name, elt_type, unique_name, elt_index);
+        db.dts.add_art_group_elt(ag_name, unique_name, elt_index);
       }
-      db.dts.art_group_info[obj.to_unique_name()] = art_group_elts;
     }
   }
 }
