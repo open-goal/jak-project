@@ -615,14 +615,7 @@
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info victory-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -658,10 +651,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! centurion-idle-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-idle-ja) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! centurion-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -670,7 +660,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior centurion) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defmethod centurion-method-180 centurion ((obj centurion))
@@ -755,7 +745,7 @@
 
 (defstate fire (centurion)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior centurion) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self can-shoot?) (the-as basic #t))
     (if (and (-> self first-shoot?) (logtest? (-> self draw status) (draw-control-status on-screen)))
@@ -791,10 +781,7 @@
           )
         )
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! centurion-shoot-start-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-start-ja) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! centurion-shoot-start-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((gp-2 (handle->process (-> self focus handle))))
           (when gp-2
@@ -840,10 +827,7 @@
       (when (handle->process (-> self focus handle))
         )
       (centurion-method-180 self)
-      (ja-no-eval :group! centurion-shoot-loop-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-loop-ja) frames num-frames) -1)) 0.4)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! centurion-shoot-loop-ja :num! (seek! max 0.4) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.4))
@@ -851,10 +835,7 @@
       (set! (-> self can-take-damage?) #f)
       (set! (-> self root root-prim specific 0) (-> self root root-prim specific 1))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! centurion-shoot-end-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-shoot-end-ja) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! centurion-shoot-end-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -862,12 +843,12 @@
       )
     (go-virtual hostile)
     )
-  :post (the-as (function none :behavior centurion) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 (defstate attack (centurion)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior centurion) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3 prim-core action)
           (collide-action solid deadly)
@@ -893,17 +874,14 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! centurion-hit-away-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim centurion-hit-away-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! centurion-hit-away-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual hostile)
     )
-  :post (the-as (function none :behavior centurion) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 (defmethod dispose! centurion ((obj centurion))
@@ -1294,7 +1272,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior centurion) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 (defmethod enemy-method-77 centurion ((obj centurion) (arg0 (pointer float)))

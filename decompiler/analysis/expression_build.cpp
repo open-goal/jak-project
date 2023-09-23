@@ -111,8 +111,8 @@ bool convert_to_expressions(
 
           // the return value of this function is not an exact match
           // we cast it to avoid complicated issues with polymorphism (e.g. methods)
-          // we don't run this if we find a (return statement because we do not handle
-          // type checking on those at the moment.
+          // we don't run this if we find a (return statement for unknown reasons
+          // TODO : remove this and check?
           if (!found_early_return && f.type.last_arg() != return_type) {
             needs_cast = true;
           }

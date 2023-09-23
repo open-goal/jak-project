@@ -1226,6 +1226,7 @@
 
 ;; definition for function enemy-init-by-other
 ;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defbehavior enemy-init-by-other enemy ((arg0 process-drawable) (arg1 enemy-init-by-other-params))
   (let ((a1-1 (-> arg1 entity)))
     (if a1-1
@@ -2329,7 +2330,7 @@ This commonly includes things such as:
     (logclear! (-> self enemy-flags) (enemy-flag victory))
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
-  :code (the-as (function none :behavior enemy) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -2348,7 +2349,7 @@ This commonly includes things such as:
           )
       )
     )
-  :code (the-as (function none :behavior enemy) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
         (set! (-> self last-draw-time) (current-time))
@@ -2457,14 +2458,7 @@ This commonly includes things such as:
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -2562,10 +2556,7 @@ This commonly includes things such as:
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -2589,14 +2580,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info victory-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -3004,14 +2988,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -3634,14 +3611,7 @@ This commonly includes things such as:
     (ja-channel-push! 1 (seconds 0.075))
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info die-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -3710,10 +3680,7 @@ This commonly includes things such as:
                 )
           (f30-0 (get-rand-float-range self 0.8 1.2))
           )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -3746,7 +3713,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate die-fast (enemy)
   :virtual #t
-  :code (the-as (function none :behavior enemy) nothing)
+  :code nothing
   )
 
 ;; failed to figure out what this is:
@@ -3765,10 +3732,7 @@ This commonly includes things such as:
           (let ((s4-0 (-> gp-0 data s5-0)))
             (when (and s4-0 (= (-> s4-0 type) art-joint-anim))
               (ja-channel-set! 1)
-              (ja-no-eval :group! s4-0
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! s4-0 :num! (seek!) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek!))
@@ -3780,7 +3744,7 @@ This commonly includes things such as:
       )
     #f
     )
-  :post (the-as (function none :behavior enemy) transform-post)
+  :post transform-post
   )
 
 ;; definition for function ja-group-index?

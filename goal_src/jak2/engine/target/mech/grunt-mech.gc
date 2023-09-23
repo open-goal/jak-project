@@ -337,7 +337,7 @@
 
 (defstate mech-lunge (grunt-mech)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
@@ -365,13 +365,7 @@
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (quaternion-copy! (the-as quaternion (-> gp-0 vector)) (-> self root quat))
       (set! (-> gp-0 vector 1 quad) (-> self root trans quad))
-      (ja-no-eval :group! (-> self draw art-group data 48)
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 48)) frames num-frames) -1))
-                    0.769
-                    )
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 48) :num! (seek! max 0.769) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((s5-0 *grunt-mech-info*))
           (grunt-mech-info-method-10 s5-0)
@@ -394,7 +388,7 @@
       )
     (go-virtual mech-hold)
     )
-  :post (the-as (function none :behavior grunt-mech) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defbehavior grunt-mech-hold-post grunt-mech ()
@@ -542,7 +536,7 @@
 
 (defstate mech-hold (grunt-mech)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -565,10 +559,7 @@
         )
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 49)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 49)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 49) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -659,13 +650,7 @@
           )
         (when (= (get-rand-int self 4) 3)
           (ja-channel-push! 1 (seconds 0.13))
-          (ja-no-eval :group! (-> self draw art-group data 50)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 50)) frames num-frames) -1))
-                        0.090909
-                        )
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! (-> self draw art-group data 50) :num! (seek! max 0.090909) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max 0.090909))
@@ -681,7 +666,7 @@
 
 (defstate mech-dismount (grunt-mech)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self root root-prim prim-core collide-as) (collide-spec))
@@ -723,10 +708,7 @@
       (quaternion-look-at! (the-as quaternion (-> gp-0 vector 2)) (-> gp-0 vector 1) *up-vector*)
       (quaternion-copy! (the-as quaternion (-> gp-0 vector)) (-> self root quat))
       (set! (-> gp-0 vector 1 quad) (-> self root trans quad))
-      (ja-no-eval :group! (-> self draw art-group data 54)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 54)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 54) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((f30-0 (lerp-scale 0.0 1.0 (ja-aframe-num 0) 33.0 41.0)))
           (quaternion-slerp!
@@ -754,10 +736,7 @@
       )
     0
     (logclear! (-> self nav state flags) (nav-state-flag at-target))
-    (ja-no-eval :group! (-> self draw art-group data 55)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 55)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 55) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -765,12 +744,12 @@
     (ja-channel-push! 1 (seconds 0.13))
     (go-virtual mech-post-circling)
     )
-  :post (the-as (function none :behavior grunt-mech) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate mech-post-circling (grunt-mech)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type grunt circling) enter))
     (set! (-> self state-timeout) (+ (current-time) (get-rand-int-range self 750 1200)))
@@ -828,7 +807,7 @@
 
 (defstate mech-pre-circling (grunt-mech)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt-mech) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type grunt-mech mech-post-circling) enter))
     (set! (-> self state-timeout) (+ (current-time) (get-rand-int-range self 900 1800)))

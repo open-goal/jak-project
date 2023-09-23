@@ -176,10 +176,7 @@
 nav-enemy-default-event-handler
 
 (defstate muse-idle (muse)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (seek! (-> self sprint-distance) 61440.0 (* 8192.0 (-> *display* seconds-per-frame)))
     (if (and *target* (>= 102400.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
@@ -210,15 +207,12 @@ nav-enemy-default-event-handler
         )
       )
     )
-  :post (the-as (function none :behavior muse) ja-post)
+  :post ja-post
   )
 
 (defstate nav-enemy-chase (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     )
@@ -285,10 +279,7 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-jump (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
@@ -298,10 +289,7 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior muse)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.075))
@@ -316,7 +304,7 @@ nav-enemy-default-event-handler
   )
 
 (defstate muse-caught (muse)
-  :event (the-as (function process int symbol event-message-block object :behavior muse) #f)
+  :event #f
   :trans (behavior ()
     (spool-push *art-control* (-> self anim name) 0 self -1.0)
     )

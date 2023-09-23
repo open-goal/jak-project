@@ -33,10 +33,7 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (and (and *target* (>= (-> self enemy-info idle-distance)
                                (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))
@@ -57,16 +54,13 @@ nav-enemy-default-event-handler
       )
     (anim-loop)
     )
-  :post (the-as (function none :behavior babak-with-cannon) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
@@ -98,10 +92,7 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate babak-run-to-cannon (babak)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self nav destination-pos quad) (-> self entity extra trans quad))
@@ -185,10 +176,7 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-onto-cannon (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     )
@@ -253,15 +241,12 @@ nav-enemy-default-event-handler
       )
     (go babak-with-cannon-shooting)
     )
-  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-jump-event-handler
-    )
+  :event nav-enemy-jump-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
     )
@@ -286,15 +271,12 @@ nav-enemy-default-event-handler
       )
     (go-virtual nav-enemy-jump-land)
     )
-  :post (the-as (function none :behavior babak-with-cannon) nav-enemy-jump-post)
+  :post nav-enemy-jump-post
   )
 
 ;; failed to figure out what this is:
 (defstate babak-with-cannon-shooting (babak-with-cannon)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
@@ -334,10 +316,7 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (and *target* (= (-> *target* current-level name) 'beach))
         (spool-push *art-control* "beachcam-cannon" 0 self -1.0)
@@ -356,10 +335,7 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-fuel-cell (babak-with-cannon)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior babak-with-cannon)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))

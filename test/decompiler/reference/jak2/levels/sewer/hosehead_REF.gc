@@ -1042,7 +1042,7 @@
 ;; failed to figure out what this is:
 (defstate idle-sentry (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type nav-enemy idle) enter)
   :exit (-> (method-of-type nav-enemy idle) exit)
   :trans (behavior ()
@@ -1075,7 +1075,7 @@
 ;; failed to figure out what this is:
 (defstate hostile-sentry (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (logior! (-> self skel status) (joint-control-status sync-math))
@@ -1169,10 +1169,7 @@
       (ja-channel-push! 1 (seconds 0.01))
       (set! (-> self fire-beam?) #t)
       (until #f
-        (ja-no-eval :group! hosehead-shoot-loop-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-shoot-loop-ja) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! hosehead-shoot-loop-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -1182,10 +1179,7 @@
       #f
       (sound-stop (-> self lazer-sound))
       (sound-stop (-> self lazer-sound2))
-      (ja-no-eval :group! hosehead-shoot-end-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-shoot-end-ja) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-shoot-end-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -1374,7 +1368,7 @@
 ;; failed to figure out what this is:
 (defstate ambush (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag36))))
@@ -1449,10 +1443,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
-    (ja-no-eval :group! hosehead-jump-down-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-jump-down-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! hosehead-jump-down-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1473,26 +1464,23 @@
 ;; failed to figure out what this is:
 (defstate ambush-land (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
-    (ja-no-eval :group! hosehead-jump-down-land-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-jump-down-land-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! hosehead-jump-down-land-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-hostile self)
     )
-  :post (the-as (function none :behavior hosehead) nav-enemy-falling-post)
+  :post nav-enemy-falling-post
   )
 
 ;; failed to figure out what this is:
 (defstate active-wall (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1515,10 +1503,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (until #f
-      (ja-no-eval :group! hosehead-idle-wall0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-idle-wall0-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-idle-wall0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
@@ -1527,7 +1512,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior hosehead) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; definition for method 196 of type hosehead
@@ -1631,7 +1616,7 @@
 ;; failed to figure out what this is:
 (defstate notice-wall (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (local-vars (sv-688 vector))
     (rlet ((acc :class vf)
@@ -1729,10 +1714,7 @@
     (set! (-> self come-from-notice) #t)
     (ja-channel-push! 1 (seconds 0.05))
     (until #f
-      (ja-no-eval :group! hosehead-walk-wall-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-walk-wall-ja) frames num-frames) -1)) 1.5)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-walk-wall-ja :num! (seek! max 1.5) :frame-num 0.0)
       (until (ja-done? 0)
         (set! (-> self root trans y) (- (-> self root trans y) (* 36864.0 (seconds-per-frame))))
         (hosehead-method-186 self)
@@ -1806,7 +1788,7 @@
 ;; failed to figure out what this is:
 (defstate fire (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -1881,10 +1863,7 @@
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (set! (-> self allow-head) #t)
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! hosehead-shoot-start-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-shoot-start-ja) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-shoot-start-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (hosehead-method-189 self)
         (suspend)
@@ -1906,10 +1885,7 @@
       (label cfg-13)
       (sound-stop (-> self lazer-sound))
       (sound-stop (-> self lazer-sound2))
-      (ja-no-eval :group! hosehead-shoot-end-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-shoot-end-ja) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-shoot-end-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -1928,7 +1904,7 @@
 ;; failed to figure out what this is:
 (defstate attack (hosehead)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior hosehead) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-2 *game-info*)
@@ -1948,20 +1924,14 @@
     (ja-channel-push! 1 (seconds 0.2))
     (cond
       ((zero? (get-rand-int self 2))
-       (ja-no-eval :group! hosehead-attack1-ja
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-attack1-ja) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! hosehead-attack1-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! hosehead-attack0-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-attack0-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! hosehead-attack0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1975,20 +1945,14 @@
     (let ((v1-57 (get-rand-int self 4)))
       (cond
         ((zero? v1-57)
-         (ja-no-eval :group! hosehead-idle1-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-idle1-ja) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! hosehead-idle1-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
            )
          )
         ((= v1-57 1)
-         (ja-no-eval :group! hosehead-idle2-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-idle2-ja) frames num-frames) -1)))
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! hosehead-idle2-ja :num! (seek!) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))
@@ -1998,7 +1962,7 @@
       )
     (go-hostile self)
     )
-  :post (the-as (function none :behavior hosehead) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -2065,7 +2029,7 @@
       )
     #f
     )
-  :post (the-as (function none :behavior hosehead) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
@@ -2077,14 +2041,7 @@
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (new 'stack-no-clear 'vector)
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -2116,10 +2073,7 @@
       )
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! hosehead-run1-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim hosehead-run1-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! hosehead-run1-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))

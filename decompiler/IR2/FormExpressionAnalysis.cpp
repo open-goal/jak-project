@@ -3881,7 +3881,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         macro.push_back(rate);
       }
 
-      if (env.version > GameVersion::Jak1) {
+      if (env.version != GameVersion::Jak1) {
         macro.push_back(pool.form<ConstantTokenElement>(":origin-is-matrix"));
         macro.push_back(pool.form<ConstantTokenElement>("#t"));
       }
@@ -3918,10 +3918,8 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
     if (elt_name) {
       return pool.alloc_element<ConstantTokenElement>(*elt_name);
     } else {
-      if (env.version != GameVersion::Jak2) {
-        lg::error("function {}: did not find art element {} in {}", env.func->name(),
-                  mr.maps.ints.at(0), env.art_group());
-      }
+      lg::error("function `{}`: did not find art element {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.art_group());
     }
   }
 
@@ -4841,7 +4839,6 @@ FormElement* try_make_logtest_mouse_macro(Form* in, FormPool& pool) {
       t = REL;
     }
 
-    printf("t is %d\n", t);
     if (t != NIL) {
       auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
       if (logtest_elt) {

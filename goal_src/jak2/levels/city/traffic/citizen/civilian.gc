@@ -498,7 +498,7 @@
 
 (defstate flee (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -710,7 +710,7 @@
 
 (defstate avoid-danger (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -887,7 +887,7 @@
 
 (defstate clear-path (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -986,7 +986,7 @@
 
 (defstate on-ground (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1026,12 +1026,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-on-ground))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-on-ground))) frames num-frames) -1)
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1050,7 +1045,7 @@
 
 (defstate dive (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1116,12 +1111,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-dive))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-dive))) frames num-frames) -1)
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1153,7 +1143,7 @@
 
 (defstate cower-ground (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1199,16 +1189,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self info anim-cover-head-start))
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self info anim-cover-head-start)))
-                                    frames
-                                    num-frames
-                                    )
-                                -1
-                                )
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1217,16 +1198,7 @@
       )
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self info anim-cover-head-loop))
-                  :num! (seek!
-                    (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self info anim-cover-head-loop)))
-                                      frames
-                                      num-frames
-                                      )
-                                  -1
-                                  )
-                         )
-                    (-> self speed-scale)
-                    )
+                  :num! (seek! max (-> self speed-scale))
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1240,16 +1212,7 @@
     #f
     (label cfg-9)
     (ja-no-eval :group! (-> self draw art-group data (-> self info anim-cover-head-end))
-                :num! (seek!
-                  (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self info anim-cover-head-end)))
-                                    frames
-                                    num-frames
-                                    )
-                                -1
-                                )
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1272,7 +1235,7 @@
 
 (defstate get-up-front (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1299,14 +1262,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-front))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-front))) frames num-frames)
-                          -1
-                          )
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1330,7 +1286,7 @@
 
 (defstate get-up-back (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1357,12 +1313,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-back))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-back))) frames num-frames) -1)
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1512,14 +1463,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    0.1
-                    )
+                  :num! (seek! max 0.1)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1937,7 +1881,7 @@
 
 (defstate exit-vehicle (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (change-to (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000)) self)
     (if (not (-> self nav))
@@ -2086,7 +2030,7 @@
 
 (defstate wait-at-dest (civilian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior civilian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logclear! (-> self flags) (citizen-flag persistent))
     (set! (-> self state-time) (current-time))
@@ -2107,14 +2051,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    0.1
-                    )
+                  :num! (seek! max 0.1)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)

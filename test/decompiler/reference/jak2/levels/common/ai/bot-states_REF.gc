@@ -27,14 +27,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -157,10 +150,7 @@
                 )
           (f30-0 (get-rand-float-range self 0.8 1.2))
           )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -182,7 +172,7 @@
 ;; failed to figure out what this is:
 (defstate failed (bot)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior bot) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type bot die-falling) enter))
     (logclear! (-> self bot-flags) (bot-flags bf11))
@@ -213,10 +203,7 @@
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (when (and (logtest? (-> self bot-flags) (bot-flags failed))
                      (>= (- (current-time) (-> self state-time)) (seconds 0.5))
@@ -233,13 +220,13 @@
       )
     #f
     )
-  :post (the-as (function none :behavior bot) nav-enemy-die-falling-post)
+  :post nav-enemy-die-falling-post
   )
 
 ;; failed to figure out what this is:
 (defstate hidden (bot)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior bot) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status disable))
     (let ((v1-3 (-> self root root-prim)))
@@ -267,6 +254,6 @@
       )
     (set! (-> self enemy-flags) v0-0)
     )
-  :code (the-as (function none :behavior bot) sleep-code)
-  :post (the-as (function none :behavior bot) nav-enemy-simple-post)
+  :code sleep-code
+  :post nav-enemy-simple-post
   )
