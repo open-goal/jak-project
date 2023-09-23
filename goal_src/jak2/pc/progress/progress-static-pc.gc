@@ -178,32 +178,79 @@ This gives us more freedom to write code how we want.
         :get-value-fn (lambda () (-> *pc-settings* auto-hide-cursor?))
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* auto-hide-cursor?) val)
+          (update-mouse-controls! *pc-settings*)
           (commit-to-file *pc-settings*)))
+      ;; TODO - there is a bug where if you restore default binds and that changes your `X` bind,
+      ;; the next X input is ignored, figure this out eventually / make an issue for it.
       (progress-new-generic-link-to-scrolling-page (text-id progress-menu-reassign-binds)
-        (progress-new-generic-link (text-id progress-reassign-binds-controller) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
-          ;; TODO
-          (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-controller) :should-disable? (lambda () (<= (pc-get-controller-count) 0))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type controller))
+          (new 'static 'menu-generic-details-confirm-entry
             :name (text-id progress-restore-defaults)
-            :truthy-text (text-id progress-on)
-            :falsey-text (text-id progress-off)
-            :get-value-fn (lambda () #t)
-            :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))))
-        (progress-new-generic-link (text-id progress-reassign-binds-keyboard) :should-disable? (lambda () (not (-> *pc-settings* keyboard-enabled?)))
-          ;; TODO
-          (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 0))))
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-keyboard) :should-disable? (lambda () (not (-> *pc-settings* keyboard-enabled?)))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l-analog-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r-analog-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type keyboard))
+          (new 'static 'menu-generic-details-confirm-entry
             :name (text-id progress-restore-defaults)
-            :truthy-text (text-id progress-on)
-            :falsey-text (text-id progress-off)
-            :get-value-fn (lambda () #t)
-            :on-confirm (lambda ((val symbol)) (format 0 "TODO~%")))))
-        (progress-new-generic-link (text-id progress-reassign-binds-mouse) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
-          ;; TODO
-          (progress-new-generic-option (new 'static 'menu-generic-boolean-option
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 1))))
+        (progress-new-generic-link-to-details-page (text-id progress-reassign-binds-mouse) :should-disable? (lambda () (not (-> *pc-settings* mouse-enabled?)))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind select) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l3) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r3) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind start) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-up) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-right) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-down) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind dpad-left) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l2) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r2) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind l1) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind r1) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind triangle) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind circle) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind cross) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-keybind-entry :keybind (controller-keybind square) :device-type (input-device-type mouse))
+          (new 'static 'menu-generic-details-confirm-entry
             :name (text-id progress-restore-defaults)
-            :truthy-text (text-id progress-on)
-            :falsey-text (text-id progress-off)
-            :get-value-fn (lambda () #t)
-            :on-confirm (lambda ((val symbol)) (format 0 "TODO~%"))))))
+            :on-confirm (lambda () (pc-reset-bindings-to-defaults! 0 2)))))
       (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
         :on-confirm (lambda ((val symbol))
@@ -266,15 +313,15 @@ This gives us more freedom to write code how we want.
           (commit-to-file *pc-settings*))))))
 
 
-;; TODO - update this
+;; TODO - migrate this menu as well
 ;; graphic options
 ;;   resolution
 ;;   display mode
-;;   display select
+;;   display select (disable if windowed)
 ;;   vsync
 ;;   aspect ratio
 ;;   msaa
-;;   frame rate
+;;   frame rate (dont go beyond refresh rate) (disable if SRMode)
 ;;   ps2 options
 ;;     lod bg
 ;;     lod fg
