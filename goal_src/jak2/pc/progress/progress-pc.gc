@@ -355,8 +355,7 @@
                                   (-> *progress-pc-generic-store* history-stack-index))))
        ;; call the on-load function is appropriate, this can be used to perform some kind of generic setup
        ;; for the particular route
-       (when (and (nonzero? (-> curr-history-entry on-load)) (!= (-> curr-history-entry on-load) #f))
-        ((-> curr-history-entry on-load)))
+       (call-on-load curr-history-entry)
        ;; restore state from the history entry
        (set! (-> *progress-pc-generic-store* clear-screen?) #f)
        (set! (-> *progress-pc-generic-store* current-menu-hover-index) (-> curr-history-entry hover-index))
@@ -751,6 +750,7 @@
   (when (and *progress-process* *progress-state* (!= (-> *progress-state* starting-state) 'title))
     (stop-music-player)
     (set-next-state (-> *progress-process* 0) 'go-away 0)
+    (clear-history! *progress-pc-generic-store*)
     )
   0
   (none)

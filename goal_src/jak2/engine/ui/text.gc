@@ -314,8 +314,11 @@ in a single text group and file."
   )
 
 (defun draw-debug-text-box ((arg0 font-context))
-  "Draws some lines"
+  "Draws the boundaries of the font context. requires any cheat to be enabled."
   (when *cheat-mode*
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     (let ((s5-0 (new 'static 'vector4w))
           (gp-0 (new 'static 'vector4w-4))
           )
@@ -353,6 +356,9 @@ in a single text group and file."
       (add-debug-line2d #t (bucket-id debug-no-zbuf1) (-> gp-0 vector 2) (-> gp-0 vector 3) s5-0)
       (add-debug-line2d #t (bucket-id debug-no-zbuf1) (-> gp-0 vector 3) (the-as vector4w (-> gp-0 vector)) s5-0)
       )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     )
   0
   (none)
@@ -372,7 +378,7 @@ in a single text group and file."
       (if (logtest? (-> arg2 flags) (font-flags middle))
           (+! (-> arg2 origin x) (* 0.5 (- f26-0 f0-1)))
           )
-      (if (logtest? (-> arg2 flags) (font-flags left))
+      (if (logtest? (-> arg2 flags) (font-flags middle-vert))
           (+! (-> arg2 origin y) (* 0.5 (- f30-0 f1-2)))
           )
       (let ((v1-10 arg2))
@@ -422,8 +428,8 @@ in a single text group and file."
      (set! sv-20 (-> arg1 origin y))
      (set! sv-24 (-> arg1 flags))
      (set! sv-28 (-> arg1 color))
-     (when (logtest? (-> arg1 flags) (font-flags left))
-       (logclear! (-> arg1 flags) (font-flags left))
+     (when (logtest? (-> arg1 flags) (font-flags middle-vert))
+       (logclear! (-> arg1 flags) (font-flags middle-vert))
        (+! (-> arg1 origin y)
            (the float (the int (* 0.5 (- (-> arg1 height) (print-game-text arg0 arg1 #t 44 (bucket-id progress))))))
            )
