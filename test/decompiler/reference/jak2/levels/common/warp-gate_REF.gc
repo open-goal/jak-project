@@ -499,49 +499,49 @@
   )
 
 ;; definition for method 3 of type warp-gate
-(defmethod inspect warp-gate ((obj warp-gate))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect warp-gate ((this warp-gate))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tlevel-name: ~A~%" (-> obj level-name))
-  (format #t "~2Ton-notice: ~A~%" (-> obj on-notice))
-  (format #t "~2Ton-activate: ~A~%" (-> obj on-activate))
-  (format #t "~2Ton-close: ~A~%" (-> obj on-close))
-  (format #t "~2Twait-for: ~A~%" (-> obj wait-for))
-  (format #t "~2Tcontinue: ~A~%" (-> obj continue))
-  (format #t "~2Tdistance: (meters ~m)~%" (-> obj distance))
-  (format #t "~2Tanim-speed: ~f~%" (-> obj anim-speed))
-  (format #t "~2Ttest-time: ~D~%" (-> obj test-time))
-  (format #t "~2Tcenter: ~`vector`P~%" (-> obj center))
+  (format #t "~2Tlevel-name: ~A~%" (-> this level-name))
+  (format #t "~2Ton-notice: ~A~%" (-> this on-notice))
+  (format #t "~2Ton-activate: ~A~%" (-> this on-activate))
+  (format #t "~2Ton-close: ~A~%" (-> this on-close))
+  (format #t "~2Twait-for: ~A~%" (-> this wait-for))
+  (format #t "~2Tcontinue: ~A~%" (-> this continue))
+  (format #t "~2Tdistance: (meters ~m)~%" (-> this distance))
+  (format #t "~2Tanim-speed: ~f~%" (-> this anim-speed))
+  (format #t "~2Ttest-time: ~D~%" (-> this test-time))
+  (format #t "~2Tcenter: ~`vector`P~%" (-> this center))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 25 of type warp-gate
-(defmethod handle-notice warp-gate ((obj warp-gate))
-  (let ((s5-0 (script-eval (-> obj on-notice))))
+(defmethod handle-notice warp-gate ((this warp-gate))
+  (let ((s5-0 (script-eval (-> this on-notice))))
     (cond
       ((= s5-0 'hide)
-       (logior! (-> obj draw status) (draw-control-status no-draw))
-       (set! (-> obj continue) #f)
+       (logior! (-> this draw status) (draw-control-status no-draw))
+       (set! (-> this continue) #f)
        )
       (s5-0
-        (logclear! (-> obj draw status) (draw-control-status no-draw))
-        (set! (-> obj continue) (get-continue-by-name *game-info* (the-as string (car s5-0))))
-        (set! (-> obj on-activate) (the-as pair (car (cdr s5-0))))
-        (set! (-> obj wait-for) (the-as pair (car (cdr (cdr s5-0)))))
-        (set! (-> obj on-close) (the-as pair (car (cdr (cdr (cdr s5-0))))))
+        (logclear! (-> this draw status) (draw-control-status no-draw))
+        (set! (-> this continue) (get-continue-by-name *game-info* (the-as string (car s5-0))))
+        (set! (-> this on-activate) (the-as pair (car (cdr s5-0))))
+        (set! (-> this wait-for) (the-as pair (car (cdr (cdr s5-0)))))
+        (set! (-> this on-close) (the-as pair (car (cdr (cdr (cdr s5-0))))))
         )
       (else
-        (set! (-> obj continue) #f)
+        (set! (-> this continue) #f)
         )
       )
     )
-  (-> obj continue)
+  (-> this continue)
   )
 
 ;; failed to figure out what this is:
@@ -575,7 +575,7 @@
     )
   :code (behavior ()
     (remove-setting! 'allow-progress)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (update-transforms (-> self root))
     (until #f
       (handle-notice self)
@@ -597,14 +597,14 @@
                                                       (or (= v1-30 'target-warp-in) (= v1-30 'target-warp-out))
                                                       )
                            )
-                      (set! (-> self state-time) (current-time))
+                      (set-time! (-> self state-time))
                       #f
                       )
                      (else
                        #t
                        )
                      )
-                   (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+                   (time-elapsed? (-> self state-time) (seconds 0.1))
                    )
           (if (and (cpad-pressed? 0 triangle) (process-grab? *target* #f))
               (go-virtual use (-> self continue))
@@ -685,7 +685,7 @@
     (kill-current-talker (the-as symbol '()) '() 'exit)
     (set-setting! 'mode-name 'cam-fixed 0.0 0)
     (set-setting! 'interp-time 'abs 0.0 0)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
     (when (not arg0)
       (process-release? *target*)
@@ -727,7 +727,7 @@
                            )
                    )
              (label cfg-21)
-             (or v1-38 (< (- (current-time) (-> self state-time)) (seconds 2)))
+             (or v1-38 (not (time-elapsed? (-> self state-time) (seconds 2))))
              )
       (update! (-> self sound))
       (suspend)
@@ -739,7 +739,7 @@
         )
     (start 'play arg0)
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 1))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
@@ -758,8 +758,8 @@
 
 ;; definition for method 23 of type warp-gate
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-skel-and-collide warp-gate ((obj warp-gate))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-skel-and-collide warp-gate ((this warp-gate))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -774,10 +774,10 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-warp-gate" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -787,20 +787,20 @@
 ;; definition for method 24 of type warp-gate
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
-(defmethod setup-fields warp-gate ((obj warp-gate))
-  (set! (-> obj level-name) (the-as uint (-> obj level name)))
-  (set! (-> obj on-notice) (res-lump-struct (-> obj entity) 'on-notice pair))
-  (set! (-> obj on-activate) #f)
-  (set! (-> obj wait-for) #f)
-  (set! (-> obj continue) #f)
-  (set! (-> obj on-close) #f)
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 130) obj))
-  (set! (-> obj center quad) (-> obj root trans quad))
-  (+! (-> obj center y) 13516.8)
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "warpgate" :fo-max 30) (-> obj root trans))
+(defmethod setup-fields warp-gate ((this warp-gate))
+  (set! (-> this level-name) (the-as uint (-> this level name)))
+  (set! (-> this on-notice) (res-lump-struct (-> this entity) 'on-notice pair))
+  (set! (-> this on-activate) #f)
+  (set! (-> this wait-for) #f)
+  (set! (-> this continue) #f)
+  (set! (-> this on-close) #f)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 130) this))
+  (set! (-> this center quad) (-> this root trans quad))
+  (+! (-> this center y) 13516.8)
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "warpgate" :fo-max 30) (-> this root trans))
         )
-  (set! (-> obj distance) (res-lump-float (-> obj entity) 'distance :default 20480.0))
+  (set! (-> this distance) (res-lump-float (-> this entity) 'distance :default 20480.0))
   (none)
   )
 
@@ -823,7 +823,7 @@
   )
 
 ;; definition for method 11 of type warp-gate
-(defmethod init-from-entity! warp-gate ((obj warp-gate) (arg0 entity-actor))
+(defmethod init-from-entity! warp-gate ((this warp-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -884,7 +884,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ((arg0 vector) (arg1 vector) (arg2 target))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control mod-surface) *warp-jump-mods*)
     (set! (-> self control unknown-vector37 quad) (-> arg0 quad))
@@ -946,7 +946,7 @@ This commonly includes things such as:
       (set! (-> v1-20 prim-core collide-with) (collide-spec))
       )
     0
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self trans-hook)
           (lambda :behavior target
             ()
@@ -972,7 +972,7 @@ This commonly includes things such as:
               (set! (-> gp-1 y) 0.0)
               (send-event *target* 'sidekick #f)
               (when (and (or (< (vector-dot gp-1 (-> self control transv)) 0.0) (-> self control unknown-spool-anim00))
-                         (>= (- (current-time) (-> self state-time)) (seconds 0.05))
+                         (time-elapsed? (-> self state-time) (seconds 0.05))
                          )
                 (vector-seek! (-> self draw color-mult) (new 'static 'vector) (* 2.0 (seconds-per-frame)))
                 (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
@@ -1064,7 +1064,7 @@ This commonly includes things such as:
     (vector-reset! (-> self control transv))
     (move-to-point! (-> self control) (-> self control unknown-vector37))
     (let ((s5-1 (current-time)))
-      (while (or (< (- (current-time) s5-1) (seconds 1))
+      (while (or (not (time-elapsed? s5-1 (seconds 1)))
                  (< 81920.0 (vector-vector-distance (camera-pos) (-> self control trans)))
                  )
         (suspend)
@@ -1072,7 +1072,7 @@ This commonly includes things such as:
       )
     (set-heading-vec! (-> self control) (-> self control transv))
     (rot->dir-targ! (-> self control))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self post-hook) target-no-stick-post)
     (ja-channel-set! 1)
     (send-event
@@ -1157,59 +1157,59 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type air-train
-(defmethod inspect air-train ((obj air-train))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect air-train ((this air-train))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type warp-gate inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpart-exhaust-left: ~A~%" (-> obj part-exhaust-left))
-  (format #t "~2Tpart-exhaust-right: ~A~%" (-> obj part-exhaust-right))
-  (format #t "~2Tpart-dust: ~A~%" (-> obj part-dust))
-  (format #t "~2Tdust-y: ~f~%" (-> obj dust-y))
-  (format #t "~2Thover-sound: ~D~%" (-> obj hover-sound))
-  (format #t "~2Tbase-pos: #<vector @ #x~X>~%" (-> obj base-pos))
+  (format #t "~2Tpart-exhaust-left: ~A~%" (-> this part-exhaust-left))
+  (format #t "~2Tpart-exhaust-right: ~A~%" (-> this part-exhaust-right))
+  (format #t "~2Tpart-dust: ~A~%" (-> this part-dust))
+  (format #t "~2Tdust-y: ~f~%" (-> this dust-y))
+  (format #t "~2Thover-sound: ~D~%" (-> this hover-sound))
+  (format #t "~2Tbase-pos: #<vector @ #x~X>~%" (-> this base-pos))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 7 of type air-train
 ;; WARN: Return type mismatch warp-gate vs air-train.
-(defmethod relocate air-train ((obj air-train) (arg0 int))
-  (if (nonzero? (-> obj part-exhaust-left))
-      (&+! (-> obj part-exhaust-left) arg0)
+(defmethod relocate air-train ((this air-train) (arg0 int))
+  (if (nonzero? (-> this part-exhaust-left))
+      (&+! (-> this part-exhaust-left) arg0)
       )
-  (if (nonzero? (-> obj part-exhaust-right))
-      (&+! (-> obj part-exhaust-right) arg0)
+  (if (nonzero? (-> this part-exhaust-right))
+      (&+! (-> this part-exhaust-right) arg0)
       )
-  (if (nonzero? (-> obj part-dust))
-      (&+! (-> obj part-dust) arg0)
+  (if (nonzero? (-> this part-dust))
+      (&+! (-> this part-dust) arg0)
       )
-  (the-as air-train ((method-of-type warp-gate relocate) obj arg0))
+  (the-as air-train ((method-of-type warp-gate relocate) this arg0))
   )
 
 ;; definition for method 10 of type air-train
-(defmethod deactivate air-train ((obj air-train))
-  (sound-stop (-> obj hover-sound))
-  (if (nonzero? (-> obj part-exhaust-left))
-      (kill-and-free-particles (-> obj part-exhaust-left))
+(defmethod deactivate air-train ((this air-train))
+  (sound-stop (-> this hover-sound))
+  (if (nonzero? (-> this part-exhaust-left))
+      (kill-and-free-particles (-> this part-exhaust-left))
       )
-  (if (nonzero? (-> obj part-exhaust-right))
-      (kill-and-free-particles (-> obj part-exhaust-right))
+  (if (nonzero? (-> this part-exhaust-right))
+      (kill-and-free-particles (-> this part-exhaust-right))
       )
-  (if (nonzero? (-> obj part-dust))
-      (kill-and-free-particles (-> obj part-dust))
+  (if (nonzero? (-> this part-dust))
+      (kill-and-free-particles (-> this part-dust))
       )
-  ((method-of-type warp-gate deactivate) obj)
+  ((method-of-type warp-gate deactivate) this)
   (none)
   )
 
 ;; definition for method 23 of type air-train
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-skel-and-collide air-train ((obj air-train))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-skel-and-collide air-train ((this air-train))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -1244,10 +1244,10 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-air-train" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -1257,30 +1257,30 @@ This commonly includes things such as:
 ;; definition for method 24 of type air-train
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod setup-fields air-train ((obj air-train))
+(defmethod setup-fields air-train ((this air-train))
   (let ((t9-0 (method-of-type warp-gate setup-fields)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj base-pos quad) (-> obj root trans quad))
-  (let ((v1-2 (-> obj level-name)))
-    (set! (-> obj dust-y) (cond
-                            ((= v1-2 'nest)
-                             -1105.92
-                             )
-                            ((= v1-2 'caspad)
-                             114647.04
-                             )
-                            (else
-                              (the-as float #x7f800000)
+  (set! (-> this base-pos quad) (-> this root trans quad))
+  (let ((v1-2 (-> this level-name)))
+    (set! (-> this dust-y) (cond
+                             ((= v1-2 'nest)
+                              -1105.92
                               )
-                            )
+                             ((= v1-2 'caspad)
+                              114647.04
+                              )
+                             (else
+                               (the-as float #x7f800000)
+                               )
+                             )
           )
     )
-  (set! (-> obj part-exhaust-left) (create-launch-control (-> *part-group-id-table* 134) obj))
-  (set! (-> obj part-exhaust-right) (create-launch-control (-> *part-group-id-table* 134) obj))
-  (set! (-> obj part-dust) (create-launch-control (-> *part-group-id-table* 132) obj))
-  (set! (-> obj root pause-adjust-distance) 368640.0)
-  (set! (-> obj hover-sound) (sound-play "air-train"))
+  (set! (-> this part-exhaust-left) (create-launch-control (-> *part-group-id-table* 134) this))
+  (set! (-> this part-exhaust-right) (create-launch-control (-> *part-group-id-table* 134) this))
+  (set! (-> this part-dust) (create-launch-control (-> *part-group-id-table* 132) this))
+  (set! (-> this root pause-adjust-distance) 368640.0)
+  (set! (-> this hover-sound) (sound-play "air-train"))
   (none)
   )
 
@@ -1318,7 +1318,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ((arg0 continue-point))
     (kill-current-talker (the-as symbol '()) '() 'exit)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
     (when (not arg0)
       (process-release? *target*)

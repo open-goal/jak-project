@@ -15,7 +15,7 @@
   :virtual #t
   :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (rigid-body-object-method-39 self)
     (go-virtual waiting)
     )
@@ -53,7 +53,7 @@
   :virtual #t
   :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-139 self)
     (logior! (-> self flags) (rigid-body-object-flag riding ai-driving))
     (vehicle-method-142 self)
@@ -74,7 +74,7 @@
   :virtual #t
   :event vehicle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-140 self)
     (set! (-> self flags) (the-as
                             rigid-body-object-flag
@@ -129,7 +129,7 @@
   :event vehicle-event-handler
   :enter (behavior ()
     (set-setting! 'sound-flava #f 31.0 5)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (iterate-prims (-> self root) (lambda ((arg0 collide-shape-prim))
                                     (when (!= (-> arg0 prim-core prim-type) (prim-type mesh))
                                       (logior! (-> arg0 prim-core collide-as) (collide-spec jak))
@@ -180,7 +180,7 @@
     (remove-setting! 'sound-flava)
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (not *target*)
           (go-virtual waiting)
           )
@@ -238,7 +238,7 @@
   :event vehicle-event-handler
   :enter (behavior ()
     (logclear! (-> self flags) (rigid-body-object-flag player-driving))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (vehicle-method-129 self)
     (set! (-> self crash-level) 3)
     (vehicle-method-88 self)
@@ -248,7 +248,7 @@
     )
   :trans (behavior ()
     (set! (-> self hit-points) (- (-> self hit-points) (* 0.5 (seconds-per-frame))))
-    (if (and (>= (- (current-time) (-> self state-time)) 1) (< (-> self hit-points) -0.25))
+    (if (and (time-elapsed? (-> self state-time) 1) (< (-> self hit-points) -0.25))
         (go-virtual explode)
         )
     )
@@ -270,12 +270,12 @@
     (set! (-> self player-dist2) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
     (cond
       ((logtest? (-> self draw status) (draw-control-status on-screen))
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        )
       (else
-        (if (or (>= (- (current-time) (-> self state-time)) (seconds 5)) (let ((f0-2 409600.0))
-                                                                           (< (* f0-2 f0-2) (-> self camera-dist2))
-                                                                           )
+        (if (or (time-elapsed? (-> self state-time) (seconds 5)) (let ((f0-2 409600.0))
+                                                                   (< (* f0-2 f0-2) (-> self camera-dist2))
+                                                                   )
                 )
             (go-virtual die)
             )
@@ -442,7 +442,7 @@
             )
           )
         )
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       )
     )
   :code sleep-code

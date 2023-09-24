@@ -31,32 +31,32 @@
   )
 
 ;; definition for method 3 of type mech
-(defmethod inspect mech ((obj mech))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect mech ((this mech))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Textra-trans: ~`vector`P~%" (-> obj extra-trans))
-  (format #t "~2Tcondition: ~D~%" (-> obj condition))
-  (format #t "~2Tshadow-backup: ~A~%" (-> obj shadow-backup))
-  (format #t "~2Trider: ~D~%" (-> obj rider))
-  (format #t "~2Tshield-value: ~f~%" (-> obj shield-value))
-  (format #t "~2Tnav-sphere-handle: ~D~%" (-> obj nav-sphere-handle))
-  (format #t "~2Tprobe-time: ~D~%" (-> obj probe-time))
+  (format #t "~2Textra-trans: ~`vector`P~%" (-> this extra-trans))
+  (format #t "~2Tcondition: ~D~%" (-> this condition))
+  (format #t "~2Tshadow-backup: ~A~%" (-> this shadow-backup))
+  (format #t "~2Trider: ~D~%" (-> this rider))
+  (format #t "~2Tshield-value: ~f~%" (-> this shield-value))
+  (format #t "~2Tnav-sphere-handle: ~D~%" (-> this nav-sphere-handle))
+  (format #t "~2Tprobe-time: ~D~%" (-> this probe-time))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 24 of type mech
 ;; WARN: Return type mismatch int vs none.
-(defmethod mech-method-24 mech ((obj mech))
-  (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root trans))
+(defmethod mech-method-24 mech ((this mech))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
       )
-  (update! (-> obj sound))
+  (update! (-> this sound))
   0
   (none)
   )
@@ -142,7 +142,7 @@
     (let ((f30-0 20480.0))
       (until #f
         (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
-                   (>= (- (current-time) (-> self probe-time)) (seconds 1))
+                   (time-elapsed? (-> self probe-time) (seconds 1))
                    )
           (move-to-ground
             (-> self root)
@@ -151,7 +151,7 @@
             #t
             (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
             )
-          (set! (-> self probe-time) (current-time))
+          (set-time! (-> self probe-time))
           )
         (when (and (and *target* (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
@@ -267,7 +267,7 @@
       (suspend)
       )
     (let ((s5-0 (current-time)))
-      (until (>= (- (current-time) s5-0) (seconds 1))
+      (until (time-elapsed? s5-0 (seconds 1))
         (mech-method-24 self)
         (suspend)
         )
@@ -382,7 +382,7 @@
   )
 
 ;; definition for method 11 of type mech
-(defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
+(defmethod init-from-entity! mech ((this mech) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -407,16 +407,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type mech-target
-(defmethod inspect mech-target ((obj mech-target))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect mech-target ((this mech-target))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -431,7 +431,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('look-at-point)
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        (go-virtual active)
        )
       )
@@ -464,7 +464,7 @@ This commonly includes things such as:
   :virtual #t
   :event (-> (method-of-type mech-target idle) event)
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (and (or (or (not *target*) (or (< 106496.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
@@ -473,7 +473,7 @@ This commonly includes things such as:
                      )
                  (not (logtest? (focus-status mech) (-> *target* focus-status)))
                  )
-             (>= (- (current-time) (-> self state-time)) (seconds 10))
+             (time-elapsed? (-> self state-time) (seconds 10))
              )
         (go-virtual idle)
         )

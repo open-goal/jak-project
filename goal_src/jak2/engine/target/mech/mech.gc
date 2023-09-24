@@ -38,11 +38,11 @@
   )
 
 
-(defmethod mech-method-24 mech ((obj mech))
-  (if (nonzero? (-> obj part))
-      (spawn (-> obj part) (-> obj root trans))
+(defmethod mech-method-24 mech ((this mech))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
       )
-  (update! (-> obj sound))
+  (update! (-> this sound))
   0
   (none)
   )
@@ -126,7 +126,7 @@
     (let ((f30-0 20480.0))
       (until #f
         (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
-                   (>= (- (current-time) (-> self probe-time)) (seconds 1))
+                   (time-elapsed? (-> self probe-time) (seconds 1))
                    )
           (move-to-ground
             (-> self root)
@@ -135,7 +135,7 @@
             #t
             (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
             )
-          (set! (-> self probe-time) (current-time))
+          (set-time! (-> self probe-time))
           )
         (when (and (and *target* (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
@@ -240,7 +240,7 @@
       (suspend)
       )
     (let ((s5-0 (current-time)))
-      (until (>= (- (current-time) s5-0) (seconds 1))
+      (until (time-elapsed? s5-0 (seconds 1))
         (mech-method-24 self)
         (suspend)
         )
@@ -351,7 +351,7 @@
   (none)
   )
 
-(defmethod init-from-entity! mech ((obj mech) (arg0 entity-actor))
+(defmethod init-from-entity! mech ((this mech) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -385,7 +385,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('look-at-point)
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        (go-virtual active)
        )
       )
@@ -417,7 +417,7 @@ This commonly includes things such as:
   :virtual #t
   :event (-> (method-of-type mech-target idle) event)
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (and (or (or (not *target*) (or (< 106496.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
@@ -426,7 +426,7 @@ This commonly includes things such as:
                      )
                  (not (logtest? (focus-status mech) (-> *target* focus-status)))
                  )
-             (>= (- (current-time) (-> self state-time)) (seconds 10))
+             (time-elapsed? (-> self state-time) (seconds 10))
              )
         (go-virtual idle)
         )

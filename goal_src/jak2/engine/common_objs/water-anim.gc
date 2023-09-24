@@ -41,11 +41,11 @@
   )
 
 
-(defmethod relocate water-anim ((obj water-anim) (arg0 int))
-  (if (nonzero? (-> obj flow))
-      (&+! (-> obj flow) arg0)
+(defmethod relocate water-anim ((this water-anim) (arg0 int))
+  (if (nonzero? (-> this flow))
+      (&+! (-> this flow) arg0)
       )
-  ((the-as (function water-anim int water-anim) (find-parent-method water-anim 7)) obj arg0)
+  ((the-as (function water-anim int water-anim) (find-parent-method water-anim 7)) this arg0)
   )
 
 (defskelgroup skel-water-anim-nest-dark-eco-largepool water-anim-nest-dark-eco water-anim-nest-dark-eco-largepool-lod0-jg -1
@@ -436,63 +436,63 @@
     )
   )
 
-(defmethod move-to-point! water-anim ((obj water-anim) (arg0 vector))
+(defmethod move-to-point! water-anim ((this water-anim) (arg0 vector))
   "Set a [[water-anim]]'s `trans` as specified by the [[vector]] and update `water-height`."
-  (set! (-> obj root trans quad) (-> arg0 quad))
-  (set! (-> obj water-height) (-> obj root trans y))
-  (if (nonzero? (-> obj sound))
-      (update-trans! (-> obj sound) (-> obj root trans))
+  (set! (-> this root trans quad) (-> arg0 quad))
+  (set! (-> this water-height) (-> this root trans y))
+  (if (nonzero? (-> this sound))
+      (update-trans! (-> this sound) (-> this root trans))
       )
   )
 
-(defmethod get-ripple-height water-anim ((obj water-anim) (arg0 vector))
-  (ripple-find-height obj 0 arg0)
+(defmethod get-ripple-height water-anim ((this water-anim) (arg0 vector))
+  (ripple-find-height this 0 arg0)
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod water-anim-method-27 water-anim ((obj water-anim))
+(defmethod water-anim-method-27 water-anim ((this water-anim))
   "Empty."
   (none)
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod offset! water-anim ((obj water-anim))
+(defmethod offset! water-anim ((this water-anim))
   "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
   (local-vars (sv-16 res-tag))
-  (set! (-> obj play-ambient-sound?) #t)
-  (set! (-> obj visible) #t)
-  (set! (-> obj look)
-        (res-lump-value (-> obj entity) 'look int :default (the-as uint128 -1) :time -1000000000.0)
+  (set! (-> this play-ambient-sound?) #t)
+  (set! (-> this visible) #t)
+  (set! (-> this look)
+        (res-lump-value (-> this entity) 'look int :default (the-as uint128 -1) :time -1000000000.0)
         )
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-4 (res-lump-data (-> obj entity) 'trans-offset vector :tag-ptr (& sv-16))))
+  (let ((v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16))))
     (when v1-4
-      (+! (-> obj root trans x) (-> v1-4 x))
-      (+! (-> obj root trans y) (-> v1-4 y))
-      (+! (-> obj root trans z) (-> v1-4 z))
+      (+! (-> this root trans x) (-> v1-4 x))
+      (+! (-> this root trans y) (-> v1-4 y))
+      (+! (-> this root trans z) (-> v1-4 z))
       )
     )
-  (let ((f0-6 (res-lump-float (-> obj entity) 'rotoffset)))
+  (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
     (if (!= f0-6 0.0)
-        (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-6)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)
         )
     )
   (none)
   )
 
-(defmethod init-water! water-anim ((obj water-anim))
+(defmethod init-water! water-anim ((this water-anim))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
-  (let ((s5-0 (-> obj look)))
+  (let ((s5-0 (-> this look)))
     (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
         (go process-drawable-art-error "skel group")
         )
     (let ((s5-1 (-> *water-anim-look* s5-0)))
-      (initialize-skeleton-by-name obj (-> s5-1 skel-group))
+      (initialize-skeleton-by-name this (-> s5-1 skel-group))
       (ja-channel-set! 1)
-      (let ((s4-0 (-> obj skel root-channel 0)))
+      (let ((s4-0 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s4-0
-          (the-as art-joint-anim (-> obj draw art-group data (-> s5-1 anim)))
+          (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
           num-func-identity
           )
         (set! (-> s4-0 frame-num) 0.0)
@@ -500,8 +500,8 @@
       (let ((a2-1 (-> s5-1 ambient-sound-spec)))
         (when a2-1
           (let ((a3-0 (new 'stack-no-clear 'vector)))
-            (vector+! a3-0 (-> obj root trans) (-> obj draw bounds))
-            (set! (-> obj sound) (new 'process 'ambient-sound a2-1 a3-0))
+            (vector+! a3-0 (-> this root trans) (-> this draw bounds))
+            (set! (-> this sound) (new 'process 'ambient-sound a2-1 a3-0))
             )
           )
         )
@@ -511,44 +511,44 @@
   (none)
   )
 
-(defmethod reset-root! water-anim ((obj water-anim))
+(defmethod reset-root! water-anim ((this water-anim))
   "Reset a [[water-anim]]'s `root`."
   (let ((v0-0 (new 'process 'trsqv)))
-    (set! (-> obj root) v0-0)
+    (set! (-> this root) v0-0)
     v0-0
     )
   )
 
 ;; WARN: Return type mismatch water-flags vs none.
-(defmethod water-anim-init! water-anim ((obj water-anim))
+(defmethod water-anim-init! water-anim ((this water-anim))
   "Initialize a [[water-anim]]."
   (local-vars (sv-16 res-tag))
-  (set! (-> obj attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
-                                              (-> obj entity)
-                                              'attack-event
-                                              'interp
-                                              -1000000000.0
-                                              (the-as structure 'drown)
-                                              (the-as (pointer res-tag) #f)
-                                              *res-static-buf*
-                                              )
-                                      )
+  (set! (-> this attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
+                                               (-> this entity)
+                                               'attack-event
+                                               'interp
+                                               -1000000000.0
+                                               (the-as structure 'drown)
+                                               (the-as (pointer res-tag) #f)
+                                               *res-static-buf*
+                                               )
+                                       )
         )
-  (process-drawable-from-entity! obj (-> obj entity))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj vol) (new 'process 'vol-control obj))
-  (logior! (-> obj vol flags) (vol-flags display? vol-flags-1))
-  (set! (-> obj bottom-height) 32768.0)
+  (process-drawable-from-entity! this (-> this entity))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this vol) (new 'process 'vol-control this))
+  (logior! (-> this vol flags) (vol-flags display? vol-flags-1))
+  (set! (-> this bottom-height) 32768.0)
   (let* ((v1-8 *game-info*)
          (a0-7 (+ (-> v1-8 attack-id) 1))
          )
     (set! (-> v1-8 attack-id) a0-7)
-    (set! (-> obj attack-id) a0-7)
+    (set! (-> this attack-id) a0-7)
     )
-  (set! (-> obj target) (the-as handle #f))
+  (set! (-> this target) (the-as handle #f))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
-                                        (-> obj entity)
+                                        (-> this entity)
                                         'water-height
                                         'exact
                                         -1000000000.0
@@ -560,28 +560,28 @@
                )
         )
     (when v1-10
-      (set! (-> obj water-height) (-> v1-10 0))
-      (set! (-> obj wade-height) (-> v1-10 1))
-      (set! (-> obj swim-height) (-> v1-10 2))
+      (set! (-> this water-height) (-> v1-10 0))
+      (set! (-> this wade-height) (-> v1-10 1))
+      (set! (-> this swim-height) (-> v1-10 2))
       (if (>= (-> sv-16 elt-count) (the-as uint 4))
-          (set! (-> obj flags) (the-as water-flags (the int (-> v1-10 3))))
+          (set! (-> this flags) (the-as water-flags (the int (-> v1-10 3))))
           )
       (if (>= (-> sv-16 elt-count) (the-as uint 5))
-          (set! (-> obj bottom-height) (-> v1-10 4))
+          (set! (-> this bottom-height) (-> v1-10 4))
           )
       )
     )
-  (logior! (-> obj flags) (water-flags part-water))
-  (if (logtest? (-> obj flags) (water-flags flow))
-      (set! (-> obj flow) (new 'process 'flow-control obj (the-as res-lump #f)))
+  (logior! (-> this flags) (water-flags part-water))
+  (if (logtest? (-> this flags) (water-flags flow))
+      (set! (-> this flow) (new 'process 'flow-control this (the-as res-lump #f)))
       )
   (cond
-    ((zero? (-> obj flags))
-     (if (< 0.0 (-> obj wade-height))
-         (logior! (-> obj flags) (water-flags can-wade))
+    ((zero? (-> this flags))
+     (if (< 0.0 (-> this wade-height))
+         (logior! (-> this flags) (water-flags can-wade))
          )
-     (if (< 0.0 (-> obj swim-height))
-         (logior! (-> obj flags) (water-flags can-swim))
+     (if (< 0.0 (-> this swim-height))
+         (logior! (-> this flags) (water-flags can-swim))
          )
      )
     (else
@@ -603,18 +603,18 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! water-anim ((obj water-anim) (arg0 entity-actor))
+(defmethod init-from-entity! water-anim ((this water-anim) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (water-anim-method-27 obj)
-  (reset-root! obj)
-  (water-anim-init! obj)
-  (offset! obj)
-  (init-water! obj)
-  (go (method-of-object obj idle))
+  (water-anim-method-27 this)
+  (reset-root! this)
+  (water-anim-init! this)
+  (offset! this)
+  (init-water! this)
+  (go (method-of-object this idle))
   (none)
   )

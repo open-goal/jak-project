@@ -16,24 +16,24 @@
   )
 
 
-(defmethod init-proj-settings! gun-eject ((obj gun-eject))
+(defmethod init-proj-settings! gun-eject ((this gun-eject))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
-  (let ((v1-5 (-> obj skel root-channel 0)))
-    (set! (-> v1-5 frame-group) (-> (the-as gun (-> obj parent 0)) skel channel 0 frame-group))
+  (let ((v1-5 (-> this skel root-channel 0)))
+    (set! (-> v1-5 frame-group) (-> (the-as gun (-> this parent 0)) skel channel 0 frame-group))
     )
   (let ((t9-3 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-3 obj)
+    (t9-3 this)
     )
-  (quaternion-copy! (-> obj root quat) (-> (the-as gun (-> obj parent 0)) root quat))
-  (set! (-> obj timeout) (seconds 4))
-  (set! (-> (the-as collide-shape (-> obj root)) root-prim local-sphere w) 3276.8)
-  (logclear! (-> obj mask) (process-mask projectile))
+  (quaternion-copy! (-> this root quat) (-> (the-as gun (-> this parent 0)) root quat))
+  (set! (-> this timeout) (seconds 4))
+  (set! (-> (the-as collide-shape (-> this root)) root-prim local-sphere w) 3276.8)
+  (logclear! (-> this mask) (process-mask projectile))
   0
   (none)
   )
@@ -47,17 +47,17 @@
   )
 
 
-(defmethod init-proj-settings! gun-mag-yellow ((obj gun-mag-yellow))
+(defmethod init-proj-settings! gun-mag-yellow ((this gun-mag-yellow))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-yellow" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-2 obj)
+    (t9-2 this)
     )
-  (set! (-> obj timeout) (seconds 4))
+  (set! (-> this timeout) (seconds 4))
   (sound-play "dark-shot-fire")
   0
   (none)
@@ -72,17 +72,17 @@
   )
 
 
-(defmethod init-proj-settings! gun-mag-red ((obj gun-mag-red))
+(defmethod init-proj-settings! gun-mag-red ((this gun-mag-red))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-red" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-2 obj)
+    (t9-2 this)
     )
-  (set! (-> obj timeout) (seconds 4))
+  (set! (-> this timeout) (seconds 4))
   (sound-play "dark-shot-fire")
   0
   (none)
@@ -97,17 +97,17 @@
   )
 
 
-(defmethod init-proj-settings! gun-mag-blue ((obj gun-mag-blue))
+(defmethod init-proj-settings! gun-mag-blue ((this gun-mag-blue))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-blue" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-2 obj)
+    (t9-2 this)
     )
-  (set! (-> obj timeout) (seconds 4))
+  (set! (-> this timeout) (seconds 4))
   (sound-play "dark-shot-fire")
   0
   (none)
@@ -122,17 +122,17 @@
   )
 
 
-(defmethod init-proj-settings! gun-mag-dark ((obj gun-mag-dark))
+(defmethod init-proj-settings! gun-mag-dark ((this gun-mag-dark))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-dark" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-    (t9-2 obj)
+    (t9-2 this)
     )
-  (set! (-> obj timeout) (seconds 4))
+  (set! (-> this timeout) (seconds 4))
   (sound-play "dark-shot-fire")
   0
   (none)
@@ -264,16 +264,16 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs gun.
-(defmethod relocate gun ((obj gun) (arg0 int))
-  (if (nonzero? (-> obj barrel))
-      (&+! (-> obj barrel) arg0)
+(defmethod relocate gun ((this gun) (arg0 int))
+  (if (nonzero? (-> this barrel))
+      (&+! (-> this barrel) arg0)
       )
   (dotimes (v1-4 4)
-    (if (nonzero? (-> obj mag v1-4))
-        (&+! (-> obj mag v1-4) arg0)
+    (if (nonzero? (-> this mag v1-4))
+        (&+! (-> this mag v1-4) arg0)
         )
     )
-  (the-as gun ((method-of-type process-drawable relocate) obj arg0))
+  (the-as gun ((method-of-type process-drawable relocate) this arg0))
   )
 
 (defbehavior gun-post gun ()
@@ -480,7 +480,7 @@
       )
     )
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self draw shadow) (-> self shadow-backup))
     (logior! (-> self skel status) (joint-control-status sync-math))
     )
@@ -885,23 +885,23 @@
   (none)
   )
 
-(defmethod gun-info-method-9 gun-info ((obj gun-info))
-  (when (and (-> obj laser-active?)
-             (-> obj active?)
-             (not (logtest? (-> obj gun 0 draw status) (draw-control-status no-draw)))
+(defmethod gun-info-method-9 gun-info ((this gun-info))
+  (when (and (-> this laser-active?)
+             (-> this active?)
+             (not (logtest? (-> this gun 0 draw status) (draw-control-status no-draw)))
              #t
              )
-    (let ((s5-0 (-> obj laser-point))
+    (let ((s5-0 (-> this laser-point))
           (s4-0 (new 'stack-no-clear 'collide-query))
-          (s3-0 (-> obj laser-dir))
-          (f30-0 (rotate-y<-vector+vector (the-as vector (-> obj laser-dir)) (-> obj laser-dir 1)))
+          (s3-0 (-> this laser-dir))
+          (f30-0 (rotate-y<-vector+vector (the-as vector (-> this laser-dir)) (-> this laser-dir 1)))
           )
       (vector+float*! (-> s4-0 start-pos) s5-0 (the-as vector s3-0) -8192.0)
       (vector-float*! (-> s4-0 move-dist) (the-as vector s3-0) 163840.0)
       (let ((v1-13 s4-0))
-        (set! (-> v1-13 radius) (-> obj track-beam-size))
-        (set! (-> v1-13 collide-with) (-> obj process 0 control root-prim prim-core collide-with))
-        (set! (-> v1-13 ignore-process0) (ppointer->process (-> obj process)))
+        (set! (-> v1-13 radius) (-> this track-beam-size))
+        (set! (-> v1-13 collide-with) (-> this process 0 control root-prim prim-core collide-with))
+        (set! (-> v1-13 ignore-process0) (ppointer->process (-> this process)))
         (set! (-> v1-13 ignore-process1) #f)
         (set! (-> v1-13 ignore-pat)
               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
@@ -912,7 +912,7 @@
         (cond
           ((>= f0-3 0.0)
            (vector+float*! (-> s4-0 start-pos) (-> s4-0 start-pos) (-> s4-0 move-dist) f0-3)
-           (vector+float*! (-> s4-0 start-pos) (-> s4-0 start-pos) (the-as vector s3-0) (-> obj track-beam-size))
+           (vector+float*! (-> s4-0 start-pos) (-> s4-0 start-pos) (the-as vector s3-0) (-> this track-beam-size))
            (let* ((s2-0 (-> s4-0 best-other-tri collide-ptr))
                   (s0-0 (if (type? s2-0 collide-shape-prim)
                             (the-as collide-shape-prim s2-0)
@@ -925,9 +925,9 @@
              (cond
                ((and s0-0
                      (or (logtest? (process-mask enemy guard) (-> s0-0 cshape process mask))
-                         (= (handle->process (-> obj track-target 0 handle)) (-> s0-0 cshape process))
+                         (= (handle->process (-> this track-target 0 handle)) (-> s0-0 cshape process))
                          )
-                     (>= (-> obj fire-range) (vector-vector-distance s2-1 s5-0))
+                     (>= (-> this fire-range) (vector-vector-distance s2-1 s5-0))
                      )
                 (vector+! s2-1 s2-1 s1-0)
                 (launch-particles (-> *part-id-table* 185) s2-1)
@@ -945,7 +945,7 @@
             )
           )
         )
-      (set! (-> obj laser-hit-point quad) (-> s4-0 start-pos quad))
+      (set! (-> this laser-hit-point quad) (-> s4-0 start-pos quad))
       (let ((s1-3 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (camera-pos) s5-0) 1.0))
             (t9-10 vector-normalize!)
             (a0-41 (new 'stack-no-clear 'vector))
@@ -1004,5 +1004,5 @@
         )
       )
     )
-  (-> obj laser-dir)
+  (-> this laser-dir)
   )
