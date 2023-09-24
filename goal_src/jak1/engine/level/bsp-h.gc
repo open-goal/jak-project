@@ -26,6 +26,8 @@
 ;; flags: 1 = load
 ;;        2 = display
 
+;; DECOMP BEGINS
+
 ;; a node in the bsp tree
 (deftype bsp-node (structure)
   ((front       int32          :offset-assert 0)  ;; if > 0, is a pointer to another bsp-node
@@ -108,17 +110,17 @@
   )
 (define-extern inspect-bsp-tree (function bsp-header bsp-node none))
 
-(defmethod inspect bsp-header ((obj bsp-header))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
-  (format #t "~Tvisible-list-length: ~D~%" (-> obj visible-list-length))
-  (format #t "~Tdrawable-trees: ~A~%" (-> obj drawable-trees))
-  (format #t "~Tpat: #x~X~%" (-> obj pat))
-  (format #t "~Tpat-length: ~D~%" (-> obj pat-length))
+(defmethod inspect bsp-header ((this bsp-header))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tall-visible-list: #x~X~%" (-> this all-visible-list))
+  (format #t "~Tvisible-list-length: ~D~%" (-> this visible-list-length))
+  (format #t "~Tdrawable-trees: ~A~%" (-> this drawable-trees))
+  (format #t "~Tpat: #x~X~%" (-> this pat))
+  (format #t "~Tpat-length: ~D~%" (-> this pat-length))
   ;; putting this stuff here for debugging!
-  (format #t "~Ttexture-remap-table-len: ~D~%" (-> obj texture-remap-table-len))
-  (dotimes (i (-> obj texture-remap-table-len))
-    (let* ((tex-id-array (the (pointer texture-id) (&-> obj texture-remap-table i)))
+  (format #t "~Ttexture-remap-table-len: ~D~%" (-> this texture-remap-table-len))
+  (dotimes (i (-> this texture-remap-table-len))
+    (let* ((tex-id-array (the (pointer texture-id) (&-> this texture-remap-table i)))
           (tex-id-from (-> tex-id-array 0))
           (tex-id-to (-> tex-id-array 1))
           )
@@ -129,8 +131,8 @@
                  )
       )
     )
-  ;;(inspect-bsp-tree obj (the-as bsp-node (-> obj nodes)))
-  obj
+  ;;(inspect-bsp-tree this (the-as bsp-node (-> this nodes)))
+  this
   )
 
 (defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))

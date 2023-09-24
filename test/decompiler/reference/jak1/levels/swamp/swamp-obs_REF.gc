@@ -128,14 +128,14 @@
   )
 
 ;; definition for method 3 of type swamp-spike
-(defmethod inspect swamp-spike ((obj swamp-spike))
+(defmethod inspect swamp-spike ((this swamp-spike))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Topen-gate: ~A~%" (-> obj open-gate))
-  (format #t "~T~Tdangerous: ~A~%" (-> obj dangerous))
-  obj
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> this sync))
+  (format #t "~T~Topen-gate: ~A~%" (-> this open-gate))
+  (format #t "~T~Tdangerous: ~A~%" (-> this dangerous))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -200,7 +200,7 @@
       (vector-z-quaternion! gp-0 (-> self root-override quat))
       (set! (-> gp-0 w) (- (vector-dot gp-0 (-> self root-override trans))))
       (loop
-        (set! (-> self state-time) (-> *display* base-frame-counter))
+        (set-time! (-> self state-time))
         (ja :group! (-> self draw art-group data 3))
         (until (>= (get-current-phase (-> self sync)) 0.5)
           (ja :num-func num-func-identity :frame-num 0.0)
@@ -248,7 +248,7 @@
                 (ja :num! (seek!))
                 )
               (set! (-> self dangerous) #f)
-              (set! (-> self state-time) (-> *display* base-frame-counter))
+              (set-time! (-> self state-time))
               (ja :num-func num-func-identity :frame-num max)
               (until (< (get-current-phase (-> self sync)) 0.5)
                 (suspend)
@@ -293,7 +293,7 @@
       )
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (ja :group! (-> self draw art-group data 4))
     (until (-> self open-gate)
       (ja :num-func num-func-identity :frame-num 0.0)
@@ -330,8 +330,8 @@
   )
 
 ;; definition for method 20 of type swamp-spike
-(defmethod init! swamp-spike ((obj swamp-spike))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init! swamp-spike ((this swamp-spike))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -359,21 +359,21 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root-override) s5-0)
     )
-  (process-drawable-from-entity! obj (-> obj entity))
-  (initialize-skeleton obj *swamp-spike-sg* '())
-  (set! (-> obj draw origin-joint-index) (the-as uint 3))
-  (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
-  (set! (-> obj open-gate) #f)
-  (set! (-> obj dangerous) #f)
+  (process-drawable-from-entity! this (-> this entity))
+  (initialize-skeleton this *swamp-spike-sg* '())
+  (set! (-> this draw origin-joint-index) (the-as uint 3))
+  (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
+  (set! (-> this open-gate) #f)
+  (set! (-> this dangerous) #f)
   #f
   )
 
 ;; definition for method 11 of type swamp-spike
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! swamp-spike ((obj swamp-spike) (arg0 entity-actor))
-  (init! obj)
+(defmethod init-from-entity! swamp-spike ((this swamp-spike) (arg0 entity-actor))
+  (init! this)
   (go swamp-spike-idle)
   (none)
   )
@@ -392,17 +392,17 @@
   )
 
 ;; definition for method 3 of type swampgate
-(defmethod inspect swampgate ((obj swampgate))
+(defmethod inspect swampgate ((this swampgate))
   (let ((t9-0 (method-of-type swamp-spike inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 11 of type swampgate
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! swampgate ((obj swampgate) (arg0 entity-actor))
-  (init! obj)
+(defmethod init-from-entity! swampgate ((this swampgate) (arg0 entity-actor))
+  (init! this)
   (if (logtest? (-> arg0 extra perm status) (entity-perm-status complete))
       (go swamp-spike-gate-down)
       (go swamp-spike-gate-up)
@@ -430,17 +430,17 @@
   )
 
 ;; definition for method 3 of type balance-plat
-(defmethod inspect balance-plat ((obj balance-plat))
+(defmethod inspect balance-plat ((this balance-plat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ty-travel: ~f~%" (-> obj y-travel))
-  (format #t "~T~Ty-init: ~f~%" (-> obj y-init))
-  (format #t "~T~Ty-offset: ~f~%" (-> obj y-offset))
-  (format #t "~T~Ty-vel: ~f~%" (-> obj y-vel))
-  (format #t "~T~Ty-accel: ~f~%" (-> obj y-accel))
-  (format #t "~T~Tgot-grow: ~A~%" (-> obj got-grow))
-  obj
+  (format #t "~T~Ty-travel: ~f~%" (-> this y-travel))
+  (format #t "~T~Ty-init: ~f~%" (-> this y-init))
+  (format #t "~T~Ty-offset: ~f~%" (-> this y-offset))
+  (format #t "~T~Ty-vel: ~f~%" (-> this y-vel))
+  (format #t "~T~Ty-accel: ~f~%" (-> this y-accel))
+  (format #t "~T~Tgot-grow: ~A~%" (-> this got-grow))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -506,9 +506,9 @@
 
 ;; definition for method 11 of type balance-plat
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! balance-plat ((obj balance-plat) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! balance-plat ((this balance-plat) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -526,17 +526,17 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *balance-plat-sg* '())
-  (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (set! (-> obj y-accel) 0.0)
-  (set! (-> obj y-vel) 0.0)
-  (set! (-> obj y-offset) 0.0)
-  (set! (-> obj y-init) (-> obj root-override trans y))
-  (set! (-> obj got-grow) #f)
-  (set! (-> obj y-travel) (res-lump-float arg0 'distance :default 20480.0))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *balance-plat-sg* '())
+  (set! (-> this link) (new 'process 'actor-link-info this))
+  (set! (-> this y-accel) 0.0)
+  (set! (-> this y-vel) 0.0)
+  (set! (-> this y-offset) 0.0)
+  (set! (-> this y-init) (-> this root-override trans y))
+  (set! (-> this got-grow) #f)
+  (set! (-> this y-travel) (res-lump-float arg0 'distance :default 20480.0))
   (go balance-plat-idle)
   (none)
   )
@@ -556,11 +556,11 @@
   )
 
 ;; definition for method 3 of type swamp-rock
-(defmethod inspect swamp-rock ((obj swamp-rock))
+(defmethod inspect swamp-rock ((this swamp-rock))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -695,10 +695,10 @@
 
 ;; definition for method 11 of type swamp-rock
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! swamp-rock ((obj swamp-rock) (arg0 entity-actor))
-  (logior! (-> obj mask) (process-mask attackable))
+(defmethod init-from-entity! swamp-rock ((this swamp-rock) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask attackable))
   (let ((f30-0 (res-lump-float arg0 'scale-factor :default 1.0)))
-    (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
       (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
         (set! (-> s3-0 collide-with) (collide-kind target))
@@ -710,14 +710,14 @@
         )
       (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
       (backup-collide-with-as s4-0)
-      (set! (-> obj root) s4-0)
+      (set! (-> this root) s4-0)
       )
-    (process-drawable-from-entity! obj arg0)
-    (vector-float*! (-> obj root scale) *identity-vector* f30-0)
+    (process-drawable-from-entity! this arg0)
+    (vector-float*! (-> this root scale) *identity-vector* f30-0)
     )
-  (initialize-skeleton obj *swamp-rock-sg* '())
-  (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 291) obj))
+  (initialize-skeleton this *swamp-rock-sg* '())
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 291) this))
   (go swamp-rock-idle)
   (none)
   )
@@ -801,28 +801,28 @@
   )
 
 ;; definition for method 3 of type tar-plat
-(defmethod inspect tar-plat ((obj tar-plat))
+(defmethod inspect tar-plat ((this tar-plat))
   (let ((t9-0 (method-of-type rigid-body-platform inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> obj anchor-point))
-  (format #t "~T~Tfloat-height: ~f~%" (-> obj float-height))
-  obj
+  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> this anchor-point))
+  (format #t "~T~Tfloat-height: ~f~%" (-> this float-height))
+  this
   )
 
 ;; definition for method 22 of type tar-plat
-(defmethod rigid-body-platform-method-22 tar-plat ((obj tar-plat) (arg0 vector) (arg1 float))
-  (+ (-> obj float-height)
-     (-> obj float-height-offset)
+(defmethod rigid-body-platform-method-22 tar-plat ((this tar-plat) (arg0 vector) (arg1 float))
+  (+ (-> this float-height)
+     (-> this float-height-offset)
      (* 512.0 (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
      )
   )
 
 ;; definition for method 23 of type tar-plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-23 tar-plat ((obj tar-plat) (arg0 float))
-  ((the-as (function rigid-body-platform basic none) (find-parent-method tar-plat 23)) obj (the-as basic arg0))
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 tar-plat ((this tar-plat) (arg0 float))
+  ((the-as (function rigid-body-platform basic none) (find-parent-method tar-plat 23)) this (the-as basic arg0))
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
@@ -852,14 +852,14 @@
                              )
            )
        (let ((f30-1 -2048.0))
-         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (seconds-per-frame)))
          (if (= (-> self float-height-offset) f30-1)
              (go-virtual rigid-body-platform-idle)
              )
          )
        )
       (else
-        (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (-> *display* seconds-per-frame)))
+        (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (seconds-per-frame)))
         )
       )
     )
@@ -876,8 +876,8 @@
 
 ;; definition for method 30 of type tar-plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-30 tar-plat ((obj tar-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod rigid-body-platform-method-30 tar-plat ((this tar-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -895,7 +895,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
@@ -904,14 +904,14 @@
 ;; definition for method 31 of type tar-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 tar-plat ((obj tar-plat))
-  (initialize-skeleton obj *tar-plat-sg* '())
-  (rigid-body-platform-method-29 obj *tar-plat-constants*)
-  (set! (-> obj float-height) (-> obj entity extra trans y))
-  (set! (-> obj float-height-offset) -2048.0)
-  (let ((s5-0 (-> obj info control-point-count)))
+(defmethod rigid-body-platform-method-31 tar-plat ((this tar-plat))
+  (initialize-skeleton this *tar-plat-sg* '())
+  (rigid-body-platform-method-29 this *tar-plat-constants*)
+  (set! (-> this float-height) (-> this entity extra trans y))
+  (set! (-> this float-height-offset) -2048.0)
+  (let ((s5-0 (-> this info control-point-count)))
     (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> obj control-point-array data s4-0)))
+      (let ((s3-0 (-> this control-point-array data s4-0)))
         (let ((f26-0 (+ 8192.0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
               (f28-0 20480.0)
               (f30-0 12288.0)
@@ -924,8 +924,8 @@
         )
       )
     )
-  (nav-mesh-connect obj (-> obj root-overlay) (the-as nav-control #f))
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
+  (nav-mesh-connect this (-> this root-overlay) (the-as nav-control #f))
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
   0
   (none)
   )
@@ -940,11 +940,11 @@
   )
 
 ;; definition for method 3 of type swamp-barrel
-(defmethod inspect swamp-barrel ((obj swamp-barrel))
+(defmethod inspect swamp-barrel ((this swamp-barrel))
   (let ((t9-0 (method-of-type barrel inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type swampcam
@@ -956,35 +956,35 @@
   )
 
 ;; definition for method 3 of type swampcam
-(defmethod inspect swampcam ((obj swampcam))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  (format #t "~Tpool: ~A~%" (-> obj pool))
-  (format #t "~Tstatus: ~A~%" (-> obj status))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
-  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
-  (format #t "~Tentity: ~A~%" (-> obj entity))
-  (format #t "~Tstate: ~A~%" (-> obj state))
-  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
-  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
-  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
-  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
-  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
-  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
-  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
-  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
-  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
-  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
-  obj
+(defmethod inspect swampcam ((this swampcam))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  (format #t "~Tpool: ~A~%" (-> this pool))
+  (format #t "~Tstatus: ~A~%" (-> this status))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  (format #t "~Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~Tentity: ~A~%" (-> this entity))
+  (format #t "~Tstate: ~A~%" (-> this state))
+  (format #t "~Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> this connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> this stack))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1003,11 +1003,11 @@
   )
 
 ;; definition for method 3 of type swamp-battlecontroller
-(defmethod inspect swamp-battlecontroller ((obj swamp-battlecontroller))
+(defmethod inspect swamp-battlecontroller ((this swamp-battlecontroller))
   (let ((t9-0 (method-of-type battlecontroller inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:

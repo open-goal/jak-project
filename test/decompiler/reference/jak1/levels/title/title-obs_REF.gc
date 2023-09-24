@@ -27,30 +27,30 @@
   )
 
 ;; definition for method 3 of type logo
-(defmethod inspect logo ((obj logo))
+(defmethod inspect logo ((this logo))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tcamera: ~D~%" (-> obj camera))
-  (format #t "~T~Tcamera-anim: ~D~%" (-> obj camera-anim))
-  (format #t "~T~Tvolumes: ~D~%" (-> obj volumes))
-  (format #t "~T~Tblack: ~D~%" (-> obj black))
-  (format #t "~T~Ttarget: ~D~%" (-> obj target))
-  (format #t "~T~Tsidekick: ~D~%" (-> obj sidekick))
-  (format #t "~T~Tmain-joint: ~A~%" (-> obj main-joint))
-  (format #t "~T~Tanim: ~A~%" (-> obj anim))
-  (format #t "~T~Tnext-anim: ~A~%" (-> obj next-anim))
-  (format #t "~T~Tdone?: ~A~%" (-> obj done?))
-  obj
+  (format #t "~T~Tcamera: ~D~%" (-> this camera))
+  (format #t "~T~Tcamera-anim: ~D~%" (-> this camera-anim))
+  (format #t "~T~Tvolumes: ~D~%" (-> this volumes))
+  (format #t "~T~Tblack: ~D~%" (-> this black))
+  (format #t "~T~Ttarget: ~D~%" (-> this target))
+  (format #t "~T~Tsidekick: ~D~%" (-> this sidekick))
+  (format #t "~T~Tmain-joint: ~A~%" (-> this main-joint))
+  (format #t "~T~Tanim: ~A~%" (-> this anim))
+  (format #t "~T~Tnext-anim: ~A~%" (-> this next-anim))
+  (format #t "~T~Tdone?: ~A~%" (-> this done?))
+  this
   )
 
 ;; definition for method 7 of type logo
 ;; INFO: Return type mismatch process-drawable vs logo.
-(defmethod relocate logo ((obj logo) (arg0 int))
-  (if (nonzero? (-> obj main-joint))
-      (&+! (-> obj main-joint) arg0)
+(defmethod relocate logo ((this logo) (arg0 int))
+  (if (nonzero? (-> this main-joint))
+      (&+! (-> this main-joint) arg0)
       )
-  (the-as logo ((method-of-type process-drawable relocate) obj arg0))
+  (the-as logo ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition of type logo-slave
@@ -68,21 +68,21 @@
   )
 
 ;; definition for method 3 of type logo-slave
-(defmethod inspect logo-slave ((obj logo-slave))
+(defmethod inspect logo-slave ((this logo-slave))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tmain-joint: ~A~%" (-> obj main-joint))
-  obj
+  (format #t "~T~Tmain-joint: ~A~%" (-> this main-joint))
+  this
   )
 
 ;; definition for method 7 of type logo-slave
 ;; INFO: Return type mismatch process-drawable vs logo-slave.
-(defmethod relocate logo-slave ((obj logo-slave) (arg0 int))
-  (if (nonzero? (-> obj main-joint))
-      (&+! (-> obj main-joint) arg0)
+(defmethod relocate logo-slave ((this logo-slave) (arg0 int))
+  (if (nonzero? (-> this main-joint))
+      (&+! (-> this main-joint) arg0)
       )
-  (the-as logo-slave ((method-of-type process-drawable relocate) obj arg0))
+  (the-as logo-slave ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; failed to figure out what this is:
@@ -456,8 +456,8 @@
       )
     (loop
       (when (and (none-reserved? *art-control*) (not (paused?)))
-        (let ((gp-1 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 0.1))
+        (let ((gp-1 (current-time)))
+          (until (time-elapsed? gp-1 (seconds 0.1))
             (set! *camera-look-through-other* 2)
             (suspend)
             )
@@ -483,7 +483,7 @@
   :enter (behavior ()
     (set-setting! 'bg-a 'abs 0.0 0)
     (apply-settings *setting-control*)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (if *time-of-day-proc*
         (set! (-> *time-of-day-proc* 0 hour) 12)
         )
@@ -503,7 +503,7 @@
         )
     (when (and (= (-> *setting-control* current bg-a) 1.0)
                (and (member (level-status *level* 'village1) '(active loaded))
-                    (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
+                    (time-elapsed? (-> self state-time) (seconds 3))
                     (let ((gp-2 (level-get *level* 'village1)))
                       (when gp-2
                         (load-state-want-levels 'title 'village1)
@@ -672,7 +672,7 @@
     (set-setting! 'allow-progress #f 0.0 0)
     (set-setting! 'border-mode #f 0.0 0)
     (apply-settings *setting-control*)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self manipy) (the-as (pointer manipy) #f))
     (ja-channel-set! 0)
     (ja-post)
@@ -711,8 +711,8 @@
             (set-blackout-frames (seconds 0.05))
             (suspend)
             )
-          (let ((s5-1 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.25))
+          (let ((s5-1 (current-time)))
+            (until (time-elapsed? s5-1 (seconds 0.25))
               (set-blackout-frames (seconds 0.05))
               (suspend)
               )
@@ -752,8 +752,8 @@
           (while *progress-process*
             (suspend)
             )
-          (let ((gp-2 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 0.01))
+          (let ((gp-2 (current-time)))
+            (until (time-elapsed? gp-2 (seconds 0.01))
               (suspend)
               )
             )
