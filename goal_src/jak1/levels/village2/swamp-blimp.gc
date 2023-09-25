@@ -10,12 +10,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/swamp-tetherrock-ag.gc")
-(import "goal_src/jak1/import/swamp-rope-ag.gc")
-(import "goal_src/jak1/import/swamp-tetherrock-explode-ag.gc")
-(import "goal_src/jak1/import/precursor-arm-ag.gc")
-(import "goal_src/jak1/import/swamp-blimp-ag.gc")
-
 (defskelgroup *swamp-tetherrock-sg* swamp-tetherrock swamp-tetherrock-lod0-jg swamp-tetherrock-idle-ja
               ((swamp-tetherrock-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 4 0 6)
@@ -603,7 +597,6 @@
     (deactivate self)
     (suspend)
     0
-    (none)
     )
   )
 
@@ -619,7 +612,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -628,7 +620,6 @@
     (remove-setting! 'movie)
     (remove-setting! 'process-mask)
     (apply-settings *setting-control*)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (tetherrock-get-info (-> self entity))))
@@ -805,16 +796,15 @@
         )
       )
     (go swamp-tetherrock-hide)
-    (none)
     )
-  :post (the-as (function none :behavior swamp-tetherrock) ja-post)
+  :post ja-post
   )
 
 (defstate swamp-tetherrock-idle (swamp-tetherrock)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (when (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+       (when (and (>= argc 2) (= (-> block param 1) 'eco-yellow))
          (+! (-> self hits) 1)
          (cond
            ((>= (-> self hits) 1)
@@ -876,9 +866,8 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-tetherrock) transform-post)
+  :post transform-post
   )
 
 (defmethod init-from-entity! swamp-tetherrock ((obj swamp-tetherrock) (arg0 entity-actor))
@@ -943,7 +932,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -971,9 +959,8 @@
       (set! (-> self root-override trans y) (+ (-> self y-offset) (-> self y-init)))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior precursor-arm) transform-post)
+  :post transform-post
   )
 
 (defun precursor-arm-slip ((arg0 float))
@@ -995,8 +982,8 @@
   )
 
 (defstate precursor-arm-idle (precursor-arm)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('arm-sink-evt)
        (go precursor-arm-sink)
        )
@@ -1024,10 +1011,9 @@
       (let ((a2-1 (new 'static 'vector)))
         (set! (-> a2-1 quad) (-> self root-override trans quad))
         (set! (-> a2-1 y) 0.0)
-        (launch-particles :rate 1.0 (-> *part-id-table* 2017) a2-1)
+        (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2017) a2-1)
         )
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1086,9 +1072,8 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior precursor-arm) transform-post)
+  :post transform-post
   )
 
 (defmethod init-from-entity! precursor-arm ((obj precursor-arm) (arg0 entity-actor))
@@ -1195,11 +1180,9 @@
 (defstate swamp-rope-break (swamp-rope)
   :enter (behavior ()
     (set! (-> self scale-base) (-> self root scale y))
-    (none)
     )
   :trans (behavior ()
     (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 18.204445)
@@ -1229,13 +1212,11 @@
           )
         )
       )
-    (none)
     )
   :post (behavior ()
     (set! (-> self other-pos quad) (-> self root trans quad))
     (+! (-> self other-pos y) -245760.0)
     (swamp-rope-post)
-    (none)
     )
   )
 
@@ -1304,7 +1285,6 @@
       (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
       (suspend)
       )
-    (none)
     )
   :post swamp-rope-post
   )
@@ -1328,7 +1308,6 @@
       (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
       (suspend)
       )
-    (none)
     )
   :post swamp-rope-post
   )
@@ -1427,9 +1406,8 @@
       )
     (set! (-> self draw force-lod) 0)
     0
-    (none)
     )
-  :trans (the-as (function none :behavior swamp-blimp) blimp-trans)
+  :trans blimp-trans
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
@@ -1453,9 +1431,8 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-blimp) transform-post)
+  :post transform-post
   )
 
 (defbehavior swamp-blimp-setup swamp-blimp ()
@@ -1543,16 +1520,15 @@
   )
 
 (defstate swamp-blimp-idle (swamp-blimp)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('tetherrock-break-evt)
-                      (increment-success-for-hint (text-id swamp-tetherrock-eco-yellow-hint))
-                      (swamp-blimp-setup)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('tetherrock-break-evt)
+       (increment-success-for-hint (text-id swamp-tetherrock-eco-yellow-hint))
+       (swamp-blimp-setup)
+       )
+      )
     )
-  :trans (the-as (function none :behavior swamp-blimp) blimp-trans)
+  :trans blimp-trans
   :code (behavior ()
     (ja :group! swamp-blimp-idle-ja)
     (loop
@@ -1587,9 +1563,8 @@
       (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-blimp) transform-post)
+  :post transform-post
   )
 
 (defmethod init-from-entity! swamp-blimp ((obj swamp-blimp) (arg0 entity-actor))

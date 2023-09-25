@@ -469,6 +469,7 @@
     )
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-52 wasp ((obj wasp) (arg0 vector))
   (let ((s4-0 (-> obj root)))
     (case (-> obj incoming knocked-type)
@@ -522,18 +523,16 @@
   (none)
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile wasp ((obj wasp))
   (go (method-of-object obj hostile))
-  (none)
   )
 
 (defmethod react-to-focus wasp ((obj wasp))
   "@TODO - flesh out docs"
   (go-hostile obj)
-  (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-129 wasp ((obj wasp))
   (if (logtest? (-> obj fact enemy-options) (enemy-option user0))
       (set! (-> obj focus-pos quad) (-> obj plat-pos quad))
@@ -547,11 +546,9 @@
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (with-pp
-    (seek! (-> obj gun-x-angle) (-> obj gun-x-angle-final) (* 21845.334 (-> pp clock seconds-per-frame)))
-    ((method-of-type hover-enemy track-target!) obj)
-    (none)
-    )
+  (seek! (-> obj gun-x-angle) (-> obj gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
+  ((method-of-type hover-enemy track-target!) obj)
+  (none)
   )
 
 (defbehavior shoot-bridge-post wasp ()
@@ -567,7 +564,6 @@
     (if (logtest? (-> self fact enemy-options) (enemy-option user0))
         (go-virtual shoot-bridge-wait)
         )
-    (none)
     )
   )
 
@@ -580,7 +576,6 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
@@ -593,14 +588,13 @@
           )
       )
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   )
 
 (defstate shoot-bridge-wait (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual shoot-bridge-intro)
        )
@@ -629,7 +623,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag enable-on-active checking-water))
     (logclear! (-> self mask) (process-mask collectable))
     (logclear! (-> self enemy-flags) (enemy-flag look-at-move-dest))
-    (none)
     )
   :exit (behavior ()
     (let ((gp-0 (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
@@ -642,15 +635,14 @@
         (the-as vector #t)
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) sleep-code)
+  :code sleep-code
   )
 
 (defstate shoot-bridge-intro (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
@@ -658,7 +650,6 @@
     )
   :enter (behavior ()
     (set! (-> self plat-pos quad) (-> self entity-group data 0 actor extra trans quad))
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-distance
@@ -669,30 +660,27 @@
            )
         (go-virtual shoot-bridge-hold)
         )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 (defstate shoot-bridge-hold (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shoot)
        (go-virtual shoot-bridge-hostile)
        )
       )
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -722,9 +710,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'vector)))
       (set! (-> a1-0 quad) (-> self focus-pos quad))
@@ -733,14 +720,13 @@
       (hover-nav-control-method-11 (-> self hover) a1-0)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
 (defstate shoot-bridge-attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -762,26 +748,19 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -791,7 +770,6 @@
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
     (go-virtual shoot-bridge-hostile)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -810,7 +788,7 @@
     (seek!
       (-> self attack-miss-dist-curr)
       (-> self attack-miss-dist-max)
-      (* 0.5 (-> self clock seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
+      (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (let ((a1-8 (new 'stack-no-clear 'vector)))
       (set! (-> a1-8 quad) (-> self focus-pos quad))
@@ -819,7 +797,6 @@
       (hover-nav-control-method-11 (-> self hover) a1-8)
       )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -844,7 +821,6 @@
         )
       )
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (< (vector-vector-distance
@@ -856,9 +832,8 @@
       (cleanup-for-death self)
       (go empty-state)
       )
-    (none)
     )
-  :code (the-as (function none :behavior wasp) hover-enemy-fly-code)
+  :code hover-enemy-fly-code
   :post (behavior ()
     (if (not (hover-nav-control-method-23 (-> self hover)))
         (hover-nav-control-method-11 (-> self hover) (the-as vector #f))
@@ -868,7 +843,6 @@
           )
         )
     (hover-enemy-dest-post)
-    (none)
     )
   )
 
@@ -894,14 +868,13 @@
             )
         )
       )
-    (none)
     )
   )
 
 (defstate attack (wasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
          (set! (-> gp-0 ent) (-> self entity))
@@ -923,26 +896,19 @@
        (sound-play "wasp-fire" :position (-> self root trans))
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (set! (-> self attack-miss-dist-curr) (-> self attack-miss-dist-min))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (sound-play "wasp-warn" :position (-> self root trans))
     (ja-no-eval :group! (-> self draw art-group data (-> self hover-info shoot-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self hover-info shoot-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -952,7 +918,6 @@
     (set! (-> self last-fire-time) (current-time))
     (set! (-> self restart-fly-anims) #t)
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let* ((a1-0 (-> self node-list data (-> self hover-info gun-base)))
@@ -971,29 +936,19 @@
     (seek!
       (-> self attack-miss-dist-curr)
       (-> self attack-miss-dist-max)
-      (* 0.5 (-> self clock seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
+      (* 0.5 (seconds-per-frame) (- (-> self attack-miss-dist-max) (-> self attack-miss-dist-min)))
       )
     (hover-enemy-hostile-post)
-    (none)
     )
   )
 
 (defstate knocked-recover (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (local-vars (v1-35 enemy-flag) (v1-43 enemy-flag))
     (ja-channel-push! 1 (seconds 0.5))
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-recover-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-recover-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1025,13 +980,12 @@
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
-    (none)
     )
   )
 
 (defstate die-explode (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (set! (-> self hit-points) 0)
@@ -1087,13 +1041,12 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
 (defstate die-now (wasp)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior wasp) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (dispose! self)
     (let ((v1-3 (-> self root root-prim)))
@@ -1110,9 +1063,8 @@
       )
     (send-event self 'death-end)
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior wasp) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch process vs process-focusable.
@@ -1237,86 +1189,84 @@
         (gp-0
           (lambda ((arg0 wasp) (arg1 cspace) (arg2 float) (arg3 float) (arg4 vector) (arg5 vector) (arg6 int))
             (local-vars (sv-192 float) (sv-208 quaternion) (sv-224 vector))
-            (with-pp
-              (set! sv-192 arg2)
-              (let ((s0-0 arg3))
-                (set! sv-224 arg4)
-                (let ((s1-0 arg5)
-                      (s3-0 arg6)
-                      (s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) arg1))
-                      (s5-0 (new 'stack-no-clear 'matrix))
-                      (a1-3 (matrix-with-scale->quaternion (new 'stack-no-clear 'quaternion) (-> arg1 bone transform)))
-                      )
-                  (set! sv-208 (new 'stack-no-clear 'quaternion))
-                  (let ((s2-1 (new 'stack-no-clear 'vector)))
-                    (-> arg0 scale)
-                    (quaternion-rotate-local-z! sv-208 a1-3 sv-192)
-                    (quaternion->matrix s5-0 sv-208)
-                    (set! (-> s2-1 quad) (-> arg0 root scale quad))
-                    (scale-matrix! s5-0 s2-1 s5-0)
-                    (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
-                           (t9-6 vector-inv-orient-by-quat!)
-                           (a0-10 (new 'stack-no-clear 'vector))
-                           (a2-4 (-> arg0 root quat))
-                           (v0-6 (t9-6 a0-10 sv-224 a2-4))
-                           (f30-0 (* 2457600.0 (-> pp clock seconds-per-frame)))
-                           (f28-0
-                             (seek
-                               (-> arg0 thrust s3-0)
-                               (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
-                                  (fmax 0.0 (-> v0-6 y))
-                                  (fabs (* 0.2 (-> v0-6 z)))
-                                  (fmax 0.0 (-> s1-1 y))
-                                  )
-                               (* 0.2 f30-0)
-                               )
+            (set! sv-192 arg2)
+            (let ((s0-0 arg3))
+              (set! sv-224 arg4)
+              (let ((s1-0 arg5)
+                    (s3-0 arg6)
+                    (s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) arg1))
+                    (s5-0 (new 'stack-no-clear 'matrix))
+                    (a1-3 (matrix-with-scale->quaternion (new 'stack-no-clear 'quaternion) (-> arg1 bone transform)))
+                    )
+                (set! sv-208 (new 'stack-no-clear 'quaternion))
+                (let ((s2-1 (new 'stack-no-clear 'vector)))
+                  (-> arg0 scale)
+                  (quaternion-rotate-local-z! sv-208 a1-3 sv-192)
+                  (quaternion->matrix s5-0 sv-208)
+                  (set! (-> s2-1 quad) (-> arg0 root scale quad))
+                  (scale-matrix! s5-0 s2-1 s5-0)
+                  (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
+                         (t9-6 vector-inv-orient-by-quat!)
+                         (a0-10 (new 'stack-no-clear 'vector))
+                         (a2-4 (-> arg0 root quat))
+                         (v0-6 (t9-6 a0-10 sv-224 a2-4))
+                         (f30-0 (* 2457600.0 (seconds-per-frame)))
+                         (f28-0
+                           (seek
+                             (-> arg0 thrust s3-0)
+                             (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
+                                (fmax 0.0 (-> v0-6 y))
+                                (fabs (* 0.2 (-> v0-6 z)))
+                                (fmax 0.0 (-> s1-1 y))
+                                )
+                             (* 0.2 f30-0)
                              )
                            )
-                      (let ((f20-0 (lerp-scale 819.2 4096.0 f28-0 1638.4 f30-0))
-                            (f26-0 (lerp-scale 4915.2 11468.8 f28-0 1638.4 f30-0))
+                         )
+                    (let ((f20-0 (lerp-scale 819.2 4096.0 f28-0 1638.4 f30-0))
+                          (f26-0 (lerp-scale 4915.2 11468.8 f28-0 1638.4 f30-0))
+                          )
+                      (lerp-scale 0.0 -4915.2 f28-0 1638.4 f30-0)
+                      (let ((f22-0 (lerp-scale 0.5 1.5 f28-0 1638.4 f30-0))
+                            (f24-0 (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0))
                             )
-                        (lerp-scale 0.0 -4915.2 f28-0 1638.4 f30-0)
-                        (let ((f22-0 (lerp-scale 0.5 1.5 f28-0 1638.4 f30-0))
-                              (f24-0 (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0))
+                        (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0)
+                        (let ((f1-10 (lerp-scale 0.02 0.6 f28-0 1638.4 f30-0))
+                              (f2-6 (fmin 1.0 (-> s2-1 x)))
+                              (f0-15 (fmin 1.0 (-> s2-1 y)))
                               )
-                          (lerp-scale 0.1 1.0 f28-0 1638.4 f30-0)
-                          (let ((f1-10 (lerp-scale 0.02 0.6 f28-0 1638.4 f30-0))
-                                (f2-6 (fmin 1.0 (-> s2-1 x)))
-                                (f0-15 (fmin 1.0 (-> s2-1 y)))
-                                )
-                            (set! (-> *part-id-table* 718 init-specs 4 initial-valuef) (* f20-0 f2-6))
-                            (set! (-> *part-id-table* 718 init-specs 5 initial-valuef) (* f26-0 f0-15))
-                            (set! (-> *part-id-table* 722 init-specs 3 initial-valuef) (* f22-0 f2-6))
-                            (set! (-> *part-id-table* 719 init-specs 1 initial-valuef) (* f24-0 f0-15))
-                            (set! (-> *part-id-table* 720 init-specs 1 initial-valuef) (* f1-10 f0-15))
-                            (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) (* f24-0 f0-15))
-                            (set! (-> arg0 thrust s3-0) f28-0)
-                            (let ((f0-16 (* f26-0 f0-15)))
-                              (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-16))
-                              )
+                          (set! (-> *part-id-table* 718 init-specs 4 initial-valuef) (* f20-0 f2-6))
+                          (set! (-> *part-id-table* 718 init-specs 5 initial-valuef) (* f26-0 f0-15))
+                          (set! (-> *part-id-table* 722 init-specs 3 initial-valuef) (* f22-0 f2-6))
+                          (set! (-> *part-id-table* 719 init-specs 1 initial-valuef) (* f24-0 f0-15))
+                          (set! (-> *part-id-table* 720 init-specs 1 initial-valuef) (* f1-10 f0-15))
+                          (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) (* f24-0 f0-15))
+                          (set! (-> arg0 thrust s3-0) f28-0)
+                          (let ((f0-16 (* f26-0 f0-15)))
+                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-16))
                             )
                           )
                         )
-                      (set! (-> s5-0 trans quad) (-> s4-0 quad))
-                      (spawn-with-matrix (-> arg0 engine-part) s5-0)
-                      (let ((f0-18 (lerp-scale 0.75 1.0 f28-0 1638.4 f30-0)))
-                        (sound-play-by-name
-                          (static-sound-name "wasp-jets")
-                          (-> arg0 sound-id)
-                          (the int (* 1024.0 f0-18))
-                          0
-                          0
-                          (sound-group sfx)
-                          (-> arg0 root trans)
-                          )
+                      )
+                    (set! (-> s5-0 trans quad) (-> s4-0 quad))
+                    (spawn-with-matrix (-> arg0 engine-part) s5-0)
+                    (let ((f0-18 (lerp-scale 0.75 1.0 f28-0 1638.4 f30-0)))
+                      (sound-play-by-name
+                        (static-sound-name "wasp-jets")
+                        (-> arg0 sound-id)
+                        (the int (* 1024.0 f0-18))
+                        0
+                        0
+                        (sound-group sfx)
+                        (-> arg0 root trans)
                         )
                       )
                     )
                   )
                 )
-              0
-              (none)
               )
+            0
+            (none)
             )
           )
         )

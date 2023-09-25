@@ -11,9 +11,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/wedge-plat-outer-ag.gc")
-(import "goal_src/jak1/import/wedge-plat-ag.gc")
-
 (deftype wedge-plat-master (process)
   ((center       vector :inline :offset-assert 112)
    (rotspeed     float          :offset-assert 128)
@@ -45,7 +42,6 @@
             )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -120,15 +116,14 @@
   )
 
 (defstate wedge-plat-idle (wedge-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      )
     )
-  :trans (the-as (function none :behavior wedge-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
     (loop
@@ -137,25 +132,23 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior wedge-plat) plat-post)
+  :post plat-post
   )
 
 (defstate wedge-plat-tip (wedge-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
-  :trans (the-as (function none :behavior wedge-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3)
                 :num! (seek! (ja-aframe 60.0 0))
@@ -191,9 +184,8 @@
       (ja :num! (seek! (ja-aframe 153.0 0)))
       )
     (go wedge-plat-idle)
-    (none)
     )
-  :post (the-as (function none :behavior wedge-plat) plat-post)
+  :post plat-post
   )
 
 (defmethod init-from-entity! wedge-plat ((obj wedge-plat) (arg0 entity-actor))
@@ -284,15 +276,14 @@
   )
 
 (defstate wedge-plat-outer-idle (wedge-plat-outer)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      )
     )
-  :trans (the-as (function none :behavior wedge-plat-outer) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (loop
       (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
@@ -301,24 +292,22 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior wedge-plat-outer) plat-post)
+  :post plat-post
   )
 
 (defstate wedge-plat-outer-tip (wedge-plat-outer)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       )
+      )
     )
-  :trans (the-as (function none :behavior wedge-plat-outer) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3)
                 :num! (seek! (ja-aframe 60.0 0))
@@ -354,9 +343,8 @@
       (ja :num! (seek! (ja-aframe 153.0 0)))
       )
     (go wedge-plat-outer-idle)
-    (none)
     )
-  :post (the-as (function none :behavior wedge-plat-outer) plat-post)
+  :post plat-post
   )
 
 (defmethod init-from-entity! wedge-plat-outer ((obj wedge-plat-outer) (arg0 entity-actor))

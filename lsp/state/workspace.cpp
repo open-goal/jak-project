@@ -327,7 +327,7 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   std::string::size_type prev = 0;
 
   // TODO - i hate this assignment inside a conditional, get rid of it
-  while ((pos = content.find('\r\n', prev)) != std::string::npos) {
+  while ((pos = content.find("\r\n", prev)) != std::string::npos) {
     std::string line = content.substr(prev, pos - prev);
     m_lines.push_back(line);
     // Run any checks on that line

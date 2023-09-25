@@ -550,40 +550,38 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod nav-enemy-method-142 ginsu ((obj ginsu) (arg0 nav-control))
-  (with-pp
-    (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (let ((a0-2 (handle->process (-> obj focus handle))))
-        (cond
-          (a0-2
-            (vector-! s3-0 (get-trans (the-as process-focusable a0-2) 0) (-> obj root trans))
-            )
-          (else
-            (let ((a0-7 (-> arg0 state)))
-              (set! (-> s3-0 quad) (-> a0-7 heading quad))
-              )
-            )
+  (let ((s3-0 (new 'stack-no-clear 'vector)))
+    (let ((a0-2 (handle->process (-> obj focus handle))))
+      (cond
+        (a0-2
+          (vector-! s3-0 (get-trans (the-as process-focusable a0-2) 0) (-> obj root trans))
           )
-        )
-      (set! (-> s3-0 y) 0.0)
-      (vector-normalize! s3-0 1.0)
-      (let ((s5-3 (new 'stack-no-clear 'quaternion))
-            (s4-0 (-> obj root quat))
+        (else
+          (let ((a0-7 (-> arg0 state)))
+            (set! (-> s3-0 quad) (-> a0-7 heading quad))
             )
-        (quaternion-set! s5-3 0.0 (sqrtf (* 0.5 (- 1.0 (-> s3-0 z)))) 0.0 (sqrtf (* 0.5 (+ 1.0 (-> s3-0 z)))))
-        (if (< (-> s3-0 x) 0.0)
-            (set! (-> s5-3 y) (- (-> s5-3 y)))
-            )
-        (quaternion-pseudo-seek
-          s4-0
-          s4-0
-          s5-3
-          (* (fmax 0.5 (* 0.00024414062 (-> obj nav state speed))) (-> pp clock seconds-per-frame))
           )
         )
       )
-    0
-    (none)
+    (set! (-> s3-0 y) 0.0)
+    (vector-normalize! s3-0 1.0)
+    (let ((s5-3 (new 'stack-no-clear 'quaternion))
+          (s4-0 (-> obj root quat))
+          )
+      (quaternion-set! s5-3 0.0 (sqrtf (* 0.5 (- 1.0 (-> s3-0 z)))) 0.0 (sqrtf (* 0.5 (+ 1.0 (-> s3-0 z)))))
+      (if (< (-> s3-0 x) 0.0)
+          (set! (-> s5-3 y) (- (-> s5-3 y)))
+          )
+      (quaternion-pseudo-seek
+        s4-0
+        s4-0
+        s5-3
+        (* (fmax 0.5 (* 0.00024414062 (-> obj nav state speed))) (seconds-per-frame))
+        )
+      )
     )
+  0
+  (none)
   )
 
 ;; definition for method 74 of type ginsu
@@ -592,60 +590,43 @@
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-1 object))
-  (with-pp
-    (case arg2
-      (('touched)
-       (let ((s5-0 arg0))
-         (when (if (type? s5-0 ginsu)
-                   s5-0
-                   )
-           (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-             (let ((a0-5 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-               (vector+! s5-1 s5-1 a0-5)
-               )
-             (vector-float*! s5-1 s5-1 0.5)
-             (spawn (-> obj part) s5-1)
-             )
-           (set! v0-1 (+ (current-time) (seconds 0.125)))
-           (set! (-> obj grind-timer) (the-as time-frame v0-1))
-           v0-1
-           )
-         )
-       )
-      (('touch 'bonk 'attack)
-       (cond
-         ((or (!= arg0 *target*) (focus-test? *target* dark))
-          ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
-          )
-         (else
-           (let ((v1-15 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> v1-15 from) (process->ppointer pp))
-             (set! (-> v1-15 num-params) 2)
-             (set! (-> v1-15 message) 'attack)
-             (set! (-> v1-15 param 0) (the-as uint #f))
-             (let ((a2-2 (new 'static 'attack-info :mask (attack-info-mask id))))
-               (let* ((a0-19 *game-info*)
-                      (a3-2 (+ (-> a0-19 attack-id) 1))
-                      )
-                 (set! (-> a0-19 attack-id) a3-2)
-                 (set! (-> a2-2 id) a3-2)
+  (case arg2
+    (('touched)
+     (let ((s5-0 arg0))
+       (when (if (type? s5-0 ginsu)
+                 s5-0
                  )
-               (set! (-> v1-15 param 1) (the-as uint a2-2))
-               )
-             (send-event-function arg0 v1-15)
+         (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
+           (let ((a0-5 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
+             (vector+! s5-1 s5-1 a0-5)
              )
-           #f
+           (vector-float*! s5-1 s5-1 0.5)
+           (spawn (-> obj part) s5-1)
            )
+         (set! v0-1 (+ (current-time) (seconds 0.125)))
+         (set! (-> obj grind-timer) (the-as time-frame v0-1))
+         v0-1
          )
        )
-      (('trigger)
-       (set! v0-1 #t)
-       (set! (-> obj ambush-started) (the-as symbol v0-1))
-       v0-1
-       )
-      (else
+     )
+    (('touch 'bonk 'attack)
+     (cond
+       ((or (!= arg0 *target*) (focus-test? *target* dark))
         ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
         )
+       (else
+         (send-event arg0 'attack #f (static-attack-info ((id (new-attack-id)))))
+         #f
+         )
+       )
+     )
+    (('trigger)
+     (set! v0-1 #t)
+     (set! (-> obj ambush-started) (the-as symbol v0-1))
+     v0-1
+     )
+    (else
+      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
       )
     )
   )
@@ -662,7 +643,6 @@
     (if (< 0.5 (rand-vu))
         (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy circling) trans)))
@@ -671,9 +651,8 @@
           )
       )
     (ginsu-method-182 self)
-    (none)
     )
-  :code (the-as (function none :behavior ginsu) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -692,7 +671,6 @@
     (set! (-> self starting-time) (current-time))
     (set! (-> self spiral-time) (current-time))
     (set! (-> self desired-distance) (vector-length (ginsu-method-181 self (new 'stack-no-clear 'vector))))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -712,9 +690,8 @@
         (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
         )
     (ginsu-method-182 self)
-    (none)
     )
-  :code (the-as (function none :behavior ginsu) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((s5-0 (ginsu-method-181 self (new 'stack-no-clear 'vector)))
           (gp-0 (new-stack-vector0))
@@ -749,14 +726,13 @@
       )
     0
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate anticipate-attack (ginsu)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ginsu) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logior! (-> self focus-status) (focus-status dangerous))
@@ -767,7 +743,6 @@
     (set! (-> self state-time) (current-time))
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! ginsu-idle-ja :num! min)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -775,7 +750,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (if (not (and (handle->process (-> self focus handle))
@@ -794,9 +768,8 @@
         (go-virtual attack)
         )
     (ja :num! (loop!))
-    (none)
     )
-  :code (the-as (function none :behavior ginsu) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((gp-0 (ginsu-method-181 self (new 'stack-no-clear 'vector))))
       (set! (-> gp-0 y) 0.0)
@@ -815,14 +788,13 @@
       )
     0
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack (ginsu)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ginsu) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (ginsu-method-183 self #t)
@@ -841,7 +813,6 @@
     0
     (set! (-> self state-time) (current-time))
     (ja :group! ginsu-attack-ja :num! min)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -850,7 +821,6 @@
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (ginsu-method-183 self #f)
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
@@ -870,10 +840,9 @@
     (if (ja-done? 0)
         (go-virtual circling)
         )
-    (none)
     )
-  :code (the-as (function none :behavior ginsu) sleep-code)
-  :post (the-as (function none :behavior ginsu) nav-enemy-chase-post)
+  :code sleep-code
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
@@ -891,12 +860,10 @@
     (set! (-> self root scale x) 0.01)
     (set! (-> self root scale y) 0.01)
     (set! (-> self root scale z) 0.01)
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self enemy-flags) (enemy-flag notice))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type enemy ambush) trans)))
@@ -920,10 +887,9 @@
         )
       (ja :num! (loop!))
       )
-    (none)
     )
-  :code (the-as (function none :behavior ginsu) sleep-code)
-  :post (the-as (function none :behavior ginsu) enemy-simple-post)
+  :code sleep-code
+  :post enemy-simple-post
   )
 
 ;; definition for function ginsu-sounds-off
@@ -951,7 +917,6 @@
           )
       )
     (ginsu-sounds-off)
-    (none)
     )
   )
 
@@ -965,7 +930,6 @@
           )
       )
     (ginsu-sounds-off)
-    (none)
     )
   )
 
@@ -979,7 +943,6 @@
           )
       )
     (ginsu-sounds-off)
-    (none)
     )
   )
 
@@ -993,7 +956,6 @@
           )
       )
     (ginsu-sounds-off)
-    (none)
     )
   )
 
@@ -1016,7 +978,6 @@
         )
       )
     )
-  (none)
   )
 
 ;; definition for method 116 of type ginsu

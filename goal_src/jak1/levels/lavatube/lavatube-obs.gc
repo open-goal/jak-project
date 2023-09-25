@@ -7,16 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/lavafallsewerb-ag.gc")
-(import "goal_src/jak1/import/lavashortcut-ag.gc")
-(import "goal_src/jak1/import/lavabase-ag.gc")
-(import "goal_src/jak1/import/lavafallsewera-ag.gc")
-(import "goal_src/jak1/import/chainmine-ag.gc")
-(import "goal_src/jak1/import/lavafall-ag.gc")
-(import "goal_src/jak1/import/lavaballoon-ag.gc")
-(import "goal_src/jak1/import/darkecobarrel-ag.gc")
-(import "goal_src/jak1/import/lavayellowtarp-ag.gc")
-
 (deftype lavabase (process-drawable)
   ()
   :heap-base #x40
@@ -44,9 +34,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavabase) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavabase ((obj lavabase) (arg0 entity-actor))
@@ -84,9 +73,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavafall) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavafall ((obj lavafall) (arg0 entity-actor))
@@ -124,9 +112,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavashortcut) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavashortcut ((obj lavashortcut) (arg0 entity-actor))
@@ -523,17 +510,16 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate darkecobarrel-mover-move (darkecobarrel-mover)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (cond
          ((= proc *target*)
-          (let ((s5-0 (-> event param 0)))
+          (let ((s5-0 (-> block param 0)))
             (if (and s5-0
                      ((method-of-type touching-shapes-entry prims-touching?)
                       (the-as touching-shapes-entry s5-0)
@@ -546,8 +532,8 @@
                 )
             )
           )
-         ((>= arg1 2)
-          (case (-> event param 1)
+         ((>= argc 2)
+          (case (-> block param 1)
             (('eco-yellow)
              (+! (-> self hits) 1)
              (cond
@@ -596,7 +582,6 @@
         )
     (update! (-> self down) (update-with-delay! (-> self down-tgt)))
     (darkecobarrel-mover-pos)
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 0.9)
@@ -612,9 +597,8 @@
       (ja :num-func num-func-identity :frame-num 0.0)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior darkecobarrel-mover) pusher-post)
+  :post pusher-post
   )
 
 (defbehavior darkecobarrel-mover-init-by-other darkecobarrel-mover ((arg0 res-lump) (arg1 float) (arg2 time-frame) (arg3 time-frame))
@@ -707,7 +691,6 @@
     (if (nonzero? (-> self sound))
         (update! (-> self sound))
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -717,7 +700,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
@@ -812,9 +794,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavafallsewera) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavafallsewera ((obj lavafallsewera) (arg0 entity-actor))
@@ -851,9 +832,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavafallsewerb) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavafallsewerb ((obj lavafallsewerb) (arg0 entity-actor))
@@ -1041,16 +1021,15 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate idle (chainmine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack 'touch)
-       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'deadly))))
+       (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'deadly))))
        (go-virtual die)
        )
       )
@@ -1066,9 +1045,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior chainmine) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! chainmine ((obj chainmine) (arg0 entity-actor))
@@ -1209,14 +1187,13 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate idle (lavaballoon)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (send-event proc 'heat -10.0)
        (go-virtual die)
@@ -1229,7 +1206,6 @@
         (eval-path-curve! (-> self path) (-> self root-override trans) f0-4 'interp)
         )
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1239,9 +1215,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavaballoon) transform-post)
+  :post transform-post
   )
 
 (defmethod init-from-entity! lavaballoon ((obj lavaballoon) (arg0 entity-actor))
@@ -1302,7 +1277,6 @@
           )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -1347,9 +1321,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior lavayellowtarp) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! lavayellowtarp ((obj lavayellowtarp) (arg0 entity-actor))

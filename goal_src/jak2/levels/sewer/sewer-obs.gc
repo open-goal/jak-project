@@ -77,8 +77,8 @@
 
 (defstate idle (sew-single-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -93,19 +93,11 @@
              (if (< (vector-dot v1-5 hit-direction) 0.0)
                  (vector-float*! v1-5 v1-5 -1.0)
                  )
-             (let ((evt (new 'stack-no-clear 'event-message-block)))
-               (set! (-> evt from) (process->ppointer self))
-               (set! (-> evt num-params) 2)
-               (set! (-> evt message) 'attack-or-shove)
-               (set! (-> evt param 0) (-> event param 0))
-               (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
-                 (set! (-> attack-info id) (-> self attack-id))
-                 (set! (-> attack-info vector quad) (-> v1-5 quad))
-                 (set! (-> attack-info shove-back) 20480.0)
-                 (set! (-> attack-info shove-up) 12288.0)
-                 (set! (-> evt param 1) (the-as uint attack-info))
-                 )
-               (send-event-function hit-proc evt)
+             (send-event
+               hit-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 5)) (shove-up (meters 3))))
                )
              )
            )
@@ -115,22 +107,17 @@
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
@@ -238,8 +225,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-tri-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -247,21 +234,14 @@ This commonly includes things such as:
                             )
                         )
               )
-         (when hit-proc
-           (let ((evt (new 'stack-no-clear 'event-message-block)))
-             (set! (-> evt from) (process->ppointer self))
-             (set! (-> evt num-params) 2)
-             (set! (-> evt message) 'attack-or-shove)
-             (set! (-> evt param 0) (-> event param 0))
-             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-               (set! (-> attack-info id) (-> self attack-id))
-               (set! (-> attack-info shove-back) 20480.0)
-               (set! (-> attack-info shove-up) 8192.0)
-               (set! (-> evt param 1) (the-as uint attack-info))
+         (if hit-proc
+             (send-event
+               hit-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (shove-back (meters 5)) (shove-up (meters 2))))
                )
-             (send-event-function hit-proc evt)
              )
-           )
          )
        )
       (('on)
@@ -296,11 +276,11 @@ This commonly includes things such as:
         ((zero? (-> self switch-state))
          (cond
            ((>= 3.0 (-> self anim-time))
-            (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+            (+! (-> self anim-time) (* 6.0 (seconds-per-frame)))
             (set! (-> self anim-time) (fmin 3.0 (-> self anim-time)))
             )
            (else
-             (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+             (+! (-> self anim-time) (* 6.0 (seconds-per-frame)))
              (if (< 6.0 (-> self anim-time))
                  (set! (-> self anim-time) 0.0)
                  )
@@ -308,7 +288,7 @@ This commonly includes things such as:
            )
          )
         (else
-          (+! (-> self anim-time) (* 6.0 (-> self clock seconds-per-frame)))
+          (+! (-> self anim-time) (* 6.0 (seconds-per-frame)))
           (set! (-> self anim-time) (fmin 6.0 (-> self anim-time)))
           )
         )
@@ -321,12 +301,10 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
@@ -432,8 +410,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-arm-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((s5-0 proc)
               (a0-2 (if (type? s5-0 process-focusable)
@@ -441,43 +419,31 @@ This commonly includes things such as:
                         )
                     )
               )
-         (when a0-2
-           (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-4 from) (process->ppointer self))
-             (set! (-> a1-4 num-params) 2)
-             (set! (-> a1-4 message) 'attack-or-shove)
-             (set! (-> a1-4 param 0) (-> event param 0))
-             (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-               (set! (-> v1-6 id) (-> self attack-id))
-               (set! (-> v1-6 shove-back) 20480.0)
-               (set! (-> v1-6 shove-up) 8192.0)
-               (set! (-> a1-4 param 1) (the-as uint v1-6))
+         (if a0-2
+             (send-event
+               a0-2
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (shove-back (meters 5)) (shove-up (meters 2))))
                )
-             (send-event-function a0-2 a1-4)
              )
-           )
          )
        )
       )
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
@@ -556,8 +522,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-multi-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -572,19 +538,11 @@ This commonly includes things such as:
              (if (< (vector-dot v1-5 hit-direction) 0.0)
                  (vector-float*! v1-5 v1-5 -1.0)
                  )
-             (let ((evt (new 'stack-no-clear 'event-message-block)))
-               (set! (-> evt from) (process->ppointer self))
-               (set! (-> evt num-params) 2)
-               (set! (-> evt message) 'attack-or-shove)
-               (set! (-> evt param 0) (-> event param 0))
-               (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
-                 (set! (-> attack-info id) (-> self attack-id))
-                 (set! (-> attack-info vector quad) (-> v1-5 quad))
-                 (set! (-> attack-info shove-back) 28672.0)
-                 (set! (-> attack-info shove-up) 16384.0)
-                 (set! (-> evt param 1) (the-as uint attack-info))
-                 )
-               (send-event-function hit-proc evt)
+             (send-event
+               hit-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 7)) (shove-up (meters 4))))
                )
              )
            )
@@ -594,22 +552,17 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
@@ -690,49 +643,38 @@ This commonly includes things such as:
 
 (defstate idle (sew-twist-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touch 'attack)
-         (let* ((_proc proc)
-                (hit-proc (if (type? _proc process-focusable)
-                              (the-as process-focusable _proc)
-                              )
-                          )
-                )
-           (when hit-proc
-             (let ((hit-direction (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root trans) (-> self root-overide trans)))
-                   (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-overide quat)))
-                   )
-               (if (< (vector-dot v1-5 hit-direction) 0.0)
-                   (vector-float*! v1-5 v1-5 -1.0)
-                   )
-               (let ((evt (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> evt from) (process->ppointer self))
-                 (set! (-> evt num-params) 2)
-                 (set! (-> evt message) 'attack-or-shove)
-                 (set! (-> evt param 0) (-> event param 0))
-                 (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
-                   (set! (-> attack-info id) (-> self attack-id))
-                   (set! (-> attack-info vector quad) (-> v1-5 quad))
-                   (set! (-> attack-info shove-back) 16384.0)
-                   (set! (-> attack-info shove-up) 8192.0)
-                   (set! (-> evt param 1) (the-as uint attack-info))
-                   )
-                 (send-event-function hit-proc evt)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (let* ((_proc proc)
+              (hit-proc (if (type? _proc process-focusable)
+                            (the-as process-focusable _proc)
+                            )
+                        )
+              )
+         (when hit-proc
+           (let ((hit-direction (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root trans) (-> self root-overide trans)))
+                 (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-overide quat)))
                  )
+             (if (< (vector-dot v1-5 hit-direction) 0.0)
+                 (vector-float*! v1-5 v1-5 -1.0)
+                 )
+             (send-event
+               hit-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 4)) (shove-up (meters 2))))
                )
-             (set! (-> self no-collision-timer) (the-as uint (current-time)))
-             (let ((root-prim (-> self root-overide root-prim)))
-               (set! (-> root-prim prim-core collide-as) (collide-spec))
-               (set! (-> root-prim prim-core collide-with) (collide-spec))
-               )
-             0
              )
+           (set! (-> self no-collision-timer) (the-as uint (current-time)))
+           (let ((root-prim (-> self root-overide root-prim)))
+             (set! (-> root-prim prim-core collide-as) (collide-spec))
+             (set! (-> root-prim prim-core collide-with) (collide-spec))
+             )
+           0
            )
          )
-        )
+       )
       )
     )
   :trans (behavior ()
@@ -754,26 +696,20 @@ This commonly includes things such as:
       (set! (-> overlap-params tlist) *touching-list*)
       (find-overlapping-shapes (-> self root-overide) overlap-params)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
@@ -869,21 +805,21 @@ This commonly includes things such as:
   )
 
 
-(defskelgroup skel-sew-light-switch sew-light-switch 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-sew-light-switch sew-light-switch sew-light-switch-lod0-jg sew-light-switch-idle-ja
+              ((sew-light-switch-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1.5)
               )
 
 (defstate idle (sew-light-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (broadcast-to-actors self 'cue-chase)
        (go-virtual pressed)
        )
       (('touch 'attack)
-       (let* ((gp-0 (-> event param 0))
+       (let* ((gp-0 (-> block param 0))
               (_proc proc)
               (target-proc (if (type? _proc target)
                                _proc
@@ -900,33 +836,23 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self light-state) #f)
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
-    (let ((t9-0 sp-launch-particles-var)
-          (a0-0 *sp-particle-system-2d*)
-          (a1-0 (-> *part-id-table* 1442))
-          (a2-0 *launch-matrix*)
-          )
-      (set! (-> a2-0 trans quad) (-> self root trans quad))
-      (t9-0 a0-0 a1-0 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-      )
+    (launch-particles (-> *part-id-table* 1442) (-> self root trans))
     (ja-post)
-    (none)
     )
   )
 
 (defstate pressed (sew-light-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -935,20 +861,15 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self light-state) #t)
     (sound-play "sew-light-switc")
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   )
 
@@ -1049,35 +970,35 @@ This commonly includes things such as:
   (none)
   )
 
+;; ERROR: failed type prop at 53: Could not figure out load: (set! v1 (l.w s4))
 (defmethod sew-light-control-method-16 sew-light-control ((a0-0 sew-light-control) (a1-0 object) (a2-0 vector) (a3-0 float))
+  ;; og:preserve-this
   (format 0 "SEWER - FIX ME!~%")
   #f
   )
 
 (defstate idle (sew-light-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (actor entity))
-    (the-as object (case event-type
-                     (('use-switch)
-                      (set! actor (entity-by-name (the-as string (-> event param 0))))
-                      (set! (-> self switch-ent) (the-as entity-actor actor))
-                      actor
-                      )
-                     (('use-turret)
-                      (set! actor (entity-by-name (the-as string (-> event param 0))))
-                      (set! (-> self turret-ent) (the-as entity-actor actor))
-                      actor
-                      )
-                     )
-            )
+    (case message
+      (('use-switch)
+       (set! actor (entity-by-name (the-as string (-> block param 0))))
+       (set! (-> self switch-ent) (the-as entity-actor actor))
+       actor
+       )
+      (('use-turret)
+       (set! actor (entity-by-name (the-as string (-> block param 0))))
+       (set! (-> self turret-ent) (the-as entity-actor actor))
+       actor
+       )
+      )
     )
   :code (behavior ()
     (until #f
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let* ((target *target*)
@@ -1120,7 +1041,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
@@ -1172,9 +1092,8 @@ This commonly includes things such as:
   (none)
   )
 
+;; og:preserve-this added to fix missing skill
 (#when PC_PORT
-;; added to fix missing skill
-
 ;; serves as a template
 (define *skill-sewesc-from-sewer* (new 'static 'entity-perm
                                         :task (game-task complete)

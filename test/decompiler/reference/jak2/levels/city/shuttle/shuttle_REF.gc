@@ -317,14 +317,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-front))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-front))) frames num-frames)
-                          -1
-                          )
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -335,7 +328,6 @@
         (go-virtual active)
         (go-virtual wait-for-ride)
         )
-    (none)
     )
   )
 
@@ -345,12 +337,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (ja-no-eval :group! (-> self draw art-group data (-> self anim-get-up-back))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self anim-get-up-back))) frames num-frames) -1)
-                       )
-                  (-> self speed-scale)
-                  )
+                :num! (seek! max (-> self speed-scale))
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -361,7 +348,6 @@
         (go-virtual active)
         (go-virtual wait-for-ride)
         )
-    (none)
     )
   )
 
@@ -395,20 +381,19 @@
           (t9-8)
           )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate exit-vehicle (citizen-rebel)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior citizen-rebel) enemy-event-handler)
-  :enter (behavior ((arg0 object) (arg1 object) (arg2 int) (arg3 symbol) (arg4 event-message-block))
-    (let ((a0-2 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
-      (if a0-2
-          (set! (-> self nav-mesh-aid) (the-as actor-id (-> a0-2 entity aid)))
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((a0-1 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
+      (if a0-1
+          (set! (-> self nav-mesh-aid) (the-as actor-id (-> a0-1 entity aid)))
           )
-      (change-to a0-2 self)
+      (change-to a0-1 self)
       )
     (when (not (-> self nav))
       (format #t "nav mesh not found~%")
@@ -422,12 +407,12 @@
       self
       (vector-negate-in-place! (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
       )
-    (let ((a0-9 (-> self nav state))
+    (let ((a0-8 (-> self nav state))
           (v1-17 (-> self controller turn-exit-point))
           )
-      (logclear! (-> a0-9 flags) (nav-state-flag directional-mode))
-      (logior! (-> a0-9 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-9 target-post quad) (-> v1-17 quad))
+      (logclear! (-> a0-8 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-8 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-8 target-post quad) (-> v1-17 quad))
       )
     0
     (citizen-nav-init! self)
@@ -449,7 +434,6 @@
       (set! (-> v1-36 enemy-flags) (the-as enemy-flag (logclear (-> v1-36 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type civilian exit-vehicle) exit)))
@@ -457,9 +441,8 @@
           (t9-0)
           )
       )
-    (none)
     )
-  :code (behavior ((arg0 object) (arg1 object) (arg2 int) (arg3 symbol) (arg4 event-message-block))
+  :code (behavior ()
     (local-vars (sv-176 float) (sv-192 float) (sv-208 float))
     (remove-rider (the-as vehicle (handle->process (-> self vehicle))) self)
     (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
@@ -498,8 +481,8 @@
                 (s0-0 (ja-aframe-num 0))
                 )
             (set! sv-176 (ja-aframe 10.0 0))
-            (let* ((t0-1 (ja-aframe 7.0 0))
-                   (f0-4 (s3-2 s2-0 s1-0 s0-0 sv-176 t0-1))
+            (let* ((t0-0 (ja-aframe 7.0 0))
+                   (f0-4 (s3-2 s2-0 s1-0 s0-0 sv-176 t0-0))
                    )
               (quaternion-rotate-local-y! (-> self root quat) s4-2 (* f0-4 (if (zero? (-> self seat))
                                                                                -16384.0
@@ -534,12 +517,12 @@
                   :frame-num (ja-aframe 5.0 0)
                   )
       (until (ja-done? 0)
-        (let ((a0-60 (handle->process (-> self vehicle)))
+        (let ((a0-59 (handle->process (-> self vehicle)))
               (s2-1 (new 'stack-no-clear 'vector))
               (s4-6 (new 'stack-no-clear 'vector))
               (s3-4 (new 'stack-no-clear 'quaternion))
               )
-          (compute-seat-position (the-as vehicle a0-60) s2-1 (-> self seat))
+          (compute-seat-position (the-as vehicle a0-59) s2-1 (-> self seat))
           (vector-! s4-6 s2-1 gp-0)
           (let ((s2-2 lerp-scale)
                 (s1-1 0.0)
@@ -547,8 +530,8 @@
                 )
             (set! sv-192 (ja-aframe-num 0))
             (set! sv-208 (ja-aframe 5.0 0))
-            (let* ((t0-2 (ja-aframe 1.0 0))
-                   (f0-13 (s2-2 s1-1 s0-1 sv-192 sv-208 t0-2))
+            (let* ((t0-1 (ja-aframe 1.0 0))
+                   (f0-13 (s2-2 s1-1 s0-1 sv-192 sv-208 t0-1))
                    (f30-0 (- 1.0 f0-13))
                    )
               (quaternion-rotate-local-y! s3-4 s5-0 (if (zero? (-> self seat))
@@ -556,10 +539,10 @@
                                                         16384.0
                                                         )
                                           )
-              (let ((a1-40 (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-4))
+              (let ((a1-39 (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-4))
                     (s2-3 (new 'stack-no-clear 'quaternion))
                     )
-                (quaternion-from-two-vectors! s2-3 a1-40 *up-vector*)
+                (quaternion-from-two-vectors! s2-3 a1-39 *up-vector*)
                 (quaternion*! s3-4 s2-3 s3-4)
                 )
               (quaternion-copy! (-> self root quat) s3-4)
@@ -576,7 +559,6 @@
       (set! (-> v1-96 prim-core collide-with) (-> self root backup-collide-with))
       )
     (go-virtual wait-for-ride)
-    (none)
     )
   )
 
@@ -614,7 +596,6 @@
         )
       (go-virtual active)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -633,7 +614,7 @@
                 :frame-num (lerp-scale 0.0 2.0 (+ (* -2.0 f28-0 f28-0 f28-0) (* 3.0 f28-0 f28-0)) 0.0 1.0)
                 )
             (suspend)
-            (+! f28-0 (-> self clock seconds-per-frame))
+            (+! f28-0 (seconds-per-frame))
             )
           )
         (ja-channel-push! 1 (seconds 0.1))
@@ -641,26 +622,14 @@
           (+! gp-0 -1)
           (cond
             ((zero? s5-0)
-             (ja-no-eval :group! (-> self draw art-group data 5)
-                         :num! (seek!
-                           (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
-                           f30-1
-                           )
-                         :frame-num 0.0
-                         )
+             (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek! max f30-1) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
                (ja :num! (seek! max f30-1))
                )
              )
             (else
-              (ja-no-eval :group! (-> self draw art-group data 7)
-                          :num! (seek!
-                            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1))
-                            f30-1
-                            )
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek! max f30-1) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-1))
@@ -671,7 +640,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -701,7 +669,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -781,7 +748,6 @@
   :virtual #t
   :trans (behavior ()
     '()
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -800,7 +766,7 @@
                 :frame-num (lerp-scale 0.0 2.0 (+ (* -2.0 f28-0 f28-0 f28-0) (* 3.0 f28-0 f28-0)) 0.0 1.0)
                 )
             (suspend)
-            (+! f28-0 (-> self clock seconds-per-frame))
+            (+! f28-0 (seconds-per-frame))
             )
           )
         (ja-channel-push! 1 (seconds 0.1))
@@ -808,26 +774,14 @@
           (+! gp-0 -1)
           (cond
             ((zero? s5-0)
-             (ja-no-eval :group! (-> self draw art-group data 5)
-                         :num! (seek!
-                           (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
-                           f30-1
-                           )
-                         :frame-num 0.0
-                         )
+             (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek! max f30-1) :frame-num 0.0)
              (until (ja-done? 0)
                (suspend)
                (ja :num! (seek! max f30-1))
                )
              )
             (else
-              (ja-no-eval :group! (-> self draw art-group data 7)
-                          :num! (seek!
-                            (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1))
-                            f30-1
-                            )
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek! max f30-1) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-1))
@@ -841,7 +795,6 @@
           )
       )
     #f
-    (none)
     )
   )
 
@@ -1096,7 +1049,7 @@
     (quaternion-identity! (-> s4-1 quat))
     (set! (-> s4-1 flags) (task-arrow-flags))
     (set! (-> s4-1 map-icon) (the-as uint 15))
-    (set! (-> arg0 arrow) (process->handle (task-arrow-spawn s4-1 (the-as task-arrow arg0))))
+    (set! (-> arg0 arrow) (process->handle (task-arrow-spawn s4-1 arg0)))
     )
   (set-parking-spot-prob *traffic-engine* 11 0.08)
   (set-parking-spot-prob *traffic-engine* 12 0.08)

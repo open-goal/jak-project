@@ -42,15 +42,16 @@ struct GfxRendererModule {
   std::function<void(const u8*, int, u32)> texture_upload_now;
   std::function<void(u32, u32, u32)> texture_relocate;
   std::function<void(const std::vector<std::string>&)> set_levels;
+  std::function<void(const std::vector<std::string>&)> set_active_levels;
   std::function<void(float)> set_pmode_alp;
   GfxPipeline pipeline;
   const char* name;
 };
 
 // runtime settings
-static constexpr int PAT_MOD_COUNT = 3;
-static constexpr int PAT_EVT_COUNT = 7;
-static constexpr int PAT_MAT_COUNT = 23;
+static constexpr int PAT_MOD_COUNT = 4;
+static constexpr int PAT_EVT_COUNT = 15;
+static constexpr int PAT_MAT_COUNT = 29;
 struct GfxGlobalSettings {
   bool debug = true;  // graphics debugging
 
@@ -93,11 +94,13 @@ struct GfxGlobalSettings {
   bool collision_wireframe = true;
 
   // matching enum in kernel-defs.gc !!
-  enum CollisionRendererMode { None, Mode, Event, Material, Skip } collision_mode = Mode;
+  enum CollisionRendererMode { None, Mode, Event, Material, Skip, SkipHide } collision_mode = Mode;
   std::array<u32, (PAT_MOD_COUNT + 31) / 32> collision_mode_mask = {UINT32_MAX};
   std::array<u32, (PAT_EVT_COUNT + 31) / 32> collision_event_mask = {UINT32_MAX};
   std::array<u32, (PAT_MAT_COUNT + 31) / 32> collision_material_mask = {UINT32_MAX};
-  u32 collision_skip_mask = UINT32_MAX;
+  u32 collision_skip_mask = 0;
+  u32 collision_skip_hide_mask = 0;
+  bool collision_skip_nomask_allowed = true;
 };
 
 namespace Gfx {
@@ -118,9 +121,9 @@ u32 sync_path();
 
 // matching enum in kernel-defs.gc !!
 enum class RendererTreeType { NONE = 0, TFRAG3 = 1, TIE3 = 2, INVALID };
-bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
-void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
-void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, int mask_id);
+bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id);
+void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id);
+void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id);
 void CollisionRendererSetMode(GfxGlobalSettings::CollisionRendererMode mode);
 
 }  // namespace Gfx

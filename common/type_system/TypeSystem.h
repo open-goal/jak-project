@@ -228,7 +228,7 @@ class TypeSystem {
                            bool print_on_error = true,
                            bool throw_on_error = true,
                            bool allow_type_alias = false) const;
-  bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
+  bool tc(const TypeSpec& less_specific, const TypeSpec& more_specific) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
   int get_next_method_id(const Type* type) const;
 

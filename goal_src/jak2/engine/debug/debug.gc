@@ -37,7 +37,7 @@ Most functions take a boolean as their first argument. If the boolean is set to 
     (init-vf0-vector)
     (.lvf vf5 (&-> in quad))
 
-    ;; PC patch: get regis from init-for-transform.
+    ;; og:preserve-this PC patch: get regis from init-for-transform.
     (.lvf vf1 (&-> *transform-regs* vf1))
     (.lvf vf2 (&-> *transform-regs* vf2))
     (.lvf vf3 (&-> *transform-regs* vf3))
@@ -1581,39 +1581,38 @@ Most functions take a boolean as their first argument. If the boolean is set to 
   0
   )
 
-(defun-debug add-debug-cursor ((enable symbol) (bucket bucket-id) (x int) (y int) (arg4 int))
+(defun-debug add-debug-cursor ((enable symbol) (bucket bucket-id) (x int) (y int) (arg4 mouse-buttons))
   (when enable
-      (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-                                   bucket
-                                   )
-        (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-        (let ((v1-7 arg4))
-          (draw-string-xy
-            "X"
-            buf
-            (+ x -5)
-            (+ y -4)
-            (cond
-              ((= v1-7 1)
-               (font-color red)
-               )
-              ((= v1-7 2)
-               (font-color yellow)
-               )
-              ((= v1-7 4)
-               (font-color green)
-               )
-              (else
-                (font-color default)
-                )
+    (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                 bucket
+                                 )
+      (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
+      (let ((v1-7 arg4))
+        (draw-string-xy
+          "X"
+          buf
+          (+ x -5)
+          (+ y -4)
+          (cond
+            ((= v1-7 (mouse-buttons left))
+             (font-color red)
+             )
+            ((= v1-7 (mouse-buttons right))
+             (font-color yellow)
+             )
+            ((= v1-7 (mouse-buttons middle))
+             (font-color green)
+             )
+            (else
+              (font-color default)
               )
-            (font-flags shadow)
             )
+          (font-flags shadow)
           )
         )
       )
+    )
   0
-  (none)
   )
 
 
@@ -1676,7 +1675,7 @@ Most functions take a boolean as their first argument. If the boolean is set to 
 
 (defun add-debug-bound-internal ((buf dma-buffer) (pts (inline-array vector)) (num-pts int) (color0 rgba) (color1 rgba) (flip-tex int))
   "Draw a boundary polygon using the boundary renderer. This renderer reuses components of the sky render
-   to properly clip (and subdivide) very large polgons.
+   to properly clip (and subdivide) very large polygons.
    This is intended to be called by add-debug-bound, after it has set up dma buffers for the boundary rendering."
   (rlet ((vf27 :class vf))
     (set-vector!

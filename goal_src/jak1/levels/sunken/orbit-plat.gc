@@ -9,9 +9,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/orbit-plat-ag.gc")
-(import "goal_src/jak1/import/orbit-plat-bottom-ag.gc")
-
 (deftype orbit-plat-bottom (process-drawable)
   ((parent-override (pointer orbit-plat)      :offset         12)
    (part2           sparticle-launch-control  :offset-assert 176)
@@ -227,9 +224,8 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat-bottom) ja-post)
+  :post ja-post
   )
 
 (defmethod relocate orbit-plat-bottom ((obj orbit-plat-bottom) (arg0 int))
@@ -265,41 +261,40 @@
   )
 
 (defstate orbit-plat-idle (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     (('query-reset)
-                      (if (not (-> self is-reset?))
-                          (go orbit-plat-reset)
-                          )
-                      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-1 from) self)
-                        (set! (-> a1-1 num-params) 0)
-                        (set! (-> a1-1 message) 'reset)
-                        (let ((t9-3 send-event-function)
-                              (v1-8 (-> self other))
-                              )
-                          (t9-3
-                            (if v1-8
-                                (-> v1-8 extra process)
-                                )
-                            a1-1
-                            )
-                          )
-                        )
-                      )
-                     (('reset)
-                      (go orbit-plat-reset)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      (('query-reset)
+       (if (not (-> self is-reset?))
+           (go orbit-plat-reset)
+           )
+       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-1 from) self)
+         (set! (-> a1-1 num-params) 0)
+         (set! (-> a1-1 message) 'reset)
+         (let ((t9-3 send-event-function)
+               (v1-8 (-> self other))
+               )
+           (t9-3
+             (if v1-8
+                 (-> v1-8 extra process)
+                 )
+             a1-1
+             )
+           )
+         )
+       )
+      (('reset)
+       (go orbit-plat-reset)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
     (ja-no-eval :num! (seek! 0.0))
@@ -351,9 +346,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 (defmethod orbit-plat-method-28 orbit-plat ((obj orbit-plat))
@@ -377,18 +371,17 @@
   )
 
 (defstate orbit-plat-still (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -418,14 +411,13 @@
           )
       )
     (go orbit-plat-idle)
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 (defstate orbit-plat-riding (orbit-plat)
-  :event (the-as (function process int symbol event-message-block object :behavior orbit-plat) plat-event)
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :event plat-event
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 1))
     (ja-no-eval :num! (seek!))
@@ -453,9 +445,8 @@
           (ja :num! (seek!))
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 (defun get-rotate-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float) (arg5 float))
@@ -494,18 +485,17 @@
   )
 
 (defstate orbit-plat-rotating (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('stop)
-                      (go orbit-plat-still)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('stop)
+       (go orbit-plat-still)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 2))
     (set! (-> self is-reset?) #f)
@@ -549,9 +539,8 @@
         (ja :num! (seek! 0.0))
         )
     (b! #t cfg-3 :delay (nop!))
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; WARN: disable def twice: 132. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
@@ -702,18 +691,17 @@
   )
 
 (defstate orbit-plat-reset (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 3))
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
@@ -745,9 +733,8 @@
       )
     (set! (-> self is-reset?) #t)
     (go orbit-plat-idle)
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 (defstate orbit-plat-wait-for-other (orbit-plat)
@@ -768,9 +755,8 @@
           (ja :num! (seek! 0.0))
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! orbit-plat ((obj orbit-plat) (arg0 entity-actor))

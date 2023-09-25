@@ -12,12 +12,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/swamp-rock-ag.gc")
-(import "goal_src/jak1/import/swamp-spike-ag.gc")
-(import "goal_src/jak1/import/swampcam-ag.gc")
-(import "goal_src/jak1/import/tar-plat-ag.gc")
-(import "goal_src/jak1/import/balance-plat-ag.gc")
-
 (defpartgroup group-swamp-spike-up
   :id 289
   :duration (seconds 0.017)
@@ -269,22 +263,20 @@
           )
         )
       )
-    (none)
     )
   :post swamp-spike-post
   )
 
 (defstate swamp-spike-gate-up (swampgate)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (let ((v0-0 #t))
-                        (set! (-> self open-gate) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (let ((v0-0 #t))
+         (set! (-> self open-gate) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -310,18 +302,16 @@
       (ja :num! (seek!))
       )
     (go swamp-spike-gate-down)
-    (none)
     )
-  :post (the-as (function none :behavior swampgate) swamp-spike-post)
+  :post swamp-spike-post
   )
 
 (defstate swamp-spike-gate-down (swampgate)
   :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior swampgate) swamp-spike-post)
+  :post swamp-spike-post
   )
 
 (defmethod init! swamp-spike ((obj swamp-spike))
@@ -417,21 +407,20 @@
               )
 
 (defstate balance-plat-idle (balance-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('grow)
-                      (let ((v0-0 #t))
-                        (set! (-> self got-grow) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('grow)
+       (let ((v0-0 #t))
+         (set! (-> self got-grow) v0-0)
+         v0-0
+         )
+       )
+      )
     )
-  :trans (the-as (function none :behavior balance-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
-      ;; NOTE: modified for high fps
+      ;; og:preserve-this modified for high fps
       (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
             (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel))))
             )
@@ -475,13 +464,12 @@
       (set! (-> self root-override trans y) (+ (-> self y-init) (-> self y-offset)))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior balance-plat) rider-post)
+  :post rider-post
   )
 
 (defmethod init-from-entity! balance-plat ((obj balance-plat) (arg0 entity-actor))
-  ;; PAL patch here. usually-hit-by-player -> hit-by-others
+  ;; og:preserve-this PAL patch here. usually-hit-by-player -> hit-by-others
   (logior! (-> obj mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -629,16 +617,15 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rock) ja-post)
+  :post ja-post
   )
 
 (defstate swamp-rock-idle (swamp-rock)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (if (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+       (if (and (>= argc 2) (= (-> block param 1) 'eco-yellow))
            (go swamp-rock-break)
            )
        )
@@ -650,7 +637,6 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -772,23 +758,18 @@
   :virtual #t
   :enter (behavior ()
     (ja-channel-set! 0)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior tar-plat) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-float (tar-plat)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior tar-plat)
-    rigid-body-platform-event-handler
-    )
+  :event rigid-body-platform-event-handler
   :trans (behavior ()
     (cond
       ((or (not *target*) (< (-> self info idle-distance)
@@ -806,7 +787,6 @@
         (seek! (-> self float-height-offset) 4096.0 (* 2048.0 (-> *display* seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -815,9 +795,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior tar-plat) rigid-body-platform-post)
+  :post rigid-body-platform-post
   )
 
 (defmethod rigid-body-platform-method-30 tar-plat ((obj tar-plat))
@@ -917,7 +896,6 @@
         )
       )
     (go-virtual battlecontroller-active)
-    (none)
     )
   )
 
@@ -930,6 +908,5 @@
        (-> (method-of-type battlecontroller battlecontroller-die) code)
        )
      )
-    (none)
     )
   )

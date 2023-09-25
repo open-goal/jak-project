@@ -146,7 +146,6 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 
@@ -174,39 +173,11 @@
             (s2-0 (new 'stack-no-clear 'vector))
             (s1-0 (new 'stack-no-clear 'matrix))
             )
-        (let ((t9-1 sp-launch-particles-var)
-              (a0-2 *sp-particle-system-2d*)
-              (a1-1 (-> *part-id-table* 4637))
-              (a2-0 *launch-matrix*)
-              )
-          (set! (-> a2-0 trans quad) (-> s5-0 quad))
-          (t9-1 a0-2 a1-1 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (let ((t9-2 sp-launch-particles-var)
-              (a0-3 *sp-particle-system-2d*)
-              (a1-2 (-> *part-id-table* 4638))
-              (a2-1 *launch-matrix*)
-              )
-          (set! (-> a2-1 trans quad) (-> s5-0 quad))
-          (t9-2 a0-3 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
+        (launch-particles (-> *part-id-table* 4637) s5-0)
+        (launch-particles (-> *part-id-table* 4638) s5-0)
         (when (not (handle->process (-> obj victim)))
-          (let ((t9-3 sp-launch-particles-var)
-                (a0-8 *sp-particle-system-2d*)
-                (a1-4 (-> *part-id-table* 4637))
-                (a2-2 *launch-matrix*)
-                )
-            (set! (-> a2-2 trans quad) (-> s4-0 quad))
-            (t9-3 a0-8 a1-4 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-            )
-          (let ((t9-4 sp-launch-particles-var)
-                (a0-9 *sp-particle-system-2d*)
-                (a1-5 (-> *part-id-table* 4638))
-                (a2-3 *launch-matrix*)
-                )
-            (set! (-> a2-3 trans quad) (-> s4-0 quad))
-            (t9-4 a0-9 a1-5 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-            )
+          (launch-particles (-> *part-id-table* 4637) s4-0)
+          (launch-particles (-> *part-id-table* 4638) s4-0)
           )
         (vector-! s2-0 s4-0 s5-0)
         (vector-normalize! s2-0 1.0)
@@ -700,24 +671,22 @@
   )
 
 (defmethod juicer-method-183 juicer ((obj juicer))
-  (with-pp
-    (cond
-      ((-> obj torso-track-player)
-       (set! (-> obj joint-enable) #t)
-       (seek! (-> obj joint-blend) 1.0 (* 2.0 (-> pp clock seconds-per-frame)))
-       (juicer-method-182 obj)
-       )
-      ((-> obj joint-enable)
-       (seek! (-> obj joint-blend) 0.0 (* 4.0 (-> pp clock seconds-per-frame)))
-       (juicer-method-182 obj)
-       (if (= (-> obj joint-blend) 0.0)
-           (set! (-> obj joint-enable) #f)
-           )
-       )
-      )
-    0
-    (none)
+  (cond
+    ((-> obj torso-track-player)
+     (set! (-> obj joint-enable) #t)
+     (seek! (-> obj joint-blend) 1.0 (* 2.0 (seconds-per-frame)))
+     (juicer-method-182 obj)
+     )
+    ((-> obj joint-enable)
+     (seek! (-> obj joint-blend) 0.0 (* 4.0 (seconds-per-frame)))
+     (juicer-method-182 obj)
+     (if (= (-> obj joint-blend) 0.0)
+         (set! (-> obj joint-enable) #f)
+         )
+     )
     )
+  0
+  (none)
   )
 
 (defmethod track-target! juicer ((obj juicer))
@@ -874,10 +843,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -897,15 +863,9 @@
                      (a1-16 (-> self draw art-group data (-> *juicer-global-info* idle-anim v1-62)))
                      )
                 (set! gp-1 (ash 1 v1-62))
-                (ja-no-eval :group! a1-16
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-16) frames num-frames) -1)) f30-0)
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! a1-16 :num! (seek! max f30-0) :frame-num 0.0)
                 )
-              (ja-no-eval :group! (ja-group)
-                          :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -924,7 +884,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -943,6 +902,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-93 juicer ((obj juicer))
   (case (-> obj jump-why)
     ((2)
@@ -968,7 +928,6 @@
       (go-virtual notice)
       )
     (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (set! (-> self ambush-path-pt) 1)
@@ -990,13 +949,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 (defstate ambush-cont (juicer)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior juicer) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (let ((a0-0 (-> self intro-path))
           (v1-1 (+ (-> self ambush-path-pt) 1))
@@ -1024,7 +982,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1057,10 +1014,7 @@
         (let* ((a0-13 (enemy-method-120 self 2 s5-0))
                (a1-8 (-> self draw art-group data (-> *juicer-global-info* notice-anim a0-13)))
                )
-          (ja-no-eval :group! a1-8
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)) f30-1)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! a1-8 :num! (seek! max f30-1) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (let ((a1-9 (-> self nav state)))
@@ -1073,7 +1027,6 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1084,17 +1037,13 @@
     (let ((gp-1 (-> self draw art-group data (-> *juicer-global-info* celebrate-anim (get-rand-int self 2))))
           (f30-0 (get-rand-float-range self 0.9 1.1))
           )
-      (ja-no-eval :group! gp-1
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -1107,7 +1056,6 @@
           )
       )
     (set! (-> self focus-is-up) #f)
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
@@ -1115,7 +1063,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -1146,7 +1093,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -1214,7 +1160,6 @@
         )
       )
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1290,7 +1235,7 @@
 
 (defstate attack (juicer)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior juicer) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-1 (-> self nav state))
           (a0-1 (-> self root trans))
@@ -1310,7 +1255,6 @@
       (set! (-> v1-9 attack-id) v0-0)
       (set! (-> self attack-id) v0-0)
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self torso-track-player) #f)
@@ -1322,19 +1266,14 @@
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (send-event (handle->process (-> self current-projectile)) 'die)
-    (none)
     )
   :trans (behavior ()
     (when (skip-check-los? (-> self los) 90)
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! juicer-attack0-start-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-start-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! juicer-attack0-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (if (< 11.0 (ja-aframe-num 0))
           (juicer-method-184 self #t)
@@ -1350,10 +1289,7 @@
       (set! (-> v1-29 attack-id) s5-0)
       (let ((s4-0 (current-time)))
         (until (>= (- (current-time) s4-0) (seconds 0.25))
-          (ja-no-eval :group! juicer-attack0-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim juicer-attack0-ja) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! juicer-attack0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((s3-0 (handle->process (-> self focus handle))))
               (when s3-0
@@ -1409,7 +1345,6 @@
         (go-virtual victory)
         )
     (go-hostile self)
-    (none)
     )
   :post juicer-face-player-post
   )
@@ -1454,10 +1389,7 @@
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -1480,10 +1412,7 @@
         (let ((gp-2 (-> self draw art-group data (-> *juicer-global-info* celebrate-anim (get-rand-int self 2))))
               (f30-2 (get-rand-float-range self 0.9 1.1))
               )
-          (ja-no-eval :group! gp-2
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-2) frames num-frames) -1)) f30-2)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! gp-2 :num! (seek! max f30-2) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-2))
@@ -1492,7 +1421,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1503,14 +1431,7 @@
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info hit-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info hit-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1543,7 +1464,6 @@
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (logclear! (-> self focus-status) (focus-status hit))
     (go-virtual hostile)
-    (none)
     )
   )
 
@@ -1555,10 +1475,7 @@
           (gp-0 (-> self draw art-group data (-> self enemy-info idle-anim)))
           )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -1566,7 +1483,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1590,14 +1506,7 @@
         )
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info taunt-anim))
-                  :num! (seek!
-                    (the float
-                         (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info taunt-anim))) frames num-frames)
-                            -1
-                            )
-                         )
-                    f30-0
-                    )
+                  :num! (seek! max f30-0)
                   :frame-num 0.0
                   )
       (until (ja-done? 0)
@@ -1606,7 +1515,6 @@
         )
       )
     (go-virtual stare)
-    (none)
     )
   )
 

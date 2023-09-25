@@ -83,7 +83,7 @@ struct GraphicsData {
             file_util::get_jak_project_dir() / "out" / game_version_names[version] / "fr3",
             fr3_level_count[version])),
         ogl_renderer(texture_pool, loader, version),
-        debug_gui(version),
+        debug_gui(),
         version(version) {}
 };
 
@@ -715,6 +715,10 @@ void gl_set_levels(const std::vector<std::string>& levels) {
   g_gfx_data->loader->set_want_levels(levels);
 }
 
+void gl_set_active_levels(const std::vector<std::string>& levels) {
+  g_gfx_data->loader->set_active_levels(levels);
+}
+
 void gl_set_pmode_alp(float val) {
   g_gfx_data->pmode_alp = val;
 }
@@ -729,6 +733,7 @@ const GfxRendererModule gRendererOpenGL = {
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
     gl_set_levels,          // set_levels
+    gl_set_active_levels,   // set_active_levels
     gl_set_pmode_alp,       // set_pmode_alp
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 4.3"            // name

@@ -232,7 +232,6 @@
       (set! (-> v1-6 params mask) (the-as uint 17))
       (-> v1-6 id)
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (current-time))
@@ -273,12 +272,10 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (sound-play "pmkr-charge" :id (-> self charge-sound) :position (-> self root trans))
     (spawn-impact-particles self)
-    (none)
     )
   )
 
@@ -358,7 +355,6 @@
         )
       )
     (draw-beam (-> *part-id-table* 210) (-> self root trans) (-> self core-velocity) #f #t)
-    (none)
     )
   :trans (behavior ()
     (local-vars (at-0 int))
@@ -437,7 +433,6 @@
           )
       (sound-play "pmkr-fire" :id (-> self fire-sound) :position (-> self root trans))
       (sound-play "pmkr-trail" :id (-> self trail-sound) :position (-> self root trans))
-      (none)
       )
     )
   )
@@ -549,7 +544,6 @@
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (current-time) (-> self state-time)) (seconds 1))
@@ -564,22 +558,8 @@
       0
       40960.0
       )
-    (let ((t9-2 sp-launch-particles-var)
-          (a0-3 *sp-particle-system-2d*)
-          (a1-1 (-> *part-id-table* 215))
-          (a2-1 *launch-matrix*)
-          )
-      (set! (-> a2-1 trans quad) (-> self root trans quad))
-      (t9-2 a0-3 a1-1 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-      )
-    (let ((t9-3 sp-launch-particles-var)
-          (a0-4 *sp-particle-system-2d*)
-          (a1-2 (-> *part-id-table* 216))
-          (a2-2 *launch-matrix*)
-          )
-      (set! (-> a2-2 trans quad) (-> self root trans quad))
-      (t9-3 a0-4 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-      )
+    (launch-particles (-> *part-id-table* 215) (-> self root trans))
+    (launch-particles (-> *part-id-table* 216) (-> self root trans))
     (let ((gp-0 (-> *part-id-table* 430)))
       (when gp-0
         (let ((v1-14 (get-field-spec-by-id gp-0 (sp-field-id spt-timer))))
@@ -596,9 +576,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior gun-dark-shot) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function gun-dark-shot-init-fizzle
@@ -800,24 +779,7 @@
                        )
                  )
             (when s4-1
-              (let ((a1-21 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-21 from) (process->ppointer self))
-                (set! (-> a1-21 num-params) 2)
-                (set! (-> a1-21 message) 'attack)
-                (set! (-> a1-21 param 0) (the-as uint #f))
-                (let ((v1-91 (new 'static 'attack-info :mask (attack-info-mask mode id damage))))
-                  (let* ((a0-49 *game-info*)
-                         (a2-12 (+ (-> a0-49 attack-id) 1))
-                         )
-                    (set! (-> a0-49 attack-id) a2-12)
-                    (set! (-> v1-91 id) a2-12)
-                    )
-                  (set! (-> v1-91 mode) 'explode)
-                  (set! (-> v1-91 damage) 16.0)
-                  (set! (-> a1-21 param 1) (the-as uint v1-91))
-                  )
-                (send-event-function s4-1 a1-21)
-                )
+              (send-event s4-1 'attack #f (static-attack-info ((id (new-attack-id)) (mode 'explode) (damage 16.0))))
               (process-spawn-function
                 process
                 (lambda :behavior gun-dark-shot
@@ -915,6 +877,5 @@
         )
       )
     (deactivate self)
-    (none)
     )
   )

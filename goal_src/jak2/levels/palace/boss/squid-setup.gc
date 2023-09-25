@@ -245,7 +245,7 @@
   )
 
 
-(defskelgroup skel-squid squid squid-lod0-jg 3
+(defskelgroup skel-squid squid squid-lod0-jg squid-squid-idle-ja
               ((squid-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 20)
               :shadow squid-shadow-mg
@@ -268,7 +268,7 @@
               :bounds (static-spherem 0 0 0 20)
               )
 
-(defskelgroup skel-squid-driver squid squid-driver-lod0-jg 55
+(defskelgroup skel-squid-driver squid squid-driver-lod0-jg squid-driver-squid-idle-ja
               ((squid-driver-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1)
               )
@@ -1261,7 +1261,7 @@
           )
         (sound-play "hit-squid")
         )
-      (if (logtest? (attack-info-mask attacker-velocity) (-> arg1 mask))
+      (if (logtest? (attack-mask attacker-velocity) (-> arg1 mask))
           (set! (-> gp-0 quad) (-> arg1 attacker-velocity quad))
           (vector-! gp-0 (-> self root trans) gp-0)
           )
@@ -1452,7 +1452,7 @@
                                       )
                )
           )
-         ((and (logtest? (attack-info-mask penetrate-using) (-> (the-as attack-info s4-0) mask))
+         ((and (logtest? (attack-mask penetrate-using) (-> (the-as attack-info s4-0) mask))
                (logtest? (penetrate dark-bomb) (-> (the-as attack-info s4-0) penetrate-using))
                (or (not *target*) (not (logtest? (-> *target* focus-status) (focus-status dead))))
                )
@@ -1513,26 +1513,14 @@
                     )
              )
          (when a0-66
-           (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-13 from) (process->ppointer self))
-             (set! (-> a1-13 num-params) 2)
-             (set! (-> a1-13 message) 'attack)
-             (set! (-> a1-13 param 0) (-> arg3 param 0))
-             (let ((v1-101 (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-               (let* ((a2-6 *game-info*)
-                      (a3-4 (+ (-> a2-6 attack-id) 1))
-                      )
-                 (set! (-> a2-6 attack-id) a3-4)
-                 (set! (-> v1-101 id) a3-4)
+           (if (send-event
+                 a0-66
+                 'attack
+                 (-> arg3 param 0)
+                 (static-attack-info ((id (new-attack-id)) (shove-back (meters 6)) (shove-up (meters 3))))
                  )
-               (set! (-> v1-101 shove-back) 24576.0)
-               (set! (-> v1-101 shove-up) 12288.0)
-               (set! (-> a1-13 param 1) (the-as uint v1-101))
+               #f
                )
-             (if (send-event-function a0-66 a1-13)
-                 #f
-                 )
-             )
            )
          )
        )
@@ -1956,7 +1944,6 @@ This commonly includes things such as:
     )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 310]
 (defmethod move-to-spot squid ((obj squid) (arg0 vector) (arg1 symbol))
   (local-vars
     (sv-656 vector)
@@ -2872,22 +2859,8 @@ This commonly includes things such as:
       (set! (-> *part-id-table* 4857 init-specs 10 initial-valuef) 0.0)
       (draw-beam (-> *part-id-table* 4857) a1-0 s5-1 #f #t)
       (vector-normalize! s5-1 1.0)
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-8 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 4858))
-            (a2-2 *launch-matrix*)
-            )
-        (set! (-> a2-2 trans quad) (-> s4-1 quad))
-        (t9-2 a0-8 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-3 sp-launch-particles-var)
-            (a0-9 *sp-particle-system-2d*)
-            (a1-3 (-> *part-id-table* 4859))
-            (a2-3 *launch-matrix*)
-            )
-        (set! (-> a2-3 trans quad) (-> s4-1 quad))
-        (t9-3 a0-9 a1-3 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 4858) s4-1)
+      (launch-particles (-> *part-id-table* 4859) s4-1)
       )
     (let ((s4-2 (new 'stack-no-clear 'matrix))
           (f26-0 (* 0.000012207031 f30-0))
@@ -2898,14 +2871,7 @@ This commonly includes things such as:
       (set! (-> s4-2 trans quad) (-> gp-0 quad))
       (set! (-> *part-id-table* 4860 init-specs 3 initial-valuef) (* f26-0 f30-1))
       (set! (-> *part-id-table* 4860 init-specs 4 initial-valuef) (* f26-0 f28-0))
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 4860)
-        s4-2
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 4860) s4-2 :origin-is-matrix #t)
       (set! (-> *part-id-table* 4860 init-specs 3 initial-valuef) f30-1)
       (set! (-> *part-id-table* 4860 init-specs 4 initial-valuef) f28-0)
       )

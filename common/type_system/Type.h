@@ -133,7 +133,7 @@ class Type {
   bool m_new_method_info_defined = false;
   bool m_generate_inspect = true;
 
-  std::string m_parent;  // the parent type (is empty for none and object)
+  std::string m_parent;  // the parent type (is empty for object)
   std::string m_name;
   bool m_allow_in_runtime = true;
   std::string m_runtime_name;

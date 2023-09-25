@@ -32,4 +32,5 @@ std::string to_upper(const std::string& str);
 std::string to_lower(const std::string& str);
 /// Is this a valid character for a hex number?
 bool hex_char(char c);
+std::string titlize(const std::string& str);
 }  // namespace str_util

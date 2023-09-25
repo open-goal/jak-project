@@ -119,7 +119,6 @@
       (configure-collision self #t)
       (set-setting! 'jump #f 0.0 0)
       )
-    (none)
     )
   :post (behavior ()
     (let ((func (-> (method-of-type elevator running) post)))
@@ -128,7 +127,6 @@
           )
       )
     (sound-play "sew-elevator-lp" :id (-> self sound-id) :position (-> self root trans))
-    (none)
     )
   )
 
@@ -149,7 +147,6 @@
       (configure-collision self #f)
       (remove-setting! 'jump)
       )
-    (none)
     )
   )
 
@@ -290,10 +287,10 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; failed to figure out what this is:
 (defstate idle (sew-valve)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('spin 'punch 'flop 'uppercut)
           (if (!= (-> self water-height) (get-base-height *ocean-map-sewer*))
               (go-virtual turn)
@@ -303,7 +300,7 @@ For example for an elevator pre-compute the distance between the first and last 
        )
       )
     )
-  :code (the-as (function none :behavior sew-valve) transform-and-sleep)
+  :code transform-and-sleep
   )
 
 ;; failed to figure out what this is:
@@ -328,30 +325,27 @@ For example for an elevator pre-compute the distance between the first and last 
           (script-eval (the-as pair data))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (set! (-> self joint enable) #f)
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self water-height) (get-base-height *ocean-map-sewer*))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior sew-valve) sleep-code)
+  :code sleep-code
   :post (behavior ()
-    (seek! (-> self spin-rate) 0.0 (* 81920.0 (-> self clock seconds-per-frame)))
-    (+! (-> self spin) (* (-> self spin-rate) (-> self clock seconds-per-frame)))
+    (seek! (-> self spin-rate) 0.0 (* 81920.0 (seconds-per-frame)))
+    (+! (-> self spin) (* (-> self spin-rate) (seconds-per-frame)))
     (quaternion-axis-angle! (-> self joint rotation) 0.0 0.0 1.0 (-> self spin))
     (let* ((f0-8 (- (get-base-height *ocean-map-sewer*) (-> self water-height)))
            (f30-0 f0-8)
            (f28-0 (seek-ease
                     f0-8
                     0.0
-                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (-> self clock seconds-per-frame))
+                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (seconds-per-frame))
                     12288.0
                     2.0
                     )
@@ -363,7 +357,6 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -519,8 +512,8 @@ This commonly includes things such as:
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mar-statue sew-mar-statue 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-sew-mar-statue sew-mar-statue sew-mar-statue-lod0-jg sew-mar-statue-idle-ja
+              ((sew-mar-statue-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 7.5 0 14.4)
               )
 
@@ -541,7 +534,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (sew-mar-statue-debris)
   :virtual #t
-  :code (the-as (function none :behavior sew-mar-statue-debris) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function sew-mar-statue-debris-init-by-other
@@ -609,7 +602,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (sew-mar-statue-debris-b)
   :virtual #t
-  :code (the-as (function none :behavior sew-mar-statue-debris-b) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for function sew-mar-statue-debris-b-init-by-other
@@ -670,9 +663,8 @@ This commonly includes things such as:
         (setup-masks (-> self draw) 4 2)
         (setup-masks (-> self draw) 2 4)
         )
-    (none)
     )
-  :code (the-as (function none :behavior sew-mar-statue) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -686,9 +678,8 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior sew-mar-statue) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type sew-mar-statue
@@ -784,7 +775,7 @@ and translate the platform via the `smush`
 ;; failed to figure out what this is:
 (defstate fall (sew-catwalk)
   :virtual #t
-  :trans (the-as (function none :behavior sew-catwalk) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (set! (-> self draw bounds y) -102400.0)
@@ -812,7 +803,6 @@ and translate the platform via the `smush`
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -943,8 +933,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (sew-mine)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (focus-proc (if (type? _proc process-focusable)
@@ -953,35 +943,29 @@ This commonly includes things such as:
                           )
               )
          (when focus-proc
-           (let ((a0-4 (vector-normalize!
-                         (vector-! (new 'stack-no-clear 'vector) (-> focus-proc root trans) (-> self root trans))
-                         1.0
-                         )
-                       )
-                 (evt (new 'stack-no-clear 'event-message-block))
-                 )
-             (set! (-> evt from) (process->ppointer self))
-             (set! (-> evt num-params) 2)
-             (set! (-> evt message) 'attack-or-shove)
-             (set! (-> evt param 0) (-> event param 0))
-             (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-               (let* ((game-info *game-info*)
-                      (id (+ (-> game-info attack-id) 1))
-                      )
-                 (set! (-> game-info attack-id) id)
-                 (set! (-> attack-info id) id)
-                 )
-               (set! (-> attack-info vector quad) (-> a0-4 quad))
-               (set! (-> attack-info shove-back) 20480.0)
-               (set! (-> attack-info shove-up) 12288.0)
-               (set! (-> attack-info control) (if (focus-test? focus-proc board)
-                                                  1.0
-                                                  0.0
-                                                  )
+           (let ((a0-4
+                   (vector-normalize!
+                     (vector-! (new 'stack-no-clear 'vector) (-> focus-proc root trans) (-> self root trans))
+                     1.0
                      )
-               (set! (-> evt param 1) (the-as uint attack-info))
+                   )
+                 )
+             (send-event
+               focus-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (new-attack-id))
+                                    (vector a0-4)
+                                    (shove-back (meters 5))
+                                    (shove-up (meters 3))
+                                    (control (if (focus-test? focus-proc board)
+                                                 1.0
+                                                 0.0
+                                                 )
+                                             )
+                                    )
+                                   )
                )
-             (send-event-function focus-proc evt)
              )
            )
          )
@@ -989,7 +973,7 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior sew-mine) transform-and-sleep-code)
+  :code transform-and-sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (let ((gp-0 (mod (-> *display* part-clock frame-counter) 100)))
@@ -998,7 +982,6 @@ This commonly includes things such as:
           )
       (set! (-> self last-time) (the-as time-frame gp-0))
       )
-    (none)
     )
   )
 
@@ -1050,7 +1033,6 @@ This commonly includes things such as:
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -1087,7 +1069,10 @@ This commonly includes things such as:
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mine-a sew-mine-a 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 3))
+(defskelgroup skel-sew-mine-a sew-mine-a sew-mine-a-lod0-jg sew-mine-a-idle-ja
+              ((sew-mine-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
 
 ;; definition for method 11 of type sew-mine-a
 ;; WARN: Return type mismatch object vs none.
@@ -1158,7 +1143,10 @@ This commonly includes things such as:
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-mine-b sew-mine-b 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 2.5))
+(defskelgroup skel-sew-mine-b sew-mine-b sew-mine-b-lod0-jg sew-mine-b-idle-ja
+              ((sew-mine-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-mine-b)
@@ -1187,7 +1175,6 @@ This commonly includes things such as:
       (set! (-> self root trans y) (+ (-> self center y) (* 819.2 f28-0)))
       )
     (transform-post)
-    (none)
     )
   )
 
@@ -1298,57 +1285,48 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch float vs none.
 (defmethod attack-target! sew-wall ((obj sew-wall))
   "If the target is close enough to the wall, hit it!"
-  (with-pp
-    (let ((target *target*))
-      (when target
-        (let ((dist-from-wall (vector-vector-xz-distance (get-trans target 0) (-> obj root trans)))
-              (deadly-radius (-> obj deadly-radius))
-              (prev-deadly-radius (-> obj prev-deadly-radius))
+  (let ((target *target*))
+    (when target
+      (let ((dist-from-wall (vector-vector-xz-distance (get-trans target 0) (-> obj root trans)))
+            (deadly-radius (-> obj deadly-radius))
+            (prev-deadly-radius (-> obj prev-deadly-radius))
+            )
+        (set! (-> obj prev-deadly-radius) deadly-radius)
+        (when (and (>= deadly-radius dist-from-wall) (>= dist-from-wall (+ -4096.0 prev-deadly-radius)))
+          (let ((cquery (new 'stack-no-clear 'collide-query)))
+            (set! (-> cquery start-pos quad) (-> obj root trans quad))
+            (+! (-> cquery start-pos y) 12288.0)
+            (vector-! (-> cquery move-dist) (get-trans target 3) (-> cquery start-pos))
+            (let ((v1-9 cquery))
+              (set! (-> v1-9 radius) 819.2)
+              (set! (-> v1-9 collide-with) (collide-spec backgnd))
+              (set! (-> v1-9 ignore-process0) obj)
+              (set! (-> v1-9 ignore-process1) #f)
+              (set! (-> v1-9 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+              (set! (-> v1-9 action-mask) (collide-action solid))
               )
-          (set! (-> obj prev-deadly-radius) deadly-radius)
-          (when (and (>= deadly-radius dist-from-wall) (>= dist-from-wall (+ -4096.0 prev-deadly-radius)))
-            (let ((cquery (new 'stack-no-clear 'collide-query)))
-              (set! (-> cquery start-pos quad) (-> obj root trans quad))
-              (+! (-> cquery start-pos y) 12288.0)
-              (vector-! (-> cquery move-dist) (get-trans target 3) (-> cquery start-pos))
-              (let ((v1-9 cquery))
-                (set! (-> v1-9 radius) 819.2)
-                (set! (-> v1-9 collide-with) (collide-spec backgnd))
-                (set! (-> v1-9 ignore-process0) obj)
-                (set! (-> v1-9 ignore-process1) #f)
-                (set! (-> v1-9 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-                (set! (-> v1-9 action-mask) (collide-action solid))
+            (when (< (fill-and-probe-using-line-sphere *collide-cache* cquery) 0.0)
+              (send-event
+                *target*
+                'attack
+                #f
+                (static-attack-info ((id (-> obj attack-id)) (mode 'explode) (attacker-velocity (-> cquery move-dist))))
                 )
-              (when (< (fill-and-probe-using-line-sphere *collide-cache* cquery) 0.0)
-                (let ((evt (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> evt from) (process->ppointer pp))
-                  (set! (-> evt num-params) 2)
-                  (set! (-> evt message) 'attack)
-                  (set! (-> evt param 0) (the-as uint #f))
-                  (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask mode id attacker-velocity))))
-                    (set! (-> attack-info id) (-> obj attack-id))
-                    (set! (-> attack-info mode) 'explode)
-                    (set! (-> attack-info attacker-velocity quad) (-> cquery move-dist quad))
-                    (set! (-> evt param 1) (the-as uint attack-info))
-                    )
-                  (send-event-function *target* evt)
-                  )
-                (set! (-> obj deadly-radius) -1.0)
-                )
+              (set! (-> obj deadly-radius) -1.0)
               )
             )
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-wall)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (if (-> self first-wall?)
@@ -1370,7 +1348,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -1380,20 +1357,17 @@ This commonly includes things such as:
   :enter (behavior ((arg0 symbol))
     (set! (-> self deadly-radius) -1.0)
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (-> self deadly-radius)))
       (when (>= f0-0 0.0)
-        (set! (-> self deadly-radius) (seek f0-0 409600.0 (* 368640.0 (-> self clock seconds-per-frame))))
+        (set! (-> self deadly-radius) (seek f0-0 409600.0 (* 368640.0 (seconds-per-frame))))
         (attack-target! self)
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (if (not (-> self first-wall?))
@@ -1452,9 +1426,8 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior sew-wall) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type sew-wall
@@ -1600,26 +1573,25 @@ This commonly includes things such as:
   )
 
 ;; failed to figure out what this is:
-(defskelgroup skel-sew-grill sew-grill 0 3 ((1 (meters 999999))) :bounds (static-spherem 0 3 0 7.5))
+(defskelgroup skel-sew-grill sew-grill sew-grill-lod0-jg sew-grill-idle-ja
+              ((sew-grill-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 7.5)
+              )
 
 ;; failed to figure out what this is:
 (defstate idle (sew-grill)
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sew-grill) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type sew-grill
@@ -1799,14 +1771,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate waiting (sew-scare-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sew-scare-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (let* ((target *target*)
@@ -1835,32 +1803,24 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 5)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior sew-scare-grunt) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate scare (sew-scare-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sew-scare-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (let* ((actor (-> self grill-actor))
@@ -1890,7 +1850,6 @@ This commonly includes things such as:
     (set! (-> self spooled-sound-id)
           (lookup-gui-connection-id *gui-control* (-> self anim name) (gui-channel art-load) (gui-action none))
           )
-    (none)
     )
   :exit (behavior ()
     (let* ((actor (-> self grill-actor))
@@ -1903,7 +1862,6 @@ This commonly includes things such as:
           (logclear! (-> (the-as sew-grill actor-proc) draw status) (draw-control-status no-draw))
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1924,7 +1882,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   :post (behavior ()
     (let* ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
@@ -1960,7 +1917,6 @@ This commonly includes things such as:
         )
       )
     (transform-post)
-    (none)
     )
   )
 

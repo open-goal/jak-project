@@ -546,6 +546,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
     {"O~Y~-16H~-1V/~Z", "Ø"},
+    {"A~Y~-6H~+3V,~Z", "Ą"},
+    {"E~Y~-6H~+2V,~Z", "Ę"},
+    {"L~Y~-16H~+0V/~Z", "Ł"},
+    {"Z~Y~-21H~-5Vº~Z", "Ż"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -558,6 +562,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"I~Y~-19H~-5V'~Z", "Í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"C~Y~-21H~-5V'~Z", "Ć"},
+    {"N~Y~-21H~-5V'~Z", "Ń"},
+    {"S~Y~-21H~-5V'~Z", "Ś"},
+    {"Z~Y~-21H~-5V'~Z", "Ź"},
 
     // double acute accents
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom
@@ -1116,8 +1124,46 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"~Y~-6Hº~Z~+10H", "°"},
 
     // Color / Emphasis
+    {"~[~0L", "<COLOR_DEFAULT>"},
     {"~[~1L", "<COLOR_WHITE>"},
-    {"~[~32L", "<COLOR_DEFAULT>"}};
+    {"~[~2L", "<COLOR_TRANSPARENT>"},
+    {"~[~3L", "<COLOR_RED>"},
+    {"~[~4L", "<COLOR_ORANGE>"},
+    {"~[~5L", "<COLOR_YELLOW>"},
+    {"~[~6L", "<COLOR_GREEN>"},
+    {"~[~7L", "<COLOR_BLUE>"},
+    {"~[~8L", "<COLOR_CYAN>"},
+    {"~[~9L", "<COLOR_PINK>"},
+    {"~[~10L", "<COLOR_MENU-SELECTED>"},
+    {"~[~11L", "<COLOR_MENU-SELECTED-PARENT>"},
+    {"~[~12L", "<COLOR_MENU>"},
+    {"~[~13L", "<COLOR_MENU-PARENT>"},
+    {"~[~14L", "<COLOR_MENU-FUNC-BAD>"},
+    {"~[~15L", "<COLOR_MENU-FLAG-ON>"},
+    {"~[~16L", "<COLOR_MENU-FLAG-ON-PARENT>"},
+    {"~[~17L", "<COLOR_MENU-FLAG-OFF>"},
+    {"~[~18L", "<COLOR_MENU-FLAG-OFF-PARENT>"},
+    {"~[~19L", "<COLOR_MENU-INVALID>"},
+    {"~[~20L", "<COLOR_FLAT-YELLOW>"},
+    {"~[~21L", "<COLOR_COLOR-21>"},
+    {"~[~22L", "<COLOR_PAD-BACK>"},
+    {"~[~23L", "<COLOR_PAD-SHINE>"},
+    {"~[~24L", "<COLOR_PAD-SQUARE>"},
+    {"~[~25L", "<COLOR_PAD-CIRCLE>"},
+    {"~[~26L", "<COLOR_PAD-TRIANGLE>"},
+    {"~[~27L", "<COLOR_PAD-CROSS>"},
+    {"~[~28L", "<COLOR_PROGRESS-OLD-BLUE>"},
+    {"~[~29L", "<COLOR_PROGRESS-OLD-YELLOW>"},
+    {"~[~30L", "<COLOR_PROGRESS-OLD-SELECTED>"},
+    {"~[~31L", "<COLOR_PROGRESS-OLD-PERCENT>"},
+    {"~[~32L", "<COLOR_PROGRESS>"},
+    {"~[~33L", "<COLOR_PROGRESS-SELECTED>"},
+    {"~[~34L", "<COLOR_PROGRESS-FORCE-SELECTED>"},
+    {"~[~35L", "<COLOR_PROGRESS-OPTION-OFF>"},
+    {"~[~36L", "<COLOR_COLOR-36>"},
+    {"~[~37L", "<COLOR_CREDITS-STAFF-TITLE-1>"},
+    {"~[~38L", "<COLOR_CREDITS-STAFF-TITLE-2>"},
+    {"~[~39L", "<COLOR_COLOR-39>"}};
 
 static std::vector<EncodeInfo> s_encode_info_jak2 = {
     {"ˇ", {0x10}},      // caron
@@ -1828,6 +1874,18 @@ std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
 
 const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
+}
+
+const GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
+  // Jak 1 has been patched to use V2
+  switch (version) {
+    case GameVersion::Jak1:
+      return get_font_bank(GameTextVersion::JAK1_V2);
+    case GameVersion::Jak2:
+      return get_font_bank(GameTextVersion::JAK2);
+    default:
+      ASSERT_MSG(false, "Unsupported game for get_font_bank_from_game_version");
+  }
 }
 
 const GameTextFontBank* get_font_bank(const std::string& name) {

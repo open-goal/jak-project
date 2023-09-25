@@ -163,10 +163,9 @@
     (let ((f0-3 (vector-vector-distance (math-camera-pos) (-> self root trans))))
       (set! (-> self root scale x) (lerp-scale 0.5 3.5 f0-3 32768.0 245760.0))
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser-shadow) sleep-code)
-  :post (the-as (function none :behavior under-laser-shadow) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -211,10 +210,9 @@
       (set! (-> a0-1 trans quad) (-> (the-as under-laser v1-0) root trans quad))
       (vector+! (-> a0-1 trans) (-> a0-1 trans) (-> (the-as under-laser v1-0) slave-trans-offset))
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser-slave) sleep-code)
-  :post (the-as (function none :behavior under-laser-slave) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -241,81 +239,64 @@
 
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod under-laser-method-22 under-laser ((obj under-laser))
-  (with-pp
-    (let ((s5-0 (new 'stack-no-clear 'collide-query)))
-      (set! (-> s5-0 start-pos quad) (-> obj root trans quad))
-      (set! (-> s5-0 move-dist quad) (-> obj slave-trans-offset quad))
-      (let ((v1-2 s5-0))
-        (set! (-> v1-2 radius) 409.6)
-        (set! (-> v1-2 collide-with) (collide-spec jak bot player-list))
-        (set! (-> v1-2 ignore-process0) obj)
-        (set! (-> v1-2 ignore-process1) #f)
-        (set! (-> v1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-        (set! (-> v1-2 action-mask) (collide-action solid))
-        )
-      (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
-        (let* ((s4-0 (-> s5-0 best-other-tri collide-ptr))
-               (s5-1 (if (type? s4-0 collide-shape-prim-sphere)
-                         s4-0
-                         )
-                     )
-               )
-          (when s5-1
-            (let ((s4-1 (new 'stack-no-clear 'vector)))
-              (vector-rotate-around-y! s4-1 (-> obj slave-trans-offset) (if (logtest? (-> obj info options) 1)
-                                                                            16384.0
-                                                                            -16384.0
-                                                                            )
-                                       )
-              (vector-normalize! s4-1 1.0)
-              (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-4 from) (process->ppointer pp))
-                (set! (-> a1-4 num-params) 2)
-                (set! (-> a1-4 message) 'attack)
-                (set! (-> a1-4 param 0) (the-as uint #f))
-                (let ((v1-11 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id damage))))
-                  (let* ((a0-15 *game-info*)
-                         (a2-2 (+ (-> a0-15 attack-id) 1))
-                         )
-                    (set! (-> a0-15 attack-id) a2-2)
-                    (set! (-> v1-11 id) a2-2)
+  (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+    (set! (-> s5-0 start-pos quad) (-> obj root trans quad))
+    (set! (-> s5-0 move-dist quad) (-> obj slave-trans-offset quad))
+    (let ((v1-2 s5-0))
+      (set! (-> v1-2 radius) 409.6)
+      (set! (-> v1-2 collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-2 ignore-process0) obj)
+      (set! (-> v1-2 ignore-process1) #f)
+      (set! (-> v1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-2 action-mask) (collide-action solid))
+      )
+    (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
+      (let* ((s4-0 (-> s5-0 best-other-tri collide-ptr))
+             (s5-1 (if (type? s4-0 collide-shape-prim-sphere)
+                       s4-0
+                       )
+                   )
+             )
+        (when s5-1
+          (let ((s4-1 (new 'stack-no-clear 'vector)))
+            (vector-rotate-around-y! s4-1 (-> obj slave-trans-offset) (if (logtest? (-> obj info options) 1)
+                                                                          16384.0
+                                                                          -16384.0
+                                                                          )
+                                     )
+            (vector-normalize! s4-1 1.0)
+            (if (send-event
+                  (-> (the-as collide-shape-prim-sphere s5-1) cshape process)
+                  'attack
+                  #f
+                  (static-attack-info
+                    ((id (new-attack-id)) (vector s4-1) (shove-back (meters 3)) (shove-up (meters 2)) (damage 1.0))
                     )
-                  (set! (-> v1-11 vector quad) (-> s4-1 quad))
-                  (set! (-> v1-11 shove-back) 12288.0)
-                  (set! (-> v1-11 shove-up) 8192.0)
-                  (set! (-> v1-11 damage) 1.0)
-                  (set! (-> a1-4 param 1) (the-as uint v1-11))
                   )
-                (if (send-event-function (-> (the-as collide-shape-prim-sphere s5-1) cshape process) a1-4)
-                    (sound-play "und-laser-hit")
-                    )
+                (sound-play "und-laser-hit")
                 )
-              )
             )
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 (defstate dormant (under-laser)
   :virtual #t
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (if (not (script-eval (the-as pair (-> self draw-test-script))))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser) sleep-code)
+  :code sleep-code
   )
 
 (defstate idle (under-laser)
@@ -340,9 +321,8 @@
       (process-spawn under-laser-shadow (-> self info) gp-1 s5-0 :to self)
       )
     (update-vol! (-> self sound) 1.0)
-    (none)
     )
-  :code (the-as (function none :behavior under-laser) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((f30-0 (get-norm! (-> self sync) 0)))
       (vector-lerp! (-> self root trans) (-> self zero-pos) (-> self one-pos) f30-0)
@@ -379,7 +359,6 @@
     (update! (-> self sound))
     (under-laser-method-22 self)
     (ja-post)
-    (none)
     )
   )
 

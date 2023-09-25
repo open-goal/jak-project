@@ -610,8 +610,8 @@ void run(Output& out, const Input& input) {
                                  stack_slots);
 
   // Run propagation, until we get through an iteration with no changes
-  int blocks_run = 0;
-  int outer_iterations = 0;
+  [[maybe_unused]] int blocks_run = 0;
+  [[maybe_unused]] int outer_iterations = 0;
   bool needs_rerun = true;
   bool hit_error = false;
   while (needs_rerun) {

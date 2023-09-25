@@ -1,9 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/village1cam-ag.gc")
-(import "goal_src/jak1/import/yakow-ag.gc")
-
 ;; failed to figure out what this is:
 (defskelgroup *village1cam-sg* village1cam village1cam-lod0-jg village1cam-anim-ja
               ((village1cam-lod0-mg (meters 999999)))
@@ -189,48 +186,44 @@
               )
 
 ;; definition for function yakow-default-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 52]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 54]
 (defbehavior yakow-default-event-handler yakow ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('touch)
-                    (let* ((s4-0 arg0)
-                           (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
-                                     s4-0
-                                     )
-                                 )
-                           )
-                      (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
-                        (do-push-aways! (-> self root-override))
-                        (send-shove-back
-                          (-> self root-override)
-                          arg0
-                          (the-as touching-shapes-entry (-> arg3 param 0))
-                          0.7
-                          6144.0
-                          16384.0
-                          )
-                        )
+  (case arg2
+    (('touch)
+     (let* ((s4-0 arg0)
+            (v1-2 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable))
+                      s4-0
                       )
-                    )
-                   (('attack)
-                    (let ((v1-9 (-> arg3 param 2)))
-                      (cond
-                        ((!= v1-9 (-> self player-attack-id))
-                         (set! (-> self player-attack-id) (the-as int v1-9))
-                         (if (-> self vulnerable)
-                             (go yakow-kicked)
-                             )
-                         )
-                        (else
-                          'push
-                          )
-                        )
-                      )
-                    )
-                   )
+                  )
+            )
+       (when (and v1-2 (< 8192.0 (- (-> v1-2 root trans y) (-> self root-override trans y))))
+         (do-push-aways! (-> self root-override))
+         (send-shove-back
+           (-> self root-override)
+           arg0
+           (the-as touching-shapes-entry (-> arg3 param 0))
+           0.7
+           6144.0
+           16384.0
+           )
+         )
+       )
+     )
+    (('attack)
+     (let ((v1-9 (-> arg3 param 2)))
+       (cond
+         ((!= v1-9 (-> self player-attack-id))
+          (set! (-> self player-attack-id) (the-as int v1-9))
+          (if (-> self vulnerable)
+              (go yakow-kicked)
+              )
           )
+         (else
+           'push
+           )
+         )
+       )
+     )
+    )
   )
 
 ;; failed to figure out what this is:
@@ -514,7 +507,6 @@ yakow-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-speed) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
@@ -526,7 +518,6 @@ yakow-default-event-handler
              )
         (go yakow-notice)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.15))
@@ -556,9 +547,8 @@ yakow-default-event-handler
         (ja-channel-push! 1 (seconds 0.1))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior yakow) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -567,11 +557,9 @@ yakow-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self travel-speed) 0.0)
-    (none)
     )
   :code (behavior ()
     (go yakow-run-away)
-    (none)
     )
   :post yakow-simple-post
   )
@@ -585,7 +573,6 @@ yakow-default-event-handler
     (set! (-> self nav destination-pos quad) (-> arg0 quad))
     (set! (-> self rotate-speed) (-> *YAKOW-bank* walk-rotate-speed))
     (set! (-> self turn-time) (-> *YAKOW-bank* walk-turn-time))
-    (none)
     )
   :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> *YAKOW-bank* default-patrol-time))
@@ -614,9 +601,8 @@ yakow-default-event-handler
       (-> *YAKOW-bank* walk-speed)
       (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
       )
-    (none)
     )
-  :code (the-as (function vector none :behavior yakow) yakow-blend-walk-run)
+  :code (the-as (function vector object) yakow-blend-walk-run)
   :post (behavior ()
     (nav-control-method-19
       (-> self nav)
@@ -629,7 +615,6 @@ yakow-default-event-handler
         (logclear! (-> self nav flags) (nav-control-flags navcf10))
         )
     (yakow-post)
-    (none)
     )
   )
 
@@ -648,7 +633,6 @@ yakow-default-event-handler
         'update
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (< 546.13336 (fabs (deg-diff (-> self dest-rot) (y-angle (-> self root-override)))))
@@ -676,14 +660,13 @@ yakow-default-event-handler
         (ja-channel-push! 1 (seconds 0.1))
         )
       )
-    (none)
     )
   :post yakow-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-graze-kicked (yakow)
-  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :event #f
   :code (behavior ()
     (ja-no-eval :group! yakow-kicked-in-place-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -691,7 +674,6 @@ yakow-default-event-handler
       (ja :num! (seek!))
       )
     (go yakow-graze)
-    (none)
     )
   :post yakow-simple-post
   )
@@ -704,7 +686,6 @@ yakow-default-event-handler
     (logior! (-> self nav flags) (nav-control-flags navcf10))
     (set! (-> self rotate-speed) (-> *YAKOW-bank* run-rotate-speed))
     (set! (-> self turn-time) (-> *YAKOW-bank* run-turn-time))
-    (none)
     )
   :trans (behavior ()
     (when (or (not *target*) (< (-> *YAKOW-bank* safe-distance)
@@ -738,7 +719,6 @@ yakow-default-event-handler
       (set! (-> self enable-turn-around) (< (-> *YAKOW-bank* run-speed) f30-2))
       (seek! (-> self travel-speed) f30-2 (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame)))
       )
-    (none)
     )
   :code yakow-blend-walk-run
   :post yakow-run-post
@@ -746,7 +726,7 @@ yakow-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate yakow-kicked (yakow)
-  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :event #f
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (if (-> self grazing)
@@ -758,11 +738,9 @@ yakow-default-event-handler
             (-> *YAKOW-bank* run-speed)
             )
           )
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.2))
@@ -773,7 +751,6 @@ yakow-default-event-handler
           )
         )
     0
-    (none)
     )
   :code (behavior ()
     (set! (-> self enable-turn-around) #t)
@@ -812,14 +789,13 @@ yakow-default-event-handler
         )
       )
     (go yakow-run-away)
-    (none)
     )
   :post yakow-run-post
   )
 
 ;; failed to figure out what this is:
 (defstate yakow-die (yakow)
-  :event (the-as (function process int symbol event-message-block object :behavior yakow) #f)
+  :event #f
   :code (behavior ()
     (let ((v1-1 (-> self root-override root-prim)))
       (set! (-> v1-1 collide-with) (collide-kind))
@@ -828,7 +804,6 @@ yakow-default-event-handler
     0
     (drop-pickup (-> self fact-override) #t *entity-pool* (-> self fact-override) 0)
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 

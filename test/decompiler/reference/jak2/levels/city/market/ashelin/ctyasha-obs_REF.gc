@@ -992,7 +992,6 @@
   (set! (-> obj expensive-gnd-collide?) #f)
   (enemy-method-124 obj)
   ((method-of-type grunt go-hostile) obj)
-  (none)
   )
 
 ;; failed to figure out what this is:
@@ -1005,7 +1004,6 @@
           )
       )
     (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type grunt jump) trans)))
@@ -1014,12 +1012,11 @@
           )
       )
     (let* ((f0-0 (-> self root scale x))
-           (f0-3 (seek f0-0 1.0 (* 1.5 (-> self clock seconds-per-frame))))
+           (f0-3 (seek f0-0 1.0 (* 1.5 (seconds-per-frame))))
            )
       (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
       )
     0
-    (none)
     )
   )
 
@@ -1116,7 +1113,6 @@
   (set! (-> obj expensive-gnd-collide?) #f)
   (enemy-method-124 obj)
   ((method-of-type juicer go-hostile) obj)
-  (none)
   )
 
 ;; failed to figure out what this is:
@@ -1129,7 +1125,6 @@
           )
       )
     (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type juicer jump) trans)))
@@ -1138,12 +1133,11 @@
           )
       )
     (let* ((f0-0 (-> self root scale x))
-           (f0-3 (seek f0-0 1.0 (* 1.15 (-> self clock seconds-per-frame))))
+           (f0-3 (seek f0-0 1.0 (* 1.15 (seconds-per-frame))))
            )
       (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
       )
     0
-    (none)
     )
   )
 
@@ -1327,9 +1321,8 @@
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-container) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -1343,9 +1336,8 @@
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
     (tanker-container-method-22 self)
-    (none)
     )
-  :code (the-as (function none :behavior tanker-container) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type tanker-container
@@ -1457,8 +1449,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate dormant (tanker-crash)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual idle)
        )
@@ -1467,9 +1459,8 @@ This commonly includes things such as:
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-crash) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -1482,10 +1473,9 @@ This commonly includes things such as:
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior tanker-crash) sleep-code)
-  :post (the-as (function none :behavior tanker-crash) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; definition for method 11 of type tanker-crash
@@ -1603,33 +1593,26 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate active (tanker-deadly)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
-       (let ((a2-1 (-> event param 0))
+       (let ((a2-1 (-> block param 0))
              (v1-1 (new 'stack-no-clear 'vector))
              )
          (vector-! v1-1 (-> self root trans) (-> self prev-pos))
-         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-4 from) (process->ppointer self))
-           (set! (-> a1-4 num-params) 2)
-           (set! (-> a1-4 message) 'attack)
-           (set! (-> a1-4 param 0) a2-1)
-           (let ((a2-2 (new 'static 'attack-info :mask (attack-info-mask mode id attacker-velocity damage knock))))
-             (set! (-> a2-2 id) (-> self attack-id))
-             (set! (-> a2-2 mode) 'eco-red)
-             (set! (-> a2-2 attacker-velocity quad) (-> v1-1 quad))
-             (set! (-> a2-2 damage) 2.0)
-             (set! (-> a2-2 knock) (the-as uint 2))
-             (set! (-> a1-4 param 1) (the-as uint a2-2))
+         (send-event
+           proc
+           'attack
+           a2-1
+           (static-attack-info
+             ((id (-> self attack-id)) (mode 'eco-red) (attacker-velocity v1-1) (damage 2.0) (knock (the-as uint 2)))
              )
-           (send-event-function proc a1-4)
            )
          )
        )
       )
     )
-  :code (the-as (function none :behavior tanker-deadly) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set! (-> self prev-pos quad) (-> self root trans quad))
     (let ((v1-1 (ppointer->process (-> self parent)))
@@ -1647,7 +1630,6 @@ This commonly includes things such as:
     (if (>= (current-time) (-> self die-time))
         (go-virtual die-fast)
         )
-    (none)
     )
   )
 
@@ -1656,7 +1638,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 

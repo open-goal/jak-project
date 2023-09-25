@@ -67,9 +67,8 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior dummy-vehicle) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -173,19 +172,15 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 0.5)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.5) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.5))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior gar-curtain) transform-post)
+  :post transform-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -410,7 +405,7 @@ This commonly includes things such as:
      )
     (('hold)
      (set! (-> self escort-force (-> arg3 param 0) y)
-           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+           (seek (-> self escort-force (-> arg3 param 0) y) 1.0 (* 2.0 (seconds-per-frame)))
            )
      )
     (else
@@ -464,16 +459,15 @@ This commonly includes things such as:
               (target-pos 0)
               (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 quat)))
                     (f30-0 0.0)
-                    (s3-0
-                      (lambda ((arg0 rift-rider) (arg1 vector) (arg2 vector) (arg3 vector))
-                        (let ((f0-1 (vector-dot (vector-! (new 'stack-no-clear 'vector) arg2 arg1) arg3)))
-                          (if (< f0-1 0.0)
-                              (- f0-1)
-                              0.0
+                    (s3-0 (lambda ((arg0 rift-rider) (arg1 vector) (arg2 vector) (arg3 vector))
+                            (let ((f0-1 (vector-dot (vector-! (new 'stack-no-clear 'vector) arg2 arg1) arg3)))
+                              (if (< f0-1 0.0)
+                                  (- f0-1)
+                                  0.0
+                                  )
                               )
+                            )
                           )
-                        )
-                      )
                     )
                 (let ((s0-0 (new 'stack-no-clear 'vector))
                       (v1-13 0)
@@ -515,21 +509,16 @@ This commonly includes things such as:
                   (let ((s1-1 s3-0)
                         (s0-2 self)
                         )
-                    (+! f30-0
-                        (s1-1
-                          s0-2
-                          (the-as vector (send-event self 'get-position 'right (new 'stack-no-clear 'vector)))
-                          (the-as vector s2-0)
-                          s4-0
-                          )
+                    (+! f30-0 (s1-1
+                                s0-2
+                                (the-as vector (send-event self 'get-position 'right (new 'stack-no-clear 'vector)))
+                                (the-as vector s2-0)
+                                s4-0
+                                )
                         )
                     )
                   )
-                (seek!
-                  (-> self speed)
-                  (fmin 12288.0 (+ 2048.0 (vector-length s5-0)))
-                  (* 4096.0 (-> self clock seconds-per-frame))
-                  )
+                (seek! (-> self speed) (fmin 12288.0 (+ 2048.0 (vector-length s5-0))) (* 4096.0 (seconds-per-frame)))
                 (set! (-> self speed) (* (-> self speed) (lerp-scale 1.0 0.0 f30-0 24576.0 49152.0)))
                 (let ((f30-1 (-> self speed))
                       (s2-1 lerp-scale)
@@ -547,7 +536,7 @@ This commonly includes things such as:
             )
           )
         (vector-normalize! s5-0 (-> self speed))
-        (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+        (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (seconds-per-frame)))
         )
       )
     (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
@@ -561,7 +550,7 @@ This commonly includes things such as:
     (set! (-> a2-14 ignore-process1) #f)
     (set! (-> a2-14 ignore-pat) (-> v1-43 pat-ignore-mask))
     (set! (-> a2-14 action-mask) (collide-action solid))
-    (fill-cache-for-shape v1-43 (* (vector-length (-> v1-43 transv)) (-> self clock seconds-per-frame)) a2-14)
+    (fill-cache-for-shape v1-43 (* (vector-length (-> v1-43 transv)) (seconds-per-frame)) a2-14)
     )
   (rigid-body-object-method-37 self)
   (pusher-post)
@@ -657,25 +646,25 @@ This commonly includes things such as:
 
 (defstate idle (rift-rider)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior rift-rider) #f)
-  :trans (the-as (function none :behavior rift-rider) #f)
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :event #f
+  :trans #f
+  :code sleep-code
   )
 
 (defstate defend-stadium-wait (rift-rider)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (sound-play "rift-lift-off")
        (go-virtual defend-stadium-move)
        )
       (else
-        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        (defend-stadium-rift-rider-handler proc argc message block)
         )
       )
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
-  :post (the-as (function none :behavior rift-rider) transform-post)
+  :code sleep-code
+  :post transform-post
   )
 
 (defstate defend-stadium-move (rift-rider)
@@ -687,15 +676,13 @@ This commonly includes things such as:
     (set! (-> self height) 49152.0)
     (set! (-> self hover-volume) 0.0)
     (set! (-> self dest-pos quad) (-> self root trans quad))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (dotimes (gp-0 2)
-      (seek! (-> self escort-force gp-0 y) 0.0 (* 0.3 (-> self clock seconds-per-frame)))
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 0.3 (seconds-per-frame)))
       )
     (let ((f30-0 (get-furthest-point-on-path (-> self path) (-> self root trans))))
       (if (< 8.0 f30-0)
@@ -726,9 +713,8 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
     (+! (-> self dest-pos y) (-> self height))
@@ -741,26 +727,25 @@ This commonly includes things such as:
       (sound-group sfx)
       (-> self root trans)
       )
-    (seek! (-> self hover-volume) 1.0 (-> self clock seconds-per-frame))
+    (seek! (-> self hover-volume) 1.0 (seconds-per-frame))
     (spawn (-> self part) (-> self root trans))
     (rift-rider-travel-post)
-    (none)
     )
   )
 
 (defstate defend-stadium-land (rift-rider)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('get-position)
-       (set! (-> (the-as vector (-> event param 1)) quad) (-> self root trans quad))
-       (set! (-> (the-as vector (-> event param 1)) y)
+       (set! (-> (the-as vector (-> block param 1)) quad) (-> self root trans quad))
+       (set! (-> (the-as vector (-> block param 1)) y)
              (-> (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) (-> self path-pos) 'interp) y)
              )
-       (-> event param 1)
+       (-> block param 1)
        )
       (else
-        (defend-stadium-rift-rider-handler proc arg1 event-type event)
+        (defend-stadium-rift-rider-handler proc argc message block)
         )
       )
     )
@@ -796,13 +781,11 @@ This commonly includes things such as:
     (rigid-body-object-method-39 self)
     (rigid-body-object-method-41 self)
     (logclear! (-> self rbody state flags) (rigid-body-flag enable-collision))
-    (none)
     )
   :exit (behavior ()
     (rigid-body-object-method-38 self)
     (rigid-body-object-method-40 self)
     (logior! (-> self rbody state flags) (rigid-body-flag enable-collision))
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-xz-distance
@@ -813,11 +796,10 @@ This commonly includes things such as:
            )
         (go-virtual defend-stadium-complete)
         )
-    (none)
     )
-  :code (the-as (function none :behavior rift-rider) sleep-code)
+  :code sleep-code
   :post (behavior ()
-    (seek! (-> self height) 4096.0 (* 6144.0 (-> self clock seconds-per-frame)))
+    (seek! (-> self height) 4096.0 (* 6144.0 (seconds-per-frame)))
     (get-point-in-path! (-> self path) (-> self dest-pos) (-> self path-pos) 'interp)
     (+! (-> self dest-pos y) (-> self height))
     (set! (-> self path-pos) (fmin
@@ -831,13 +813,9 @@ This commonly includes things such as:
         (let ((s5-0 (new 'stack-no-clear 'vector)))
           (+! (-> v1-10 y) (-> self height))
           (vector-! s5-0 v1-10 (-> gp-0 trans))
-          (seek!
-            (-> self speed)
-            (fmin 12288.0 (+ -2048.0 (vector-length s5-0)))
-            (* 4096.0 (-> self clock seconds-per-frame))
-            )
+          (seek! (-> self speed) (fmin 12288.0 (+ -2048.0 (vector-length s5-0))) (* 4096.0 (seconds-per-frame)))
           (vector-normalize! s5-0 (-> self speed))
-          (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (-> self clock seconds-per-frame)))
+          (vector-seek! (-> gp-0 transv) s5-0 (* 4096.0 (seconds-per-frame)))
           )
         )
       (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
@@ -852,14 +830,13 @@ This commonly includes things such as:
               (-> gp-0 quat)
               (-> gp-0 quat)
               (-> (the-as process-drawable v1-19) root quat)
-              (* 0.5 (-> self clock seconds-per-frame))
+              (* 0.5 (seconds-per-frame))
               )
             )
         )
       )
     (spawn (-> self part) (-> self root trans))
     (pusher-post)
-    (none)
     )
   )
 
@@ -884,7 +861,6 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -893,13 +869,11 @@ This commonly includes things such as:
   :event defend-stadium-rift-rider-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (< (-> self height) (-> self init-height))
         (go-virtual defend-stadium-explode)
         )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -909,11 +883,10 @@ This commonly includes things such as:
       )
     (rigid-body-object-method-39 self)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (dotimes (gp-0 2)
-      (seek! (-> self escort-force gp-0 y) 0.0 (* 1.6 (-> self clock seconds-per-frame)))
+      (seek! (-> self escort-force gp-0 y) 0.0 (* 1.6 (seconds-per-frame)))
       )
     (let ((v1-8 (-> self root))
           (a2-1 (new 'stack-no-clear 'collide-query))
@@ -923,11 +896,10 @@ This commonly includes things such as:
       (set! (-> a2-1 ignore-process1) #f)
       (set! (-> a2-1 ignore-pat) (-> v1-8 pat-ignore-mask))
       (set! (-> a2-1 action-mask) (collide-action solid))
-      (fill-cache-for-shape v1-8 (* (vector-length (-> v1-8 transv)) (-> self clock seconds-per-frame)) a2-1)
+      (fill-cache-for-shape v1-8 (* (vector-length (-> v1-8 transv)) (seconds-per-frame)) a2-1)
       )
     (rigid-body-object-method-37 self)
     (pusher-post)
-    (none)
     )
   )
 
@@ -966,7 +938,6 @@ This commonly includes things such as:
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -1099,19 +1070,15 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior spotlight) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1156,7 +1123,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 560) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 560)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1469,7 +1437,7 @@ This commonly includes things such as:
                  (vector-! (-> self hit-dir) (-> self root trans) (-> (the-as process-drawable a0-14) root trans))
                  (vector-normalize! (-> self hit-dir) 1.0)
                  )
-               ((logtest? (attack-info-mask attacker-velocity) (-> (the-as attack-info s5-1) mask))
+               ((logtest? (attack-mask attacker-velocity) (-> (the-as attack-info s5-1) mask))
                 (vector-normalize-copy! (-> self hit-dir) (-> (the-as attack-info s5-1) attacker-velocity) 1.0)
                 )
                (else
@@ -1478,7 +1446,7 @@ This commonly includes things such as:
                )
              )
            (set! (-> self hit-points)
-                 (- (-> self hit-points) (if (logtest? (attack-info-mask damage) (-> (the-as attack-info s5-1) mask))
+                 (- (-> self hit-points) (if (logtest? (attack-mask damage) (-> (the-as attack-info s5-1) mask))
                                              (-> (the-as attack-info s5-1) damage)
                                              1.0
                                              )
@@ -1520,20 +1488,12 @@ This commonly includes things such as:
           )
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self stand-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual raise-rift-rider)
-    (none)
     )
   :post stad-samos-post
   )
@@ -1580,7 +1540,6 @@ This commonly includes things such as:
     (set! (-> self speed) 12288.0)
     (set! (-> self observed-speed) 0.0)
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (and (nonzero? (-> self state-time)) (>= (- (current-time) (-> self state-time)) (seconds 1)))
@@ -1621,18 +1580,12 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (send-event (handle->process (-> self hud)) 'force-show)
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! (-> self draw art-group data (-> self raise-ship-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self raise-ship-anim))) frames num-frames) -1)
-                       )
-                  0.75
-                  )
+                :num! (seek! max 0.75)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -1640,12 +1593,10 @@ This commonly includes things such as:
       (ja :num! (seek! max 0.75))
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (spawn-energy)
     (stad-samos-post)
-    (none)
     )
   )
 
@@ -1677,7 +1628,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1689,11 +1639,10 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (not (-> self enable-move?))
-      (seek! (-> self speed) 2048.0 (* 12288.0 (-> self clock seconds-per-frame)))
+      (seek! (-> self speed) 2048.0 (* 12288.0 (seconds-per-frame)))
       (let ((v1-4 (-> self nav)))
         (set! (-> v1-4 target-speed) (-> self speed))
         )
@@ -1764,17 +1713,12 @@ This commonly includes things such as:
         (vector-normalize! s4-0 1.0)
         (quaternion-set! s5-0 0.0 (-> s4-0 x) 0.0 (+ 1.0 (-> s4-0 z)))
         (quaternion-normalize! s5-0)
-        (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (-> self clock seconds-per-frame)))
+        (quaternion-slerp! (-> self root quat) (-> self root quat) s5-0 (* 8.0 (seconds-per-frame)))
         )
-      (seek!
-        (-> self observed-speed)
-        (vector-length (-> gp-2 transv))
-        (* 81920.0 (-> self clock seconds-per-frame))
-        )
+      (seek! (-> self observed-speed) (vector-length (-> gp-2 transv)) (* 81920.0 (seconds-per-frame)))
       )
     (spawn-energy)
     (stad-samos-post)
-    (none)
     )
   )
 
@@ -1819,7 +1763,6 @@ This commonly includes things such as:
         )
       )
     (set! (-> self falling?) #t)
-    (none)
     )
   :exit (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1837,7 +1780,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((v1-0 (-> self rift-rider-actor)))
@@ -1848,18 +1790,10 @@ This commonly includes things such as:
           (go empty-state)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1869,23 +1803,13 @@ This commonly includes things such as:
       )
     (vector-reset! (-> self root transv))
     (set! (-> self falling?) #f)
-    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-land-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self knocked-land-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self knocked-land-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (spawn-lightning self)
     (go-virtual move-rift-rider)
-    (none)
     )
   :post (behavior ()
     (if (-> self falling?)
@@ -1901,28 +1825,26 @@ This commonly includes things such as:
         (fill-cache-integrate-and-collide gp-1 (-> gp-1 transv) a2-1 (meters 0))
         )
       (when (logtest? (-> gp-1 status) (collide-status touch-surface))
-        (let ((f0-1 (fmax 0.0 (+ 1.0 (* -11.999999 (-> self clock seconds-per-frame))))))
+        (let ((f0-1 (fmax 0.0 (+ 1.0 (* -11.999999 (seconds-per-frame))))))
           (vector-float*! (-> gp-1 transv) (-> gp-1 transv) f0-1)
           )
         )
       )
     (stad-samos-post)
-    (none)
     )
   )
 
 (defstate die (stad-samos)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('death-end)
-                      (let ((v0-0 (logior (-> self draw status) (draw-control-status no-draw))))
-                        (set! (-> self draw status) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('death-end)
+       (let ((v0-0 (logior (-> self draw status) (draw-control-status no-draw))))
+         (set! (-> self draw status) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status ignore))
@@ -1943,7 +1865,6 @@ This commonly includes things such as:
         )
       )
     (kill-lightning self)
-    (none)
     )
   :code (behavior ()
     (send-event *camera* 'change-target self)
@@ -1955,14 +1876,7 @@ This commonly includes things such as:
       (set! (-> gp-0 y) (lerp 20480.0 40960.0 f30-0))
       )
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! (-> self draw art-group data (-> self death-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1970,14 +1884,7 @@ This commonly includes things such as:
     (if (-> self skel effect)
         (logior! (-> self skel effect flags) (effect-control-flag ecf1))
         )
-    (ja-no-eval :group! (-> self draw art-group data (-> self death-end-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self death-end-anim))) frames num-frames) -1)
-                       )
-                  )
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data (-> self death-end-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -2006,7 +1913,6 @@ This commonly includes things such as:
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
-    (none)
     )
   :post stad-samos-post
   )
@@ -2074,7 +1980,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) #x180) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) #x180)
   (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -2258,7 +2165,6 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   )
 
@@ -2333,13 +2239,12 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (sound-play "stadium-shield")
-    (none)
     )
-  :code (the-as (function none :behavior stadium-barrier) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (!= (-> self flashf) 0.0)
-        (seek! (-> self flashf) 0.0 (* 8.0 (-> self clock seconds-per-frame)))
-        (seek! (-> self colorf) 0.0 (* 1.5 (-> self clock seconds-per-frame)))
+        (seek! (-> self flashf) 0.0 (* 8.0 (seconds-per-frame)))
+        (seek! (-> self colorf) 0.0 (* 1.5 (seconds-per-frame)))
         )
     (let ((a0-2 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'vector))
@@ -2352,7 +2257,6 @@ This commonly includes things such as:
     (if (and (= (-> self colorf) 0.0) (= (-> self flashf) 0.0))
         (go-virtual die)
         )
-    (none)
     )
   )
 
@@ -2360,7 +2264,6 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -2609,75 +2512,50 @@ This commonly includes things such as:
 
 (defstate idle (stad-force-field)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (let ((v1-1 (the-as object (-> event param 1)))
-               (a1-1 (-> event param 0))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((v1-1 (the-as object (-> block param 1)))
+             (a1-1 (-> block param 0))
+             )
+         (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
+           (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
+           (stad-force-field-method-29 self (the-as touching-shapes-entry a1-1))
+           (send-event
+             proc
+             'shove
+             (-> block param 0)
+             (static-attack-info
+               ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
                )
-           (when (!= (-> (the-as attack-info v1-1) id) (-> self incoming-attack-id))
-             (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-1) id))
-             (stad-force-field-method-29 self (the-as touching-shapes-entry a1-1))
-             (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-2 from) (process->ppointer self))
-               (set! (-> a1-2 num-params) 2)
-               (set! (-> a1-2 message) 'shove)
-               (set! (-> a1-2 param 0) (-> event param 0))
-               (let ((v1-9 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
-                 (let* ((a0-7 *game-info*)
-                        (a2-3 (+ (-> a0-7 attack-id) 1))
-                        )
-                   (set! (-> a0-7 attack-id) a2-3)
-                   (set! (-> v1-9 id) a2-3)
-                   )
-                 (set! (-> v1-9 vector quad) (-> self plane quad))
-                 (set! (-> v1-9 shove-back) 4096.0)
-                 (set! (-> v1-9 shove-up) 6144.0)
-                 (set! (-> a1-2 param 1) (the-as uint v1-9))
-                 )
-               (send-event-function proc a1-2)
-               )
-             (when (< (-> self next-message-time) (current-time))
-               (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
-               (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
-               )
+             )
+           (when (< (-> self next-message-time) (current-time))
+             (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+             (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
              )
            )
          )
-        (('touch)
-         (let ((a1-5 (-> event param 0)))
-           (stad-force-field-method-29 self (the-as touching-shapes-entry a1-5))
-           )
-         (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-6 from) (process->ppointer self))
-           (set! (-> a1-6 num-params) 2)
-           (set! (-> a1-6 message) 'shove)
-           (set! (-> a1-6 param 0) (-> event param 0))
-           (let ((v1-23 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up id))))
-             (let* ((a0-20 *game-info*)
-                    (a2-6 (+ (-> a0-20 attack-id) 1))
-                    )
-               (set! (-> a0-20 attack-id) a2-6)
-               (set! (-> v1-23 id) a2-6)
-               )
-             (set! (-> v1-23 vector quad) (-> self plane quad))
-             (set! (-> v1-23 shove-back) 4096.0)
-             (set! (-> v1-23 shove-up) 6144.0)
-             (set! (-> a1-6 param 1) (the-as uint v1-23))
-             )
-           (send-event-function proc a1-6)
-           )
-         (when (< (-> self next-message-time) (current-time))
-           (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
-           (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+       )
+      (('touch)
+       (let ((a1-5 (-> block param 0)))
+         (stad-force-field-method-29 self (the-as touching-shapes-entry a1-5))
+         )
+       (send-event
+         proc
+         'shove
+         (-> block param 0)
+         (static-attack-info
+           ((id (new-attack-id)) (vector (-> self plane)) (shove-back (meters 1)) (shove-up (meters 1.5)))
            )
          )
-        )
+       (when (< (-> self next-message-time) (current-time))
+         (set! (-> self next-message-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
+         (add-process *gui-control* self (gui-channel alert) (gui-action play) "cityv014" -99.0 0)
+         )
+       )
       )
     )
-  :code (the-as (function none :behavior stad-force-field) sleep-code)
+  :code sleep-code
   )
 
 (defmethod run-logic? stad-force-field ((obj stad-force-field))
@@ -2842,8 +2720,8 @@ This commonly includes things such as:
 
 (defstate idle (stad-keira)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go empty-state)
        )
@@ -2851,17 +2729,13 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.25) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.25))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -2903,7 +2777,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -2943,8 +2816,8 @@ This commonly includes things such as:
 
 (defstate idle (stad-brutter)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go empty-state)
        )
@@ -2952,17 +2825,13 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.25)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.25) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.25))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -3004,7 +2873,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -3043,7 +2911,7 @@ This commonly includes things such as:
 
 (defstate idle (brutter-balloon)
   :virtual #t
-  :code (the-as (function none :behavior brutter-balloon) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -3241,7 +3109,7 @@ This commonly includes things such as:
     )
   )
 
-;; jp patch
+;; og:preserve-this jp patch
 (set-subtask-hook!
   *game-info*
   (game-task-node city-defend-stadium-introduction)

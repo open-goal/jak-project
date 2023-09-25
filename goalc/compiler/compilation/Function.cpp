@@ -255,13 +255,12 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (new_func_env->is_asm_func) {
       // don't add return automatically!
       lambda_ts.add_arg(new_func_env->asm_func_return_type);
-    } else if (result && !dynamic_cast<None*>(result)) {
+    } else if (result && !dynamic_cast<None*>(result) && result->type() != TypeSpec("none")) {
       // got a result, so to_gpr it and return it.
 
       RegVal* final_result;
       emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
-      if (result->type() != TypeSpec("none") &&
-          m_ts.lookup_type(result->type())->get_load_size() == 16) {
+      if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
         ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
         final_result = result->to_xmm128(form, new_func_env.get());
         return_reg->change_class(RegClass::INT_128);

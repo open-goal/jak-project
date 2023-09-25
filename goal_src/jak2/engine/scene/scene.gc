@@ -584,6 +584,34 @@
     )
   )
 
+;; og:preserve-this
+(defun pc-upload-subtitle-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
+  "Added PC-port function to send a mt4 texture."
+  (pc-texture-anim-flag start-anim-array dma-buf)
+  (pc-texture-anim-flag upload-generic-vram dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) clut-data)
+    (set! (-> upload-record width) 2)
+    (set! (-> upload-record height) 8)
+    (set! (-> upload-record dest) cbp)
+    (set! (-> upload-record format) (gs-psm ct32))
+    (set! (-> upload-record force-to-gpu) 0)
+    )
+  (&+! (-> dma-buf base) 16)
+
+  (pc-texture-anim-flag upload-generic-vram dma-buf :qwc 1)
+  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
+    (set! (-> upload-record data) image-data)
+    (set! (-> upload-record width) width)
+    (set! (-> upload-record height) height)
+    (set! (-> upload-record dest) tbp)
+    (set! (-> upload-record format) (gs-psm mt4))
+    (set! (-> upload-record force-to-gpu) 1)
+    )
+  (&+! (-> dma-buf base) 16)
+  (pc-texture-anim-flag finish-anim-array dma-buf)
+  )
+
 ;; WARN: Return type mismatch pointer vs none.
 (defun draw-subtitle-image ((arg0 subtitle-image) (arg1 font-context))
   (local-vars (sv-16 pointer) (sv-32 int))
@@ -598,29 +626,40 @@
     (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id subtitle)
                                  )
-      (upload-vram-data s3-0 0 (-> arg0 palette) 2 8)
+      ;; og:preserve-this
+      ;; (upload-vram-data s3-0 0 (-> arg0 palette) 2 8)
       (let ((s0-0 20))
-        (dma-buffer-add-gs-set s3-0
-                               (bitbltbuf (new 'static 'gs-bitbltbuf :dbp #x1 :dbw (shr gp-0 6) :dpsm s0-0))
-                               (trxpos (new 'static 'gs-trxpos))
-                               (trxreg (new 'static 'gs-trxreg :rrw gp-0 :rrh s5-0))
-                               (trxdir (new 'static 'gs-trxdir))
-                               )
-        (let ((t9-2 dma-buffer-add-ref-texture)
-              (a0-13 s3-0)
-              (a2-8 gp-0)
-              (a3-1 s5-0)
-              (t0-1 s0-0)
-              )
-          (t9-2 a0-13 sv-16 (the-as int a2-8) (the-as int a3-1) (the-as gs-psm t0-1))
+        (pc-upload-subtitle-texture
+          s3-0  ;; dma-buf
+          sv-16 ;; image data
+          (-> arg0 palette) ;; clut data
+          (the int (-> arg0 width))
+          (the int (-> arg0 height))
+          1 ;; tbp
+          0 ;; cbp
           )
+        ; (dma-buffer-add-gs-set s3-0
+        ;                        (bitbltbuf (new 'static 'gs-bitbltbuf :dbp #x1 :dbw (shr gp-0 6) :dpsm s0-0))
+        ;                        (trxpos (new 'static 'gs-trxpos))
+        ;                        (trxreg (new 'static 'gs-trxreg :rrw gp-0 :rrh s5-0))
+        ;                        (trxdir (new 'static 'gs-trxdir))
+        ;                        )
+        ; (let ((t9-2 dma-buffer-add-ref-texture)
+        ;       (a0-13 s3-0)
+        ;       (a2-8 gp-0)
+        ;       (a3-1 s5-0)
+        ;       (t0-1 s0-0)
+        ;       )
+        ;   (t9-2 a0-13 sv-16 (the-as int a2-8) (the-as int a3-1) (the-as gs-psm t0-1))
+        ;   )
         (set! sv-32 (+ (log2 (the-as int (+ gp-0 -1))) 1))
         (let ((v1-17 (+ (log2 (the-as int (+ s5-0 -1))) 1)))
           (dma-buffer-add-gs-set s3-0
                                  (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                                  (tex0-1 (new 'static 'gs-tex0 :tbp0 #x1 :tcc #x1 :cld #x1 :psm s0-0 :th v1-17 :tw sv-32 :tbw (shr gp-0 6)))
-                                 (tex1-1 (new 'static 'gs-tex1))
+                                 ;; og:preserve-this added texture filtering for PC port here:
+                                 (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
                                  (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                  (texflush 0)
                                  )
@@ -634,6 +673,15 @@
              (a0-23 (+ a2-23 (-> arg0 width)))
              (a1-33 (+ a3-8 (-> arg0 height)))
              )
+        ;; og:preserve-this
+        (#when PC_PORT
+          (when (not (-> *pc-settings* use-vis?))
+            (let ((corrected-width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) (-> arg0 width)))))
+              (set! a2-23 (+ (- 1793 (the-as int (shr corrected-width 1))) (the int (+ (-> arg1 origin x) (* 0.5 (-> arg1 width))))))
+              (set! a0-23 (+ a2-23 corrected-width))
+              )
+            )
+          )
         (set! (-> (the-as (pointer uint128) v1-28) 0) (-> *subtitle-work* draw-tmpl dma-vif quad))
         (set! (-> (the-as (pointer uint128) v1-28) 1) (-> *subtitle-work* draw-tmpl quad 1))
         (set! (-> (the-as (pointer uint128) v1-28) 2) (-> *subtitle-work* color0 quad))
@@ -651,6 +699,15 @@
              (a0-30 (+ a1-38 (-> arg0 width)))
              (a2-28 (+ a3-11 (-> arg0 height)))
              )
+        ;; og:preserve-this
+        (#when PC_PORT
+          (when (not (-> *pc-settings* use-vis?))
+            (let ((corrected-width (the int (* (-> *pc-settings* aspect-ratio-reciprocal) (-> arg0 width)))))
+              (set! a1-38 (+ (- 1793 (the-as int (shr corrected-width 1))) (the int (+ (-> arg1 origin x) (* 0.5 (-> arg1 width))))))
+              (set! a0-30 (+ a1-38 corrected-width))
+              )
+            )
+          )
         (set! (-> (the-as (pointer uint128) v1-32) 0) (-> *subtitle-work* draw-tmpl dma-vif quad))
         (set! (-> (the-as (pointer uint128) v1-32) 1) (-> *subtitle-work* draw-tmpl quad 1))
         (set! (-> (the-as (pointer uint128) v1-32) 2) (-> *subtitle-work* color1 quad))
@@ -673,7 +730,7 @@
              )
     (let ((v1-9 (-> self skel root-channel 0 frame-group)))
       (when v1-9
-        ;; send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
+        ;; og:preserve-this send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
         (#when PC_PORT
             (if (= (-> self type) scene-player)
                 (send-event (ppointer->process *subtitle2*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
@@ -682,7 +739,8 @@
             (let ((f30-0 (ja-aframe-num 0))
                   (s5-0 (the-as int (-> *setting-control* user-current subtitle-language)))
                   )
-              (if (and (= (the-as language-enum s5-0) (language-enum english)) (= (scf-get-territory) 1))
+              ;; og:preserve-this constant
+              (if (and (= (the-as language-enum s5-0) (language-enum english)) (= (scf-get-territory) GAME_TERRITORY_SCEE))
                   (set! s5-0 7)
                   )
               (dotimes (s4-0 (-> gp-0 length))
@@ -712,14 +770,15 @@
                                  (set! (-> v1-27 scale) 0.6)
                                  )
                                )
-                             (set! (-> s2-0 flags) (font-flags kerning middle left large))
+                             (set! (-> s2-0 flags) (font-flags kerning middle middle-vert large))
                              (+! (-> s2-0 origin x) -1.0)
                              (+! (-> s2-0 origin y) -1.0)
                              (set! (-> s2-0 color) (font-color font-color-39))
                              (+! (-> s2-0 origin x) 1.0)
                              (+! (-> s2-0 origin y) 1.0)
                              (set! (-> s2-0 color) (font-color default))
-                             (set! (-> s2-0 flags) (font-flags shadow kerning middle left large))
+                             (set! (-> s2-0 flags) (font-flags shadow kerning middle middle-vert large))
+                             ;; og:preserve-this
                              (#if PC_PORT
                                   (if (or (!= (-> self type) scene-player)
                                           (not (send-event (ppointer->process *subtitle2*) 'movie (-> (the scene-player self) anim name) s3-0 f30-0)))
@@ -737,10 +796,9 @@
                                (new 'static 'sound-id)
                                )
                              )
-                            ;; TODO - crashes the game
-                            ;; ((subtitle-image)
-                            ;;  (draw-subtitle-image (the-as subtitle-image s3-0) s2-0)
-                            ;;  )
+                            ((subtitle-image)
+                             (draw-subtitle-image (the-as subtitle-image s3-0) s2-0)
+                             )
                             (else
                               (if *debug-segment*
                                   (format *stdcon* "unknown message ~A~%" s3-0)
@@ -807,7 +865,6 @@
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
     (if (and (-> self scene) (nonzero? (-> self anim anim-name)) (not (load-in-progress? *level*)))
@@ -823,7 +880,6 @@
           )
         )
     (set! (-> *ACTOR-bank* birth-max) 1000)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (local-vars (v1-18 symbol) (v1-118 symbol))
@@ -974,7 +1030,6 @@
         )
       )
     (go-virtual play-anim)
-    (none)
     )
   )
 
@@ -993,7 +1048,7 @@
         *screen-filter*
         (new 'static 'vector)
         (new 'static 'vector :w 128.0)
-        (* 30.0 (-> self clock seconds-per-frame))
+        (* 30.0 (seconds-per-frame))
         (bucket-id screen-filter)
         )
       (let ((gp-0 (current-time)))
@@ -1074,14 +1129,13 @@
     (if (and (-> self scene) (-> self scene save))
         (auto-save-user)
         )
-    (none)
     )
   )
 
 (defstate play-anim (scene-player)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('abort)
        (set! (-> self aborted?) #t)
        (set-blackout-frames (seconds 0.2))
@@ -1106,7 +1160,6 @@
     (remove-setting! 'borrow)
     (remove-setting! 'gem)
     (apply-settings *setting-control*)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -1139,7 +1192,6 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (a0-24 symbol))
@@ -1201,7 +1253,6 @@
     (if (and (-> self wait) *target* (focus-test? *target* grabbed))
         (go-virtual release)
         )
-    (none)
     )
   :post (behavior ()
     (when (-> self scene)
@@ -1449,10 +1500,7 @@
            )
           (else
             (set! (-> self targ-speed)
-                  (fmax
-                    -10.0
-                    (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (-> self clock seconds-per-frame))))
-                    )
+                  (fmax -10.0 (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (seconds-per-frame)))))
                   )
             (if (< (- (current-time) (-> self speed-change-time)) (seconds 3))
                 (format
@@ -1486,7 +1534,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1497,7 +1544,8 @@
 (defbehavior scene-player-init scene-player ((arg0 object) (arg1 symbol) (arg2 string))
   "`object` arg can be an `(array scene)`, `pair of scene` or a `scene`"
   (process-entity-set! self (the-as entity #f))
-  (stack-size-set! (-> self main-thread) 768) ;; changed from 512
+  ;; og:preserve-this changed from 512
+  (stack-size-set! (-> self main-thread) 768)
   (set! (-> self root) (new 'process 'trsqv))
   (case (rtype-of arg0)
     ((array)

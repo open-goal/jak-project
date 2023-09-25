@@ -877,7 +877,7 @@
                                                                                                             (set! (-> (the-as (pointer float) (+ a0-95 (* a1-94 4))) 0) (-> obj game-score a1-94))
                                                                                                             )
                                                                                                           (let ((s4-6 (the-as object (+ a0-95 (logand -16 (+ (* v1-153 4) 15))))))
-                                                                                                            (bigmap-method-13 *bigmap*)
+                                                                                                            (compress-all *bigmap*)
                                                                                                             (let ((v1-161 (-> *bigmap* compressed-next-index)))
                                                                                                               (let ((a0-97 (-> (the-as (inline-array game-save-tag) s4-6) 0)))
                                                                                                                 (set! (-> a0-97 elt-type) (game-save-elt bigmap-data))
@@ -1140,7 +1140,7 @@
                                                                                                                                                                                                   (let ((a0-149 (-> (the-as (inline-array game-save-tag) v1-207) 0)))
                                                                                                                                                                                                     (set! (-> a0-149 elt-type) (game-save-elt camera-stick-dir))
                                                                                                                                                                                                     (set! (-> a0-149 elt-count) 0)
-                                                                                                                                                                                                    (set! (-> a0-149 user-uint64) (the-as uint (if (-> *setting-control* user-default unknowng-symbol-00)
+                                                                                                                                                                                                    (set! (-> a0-149 user-uint64) (the-as uint (if (-> *setting-control* user-default camera-stick-dir)
                                                                                                                                                                                                                                                    1
                                                                                                                                                                                                                                                    0
                                                                                                                                                                                                                                                    )
@@ -1355,7 +1355,7 @@
                )
          )
         (((game-save-elt camera-stick-dir))
-         (set! (-> *setting-control* user-default unknowng-symbol-00)
+         (set! (-> *setting-control* user-default camera-stick-dir)
                (= (-> (the-as (inline-array game-save-tag) v1-0) 0 user-uint64) 1)
                )
          )
@@ -1909,7 +1909,7 @@
       (let ((v1-19 gp-1))
         (set! (-> v1-19 height) (the float 20))
         )
-      (set! (-> gp-1 flags) (font-flags shadow kerning middle left large))
+      (set! (-> gp-1 flags) (font-flags shadow kerning middle middle-vert large))
       (when (and (>= 1 (-> *game-info* auto-save-count)) (-> self next-state) (= (-> self next-state name) 'save))
         (print-game-text
           (lookup-text! *common-text* (text-id progress-memcard-saving-data) #f)
@@ -2043,9 +2043,8 @@ auto-save-post
       )
     (format #t "got buffer #x~X~%" (-> self buffer base))
     (go-virtual get-card)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2099,9 +2098,8 @@ auto-save-post
         (go-virtual done)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2145,9 +2143,8 @@ auto-save-post
        )
       )
     (go-virtual done)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2179,9 +2176,8 @@ auto-save-post
       )
     (label cfg-10)
     (go-virtual done)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2238,9 +2234,8 @@ auto-save-post
        )
       )
     (go-virtual done)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2304,16 +2299,15 @@ auto-save-post
     #f
     (label cfg-18)
     (go-virtual done)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate restore (auto-save)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('progress-allowed?)
        #t
        )
@@ -2388,24 +2382,22 @@ auto-save-post
     (apply-settings *setting-control*)
     (sleep-code)
     (go-virtual done)
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
 (defstate error (auto-save)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('progress-allowed?)
-                      #t
-                      )
-                     (('die)
-                      (the-as symbol (deactivate self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('progress-allowed?)
+       #t
+       )
+      (('die)
+       (deactivate self)
+       )
+      )
     )
   :code (behavior ((arg0 mc-status-code))
     (if (-> self buffer)
@@ -2501,9 +2493,8 @@ auto-save-post
            )
        )
       )
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; failed to figure out what this is:
@@ -2534,9 +2525,8 @@ auto-save-post
       (mem-copy! (the-as pointer gp-0) (the-as pointer (-> self info)) 300)
       (send-event (handle->process (-> self notify)) 'notify 'done (mc-status-code ok) gp-0)
       )
-    (none)
     )
-  :post (the-as (function none :behavior auto-save) auto-save-post)
+  :post auto-save-post
   )
 
 ;; definition for function auto-save-command

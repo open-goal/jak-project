@@ -91,21 +91,31 @@ bool convert_to_expressions(
         needs_cast = true;
 
       } else {
-        bool found_early_return = false;
-        for (auto e : new_entries) {
-          e->apply([&](FormElement* elt) {
-            auto as_ret = dynamic_cast<ReturnElement*>(elt);
-            if (as_ret) {
-              found_early_return = true;
+        // note : a return type of "object" will accept ANYTHING as a return value
+        // "object" is the parent type of everything, including "none" (as of sep 2023)
+        // if a function wants to return an object, we can safely discard the cast
+        // since there is no possible level of polymorphism at this highest level.
+        if (f.type.last_arg() != TypeSpec("object")) {
+          bool found_early_return = false;
+          for (auto e : new_entries) {
+            e->apply([&](FormElement* elt) {
+              auto as_ret = dynamic_cast<ReturnElement*>(elt);
+              if (as_ret) {
+                found_early_return = true;
+              }
+            });
+            if (found_early_return) {
+              break;
             }
-          });
-          if (found_early_return) {
-            break;
           }
-        }
 
-        if (!found_early_return && f.type.last_arg() != return_type) {
-          needs_cast = true;
+          // the return value of this function is not an exact match
+          // we cast it to avoid complicated issues with polymorphism (e.g. methods)
+          // we don't run this if we find a (return statement for unknown reasons
+          // TODO : remove this and check?
+          if (!found_early_return && f.type.last_arg() != return_type) {
+            needs_cast = true;
+          }
         }
       }
 
@@ -124,8 +134,10 @@ bool convert_to_expressions(
     } else {
       // or just get all the expressions
       new_entries = stack.rewrite(pool, f.ir2.env);
-      new_entries.push_back(
-          pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NONE)));
+      if (!f.ir2.skip_final_none) {
+        new_entries.push_back(pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::NONE)));
+      }
     }
 
     // if we are a totally empty function, insert a placeholder so we don't have to handle

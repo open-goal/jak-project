@@ -9,7 +9,6 @@
 #include "common/util/Timer.h"
 
 #include "game/graphics/opengl_renderer/loader/common.h"
-#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/TexturePool.h"
 
 class Loader {
@@ -24,6 +23,7 @@ class Loader {
   std::optional<MercRef> get_merc_model(const char* model_name);
   const tfrag3::Level& load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
+  void set_active_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
   void draw_debug_window();
 
@@ -53,6 +53,7 @@ class Loader {
   std::unordered_map<std::string, std::vector<MercRef>> m_all_merc_models;
 
   std::vector<std::string> m_desired_levels;
+  std::vector<std::string> m_active_levels;
   std::vector<std::unique_ptr<LoaderStage>> m_loader_stages;
 
   fs::path m_base_path;

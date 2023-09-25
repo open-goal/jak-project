@@ -22,10 +22,12 @@ class DirectRenderer : public BucketRenderer {
  public:
   DirectRenderer(const std::string& name, int my_id, int batch_size);
   void init_shaders(ShaderLibrary& sl) override;
-  ~DirectRenderer();
+  void draw_debug_window() override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   virtual void pre_render() {}
   virtual void post_render() {}
+  ~DirectRenderer();
+
   /*!
    * Render directly from _VIF_ data.
    * You can optionally provide two vif tags that come in front of data.
@@ -49,16 +51,9 @@ class DirectRenderer : public BucketRenderer {
   void reset_state();
 
   /*!
-   * If you don't use the render interface, call this first to set up OpenGL.
-   */
-  void setup_common_state(SharedRenderState* render_state);
-
-  /*!
    * If you don't use the render interface, call this at the very end.
    */
   void flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof);
-
-  void draw_debug_window() override;
 
   void hack_disable_blend() {
     m_blend_state.a = GsAlpha::BlendMode::SOURCE;
@@ -85,6 +80,12 @@ class DirectRenderer : public BucketRenderer {
   void handle_uv_packed(const u8* data);
   void handle_rgbaq(u64 val);
   void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void lookup_textures_again(SharedRenderState* render_state);
+  void reinitialize_gl_state() {
+    m_prim_gl_state_needs_gl_update = true;
+    m_test_state_needs_gl_update = true;
+    m_blend_state_needs_gl_update = true;
+  }
 
  protected:
   virtual void handle_frame(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
@@ -191,6 +192,7 @@ class DirectRenderer : public BucketRenderer {
 
   // vertices will reference these texture states
   TextureState m_buffered_tex_state[TEXTURE_STATE_COUNT];
+  bool m_buffered_tex_state_currently_bound[TEXTURE_STATE_COUNT] = {0};
   int m_next_free_tex_state = 0;
 
   // this texture state mirrors the current GS register.

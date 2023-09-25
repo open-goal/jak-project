@@ -342,32 +342,11 @@
   (new 'stack-no-clear 'vector)
   (cond
     (arg2
-      (let ((t9-0 sp-launch-particles-var)
-            (a0-1 *sp-particle-system-2d*)
-            (a1-1 (-> *part-id-table* 3066))
-            (a2-1 *launch-matrix*)
-            )
-        (set! (-> a2-1 trans quad) (-> arg0 quad))
-        (t9-0 a0-1 a1-1 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-1 sp-launch-particles-var)
-            (a0-2 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 3065))
-            (a2-2 *launch-matrix*)
-            )
-        (set! (-> a2-2 trans quad) (-> arg0 quad))
-        (t9-1 a0-2 a1-2 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 3066) arg0)
+      (launch-particles (-> *part-id-table* 3065) arg0)
       )
     (else
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-3 *sp-particle-system-2d*)
-            (a1-3 (-> *part-id-table* 3067))
-            (a2-3 *launch-matrix*)
-            )
-        (set! (-> a2-3 trans quad) (-> arg0 quad))
-        (t9-2 a0-3 a1-3 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 3067) arg0)
       )
     )
   0
@@ -789,10 +768,9 @@
 ;; failed to figure out what this is:
 (defstate attack (fort-turret)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior fort-turret) enemy-event-handler)
+  :event enemy-event-handler
   :exit (behavior ()
     (set! (-> self flash-state) #f)
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
@@ -811,14 +789,10 @@
         (go-virtual hostile)
         )
     (fort-turret-method-139 self)
-    (none)
     )
   :code (behavior ()
     (sound-play "turret-up")
-    (ja-no-eval :group! fort-turret-rise-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim fort-turret-rise-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! fort-turret-rise-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -839,10 +813,7 @@
               (fort-turret-method-142 self #t gp-2)
               )
             )
-          (ja-no-eval :group! fort-turret-shoot-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim fort-turret-shoot-ja) frames num-frames) -1)))
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! fort-turret-shoot-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -866,7 +837,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (when (-> self flash-state)
@@ -874,17 +844,15 @@
       (set-forrescb-turret-flash! (the-as int (-> self flash-index)))
       )
     (enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate sweep (fort-turret)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior fort-turret) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
@@ -904,13 +872,11 @@
              )
         (go-virtual attack)
         )
-    (none)
     )
   :code (behavior ()
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior fort-turret) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -926,7 +892,6 @@
     (set! (-> self desired-twist) 0.0)
     (ja-channel-push! 1 (seconds 0.5))
     (ja :group! fort-turret-idle-ja)
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
@@ -949,11 +914,9 @@
     (if (and (< (fabs (-> self gun-twist)) 364.0889) (< (fabs (-> self gun-tilt)) 364.0889))
         (go-virtual sweep)
         )
-    (none)
     )
   :code (behavior ()
     (sleep-code)
-    (none)
     )
   )
 
@@ -1006,7 +969,6 @@
     0
     (set! (-> self hit-points) 0)
     0
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -1041,11 +1003,9 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (track-target! self)
-    (none)
     )
   )
 

@@ -29,7 +29,7 @@
    (num-unlocked-secrets                 int32          :offset-assert 120)
    (game-options-item-selected           int32          :offset-assert 124)
    (game-options-item-picked             basic          :offset-assert 128)
-   (game-options-last-move               uint64         :offset-assert 136)
+   (game-options-last-move               time-frame     :offset-assert 136)
    (game-options-vibrations              symbol         :offset-assert 144)
    (game-options-subtitles               symbol         :offset-assert 148)
    (game-options-language-index          int32          :offset-assert 152)
@@ -41,7 +41,7 @@
    (graphic-options-progressive-scan     symbol         :offset-assert 180)
    (qr-options-item-selected             int32          :offset-assert 184)
    (qr-options-item-picked               basic          :offset-assert 188)
-   (qr-options-last-move                 uint64         :offset-assert 192)
+   (qr-options-last-move                 time-frame     :offset-assert 192)
    (qr-options-restart                   basic          :offset-assert 200)
    (qr-options-quit                      basic          :offset-assert 204)
    (total-num-tasks                      int32          :offset-assert 208)
@@ -49,7 +49,7 @@
    (stereo-mode-backup                   int32          :offset-assert 216)
    (secrets-unlocked                     symbol         :offset-assert 220)
    (missions-total-spacing               float          :offset-assert 224)
-   (clear-screen                         basic          :offset-assert 228)
+   (clear-screen                         symbol         :offset-assert 228)
    )
   :method-count-assert 9
   :size-assert         #xe8
@@ -224,7 +224,7 @@
         (&-> *setting-control* user-default dialog-volume)
         )
   (set! (-> (the-as menu-missions-option (-> *missions-options* options 0)) task-line-index) 0)
-  (the-as object (set-setting-by-param *setting-control* 'extra-bank '((force2 menu1)) 0 0))
+  (set-setting-by-param *setting-control* 'extra-bank '((force2 menu1)) 0 0)
   )
 
 ;; definition of type hud-ring-cell
@@ -338,7 +338,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (vector<-cspace!
@@ -419,7 +418,6 @@
       )
     (quaternion-normalize! (-> self root quat))
     (ja-post)
-    (none)
     )
   )
 
@@ -480,7 +478,7 @@
     (process-spawn hud-ring-cell 12 (* -2.0 f30-0) 8 :to self)
     (process-spawn hud-ring-cell 11 (* -1.0 f30-0) 9 :to self)
     )
-  (bigmap-method-14 *bigmap*)
+  (enable-drawing *bigmap*)
   (go-virtual come-in)
   )
 
@@ -546,7 +544,7 @@
 ;; definition for method 10 of type progress
 (defmethod deactivate progress ((obj progress))
   (remove-setting-by-arg0 *setting-control* 'extra-bank)
-  (bigmap-method-15 *bigmap*)
+  (disable-drawing *bigmap*)
   (set! (-> *blit-displays-work* menu-mode) #f)
   (set! *progress-process* (the-as (pointer progress) #f))
   (enable-level-text-file-loading)
@@ -1069,10 +1067,10 @@
 (defmethod respond-to-cpad progress ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (when (-> obj current-options)
-    (let ((s5-0 (-> obj current-options options)))
-      (when (and s5-0 (= (-> obj menu-transition) 0.0))
+    (let ((option-array (-> obj current-options options)))
+      (when (and option-array (= (-> obj menu-transition) 0.0))
         (respond-progress
-          (the-as menu-option (-> s5-0 (-> obj option-index)))
+          (the-as menu-option (-> option-array (-> obj option-index)))
           obj
           (and (= (-> obj menu-transition) 0.0) (-> obj selected-option))
           )
@@ -1098,7 +1096,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1119,7 +1117,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1441,8 +1439,8 @@
           (set! (-> v1-30 height) (the float 30))
           )
         (set! (-> sv-144 flags) (if (= (-> *setting-control* user-default language) (language-enum japanese))
-                                    (font-flags middle left large)
-                                    (font-flags kerning middle left large)
+                                    (font-flags middle middle-vert large)
+                                    (font-flags kerning middle middle-vert large)
                                     )
               )
         (let ((s3-0 sv-144))
@@ -1480,7 +1478,7 @@
   (when (and (< 0.8 (-> self anim-frame)) (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
     (cond
       ((>= (-> self pos-transition) 0.38)
-       (bigmap-method-11 *bigmap* 1792 1840 2304 2256)
+       (draw *bigmap* 1792 1840 2304 2256)
        )
       (else
         (let ((s4-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 21)))
@@ -1491,7 +1489,7 @@
           (let ((s5-1 (new 'stack-no-clear 'vector4w)))
             (set! (-> s5-1 quad) (the-as uint128 0))
             (if (and (transform-point-qword! gp-1 s4-2) (transform-point-qword! s5-1 s3-1))
-                (bigmap-method-11 *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
+                (draw *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
                 )
             )
           )
@@ -1509,7 +1507,6 @@
   :enter (behavior ()
     (sound-play "ring-appear")
     (set! (-> self pos-transition) 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (if (= (-> *progress-state* starting-state) 'main)
@@ -1534,7 +1531,6 @@
           (go-virtual idle)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1543,221 +1539,216 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior progress) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate idle (progress)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('notify)
-         (cond
-           ((= (-> event param 0) 'done)
-            (let ((t9-0 format)
-                  (a0-3 #t)
-                  (a1-1 "DONE NOTIFY: ~S ~S~%")
-                  (v1-3 (the-as mc-status-code (-> event param 1)))
-                  )
-              (t9-0
-                a0-3
-                a1-1
-                (cond
-                  ((= v1-3 (mc-status-code bad-version))
-                   "bad-version"
-                   )
-                  ((= v1-3 (mc-status-code no-save))
-                   "no-save"
-                   )
-                  ((= v1-3 (mc-status-code no-last))
-                   "no-last"
-                   )
-                  ((= v1-3 (mc-status-code no-space))
-                   "no-space"
-                   )
-                  ((= v1-3 (mc-status-code internal-error))
-                   "internal-error"
-                   )
-                  ((= v1-3 (mc-status-code no-memory))
-                   "no-memory"
-                   )
-                  ((= v1-3 (mc-status-code bad-handle))
-                   "bad-handle"
-                   )
-                  ((= v1-3 (mc-status-code busy))
-                   "busy"
-                   )
-                  ((= v1-3 (mc-status-code write-error))
-                   "write-error"
-                   )
-                  ((= v1-3 (mc-status-code read-error))
-                   "read-error"
-                   )
-                  ((= v1-3 (mc-status-code no-card))
-                   "no-card"
-                   )
-                  ((= v1-3 (mc-status-code no-format))
-                   "no-format"
-                   )
-                  ((= v1-3 (mc-status-code ok))
-                   "ok"
-                   )
-                  ((= v1-3 (mc-status-code no-process))
-                   "no-process"
-                   )
-                  ((= v1-3 (mc-status-code no-auto-save))
-                   "no-auto-save"
-                   )
-                  ((= v1-3 (mc-status-code no-file))
-                   "no-file"
-                   )
-                  ((= v1-3 (mc-status-code format-failed))
-                   "format-failed"
-                   )
-                  ((= v1-3 (mc-status-code new-game))
-                   "new-game"
-                   )
-                  (else
-                    "*unknown*"
-                    )
-                  )
-                (symbol->string (-> self current))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (cond
+         ((= (-> block param 0) 'done)
+          (let ((t9-0 format)
+                (a0-3 #t)
+                (a1-1 "DONE NOTIFY: ~S ~S~%")
+                (v1-3 (the-as mc-status-code (-> block param 1)))
                 )
+            (t9-0
+              a0-3
+              a1-1
+              (cond
+                ((= v1-3 (mc-status-code bad-version))
+                 "bad-version"
+                 )
+                ((= v1-3 (mc-status-code no-save))
+                 "no-save"
+                 )
+                ((= v1-3 (mc-status-code no-last))
+                 "no-last"
+                 )
+                ((= v1-3 (mc-status-code no-space))
+                 "no-space"
+                 )
+                ((= v1-3 (mc-status-code internal-error))
+                 "internal-error"
+                 )
+                ((= v1-3 (mc-status-code no-memory))
+                 "no-memory"
+                 )
+                ((= v1-3 (mc-status-code bad-handle))
+                 "bad-handle"
+                 )
+                ((= v1-3 (mc-status-code busy))
+                 "busy"
+                 )
+                ((= v1-3 (mc-status-code write-error))
+                 "write-error"
+                 )
+                ((= v1-3 (mc-status-code read-error))
+                 "read-error"
+                 )
+                ((= v1-3 (mc-status-code no-card))
+                 "no-card"
+                 )
+                ((= v1-3 (mc-status-code no-format))
+                 "no-format"
+                 )
+                ((= v1-3 (mc-status-code ok))
+                 "ok"
+                 )
+                ((= v1-3 (mc-status-code no-process))
+                 "no-process"
+                 )
+                ((= v1-3 (mc-status-code no-auto-save))
+                 "no-auto-save"
+                 )
+                ((= v1-3 (mc-status-code no-file))
+                 "no-file"
+                 )
+                ((= v1-3 (mc-status-code format-failed))
+                 "format-failed"
+                 )
+                ((= v1-3 (mc-status-code new-game))
+                 "new-game"
+                 )
+                (else
+                  "*unknown*"
+                  )
+                )
+              (symbol->string (-> self current))
               )
-            (case (-> self current)
-              (('saving)
-               (cond
-                 ((= (-> self state-stack 0) 'title)
-                  (let ((gp-1 (-> *setting-control* user-default auto-save)))
-                    (sound-volume-off)
-                    (let ((v0-0 (progress-intro-start (logtest? (-> *game-info* purchase-secrets) (game-secrets hero-mode)))))
-                      (set! (-> *setting-control* user-default auto-save) gp-1)
-                      v0-0
-                      )
+            )
+          (case (-> self current)
+            (('saving)
+             (cond
+               ((= (-> self state-stack 0) 'title)
+                (let ((gp-1 (-> *setting-control* user-default auto-save)))
+                  (sound-volume-off)
+                  (let ((v0-0 (progress-intro-start (logtest? (-> *game-info* purchase-secrets) (game-secrets hero-mode)))))
+                    (set! (-> *setting-control* user-default auto-save) gp-1)
+                    v0-0
                     )
                   )
-                 (else
-                   (pop-state self)
-                   )
+                )
+               (else
+                 (pop-state self)
                  )
                )
-              (('formatting)
-               (set-next-state self 'creating 0)
-               )
-              (('creating)
-               (if (= (-> self state-stack 0) 'title)
-                   (set-next-state self 'select-save-title 0)
-                   (set-next-state self 'select-save 0)
-                   )
-               )
-              )
+             )
+            (('formatting)
+             (set-next-state self 'creating 0)
+             )
+            (('creating)
+             (if (= (-> self state-stack 0) 'title)
+                 (set-next-state self 'select-save-title 0)
+                 (set-next-state self 'select-save 0)
+                 )
+             )
             )
-           ((= (-> event param 0) 'error)
-            (let ((t9-7 format)
-                  (a0-18 #t)
-                  (a1-5 "ERROR NOTIFY: ~S ~S ~S~%")
-                  (v1-19 (the-as mc-status-code (-> event param 1)))
-                  )
-              (t9-7
-                a0-18
-                a1-5
-                (cond
-                  ((= v1-19 (mc-status-code bad-version))
-                   "bad-version"
-                   )
-                  ((= v1-19 (mc-status-code no-save))
-                   "no-save"
-                   )
-                  ((= v1-19 (mc-status-code no-last))
-                   "no-last"
-                   )
-                  ((= v1-19 (mc-status-code no-space))
-                   "no-space"
-                   )
-                  ((= v1-19 (mc-status-code internal-error))
-                   "internal-error"
-                   )
-                  ((= v1-19 (mc-status-code no-memory))
-                   "no-memory"
-                   )
-                  ((= v1-19 (mc-status-code bad-handle))
-                   "bad-handle"
-                   )
-                  ((= v1-19 (mc-status-code busy))
-                   "busy"
-                   )
-                  ((= v1-19 (mc-status-code write-error))
-                   "write-error"
-                   )
-                  ((= v1-19 (mc-status-code read-error))
-                   "read-error"
-                   )
-                  ((= v1-19 (mc-status-code no-card))
-                   "no-card"
-                   )
-                  ((= v1-19 (mc-status-code no-format))
-                   "no-format"
-                   )
-                  ((= v1-19 (mc-status-code ok))
-                   "ok"
-                   )
-                  ((= v1-19 (mc-status-code no-process))
-                   "no-process"
-                   )
-                  ((= v1-19 (mc-status-code no-auto-save))
-                   "no-auto-save"
-                   )
-                  ((= v1-19 (mc-status-code no-file))
-                   "no-file"
-                   )
-                  ((= v1-19 (mc-status-code format-failed))
-                   "format-failed"
-                   )
-                  ((= v1-19 (mc-status-code new-game))
-                   "new-game"
-                   )
-                  (else
-                    "*unknown*"
-                    )
-                  )
-                (-> self current)
-                (-> self next)
+          )
+         ((= (-> block param 0) 'error)
+          (let ((t9-7 format)
+                (a0-18 #t)
+                (a1-5 "ERROR NOTIFY: ~S ~S ~S~%")
+                (v1-19 (the-as mc-status-code (-> block param 1)))
                 )
-              )
-            (case (-> event param 1)
-              ((14)
-               (set-next-state self 'insufficient-space 0)
-               )
-              (else
-                (case (-> self current)
-                  (('formatting 'format-card)
-                   (set-next-state self 'error-formatting 0)
-                   )
-                  (('creating)
-                   (set-next-state self 'error-creating 0)
-                   )
-                  (('saving 'select-save 'select-save-title 'select-save-title-hero)
-                   (set-next-state self 'error-saving 0)
-                   )
-                  (('loading 'select-load)
-                   (set-next-state self 'error-loading 0)
-                   )
+            (t9-7
+              a0-18
+              a1-5
+              (cond
+                ((= v1-19 (mc-status-code bad-version))
+                 "bad-version"
+                 )
+                ((= v1-19 (mc-status-code no-save))
+                 "no-save"
+                 )
+                ((= v1-19 (mc-status-code no-last))
+                 "no-last"
+                 )
+                ((= v1-19 (mc-status-code no-space))
+                 "no-space"
+                 )
+                ((= v1-19 (mc-status-code internal-error))
+                 "internal-error"
+                 )
+                ((= v1-19 (mc-status-code no-memory))
+                 "no-memory"
+                 )
+                ((= v1-19 (mc-status-code bad-handle))
+                 "bad-handle"
+                 )
+                ((= v1-19 (mc-status-code busy))
+                 "busy"
+                 )
+                ((= v1-19 (mc-status-code write-error))
+                 "write-error"
+                 )
+                ((= v1-19 (mc-status-code read-error))
+                 "read-error"
+                 )
+                ((= v1-19 (mc-status-code no-card))
+                 "no-card"
+                 )
+                ((= v1-19 (mc-status-code no-format))
+                 "no-format"
+                 )
+                ((= v1-19 (mc-status-code ok))
+                 "ok"
+                 )
+                ((= v1-19 (mc-status-code no-process))
+                 "no-process"
+                 )
+                ((= v1-19 (mc-status-code no-auto-save))
+                 "no-auto-save"
+                 )
+                ((= v1-19 (mc-status-code no-file))
+                 "no-file"
+                 )
+                ((= v1-19 (mc-status-code format-failed))
+                 "format-failed"
+                 )
+                ((= v1-19 (mc-status-code new-game))
+                 "new-game"
+                 )
+                (else
+                  "*unknown*"
                   )
                 )
+              (-> self current)
+              (-> self next)
               )
             )
-           )
+          (case (-> block param 1)
+            ((14)
+             (set-next-state self 'insufficient-space 0)
+             )
+            (else
+              (case (-> self current)
+                (('formatting 'format-card)
+                 (set-next-state self 'error-formatting 0)
+                 )
+                (('creating)
+                 (set-next-state self 'error-creating 0)
+                 )
+                (('saving 'select-save 'select-save-title 'select-save-title-hero)
+                 (set-next-state self 'error-saving 0)
+                 )
+                (('loading 'select-load)
+                 (set-next-state self 'error-loading 0)
+                 )
+                )
+              )
+            )
+          )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self menu-transition) 1.0)
-    (none)
     )
   :trans progress-trans
   :code (behavior ()
@@ -1766,7 +1757,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post progress-post
   )
@@ -1780,7 +1770,6 @@
       (set! (-> v1-2 progress-interp-dest) 0.0)
       (set! (-> v1-2 progress-interp-speed) 0.022222223)
       )
-    (none)
     )
   :trans (behavior ()
     (seek! (-> self anim-frame) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
@@ -1796,7 +1785,6 @@
         )
       )
     (set-ring-position self)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -1810,16 +1798,15 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior progress) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate gone (progress)
   :virtual #t
   :code (behavior ()
-    (bigmap-method-15 *bigmap*)
+    (disable-drawing *bigmap*)
     (set! (-> *blit-displays-work* menu-mode) #f)
     (while (or (-> *blit-displays-work* screen-copied) (nonzero? (-> *blit-displays-work* count-down)))
       (suspend)
@@ -1829,7 +1816,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -2510,7 +2496,7 @@
          ((and (cpad-pressed? 0 confirm) (!= (-> arg0 current) 'none))
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-          (set! (-> *progress-state* clear-screen) (the-as basic #t))
+          (set! (-> *progress-state* clear-screen) #t)
           (cond
             ((-> s5-0 0)
              (sound-play "generic-beep")
@@ -2524,7 +2510,7 @@
              )
             (else
               (sound-play "generic-beep")
-              (set! (-> obj last-move) (the-as uint (current-time)))
+              (set! (-> obj last-move) (current-time))
               (set! (-> arg0 current) 'none)
               (set-next-state arg0 s3-0 0)
               )
@@ -2983,9 +2969,9 @@
       )
     (cond
       ((or (cpad-pressed? 0 up l-analog-up)
-           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (> (-> obj task-index) 0)
          (set! s4-0 #t)
          (+! (-> obj task-index) -1)
@@ -2993,9 +2979,9 @@
          )
        )
       ((or (cpad-pressed? 0 down l-analog-down)
-           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (let ((s3-0 -1))
          (dotimes (s2-0 (-> *game-info* play-list length))
            (let* ((v1-41 (-> *game-info* play-list s2-0))
@@ -3091,9 +3077,9 @@
         )
       (cond
         ((or (cpad-pressed? 0 up l-analog-up)
-             (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
-         (set! (-> obj last-move) (the-as uint (current-time)))
+         (set! (-> obj last-move) (current-time))
          (when (> (-> obj task-index) 0)
            (set! gp-0 #t)
            (+! (-> obj task-index) -1)
@@ -3101,9 +3087,9 @@
            )
          )
         ((or (cpad-pressed? 0 down l-analog-down)
-             (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
-         (set! (-> obj last-move) (the-as uint (current-time)))
+         (set! (-> obj last-move) (current-time))
          (when (< (-> obj task-index) (+ (length s4-0) -1))
            (set! gp-0 #t)
            (+! (-> obj task-index) 1)
@@ -3138,7 +3124,7 @@
 ;; definition for method 9 of type menu-bigmap-option
 (defmethod respond-progress menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
-  (bigmap-method-12 *bigmap*)
+  (handle-cpad-inputs *bigmap*)
   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
   0
@@ -3158,9 +3144,9 @@
   (let ((s5-0 #f))
     (cond
       ((or (cpad-pressed? 0 up l-analog-up)
-           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (> (-> obj task-line-index) 0)
          (set! s5-0 #t)
          (+! (-> obj task-line-index) -1)
@@ -3168,9 +3154,9 @@
          )
        )
       ((or (cpad-pressed? 0 down l-analog-down)
-           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (< (-> obj task-line-index) (+ (-> *progress-state* total-num-tasks) -1))
          (+! (-> obj task-line-index) 1)
          (set! (-> arg0 sliding-height) 1.0)
@@ -3217,12 +3203,10 @@
     (let ((s5-0 #f))
       (cond
         ((or (cpad-pressed? 0 right l-analog-right)
-             (and (cpad-hold? 0 right l-analog-right)
-                  (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2))
-                  )
+             (and (cpad-hold? 0 right l-analog-right) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
          (when (< 1 (get-num-highscores))
-           (set! (-> obj last-move) (the-as uint (current-time)))
+           (set! (-> obj last-move) (current-time))
            (set! s5-0 #t)
            (set! (-> obj prev-page-index) (-> obj page-index))
            (set! (-> obj page-index) (get-next-highscore (-> obj page-index)))
@@ -3232,10 +3216,10 @@
            )
          )
         ((or (cpad-pressed? 0 left l-analog-left)
-             (and (cpad-hold? 0 left l-analog-left) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 left l-analog-left) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
          (when (< 1 (get-num-highscores))
-           (set! (-> obj last-move) (the-as uint (current-time)))
+           (set! (-> obj last-move) (current-time))
            (set! (-> obj prev-page-index) (-> obj page-index))
            (set! (-> obj page-index) (get-prev-highscore (-> obj page-index)))
            (set! s5-0 #t)
@@ -3312,9 +3296,9 @@
           (else
             (cond
               ((or (cpad-pressed? 0 down l-analog-down)
-                   (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+                   (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
                    )
-               (set! (-> obj last-move) (the-as uint (current-time)))
+               (set! (-> obj last-move) (current-time))
                (when (< (-> obj item-index) s2-0)
                  (set! (-> obj prev-item-index) (-> obj item-index))
                  (set! s5-2 #t)
@@ -3324,9 +3308,9 @@
                  )
                )
               ((or (cpad-pressed? 0 up l-analog-up)
-                   (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+                   (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
                    )
-               (set! (-> obj last-move) (the-as uint (current-time)))
+               (set! (-> obj last-move) (current-time))
                (when (< s3-0 (-> obj item-index))
                  (set! (-> obj prev-item-index) (-> obj item-index))
                  (+! (-> obj item-index) -1)
@@ -3395,10 +3379,10 @@
        (cond
          ((or (cpad-pressed? 0 down l-analog-down)
               (and (cpad-hold? 0 down l-analog-down)
-                   (>= (- (current-time) (the-as int (-> *progress-state* game-options-last-move))) (seconds 0.5))
+                   (>= (- (current-time) (-> *progress-state* game-options-last-move)) (seconds 0.5))
                    )
               )
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (cond
             ((< (-> *progress-state* game-options-item-selected) 3)
              (+! (-> *progress-state* game-options-item-selected) 1)
@@ -3411,10 +3395,10 @@
           )
          ((or (cpad-pressed? 0 up l-analog-up)
               (and (cpad-hold? 0 up l-analog-up)
-                   (>= (- (current-time) (the-as int (-> *progress-state* game-options-last-move))) (seconds 0.5))
+                   (>= (- (current-time) (-> *progress-state* game-options-last-move)) (seconds 0.5))
                    )
               )
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (if (> (-> *progress-state* game-options-item-selected) 0)
               (+! (-> *progress-state* game-options-item-selected) -1)
               (set! (-> *progress-state* game-options-item-selected) 3)
@@ -3423,7 +3407,7 @@
          ((cpad-pressed? 0 confirm)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (set! (-> *progress-state* game-options-item-picked) (the-as basic #t))
           (sound-play "generic-beep")
           )
@@ -3832,10 +3816,10 @@
      (cond
        ((or (cpad-pressed? 0 down l-analog-down)
             (and (cpad-hold? 0 down l-analog-down)
-                 (>= (- (current-time) (the-as int (-> *progress-state* qr-options-last-move))) (seconds 0.5))
+                 (>= (- (current-time) (-> *progress-state* qr-options-last-move)) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (cond
           ((< (-> *progress-state* qr-options-item-selected) 1)
            (+! (-> *progress-state* qr-options-item-selected) 1)
@@ -3853,10 +3837,10 @@
         )
        ((or (cpad-pressed? 0 up l-analog-up)
             (and (cpad-hold? 0 up l-analog-up)
-                 (>= (- (current-time) (the-as int (-> *progress-state* qr-options-last-move))) (seconds 0.5))
+                 (>= (- (current-time) (-> *progress-state* qr-options-last-move)) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (cond
           ((> (-> *progress-state* qr-options-item-selected) 0)
            (+! (-> *progress-state* qr-options-item-selected) -1)
@@ -3873,7 +3857,7 @@
        ((cpad-pressed? 0 confirm)
         (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
         (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (set! (-> *progress-state* qr-options-item-picked) (the-as basic #t))
         (set! (-> arg0 selected-option) #t)
         (sound-play "generic-beep")

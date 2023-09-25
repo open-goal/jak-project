@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/square-platform-ag.gc")
-
 ;; definition of type square-platform
 (deftype square-platform (baseplat)
   ((plat-id           int32                            :offset-assert 228)
@@ -309,8 +307,8 @@
 
 ;; failed to figure out what this is:
 (defstate square-platform-lowered (square-platform)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (if (and (= (-> proc type) square-platform-master)
                 (= (-> (the-as square-platform-master proc) plat-id) (-> self plat-id))
@@ -326,28 +324,25 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate square-platform-rising (square-platform)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('untrigger)
-                      (go square-platform-lowering)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      (('untrigger)
+       (go square-platform-lowering)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self start-splash-time) 0)
     (set! (-> self splash-counter) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (set! (-> self pos-u)
@@ -360,65 +355,59 @@
       (go square-platform-raised)
       )
     (square-platform-method-27 self #t)
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior square-platform) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
 (defstate square-platform-raised (square-platform)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('untrigger)
-                      (go square-platform-lowering)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      (('untrigger)
+       (go square-platform-lowering)
+       )
+      )
     )
-  :trans (the-as (function none :behavior square-platform) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self pos-u) 1.0)
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior square-platform) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
 (defstate square-platform-lowering (square-platform)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('trigger)
-                      (go square-platform-rising)
-                      )
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      (('trigger)
+       (go square-platform-rising)
+       )
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self start-splash-time) 0)
     (set! (-> self splash-counter) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (set! (-> self pos-u)
@@ -431,16 +420,14 @@
       (go square-platform-lowered)
       )
     (square-platform-method-27 self #f)
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior square-platform) plat-post)
+  :post plat-post
   )
 
 ;; definition for method 10 of type square-platform
@@ -552,8 +539,8 @@
 
 ;; failed to figure out what this is:
 (defstate square-platform-master-idle (square-platform-master)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (when (= (-> proc type) square-platform-button)
          (set! (-> self button-id) (-> (the-as square-platform-button proc) button-id))
@@ -568,7 +555,6 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -661,12 +647,10 @@
           )
       (set! (-> self plat-id-dir) gp-0)
       )
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :trans (behavior ()
     (when (completed? (-> self ticker))
@@ -707,13 +691,11 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 

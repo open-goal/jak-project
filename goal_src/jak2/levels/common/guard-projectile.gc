@@ -383,22 +383,8 @@
           (set! (-> *part-id-table* 606 init-specs 4 initial-valuef) f28-0)
           )
         (vector-normalize! s5-1 1.0)
-        (let ((t9-2 sp-launch-particles-var)
-              (a0-5 *sp-particle-system-2d*)
-              (a1-2 (-> *part-id-table* 607))
-              (a2-3 *launch-matrix*)
-              )
-          (set! (-> a2-3 trans quad) (-> s4-0 quad))
-          (t9-2 a0-5 a1-2 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
-        (let ((t9-3 sp-launch-particles-var)
-              (a0-6 *sp-particle-system-2d*)
-              (a1-3 (-> *part-id-table* 608))
-              (a2-4 *launch-matrix*)
-              )
-          (set! (-> a2-4 trans quad) (-> s4-0 quad))
-          (t9-3 a0-6 a1-3 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-          )
+        (launch-particles (-> *part-id-table* 607) s4-0)
+        (launch-particles (-> *part-id-table* 608) s4-0)
         )
       (let ((s4-1 (new 'stack-no-clear 'matrix))
             (f26-0 (* 0.000027126736 f30-0))
@@ -409,14 +395,7 @@
         (set! (-> s4-1 trans quad) (-> gp-0 quad))
         (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) (* f26-0 f30-1))
         (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) (* f26-0 f28-1))
-        (sp-launch-particles-var
-          *sp-particle-system-2d*
-          (-> *part-id-table* 609)
-          s4-1
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
-          )
+        (launch-particles (-> *part-id-table* 609) s4-1 :origin-is-matrix #t)
         (set! (-> *part-id-table* 609 init-specs 3 initial-valuef) f30-1)
         (set! (-> *part-id-table* 609 init-specs 4 initial-valuef) f28-1)
         )
@@ -552,7 +531,6 @@
         (send-event *traffic-manager* 'add-danger-sphere v1-5)
         )
       )
-    (none)
     )
   )
 
@@ -789,26 +767,14 @@
 
 (defstate impact (vehicle-grenade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touched)
-                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-2 from) (process->ppointer self))
-                        (set! (-> a1-2 num-params) 2)
-                        (set! (-> a1-2 message) 'attack)
-                        (set! (-> a1-2 param 0) (-> event param 0))
-                        (let ((v1-5 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                          (set! (-> v1-5 id) (-> self attack-id))
-                          (set! (-> v1-5 mode) 'explode)
-                          (set! (-> a1-2 param 1) (the-as uint v1-5))
-                          )
-                        (if (send-event-function proc a1-2)
-                            #t
-                            )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (if (send-event proc 'attack (-> block param 0) (static-attack-info ((id (-> self attack-id)) (mode 'explode))))
+           #t
+           )
+       )
+      )
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
@@ -832,7 +798,6 @@
       (suspend)
       )
     (deactivate self)
-    (none)
     )
   )
 
@@ -932,7 +897,6 @@
   :virtual #t
   :enter (behavior ()
     (go-virtual impact)
-    (none)
     )
   )
 

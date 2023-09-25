@@ -1510,7 +1510,7 @@
       (let ((v1-9 gp-0))
         (set! (-> v1-9 height) (the float 35))
         )
-      (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
+      (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
       (let ((s4-0 (if (logtest? (-> obj flags) (fail-mission-flags famflags-2))
                       (the-as int (-> obj fail-message))
                       393
@@ -1546,8 +1546,8 @@
 
 (defstate idle (fail-mission)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('reset)
        (cond
          ((logtest? (-> self flags) (fail-mission-flags famflags-1))
@@ -1562,7 +1562,7 @@
          )
        )
       (('query)
-       (case (-> event param 0)
+       (case (-> block param 0)
          (('reset)
           (logtest? (-> self flags) (fail-mission-flags famflags-1))
           )
@@ -1575,7 +1575,6 @@
     (update-rates! (-> *display* entity-clock) 1.0)
     (update-rates! (-> *display* target-clock) 1.0)
     (update-rates! (-> *display* camera-clock) 1.0)
-    (none)
     )
   :code (behavior ()
     (when (and *target* (focus-test? *target* dead))
@@ -1597,16 +1596,7 @@
                   (set! (-> a1-0 num-params) 2)
                   (set! (-> a1-0 message) 'attack-invinc)
                   (set! (-> a1-0 param 0) (the-as uint #f))
-                  (let ((v1-24 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                    (let* ((a0-10 *game-info*)
-                           (a2-1 (+ (-> a0-10 attack-id) 1))
-                           )
-                      (set! (-> a0-10 attack-id) a2-1)
-                      (set! (-> v1-24 id) a2-1)
-                      )
-                    (set! (-> v1-24 mode) 'bot)
-                    (set! (-> a1-0 param 1) (the-as uint v1-24))
-                    )
+                  (set! (-> a1-0 param 1) (the-as uint (static-attack-info ((id (new-attack-id)) (mode 'bot)))))
                   (not (or (send-event-function *target* a1-0) (and *target* (focus-test? *target* dead))))
                   )
                 )
@@ -1690,7 +1680,6 @@
        #f
        )
       )
-    (none)
     )
   )
 
@@ -1708,31 +1697,28 @@
 
 (defstate resetting (fail-mission)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('reset)
-                      #t
-                      )
-                     (('query)
-                      (case (-> event param 0)
-                        (('reset)
-                         #t
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('reset)
+       #t
+       )
+      (('query)
+       (case (-> block param 0)
+         (('reset)
+          #t
+          )
+         )
+       )
+      )
     )
   :enter (behavior ()
     '()
-    (none)
     )
   :exit (behavior ()
     (if (= *master-mode* 'freeze)
         (set-master-mode 'game)
         )
     (process-release? *target*)
-    (none)
     )
   :code (behavior ()
     (local-vars (a1-10 string))
@@ -1798,7 +1784,6 @@
     (persist-with-delay *setting-control* 'speech-control (seconds 3) 'speech-control #f 0.0 0)
     (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.0 0)
     (persist-with-delay *setting-control* 'sfx-volume (seconds 3) 'music-volume 'abs 0.0 0)
-    (none)
     )
   )
 
@@ -2143,7 +2128,6 @@
             )
         (deactivate self)
         )
-    (none)
     )
   :code (behavior ()
     (while (or (not *target*) (not *spawn-actors*))
@@ -2170,7 +2154,6 @@
           )
       )
     (go-virtual active)
-    (none)
     )
   )
 
@@ -2184,7 +2167,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((t9-0 (-> self info code-hook)))
@@ -2201,9 +2183,8 @@
       (suspend)
       )
     #f
-    (none)
     )
-  ;; PC port note : added this so we can see it during the code-hook
+  ;; og:preserve-this added this so we can see it during the code-hook
   :post (behavior ()
     (if *debug-segment*
         (format *stdcon* "task-manager: alive in code task ~A~%" (game-task->string (-> self node-info task)))
@@ -2253,7 +2234,6 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -2262,7 +2242,6 @@
   :event task-manager-event-handler
   :exit (behavior ()
     (disable *screen-filter*)
-    (none)
     )
   :code (behavior ()
     (while (not (-> self allow-fail))
@@ -2351,7 +2330,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -2396,6 +2374,5 @@
           )
         )
       )
-    (none)
     )
   )

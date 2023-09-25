@@ -435,8 +435,7 @@ void InputManager::set_wait_for_bind(const InputDeviceType device_type,
   m_waiting_for_bind->keyboard_confirmation_binds =
       m_settings->keyboard_binds.lookup_button_binds(PadData::CROSS);
   if (g_game_version == GameVersion::Jak1) {
-    auto& circle_binds = m_waiting_for_bind->keyboard_confirmation_binds =
-        m_settings->keyboard_binds.lookup_button_binds(PadData::CIRCLE);
+    auto circle_binds = m_settings->keyboard_binds.lookup_button_binds(PadData::CIRCLE);
     m_waiting_for_bind->keyboard_confirmation_binds.insert(
         m_waiting_for_bind->keyboard_confirmation_binds.end(), circle_binds.begin(),
         circle_binds.end());

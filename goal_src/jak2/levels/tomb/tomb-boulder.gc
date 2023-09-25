@@ -113,39 +113,26 @@
 
 (defstate idle (tomb-spider)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-3 from) (process->ppointer self))
-         (set! (-> a1-3 num-params) 2)
-         (set! (-> a1-3 message) 'attack)
-         (set! (-> a1-3 param 0) (-> event param 0))
-         (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
-           (let* ((a2-3 *game-info*)
-                  (a3-2 (+ (-> a2-3 attack-id) 1))
-                  )
-             (set! (-> a2-3 attack-id) a3-2)
-             (set! (-> v1-6 id) a3-2)
-             )
-           (set! (-> v1-6 shove-up) 12288.0)
-           (set! (-> v1-6 mode) 'tomb-spider)
-           (set! (-> a1-3 param 1) (the-as uint v1-6))
-           )
-         (send-event-function proc a1-3)
+       (send-event
+         proc
+         'attack
+         (-> block param 0)
+         (static-attack-info ((id (new-attack-id)) (shove-up (meters 3)) (mode 'tomb-spider)))
          )
        )
       )
     )
   :code (behavior ()
     (until #f
-      ;; manually patched
+      ;; og:preserve-this manually patched
       (clone-anim-once (ppointer->handle (-> self parent)) #t "spider-")
       (update-transforms (-> self root))
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -215,13 +202,12 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      ;; manually patched
+      ;; og:preserve-this manually patched
       (clone-anim-once (ppointer->handle (-> self parent)) #t (-> self prefix))
       (update-transforms (-> self root))
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -286,10 +272,10 @@
 
 (defstate idle (tomb-boulder-pillar)
   :virtual #t
-  :trans (the-as (function none :behavior tomb-boulder-pillar) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (until #f
-      ;; manually patched
+      ;; og:preserve-this manually patched
       (clone-anim-once (ppointer->handle (-> self parent)) #t (-> self prefix))
       (update-transforms (-> self root))
       (pull-riders! (-> self root))
@@ -297,7 +283,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -381,29 +366,27 @@
 
 (defstate idle (tomb-boulder)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('draw)
-                      (if (-> event param 0)
-                          (logclear! (-> self draw status) (draw-control-status no-draw))
-                          (logior! (-> self draw status) (draw-control-status no-draw))
-                          )
-                      (let ((s5-0 (-> self child)))
-                        (while s5-0
-                          (send-event (ppointer->process s5-0) 'draw (-> event param 0))
-                          (set! s5-0 (-> s5-0 0 brother))
-                          )
-                        )
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('draw)
+       (if (-> block param 0)
+           (logclear! (-> self draw status) (draw-control-status no-draw))
+           (logior! (-> self draw status) (draw-control-status no-draw))
+           )
+       (let ((s5-0 (-> self child)))
+         (while s5-0
+           (send-event (ppointer->process s5-0) 'draw (-> block param 0))
+           (set! s5-0 (-> s5-0 0 brother))
+           )
+         )
+       #f
+       )
+      )
     )
   :exit (behavior ()
     (while (-> self child)
       (deactivate (-> self child 0))
       )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -444,7 +427,6 @@
                    )
        )
       )
-    (none)
     )
   :code (behavior ()
     (cond
@@ -499,48 +481,35 @@
         )
       )
     (sleep-code)
-    (none)
     )
   )
 
 (defstate chase (tomb-boulder)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('touch 'attack)
-       (when (not (-> self current-pause))
-         (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-5 from) (process->ppointer self))
-           (set! (-> a1-5 num-params) 2)
-           (set! (-> a1-5 message) 'attack)
-           (set! (-> a1-5 param 0) (-> event param 0))
-           (let ((v1-6 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
-             (let* ((a2-3 *game-info*)
-                    (a3-2 (+ (-> a2-3 attack-id) 1))
-                    )
-               (set! (-> a2-3 attack-id) a3-2)
-               (set! (-> v1-6 id) a3-2)
-               )
-             (set! (-> v1-6 shove-up) 12288.0)
-             (set! (-> v1-6 mode) 'smush)
-             (set! (-> a1-5 param 1) (the-as uint v1-6))
+       (if (not (-> self current-pause))
+           (send-event
+             proc
+             'attack
+             (-> block param 0)
+             (static-attack-info ((id (new-attack-id)) (shove-up (meters 3)) (mode 'smush)))
              )
-           (send-event-function proc a1-5)
            )
-         )
        )
       (('end-mode 'reset)
        (go-virtual idle)
        )
       (('pause)
-       (set! v0-0 (-> event param 0))
+       (set! v0-0 (-> block param 0))
        (set! (-> self target-pause) (the-as symbol v0-0))
        v0-0
        )
       (('draw)
        (cond
-         ((-> event param 0)
+         ((-> block param 0)
           (set! v0-0 (logclear (-> self draw status) (draw-control-status no-draw)))
           (set! (-> self draw status) (the-as draw-control-status v0-0))
           )
@@ -557,7 +526,7 @@
        v0-0
        )
       (('mode)
-       (set! v0-0 (command-get-int (-> event param 0) 0))
+       (set! v0-0 (command-get-int (-> block param 0) 0))
        (set! (-> self mode) (the-as uint v0-0))
        v0-0
        )
@@ -717,7 +686,6 @@
       )
     (set-setting! 'music 'danger11 0.0 0)
     (process-entity-status! self (entity-perm-status no-kill) #t)
-    (none)
     )
   :exit (behavior ()
     (when (= (-> *setting-control* user-current spooling) (process->ppointer self))
@@ -743,7 +711,6 @@
     (remove-setting! 'music)
     (persist-with-delay *setting-control* 'music (seconds 1) 'music 'danger11 0.0 0)
     (process-entity-status! self (entity-perm-status no-kill) #f)
-    (none)
     )
   :code (behavior ((arg0 spool-anim))
     (play-clean #f)
@@ -802,7 +769,6 @@
        )
       )
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (let ((v1-0 (-> self mode)))
@@ -936,13 +902,7 @@
          (vector-normalize-copy! (-> self dir) s4-1 1.0)
          )
         (else
-          (let ((f30-1 (deg-seek
-                         (vector-y-angle (-> self dir))
-                         (vector-y-angle s4-1)
-                         (* 5461.3335 (-> self clock seconds-per-frame))
-                         )
-                       )
-                )
+          (let ((f30-1 (deg-seek (vector-y-angle (-> self dir)) (vector-y-angle s4-1) (* 5461.3335 (seconds-per-frame)))))
             (set-vector! (-> self dir) (sin f30-1) 0.0 (cos f30-1) 1.0)
             )
           )
@@ -958,48 +918,20 @@
             )
       )
     (when (or (< (-> self distance) -40960.0) (< (-> self target-speed) -5.0))
-      (cond
-        ((< (-> self mode) (the-as uint 10))
-         (let ((a1-23 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-23 from) (process->ppointer self))
-           (set! (-> a1-23 num-params) 2)
-           (set! (-> a1-23 message) 'attack)
-           (set! (-> a1-23 param 0) (the-as uint #f))
-           (let ((v1-109 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
-             (let* ((a0-53 *game-info*)
-                    (a2-13 (+ (-> a0-53 attack-id) 1))
-                    )
-               (set! (-> a0-53 attack-id) a2-13)
-               (set! (-> v1-109 id) a2-13)
-               )
-             (set! (-> v1-109 shove-up) 12288.0)
-             (set! (-> v1-109 mode) 'smush)
-             (set! (-> a1-23 param 1) (the-as uint v1-109))
-             )
-           (send-event-function *target* a1-23)
-           )
-         )
-        (else
-          (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-24 from) (process->ppointer self))
-            (set! (-> a1-24 num-params) 2)
-            (set! (-> a1-24 message) 'attack)
-            (set! (-> a1-24 param 0) (the-as uint #f))
-            (let ((v1-114 (new 'static 'attack-info :mask (attack-info-mask mode shove-up id))))
-              (let* ((a0-58 *game-info*)
-                     (a2-15 (+ (-> a0-58 attack-id) 1))
-                     )
-                (set! (-> a0-58 attack-id) a2-15)
-                (set! (-> v1-114 id) a2-15)
-                )
-              (set! (-> v1-114 shove-up) 12288.0)
-              (set! (-> v1-114 mode) 'tomb-spider)
-              (set! (-> a1-24 param 1) (the-as uint v1-114))
-              )
-            (send-event-function *target* a1-24)
+      (if (< (-> self mode) (the-as uint 10))
+          (send-event
+            *target*
+            'attack
+            #f
+            (static-attack-info ((id (new-attack-id)) (shove-up (meters 3)) (mode 'smush)))
+            )
+          (send-event
+            *target*
+            'attack
+            #f
+            (static-attack-info ((id (new-attack-id)) (shove-up (meters 3)) (mode 'tomb-spider)))
             )
           )
-        )
       )
     (let ((f30-2 0.0)
           (f26-0 0.0)
@@ -1049,9 +981,9 @@
                 (< (-> self target-speed) -5.0)
                 )
         (set! f30-3 -20.0)
-        (seek! (-> self target-speed) f30-3 (* 20.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self target-speed) f30-3 (* 20.0 (seconds-per-frame)))
         )
-      (seek! (-> self target-speed) f30-3 (-> self clock seconds-per-frame))
+      (seek! (-> self target-speed) f30-3 (seconds-per-frame))
       (when (or (!= (-> self target-speed) (-> self current-speed))
                 (>= (- (current-time) (-> self speed-time)) (seconds 0.2))
                 )
@@ -1078,7 +1010,6 @@
             )
           )
       )
-    (none)
     )
   )
 
@@ -1296,11 +1227,10 @@ This commonly includes things such as:
 
 (defstate idle (spider-eyes)
   :virtual #t
-  :code (the-as (function none :behavior spider-eyes) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spider-eyes-method-21 self)
     (ja-post)
-    (none)
     )
   )
 

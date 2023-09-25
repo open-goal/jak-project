@@ -289,30 +289,9 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (let ((t9-1 sp-launch-particles-var)
-            (a0-2 *sp-particle-system-2d*)
-            (a1-2 (-> *part-id-table* 4950))
-            (a2-1 *launch-matrix*)
-            )
-        (set! (-> a2-1 trans quad) (-> gp-0 quad))
-        (t9-1 a0-2 a1-2 a2-1 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-2 sp-launch-particles-var)
-            (a0-3 *sp-particle-system-2d*)
-            (a1-3 (-> *part-id-table* 4951))
-            (a2-2 *launch-matrix*)
-            )
-        (set! (-> a2-2 trans quad) (-> gp-0 quad))
-        (t9-2 a0-3 a1-3 a2-2 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
-      (let ((t9-3 sp-launch-particles-var)
-            (a0-4 *sp-particle-system-2d*)
-            (a1-4 (-> *part-id-table* 4952))
-            (a2-3 *launch-matrix*)
-            )
-        (set! (-> a2-3 trans quad) (-> gp-0 quad))
-        (t9-3 a0-4 a1-4 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-        )
+      (launch-particles (-> *part-id-table* 4950) gp-0)
+      (launch-particles (-> *part-id-table* 4951) gp-0)
+      (launch-particles (-> *part-id-table* 4952) gp-0)
       )
     )
   (none)
@@ -595,13 +574,12 @@
 
 (defstate broken (dig-clasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('broken?)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('broken?)
+       #t
+       )
+      )
     )
   :enter (behavior ()
     (when (-> self conn)
@@ -610,33 +588,27 @@
       )
     (cond
       ((-> self b)
-       (ja :group! dig-digger-idle-ja
-           :num! (identity (the float (+ (-> (the-as art-joint-anim dig-digger-idle-ja) frames num-frames) -1)))
-           )
+       (ja :group! dig-digger-idle-ja :num! max)
        (setup-masks (-> self draw) 0 2)
        )
       (else
-        (ja :group! dig-digger-idle-ja
-            :num! (identity (the float (+ (-> (the-as art-joint-anim dig-digger-idle-ja) frames num-frames) -1)))
-            )
+        (ja :group! dig-digger-idle-ja :num! max)
         (setup-masks (-> self draw) 0 2)
         )
       )
     (ja-post)
-    (none)
     )
-  :code (the-as (function none :behavior dig-clasp) sleep-code)
+  :code sleep-code
   )
 
 (defstate break-it (dig-clasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('broken?)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('broken?)
+       #t
+       )
+      )
     )
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -663,7 +635,6 @@
         :to self
         )
       )
-    (none)
     )
   :trans (behavior ()
     (ja :num! (seek!))
@@ -673,22 +644,21 @@
     (if (ja-done? 0)
         (go-virtual broken)
         )
-    (none)
     )
-  :code (the-as (function none :behavior dig-clasp) sleep-code)
-  :post (the-as (function none :behavior dig-clasp) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 (defstate idle (dig-clasp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('tether-position)
-       (dig-clasp-method-23 self (the-as vector (-> event param 0)))
+       (dig-clasp-method-23 self (the-as vector (-> block param 0)))
        )
       (('attack)
-       (let ((v1-2 (the-as attack-info (-> event param 1))))
-         (when (and (logtest? (-> v1-2 mask) (attack-info-mask mode)) (= (-> v1-2 mode) 'board))
+       (let ((v1-2 (the-as attack-info (-> block param 1))))
+         (when (and (logtest? (-> v1-2 mask) (attack-mask mode)) (= (-> v1-2 mode) 'board))
            (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 85 (seconds 0.1))
            (go-virtual break-it)
            )
@@ -701,9 +671,8 @@
     )
   :enter (behavior ()
     (ja-post)
-    (none)
     )
-  :code (the-as (function none :behavior dig-clasp) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -896,6 +865,7 @@ This commonly includes things such as:
               )
         )
       )
+    ;; og:preserve-this hack
     ;; original
     ;; (vector-reset! (+ (the-as uint (-> obj chain-joints 0 velocity)) (* 48 s5-0)))
     (vector-reset! (-> obj chain-joints s5-0 velocity)) ;; hack
@@ -989,41 +959,38 @@ This commonly includes things such as:
 
 ;; WARN: Return type mismatch vector vs object.
 (defbehavior dig-tether-handler dig-tether ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('set-pos)
-                    (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
-                    (set! (-> self digger-pos quad) (-> (the-as vector (-> arg3 param 1)) quad))
-                    (let ((v0-0 (-> self digger-vertical)))
-                      (set! (-> v0-0 quad) (-> (the-as vector (-> arg3 param 2)) quad))
-                      v0-0
-                      )
-                    )
-                   )
-          )
+  (case arg2
+    (('set-pos)
+     (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (set! (-> self digger-pos quad) (-> (the-as vector (-> arg3 param 1)) quad))
+     (let ((v0-0 (-> self digger-vertical)))
+       (set! (-> v0-0 quad) (-> (the-as vector (-> arg3 param 2)) quad))
+       v0-0
+       )
+     )
+    )
   )
 
 (defstate broken (dig-tether)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('broken?)
        #t
        )
       (else
-        (dig-tether-handler proc arg1 event-type event)
+        (dig-tether-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (dig-tether-method-23 self)
-    (none)
     )
   :trans (behavior ()
     (dig-tether-method-24 self)
-    (none)
     )
-  :code (the-as (function none :behavior dig-tether) sleep-code)
-  :post (the-as (function none :behavior dig-tether) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 (defstate idle (dig-tether)
@@ -1034,7 +1001,6 @@ This commonly includes things such as:
     (set-params! (-> self frame) 0.5 0.01 0.02 0.97)
     (set-params! (-> self frame-kicker) 9 30 0.4)
     (set! (-> self old-dist) 0.0)
-    (none)
     )
   :trans (behavior ()
     (dig-tether-method-22 self)
@@ -1065,10 +1031,9 @@ This commonly includes things such as:
       (update! (-> self frame) (-> self frame-kicker value))
       (ja :num-func num-func-identity :frame-num (* 10.0 (-> self frame value)))
       )
-    (none)
     )
-  :code (the-as (function none :behavior dig-tether) sleep-code)
-  :post (the-as (function none :behavior dig-tether) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch process-drawable vs dig-tether.
@@ -1267,11 +1232,11 @@ This commonly includes things such as:
 
 (defstate idle (dig-digger)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> event param 0))
+              (the-as touching-shapes-entry (-> block param 0))
               (the-as collide-shape (-> self root))
               (the-as uint 1)
               )
@@ -1281,24 +1246,9 @@ This commonly includes things such as:
                      )
                )
            (when a0-7
-             (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-4 from) (process->ppointer self))
-               (set! (-> a1-4 num-params) 2)
-               (set! (-> a1-4 message) 'attack)
-               (set! (-> a1-4 param 0) (-> event param 0))
-               (let ((a2-3 (new 'static 'attack-info :mask (attack-info-mask id))))
-                 (let* ((v1-7 *game-info*)
-                        (a3-2 (+ (-> v1-7 attack-id) 1))
-                        )
-                   (set! (-> v1-7 attack-id) a3-2)
-                   (set! (-> a2-3 id) a3-2)
-                   )
-                 (set! (-> a1-4 param 1) (the-as uint a2-3))
+             (if (send-event a0-7 'attack (-> block param 0) (static-attack-info ((id (new-attack-id)))))
+                 #f
                  )
-               (if (send-event-function a0-7 a1-4)
-                   #f
-                   )
-               )
              )
            )
          )
@@ -1319,14 +1269,12 @@ This commonly includes things such as:
     (dig-digger-method-23 self)
     (set! (-> self motor-sound) (new-sound-id))
     (set! (-> self bit-sound) (new-sound-id))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self motor-sound))
     (sound-stop (-> self bit-sound))
     (send-event (handle->process (-> self hud-counter)) 'hide-and-die)
     (set! (-> self hud-counter) (the-as handle #f))
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (vector-vector-distance-squared (ear-trans 0) (-> self root trans)))
@@ -1378,26 +1326,23 @@ This commonly includes things such as:
     (if (nonzero? (-> self part))
         (spawn (-> self part) (-> self root trans))
         )
-    (none)
     )
-  :code (the-as (function none :behavior dig-digger) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
     (dig-digger-method-24 self)
-    (none)
     )
   )
 
 (defstate hidden (dig-digger)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (let ((v1-0 message)
           (a0-1 'explode)
           )
-      (the-as object (if (= v1-0 a0-1)
-                         (set-dig1-explosion! (the-as float a0-1))
-                         )
-              )
+      (if (= v1-0 a0-1)
+          (set-dig1-explosion! (the-as float a0-1))
+          )
       )
     )
   :enter (behavior ()
@@ -1405,9 +1350,8 @@ This commonly includes things such as:
       (deactivate (-> self child 0))
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :code (the-as (function none :behavior dig-digger) sleep-code)
+  :code sleep-code
   )
 
 (defmethod deactivate dig-digger ((obj dig-digger))

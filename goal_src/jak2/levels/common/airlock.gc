@@ -5,8 +5,6 @@
 ;; name in dgo: airlock
 ;; dgos: GAME, COMMON
 
-;; og:update-with-merge
-
 ;; DECOMP BEGINS
 
 (deftype com-airlock (process-drawable)
@@ -303,8 +301,8 @@
              )
         (set! (-> obj gear-sound-id) (sound-play-by-spec (-> obj sound-gear) (new-sound-id) (the-as vector #t)))
         )
-    (seek! (-> obj gear-rotv) arg0 (* 131072.0 (-> self clock seconds-per-frame)))
-    (+! (-> obj gear-rot) (* (-> obj gear-rotv) (-> self clock seconds-per-frame)))
+    (seek! (-> obj gear-rotv) arg0 (* 131072.0 (seconds-per-frame)))
+    (+! (-> obj gear-rot) (* (-> obj gear-rotv) (seconds-per-frame)))
     (twist-set! (-> obj gear) (the-as float #f) (the-as float #f) (-> obj gear-rot))
     )
   (-> obj gear-rotv)
@@ -353,66 +351,58 @@
 
 (defstate close (com-airlock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('close)
-         (set! (-> self latch-closed-time) (+ (current-time) (if (>= arg1 1)
-                                                                 (the-as int (-> event param 0))
-                                                                 3000
-                                                                 )
-                                              )
-               )
-         (if (and (>= arg1 2) (and (= (-> event param 1) #t) (not (want-cross-airlock? self))))
-             (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) :num! min)
-             )
-         (and (-> self next-state) (= (-> self next-state name) 'open))
-         )
-        (('open)
-         (set! (-> self latch-open-time) (+ (current-time) (if (>= arg1 1)
-                                                               (the-as int (-> event param 0))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('close)
+       (set! (-> self latch-closed-time) (+ (current-time) (if (>= argc 1)
+                                                               (the-as int (-> block param 0))
                                                                3000
                                                                )
                                             )
-               )
-         (if (and (>= arg1 2) (and (= (-> event param 1) #t) (want-cross-airlock? self) (destination-loaded? self #f)))
-             (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim)
-                 :num! (identity
-                   (the float (+ (-> (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) frames num-frames) -1))
-                   )
-                 )
              )
-         (and (-> self next-state) (= (-> self next-state name) 'close))
-         )
-        (('front)
-         (let ((f30-0 (check-crossing-distance self (target-pos 0) #f))
-               (f0-3 (check-crossing-distance self (camera-pos) #f))
-               )
-           (and (< 2048.0 f30-0) (>= (* f30-0 f0-3) 0.0))
+       (if (and (>= argc 2) (and (= (-> block param 1) #t) (not (want-cross-airlock? self))))
+           (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) :num! min)
            )
-         )
-        (('back)
-         (let ((f30-1 (check-crossing-distance self (target-pos 0) #f))
-               (f0-5 (check-crossing-distance self (camera-pos) #f))
-               )
-           (and (< f30-1 -2048.0) (>= (* f30-1 f0-5) 0.0))
-           )
-         )
-        (('sound)
-         (if (>= (check-crossing-distance self (target-pos 0) #f) 0.0)
-             (the-as object (play-city-voice-sound self (the-as symbol (-> event param 0))))
+       (and (-> self next-state) (= (-> self next-state name) 'open))
+       )
+      (('open)
+       (set! (-> self latch-open-time) (+ (current-time) (if (>= argc 1)
+                                                             (the-as int (-> block param 0))
+                                                             3000
+                                                             )
+                                          )
              )
+       (if (and (>= argc 2) (and (= (-> block param 1) #t) (want-cross-airlock? self) (destination-loaded? self #f)))
+           (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) :num! max)
+           )
+       (and (-> self next-state) (= (-> self next-state name) 'close))
+       )
+      (('front)
+       (let ((f30-0 (check-crossing-distance self (target-pos 0) #f))
+             (f0-3 (check-crossing-distance self (camera-pos) #f))
+             )
+         (and (< 2048.0 f30-0) (>= (* f30-0 f0-3) 0.0))
          )
-        (('distance)
-         (* (the int (check-crossing-distance self (target-pos 0) #f)) 8)
+       )
+      (('back)
+       (let ((f30-1 (check-crossing-distance self (target-pos 0) #f))
+             (f0-5 (check-crossing-distance self (camera-pos) #f))
+             )
+         (and (< f30-1 -2048.0) (>= (* f30-1 f0-5) 0.0))
          )
-        )
+       )
+      (('sound)
+       (if (>= (check-crossing-distance self (target-pos 0) #f) 0.0)
+           (play-city-voice-sound self (the-as symbol (-> block param 0)))
+           )
+       )
+      (('distance)
+       (* (the int (check-crossing-distance self (target-pos 0) #f)) 8)
+       )
       )
     )
   :enter (behavior ((arg0 symbol))
     (set! (-> self visible-move?) #f)
-    (none)
     )
   :exit (behavior ()
     (when (nonzero? (-> self sound-id))
@@ -441,7 +431,6 @@
       (set! (-> self gear-sound-id) (new 'static 'sound-id))
       0
       )
-    (none)
     )
   :trans (behavior ()
     (if (logtest? (-> self draw status) (draw-control-status on-screen))
@@ -471,7 +460,6 @@
         )
       (go-virtual open #f)
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #f)
@@ -558,7 +546,7 @@
             )
         (rotate-gear! self 65536.0)
         (suspend)
-        ;; pc port note: added speed modifier
+        ;; og:preserve-this added speed modifier
         (ja :num! (seek! 0.0 (get-airlock-close-speed *pc-settings*)))
         (transform-post)
         )
@@ -608,7 +596,6 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -617,7 +604,6 @@
   :event (-> (method-of-type com-airlock close) event)
   :enter (behavior ((arg0 symbol))
     (set! (-> self visible-move?) #f)
-    (none)
     )
   :exit (-> (method-of-type com-airlock close) exit)
   :trans (behavior ()
@@ -637,7 +623,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (when (not arg0)
@@ -658,7 +643,7 @@
             )
         (rotate-gear! self 65536.0)
         (suspend)
-        ;; pc port note: added speed modifier
+        ;; og:preserve-this added speed modifier
         (ja :num! (seek! (ja-aframe (-> self lock-frame) 0) (* (get-airlock-speed *pc-settings*) (-> self pre-open-speed))))
         (transform-post)
         )
@@ -689,7 +674,7 @@
             )
         (rotate-gear! self 65536.0)
         (suspend)
-        ;; pc port note: added speed modifier
+        ;; og:preserve-this added speed modifier
         (ja :num! (seek! (ja-aframe (-> self open-frame) 0) (* (get-airlock-speed *pc-settings*) 2.0)))
         (transform-post)
         )
@@ -739,7 +724,7 @@
       (while (not (ja-max? 0))
         (rotate-gear! self 65536.0)
         (suspend)
-        ;; pc port note: added speed modifier
+        ;; og:preserve-this added speed modifier
         (ja :num! (seek! max (get-airlock-speed *pc-settings*)))
         (transform-post)
         )
@@ -774,16 +759,11 @@
           )
       )
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim)
-        :num! (identity
-          (the float (+ (-> (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) frames num-frames) -1))
-          )
-        )
+    (ja :group! (get-art-by-name (-> self draw art-group) "idle" art-joint-anim) :num! max)
     (transform-post)
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -804,7 +784,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -875,7 +856,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -959,7 +941,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1027,7 +1010,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1097,7 +1081,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1162,7 +1147,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1209,8 +1195,8 @@ This commonly includes things such as:
   (none)
   )
 
-(defskelgroup skel-vin-door-ctyinda vin-door-ctyinda 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-vin-door-ctyinda vin-door-ctyinda vin-door-ctyinda-lod0-jg vin-door-ctyinda-idle-ja
+              ((vin-door-ctyinda-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 3 0 6)
               )
 
@@ -1231,7 +1217,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1300,7 +1287,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1347,7 +1335,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defskelgroup skel-oracle-door oracle-door 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 4 0 10))
+(defskelgroup skel-oracle-door oracle-door oracle-door-lod0-jg oracle-door-idle-ja
+              ((oracle-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 10)
+              )
 
 (deftype oracle-door (com-airlock)
   ()
@@ -1366,7 +1357,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> obj main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> obj main-thread) 1024)
   (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))

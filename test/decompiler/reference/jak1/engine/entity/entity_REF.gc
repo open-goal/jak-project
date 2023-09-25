@@ -373,6 +373,7 @@
   )
 
 ;; definition for method 2 of type process
+;; INFO: this function exists in multiple non-identical object files
 (defmethod print process ((obj process))
   (format #t "#<~A ~S ~A :state ~S :flags " (-> obj type) (-> obj name) (-> obj status) (if (-> obj state)
                                                                                             (-> obj state name)
@@ -1084,21 +1085,20 @@
            )
       (iterate-process-tree
         *active-pool*
-        (the-as (function object object) (lambda ((arg0 process-drawable))
-                                           (when (type-type? (-> arg0 type) process-drawable)
-                                             (if (nonzero? (-> arg0 nav))
-                                                 (debug-draw (-> arg0 nav))
-                                                 )
-                                             (if (nonzero? (-> arg0 path))
-                                                 (debug-draw (-> arg0 path))
-                                                 )
-                                             (if (nonzero? (-> arg0 vol))
-                                                 (init! (-> arg0 vol))
-                                                 )
-                                             )
-                                           (none)
-                                           )
+        (lambda ((arg0 process-drawable))
+          (when (type-type? (-> arg0 type) process-drawable)
+            (if (nonzero? (-> arg0 nav))
+                (debug-draw (-> arg0 nav))
                 )
+            (if (nonzero? (-> arg0 path))
+                (debug-draw (-> arg0 path))
+                )
+            (if (nonzero? (-> arg0 vol))
+                (init! (-> arg0 vol))
+                )
+            )
+          (none)
+          )
         *null-kernel-context*
         )
       )
@@ -1554,7 +1554,7 @@
     )
   (iterate-process-tree
     *entity-pool*
-    (the-as (function object object) (lambda ((arg0 process-drawable)) (deactivate arg0) (none)))
+    (lambda ((arg0 process-drawable)) (deactivate arg0) (none))
     *null-kernel-context*
     )
   (if (= arg0 'game)

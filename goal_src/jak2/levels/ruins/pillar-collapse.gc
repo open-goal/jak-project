@@ -48,11 +48,11 @@
 
 (defstate idle (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (task-node-closed? (game-task-node ruins-mech-introduction))
-         (let* ((gp-1 (the-as attack-info (-> event param 1)))
+         (let* ((gp-1 (the-as attack-info (-> block param 1)))
                 (s4-0 (-> gp-1 id))
                 (s5-0 (vector-x-quaternion! (new-stack-vector0) (-> self root quat)))
                 (a0-6 (vector-z-quaternion! (new-stack-vector0) (-> self root quat)))
@@ -117,13 +117,11 @@
             )
           )
       )
-    (none)
     )
   :exit (behavior ()
     (while (-> self child)
       (deactivate (-> self child 0))
       )
-    (none)
     )
   :code (behavior ()
     (if (task-node-closed? (game-task-node ruins-mech-introduction))
@@ -133,43 +131,40 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) transform-post)
+  :post transform-post
   )
 
 (defstate bump (ruins-pillar-collapse)
   :virtual #t
   :event (-> (method-of-type ruins-pillar-collapse idle) event)
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :post rider-post
   )
 
 (defstate hit (ruins-pillar-collapse)
   :virtual #t
   :event (-> (method-of-type ruins-pillar-collapse idle) event)
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (+! (-> self hit-points) -1)
     (if (zero? (-> self hit-points))
         (go-virtual fall #f)
         )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :post rider-post
   )
 
 (defstate fall (ruins-pillar-collapse)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (let* ((s5-0 (-> event param 0))
+       (let* ((s5-0 (-> block param 0))
               (s4-0 proc)
               (gp-0 (if (type? s4-0 process-focusable)
                         s4-0
@@ -189,34 +184,18 @@
                    (get-intersect-point (new 'stack-no-clear 'vector) a1-4 (-> self root) (the-as touching-shapes-entry s5-0))
                    )
                  )
-             (when (and (< (-> (get-trans (the-as process-focusable gp-0) 3) y) (-> s4-1 y))
-                        (< 40960.0 (vector-vector-distance s4-1 (-> self root trans)))
-                        )
-               (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-8 from) (process->ppointer self))
-                 (set! (-> a1-8 num-params) 2)
-                 (set! (-> a1-8 message) 'attack)
-                 (set! (-> a1-8 param 0) s5-0)
-                 (let ((v1-13 (new 'static 'attack-info :mask (attack-info-mask mode id))))
-                   (let* ((a0-7 *game-info*)
-                          (a2-5 (+ (-> a0-7 attack-id) 1))
-                          )
-                     (set! (-> a0-7 attack-id) a2-5)
-                     (set! (-> v1-13 id) a2-5)
-                     )
-                   (set! (-> v1-13 mode) 'crush)
-                   (set! (-> a1-8 param 1) (the-as uint v1-13))
-                   )
-                 (send-event-function gp-0 a1-8)
+             (if (and (< (-> (get-trans (the-as process-focusable gp-0) 3) y) (-> s4-1 y))
+                      (< 40960.0 (vector-vector-distance s4-1 (-> self root trans)))
+                      )
+                 (send-event gp-0 'attack s5-0 (static-attack-info ((id (new-attack-id)) (mode 'crush))))
                  )
-               )
              )
            )
          )
        )
       )
     )
-  :trans (the-as (function none :behavior ruins-pillar-collapse) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (set! (-> self draw bounds z) 61440.0)
     (set! (-> self draw bounds w) 217088.0)
@@ -246,9 +225,8 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior ruins-pillar-collapse) rider-post)
+  :post rider-post
   )
 
 ;; WARN: Return type mismatch object vs none.

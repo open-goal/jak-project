@@ -1,5 +1,7 @@
 #include "VisDataHandler.h"
 
+#include "background/background_common.h"
+
 #include "third-party/imgui/imgui.h"
 
 VisDataHandler::VisDataHandler(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
@@ -70,6 +72,18 @@ void VisDataHandler::render(DmaFollower& dma,
       m_stats[i].has_vis = false;
       m_stats[i].num_visible = -1;
     }
+
+    auto next = dma.read_and_advance();
+    ASSERT(next.size_bytes == 0);
+  }
+
+  if (dma.current_tag_offset() != render_state->next_bucket) {
+    // we have some fallback data to use.
+    TfragPcPortData pc_port_data;
+    auto pc_port_data_dma = dma.read_and_advance();
+    ASSERT(pc_port_data_dma.size_bytes == sizeof(TfragPcPortData));
+    memcpy(&pc_port_data, pc_port_data_dma.data, sizeof(TfragPcPortData));
+    update_render_state_from_pc_settings(render_state, pc_port_data);
 
     auto next = dma.read_and_advance();
     ASSERT(next.size_bytes == 0);

@@ -8,14 +8,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/ogre-step-ag.gc")
-(import "goal_src/jak1/import/tntbarrel-ag.gc")
-(import "goal_src/jak1/import/ogre-bridge-ag.gc")
-(import "goal_src/jak1/import/shortcut-boulder-ag.gc")
-(import "goal_src/jak1/import/medres-snow-ag.gc")
-(import "goal_src/jak1/import/ogre-bridgeend-ag.gc")
-(import "goal_src/jak1/import/ogre-isle-ag.gc")
-
 (defskelgroup *med-res-snow-sg* medres-snow medres-snow-lod0-jg medres-snow-idle-ja
               ((medres-snow-lod0-mg (meters 999999)))
               :bounds (static-spherem -390 150 70 410)
@@ -348,14 +340,13 @@
     (suspend)
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate idle (tntbarrel)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-big)
        (go-virtual die #t)
        )
@@ -363,7 +354,7 @@
        (go-virtual die #f)
        )
       (('attack 'touch)
-       (send-event proc 'attack-invinc (-> event param 0) (static-attack-info ((mode 'death))))
+       (send-event proc 'attack-invinc (-> block param 0) (static-attack-info ((mode 'death))))
        (go-virtual die #f)
        )
       )
@@ -373,7 +364,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -458,18 +448,17 @@
 
 (defstate rigid-body-platform-idle (ogre-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('trigger)
-                      (set! (-> self triggered) (the-as entity-actor #t))
-                      (set! (-> self delay) (the-as time-frame (-> event param 0)))
-                      (let ((v0-0 (-> *display* base-frame-counter)))
-                        (set! (-> self state-time) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (set! (-> self triggered) (the-as entity-actor #t))
+       (set! (-> self delay) (the-as time-frame (-> block param 0)))
+       (let ((v0-0 (-> *display* base-frame-counter)))
+         (set! (-> self state-time) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :trans (behavior ()
     (cond
@@ -490,24 +479,19 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-plat) ja-post)
+  :post ja-post
   )
 
 (defstate rigid-body-platform-float (ogre-plat)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior ogre-plat)
-    rigid-body-platform-event-handler
-    )
+  :event rigid-body-platform-event-handler
   :trans (behavior ()
     (cond
       ((or (not *target*) (< (-> self info idle-distance)
@@ -525,16 +509,14 @@
         (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (-> *display* seconds-per-frame)))
         )
       )
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-plat) rigid-body-platform-post)
+  :post rigid-body-platform-post
   )
 
 (defmethod rigid-body-platform-method-30 ogre-plat ((obj ogre-plat))
@@ -866,7 +848,6 @@
 (defstate ogre-bridge-idle (ogre-bridge)
   :exit (behavior ()
     (ogre-bridge-update-joints)
-    (none)
     )
   :trans (behavior ()
     (if (and (and *target*
@@ -877,14 +858,12 @@
         (go ogre-bridge-activate)
         )
     0
-    (none)
     )
   :code (behavior ()
     (ja-post)
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -913,14 +892,13 @@
       (ja :num! (seek!))
       )
     (go ogre-bridge-activated)
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  :post rider-post
   )
 
 (defstate ogre-bridge-activated (ogre-bridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('break)
        (+! (-> self dead-joint-count) 4)
        (go ogre-bridge-break)
@@ -940,37 +918,35 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) ja-post)
+  :post ja-post
   )
 
 (defstate ogre-bridge-break (ogre-bridge)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('effect)
-                      (when (= (-> event param 0) 'splash)
-                        (let ((gp-0 (new 'stack-no-clear 'vector)))
-                          (let ((a1-1 (-> event param 2)))
-                            (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
-                            )
-                          (set! (-> gp-0 y) 118784.0)
-                          (process-spawn
-                            part-tracker
-                            :init part-tracker-init
-                            (-> *part-group-id-table* 466)
-                            -1
-                            #f
-                            #f
-                            #f
-                            gp-0
-                            :to *entity-pool*
-                            )
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('effect)
+       (when (= (-> block param 0) 'splash)
+         (let ((gp-0 (new 'stack-no-clear 'vector)))
+           (let ((a1-1 (-> block param 2)))
+             (set! (-> gp-0 quad) (-> self node-list data a1-1 bone transform vector 3 quad))
+             )
+           (set! (-> gp-0 y) 118784.0)
+           (process-spawn
+             part-tracker
+             :init part-tracker-init
+             (-> *part-group-id-table* 466)
+             -1
+             #f
+             #f
+             #f
+             gp-0
+             :to *entity-pool*
+             )
+           )
+         )
+       )
+      )
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
@@ -979,9 +955,8 @@
       (ja :num! (seek!))
       )
     (go ogre-bridge-idle)
-    (none)
     )
-  :post (the-as (function none :behavior ogre-bridge) rider-post)
+  :post rider-post
   )
 
 (define *ogre-bridge-joint-array* (new 'static 'boxed-array :type uint8 #x4 #x9 #xc #x11 #x7 #xa #xf #x12))
@@ -1206,7 +1181,6 @@
   :code (behavior ()
     (transform-post)
     (anim-loop)
-    (none)
     )
   )
 
@@ -1244,8 +1218,8 @@
 
 (defstate water-vol-idle (ogre-lava)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('submerge1)
        (set! (-> self anim) 3)
        (go-virtual water-vol-idle)
@@ -1267,7 +1241,7 @@
        (go-virtual water-vol-idle)
        )
       (else
-        ((-> (method-of-type water-anim water-vol-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block)
         )
       )
     )
@@ -1286,9 +1260,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogre-lava) #f)
+  :post #f
   )
 
 (defstate water-vol-startup (ogre-lava)
@@ -1297,7 +1270,6 @@
     (set! (-> self idle-anim) 2)
     (set! (-> self anim) (-> self idle-anim))
     (go-virtual water-vol-idle)
-    (none)
     )
   )
 
@@ -1452,16 +1424,15 @@
       )
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
-  :post (the-as (function none :behavior shortcut-boulder) ja-post)
+  :post ja-post
   )
 
 (defstate shortcut-boulder-idle (shortcut-boulder)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
-       (if (and (>= arg1 2) (= (-> event param 1) 'eco-yellow))
+       (if (and (>= argc 2) (= (-> block param 1) 'eco-yellow))
            (go shortcut-boulder-break)
            )
        )
@@ -1473,7 +1444,6 @@
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       )
-    (none)
     )
   )
 

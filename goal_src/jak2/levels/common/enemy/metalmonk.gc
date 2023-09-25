@@ -469,22 +469,14 @@
       )
     (vector-normalize! s3-1 (* 1.5 (-> obj enemy-info attack-shove-back)))
     (set! (-> s3-1 y) (-> obj enemy-info attack-shove-up))
-    (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-10 from) (process->ppointer self))
-      (set! (-> a1-10 num-params) 2)
-      (set! (-> a1-10 message) 'attack)
-      (set! (-> a1-10 param 0) (the-as uint arg1))
-      (let ((v1-17 (new 'static 'attack-info :mask (attack-info-mask vector mode angle id))))
-        (set! (-> v1-17 id) arg2)
-        (set! (-> v1-17 angle) 'front)
-        (set! (-> v1-17 vector quad) (-> s3-1 quad))
-        (set! (-> v1-17 mode) (-> obj enemy-info attack-mode))
-        (set! (-> a1-10 param 1) (the-as uint v1-17))
-        )
-      (when (send-event-function arg0 a1-10)
-        (enemy-method-105 obj arg0)
-        #t
-        )
+    (when (send-event
+            arg0
+            'attack
+            arg1
+            (static-attack-info ((id arg2) (angle 'front) (vector s3-1) (mode (-> obj enemy-info attack-mode))))
+            )
+      (enemy-method-105 obj arg0)
+      #t
       )
     )
   )
@@ -560,7 +552,6 @@
       (set! (-> v1-6 turning-acceleration) (* 2.0 (-> self enemy-info run-turning-acceleration)))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy notice) exit)))
@@ -576,7 +567,6 @@
       (set! (-> v1-6 turning-acceleration) (-> self enemy-info run-turning-acceleration))
       )
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -584,10 +574,7 @@
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (ja :group! (-> self draw art-group data (-> *metalmonk-global-info* notice-anim (get-rand-int self 2))))
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a1-4 (-> self nav state)))
           (set! (-> gp-0 quad) (-> a1-4 travel quad))
@@ -598,7 +585,6 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -630,7 +616,6 @@
           (go-virtual attack)
           )
       )
-    (none)
     )
   :code (behavior ()
     (talker-spawn-func (-> *talker-speech* 95) *entity-pool* (target-pos 0) (the-as region #f))
@@ -643,7 +628,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -674,10 +658,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -697,15 +678,9 @@
                      (a1-16 (-> self draw art-group data (-> *metalmonk-global-info* idle-anim v1-62)))
                      )
                 (set! gp-1 (ash 1 v1-62))
-                (ja-no-eval :group! a1-16
-                            :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-16) frames num-frames) -1)) f30-0)
-                            :frame-num 0.0
-                            )
+                (ja-no-eval :group! a1-16 :num! (seek! max f30-0) :frame-num 0.0)
                 )
-              (ja-no-eval :group! (ja-group)
-                          :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -724,13 +699,12 @@
         )
       )
     #f
-    (none)
     )
   )
 
 (defstate attack (metalmonk)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior metalmonk) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (metalmonk-method-180 self #t)
@@ -752,7 +726,6 @@
       (set! (-> v1-15 attack-id) v0-3)
       (set! (-> self attack-id) v0-3)
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -766,11 +739,9 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 #f))
@@ -782,10 +753,7 @@
                    )
              )
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! s5-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim s5-0) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! s5-0 :num! (seek!) :frame-num 0.0)
         )
       (until (ja-done? 0)
         (if (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
@@ -799,9 +767,8 @@
           (go-hostile self)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior metalmonk) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate victory (metalmonk)
@@ -813,7 +780,6 @@
           )
       )
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy victory) trans)))
@@ -834,24 +800,19 @@
           (react-to-focus self)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (ja :group! (-> self draw art-group data (-> *metalmonk-global-info* celebrate-anim (get-rand-int self 2))))
     (ja :num-func num-func-identity :frame-num 0.0)
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -868,7 +829,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -898,7 +858,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -915,7 +874,6 @@
       (go-virtual notice)
       )
     (get-point-at-percent-along-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -936,7 +894,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 

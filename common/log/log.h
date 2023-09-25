@@ -42,11 +42,13 @@ void log_print(const char* message);
 
 void set_file(const std::string& filename,
               const bool should_rotate = true,
-              const bool append = false);
+              const bool append = false,
+              const std::string& dir = "");
 void set_flush_level(level log_level);
 void set_file_level(level log_level);
 void set_stdout_level(level log_level);
 void set_max_debug_levels();
+void disable_ansi_colors();
 void initialize();
 void finish();
 

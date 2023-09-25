@@ -1018,16 +1018,16 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
   //  lq.xyzw vf04, 5(vi14)      |  mulw.xyzw vf16, vf00, vf00
   // inputs.vf04_cam_mat_x = load_vector_data(vars.vi14 + 5);
-  Vector4f vf16_scaled_pos_0 = Vector4f(0, 0, 0, 1);
+  // Vector4f vf16_scaled_pos_0 = Vector4f(0, 0, 0, 1);
 
   //  lq.xyzw vf07, 6(vi14)      |  mulw.xyzw vf17, vf00, vf00
   // inputs.vf07_cam_mat_y = load_vector_data(vars.vi14 + 6);
-  Vector4f vf17_scaled_pos_1 = Vector4f(0, 0, 0, 1);
+  // Vector4f vf17_scaled_pos_1 = Vector4f(0, 0, 0, 1);
 
   //  ibne vi00, vi14, L136      |  mulw.xyzw vf18, vf00, vf00
-  Vector4f vf18_scaled_pos_2 = Vector4f(0, 0, 0, 1);
+  // Vector4f vf18_scaled_pos_2 = Vector4f(0, 0, 0, 1);
   //  lq.xyzw vf08, 7(vi14)      |  mulw.xyzw vf19, vf00, vf00
-  Vector4f vf19_scaled_pos_3 = Vector4f(0, 0, 0, 1);
+  // Vector4f vf19_scaled_pos_3 = Vector4f(0, 0, 0, 1);
   // inputs.vf08_cam_mat_z = load_vector_data(vars.vi14 + 7);
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -1085,7 +1085,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   vf24_stq_0.w() = 0;  // set later.
 
   //  iaddiu vi11, vi00, 0x4000  |  nop
-  u16 vi11 = 0x4000;
+  [[maybe_unused]] u16 vi11 = 0x4000;
 
   //  iaddiu vi11, vi11, 0x4000  |  nop
   vi11 += 0x4000;
@@ -1677,7 +1677,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   }
 
 end:
-  int total_dvert = 0;
+  [[maybe_unused]] int total_dvert = 0;
   for (auto& draw : all_draws) {
     total_dvert += draw.verts.size();
     draw.tfrag_id = frag.id;
@@ -1994,7 +1994,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
     }
   }
 
-  int dc = 0;
+  [[maybe_unused]] int dc = 0;
   for (auto& group_list : result) {
     for (auto& group : group_list.second) {
       (void)group;

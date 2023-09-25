@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/citb-drop-plat-ag.gc")
-
 ;; failed to figure out what this is:
 (defskelgroup *citb-drop-plat-sg* citb-drop-plat citb-drop-plat-lod0-jg citb-drop-plat-idle-ja
               ((citb-drop-plat-lod0-mg (meters 20)) (citb-drop-plat-lod1-mg (meters 999999)))
@@ -78,8 +76,8 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-idle (drop-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('drop)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go drop-plat-drop)
@@ -102,9 +100,8 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior drop-plat) ja-post)
+  :post ja-post
   )
 
 ;; definition for function drop-plat-set-fade
@@ -126,8 +123,8 @@
 
 ;; failed to figure out what this is:
 (defstate drop-plat-spawn (drop-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('drop)
        (go drop-plat-die)
        )
@@ -151,14 +148,13 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate drop-plat-rise (drop-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('drop)
        (go drop-plat-drop)
        )
@@ -197,7 +193,6 @@
         (suspend)
         )
       )
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
@@ -206,7 +201,6 @@
       )
     (drop-plat-set-fade)
     (transform-post)
-    (none)
     )
   )
 
@@ -240,7 +234,6 @@
       (+! (-> self spin-angle) (* (-> self spin-speed) (-> *display* seconds-per-frame)))
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
@@ -249,7 +242,6 @@
       )
     (drop-plat-set-fade)
     (transform-post)
-    (none)
     )
   )
 
@@ -257,7 +249,6 @@
 (defstate drop-plat-die (drop-plat)
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -527,8 +518,8 @@
 
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-idle (citb-drop-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go citb-drop-plat-active)
        )
@@ -539,25 +530,23 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate citb-drop-plat-active (citb-drop-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('player-stepped)
-                      (when (>= (- (-> *display* base-frame-counter) (-> self drop-time)) (seconds 0.2))
-                        (set! (-> self drop-time) (-> *display* base-frame-counter))
-                        (the-as object (citb-drop-plat-drop-children (the-as int (-> event param 0))))
-                        )
-                      )
-                     (('trigger)
-                      (go citb-drop-plat-idle)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('player-stepped)
+       (when (>= (- (-> *display* base-frame-counter) (-> self drop-time)) (seconds 0.2))
+         (set! (-> self drop-time) (-> *display* base-frame-counter))
+         (citb-drop-plat-drop-children (the-as int (-> block param 0)))
+         )
+       )
+      (('trigger)
+       (go citb-drop-plat-idle)
+       )
+      )
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -573,7 +562,6 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 

@@ -150,7 +150,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
          )
      (let ((f0-4 (- (-> obj dist) (-> obj smoothed-dist))))
        (if (< (fabs f0-4) 40960.0)
-           (+! (-> obj smoothed-dist) (* 10.0 (-> self clock seconds-per-frame) f0-4))
+           (+! (-> obj smoothed-dist) (* 10.0 (seconds-per-frame) f0-4))
            (set! (-> obj smoothed-dist) (-> obj dist))
            )
        )
@@ -169,7 +169,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
     )
   (cond
     ((-> obj moving)
-     (set! (-> obj rod-of-god-scale) (- (-> obj rod-of-god-scale) (* 8.0 (-> self clock seconds-per-frame))))
+     (set! (-> obj rod-of-god-scale) (- (-> obj rod-of-god-scale) (* 8.0 (seconds-per-frame))))
      (when (< (-> obj rod-of-god-scale) 0.0)
        (set! (-> obj rod-of-god-scale) 0.0)
        (set! (-> obj moving) #f)
@@ -189,7 +189,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
      )
     (else
       (set! (-> obj pos quad) (-> obj root trans quad))
-      (+! (-> obj rod-of-god-scale) (* 8.0 (-> self clock seconds-per-frame)))
+      (+! (-> obj rod-of-god-scale) (* 8.0 (seconds-per-frame)))
       (if (< 1.0 (-> obj rod-of-god-scale))
           (set! (-> obj rod-of-god-scale) 1.0)
           )
@@ -203,8 +203,8 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
      (spawn (-> obj part) (-> obj root trans))
      )
     (else
-      (+! (-> obj theta) (* 32768.0 (-> self clock seconds-per-frame)))
-      (+! (-> obj phi) (* 9102.223 (-> self clock seconds-per-frame)))
+      (+! (-> obj theta) (* 32768.0 (seconds-per-frame)))
+      (+! (-> obj phi) (* 9102.223 (seconds-per-frame)))
       (set! (-> obj root trans quad) (-> obj pos quad))
       (set! (-> obj root trans y) (+ 28672.0 (* 4096.0 (cos (-> obj theta))) (-> obj pos y)))
       )
@@ -221,11 +221,11 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
 ;; failed to figure out what this is:
 (defstate idle (task-arrow)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-2 object))
-    (case event-type
+    (case message
       (('set-position)
-       (let ((a0-3 (the-as object (-> event param 0))))
+       (let ((a0-3 (the-as object (-> block param 0))))
          (set! (-> self pos quad) (-> (the-as vector a0-3) quad))
          )
        (if (logtest? (-> self flags) (task-arrow-flags task-arrow-flag-03))
@@ -246,8 +246,8 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
            )
        )
       (('modify-flags)
-       (let ((v1-16 (-> event param 0))
-             (a1-3 (-> event param 1))
+       (let ((v1-16 (-> block param 0))
+             (a1-3 (-> block param 1))
              )
          (set! v0-2 (logior (logclear (-> self flags) a1-3) v1-16))
          )
@@ -256,7 +256,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
        )
       (('map-icon)
        (kill-callback (-> *minimap* engine) (-> self minimap))
-       (let ((a2-1 (-> event param 0)))
+       (let ((a2-1 (-> block param 0)))
          (set! (-> self map-icon) a2-1)
          (set! v0-2 (add-icon! *minimap* self a2-1 (the-as int #f) (the-as vector #t) 0))
          )
@@ -268,10 +268,9 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
        )
       )
     )
-  :code (the-as (function none :behavior task-arrow) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (draw-arrow self)
-    (none)
     )
   )
 
@@ -284,11 +283,9 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (draw-arrow self)
-    (none)
     )
   )
 
@@ -297,7 +294,6 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -345,7 +341,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
   )
 
 ;; definition for function task-arrow-spawn
-(defun task-arrow-spawn ((arg0 task-arrow-params) (arg1 task-arrow))
+(defun task-arrow-spawn ((arg0 task-arrow-params) (arg1 process-tree))
   (let ((gp-0 (the-as process #f)))
     (let ((v1-1 (process-spawn task-arrow arg0 :to arg1)))
       (if v1-1

@@ -1,12 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/rollingcam-ag.gc")
-(import "goal_src/jak1/import/pusher-ag.gc")
-(import "goal_src/jak1/import/happy-plant-ag.gc")
-(import "goal_src/jak1/import/dark-plant-ag.gc")
-(import "goal_src/jak1/import/rolling-start-ag.gc")
-
 ;; definition of type rolling-part
 (deftype rolling-part (part-spawner)
   ((root-override basic  :offset 112)
@@ -178,7 +172,7 @@
 
 ;; failed to figure out what this is:
 (defstate pusher-idle (pusher)
-  :trans (the-as (function none :behavior pusher) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
       (let ((f0-0 -1.0))
@@ -195,9 +189,8 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior pusher) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type pusher
@@ -220,7 +213,7 @@
 
 ;; failed to figure out what this is:
 (defstate gorge-pusher-idle (gorge-pusher)
-  :trans (the-as (function none :behavior gorge-pusher) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (loop
       (if (task-closed? (game-task rolling-race) (task-status need-introduction))
@@ -229,9 +222,8 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior gorge-pusher) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type gorge-pusher
@@ -371,9 +363,8 @@
       (ja :num! (seek!))
       )
     (go dark-plant-idle)
-    (none)
     )
-  :post (the-as (function none :behavior dark-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -407,9 +398,8 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior dark-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -424,9 +414,8 @@
       (ja :num! (seek!))
       )
     (go dark-plant-gone)
-    (none)
     )
-  :post (the-as (function none :behavior dark-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -480,9 +469,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior dark-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -503,9 +491,8 @@
       (ja :num! (seek!))
       )
     (go dark-plant-idle)
-    (none)
     )
-  :post (the-as (function none :behavior dark-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -628,9 +615,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior happy-plant) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -641,7 +627,6 @@
       (process-entity-status! self (entity-perm-status bit-3) #f)
       (logior! (-> self mask) (process-mask actor-pause))
       )
-    (none)
     )
   :code (behavior ()
     (close-specific-task! (game-task rolling-plants) (task-status need-reminder))
@@ -701,9 +686,8 @@
       )
     (restore-collide-with-as (-> self root-override))
     (go happy-plant-opened)
-    (none)
     )
-  :post (the-as (function none :behavior happy-plant) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -724,7 +708,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (clear-collide-with-as (-> self root-override))
@@ -735,9 +718,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior happy-plant) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type happy-plant
@@ -939,8 +921,8 @@
 
 ;; failed to figure out what this is:
 (defstate rolling-start-break (rolling-start)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('unbreak)
        (go rolling-start-whole)
        )
@@ -968,15 +950,14 @@
           (deactivate self)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior rolling-start) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate rolling-start-whole (rolling-start)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('break)
        (sound-play "cool-rolling-st")
        (go rolling-start-break #f)
@@ -995,9 +976,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior rolling-start) ja-post)
+  :post ja-post
   )
 
 ;; definition for function rolling-start-init-by-other
@@ -1175,7 +1155,7 @@
 
 ;; failed to figure out what this is:
 (defstate gorge-abort-idle (gorge-abort)
-  :trans (the-as (function none :behavior gorge-abort) gorge-trans)
+  :trans gorge-trans
   :code (behavior ()
     (loop
       (suspend)
@@ -1183,7 +1163,6 @@
           (send-event (ppointer->process (-> self parent)) 'aborted)
           )
       )
-    (none)
     )
   )
 
@@ -1200,7 +1179,7 @@
 
 ;; failed to figure out what this is:
 (defstate gorge-finish-idle (gorge-finish)
-  :trans (the-as (function none :behavior gorge-finish) gorge-trans)
+  :trans gorge-trans
   :code (behavior ()
     (loop
       (suspend)
@@ -1208,7 +1187,6 @@
           (send-event (ppointer->process (-> self parent)) 'finished)
           )
       )
-    (none)
     )
   )
 
@@ -1300,7 +1278,7 @@
            )
          (set! (-> gp-0 origin x) 156.0)
          (set! (-> gp-0 origin y) 80.0)
-         (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
+         (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
          (let ((a0-15 gp-0))
            (set! (-> a0-15 color) (font-color red))
            )
@@ -1334,7 +1312,7 @@
             )
           (set! (-> gp-0 origin x) 156.0)
           (set! (-> gp-0 origin y) 80.0)
-          (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
+          (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
           (let ((a0-23 gp-0))
             (set! (-> a0-23 color) (font-color red))
             )
@@ -1368,7 +1346,6 @@
 (defstate gorge-start-race-finished (gorge-start)
   :trans (behavior ()
     (gorge-trans)
-    (none)
     )
   :code (behavior ()
     (gorge-start-draw-time #t #t)
@@ -1387,7 +1364,6 @@
           )
       )
     (go gorge-start-idle)
-    (none)
     )
   )
 
@@ -1395,7 +1371,6 @@
 (defstate gorge-start-race-aborted (gorge-start)
   :trans (behavior ()
     (gorge-trans)
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -1416,7 +1391,7 @@
           (let ((v1-21 gp-0))
             (set! (-> v1-21 height) (the float 50))
             )
-          (set! (-> gp-0 flags) (font-flags shadow kerning middle left large))
+          (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
           (print-game-text (lookup-text! *common-text* (text-id race-aborted) #f) gp-0 #f 128 22)
           )
         )
@@ -1428,14 +1403,13 @@
     (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'enable)
     (send-event (ppointer->process (-> *hud-parts* money)) 'enable)
     (go gorge-start-idle)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate gorge-start-racing (gorge-start)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('finished)
        (go gorge-start-race-finished)
        )
@@ -1500,7 +1474,6 @@
       )
     (sleep (-> self ticker) (seconds 6000))
     (set-setting! 'sound-flava #f 40.0 (music-flava rolling-gorge))
-    (none)
     )
   :exit (behavior ()
     (let* ((v1-0 (-> self child))
@@ -1517,9 +1490,8 @@
     (send-event (handle->process (-> self end-banner)) 'break-and-die)
     (send-event (handle->process (-> self start-banner)) 'unbreak)
     (remove-setting! 'sound-flava)
-    (none)
     )
-  :trans (the-as (function none :behavior gorge-start) gorge-trans)
+  :trans gorge-trans
   :code (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (loop
@@ -1532,13 +1504,12 @@
           (go gorge-start-ready)
           )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate gorge-start-ready (gorge-start)
-  :trans (the-as (function none :behavior gorge-start) gorge-trans)
+  :trans gorge-trans
   :code (behavior ()
     (loop
       (suspend)
@@ -1559,7 +1530,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -1568,17 +1538,14 @@
   :enter (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #t)
-    (none)
     )
   :trans (behavior ()
     (gorge-start-launch-start-banner)
     (gorge-trans)
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1592,7 +1559,6 @@
           (go gorge-start-ready)
           )
       )
-    (none)
     )
   )
 

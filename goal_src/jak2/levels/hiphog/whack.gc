@@ -1465,10 +1465,10 @@
 
 (defstate idle (hip-mole)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('active)
-       (go-virtual active (the-as time-frame (-> event param 0)) (-> event param 1))
+       (go-virtual active (the-as time-frame (-> block param 0)) (-> block param 1))
        )
       )
     )
@@ -1478,7 +1478,6 @@
     (ja-channel-push! 1 (seconds 0.05))
     (ja :group! (-> self draw art-group data 3) :num! min)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (let* ((s5-0 (handle->process (-> self cabinet)))
@@ -1523,14 +1522,13 @@
         )
       )
     (ja-post)
-    (none)
     )
   )
 
 (defstate active (hip-mole)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (case (-> self mode)
          ((10)
@@ -1569,11 +1567,9 @@
     (sound-play "whack-up")
     (set! (-> self sound-id) (sound-play "whack-bounce"))
     (set! (-> self abort?) #f)
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (case (-> self mode)
@@ -1603,13 +1599,9 @@
          )
        )
       )
-    (none)
     )
   :code (behavior ((arg0 time-frame) (arg1 uint))
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1623,10 +1615,7 @@
       )
     (ja-channel-push! 1 (seconds 0.05))
     (sound-play "whack-down")
-    (ja-no-eval :group! (-> self draw art-group data 5)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1641,7 +1630,6 @@
         )
       )
     (go-virtual idle)
-    (none)
     )
   :post (-> (method-of-type hip-mole idle) post)
   )
@@ -2032,13 +2020,11 @@
         (set! (-> *part-id-table* 3336 init-specs 2 random-rangef) 0.0)
         (set! (-> *part-id-table* 3336 init-specs 3 initial-valuef) (- 921.6 (* 614.4 (the float (/ s4-1 5)))))
         (set! (-> *part-id-table* 3336 init-specs 3 random-rangef) 0.0)
-        (sp-launch-particles-var
-          *sp-particle-system-3d*
+        (launch-particles
+          :system *sp-particle-system-3d*
           (-> *part-id-table* 3336)
           (-> (the-as process-drawable s5-1) node-list data 12 bone transform)
-          (the-as sparticle-launch-state #f)
-          (the-as sparticle-launch-control #f)
-          1.0
+          :origin-is-matrix #t
           )
         )
       )
@@ -2053,7 +2039,6 @@
     (ja-channel-set! 0)
     (ja-post)
     (sleep-code)
-    (none)
     )
   )
 
@@ -2071,22 +2056,20 @@
       (send-event-function *target* a1-1)
       (go-virtual active #t (the-as int a1-1))
       )
-    (none)
     )
   )
 
 (defstate active (whack-a-metal)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('done)
-                      (let ((v0-0 (+ (-> self miss-count) 1)))
-                        (set! (-> self miss-count) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('done)
+       (let ((v0-0 (+ (-> self miss-count) 1)))
+         (set! (-> self miss-count) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ((arg0 symbol) (arg1 int))
     (when arg0
@@ -2116,7 +2099,6 @@
           (set! (-> self hud-goal) (ppointer->handle (process-spawn hud-goal :init hud-init-by-other :to self)))
           )
       )
-    (none)
     )
   :exit (behavior ()
     (when (not (and (-> self next-state) (let ((v1-3 (-> self next-state name)))
@@ -2147,7 +2129,6 @@
       (want-display-level *load-state* 'ctyport 'display)
       (want-display-level *load-state* 'ctywide 'display)
       )
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -2173,7 +2154,6 @@
       (-> *cpad-list* cpads 0 button0-rel 0)
       (pad-buttons up right down left l1 r1 triangle circle x square)
       )
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 int))
     (local-vars
@@ -2201,10 +2181,7 @@
       (when (-> self dizzy?)
         (sound-play "whack-dizzy")
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! (-> self draw art-group data 16)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 16)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 16) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (when (rand-vu-percent? 0.2)
             (let* ((gp-2 (get-process *default-dead-pool* lightning-tracker #x4000))
@@ -2274,10 +2251,7 @@
           9
           :to *entity-pool*
           )
-        (ja-no-eval :group! (-> self draw art-group data 17)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 17)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (+! (-> self event-time) (- (current-time) (-> self clock old-frame-counter)))
           (suspend)
@@ -2287,10 +2261,7 @@
         (dotimes (v1-85 4)
           (set! (-> self slot-buffer v1-85) -1)
           )
-        (ja-no-eval :group! (-> self draw art-group data 18)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 18)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 18) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (+! (-> self event-time) (- (current-time) (-> self clock old-frame-counter)))
           (suspend)
@@ -2307,12 +2278,10 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (whack-a-metal-method-27 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -2611,7 +2580,6 @@
         (go-virtual active #f (the-as int a1-9))
         )
       )
-    (none)
     )
   :post (-> (method-of-type whack-a-metal active) post)
   )
@@ -2681,12 +2649,10 @@
           )
         )
       )
-    (none)
     )
   :post (behavior ()
     (whack-a-metal-method-28 self)
     (ja-post)
-    (none)
     )
   )
 
@@ -2755,14 +2721,14 @@
     (ja-channel-set! 0)
     (ja-post)
     (set-blackout-frames (seconds 0.2))
-    (none)
     )
   :post (-> (method-of-type whack-a-metal lose) post)
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defbehavior whack-a-metal-init whack-a-metal ((arg0 entity-actor))
-  (stack-size-set! (-> self main-thread) 512) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> self main-thread) 512)
   (set! (-> self entity) arg0)
   (set! (-> self level) (level-get *level* 'hiphog))
   (set! (-> self root) (new 'process 'trsqv))

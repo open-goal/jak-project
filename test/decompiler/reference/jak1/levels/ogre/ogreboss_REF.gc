@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/ogreboss-ag.gc")
-
 ;; failed to figure out what this is:
 (defskelgroup *ogreboss-sg* ogreboss ogreboss-lod0-jg ogreboss-idle-ja
               ((ogreboss-lod0-mg (meters 999999)))
@@ -111,7 +109,6 @@
 (defstate ogreboss-missile-idle (ogreboss-missile)
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
@@ -152,9 +149,8 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-missile) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -162,7 +158,6 @@
   :post (behavior ()
     (quaternion*! (-> self root-override quat) (-> self root-override quat) (-> self tumble-quat))
     (transform-post)
-    (none)
     )
   )
 
@@ -212,21 +207,21 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-missile-impact (ogreboss-missile)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (cond
          (#f
            (cond
              ((= (-> proc type) target)
-              (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'explode))))
+              (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'explode))))
               )
              (else
                (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
                  (set! (-> a1-2 from) self)
                  (set! (-> a1-2 num-params) 4)
                  (set! (-> a1-2 message) 'attack)
-                 (set! (-> a1-2 param 0) (-> event param 0))
+                 (set! (-> a1-2 param 0) (-> block param 0))
                  (set! (-> a1-2 param 1) (the-as uint 'explode))
                  (let ((v1-12 (+ *global-attack-id* 1)))
                    (set! *global-attack-id* v1-12)
@@ -280,7 +275,7 @@
                        (the-as rgba (new 'static 'rgba :g #xff :a #x80))
                        )
                      (when (>= f30-0 0.0)
-                       (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'damage))))
+                       (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'damage))))
                        (send-event (ppointer->process (-> self parent-override)) 'victory)
                        )
                      )
@@ -333,9 +328,8 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-missile) ja-post)
+  :post ja-post
   )
 
 ;; definition of type ogreboss-missile-init-data
@@ -524,8 +518,8 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-super-boulder-idle (ogreboss-super-boulder)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('speedup)
        (set! (-> self speed) (* 1.3 (-> self speed)))
        )
@@ -545,7 +539,6 @@
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :code (behavior ()
     (ja :group! ogreboss-super-boulder-idle-ja :num! min)
@@ -577,9 +570,8 @@
       (sound-play "ogre-rock" :id (-> self sound-id) :position (the-as symbol (-> self joint transform)))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-super-boulder) transform-post)
+  :post transform-post
   )
 
 ;; definition for function ogreboss-super-boulder-impact-effect
@@ -621,7 +613,7 @@
     (suspend)
     (ja :num! (seek!))
     )
-  (the-as object 0)
+  0
   )
 
 ;; failed to figure out what this is:
@@ -646,9 +638,8 @@
       (ja :num! (seek!))
       )
     (go ogreboss-super-boulder-land)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-super-boulder) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -658,9 +649,8 @@
     (set! (-> self hit-boss) #t)
     (ogreboss-super-boulder-play-hit-anim)
     (go ogreboss-super-boulder-land)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-super-boulder) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -675,9 +665,8 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss-super-boulder) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -702,12 +691,10 @@
       (ja :num! (seek! (ja-aframe (the-as float 100.0) 0)))
       )
     (go ogreboss-super-boulder-roll)
-    (none)
     )
   :post (behavior ()
     (transform-post)
     0
-    (none)
     )
   )
 
@@ -776,12 +763,10 @@
       (ja :num! (seek!))
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (transform-post)
     0
-    (none)
     )
   )
 
@@ -808,7 +793,6 @@
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -943,7 +927,6 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (vector+*! (-> self root-override trans) (-> self src-pos) (-> self side-dir) (-> self side-pos))
@@ -957,7 +940,6 @@
       (the-as float 0.0)
       (the-as float 409600.0)
       )
-    (none)
     )
   )
 
@@ -1211,7 +1193,6 @@
         (send-event (ppointer->process gp-0) 'draw #t)
         )
       )
-    (none)
     )
   :trans (behavior ()
     (try-preload-stream *art-control* "$GAMCAM23" 0 self (the-as float -99.0))
@@ -1225,14 +1206,12 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ogreboss-reset-camera)
     (ogreboss-idle-loop)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -1273,9 +1252,8 @@
       )
     (set-setting! 'music 'ogreboss 0.0 0)
     (go ogreboss-wait-for-player)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -1289,13 +1267,11 @@
           (go ogreboss-idle)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ogreboss-idle-loop)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss) ja-post)
+  :post ja-post
   )
 
 ;; definition for function ogreboss-debug-adjust-difficulty
@@ -1558,8 +1534,8 @@
 
 ;; failed to figure out what this is:
 (defstate ogreboss-stage1 (ogreboss)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('next-stage)
        (set! (-> self bridge-assembled) #t)
        (go ogreboss-stage2)
@@ -1568,7 +1544,6 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (if (and (-> self bridge-assembled)
@@ -1577,7 +1552,6 @@
              )
         (go ogreboss-stage2)
         )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self mask) (process-mask enemy))
@@ -1665,7 +1639,6 @@
       (ja :num! (seek!))
       )
     (go ogreboss-stage1)
-    (none)
     )
   :post ogreboss-post
   )
@@ -1752,41 +1725,40 @@
 ;; definition for function ogreboss-attack-event-handler
 ;; INFO: Return type mismatch symbol vs object.
 (defbehavior ogreboss-attack-event-handler ogreboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('attack)
-                    (when (-> self vulnerable)
-                      (if ((method-of-type touching-shapes-entry prims-touching?)
-                           (the-as touching-shapes-entry (-> arg3 param 0))
-                           (the-as collide-shape-moving (-> self root-override))
-                           (the-as uint 128)
-                           )
-                          (ja :chan 1 :group! ogreboss-hit-crotch-ja :num! min :frame-interp 0.0)
-                          (ja :chan 1 :group! ogreboss-hit-chest-ja :num! min :frame-interp 0.0)
-                          )
-                      (set! (-> self hit-time) (-> *display* base-frame-counter))
-                      (let ((v1-17 (rand-vu-int-range 0 2)))
-                        (cond
-                          ((zero? v1-17)
-                           (sound-play "ogre-grunt1" :position (the-as symbol (-> self root-override trans)))
-                           )
-                          ((= v1-17 1)
-                           (sound-play "ogre-grunt2" :position (the-as symbol (-> self root-override trans)))
-                           )
-                          (else
-                            (sound-play "ogre-grunt3" :position (the-as symbol (-> self root-override trans)))
-                            )
-                          )
-                        )
-                      (+! (-> self hit-count) 1)
-                      (if (>= (-> self hit-count) (-> self max-hit-count))
-                          (go ogreboss-stage3-hit)
-                          )
-                      (send-event (handle->process (-> self boulder)) 'speedup)
-                      )
-                    #t
-                    )
-                   )
-          )
+  (case arg2
+    (('attack)
+     (when (-> self vulnerable)
+       (if ((method-of-type touching-shapes-entry prims-touching?)
+            (the-as touching-shapes-entry (-> arg3 param 0))
+            (the-as collide-shape-moving (-> self root-override))
+            (the-as uint 128)
+            )
+           (ja :chan 1 :group! ogreboss-hit-crotch-ja :num! min :frame-interp 0.0)
+           (ja :chan 1 :group! ogreboss-hit-chest-ja :num! min :frame-interp 0.0)
+           )
+       (set! (-> self hit-time) (-> *display* base-frame-counter))
+       (let ((v1-17 (rand-vu-int-range 0 2)))
+         (cond
+           ((zero? v1-17)
+            (sound-play "ogre-grunt1" :position (the-as symbol (-> self root-override trans)))
+            )
+           ((= v1-17 1)
+            (sound-play "ogre-grunt2" :position (the-as symbol (-> self root-override trans)))
+            )
+           (else
+             (sound-play "ogre-grunt3" :position (the-as symbol (-> self root-override trans)))
+             )
+           )
+         )
+       (+! (-> self hit-count) 1)
+       (if (>= (-> self hit-count) (-> self max-hit-count))
+           (go ogreboss-stage3-hit)
+           )
+       (send-event (handle->process (-> self boulder)) 'speedup)
+       )
+     #t
+     )
+    )
   )
 
 ;; failed to figure out what this is:
@@ -1794,11 +1766,9 @@
   :event ogreboss-attack-event-handler
   :enter (behavior ()
     (set! (-> self boulder) (the-as handle #f))
-    (none)
     )
   :trans (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (ogreboss-set-stage2-camera)
@@ -1838,7 +1808,6 @@
         )
       )
     (go ogreboss-stage3-shuffle)
-    (none)
     )
   :post ogreboss-post
   )
@@ -1864,12 +1833,10 @@
     (set! (-> self max-hit-count) (the int (* 6.0 (-> self difficulty))))
     (set! (-> self grow-time) (* 300.0 (+ (/ 10.0 (-> self difficulty)) (* -1.0 (-> self level)))))
     (set! (-> self boulder) (the-as handle #f))
-    (none)
     )
   :exit (behavior ()
     (send-event *camera* 'point-of-interest #f)
     (set! (-> self vulnerable) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((v1-1 (handle->process (-> self boulder))))
@@ -1884,7 +1851,6 @@
       (send-event (handle->process (-> self boulder)) 'grow-faster)
       )
     0
-    (none)
     )
   :code (behavior ()
     (set! (-> self shuffle-pos) 0.0)
@@ -1971,12 +1937,10 @@
           )
         )
       )
-    (none)
     )
   :post (behavior ()
     (vector+*! (-> self root-override trans) (-> self far-pos) (-> self side-dir) (-> self shuffle-pos))
     (ogreboss-post)
-    (none)
     )
   )
 
@@ -2002,9 +1966,8 @@
       )
     (set! (-> self bridge-assembled) #f)
     (go ogreboss-stage1)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -2027,9 +1990,8 @@
       (suspend)
       )
     (go ogreboss-stage1)
-    (none)
     )
-  :post (the-as (function none :behavior ogreboss) transform-post)
+  :post transform-post
   )
 
 ;; definition for function ogreboss-trigger-steps
@@ -2073,16 +2035,12 @@
       )
     (ogreboss-trigger-steps)
     (go ogreboss-dead)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate ogreboss-dead (ogreboss)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior ogreboss)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (remove-setting! 'music)
     (ogreboss-reset-camera)
@@ -2133,7 +2091,6 @@
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 

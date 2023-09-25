@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/dark-crystal-ag.gc")
-
 ;; definition of type dark-crystal
 (deftype dark-crystal (process-drawable)
   ((root-override         collide-shape         :offset        112)
@@ -444,8 +442,8 @@
 
 ;; failed to figure out what this is:
 (defstate dark-crystal-idle (dark-crystal)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (if (= (-> proc type) target)
            (level-hint-spawn
@@ -466,7 +464,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -492,7 +489,6 @@
         )
       )
     (go dark-crystal-explode)
-    (none)
     )
   )
 
@@ -550,16 +546,12 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate dark-crystal-spawn-fuel-cell (dark-crystal)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior dark-crystal)
-    process-drawable-fuel-cell-handler
-    )
+  :event process-drawable-fuel-cell-handler
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (clear-collide-with-as (-> self root-override))
@@ -589,7 +581,6 @@
       )
     (aybabtu 2)
     (cleanup-for-death self)
-    (none)
     )
   )
 

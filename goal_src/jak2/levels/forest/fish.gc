@@ -70,19 +70,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 5.0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 5.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 5.0))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior minnow) ja-post)
+  :post ja-post
   )
 
 (deftype fish (structure)
@@ -116,11 +112,11 @@
 
 (defstate idle (fish-manager)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (format #t "training-manager received event ~s~%" event-type)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (format #t "training-manager received event ~s~%" message)
     (format #t "event-from ~s~%" proc)
     )
-  :code (the-as (function none :behavior fish-manager) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars
       (sv-448 (function vector vector float vector))
@@ -415,7 +411,7 @@
               (set! (-> s0-0 y) 0.0)
               (let ((a0-44 s3-0))
                 (let ((v1-117 s3-0))
-                  (let ((a1-52 (-> self clock seconds-per-frame)))
+                  (let ((a1-52 (seconds-per-frame)))
                     (.mov vf7 a1-52)
                     )
                   (.lvf vf5 (&-> s0-0 quad))
@@ -431,7 +427,7 @@
             (let ((a1-54 s2-0))
               (let ((v1-120 s2-0))
                 (let ((a0-46 s3-0))
-                  (let ((a2-10 (-> self clock seconds-per-frame)))
+                  (let ((a2-10 (seconds-per-frame)))
                     (.mov vf7 a2-10)
                     )
                   (.lvf vf5 (&-> a0-46 quad))
@@ -458,7 +454,6 @@
             )
           )
         )
-      (none)
       )
     )
   )

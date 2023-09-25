@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "common/util/Timer.h"
 #include "common/util/string_util.h"
 
@@ -447,15 +448,24 @@ u64 pc_get_mips2c(u32 name) {
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 
-u64 pc_get_display_name(u32 id) {
+u64 pc_get_display_name(u32 id, u32 str_dest_ptr) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
     name = Display::GetMainDisplay()->get_display_manager()->get_connected_display_name(id);
   }
   if (name.empty()) {
-    return s7.offset;
+    return bool_to_symbol(false);
   }
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+  if (g_game_version == GameVersion::Jak1) {
+    // The Jak 1 font has only caps
+    name = str_util::to_upper(name).c_str();
+  }
+  // Encode the string to the game font
+  const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                ->convert_utf8_to_game(str_util::titlize(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::titlize(encoded_name).c_str());
+  return bool_to_symbol(true);
 }
 
 u32 pc_get_display_mode() {
@@ -591,21 +601,32 @@ void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
   }
 }
 
-u64 pc_get_controller_name(u32 id) {
+u64 pc_get_controller_name(u32 id, u32 str_dest_ptr) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
     name = Display::GetMainDisplay()->get_input_manager()->get_controller_name(id);
   }
   if (name.empty()) {
-    return s7.offset;
+    return bool_to_symbol(false);
   }
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+
+  if (g_game_version == GameVersion::Jak1) {
+    // The Jak 1 font has only caps
+    name = str_util::to_upper(name).c_str();
+  }
+  // Encode the string to the game font
+  const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                ->convert_utf8_to_game(str_util::titlize(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::titlize(encoded_name).c_str());
+  return bool_to_symbol(true);
 }
 
-u64 pc_get_current_bind(s32 bind_assignment_info) {
+u64 pc_get_current_bind(s32 bind_assignment_info, u32 str_dest_ptr) {
   if (!Display::GetMainDisplay()) {
     // TODO - return something that lets the runtime use a translatable string if unknown
-    return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+    strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper("unknown").c_str());
+    return bool_to_symbol(true);
   }
 
   auto info = bind_assignment_info ? Ptr<BindAssignmentInfo>(bind_assignment_info).c() : NULL;
@@ -619,12 +640,21 @@ u64 pc_get_current_bind(s32 bind_assignment_info) {
     auto name = Display::GetMainDisplay()->get_input_manager()->get_current_bind(
         port, (InputDeviceType)device_type, for_button, input_idx, analog_min_range);
     if (name.empty()) {
-      return s7.offset;
+      return bool_to_symbol(false);
     }
-    return g_pc_port_funcs.make_string_from_c(str_util::to_upper(name).c_str());
+    if (g_game_version == GameVersion::Jak1) {
+      // The Jak 1 font has only caps
+      name = str_util::to_upper(name).c_str();
+    }
+    // Encode the string to the game font
+    const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                  ->convert_utf8_to_game(str_util::titlize(name).c_str());
+    strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
+    return bool_to_symbol(true);
   }
   // TODO - return something that lets the runtime use a translatable string if unknown
-  return g_pc_port_funcs.make_string_from_c(str_util::to_upper("unknown").c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper("unknown").c_str());
+  return bool_to_symbol(true);
 }
 
 u64 pc_get_controller_count() {
@@ -764,7 +794,7 @@ void pc_renderer_tree_set_lod(Gfx::RendererTreeType tree, int lod) {
   }
 }
 
-void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask, u32 symptr) {
+void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask, u32 symptr) {
   if (symbol_to_bool(symptr)) {
     Gfx::CollisionRendererSetMask(mode, mask);
   } else {
@@ -772,7 +802,7 @@ void pc_set_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int ma
   }
 }
 
-u32 pc_get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, int mask) {
+u32 pc_get_collision_mask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask) {
   return Gfx::CollisionRendererGetMask(mode, mask) ? s7.offset + true_symbol_offset(g_game_version)
                                                    : s7.offset;
 }
@@ -826,6 +856,14 @@ void pc_prof(u32 name, ProfNode::Kind kind) {
 std::mt19937 extra_random_generator;
 u32 pc_rand() {
   return (u32)extra_random_generator();
+}
+
+void pc_treat_pad0_as_pad1(u32 symptr) {
+  Gfx::g_debug_settings.treat_pad0_as_pad1 = symbol_to_bool(symptr);
+}
+
+u32 pc_is_imgui_visible() {
+  return bool_to_symbol(Gfx::g_debug_settings.show_imgui);
 }
 
 /// Initializes all functions that are common across all game versions
@@ -909,6 +947,8 @@ void init_common_pc_port_functions(
   // Return the current OS as a symbol. Actually returns what it was compiled for!
   make_func_symbol_func("pc-get-os", (void*)pc_get_os);
   make_func_symbol_func("pc-get-unix-timestamp", (void*)pc_get_unix_timestamp);
+  make_func_symbol_func("pc-treat-pad0-as-pad1", (void*)pc_treat_pad0_as_pad1);
+  make_func_symbol_func("pc-is-imgui-visible?", (void*)pc_is_imgui_visible);
 
   // file related functions
   make_func_symbol_func("pc-filepath-exists?", (void*)pc_filepath_exists);

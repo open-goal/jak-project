@@ -403,6 +403,13 @@
   (pc-get-collision-mask (pc-collision-mode skip) arg)
   )
 
+(defun dm-collision-filter-skiphide-pick-func ((arg int) (msg debug-menu-msg))
+  (when (= msg (debug-menu-msg press))
+    (pc-set-collision-mask (pc-collision-mode skiphide) arg (not (pc-get-collision-mask (pc-collision-mode skiphide) arg)))
+    )
+  (pc-get-collision-mask (pc-collision-mode skiphide) arg)
+  )
+
 (defun debug-menu-make-collision-renderer-menu ((ctx debug-menu-context))
   (let ((menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer menu")))
       ;; master toggle
@@ -434,8 +441,15 @@
               filter-menu)))
       (debug-menu-append-item menu (new-dm-submenu "Filter skip"
           (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer filter skip menu")))
+              (debug-menu-append-item filter-menu (new-dm-flag "(no skip)" -1 dm-collision-filter-skip-pick-func))
               (doenum (name val pc-pat-skip-hack)
                   (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skip-pick-func))
+                  )
+              filter-menu)))
+      (debug-menu-append-item menu (new-dm-submenu "Hide skip"
+          (let ((filter-menu (new 'debug 'debug-menu ctx "OpenGOAL collision renderer hide skip menu")))
+              (doenum (name val pc-pat-skip-hack)
+                  (debug-menu-append-item filter-menu (new-dm-flag name val dm-collision-filter-skiphide-pick-func))
                   )
               filter-menu)))
 
@@ -485,6 +499,14 @@
     )
   #f)
 
+(defun dm-anim-tester-x-refresh ()
+  (atx-start)
+  (atx-list-init! (-> *ATX-settings* list-ctrl))
+  (set! (-> *ATX-settings* list-ctrl func) atx-list-art-group-func)
+  (atx-add-common-group)
+  (atx-add-level-group) 
+)
+
 (defun dm-anim-tester-x-func ((action symbol))
   (unless *atx*
       (atx-start))
@@ -532,6 +554,7 @@
       (debug-menu-append-item menu (new-dm-func "Stop"  #f atx-stop))
       (debug-menu-append-item menu (new-dm-var-float "Speed" (the int #f) (dm-lambda-float-var (-> *ATX-settings* speed)) 0.01 -10.0 10.0))
       (debug-menu-append-item menu (new-dm-var-float "Frame Num" (the int #f) (dm-lambda-float-var (-> *ATX-settings* frame-num)) 0.1 0.0 99999.0))
+      (debug-menu-append-item menu (new-dm-func "Refresh" #f dm-anim-tester-x-refresh))
       (debug-menu-append-item menu (new-dm-func "Pick Art Group" 'pick-art-group dm-anim-tester-x-func))
       (debug-menu-append-item menu (new-dm-func "Pick Anim" 'at-pick-joint-anim dm-anim-tester-x-func))
       (debug-menu-append-item menu (new-dm-func "Pick Mesh" 'pick-mesh-geo dm-anim-tester-x-func))
@@ -689,6 +712,7 @@
       (debug-menu-append-item regions-menu (new-dm-func "Print on-inside" 'on-inside dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-func "Print on-exit" 'on-exit dm-print-region-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Display region inside" *display-region-inside* dm-boolean-toggle-pick-func))
+      (debug-menu-append-item regions-menu (new-dm-bool "Show non-sphere bsphere" *debug-region-show-bsphere* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "Region Marks" *display-region-marks* dm-boolean-toggle-pick-func))
       (debug-menu-append-item regions-menu (new-dm-bool "region-mode" #f
                                                 (lambda (arg (msg debug-menu-msg))
@@ -752,6 +776,12 @@
   (when (= msg (debug-menu-msg press))
       (set! (-> *pc-settings* gfx-msaa) msaa))
   (= (-> *pc-settings* gfx-msaa) msaa)))
+
+(defun dm-territory-pick-func ((bterr int) (msg debug-menu-msg))
+  (let ((terr (/ bterr 8)))
+  (when (= msg (debug-menu-msg press))
+      (set! *debug-territory* terr))
+  (= *debug-territory* terr)))
 
 (when (-> *debug-menu-context* root-menu)
   ;; (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-load-menu *debug-menu-context*))
@@ -843,6 +873,7 @@
             ;(flag "PS2 Music" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-music?)))
             ;(flag "PS2 Sound effects" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-se?)))
             ;(flag "PS2 Hints" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-hints?)))
+            (flag "Highres Clouds" #f ,(dm-lambda-boolean-flag (-> *pc-settings* hires-clouds?)))
             (flag "Faster airlocks" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-airlock?)))
             (flag "Faster elevators" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-elevator?)))
             (flag "Faster progress" #f ,(dm-lambda-boolean-flag (-> *pc-settings* fast-progress?)))
@@ -865,11 +896,16 @@
                                                     (set! (-> *pc-settings* lod-force-actor) 3)
                                                     ))
             )
-        ;;  (menu "Framerate"
-        ;;     (flag "60" 60 dm-frame-rate-pick-func)
-        ;;     (flag "100" 100 dm-frame-rate-pick-func)
-        ;;     (flag "150" 150 dm-frame-rate-pick-func)
-        ;;     )
+        (menu "Framerate"
+           (flag "30" 30 dm-frame-rate-pick-func)
+           (flag "50" 50 dm-frame-rate-pick-func)
+           (flag "60" 60 dm-frame-rate-pick-func)
+           (flag "75" 75 dm-frame-rate-pick-func)
+           (flag "120" 120 dm-frame-rate-pick-func)
+           (flag "144" 144 dm-frame-rate-pick-func)
+           (flag "165" 165 dm-frame-rate-pick-func)
+           (flag "240" 240 dm-frame-rate-pick-func)
+           )
          (menu "MSAA"
             (flag "Off" 1 dm-msaa-pick-func)
             (flag "x2" 2 dm-msaa-pick-func)
@@ -881,6 +917,12 @@
             (flag "hp" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-hp-led?)))
             (flag "eco" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-eco-led?)))
             (flag "heat" #f ,(dm-lambda-boolean-flag (-> *pc-settings* controller-heat-led?)))
+            )
+         (menu "Territory"
+            (flag "GAME_TERRITORY_SCEA" (the binteger GAME_TERRITORY_SCEA) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEE" (the binteger GAME_TERRITORY_SCEE) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEI" (the binteger GAME_TERRITORY_SCEI) dm-territory-pick-func)
+            (flag "GAME_TERRITORY_SCEK" (the binteger GAME_TERRITORY_SCEK) dm-territory-pick-func)
             )
          (flag "V-sync" #f ,(dm-lambda-boolean-flag (-> *pc-settings* vsync?)))
          (flag "PS2 actor vis" #f ,(dm-lambda-boolean-flag (-> *pc-settings* ps2-actor-vis?)))

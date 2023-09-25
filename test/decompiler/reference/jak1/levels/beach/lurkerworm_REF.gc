@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/lurkerworm-ag.gc")
-
 ;; definition of type lurkerworm
 (deftype lurkerworm (process-drawable)
   ((root-override collide-shape-moving      :offset        112)
@@ -270,44 +268,16 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod particle-effect lurkerworm ((obj lurkerworm))
   (let ((a2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 5))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-0
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-0)
     )
   (let ((a2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 6))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-1
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-1)
     )
   (let ((a2-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-2
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-2)
     )
   (let ((a2-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 8))))
-    (sp-launch-particles-var
-      *sp-particle-system-2d*
-      (-> *part-id-table* 661)
-      a2-3
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
+    (launch-particles (-> *part-id-table* 661) a2-3)
     )
   0
   (none)
@@ -353,7 +323,6 @@ lurkerworm-default-post-behavior
   :enter (behavior ()
     (ja-channel-set! 0)
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (loop
@@ -365,7 +334,6 @@ lurkerworm-default-post-behavior
           )
       (suspend)
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -376,7 +344,6 @@ lurkerworm-default-post-behavior
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (sound-play "worm-rise1")
-    (none)
     )
   :code (behavior ()
     (set! (-> self part local-clock) 0)
@@ -391,7 +358,6 @@ lurkerworm-default-post-behavior
         )
       (suspend)
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -401,7 +367,6 @@ lurkerworm-default-post-behavior
   :event lurkerworm-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
@@ -414,7 +379,6 @@ lurkerworm-default-post-behavior
       )
     (set! (-> self strike-count) 3)
     (go lurkerworm-rest)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -425,11 +389,9 @@ lurkerworm-default-post-behavior
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self vulnerable) #t)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self vulnerable) #f)
-    (none)
     )
   :code (behavior ()
     (let* ((f30-0 10.0)
@@ -479,7 +441,6 @@ lurkerworm-default-post-behavior
           (go lurkerworm-sink)
           )
       )
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -500,7 +461,6 @@ lurkerworm-default-post-behavior
     (ja-no-eval :num! (seek!))
     (ja-channel-push! 1 (seconds 0.135))
     (go lurkerworm-rest)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
@@ -510,7 +470,6 @@ lurkerworm-default-post-behavior
   :event lurkerworm-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! lurkerworm-sink-ja :num! (seek!) :frame-num 0.0)
@@ -521,17 +480,13 @@ lurkerworm-default-post-behavior
       (ja :num! (seek!))
       )
     (go lurkerworm-idle)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )
 
 ;; failed to figure out what this is:
 (defstate lurkerworm-die (lurkerworm)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerworm)
-    process-drawable-death-event-handler
-    )
+  :event process-drawable-death-event-handler
   :code (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
     (let ((v1-3 (-> self root-override root-prim)))
@@ -545,7 +500,6 @@ lurkerworm-default-post-behavior
       (ja :num! (seek!))
       )
     (cleanup-for-death self)
-    (none)
     )
   :post lurkerworm-default-post-behavior
   )

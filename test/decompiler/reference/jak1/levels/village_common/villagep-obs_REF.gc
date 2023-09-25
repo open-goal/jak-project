@@ -1,9 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/warp-gate-switch-ag.gc")
-(import "goal_src/jak1/import/village-cam-ag.gc")
-
 ;; definition of type warpgate
 (deftype warpgate (process-hidden)
   ()
@@ -60,7 +57,6 @@
     (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
         (go target-hit-ground #f)
         )
-    (none)
     )
   :code (behavior ((arg0 vector) (arg1 vector))
     (clear-collide-with-as (-> self control))
@@ -114,7 +110,6 @@
       (ja :num! (seek!))
       )
     (target-falling-anim -1 (seconds 0.33))
-    (none)
     )
   :post target-no-move-post
   )
@@ -122,8 +117,8 @@
 ;; failed to figure out what this is:
 (defstate idle (warp-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
        (go-virtual hidden)
        )
@@ -191,7 +186,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 
@@ -258,7 +252,6 @@
     (apply-settings *setting-control*)
     (sound-play "start-options")
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (when (or (and (cpad-pressed? 0 triangle)
@@ -288,7 +281,6 @@
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (local-vars (sv-112 int) (sv-128 int) (sv-144 int))
@@ -347,7 +339,7 @@
             (let ((v1-40 s1-3))
               (set! (-> v1-40 height) (the float 55))
               )
-            (set! (-> s1-3 flags) (font-flags shadow kerning middle left large))
+            (set! (-> s1-3 flags) (font-flags shadow kerning middle middle-vert large))
             (print-game-text (lookup-text! *common-text* (text-id warp-gate-use-dpad) #f) s1-3 #f 128 22)
             (+! (-> s1-3 origin y) 35.0)
             (let ((v1-43 s1-3))
@@ -425,14 +417,13 @@
           )
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hidden (warp-gate)
   :virtual #t
-  :code (the-as (function none :behavior warp-gate) anim-loop)
+  :code anim-loop
   )
 
 ;; definition for function warp-gate-init-by-other
@@ -684,8 +675,8 @@
 ;; failed to figure out what this is:
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (when (pressable? self)
          (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
@@ -693,10 +684,10 @@
          )
        )
       (('hide)
-       (send-event (handle->process (-> self warp)) event-type)
+       (send-event (handle->process (-> self warp)) message)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-up-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton basebutton-up-idle) event) proc argc message block)
         )
       )
     )
@@ -707,7 +698,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -797,20 +787,19 @@
           (t9-13)
           )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
-       (send-event (handle->process (-> self warp)) event-type)
+       (send-event (handle->process (-> self warp)) message)
        )
       (else
-        ((-> (method-of-type basebutton basebutton-down-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton basebutton-down-idle) event) proc argc message block)
         )
       )
     )
@@ -823,7 +812,6 @@
           (t9-4)
           )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((a0-1 (handle->process (-> self warp))))
@@ -836,7 +824,6 @@
           (t9-1)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 60))
@@ -861,7 +848,6 @@
           (t9-3)
           )
       )
-    (none)
     )
   )
 
@@ -907,7 +893,6 @@
           ((the-as (function none :behavior basebutton) t9-10))
           )
       )
-    (none)
     )
   )
 
@@ -1200,7 +1185,6 @@
         )
       (suspend)
       )
-    (none)
     )
   )
 

@@ -19,7 +19,9 @@ class Vector {
   }
 
   template <typename... Args>
-  explicit Vector(Args... args) : m_data{T(args)...} {}
+  constexpr Vector(Args... args) : m_data{T(args)...} {
+    static_assert(sizeof...(args) == Size, "Incorrect number of args");
+  }
 
   T* begin() { return &m_data[0]; }
   T* end() { return &m_data[Size]; }

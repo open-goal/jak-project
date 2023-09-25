@@ -34,7 +34,7 @@
    (num-unlocked-secrets                 int32          :offset-assert 120)
    (game-options-item-selected           int32          :offset-assert 124)
    (game-options-item-picked             basic          :offset-assert 128)
-   (game-options-last-move               uint64         :offset-assert 136)
+   (game-options-last-move               time-frame     :offset-assert 136)
    (game-options-vibrations              symbol         :offset-assert 144)
    (game-options-subtitles               symbol         :offset-assert 148)
    (game-options-language-index          int32          :offset-assert 152)
@@ -46,7 +46,7 @@
    (graphic-options-progressive-scan     symbol         :offset-assert 180)
    (qr-options-item-selected             int32          :offset-assert 184)
    (qr-options-item-picked               basic          :offset-assert 188)
-   (qr-options-last-move                 uint64         :offset-assert 192)
+   (qr-options-last-move                 time-frame     :offset-assert 192)
    (qr-options-restart                   basic          :offset-assert 200)
    (qr-options-quit                      basic          :offset-assert 204)
    (total-num-tasks                      int32          :offset-assert 208)
@@ -54,7 +54,7 @@
    (stereo-mode-backup                   int32          :offset-assert 216)
    (secrets-unlocked                     symbol         :offset-assert 220)
    (missions-total-spacing               float          :offset-assert 224)
-   (clear-screen                         basic          :offset-assert 228)
+   (clear-screen                         symbol          :offset-assert 228)
    )
   :method-count-assert 9
   :size-assert         #xe8
@@ -86,15 +86,22 @@
   arg0
   )
 
-(defun progress-intro-start ((arg0 symbol))
+(defun progress-intro-start ((hero-mode? symbol))
   (set! (-> *game-info* mode) 'play)
-  (if arg0
-      (initialize! *game-info* 'game (the-as game-save #f) "intro-start-hero")
-      (initialize! *game-info* 'game (the-as game-save #f) "intro-start")
-      )
+  (cond
+    ;; Start a new game differently if speedrunning mode is active
+    ((= (-> *pc-settings* speedrunner-mode?) #t)
+      (if hero-mode?
+        (set-category! *speedrun-info* (speedrun-category newgame-heromode))
+        (set-category! *speedrun-info* (speedrun-category newgame-normal)))
+      (start-run! *speedrun-info*))
+    ;; start the game normally
+    (else
+      (if hero-mode?
+        (initialize! *game-info* 'game (the-as game-save #f) "intro-start-hero")
+        (initialize! *game-info* 'game (the-as game-save #f) "intro-start"))))
   (set-master-mode 'game)
-  0
-  )
+  0)
 
 (defmethod init-defaults progress ((obj progress))
   "Initialize default menu settings."
@@ -257,7 +264,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (vector<-cspace!
@@ -338,7 +344,6 @@
       )
     (quaternion-normalize! (-> self root quat))
     (ja-post)
-    (none)
     )
   )
 
@@ -398,7 +403,7 @@
     (process-spawn hud-ring-cell 12 (* -2.0 f30-0) 8 :to self)
     (process-spawn hud-ring-cell 11 (* -1.0 f30-0) 9 :to self)
     )
-  (bigmap-method-14 *bigmap*)
+  (enable-drawing *bigmap*)
   (go-virtual come-in)
   )
 
@@ -459,7 +464,7 @@
 
 (defmethod deactivate progress ((obj progress))
   (remove-setting-by-arg0 *setting-control* 'extra-bank)
-  (bigmap-method-15 *bigmap*)
+  (disable-drawing *bigmap*)
   (set! (-> *blit-displays-work* menu-mode) #f)
   (set! *progress-process* (the-as (pointer progress) #f))
   (enable-level-text-file-loading)
@@ -785,12 +790,12 @@
      (set! (-> obj current-options)
            (cond
              ((demo?)
-              (if (= (scf-get-territory) 1)
+              (if (= (scf-get-territory) GAME_TERRITORY_SCEE)
                   *game-options*
                   *game-options-demo*
                   )
               )
-             ((and (= (scf-get-territory) 2) (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
+             ((and (= (scf-get-territory) GAME_TERRITORY_SCEI) (not (and (= *progress-cheat* 'language) (cpad-hold? 0 l2) (cpad-hold? 0 r2))))
               *game-options*
               )
              (else
@@ -801,7 +806,7 @@
      )
     (('graphic-options)
      (set! (-> obj current-options)
-           (if (or (= (scf-get-territory) 1) (and (= *progress-cheat* 'pal) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
+           (if (or (= (scf-get-territory) GAME_TERRITORY_SCEE) (and (= *progress-cheat* 'pal) (cpad-hold? 0 l2) (cpad-hold? 0 r2)))
                *graphic-title-options-pal*
                *graphic-options*
                )
@@ -967,10 +972,10 @@
 (defmethod respond-to-cpad progress ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (when (-> obj current-options)
-    (let ((s5-0 (-> obj current-options options)))
-      (when (and s5-0 (= (-> obj menu-transition) 0.0))
+    (let ((option-array (-> obj current-options options)))
+      (when (and option-array (= (-> obj menu-transition) 0.0))
         (respond-progress
-          (the-as menu-option (-> s5-0 (-> obj option-index)))
+          (the-as menu-option (-> option-array (-> obj option-index)))
           obj
           (and (= (-> obj menu-transition) 0.0) (-> obj selected-option))
           )
@@ -996,7 +1001,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1017,7 +1022,7 @@
                  ((= (-> obj current-options) *main-options*)
                   (sound-play "ring-select")
                   )
-                 ((!= (length s5-0) 1)
+                 ((!= (length option-array) 1)
                   (sound-play "roll-over")
                   )
                  )
@@ -1060,9 +1065,8 @@
   )
 
 (defbehavior progress-trans progress ()
-
-        ;; pc port note : added variable
-  (let ((speed-mod (if (-> *pc-settings* fast-progress?) *progress-speed* 1.0)))
+  ;; og:preserve-this pc port note : added variable
+  (let ((speed-mod (if (-> *pc-settings* fast-progress?) (-> *pc-cheat-state* progress-speed) 1.0)))
   (cond
     ((and (= (-> self next) 'none)
           (or (= (-> *progress-state* starting-state) 'main) (= (-> self anim-frame) 1.0))
@@ -1316,8 +1320,8 @@
         (set-width! sv-144 355)
         (set-height! sv-144 30)
         (set! (-> sv-144 flags) (if (= (-> *setting-control* user-default language) (language-enum japanese))
-                                    (font-flags middle left large)
-                                    (font-flags kerning middle left large)
+                                    (font-flags middle middle-vert large)
+                                    (font-flags kerning middle middle-vert large)
                                     )
               )
         (let ((s3-0 sv-144))
@@ -1362,7 +1366,7 @@
   (when (and (< 0.8 (-> self anim-frame)) (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
     (cond
       ((>= (-> self pos-transition) 0.38)
-       (bigmap-method-11 *bigmap* 1792 1840 2304 2256)
+       (draw *bigmap* 1792 1840 2304 2256)
        )
       (else
         (let ((s4-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 21)))
@@ -1373,7 +1377,7 @@
           (let ((s5-1 (new 'stack-no-clear 'vector4w)))
             (set! (-> s5-1 quad) (the-as uint128 0))
             (if (and (transform-point-qword! gp-1 s4-2) (transform-point-qword! s5-1 s3-1))
-                (bigmap-method-11 *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
+                (draw *bigmap* (/ (-> s5-1 x) 16) (/ (-> s5-1 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
                 )
             )
           )
@@ -1390,7 +1394,6 @@
   :enter (behavior ()
     (sound-play "ring-appear")
     (set! (-> self pos-transition) 1.0)
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (if (= (-> *progress-state* starting-state) 'main)
@@ -1398,8 +1401,8 @@
                      0.2
                      )
                  )
-          ;; pc port note : added variable
-          (speed-mod (if (-> *pc-settings* fast-progress?) *progress-speed* 1.0))
+          ;; og:preserve-this added variable
+          (speed-mod (if (-> *pc-settings* fast-progress?) (-> *pc-cheat-state* progress-speed) 1.0))
           )
       (when (hud-hidden?)
         (set! (-> *blit-displays-work* menu-mode) #t)
@@ -1417,7 +1420,6 @@
           (go-virtual idle)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1426,9 +1428,8 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior progress) ja-post)
+  :post ja-post
   )
 
 (defstate idle (progress)
@@ -1510,7 +1511,7 @@
                 (symbol->string (-> self current))
                 )
               )
-            (case (-> self next) ;; patched to next instead of current because we save synchronously
+            (case (-> self next) ;; og:preserve-this patched to next instead of current because we save synchronously
               (('saving)
                (cond
                  ((= (-> self state-stack 0) 'title)
@@ -1615,10 +1616,10 @@
                (set-next-state self 'insufficient-space 0)
                )
               (else
-                (case (-> self next) ;; patched to next instead of current because we save synchronously
+                (case (-> self next) ;; og:preserve-this patched to next instead of current because we save synchronously
                   (('formatting 'format-card)
                    (set-next-state self 'error-formatting 0)
-                   )          ;; jp patch
+                   ) ;; og:preserve-this jp patch
                   (('creating 'create-game)
                    (set-next-state self 'error-creating 0)
                    )                                                                ;; jp patch
@@ -1639,7 +1640,6 @@
     )
   :enter (behavior ()
     (set! (-> self menu-transition) 1.0)
-    (none)
     )
   :trans progress-trans
   :code (behavior ()
@@ -1648,7 +1648,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post progress-post
   )
@@ -1662,15 +1661,14 @@
       (set! (-> v1-2 progress-interp-speed) (/ 1.0 45))
       (#when PC_PORT
         (when (-> *pc-settings* fast-progress?)
-          (*! (-> v1-2 progress-interp-speed) *progress-speed*)
+          (*! (-> v1-2 progress-interp-speed) (-> *pc-cheat-state* progress-speed))
           )
         )
       )
-    (none)
     )
   :trans (behavior ()
-    ;; pc port note : added variable
-    (let ((speed-mod (if (-> *pc-settings* fast-progress?) *progress-speed* 1.0)))
+    ;; og:preserve-this added variable
+    (let ((speed-mod (if (-> *pc-settings* fast-progress?) (-> *pc-cheat-state* progress-speed) 1.0)))
     (seek! (-> self anim-frame) 0.0 (* speed-mod 0.02 (-> self clock time-adjust-ratio)))
     (cond
       ((= (-> self anim-frame) 0.0)
@@ -1684,7 +1682,6 @@
         )
       )
     (set-ring-position self)
-    (none)
     ))
   :code (behavior ()
     (let ((gp-0 #f))
@@ -1698,15 +1695,14 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior progress) ja-post)
+  :post ja-post
   )
 
 (defstate gone (progress)
   :virtual #t
   :code (behavior ()
-    (bigmap-method-15 *bigmap*)
+    (disable-drawing *bigmap*)
     (set! (-> *blit-displays-work* menu-mode) #f)
     (while (or (-> *blit-displays-work* screen-copied) (nonzero? (-> *blit-displays-work* count-down)))
       (suspend)
@@ -1716,7 +1712,6 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
@@ -2385,7 +2380,7 @@
          ((and (cpad-pressed? 0 confirm) (!= (-> arg0 current) 'none))
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-          (set! (-> *progress-state* clear-screen) (the-as basic #t))
+          (set! (-> *progress-state* clear-screen) #t)
           (cond
             ((-> s5-0 0)
              (sound-play "generic-beep")
@@ -2399,7 +2394,7 @@
              )
             (else
               (sound-play "generic-beep")
-              (set! (-> obj last-move) (the-as uint (current-time)))
+              (set! (-> obj last-move) (current-time))
               (set! (-> arg0 current) 'none)
               (set-next-state arg0 s3-0 0)
               )
@@ -2843,9 +2838,9 @@
       )
     (cond
       ((or (cpad-pressed? 0 up l-analog-up)
-           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (> (-> obj task-index) 0)
          (set! s4-0 #t)
          (+! (-> obj task-index) -1)
@@ -2853,9 +2848,9 @@
          )
        )
       ((or (cpad-pressed? 0 down l-analog-down)
-           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (let ((s3-0 -1))
          (dotimes (s2-0 (-> *game-info* play-list length))
            (let* ((v1-41 (-> *game-info* play-list s2-0))
@@ -2885,6 +2880,42 @@
            )
          )
        )
+      ;; og:preserve-this - Added to make scrolling these menus faster (jak3 has this)
+      ((or (cpad-pressed? 0 left l-analog-left) (and (cpad-hold? 0 left l-analog-left) (>= (- (current-time) (-> obj last-move)) (seconds 0.075))))
+       (when (> (-> obj task-index) 0)
+        (set! (-> obj last-move) (current-time))
+        (set! s4-0 #t)
+        (set! (-> obj task-index) (max (- (-> obj task-index) 5) 0))
+        (set! (-> arg0 sliding-height) 0.0)))
+      ;; og:preserve-this - Added to make scrolling these menus faster (jak3 has this)
+      ((or (cpad-pressed? 0 right l-analog-right) (and (cpad-hold? 0 right l-analog-right) (>= (- (current-time) (-> obj last-move)) (seconds 0.075))))
+        (let ((max-task-index -1))
+         (dotimes (s2-0 (-> *game-info* play-list length))
+           (let* ((v1-41 (-> *game-info* play-list s2-0))
+                  (a0-20 (-> arg0 current))
+                  (a0-22 (cond
+                           ((= a0-20 'select-pre-start)
+                            (or (-> v1-41 play-continue) (-> v1-41 pre-play-continue))
+                            )
+                           ((= a0-20 'select-kiosk-start)
+                            (-> v1-41 kiosk-play-continue)
+                            )
+                           (else
+                             (-> v1-41 play-continue)
+                             )
+                           )
+                         )
+                  )
+             (if (and a0-22 (lookup-text! *common-text* (-> v1-41 text-name) #t))
+                 (+! max-task-index 1)
+                 )
+             )
+           )
+         (when (< (-> obj task-index) max-task-index)
+          (set! (-> obj last-move) (current-time))
+          (set! s4-0 #t)
+          (set! (-> obj task-index) (min (+ (-> obj task-index) 5) max-task-index))
+          (set! (-> arg0 sliding-height) 0.0))))
       ((cpad-pressed? 0 confirm)
        (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
        (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
@@ -2950,9 +2981,9 @@
         )
       (cond
         ((or (cpad-pressed? 0 up l-analog-up)
-             (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
-         (set! (-> obj last-move) (the-as uint (current-time)))
+         (set! (-> obj last-move) (current-time))
          (when (> (-> obj task-index) 0)
            (set! gp-0 #t)
            (+! (-> obj task-index) -1)
@@ -2960,9 +2991,9 @@
            )
          )
         ((or (cpad-pressed? 0 down l-analog-down)
-             (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
-         (set! (-> obj last-move) (the-as uint (current-time)))
+         (set! (-> obj last-move) (current-time))
          (when (< (-> obj task-index) (+ (length s4-0) -1))
            (set! gp-0 #t)
            (+! (-> obj task-index) 1)
@@ -2996,7 +3027,7 @@
 
 (defmethod respond-progress menu-bigmap-option ((obj menu-bigmap-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
-  (bigmap-method-12 *bigmap*)
+  (handle-cpad-inputs *bigmap*)
   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
   0
@@ -3015,9 +3046,9 @@
   (let ((s5-0 #f))
     (cond
       ((or (cpad-pressed? 0 up l-analog-up)
-           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (> (-> obj task-line-index) 0)
          (set! s5-0 #t)
          (+! (-> obj task-line-index) -1)
@@ -3025,9 +3056,9 @@
          )
        )
       ((or (cpad-pressed? 0 down l-analog-down)
-           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+           (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
            )
-       (set! (-> obj last-move) (the-as uint (current-time)))
+       (set! (-> obj last-move) (current-time))
        (when (< (-> obj task-line-index) (+ (-> *progress-state* total-num-tasks) -1))
          (+! (-> obj task-line-index) 1)
          (set! (-> arg0 sliding-height) 1.0)
@@ -3074,11 +3105,11 @@
       (cond
         ((or (cpad-pressed? 0 right l-analog-right)
              (and (cpad-hold? 0 right l-analog-right)
-                  (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2))
+                  (>= (- (current-time) (-> obj last-move)) (seconds 0.2))
                   )
              )
          (when (< 1 (get-num-highscores))
-           (set! (-> obj last-move) (the-as uint (current-time)))
+           (set! (-> obj last-move) (current-time))
            (set! s5-0 #t)
            (set! (-> obj prev-page-index) (-> obj page-index))
            (set! (-> obj page-index) (get-next-highscore (-> obj page-index)))
@@ -3088,10 +3119,10 @@
            )
          )
         ((or (cpad-pressed? 0 left l-analog-left)
-             (and (cpad-hold? 0 left l-analog-left) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+             (and (cpad-hold? 0 left l-analog-left) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
              )
          (when (< 1 (get-num-highscores))
-           (set! (-> obj last-move) (the-as uint (current-time)))
+           (set! (-> obj last-move) (current-time))
            (set! (-> obj prev-page-index) (-> obj page-index))
            (set! (-> obj page-index) (get-prev-highscore (-> obj page-index)))
            (set! s5-0 #t)
@@ -3167,9 +3198,9 @@
           (else
             (cond
               ((or (cpad-pressed? 0 down l-analog-down)
-                   (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+                   (and (cpad-hold? 0 down l-analog-down) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
                    )
-               (set! (-> obj last-move) (the-as uint (current-time)))
+               (set! (-> obj last-move) (current-time))
                (when (< (-> obj item-index) s2-0)
                  (set! (-> obj prev-item-index) (-> obj item-index))
                  (set! s5-2 #t)
@@ -3179,9 +3210,9 @@
                  )
                )
               ((or (cpad-pressed? 0 up l-analog-up)
-                   (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (the-as int (-> obj last-move))) (seconds 0.2)))
+                   (and (cpad-hold? 0 up l-analog-up) (>= (- (current-time) (-> obj last-move)) (seconds 0.2)))
                    )
-               (set! (-> obj last-move) (the-as uint (current-time)))
+               (set! (-> obj last-move) (current-time))
                (when (< s3-0 (-> obj item-index))
                  (set! (-> obj prev-item-index) (-> obj item-index))
                  (+! (-> obj item-index) -1)
@@ -3252,7 +3283,7 @@
                    (>= (- (current-time) (the-as int (-> *progress-state* game-options-last-move))) (seconds 0.5))
                    )
               )
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (cond
             ((< (-> *progress-state* game-options-item-selected) 3)
              (+! (-> *progress-state* game-options-item-selected) 1)
@@ -3268,7 +3299,7 @@
                    (>= (- (current-time) (the-as int (-> *progress-state* game-options-last-move))) (seconds 0.5))
                    )
               )
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (if (> (-> *progress-state* game-options-item-selected) 0)
               (+! (-> *progress-state* game-options-item-selected) -1)
               (set! (-> *progress-state* game-options-item-selected) 3)
@@ -3277,7 +3308,7 @@
          ((cpad-pressed? 0 confirm)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-          (set! (-> *progress-state* game-options-last-move) (the-as uint (current-time)))
+          (set! (-> *progress-state* game-options-last-move) (current-time))
           (set! (-> *progress-state* game-options-item-picked) (the-as basic #t))
           (sound-play "generic-beep")
           )
@@ -3475,7 +3506,7 @@
         (set! (-> *progress-state* graphic-options-last-move) (current-time))
         (set! (-> arg0 selected-option) #f)
         (cond
-          ((< (-> *progress-state* graphic-options-item-selected) (if (= (scf-get-territory) 1)
+          ((< (-> *progress-state* graphic-options-item-selected) (if (= (scf-get-territory) GAME_TERRITORY_SCEE)
                                                                       3
                                                                       2
                                                                       )
@@ -3502,7 +3533,7 @@
            (set! (-> arg0 option-index) (-> *progress-state* graphic-options-item-selected))
            )
           (else
-            (set! (-> *progress-state* graphic-options-item-selected) (if (= (scf-get-territory) 1)
+            (set! (-> *progress-state* graphic-options-item-selected) (if (= (scf-get-territory) GAME_TERRITORY_SCEE)
                                                                           3
                                                                           2
                                                                           )
@@ -3685,7 +3716,7 @@
                  (>= (- (current-time) (the-as int (-> *progress-state* qr-options-last-move))) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (cond
           ((< (-> *progress-state* qr-options-item-selected) 1)
            (+! (-> *progress-state* qr-options-item-selected) 1)
@@ -3706,7 +3737,7 @@
                  (>= (- (current-time) (the-as int (-> *progress-state* qr-options-last-move))) (seconds 0.5))
                  )
             )
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (cond
           ((> (-> *progress-state* qr-options-item-selected) 0)
            (+! (-> *progress-state* qr-options-item-selected) -1)
@@ -3723,7 +3754,7 @@
        ((cpad-pressed? 0 confirm)
         (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
         (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
-        (set! (-> *progress-state* qr-options-last-move) (the-as uint (current-time)))
+        (set! (-> *progress-state* qr-options-last-move) (current-time))
         (set! (-> *progress-state* qr-options-item-picked) (the-as basic #t))
         (set! (-> arg0 selected-option) #t)
         (sound-play "generic-beep")

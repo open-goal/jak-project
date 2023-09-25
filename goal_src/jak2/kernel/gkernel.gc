@@ -107,6 +107,7 @@
 ;; PC Port Scratchpad
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;; og:preserve-this
 ;; DECOMP DEVIATION
 (#cond
   (PC_PORT
@@ -1507,7 +1508,7 @@
   ;;  - we don't return #t for run-logic?
   (let ((s3-0 (or (logtest? (-> arg0 mask) (process-mask process-tree))
                   ;; prevent if not both (clear to run and run-logic? = #t)
-                  (not (and (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask))) (run-logic? arg0)))
+                  (not (and (not (logtest? (-> arg2 prevent-from-run) (-> arg0 mask))) (run-logic? arg0)))
                   (begin (logior! (-> arg0 mask) (process-mask kernel-run)) (arg1 arg0))
                   )
               )
@@ -1989,7 +1990,7 @@
   )
 ;; decomp deviation
 
-(defmethod new protect-frame ((allocation symbol) (type-to-make type) (arg0 (function none)))
+(defmethod new protect-frame ((allocation symbol) (type-to-make type) (arg0 (function object)))
   "Create a new protect frame, must be on the stack."
   (with-pp
     (let ((v0-0 (the-as protect-frame (+ (the-as int allocation) 4))))
@@ -2341,7 +2342,7 @@
                                   :enter #f
                                   :event #f)))
 
-(set! (-> dead-state code) (the (function none :behavior process) nothing))
+(set! (-> dead-state code) (the (function object :behavior process) nothing))
 (define entity-deactivate-handler (the-as (function process entity-actor none) nothing))
 
 ;; decomp deviation

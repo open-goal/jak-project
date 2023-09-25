@@ -110,10 +110,9 @@ otherwise, [[plat::34]]
 ;; failed to figure out what this is:
 (defstate plat-idle (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :trans (behavior ()
     (execute-effects self)
-    (none)
     )
   :code (behavior ()
     (plat-trans)
@@ -134,17 +133,15 @@ otherwise, [[plat::34]]
         )
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate plat-path-active (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self path-pos) (get-norm! (-> self sync) 0))
@@ -153,23 +150,18 @@ otherwise, [[plat::34]]
         (sound-play "eco-plat-hover" :id (-> self sound-id) :position (-> self root trans))
         )
     (plat-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior plat) plat-post)
+  :post plat-post
   )
 
 ;; definition for method 11 of type plat
@@ -288,8 +280,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack 'bonk)
        (let* ((proc-temp proc)
               (proc-focus (if (type? proc-temp process-focusable)
@@ -320,7 +312,7 @@ This commonly includes things such as:
        )
       )
     )
-  :trans (the-as (function none :behavior drop-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (add-process *gui-control* self (gui-channel art-load) (gui-action queue) (-> self anim name) -99.0 0)
     (until #f
@@ -335,16 +327,15 @@ This commonly includes things such as:
       (go-virtual fall #f)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior drop-plat) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
 (defstate fall (drop-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('edge-grabbed)
        (if (>= (- (current-time) (-> self state-time)) (seconds 0.5))
            (send-event proc 'end-mode)
@@ -357,13 +348,11 @@ This commonly includes things such as:
     )
   :enter (behavior ((arg0 symbol))
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-    (none)
     )
-  :trans (the-as (function none :behavior drop-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (let ((v1-1 (-> self root root-prim)))
@@ -384,7 +373,6 @@ This commonly includes things such as:
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior drop-plat) rider-post)
+  :post rider-post
   )

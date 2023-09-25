@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/lightning-mole-ag.gc")
-
 ;; definition for function find-adjacent-bounds-one
 ;; INFO: Used lq/sq
 (defun find-adjacent-bounds-one ((arg0 nav-mesh) (arg1 nav-poly) (arg2 int) (arg3 (array int8)) (arg4 (array int8)) (arg5 vector))
@@ -423,7 +421,6 @@
   :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-patrol) trans))
     (fleeing-nav-enemy-adjust-nav-info)
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-patrol) code)
   :post (-> (method-of-type nav-enemy nav-enemy-patrol) post)
@@ -435,7 +432,6 @@
   :enter (-> (method-of-type nav-enemy nav-enemy-notice) enter)
   :trans (behavior ()
     (fleeing-nav-enemy-adjust-nav-info)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -462,7 +458,6 @@
         )
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   :post (-> (method-of-type nav-enemy nav-enemy-notice) post)
   )
@@ -473,16 +468,13 @@
   :enter (behavior ()
     (logior! (-> self nav flags) (nav-control-flags navcf12))
     ((-> (method-of-type nav-enemy nav-enemy-chase) enter))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self nav flags) (nav-control-flags navcf12))
-    (none)
     )
   :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
     (fleeing-nav-enemy-adjust-nav-info)
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-chase) code)
   :post (-> (method-of-type nav-enemy nav-enemy-chase) post)
@@ -495,7 +487,6 @@
   :trans (behavior ()
     ((-> (method-of-type nav-enemy nav-enemy-stop-chase) trans))
     (fleeing-nav-enemy-adjust-nav-info)
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   :post (-> (method-of-type nav-enemy nav-enemy-stop-chase) post)
@@ -543,9 +534,8 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior fleeing-nav-enemy) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 ;; definition for symbol *lightning-mole-hole*, type vector
@@ -664,10 +654,9 @@
       (set! (-> self run-blend-interp) (-> gp-0 y))
       )
     (set! (-> self speed-adjust) 1.0)
-    (none)
     )
   :code lightning-mole-run-code
-  :post (the-as (function none :behavior lightning-mole) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -677,7 +666,6 @@
     (set-vector! (-> self debug-vector) 0.0 0.0 1.0 1.0)
     (set! (-> self saved-travel quad) (-> self debug-vector quad))
     ((-> (method-of-type nav-enemy nav-enemy-chase) enter))
-    (none)
     )
   :trans (behavior ()
     (when (cpad-pressed? 1 r3)
@@ -685,7 +673,6 @@
       (logclear! (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons r3))
       (go lightning-mole-debug-run)
       )
-    (none)
     )
   :code lightning-mole-run-code
   :post (behavior ()
@@ -725,7 +712,6 @@
       )
     (camera-line-rel (-> self collide-info trans) (-> self nav travel) (new 'static 'vector4w :z #x80 :w #x80))
     (camera-line (-> self collide-info trans) (-> self nav target-pos) (new 'static 'vector4w :z #x80 :w #x80))
-    (none)
     )
   )
 
@@ -739,7 +725,6 @@
       (suspend)
       )
     (deactivate self)
-    (none)
     )
   )
 
@@ -748,7 +733,6 @@
   :enter (behavior ()
     (ja-channel-set! 0)
     (clear-collide-with-as (-> self collide-info))
-    (none)
     )
   :trans (behavior ()
     (when (task-closed? (-> self entity extra perm task) (task-status need-introduction))
@@ -757,13 +741,11 @@
       (restore-collide-with-as (-> self collide-info))
       (go-virtual nav-enemy-idle)
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
   )
 
@@ -787,7 +769,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1))
@@ -820,7 +801,6 @@
         (logclear! (-> *target* mask) (process-mask sleep))
         )
     (go lightning-mole-gone)
-    (none)
     )
   :post lightning-mole-hole-post
   )
@@ -829,7 +809,6 @@
 (defstate lightning-mole-head-for-hole (lightning-mole)
   :enter (behavior ()
     (clear-collide-with-as (-> self collide-info))
-    (none)
     )
   :trans (behavior ()
     (when (< (vector-vector-xz-distance *lightning-mole-hole* (-> self collide-info trans)) 61440.0)
@@ -852,7 +831,6 @@
     (if (< (vector-vector-distance (-> self collide-info trans) *lightning-mole-hole*) 40960.0)
         (go lightning-mole-dive)
         )
-    (none)
     )
   :code (-> (method-of-type fleeing-nav-enemy nav-enemy-chase) code)
   :post lightning-mole-hole-post
@@ -863,11 +841,9 @@
   :enter (behavior ()
     (clear-collide-with-as (-> self collide-info))
     ((-> (method-of-type fleeing-nav-enemy nav-enemy-chase) enter))
-    (none)
     )
   :exit (behavior ()
     (restore-collide-with-as (-> self collide-info))
-    (none)
     )
   :trans (-> (method-of-type fleeing-nav-enemy nav-enemy-chase) trans)
   :code (behavior ()
@@ -880,16 +856,15 @@
         )
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior lightning-mole) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (lightning-mole)
   :virtual #t
   :code lightning-mole-run-code
-  :post (the-as (function none :behavior lightning-mole) fleeing-nav-enemy-chase-post)
+  :post fleeing-nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
@@ -900,7 +875,6 @@
     (set! (-> self run-blend-interp) 0.0)
     (vector-! (-> self saved-travel) (-> self collide-info trans) (target-pos 0))
     ((-> (method-of-type fleeing-nav-enemy nav-enemy-chase) enter))
-    (none)
     )
   :trans (behavior ()
     (let ((s3-0 (new 'stack-no-clear 'vector))
@@ -956,10 +930,9 @@
         )
       )
     ((-> (method-of-type fleeing-nav-enemy nav-enemy-chase) trans))
-    (none)
     )
   :code lightning-mole-run-code
-  :post (the-as (function none :behavior lightning-mole) fleeing-nav-enemy-chase-post)
+  :post fleeing-nav-enemy-chase-post
   )
 
 ;; definition for method 43 of type lightning-mole
@@ -970,7 +943,7 @@
     (send-event arg0 'jump 32768.0 32768.0)
     (go lightning-mole-yelp)
     )
-  (the-as object #t)
+  #t
   )
 
 ;; definition for method 44 of type lightning-mole
@@ -980,7 +953,7 @@
     (send-event arg0 'jump 32768.0 32768.0)
     (go lightning-mole-yelp)
     )
-  (the-as object #t)
+  #t
   )
 
 ;; definition for symbol *lightning-mole-nav-enemy-info*, type nav-enemy-info
@@ -1242,14 +1215,7 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 1771)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 1771) gp-0)
       )
     )
   (none)
@@ -1264,14 +1230,7 @@
           (sound-play "land-grass")
           )
       (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 1772)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 1772) gp-0)
       )
     )
   (none)
@@ -1302,23 +1261,21 @@
 
 ;; failed to figure out what this is:
 (defstate peeper-wait (peeper)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('hide)
-                      (let ((v0-0 (-> *display* base-frame-counter)))
-                        (set! (-> self state-time) v0-0)
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('hide)
+       (let ((v0-0 (-> *display* base-frame-counter)))
+         (set! (-> self state-time) v0-0)
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (if (nonzero? (-> self sound))
         (stop! (-> self sound))
         )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (if (and (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
@@ -1326,16 +1283,14 @@
              )
         (go peeper-up)
         )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior peeper) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -1351,15 +1306,14 @@
       )
     (logior! (-> self draw status) (draw-status hidden))
     (go peeper-wait)
-    (none)
     )
-  :post (the-as (function none :behavior peeper) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate peeper-down (peeper)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
        (go peeper-wait)
        )
@@ -1369,7 +1323,6 @@
     (if (and *target* (>= 61440.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
         (go peeper-wait)
         )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
@@ -1400,15 +1353,14 @@
         )
       )
     (go peeper-up)
-    (none)
     )
-  :post (the-as (function none :behavior peeper) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate peeper-up (peeper)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hide)
        (go peeper-hide)
        )
@@ -1419,13 +1371,11 @@
         (stop! (-> self sound))
         )
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :trans (behavior ()
     (if (and *target* (>= 61440.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
         (go peeper-hide)
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1436,9 +1386,8 @@
         )
       (go peeper-down)
       )
-    (none)
     )
-  :post (the-as (function none :behavior peeper) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type peeper

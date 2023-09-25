@@ -29,8 +29,11 @@ struct WaveFileHeader {
   s32 subchunk2_size;
 };
 
-void write_wave_file_mono(const std::vector<s16>& samples, s32 sample_rate, const fs::path& name);
+void write_wave_file(const std::vector<s16>& left_samples,
+                     const std::vector<s16>& right_samples,
+                     s32 sample_rate,
+                     const fs::path& name);
 
-std::vector<s16> decode_adpcm(BinaryReader& reader);
+std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader, const bool mono);
 
 std::vector<u8> encode_adpcm(const std::vector<s16>& samples);

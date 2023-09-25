@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/snow-bumper-ag.gc")
-
 ;; definition of type snow-bumper
 (deftype snow-bumper (process-drawable)
   ((bumper-id               int32                     :offset-assert 176)
@@ -162,7 +160,6 @@
         (go snow-bumper-active-close-idle)
         )
     0
-    (none)
     )
   :code (behavior ()
     (transform-post)
@@ -171,17 +168,16 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate snow-bumper-active-close-idle (snow-bumper)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack 'bonk)
        (when (= (-> proc type) target)
-         (let ((gp-0 (-> event param 0)))
+         (let ((gp-0 (-> block param 0)))
            (when (and (>= 6144.0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
                       ((method-of-type touching-shapes-entry prims-touching?)
                        (the-as touching-shapes-entry gp-0)
@@ -222,7 +218,6 @@
       )
     (spawn (-> self part) (-> self root trans))
     (update! (-> self sound))
-    (none)
     )
   :code (behavior ()
     (transform-post)
@@ -231,7 +226,6 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -240,9 +234,8 @@
   :exit (behavior ()
     (stop! (-> self sound))
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
-  :trans (the-as (function none :behavior snow-bumper) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (local-vars (sv-16 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -272,9 +265,8 @@
       (go snow-bumper-spawn-fuel-cell)
       )
     (go snow-bumper-inactive-idle)
-    (none)
     )
-  :post (the-as (function none :behavior snow-bumper) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
@@ -297,7 +289,6 @@
       (suspend)
       )
     (go snow-bumper-inactive-idle)
-    (none)
     )
   )
 
@@ -312,7 +303,6 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 

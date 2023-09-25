@@ -128,21 +128,7 @@
   "Generates simple sparks (2D particles) at the location specified. This is used in the cutscene.
 @param position The position to render the sparks at
 TODO - first arg type?"
-  (let ((launch-func sp-launch-particles-var)
-        (2d-sys *sp-particle-system-2d*)
-        (sp-launcher (-> *part-id-table* 1247))
-        (matrix *launch-matrix*)
-        )
-    (set! (-> matrix trans quad) (-> position quad))
-    (launch-func
-      2d-sys
-      sp-launcher
-      matrix
-      (the-as sparticle-launch-state #f)
-      (the-as sparticle-launch-control #f)
-      1.0
-      )
-    )
+  (launch-particles (-> *part-id-table* 1247) position)
   0
   (none)
   )
@@ -1369,7 +1355,7 @@ The scale will be linearly-interpolated based on the distance from the camera"
 ;; failed to figure out what this is:
 (defstate idle (flag)
   :virtual #t
-  :code (the-as (function none :behavior flag) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (ja :num! (loop!))
     (let ((flag-scale (lerp-scale 1.0 2.5 (vector-vector-distance (camera-pos) (-> self root trans)) 81920.0 901120.0))
@@ -1385,7 +1371,6 @@ The scale will be linearly-interpolated based on the distance from the camera"
       (deactivate self)
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -1451,23 +1436,20 @@ Touching it flips the `play?` field which will trigger the cutscene"
 ;; failed to figure out what this is:
 (defstate idle (ruins-precipice)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('trigger)
-         (when (not (-> self play?))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (when (not (-> self play?))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        (('touch 'attack)
-         (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
-           (set! (-> self play?) #t)
-           (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
-           )
+       )
+      (('touch 'attack)
+       (when (and (not (-> self play?)) *target* (not (logtest? (focus-status dark) (-> *target* focus-status))))
+         (set! (-> self play?) #t)
+         (process-spawn scene-player :init scene-player-init "ruins-tower-victory" #t #f)
          )
-        )
+       )
       )
     )
   :code (behavior ()
@@ -1498,7 +1480,6 @@ Touching it flips the `play?` field which will trigger the cutscene"
       (suspend)
       )
     #f
-    (none)
     )
   )
 

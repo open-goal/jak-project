@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/orb-cache-top-ag.gc")
-
 ;; definition of type orb-cache-top
 (deftype orb-cache-top (baseplat)
   ((active-distance   float     :offset-assert 228)
@@ -55,8 +53,8 @@
 
 ;; failed to figure out what this is:
 (defstate orb-cache-top-idle (orb-cache-top)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('eco-blue)
        (process-entity-status! self (entity-perm-status complete) #t)
        (dotimes (gp-0 5)
@@ -66,7 +64,7 @@
        (go orb-cache-top-activate #f)
        )
       (else
-        (plat-event proc arg1 event-type event)
+        (plat-event proc argc message block)
         )
       )
     )
@@ -82,7 +80,6 @@
           (game-task none)
           )
         )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (if (and (not arg0) (-> self child))
@@ -99,7 +96,6 @@
     (ja :group! (-> self draw art-group data 3) :num! (identity (ja-aframe 0.0 0)))
     (transform-post)
     (anim-loop)
-    (none)
     )
   )
 
@@ -214,12 +210,11 @@
 
 ;; failed to figure out what this is:
 (defstate orb-cache-top-activate (orb-cache-top)
-  :event (the-as (function process int symbol event-message-block object :behavior orb-cache-top) plat-event)
+  :event plat-event
   :exit (behavior ()
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
-  :trans (the-as (function none :behavior orb-cache-top) plat-trans)
+  :trans plat-trans
   :code (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (calculate-pos self arg0)
@@ -285,15 +280,14 @@
           (go orb-cache-top-idle arg0)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orb-cache-top) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
 (defstate orb-cache-top-complete (orb-cache-top)
-  :event (the-as (function process int symbol event-message-block object :behavior orb-cache-top) plat-event)
-  :trans (the-as (function none :behavior orb-cache-top) plat-trans)
+  :event plat-event
+  :trans plat-trans
   :code (behavior ((arg0 symbol))
     (if (not arg0)
         (sound-play "close-orb-cash")
@@ -302,9 +296,8 @@
     (new 'stack-no-clear 'vector)
     (set! (-> self basetrans y) (+ 2048.0 (-> self root-pos)))
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior orb-cache-top) plat-post)
+  :post plat-post
   )
 
 ;; definition for method 11 of type orb-cache-top

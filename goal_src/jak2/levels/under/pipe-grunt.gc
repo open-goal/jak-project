@@ -21,10 +21,8 @@
   )
 
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-ambush pipe-grunt ((obj pipe-grunt))
   (go (method-of-object obj ambush))
-  (none)
   )
 
 (defmethod pipe-grunt-method-186 pipe-grunt ((obj pipe-grunt))
@@ -48,7 +46,7 @@
 
 (defstate ambush (pipe-grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior pipe-grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logior! (-> self enemy-flags) (enemy-flag chase-startup))
@@ -74,7 +72,6 @@
       (vector-normalize! gp-0 (get-rand-float-range self -4096.0 4096.0))
       (move-by-vector! (-> self root) gp-0)
       )
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -90,17 +87,13 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (ja-channel-push! 1 0)
       (until #f
         (let ((a1-2 (-> self draw art-group data (-> self charge-anim anim-index))))
-          (ja-no-eval :group! a1-2
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! a1-2 :num! (seek! max f30-0) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -109,7 +102,6 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior pipe-grunt) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )

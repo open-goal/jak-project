@@ -33,19 +33,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior race-signal-banner) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -107,24 +103,20 @@
 
 
 (defmethod race-signal-method-29 race-signal ((obj race-signal))
-  (with-pp
-    (+! (-> obj y-offset)
-        (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (-> pp clock seconds-per-frame))))
-        )
-    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
-      (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
-      (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
-      )
-    (let ((v1-15 (handle->process (-> obj banner))))
-      (when v1-15
-        (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
-        (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
-        )
-      )
-    (ja-post)
-    0
-    (none)
+  (+! (-> obj y-offset) (* (- (-> obj dest-y-offset) (-> obj y-offset)) (fmin 1.0 (* 2.0 (seconds-per-frame)))))
+  (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> obj bob-time))))))
+    (set! (-> obj root trans y) (+ (-> obj pos y) (-> obj y-offset) (* 1024.0 (sin (* 32768.0 f30-0)))))
+    (set! (-> obj root trans z) (+ (-> obj pos z) (* 2048.0 (cos (* 32768.0 f30-0)))))
     )
+  (let ((v1-15 (handle->process (-> obj banner))))
+    (when v1-15
+      (set! (-> (the-as race-signal-banner v1-15) root trans quad) (-> obj root trans quad))
+      (quaternion-copy! (-> (the-as race-signal-banner v1-15) root quat) (-> obj root quat))
+      )
+    )
+  (ja-post)
+  0
+  (none)
   )
 
 (defbehavior race-signal-event-handler race-signal ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -159,17 +151,15 @@
           )
     (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
     (go-virtual idle)
-    (none)
     )
   )
 
 (defstate idle (race-signal)
   :virtual #t
   :event race-signal-event-handler
-  :code (the-as (function none :behavior race-signal) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -188,11 +178,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -211,11 +199,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -234,11 +220,9 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -278,7 +262,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> self start-time))))))
@@ -288,7 +271,6 @@
           )
       )
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -296,7 +278,6 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -352,11 +333,9 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (race-signal-method-29 self)
-    (none)
     )
   )
 
@@ -569,28 +548,19 @@
 
 (defstate taunt (stadium-racer)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior stadium-racer)
-    vehicle-rider-event-handler
-    )
+  :event vehicle-rider-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (cond
       ((zero? (rand-vu-int-count 2))
-       (ja-no-eval :group! (-> self draw art-group data 6)
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 6)) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 7)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 7)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -598,11 +568,9 @@
         )
       )
     (go-virtual active)
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -620,7 +588,6 @@
   :enter (behavior ()
     (format #t "errol-rider::taunt race-errol-pass~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-53))
-    (none)
     )
   )
 
@@ -629,7 +596,6 @@
   :enter (behavior ()
     (format #t "errol-rider::got-passed~%")
     (speech-control-method-12 *speech-control* self (speech-type speech-type-54))
-    (none)
     )
   )
 
@@ -696,8 +662,8 @@
 
 (defstate idle (turbo-pickup)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (when (-> self available)
          (when (send-event proc 'turbo-pickup)
@@ -708,11 +674,10 @@
        )
       )
     )
-  :code (the-as (function none :behavior turbo-pickup) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     0
-    (none)
     )
   )
 
@@ -763,7 +728,6 @@
     (until (>= (- (current-time) (-> self state-time)) (seconds 2))
       (suspend)
       )
-    (none)
     )
   )
 

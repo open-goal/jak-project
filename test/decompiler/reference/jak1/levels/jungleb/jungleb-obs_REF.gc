@@ -1,9 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/eggtop-ag.gc")
-(import "goal_src/jak1/import/jng-iris-door-ag.gc")
-
 ;; definition of type eggtop
 (deftype eggtop (process-drawable)
   ((root-override collide-shape-moving  :offset        112)
@@ -193,23 +190,21 @@
 
 ;; failed to figure out what this is:
 (defstate eggtop-idle (eggtop)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('notify)
-                      (case (-> event param 0)
-                        (('pickup)
-                         (if (type-type? (-> proc type) fuel-cell)
-                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
-                             )
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (if (type-type? (-> proc type) fuel-cell)
+              (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
+              )
+          )
+         )
+       )
+      )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (and (not (-> self child)) (task-complete? *game-info* (-> self entity extra perm task)))
@@ -217,15 +212,13 @@
         )
     (spawn (-> self part) (-> self root-override trans))
     (sound-play "electric-loop" :id (-> self sound-id))
-    (none)
     )
   :code (behavior ()
     (suspend)
     (update-transforms! (-> self root-override))
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -233,7 +226,6 @@
   :trans (behavior ()
     (rider-trans)
     (hide-hud-quick)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (when (not arg0)
@@ -310,9 +302,8 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type eggtop

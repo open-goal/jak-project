@@ -13,6 +13,7 @@ in vec4 fragment_color;
 flat in uvec2 tex_info;
 
 uniform int gfx_hack_no_tex;
+uniform uint warp_sample_mode;
 
 uniform sampler2D tex_T0;
 
@@ -25,7 +26,7 @@ void main() {
   // 0x2 is decal
   // 0x4 is fog
 
-  if (gfx_hack_no_tex == 0) {
+  if (warp_sample_mode == 1 || gfx_hack_no_tex == 0) {
     vec4 T0 = sample_tex(tex_coord.xy, tex_info.x);
     if ((tex_info.y & 1u) == 0) {
       if ((tex_info.y & 2u) == 0) {

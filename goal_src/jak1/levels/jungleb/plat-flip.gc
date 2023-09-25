@@ -7,8 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/plat-flip-ag.gc")
-
 (deftype plat-flip (process-drawable)
   ((root-override         collide-shape-moving         :offset        112)
    (path-pos              float                        :offset-assert 176)
@@ -37,19 +35,18 @@
               )
 
 (defstate plat-flip-idle (plat-flip)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (activate! (-> self smush) -1.0 90 300 1.0 1.0)
-                      )
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      (the-as smush-control #f)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (activate! (-> self smush) -1.0 90 300 1.0 1.0)
+       )
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       (the-as smush-control #f)
+       )
+      )
     )
-  :trans (the-as (function none :behavior plat-flip) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (local-vars (f30-0 float) (f30-1 float))
     (let ((gp-0 #f))
@@ -100,9 +97,8 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior plat-flip) rider-post)
+  :post rider-post
   )
 
 (defmethod init-from-entity! plat-flip ((obj plat-flip) (arg0 entity-actor))

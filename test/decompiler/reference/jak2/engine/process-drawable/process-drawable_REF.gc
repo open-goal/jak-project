@@ -560,19 +560,18 @@
 
 ;; failed to figure out what this is:
 (defstate empty-state (process)
-  :code (the-as (function none :behavior process) nothing)
+  :code nothing
   )
 
 ;; failed to figure out what this is:
 (defstate process-drawable-art-error (process-drawable)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('nav-mesh-kill)
-                      (deactivate self)
-                      #t
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('nav-mesh-kill)
+       (deactivate self)
+       #t
+       )
+      )
     )
   :code (behavior ((arg0 string))
     (if (-> self entity)
@@ -623,13 +622,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate process-drawable-idle (process-drawable)
-  :code (the-as (function none :behavior process-drawable) sleep-code)
+  :code sleep-code
   :post ja-post
   )
 
@@ -835,9 +833,8 @@
             (set-vector! s2-0 0.0 0.0 0.0 1.0)
             )
         (when (logtest? arg0 (align-opts adjust-x-vel))
-          (set! (-> a1-5 x) (+ (* (-> arg1 trans x) (-> arg2 x) (-> pp clock frames-per-second))
-                               (* (-> s2-0 x) (-> pp clock seconds-per-frame))
-                               )
+          (set! (-> a1-5 x)
+                (+ (* (-> arg1 trans x) (-> arg2 x) (-> pp clock frames-per-second)) (* (-> s2-0 x) (seconds-per-frame)))
                 )
           (if (not (logtest? arg0 (align-opts adjust-xz-vel keep-other-velocities)))
               (set! (-> a1-5 z) 0.0)
@@ -846,15 +843,13 @@
         (if (and (logtest? arg0 (align-opts adjust-y-vel))
                  (not (and (logtest? arg0 (align-opts ignore-y-if-zero)) (= (-> arg1 trans y) 0.0)))
                  )
-            (set! (-> a1-5 y) (+ (* (-> arg1 trans y) (-> arg2 y) (-> pp clock frames-per-second))
-                                 (* (-> s2-0 y) (-> pp clock seconds-per-frame))
-                                 )
+            (set! (-> a1-5 y)
+                  (+ (* (-> arg1 trans y) (-> arg2 y) (-> pp clock frames-per-second)) (* (-> s2-0 y) (seconds-per-frame)))
                   )
             )
         (when (logtest? arg0 (align-opts adjust-xz-vel))
-          (set! (-> a1-5 z) (+ (* (-> arg1 trans z) (-> arg2 z) (-> pp clock frames-per-second))
-                               (* (-> s2-0 z) (-> pp clock seconds-per-frame))
-                               )
+          (set! (-> a1-5 z)
+                (+ (* (-> arg1 trans z) (-> arg2 z) (-> pp clock frames-per-second)) (* (-> s2-0 z) (seconds-per-frame)))
                 )
           (if (not (logtest? arg0 (align-opts adjust-x-vel keep-other-velocities)))
               (set! (-> a1-5 x) 0.0)
@@ -1509,7 +1504,7 @@
       (cond
         ((= (-> obj interp) 0.0)
          (when s5-0
-           (seek! (-> s5-0 frame-interp 1) 0.0 (* 8.0 (-> pp clock seconds-per-frame)))
+           (seek! (-> s5-0 frame-interp 1) 0.0 (* 8.0 (seconds-per-frame)))
            (if s3-0
                (set! (-> s3-0 frame-interp 1) (fmin (-> s3-0 frame-interp 1) (-> s5-0 frame-interp 1)))
                )
@@ -1730,7 +1725,7 @@
 
 ;; definition for function sleep-code
 ;; WARN: new jak 2 until loop case, check carefully
-(defbehavior sleep-code process-drawable ()
+(defbehavior sleep-code process ()
   (until #f
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -1886,7 +1881,7 @@
 ;; WARN: Return type mismatch object vs process-focusable.
 (defbehavior find-offending-process-focusable process-drawable ((arg0 process-tree) (arg1 attack-info))
   (let ((s5-0 (the-as object #f)))
-    (when (and arg1 (logtest? (-> arg1 mask) (attack-info-mask attacker)))
+    (when (and arg1 (logtest? (-> arg1 mask) (attack-mask attacker)))
       (let ((s4-0 (handle->process (-> arg1 attacker))))
         (set! s5-0 (if (type? s4-0 process-focusable)
                        s4-0

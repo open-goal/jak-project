@@ -287,7 +287,7 @@
 ;; failed to figure out what this is:
 (defstate idle (dig-spikey-step)
   :virtual #t
-  :trans (the-as (function none :behavior dig-spikey-step) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (let ((gp-0 (current-time)))
       (until (>= (- (current-time) gp-0) (the int (-> self cycle-offset)))
@@ -322,7 +322,7 @@
              )
         (until (>= (- (current-time) gp-6) (seconds 1))
           (set! (-> self rot-angle)
-                (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (-> self clock seconds-per-frame)))) 48) 48))
+                (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (seconds-per-frame)))) 48) 48))
                 )
           (suspend)
           )
@@ -339,7 +339,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a2-1 (quaternion-vector-angle!
@@ -352,7 +351,6 @@
       (quaternion*! (-> self root quat) (-> self init-quat) a2-1)
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -479,7 +477,6 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -504,18 +501,15 @@ This commonly includes things such as:
           ((the-as (function none) t9-7))
           )
       )
-    (none)
     )
   )
 
 ;; definition for function spikey-sphere-update-velocity
 ;; WARN: Return type mismatch int vs none.
 (defun spikey-sphere-update-velocity ((arg0 dig-spikey-sphere))
-  (with-pp
-    (set! (-> arg0 root transv y) (- (-> arg0 root transv y) (* 327680.0 (-> pp clock seconds-per-frame))))
-    0
-    (none)
-    )
+  (set! (-> arg0 root transv y) (- (-> arg0 root transv y) (* 327680.0 (seconds-per-frame))))
+  0
+  (none)
   )
 
 ;; definition for function spikey-sphere-reaction
@@ -672,39 +666,37 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-settings! dig-spikey-sphere ((obj dig-spikey-sphere))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (with-pp
-    (set! (-> obj attack-mode) 'eco-dark)
-    (initialize-skeleton
-      obj
-      (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-spikey-sphere" (the-as (pointer uint32) #f)))
-      (the-as pair 0)
-      )
-    (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
-      (t9-2 obj)
-      )
-    (set! (-> obj max-speed) 163840.0)
-    (set! (-> obj timeout) (seconds 8))
-    (logclear! (-> obj mask) (process-mask actor-pause))
-    (set! (-> obj notify-handle) (the-as handle #f))
-    (set! (-> obj update-velocity) spikey-sphere-update-velocity)
-    (set! (-> obj max-hits) #xffff)
-    (set! (-> obj move) spikey-sphere-move)
-    (set-vector! (-> obj root quat) 0.0 0.0 0.0 1.0)
-    (set! (-> obj pad-i1hb23h1b) (+ -204800.0 (-> obj root trans y)))
-    (let ((v1-16 (-> obj starting-dir)))
-      (quaternion-axis-angle!
-        (-> obj tumble-quat)
-        (-> v1-16 z)
-        (-> v1-16 y)
-        (-> v1-16 x)
-        (* -65536.0 (-> pp clock seconds-per-frame))
-        )
-      )
-    (set! (-> obj draw light-index) (the-as uint 4))
-    (sound-play "spikey-roll")
-    0
-    (none)
+  (set! (-> obj attack-mode) 'eco-dark)
+  (initialize-skeleton
+    obj
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dig-spikey-sphere" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
     )
+  (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
+    (t9-2 obj)
+    )
+  (set! (-> obj max-speed) 163840.0)
+  (set! (-> obj timeout) (seconds 8))
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> obj notify-handle) (the-as handle #f))
+  (set! (-> obj update-velocity) spikey-sphere-update-velocity)
+  (set! (-> obj max-hits) #xffff)
+  (set! (-> obj move) spikey-sphere-move)
+  (set-vector! (-> obj root quat) 0.0 0.0 0.0 1.0)
+  (set! (-> obj pad-i1hb23h1b) (+ -204800.0 (-> obj root trans y)))
+  (let ((v1-16 (-> obj starting-dir)))
+    (quaternion-axis-angle!
+      (-> obj tumble-quat)
+      (-> v1-16 z)
+      (-> v1-16 y)
+      (-> v1-16 x)
+      (* -65536.0 (seconds-per-frame))
+      )
+    )
+  (set! (-> obj draw light-index) (the-as uint 4))
+  (sound-play "spikey-roll")
+  0
+  (none)
   )
 
 ;; definition of type dig-spikey-sphere-door
@@ -756,9 +748,8 @@ This commonly includes things such as:
           (go-virtual active)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior dig-spikey-sphere-door) sleep-code)
+  :code sleep-code
   )
 
 ;; failed to figure out what this is:
@@ -799,18 +790,14 @@ This commonly includes things such as:
           )
         )
       )
-    (ja-no-eval :group! (ja-group)
-                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior dig-spikey-sphere-door) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type dig-spikey-sphere-door
@@ -1029,9 +1016,8 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior dig-balloon-lurker-trapeze) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 21 of type dig-balloon-lurker-trapeze
@@ -1318,9 +1304,8 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior dig-balloon-lurker) transform-post)
+  :post transform-post
   )
 
 ;; definition of type dig-wheel-step
@@ -1364,23 +1349,18 @@ This commonly includes things such as:
   :trans (behavior ()
     (sound-play "wheel-plat-loop" :id (-> self wheel-sound-id))
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) (-> self anim-speed))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior dig-wheel-step) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 10 of type dig-wheel-step
@@ -1570,19 +1550,18 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (dig-tipping-rock)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (set! (-> self last-ridden-time) (current-time))
        )
       )
-    (rigid-body-object-event-handler proc arg1 event-type event)
+    (rigid-body-object-event-handler proc argc message block)
     )
-  :trans (the-as (function none :behavior dig-tipping-rock) rider-trans)
-  :code (the-as (function none :behavior dig-tipping-rock) sleep-code)
+  :trans rider-trans
+  :code sleep-code
   :post (behavior ()
     (rigid-body-object-method-37 self)
-    (none)
     )
   )
 
@@ -1841,8 +1820,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate waiting (dig-stomp-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('set-flag)
        (let ((v0-0 (the-as object #t)))
          (set! (-> self flag) (the-as basic v0-0))
@@ -1854,7 +1833,7 @@ This commonly includes things such as:
        #f
        )
       (('attack)
-       (case (-> (the-as attack-info (-> event param 1)) mode)
+       (case (-> (the-as attack-info (-> block param 1)) mode)
          (('flop)
           (when (not (-> self flag))
             (set! (-> self desty) (+ -12288.0 (-> self root trans y)))
@@ -1870,15 +1849,15 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior dig-stomp-block) sleep-code)
-  :post (the-as (function none :behavior dig-stomp-block) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate hit (dig-stomp-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('broken)
        (go-virtual active)
        )
@@ -1887,22 +1866,16 @@ This commonly includes things such as:
   :code (behavior ()
     (sound-play "stomp-block")
     (while (< (-> self desty) (-> self root trans y))
-      (set! (-> self root trans y) (seek-with-smooth
-                                     (-> self root trans y)
-                                     (-> self desty)
-                                     (* 24576.0 (-> self clock seconds-per-frame))
-                                     0.25
-                                     1.0
-                                     )
+      (set! (-> self root trans y)
+            (seek-with-smooth (-> self root trans y) (-> self desty) (* 24576.0 (seconds-per-frame)) 0.25 1.0)
             )
       (suspend)
       )
     (set! (-> self flag) #f)
     (send-event (ppointer->process (-> self parent)) 'clear-flag)
     (go-virtual waiting)
-    (none)
     )
-  :post (the-as (function none :behavior dig-stomp-block) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -1922,7 +1895,6 @@ This commonly includes things such as:
       (set! (-> gp-0 z) (rand-vu-float-range -10000.0 10000.0))
       (vector-float*! (-> self rbody state ang-momentum) gp-0 (-> self info info mass))
       )
-    (none)
     )
   )
 
@@ -1930,49 +1902,47 @@ This commonly includes things such as:
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod rigid-body-object-method-37 dig-stomp-block ((obj dig-stomp-block))
-  (with-pp
-    (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-      (set! (-> a1-0 start-pos quad) (-> obj rbody state position quad))
-      (vector-float*! (-> a1-0 move-dist) (-> obj rbody state lin-velocity) (-> pp clock seconds-per-frame))
-      (let ((v1-3 a1-0))
-        (set! (-> v1-3 radius) (+ 4096.0 (-> obj root root-prim local-sphere w)))
-        (set! (-> v1-3 collide-with) (-> obj root root-prim prim-core collide-with))
-        (set! (-> v1-3 ignore-process0) obj)
-        (set! (-> v1-3 ignore-process1) #f)
-        (set! (-> v1-3 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-        (set! (-> v1-3 action-mask) (collide-action solid))
-        )
-      (fill-using-line-sphere *collide-cache* a1-0)
+  (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+    (set! (-> a1-0 start-pos quad) (-> obj rbody state position quad))
+    (vector-float*! (-> a1-0 move-dist) (-> obj rbody state lin-velocity) (seconds-per-frame))
+    (let ((v1-3 a1-0))
+      (set! (-> v1-3 radius) (+ 4096.0 (-> obj root root-prim local-sphere w)))
+      (set! (-> v1-3 collide-with) (-> obj root root-prim prim-core collide-with))
+      (set! (-> v1-3 ignore-process0) obj)
+      (set! (-> v1-3 ignore-process1) #f)
+      (set! (-> v1-3 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-3 action-mask) (collide-action solid))
       )
-    (let* ((a0-15 *collide-cache*)
-           (v1-6 (the-as object (-> a0-15 tris)))
-           )
-      (countdown (a0-16 (-> a0-15 num-tris))
-        (when (= (-> (the-as collide-cache-tri v1-6) pat event) (pat-event endlessfall))
-          (+! (-> (the-as collide-cache-tri v1-6) vertex 0 y) 409600.0)
-          (+! (-> (the-as collide-cache-tri v1-6) vertex 1 y) 409600.0)
-          (+! (-> (the-as collide-cache-tri v1-6) vertex 2 y) 409600.0)
-          )
-        (set! v1-6 (-> (the-as (inline-array collide-cache-tri) v1-6) 1))
-        )
-      )
-    (if *display-collide-cache*
-        (debug-draw *collide-cache*)
-        )
-    (rigid-body-object-method-30 obj)
-    (set! (-> obj root transv quad) (-> obj rbody state lin-velocity quad))
-    (quaternion-copy! (-> obj root quat) (-> obj rbody state rotation))
-    (rigid-body-method-24 (-> obj rbody state))
-    (let ((v1-22 (-> obj rbody))
-          (a1-8 (-> obj root trans))
-          )
-      (rigid-body-method-23 (-> v1-22 state) a1-8)
-      )
-    (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root trans quad))
-    (transform-post)
-    0
-    (none)
+    (fill-using-line-sphere *collide-cache* a1-0)
     )
+  (let* ((a0-15 *collide-cache*)
+         (v1-6 (the-as object (-> a0-15 tris)))
+         )
+    (countdown (a0-16 (-> a0-15 num-tris))
+      (when (= (-> (the-as collide-cache-tri v1-6) pat event) (pat-event endlessfall))
+        (+! (-> (the-as collide-cache-tri v1-6) vertex 0 y) 409600.0)
+        (+! (-> (the-as collide-cache-tri v1-6) vertex 1 y) 409600.0)
+        (+! (-> (the-as collide-cache-tri v1-6) vertex 2 y) 409600.0)
+        )
+      (set! v1-6 (-> (the-as (inline-array collide-cache-tri) v1-6) 1))
+      )
+    )
+  (if *display-collide-cache*
+      (debug-draw *collide-cache*)
+      )
+  (rigid-body-object-method-30 obj)
+  (set! (-> obj root transv quad) (-> obj rbody state lin-velocity quad))
+  (quaternion-copy! (-> obj root quat) (-> obj rbody state rotation))
+  (rigid-body-method-24 (-> obj rbody state))
+  (let ((v1-22 (-> obj rbody))
+        (a1-8 (-> obj root trans))
+        )
+    (rigid-body-method-23 (-> v1-22 state) a1-8)
+    )
+  (set! (-> obj node-list data 0 bone transform trans quad) (-> obj root trans quad))
+  (transform-post)
+  0
+  (none)
   )
 
 ;; definition for method 32 of type dig-stomp-block
@@ -2138,26 +2108,25 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (dig-stomp-block-controller)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('set-flag)
-                      (dotimes (gp-0 4)
-                        (if (-> self stomp-blocks gp-0)
-                            (send-event (ppointer->process (-> self stomp-blocks gp-0)) 'set-flag)
-                            )
-                        )
-                      #f
-                      )
-                     (('clear-flag)
-                      (dotimes (gp-1 4)
-                        (if (-> self stomp-blocks gp-1)
-                            (send-event (ppointer->process (-> self stomp-blocks gp-1)) 'clear-flag)
-                            )
-                        )
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-flag)
+       (dotimes (gp-0 4)
+         (if (-> self stomp-blocks gp-0)
+             (send-event (ppointer->process (-> self stomp-blocks gp-0)) 'set-flag)
+             )
+         )
+       #f
+       )
+      (('clear-flag)
+       (dotimes (gp-1 4)
+         (if (-> self stomp-blocks gp-1)
+             (send-event (ppointer->process (-> self stomp-blocks gp-1)) 'clear-flag)
+             )
+         )
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (change-parent self *pusher-pool*)
@@ -2168,9 +2137,8 @@ This commonly includes things such as:
         (set! (-> self stomp-blocks s5-0) (process-spawn dig-stomp-block gp-0 :to self))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior dig-stomp-block-controller) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (dotimes (v1-0 4)
       (when (-> self stomp-blocks v1-0)
@@ -2200,7 +2168,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
@@ -2259,7 +2226,7 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (dig-totem)
   :virtual #t
-  :code (the-as (function none :behavior dig-totem) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 11 of type dig-totem

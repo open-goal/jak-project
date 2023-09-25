@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/green-eco-lurker-ag.gc")
-
 ;; definition of type green-eco-lurker
 (deftype green-eco-lurker (nav-enemy)
   ((played-sound? symbol             :offset-assert 400)
@@ -425,13 +423,11 @@
 (defstate green-eco-lurker-tune-spheres (green-eco-lurker)
   :trans (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     0
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -439,25 +435,21 @@
   :enter (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
     (clear-collide-with-as (-> self collide-info))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
     (restore-collide-with-as (-> self collide-info))
-    (none)
     )
   :trans (behavior ()
     (if (nav-enemy-method-52 self (-> self appear-dest))
         (go green-eco-lurker-appear)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -530,7 +522,6 @@
       (vector-normalize! gp-1 1.0)
       (forward-up->quaternion (-> self collide-info quat) gp-1 *up-vector*)
       )
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (fmin (the float (- (-> *display* base-frame-counter) (-> self state-time))) (-> self traj time))))
@@ -549,7 +540,6 @@
       )
     (nav-enemy-method-53 self)
     0
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -574,17 +564,13 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate green-eco-lurker-appear-land (green-eco-lurker)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior green-eco-lurker)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
     (sound-play "blob-land" :pitch (nav-enemy-rnd-float-range -1.0 1.0))
@@ -610,9 +596,8 @@
       )
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior green-eco-lurker) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -625,7 +610,6 @@
           ((the-as (function none) t9-1))
           )
       )
-    (none)
     )
   )
 
@@ -659,7 +643,6 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (none)
     )
   )
 
@@ -679,7 +662,6 @@
       (ja :num! (seek! (ja-aframe 32.0 0) 0.5))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -710,7 +692,6 @@
           (t9-7)
           )
       )
-    (none)
     )
   )
 
@@ -828,8 +809,8 @@
 
 ;; failed to figure out what this is:
 (defstate spawn-minions (green-eco-lurker-gen)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('blob-died)
        (set! (-> self num-alive) (max 0 (+ (-> self num-alive) -1)))
        (send-event (ppointer->process (-> self parent)) 'blob-died)
@@ -867,7 +848,6 @@
       )
     (suspend)
     0
-    (none)
     )
   )
 

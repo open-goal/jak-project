@@ -330,7 +330,7 @@ SFXGrain_AddPB::SFXGrain_AddPB(SFXGrain2& grain, u8* data) : Grain(grain) {
 }
 s32 SFXGrain_AddPB::execute(blocksound_handler& handler) {
   s32 new_pb = handler.m_cur_pb + 0x7fff * m_pb / 127;
-  std::clamp<s32>(new_pb, INT16_MIN, INT16_MAX);
+  new_pb = std::clamp<s32>(new_pb, INT16_MIN, INT16_MAX);
 
   handler.set_pbend(new_pb);
 

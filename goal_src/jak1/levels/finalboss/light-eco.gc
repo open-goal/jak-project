@@ -7,8 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/light-eco-ag.gc")
-
 (deftype light-eco-child (process-drawable)
   ((root-override      collide-shape         :offset        112)
    (angle-bit          int32                 :offset-assert 176)
@@ -188,8 +186,8 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (launch-particles :rate 1.0 (-> *part-id-table* 2904) gp-0)
-      (launch-particles :rate 1.0 (-> *part-id-table* 2905) gp-0)
+      (launch-particles (-> *part-id-table* 2904) gp-0)
+      (launch-particles (-> *part-id-table* 2905) gp-0)
       )
     )
   (none)
@@ -307,22 +305,8 @@
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (sp-kill-particle arg0 arg1)
       (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 2910)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
-      (sp-launch-particles-var
-        *sp-particle-system-2d*
-        (-> *part-id-table* 2911)
-        gp-0
-        (the-as sparticle-launch-state #f)
-        (the-as sparticle-launch-control #f)
-        1.0
-        )
+      (launch-particles (-> *part-id-table* 2910) gp-0)
+      (launch-particles (-> *part-id-table* 2911) gp-0)
       )
     )
   (none)
@@ -398,7 +382,6 @@
   :event light-eco-child-default-event-handler
   :enter (behavior ()
     (set! (-> self falling-start-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0
@@ -411,23 +394,20 @@
           )
       )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 (defstate light-eco-child-hit-ground (light-eco-child)
   :event light-eco-child-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (let ((f30-0 (+ (-> self root-override transv y) (* -544768.0 (-> *display* seconds-per-frame)))))
@@ -460,39 +440,34 @@
         )
       )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 (defstate light-eco-child-idle (light-eco-child)
   :event light-eco-child-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
         (go light-eco-child-die)
         )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 (defstate light-eco-child-die (light-eco-child)
@@ -504,7 +479,6 @@
     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -512,7 +486,6 @@
   :code (behavior ()
     (suspend)
     0
-    (none)
     )
   )
 
@@ -665,7 +638,6 @@
   :trans (behavior ()
     (common-trans self)
     (spawn (-> self part2) (-> self root trans))
-    (none)
     )
   :code (behavior ()
     (while (!= (-> self root scale x) 12.0)
@@ -676,9 +648,8 @@
       (ja :num! (loop!))
       )
     (go light-eco-mother-active)
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 (defstate light-eco-mother-active (light-eco-mother)
@@ -687,23 +658,20 @@
     (common-trans self)
     (spawn (-> self part) (-> self root trans))
     0
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 (defstate light-eco-mother-discipate (light-eco-mother)
   :event light-eco-mother-default-event-handler
   :trans (behavior ()
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (while (!= (-> self root scale x) 0.0)
@@ -717,9 +685,8 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 (defmethod deactivate light-eco-mother ((obj light-eco-mother))

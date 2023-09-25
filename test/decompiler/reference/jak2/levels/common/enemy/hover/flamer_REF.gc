@@ -638,6 +638,7 @@
 
 ;; definition for method 191 of type flamer
 ;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
 (defmethod flamer-method-191 flamer ((obj flamer))
   (cond
     ((and (-> obj draw shadow)
@@ -711,10 +712,7 @@
         (ja-channel-set! 3)
         )
     )
-  (ja-no-eval :group! flamer-idle-ja
-              :num! (seek! (the float (+ (-> (the-as art-joint-anim flamer-idle-ja) frames num-frames) -1)))
-              :frame-num 0.0
-              )
+  (ja-no-eval :group! flamer-idle-ja :num! (seek!) :frame-num 0.0)
   (let ((a0-7 (-> self skel root-channel 1)))
     (let ((f0-4 0.0))
       (set! (-> a0-7 frame-interp 1) f0-4)
@@ -746,7 +744,7 @@
       )
     (suspend)
     (ja :num! (loop!))
-    (seek! (-> self sound-volume) 1.0 (* 0.5 (-> self clock seconds-per-frame)))
+    (seek! (-> self sound-volume) 1.0 (* 0.5 (seconds-per-frame)))
     )
   #f
   )
@@ -755,69 +753,66 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod flamer-method-184 flamer ((obj flamer))
-  (with-pp
-    (let ((v1-0 (-> obj ground-mode)))
-      (cond
-        ((= v1-0 1)
-         (seek! (-> obj base-pos y) (-> obj dest-pos y) (* 40960.0 (-> pp clock seconds-per-frame)))
-         )
-        ((zero? v1-0)
-         (let ((a1-1 (new 'stack-no-clear 'collide-query)))
-           (cond
-             ((enemy-method-125 obj a1-1 (collide-spec backgnd) 8192.0 26624.0 1024.0)
-              (set! (-> obj base-pos y) (+ 22528.0 (-> obj root gspot-pos y)))
-              )
-             (else
-               (let ((s4-0 (-> obj nav))
-                     (s3-0 (-> obj base-pos))
-                     (s5-0 (new 'stack 'nav-find-poly-parms))
-                     )
-                 (vector-! (-> s5-0 point) s3-0 (-> s4-0 state mesh bounds))
-                 (set! (-> s5-0 y-threshold) (-> s4-0 nearest-y-threshold))
-                 (set! (-> s5-0 ignore) (the-as uint 2))
-                 (find-nearest-poly-to-point-local (-> s4-0 state mesh) s5-0)
-                 (let ((v1-13 (-> s5-0 poly)))
-                   (if v1-13
-                       (set! (-> obj base-pos y) (+ 22528.0 (-> obj nav state mesh bounds y) (-> v1-13 vertex0 y)))
-                       )
+  (let ((v1-0 (-> obj ground-mode)))
+    (cond
+      ((= v1-0 1)
+       (seek! (-> obj base-pos y) (-> obj dest-pos y) (* 40960.0 (seconds-per-frame)))
+       )
+      ((zero? v1-0)
+       (let ((a1-1 (new 'stack-no-clear 'collide-query)))
+         (cond
+           ((enemy-method-125 obj a1-1 (collide-spec backgnd) 8192.0 26624.0 1024.0)
+            (set! (-> obj base-pos y) (+ 22528.0 (-> obj root gspot-pos y)))
+            )
+           (else
+             (let ((s4-0 (-> obj nav))
+                   (s3-0 (-> obj base-pos))
+                   (s5-0 (new 'stack 'nav-find-poly-parms))
                    )
+               (vector-! (-> s5-0 point) s3-0 (-> s4-0 state mesh bounds))
+               (set! (-> s5-0 y-threshold) (-> s4-0 nearest-y-threshold))
+               (set! (-> s5-0 ignore) (the-as uint 2))
+               (find-nearest-poly-to-point-local (-> s4-0 state mesh) s5-0)
+               (let ((v1-13 (-> s5-0 poly)))
+                 (if v1-13
+                     (set! (-> obj base-pos y) (+ 22528.0 (-> obj nav state mesh bounds y) (-> v1-13 vertex0 y)))
+                     )
                  )
                )
              )
            )
          )
-        )
+       )
       )
-    (let ((v1-16 (+ (current-time) (the-as time-frame (-> obj sync-off)))))
-      (seek!
-        (-> obj root trans y)
-        (+ (-> obj base-pos y) (* 1228.8 (cos (* 100.66974 (the float (mod v1-16 651))))))
-        (* 16384.0 (-> pp clock seconds-per-frame))
-        )
-      )
-    (let ((s5-2 (new 'stack-no-clear 'vector)))
-      (set! (-> s5-2 quad) (-> *up-vector* quad))
-      (vector-normalize! s5-2 6144.0)
-      (vector/! s5-2 s5-2 (-> obj root scale))
-      (vector-rotate-around-z! s5-2 s5-2 (-> obj flit-angle))
-      (vector-seek! (-> obj flit-joint target) s5-2 (* 32768.0 (-> pp clock seconds-per-frame)))
-      )
-    (update-trans! (-> obj sound) (-> obj root trans))
-    (update! (-> obj sound))
-    (none)
     )
+  (let ((v1-16 (+ (current-time) (the-as time-frame (-> obj sync-off)))))
+    (seek!
+      (-> obj root trans y)
+      (+ (-> obj base-pos y) (* 1228.8 (cos (* 100.66974 (the float (mod v1-16 651))))))
+      (* 16384.0 (seconds-per-frame))
+      )
+    )
+  (let ((s5-2 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-2 quad) (-> *up-vector* quad))
+    (vector-normalize! s5-2 6144.0)
+    (vector/! s5-2 s5-2 (-> obj root scale))
+    (vector-rotate-around-z! s5-2 s5-2 (-> obj flit-angle))
+    (vector-seek! (-> obj flit-joint target) s5-2 (* 32768.0 (seconds-per-frame)))
+    )
+  (update-trans! (-> obj sound) (-> obj root trans))
+  (update! (-> obj sound))
+  (none)
   )
 
 ;; definition for method 67 of type flamer
 (defmethod go-stare flamer ((obj flamer))
   (go-hostile obj)
-  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate wait-for-formation (flamer)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior flamer) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type flamer idle) enter)
   :trans (-> (method-of-type flamer idle) trans)
   :code (behavior ()
@@ -832,7 +827,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (-> (method-of-type flamer idle) post)
   )
@@ -847,7 +841,6 @@
           )
       )
     (set! (-> self root trans quad) (-> self idle-pos quad))
-    (none)
     )
   )
 
@@ -861,7 +854,6 @@
           )
       )
     (set! (-> self root trans quad) (-> self idle-pos quad))
-    (none)
     )
   :trans (behavior ()
     (when (and (>= (- (current-time) (-> self state-time)) (-> self state-timeout)) (flamer-method-183 self))
@@ -870,7 +862,6 @@
           (go-virtual active)
           )
       )
-    (none)
     )
   )
 
@@ -886,14 +877,12 @@
     (flamer-method-190 self)
     (set! (-> self ground-mode) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (flamer-method-183 self)
         (go-virtual active)
         )
     (flamer-method-184 self)
-    (none)
     )
   )
 
@@ -908,7 +897,6 @@
       )
     (set! (-> self ground-mode) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (flamer-method-183 self)
@@ -917,7 +905,6 @@
     (if (>= 819.2 (vector-vector-xz-distance (-> self root trans) (-> self idle-pos)))
         (go-virtual idle)
         )
-    (none)
     )
   :post flamer-attack-post
   )
@@ -955,7 +942,6 @@
     (sound-play "flamer-ambush")
     (quaternion-copy! (-> self root quat) (-> self init-quat))
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy ambush) exit)))
@@ -967,7 +953,6 @@
     (logior! (-> self enemy-flags) (enemy-flag notice))
     (set! (-> self flit-joint twist-min-y) (the-as float #t))
     (set! (-> self last-fire-time) (+ (current-time) (seconds -1.5)))
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy ambush) trans)))
@@ -975,7 +960,7 @@
           (t9-0)
           )
       )
-    (+! (-> self path-pos) (* 0.85 (-> self clock seconds-per-frame)))
+    (+! (-> self path-pos) (* 0.85 (seconds-per-frame)))
     (let ((f30-0 (-> self path-pos)))
       (when (>= f30-0 1.0)
         (set! (-> self path-pos) 1.0)
@@ -989,13 +974,11 @@
         )
       (flamer-method-186 self f30-0)
       )
-    (none)
     )
-  :code (the-as (function none :behavior flamer) flamer-fly-code)
+  :code flamer-fly-code
   :post (behavior ()
     (flamer-method-187 self)
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -1030,19 +1013,16 @@
       )
     0
     (set! (-> self ground-mode) 1)
-    (none)
     )
   :trans (behavior ()
     (if (< (vector-vector-xz-distance (-> self root trans) (-> self dest-pos)) 409.6)
         (go-virtual exit-ambush-path)
         )
-    (none)
     )
-  :code (the-as (function none :behavior flamer) flamer-fly-code)
+  :code flamer-fly-code
   :post (behavior ()
     (flamer-method-187 self)
     (flamer-flit-post)
-    (none)
     )
   )
 
@@ -1060,15 +1040,13 @@
       )
     0
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self enemy-flags) (enemy-flag notice))
-    (none)
     )
   :trans (behavior ()
-    (set! (-> self path-pos) (- (-> self path-pos) (* 0.33333334 (-> self clock seconds-per-frame))))
+    (set! (-> self path-pos) (- (-> self path-pos) (* 0.33333334 (seconds-per-frame))))
     (let ((f30-0 (-> self path-pos)))
       (when (>= 0.0 f30-0)
         (set! (-> self path-pos) 0.0)
@@ -1088,19 +1066,17 @@
       (get-point-at-percent-along-path! (-> self path) (-> self base-pos) f30-0 'interp)
       (flamer-method-186 self f30-0)
       )
-    (none)
     )
-  :code (the-as (function none :behavior flamer) flamer-fly-code)
+  :code flamer-fly-code
   :post (behavior ()
     (flamer-method-187 self)
     (when (>= (- (current-time) (-> self flit-timer)) (rand-vu-int-range (seconds 1.2) (seconds 3)))
       (set! (-> self flit-angle) (* 182.04445 (rand-vu-float-range 0.0 360.0)))
       (set! (-> self flit-timer) (current-time))
       )
-    (vector-seek! (-> self root trans) (-> self base-pos) (* 16384.0 (-> self clock seconds-per-frame)))
+    (vector-seek! (-> self root trans) (-> self base-pos) (* 16384.0 (seconds-per-frame)))
     (flamer-method-184 self)
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -1114,7 +1090,6 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
   )
 
@@ -1138,7 +1113,6 @@
     (flamer-method-189 self)
     (set! (-> self ground-mode) 0)
     (set! (-> self flit-timer) (+ (current-time) (seconds -3)))
-    (none)
     )
   :trans (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -1162,21 +1136,19 @@
           (go-virtual attack)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior flamer) flamer-fly-code)
+  :code flamer-fly-code
   :post (behavior ()
     (flamer-method-187 self)
     (flamer-flit-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate attack (flamer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((s5-0 (handle->process (-> self focus handle))))
          (when s5-0
@@ -1212,32 +1184,25 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (cond
       ((zero? (rand-vu-int-range 0 2))
-       (ja-no-eval :group! flamer-shoot1-ja
-                   :num! (seek! (the float (+ (-> (the-as art-joint-anim flamer-shoot1-ja) frames num-frames) -1)))
-                   :frame-num 0.0
-                   )
+       (ja-no-eval :group! flamer-shoot1-ja :num! (seek!) :frame-num 0.0)
        (until (ja-done? 0)
          (suspend)
          (ja :num! (seek!))
          )
        )
       (else
-        (ja-no-eval :group! flamer-shoot-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim flamer-shoot-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! flamer-shoot-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1246,7 +1211,6 @@
       )
     (set! (-> self last-fire-time) (current-time))
     (go-virtual hostile)
-    (none)
     )
   :post flamer-attack-post
   )
@@ -1353,7 +1317,6 @@
       )
     (set-gravity-length (-> self root dynam) 368640.0)
     (set! (-> self hit-surface?) #f)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (-> self root)))
@@ -1383,17 +1346,15 @@
         (go-hostile self)
         )
       )
-    (none)
     )
   :post (behavior ()
-    (seek! (-> self sound-volume) 0.0 (* 0.5 (-> self clock seconds-per-frame)))
+    (seek! (-> self sound-volume) 0.0 (* 0.5 (seconds-per-frame)))
     (flamer-method-187 self)
     (let ((t9-2 (-> (method-of-type nav-enemy knocked) post)))
       (if t9-2
           ((the-as (function none) t9-2))
           )
       )
-    (none)
     )
   )
 
@@ -1421,7 +1382,6 @@
     0
     (nav-enemy-method-167 self)
     (enemy-method-103 self)
-    (none)
     )
   )
 

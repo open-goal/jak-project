@@ -94,6 +94,7 @@ class TypeSpec {
   const std::string& get_tag(const std::string& tag_name) const;
   void modify_tag(const std::string& tag_name, const std::string& tag_value);
   void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
+  void delete_tag(const std::string& tag_name);
 
   const std::string& base_type() const { return m_type; }
 

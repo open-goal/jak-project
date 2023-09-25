@@ -69,6 +69,15 @@ class DecompilerTypeSystem {
   TypeSpec lookup_symbol_type(const std::string& name) const;
   bool should_attempt_cast_simplify(const TypeSpec& expected, const TypeSpec& actual) const;
 
+  void add_art_group_elt(const std::string& ag_name, const std::string& elt_name, int elt_index) {
+    if (art_group_info.count(ag_name) == 0) {
+      art_group_info[ag_name] = {};
+    }
+    if (art_group_info.at(ag_name).count(elt_index) == 0) {
+      art_group_info.at(ag_name)[elt_index] = elt_name;
+    }
+  }
+
   // todo - totally eliminate this.
   struct {
     std::string current_method_type;

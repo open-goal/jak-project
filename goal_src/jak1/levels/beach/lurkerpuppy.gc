@@ -7,8 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/lurkerpuppy-ag.gc")
-
 (deftype lurkerpuppy (nav-enemy)
   ()
   :heap-base #x120
@@ -28,10 +26,7 @@ nav-enemy-default-event-handler
 
 (defstate nav-enemy-notice (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-no-eval :num! (loop!))
     (ja-channel-push! 1 (seconds 0.17))
@@ -42,16 +37,12 @@ nav-enemy-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
 (defstate nav-enemy-chase (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (cond
       ((ja-group? lurkerpuppy-jump-land-ja)
@@ -81,16 +72,12 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-stare (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
     (set! (-> self turn-time) (seconds 0.1))
@@ -126,16 +113,12 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
 (defstate nav-enemy-give-up (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (set! (-> self rotate-speed) 218453.33)
     (set! (-> self turn-time) (seconds 0.5))
@@ -159,32 +142,23 @@ nav-enemy-default-event-handler
       (ja :num! (seek! max 1.4))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
 (defstate nav-enemy-attack (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (sound-play "head-butt")
     (go-virtual nav-enemy-victory)
-    (none)
     )
   )
 
 (defstate nav-enemy-victory (lurkerpuppy)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior lurkerpuppy)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :exit (behavior ()
     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
@@ -203,9 +177,8 @@ nav-enemy-default-event-handler
         )
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
-  :post (the-as (function none :behavior lurkerpuppy) nav-enemy-face-player-post)
+  :post nav-enemy-face-player-post
   )
 
 (define *lurkerpuppy-nav-enemy-info* (new 'static 'nav-enemy-info

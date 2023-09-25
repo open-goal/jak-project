@@ -8,29 +8,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/windmill-sail-ag.gc")
-(import "goal_src/jak1/import/medres-beach3-ag.gc")
-(import "goal_src/jak1/import/mayorgears-ag.gc")
-(import "goal_src/jak1/import/medres-village11-ag.gc")
-(import "goal_src/jak1/import/revcycleprop-ag.gc")
-(import "goal_src/jak1/import/medres-jungle2-ag.gc")
-(import "goal_src/jak1/import/revcycle-ag.gc")
-(import "goal_src/jak1/import/medres-misty-ag.gc")
-(import "goal_src/jak1/import/sagesail-ag.gc")
-(import "goal_src/jak1/import/windspinner-ag.gc")
-(import "goal_src/jak1/import/medres-jungle1-ag.gc")
-(import "goal_src/jak1/import/medres-village12-ag.gc")
-(import "goal_src/jak1/import/hutlamp-ag.gc")
-(import "goal_src/jak1/import/medres-jungle-ag.gc")
-(import "goal_src/jak1/import/medres-village13-ag.gc")
-(import "goal_src/jak1/import/medres-beach2-ag.gc")
-(import "goal_src/jak1/import/villa-starfish-ag.gc")
-(import "goal_src/jak1/import/medres-training-ag.gc")
-(import "goal_src/jak1/import/medres-beach-ag.gc")
-(import "goal_src/jak1/import/reflector-middle-ag.gc")
-(import "goal_src/jak1/import/medres-beach1-ag.gc")
-(import "goal_src/jak1/import/evilplant-ag.gc")
-
 (defskelgroup *med-res-jungle-sg* medres-jungle medres-jungle-lod0-jg medres-jungle-idle-ja
               ((medres-jungle-lod0-mg (meters 999999)))
               :bounds (static-spherem -80 0 -80 240)
@@ -310,10 +287,9 @@
         (logior! (-> self draw status) (draw-status do-not-check-distance))
         (logclear! (-> self draw status) (draw-status do-not-check-distance))
         )
-    (none)
     )
-  :code (the-as (function none :behavior windmill-sail) anim-loop)
-  :post (the-as (function none :behavior windmill-sail) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! windmill-sail ((obj windmill-sail) (arg0 entity-actor))
@@ -368,10 +344,9 @@
       )
     (quaternion*! (-> self root-override quat) (-> self root-override quat) (-> self orig-quat))
     (quaternion-normalize! (-> self root-override quat))
-    (none)
     )
-  :code (the-as (function none :behavior sagesail) anim-loop)
-  :post (the-as (function none :behavior sagesail) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! sagesail ((obj sagesail) (arg0 entity-actor))
@@ -458,10 +433,9 @@
       )
     (quaternion*! (-> self root quat) (-> self root quat) (-> self orig-quat))
     (quaternion-normalize! (-> self root quat))
-    (none)
     )
-  :code (the-as (function none :behavior windspinner) anim-loop)
-  :post (the-as (function none :behavior windspinner) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! windspinner ((obj windspinner) (arg0 entity-actor))
@@ -506,9 +480,8 @@
           )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior mayorgears) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! mayorgears ((obj mayorgears) (arg0 entity-actor))
@@ -521,7 +494,7 @@
   (none)
   )
 
-;; PAL patch here
+;; og:preserve-this PAL patch here
 (deftype evilplant (process-drawable)
   ()
   :heap-base #x40
@@ -555,7 +528,6 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (the-as (function none :behavior evilplant) ja-post)
   )
@@ -593,10 +565,9 @@
       (process-entity-status! self (entity-perm-status complete) #t)
       (draw-eco-beam (-> self reflector-trans) (-> self next-reflector-trans))
       )
-    (none)
     )
-  :code (the-as (function none :behavior reflector-middle) anim-loop)
-  :post (the-as (function none :behavior reflector-middle) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! reflector-middle ((obj reflector-middle) (arg0 entity-actor))
@@ -631,7 +602,7 @@
 
 
 (defstate reflector-end-idle (reflector-end)
-  :code (the-as (function none :behavior reflector-end) anim-loop)
+  :code anim-loop
   )
 
 (defmethod init-from-entity! reflector-end ((obj reflector-end) (arg0 entity-actor))
@@ -677,32 +648,27 @@
     (move-to-ground (-> self collide-info) 40960.0 40960.0 #t (collide-kind background))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (ja-channel-set! 0)
-    (none)
     )
   :exit (behavior ()
     (ja-channel-set! 1)
-    (none)
     )
   :trans (behavior ()
     (if (and *target* (>= 163840.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (go starfish-patrol)
         )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior starfish) ja-post)
+  :post ja-post
   )
 
 (defstate starfish-patrol (starfish)
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logior! (-> self nav flags) (nav-control-flags navcf19))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
@@ -712,7 +678,6 @@
           (go starfish-idle)
           )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self target-speed) 4096.0)
@@ -725,9 +690,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior starfish) nav-enemy-patrol-post)
+  :post nav-enemy-patrol-post
   )
 
 (define *starfish-nav-enemy-info* (new 'static 'nav-enemy-info
@@ -857,9 +821,8 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior villa-starfish) #f)
+  :post #f
   )
 
 (defmethod init-from-entity! villa-starfish ((obj villa-starfish) (arg0 entity-actor))
@@ -892,9 +855,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior village-fish) #f)
+  :post #f
   )
 
 (defmethod init-from-entity! village-fish ((obj village-fish) (arg0 entity-actor))
@@ -982,9 +944,8 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior hutlamp) ja-post)
+  :post ja-post
   )
 
 (defmethod init-from-entity! hutlamp ((obj hutlamp) (arg0 entity-actor))
@@ -1017,8 +978,8 @@
 
 (defstate idle (revcycleprop)
   :virtual #t
-  :code (the-as (function none :behavior revcycleprop) anim-loop)
-  :post (the-as (function none :behavior revcycleprop) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! revcycleprop ((obj revcycleprop) (arg0 entity-actor))
@@ -1049,8 +1010,8 @@
 
 (defstate idle (revcycle)
   :virtual #t
-  :code (the-as (function none :behavior revcycle) anim-loop)
-  :post (the-as (function none :behavior revcycle) ja-post)
+  :code anim-loop
+  :post ja-post
   )
 
 (defmethod init-from-entity! revcycle ((obj revcycle) (arg0 entity-actor))

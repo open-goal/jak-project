@@ -5,6 +5,18 @@
 ;; name in dgo: grenadier
 ;; dgos: DG1, D3A, UNB, RUI
 
+(defenum grenadier-flags
+  :bitfield #t
+  (grflags-0)
+  (grflags-1)
+  (grflags-2)
+  (grflags-3)
+  (grflags-4)
+  (grflags-5)
+  (grflags-6)
+  (grflags-7)
+  )
+
 ;; DECOMP BEGINS
 
 (defpartgroup group-grenadier-drip
@@ -67,7 +79,7 @@
    (heading                   symbol                        :offset-assert 724)
    (move-pos                  vector                :inline :offset-assert 736)
    (move-angle                float                         :offset-assert 752)
-   (status-flags              uint64                        :offset-assert 760)
+   (status-flags              grenadier-flags               :offset-assert 760)
    (suppress-knockaside-timer time-frame                    :offset-assert 768)
    )
   :heap-base #x290
@@ -292,7 +304,7 @@
                 )
            (return #t)
            )
-       (logior! (-> obj status-flags) 1)
+       (logior! (-> obj status-flags) (grenadier-flags grflags-0))
        (set! (-> obj suppress-knockaside-timer) (current-time))
        )
      ((method-of-type nav-enemy general-event-handler) obj arg0 arg1 arg2 arg3)
@@ -407,13 +419,7 @@
            (s4-0 (-> (the-as (pointer int32) (+ (* (get-rand-int self gp-0) 8) (the-as int s5-0)))))
            )
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data s4-0)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data s4-0)) frames num-frames) -1))
-                      f30-0
-                      )
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data s4-0) :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -427,14 +433,7 @@
             )
           0
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -444,14 +443,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -470,13 +462,7 @@
           (ja-no-eval :num! (loop!))
           (set! s4-0 (-> (the-as (pointer int32) (+ (* (get-rand-int self gp-0) 8) (the-as int s5-0)))))
           (ja-channel-push! 1 (seconds 0.6))
-          (ja-no-eval :group! (-> self draw art-group data s4-0)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data s4-0)) frames num-frames) -1))
-                        f30-0
-                        )
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! (-> self draw art-group data s4-0) :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (ja-blend-eval)
             (suspend)
@@ -486,7 +472,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -499,7 +484,6 @@
           )
       )
     (vector-reset! (-> self root transv))
-    (none)
     )
   )
 
@@ -513,8 +497,7 @@
       )
     (grenadier-method-181 self)
     (look-at-target! self (enemy-flag death-start))
-    (logand! (-> self status-flags) -2)
-    (none)
+    (logclear! (-> self status-flags) (grenadier-flags grflags-0))
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -571,7 +554,6 @@
           (go-stare self)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -588,10 +570,7 @@
            (f30-0 (get-rand-float-range self 0.9 1.1))
            )
       (until #f
-        (ja-no-eval :group! gp-1
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -599,7 +578,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (-> self bank)))
@@ -616,13 +594,12 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate backup (grenadier)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grenadier) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -633,7 +610,6 @@
       (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((f0-0 (vector-vector-xz-distance (-> self root trans) (-> self move-pos))))
@@ -641,21 +617,16 @@
           (go-hostile self)
           )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! grenadier-run-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-run-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! grenadier-run-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -667,13 +638,12 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate spin-kick (grenadier)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grenadier) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -696,7 +666,6 @@
       (set! (-> v1-13 prim-core action) (collide-action deadly))
       (set! (-> v1-13 local-sphere w) 7372.8)
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1)))
@@ -707,20 +676,15 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.135))
-    (ja-no-eval :group! grenadier-spin-kick-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-spin-kick-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! grenadier-spin-kick-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 self))
@@ -738,7 +702,6 @@
         )
       )
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
@@ -795,8 +758,8 @@
 
 (defstate attack (grenadier)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('event-attack)
        (let ((s4-0 (handle->process (-> self focus handle))))
          (when s4-0
@@ -841,7 +804,7 @@
          )
        )
       (else
-        (enemy-event-handler proc arg1 event-type event)
+        (enemy-event-handler proc argc message block)
         )
       )
     )
@@ -874,19 +837,17 @@
       (set! (-> self attack-id) a0-19)
       )
     (look-at-target! self (enemy-flag lock-focus))
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
         (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
         )
-    (logand! (-> self status-flags) -3)
+    (logclear! (-> self status-flags) (grenadier-flags grflags-1))
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
@@ -908,17 +869,14 @@
             )
           0
           (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
-          (logior! (-> self status-flags) 2)
-          (ja-no-eval :group! grenadier-run-to-throw-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-run-to-throw-ja) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (logior! (-> self status-flags) (grenadier-flags grflags-1))
+          (ja-no-eval :group! grenadier-run-to-throw-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-0))
             )
           (ja-channel-push! 1 (seconds 0.067))
-          (logand! (-> self status-flags) -3)
+          (logclear! (-> self status-flags) (grenadier-flags grflags-1))
           (if (logtest? (enemy-flag enemy-flag43) (-> self enemy-flags))
               (logior! (-> self nav flags) (nav-control-flag update-heading-from-facing))
               (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
@@ -931,17 +889,14 @@
         )
       0
       (cond
-        ((logtest? (-> self status-flags) 1)
+        ((logtest? (-> self status-flags) (grenadier-flags grflags-0))
          (ja-channel-push! 1 (seconds 0.135))
-         (ja-no-eval :group! grenadier-throw-quick-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw-quick-ja) frames num-frames) -1)) f30-0)
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! grenadier-throw-quick-ja :num! (seek! max f30-0) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! max f30-0))
            )
-         (logand! (-> self status-flags) -2)
+         (logclear! (-> self status-flags) (grenadier-flags grflags-0))
          )
         (else
           (when (not (enemy-method-96 self 1820.4445 #t))
@@ -976,20 +931,14 @@
               (let ((f0-14 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable a0-50) 0))))
                 (cond
                   ((< 102400.0 f0-14)
-                   (ja-no-eval :group! grenadier-throw-ja
-                               :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw-ja) frames num-frames) -1)) f30-0)
-                               :frame-num 0.0
-                               )
+                   (ja-no-eval :group! grenadier-throw-ja :num! (seek! max f30-0) :frame-num 0.0)
                    (until (ja-done? 0)
                      (suspend)
                      (ja :num! (seek! max f30-0))
                      )
                    )
                   (else
-                    (ja-no-eval :group! grenadier-throw1-ja
-                                :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-throw1-ja) frames num-frames) -1)) f30-0)
-                                :frame-num 0.0
-                                )
+                    (ja-no-eval :group! grenadier-throw1-ja :num! (seek! max f30-0) :frame-num 0.0)
                     (until (ja-done? 0)
                       (suspend)
                       (ja :num! (seek! max f30-0))
@@ -1003,7 +952,6 @@
         )
       )
     (go-hostile self)
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 self))
@@ -1021,7 +969,6 @@
         )
       )
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -1059,10 +1006,7 @@
       )
     (let ((gp-1 (-> self draw art-group data v1-10)))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! gp-1
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-1 :num! (seek!) :frame-num 0.0)
       )
     (until (ja-done? 0)
       (suspend)
@@ -1108,13 +1052,12 @@
         (go-stare self)
         )
       )
-    (none)
     )
   )
 
 (defmethod go-hostile grenadier ((obj grenadier))
   (if (and (and (-> obj next-state) (= (-> obj next-state name) 'knocked))
-           (and (logtest? (-> obj status-flags) 1)
+           (and (logtest? (-> obj status-flags) (grenadier-flags grflags-0))
                 (handle->process (-> obj focus handle))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> obj focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
@@ -1125,7 +1068,6 @@
       (go (method-of-object obj attack))
       )
   ((method-of-type nav-enemy go-hostile) obj)
-  (none)
   )
 
 (defstate victory (grenadier)
@@ -1135,20 +1077,14 @@
     (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
       (cond
         ((zero? (rand-vu-int-range 0 1))
-         (ja-no-eval :group! grenadier-victory-ja
-                     :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-victory-ja) frames num-frames) -1)) f30-0)
-                     :frame-num 0.0
-                     )
+         (ja-no-eval :group! grenadier-victory-ja :num! (seek! max f30-0) :frame-num 0.0)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! max f30-0))
            )
          )
         (else
-          (ja-no-eval :group! grenadier-notice-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grenadier-notice-ja) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! grenadier-notice-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-0))
@@ -1157,13 +1093,12 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
 (defmethod nav-enemy-method-142 grenadier ((obj grenadier) (arg0 nav-control))
   (local-vars (a0-4 int) (a0-6 int))
-  (b! (logtest? (-> obj status-flags) 2) cfg-6 :delay (empty-form))
+  (b! (logtest? (-> obj status-flags) (grenadier-flags grflags-1)) cfg-6 :delay (empty-form))
   (let ((v1-3 (new 'stack-no-clear 'vector))
         (a2-0 (new 'stack-no-clear 'vector))
         )
@@ -1354,7 +1289,7 @@
                              )
         )
   (set! (-> obj move-angle) 5461.3335)
-  (set! (-> obj status-flags) (the-as uint 0))
+  (set! (-> obj status-flags) (grenadier-flags))
   (set! (-> obj suppress-knockaside-timer) 0)
   (set-vector! (-> obj root scale) 1.5 1.5 1.5 1.0)
   (set! (-> obj joint) (new 'process 'joint-mod-blend-world obj 17 #f 0.0))

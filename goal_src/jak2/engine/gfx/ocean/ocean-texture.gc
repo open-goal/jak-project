@@ -5,8 +5,11 @@
 ;; name in dgo: ocean-texture
 ;; dgos: ENGINE, GAME
 
+;; og:ignore-form:(defun-debug check-normals
+
 ;; DECOMP BEGINS
 
+;; og:preserve-this
 (define ocean-texture-vu1-block (new 'static 'vu-function))
 
 (defmethod ocean-texture-setup-constants ocean ((obj ocean) (arg0 ocean-texture-constants))
@@ -180,6 +183,7 @@
     )
   (ocean-texture-add-call-rest obj arg0)
   (ocean-texture-add-call-done obj arg0)
+  ;; og:preserve-this method 81 not handled for now
   ;; (ocean-method-81 obj arg0)
   ;; (reset-display-gs-state *display* arg0)
   0
@@ -294,24 +298,22 @@
   )
 
 (defmethod do-tex-scroll! ocean ((obj ocean))
-  (with-pp
-    (when (not (paused?))
-      (+! (-> obj st-scroll x) (* 8.0 (-> pp clock seconds-per-frame)))
-      (set! (-> obj st-scroll y) (- (-> obj st-scroll y) (* 8.0 (-> pp clock seconds-per-frame))))
-      (if (< 128.0 (-> obj st-scroll x))
-          (+! (-> obj st-scroll x) -128.0)
-          )
-      (if (< (-> obj st-scroll y) 0.0)
-          (+! (-> obj st-scroll y) 128.0)
-          )
-      )
-    (set! (-> obj uv-scroll-0 x) (the int (* 16.0 (-> obj st-scroll x))))
-    (set! (-> obj uv-scroll-0 y) (the int (* 16.0 (+ 256.0 (-> obj st-scroll y)))))
-    (set! (-> obj uv-scroll-1 x) (the int (* 16.0 (+ 256.0 (-> obj st-scroll x)))))
-    (set! (-> obj uv-scroll-1 y) (the int (* 16.0 (-> obj st-scroll y))))
-    0
-    (none)
+  (when (not (paused?))
+    (+! (-> obj st-scroll x) (* 8.0 (seconds-per-frame)))
+    (set! (-> obj st-scroll y) (- (-> obj st-scroll y) (* 8.0 (seconds-per-frame))))
+    (if (< 128.0 (-> obj st-scroll x))
+        (+! (-> obj st-scroll x) -128.0)
+        )
+    (if (< (-> obj st-scroll y) 0.0)
+        (+! (-> obj st-scroll y) 128.0)
+        )
     )
+  (set! (-> obj uv-scroll-0 x) (the int (* 16.0 (-> obj st-scroll x))))
+  (set! (-> obj uv-scroll-0 y) (the int (* 16.0 (+ 256.0 (-> obj st-scroll y)))))
+  (set! (-> obj uv-scroll-1 x) (the int (* 16.0 (+ 256.0 (-> obj st-scroll x)))))
+  (set! (-> obj uv-scroll-1 y) (the int (* 16.0 (-> obj st-scroll y))))
+  0
+  (none)
   )
 
 (defmethod ocean-method-81 ocean ((obj ocean) (arg0 dma-buffer))

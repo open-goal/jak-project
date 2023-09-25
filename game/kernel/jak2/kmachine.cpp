@@ -37,6 +37,7 @@
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak2/ksound.h"
 #include "game/overlord/jak2/iso.h"
+#include "game/sce/deci2.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
@@ -361,7 +362,8 @@ void InitIOP() {
   }
   printf("InitIOP OK\n");
 }
-AutoSplitterBlock gAutoSplitterBlock;
+
+AutoSplitterBlock g_auto_splitter_block_jak2;
 
 int InitMachine() {
   // heap_start = malloc(0x10);
@@ -393,6 +395,9 @@ int InitMachine() {
   // }
   if (MasterDebug) {
     InitGoalProto();
+  } else {
+    // shut down the deci2 stuff, we don't need it.
+    ee::sceDeci2Disable();
   }
 
   printf("InitSound\n");
@@ -657,8 +662,24 @@ void pc_set_levels(u32 lev_list) {
   Gfx::GetCurrentRenderer()->set_levels(levels);
 }
 
+void pc_set_active_levels(u32 lev_list) {
+  if (!Gfx::GetCurrentRenderer()) {
+    return;
+  }
+  std::vector<std::string> levels;
+  for (int i = 0; i < LEVEL_MAX; i++) {
+    u32 lev = *Ptr<u32>(lev_list + i * 4);
+    std::string ls = Ptr<String>(lev).c()->data();
+    if (ls != "none" && ls != "#f" && ls != "") {
+      levels.push_back(ls);
+    }
+  }
+
+  Gfx::GetCurrentRenderer()->set_active_levels(levels);
+}
+
 void init_autosplit_struct() {
-  gAutoSplitterBlock.pointer_to_symbol =
+  g_auto_splitter_block_jak2.pointer_to_symbol =
       (u64)g_ee_main_mem + (u64)intern_from_c("*autosplit-info-jak2*")->value();
 }
 
@@ -684,6 +705,65 @@ u32 alloc_vagdir_names(u32 heap_sym) {
   return s7.offset;
 }
 
+// std::vector<std::string> valid_levels = {
+//    "default-level", "intro",    "demo",     "title",    "vinroom",   "drillmid", "drill",
+//    "drillb",        "drillmtn", "sewer",    "sewerb",   "sewer",     "sewescb",  "tomba",
+//    "tombb",         "tombc",    "tombd",    "tombe",    "tombext",   "tombboss", "under",
+//    "underb",        "palcab",   "palshaft", "palboss",  "palroof",   "palout",   "throne",
+//    "palent",        "prison",   "forexita", "forexitb", "forresca",  "forrescb", "fordumpa",
+//    "fordumpb",      "fordumpc", "fordumpd", "strip",    "ruins",     "sagehut",  "atoll",
+//    "atollext",      "mountain", "mtnext",   "forest",   "forestb",   "mincan",   "ctywide",
+//    "ctykora",       "ctyasha",  "ctygena",  "ctygenb",  "ctygenc",   "ctysluma", "ctyslumb",
+//    "ctyslumc",      "ctyport",  "ctyfarma", "ctyfarmb", "ctyinda",   "consite",  "consiteb",
+//    "ctyindb",       "ctymarka", "ctymarkb", "ctypal",   "stadium",   "stadiumb", "stadiumc",
+//    "stadiumd",      "skatea",   "garage",   "stadblmp", "onintent",  "kiosk",    "oracle",
+//    "hideout",       "hiphog",   "gungame",  "dig1",     "dig3a",     "dig3b",    "caspad",
+//    "castle",        "casboss",  "casext",   "cascity",  "village1",  "introcst", "nest",
+//    "nestb",         "outrocst", "portwall", "island1",  "skatepark", "halfpipe", "vistest",
+//    "woodstest",     "tobytest", "chartest", "dptest",   "ctyfence",  "4aaron",   "4pal01",
+//    "andrew01",      "bsbs",     "eitest",   "miketest", "tatetest",  "teststdc", "teststdd",
+//    "wasall",        "stadocc"};
+//
+// std::vector<std::string> levels_dumped_lights = {};
+// std::vector<std::string> levels_dumped_regions = {};
+// std::vector<std::string> levels_dumped_samples = {};
+
+inline u64 bool_to_symbol(const bool val) {
+  return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
+}
+
+// u64 pc_has_level_been_dumped_lights(u32 level_name_str) {
+//  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
+//
+//  for (const auto& level : levels_dumped_lights) {
+//    if (level == level_name) {
+//      return bool_to_symbol(true);
+//    }
+//  }
+//
+//  levels_dumped_lights.push_back(level_name);
+//  return bool_to_symbol(false);
+//}
+//
+// u64 pc_has_level_been_dumped_regions(u32 level_name_str) {
+//  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
+//
+//  for (const auto& level : levels_dumped_regions) {
+//    if (level == level_name) {
+//      return bool_to_symbol(true);
+//    }
+//  }
+//
+//  levels_dumped_regions.push_back(level_name);
+//  return bool_to_symbol(false);
+//}
+
+void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
+  auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
+  std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(str);
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
+}
+
 void InitMachine_PCPort() {
   // PC Port added functions
   init_common_pc_port_functions(
@@ -697,14 +777,21 @@ void InitMachine_PCPort() {
       make_string_from_c);
 
   make_function_symbol_from_c("__pc-set-levels", (void*)pc_set_levels);
+  make_function_symbol_from_c("__pc-set-active-levels", (void*)pc_set_active_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
   make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
+  make_function_symbol_from_c("pc-encode-utf8-string", (void*)encode_utf8_string);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)update_discord_rpc);
 
   // debugging tools
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
+
+  /*make_function_symbol_from_c("has-level-been-dumped-lights?",
+                              (void*)pc_has_level_been_dumped_lights);
+  make_function_symbol_from_c("has-level-been-dumped-regions?",
+                              (void*)pc_has_level_been_dumped_regions);*/
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
@@ -834,6 +921,8 @@ void initialize_sql_db() {
   fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak2-editor.db";
   file_util::create_dir_if_needed_for_file(db_path);
 
+  const bool did_db_exist = file_util::file_exists(db_path.string());
+
   // Attempt to open the database
   const auto opened = sql_db.open_db(db_path.string());
   (void)opened;
@@ -847,6 +936,29 @@ void initialize_sql_db() {
 
   const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
   // TODO - error check
+
+  // If the database did not originally exist, let's seed it with original game data
+  if (!did_db_exist) {
+    lg::warn("[SQL]: Seeding database, this may take a bit");
+    fs::path level_info_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                                  "db-fixtures" / "fixture-level_info.sql";
+    if (file_util::file_exists(level_info_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(level_info_fixture));
+      // TODO - error check
+    }
+    fs::path light_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                             "db-fixtures" / "fixture-light.sql";
+    if (file_util::file_exists(light_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(light_fixture));
+      // TODO - error check
+    }
+    fs::path region_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak2" / "tools" /
+                              "db-fixtures" / "fixture-region.sql";
+    if (file_util::file_exists(region_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(region_fixture));
+      // TODO - error check
+    }
+  }
 }
 
 sqlite::GenericResponse run_sql_query(const std::string& query) {

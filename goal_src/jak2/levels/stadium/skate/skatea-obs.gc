@@ -199,15 +199,13 @@
           (quaternion-identity! (-> gp-0 quat))
           (set! (-> gp-0 flags) (task-arrow-flags))
           (set! (-> gp-0 map-icon) (the-as uint 15))
-          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
+          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 self)))
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (set-continue! *game-info* "skatea-training" #f)
-    (none)
     )
   :trans (behavior ()
     (when (-> self board-picked-up)
@@ -231,9 +229,8 @@
       (send-event (handle->process (-> self arrow)) 'leave)
       (go-virtual jump)
       )
-    (none)
     )
-  :code (the-as (function none :behavior hoverboard-training-manager) sleep-code)
+  :code sleep-code
   )
 
 (defstate wait-for-pickup-training (hoverboard-training-manager)
@@ -260,19 +257,16 @@
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (set-continue! *game-info* "skatea-training" #f)
-    (none)
     )
   :trans (behavior ()
     (if (-> self board-picked-up)
         (go-virtual idle-training)
         )
-    (none)
     )
-  :code (the-as (function none :behavior hoverboard-training-manager) sleep-code)
+  :code sleep-code
   )
 
 (defstate wait-for-board (hoverboard-training-manager)
@@ -282,9 +276,8 @@
     (if (task-node-open? (game-task-node stadium-board1-board))
         (go-virtual wait-for-pickup)
         )
-    (none)
     )
-  :code (the-as (function none :behavior hoverboard-training-manager) sleep-code)
+  :code sleep-code
   )
 
 (defstate wait (hoverboard-training-manager)
@@ -294,9 +287,8 @@
     (if (task-node-open? (game-task-node stadium-board1-training-judge))
         (go-virtual jump)
         )
-    (none)
     )
-  :code (the-as (function none :behavior hoverboard-training-manager) sleep-code)
+  :code sleep-code
   )
 
 (defstate jump (hoverboard-training-manager)
@@ -338,7 +330,6 @@
     (label cfg-51)
     (send-event *target* 'get-notify #f)
     (go-virtual duck-jump)
-    (none)
     )
   )
 
@@ -376,7 +367,6 @@
     (label cfg-36)
     (send-event *target* 'get-notify #f)
     (go-virtual boost-jump)
-    (none)
     )
   )
 
@@ -385,7 +375,6 @@
   :event hoverboard-training-manager-event-handler
   :exit (behavior ()
     (send-event (handle->process (-> self arrow)) 'leave)
-    (none)
     )
   :code (behavior ()
     (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
@@ -409,7 +398,7 @@
       (quaternion-identity! (-> gp-1 quat))
       (set! (-> gp-1 flags) (task-arrow-flags))
       (set! (-> gp-1 map-icon) (the-as uint 15))
-      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-1 (the-as task-arrow self))))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-1 self)))
       )
     (send-event *target* 'get-notify self)
     (set! (-> self trick-type) (board-tricks none))
@@ -452,7 +441,6 @@
     (label cfg-42)
     (send-event *target* 'get-notify #f)
     (go-virtual grind)
-    (none)
     )
   )
 
@@ -461,7 +449,6 @@
   :event hoverboard-training-manager-event-handler
   :exit (behavior ()
     (send-event (handle->process (-> self arrow)) 'leave)
-    (none)
     )
   :code (behavior ()
     (while (nonzero? (get-status *gui-control* (-> self last-sound-id)))
@@ -483,7 +470,7 @@
       (quaternion-identity! (-> gp-1 quat))
       (set! (-> gp-1 flags) (task-arrow-flags))
       (set! (-> gp-1 map-icon) (the-as uint 15))
-      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-1 (the-as task-arrow self))))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-1 self)))
       )
     (send-event *target* 'get-notify self)
     (set! (-> self trick-type) (board-tricks none))
@@ -521,7 +508,6 @@
     (label cfg-35)
     (send-event *target* 'get-notify #f)
     (go-virtual spin)
-    (none)
     )
   )
 
@@ -562,7 +548,6 @@
     (label cfg-36)
     (send-event *target* 'get-notify #f)
     (go-virtual flip)
-    (none)
     )
   )
 
@@ -600,7 +585,6 @@
     (label cfg-36)
     (send-event *target* 'get-notify #f)
     (go-virtual trick)
-    (none)
     )
   )
 
@@ -646,7 +630,6 @@
     (label cfg-47)
     (send-event *target* 'get-notify #f)
     (go-virtual game)
-    (none)
     )
   )
 
@@ -675,7 +658,6 @@
       )
     (task-node-close! (game-task-node stadium-board1-training))
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -879,7 +861,7 @@
       )
     )
   (game-info-method-28 *game-info* (the-as game-score (-> obj game-score)) (-> obj score))
-  ;; pc port note : give skill directly
+  ;; og:preserve-this give skill directly
   (#when PC_PORT
     (send-event *target* 'get-pickup (pickup-type skill) (* (the float (-> obj egg-count)) (-> *FACT-bank* super-skill-inc))))
   0
@@ -906,11 +888,9 @@
     (if (task-node-closed? (game-task-node stadium-board1-training-judge))
         (set! (-> self training?) #f)
         )
-    (none)
     )
   :exit (behavior ()
     (send-event *target* 'get-notify #f)
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -972,7 +952,6 @@
         (set! (-> self hint-time) (current-time))
         )
       )
-    (none)
     )
   :code (behavior ()
     (suspend)
@@ -998,7 +977,7 @@
           (quaternion-identity! (-> gp-0 quat))
           (set! (-> gp-0 flags) (task-arrow-flags))
           (set! (-> gp-0 map-icon) (the-as uint 15))
-          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 (the-as task-arrow self))))
+          (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 self)))
           )
         (set! (-> self score) -1.0)
         )
@@ -1083,7 +1062,7 @@
               (while (nonzero? (get-status *gui-control* (the-as sound-id s5-0)))
                 (suspend)
                 )
-              ;; pc port note : skill is given in score method
+              ;; og:preserve-this skill is given in score method
               (#unless PC_PORT
                 (let* ((s5-1 (handle->process gp-3))
                       (v1-97 (if (type? s5-1 process-drawable)
@@ -1128,7 +1107,7 @@
               (quaternion-identity! (-> gp-4 quat))
               (set! (-> gp-4 flags) (task-arrow-flags))
               (set! (-> gp-4 map-icon) (the-as uint 15))
-              (set! (-> self arrow) (process->handle (task-arrow-spawn gp-4 (the-as task-arrow self))))
+              (set! (-> self arrow) (process->handle (task-arrow-spawn gp-4 self)))
               )
              (else
                (set! (-> *game-info* sub-task-list (game-task-node stadium-board1-training-judge) death-count)
@@ -1151,13 +1130,12 @@
             (quaternion-identity! (-> gp-4 quat))
             (set! (-> gp-4 flags) (task-arrow-flags))
             (set! (-> gp-4 map-icon) (the-as uint 15))
-            (set! (-> self arrow) (process->handle (task-arrow-spawn gp-4 (the-as task-arrow self))))
+            (set! (-> self arrow) (process->handle (task-arrow-spawn gp-4 self)))
             )
           )
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1177,11 +1155,9 @@
     (set! (-> self task-gold) (the-as uint 71))
     (set! (-> self task-silver) (the-as uint 70))
     (set! (-> self task-bronze) (the-as uint 69))
-    (none)
     )
   :exit (behavior ()
     (send-event *target* 'get-notify #f)
-    (none)
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -1233,7 +1209,6 @@
         )
       )
     (hoverboard-training-manager-method-29 self)
-    (none)
     )
   :code (behavior ()
     (send-event *target* 'get-notify self)
@@ -1328,13 +1303,11 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (if (not (logtest? (-> *game-info* features) (game-feature board)))
         (go-virtual wait-for-pickup-training)
         )
-    (none)
     )
   )
 
@@ -1444,24 +1417,22 @@ This commonly includes things such as:
 
 (defstate idle (skate-training-ramp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('open)
-                      (let ((v0-0 #t))
-                        (set! (-> self onoff) v0-0)
-                        v0-0
-                        )
-                      )
-                     (('close)
-                      (set! (-> self onoff) #f)
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('open)
+       (let ((v0-0 #t))
+         (set! (-> self onoff) v0-0)
+         v0-0
+         )
+       )
+      (('close)
+       (set! (-> self onoff) #f)
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1472,11 +1443,9 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
@@ -1574,26 +1543,24 @@ This commonly includes things such as:
 
 (defstate idle (skate-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('open)
-                      (remove-setting! 'minimap)
-                      (let ((v0-1 #t))
-                        (set! (-> self onoff) v0-1)
-                        v0-1
-                        )
-                      )
-                     (('close)
-                      (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
-                      (set! (-> self onoff) #f)
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('open)
+       (remove-setting! 'minimap)
+       (let ((v0-1 #t))
+         (set! (-> self onoff) v0-1)
+         v0-1
+         )
+       )
+      (('close)
+       (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
+       (set! (-> self onoff) #f)
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -1604,7 +1571,6 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (if (logtest? (-> *game-info* features) (game-feature board))
@@ -1612,13 +1578,12 @@ This commonly includes things such as:
         (send-event self 'open)
         )
     (transform-post)
-    (none)
     )
   )
 
 (defstate open (skate-gate)
   :virtual #t
-  :code (the-as (function none :behavior skate-gate) sleep-code)
+  :code sleep-code
   )
 
 (defmethod skate-gate-method-29 skate-gate ((obj skate-gate))
@@ -1799,7 +1764,6 @@ This commonly includes things such as:
           ((the-as (function none) t9-6))
           )
       )
-    (none)
     )
   )
 
@@ -1827,9 +1791,8 @@ This commonly includes things such as:
   :virtual #t
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior skatea-floating-ring) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -1867,7 +1830,6 @@ This commonly includes things such as:
                )
             )
       (transform-post)
-      (none)
       )
     )
   )

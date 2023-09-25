@@ -50,19 +50,16 @@
 -- delete from nav_node where
 -- delete from race_path where race='~s' and path=~d~%
 
--- TODO - some of the above are partial and the following DDL queries don't take into account the extra info the full code
--- in context might provide.  Re-evaluate when that code is fully and nicely decompiled
-
 -- NOTE this is SQLite3, NOT MySQL
 
 CREATE TABLE IF NOT EXISTS 'level_info' (
 	'level_info_id'	INTEGER,
-	'name'	TEXT,
+	'name'	TEXT UNIQUE,
 	'translate_x'	REAL,
 	'translate_y'	REAL,
 	'translate_z'	REAL,
-	'last_update'	TEXT,
-	'sample_point_update'	TEXT,
+	'last_update'	TEXT, -- never changed by the ingame editor
+	'sample_point_update'	TEXT, -- always set to NULL by the ingame editor
 	PRIMARY KEY('level_info_id' AUTOINCREMENT)
 );
 
@@ -70,9 +67,9 @@ CREATE TABLE IF NOT EXISTS 'light' (
 	'light_id'	INTEGER,
 	'name'	TEXT,
 	'level_name'	TEXT,
-	'pos_x'	REAL,
-	'pos_y'	REAL,
-	'pos_z'	REAL,
+	'pos_x'	REAL, -- stored as meters
+	'pos_y'	REAL, -- stored as meters
+	'pos_z'	REAL, -- stored as meters
 	'r'	REAL,
 	'dir_x'	REAL,
 	'dir_y'	REAL,
@@ -84,7 +81,85 @@ CREATE TABLE IF NOT EXISTS 'light' (
 	'decay_start'	REAL,
 	'ambient_point_ratio'	REAL,
 	'brightness'	REAL,
-	PRIMARY KEY('light_id' AUTOINCREMENT)
+	PRIMARY KEY('light_id' AUTOINCREMENT),
+	FOREIGN KEY('level_name') REFERENCES 'level_info'('name')
+);
+
+CREATE TABLE IF NOT EXISTS 'region' (
+	'region_id'	INTEGER NOT NULL,
+	'level_name'	TEXT,
+	-- Can be:
+		-- target
+		-- camera
+		-- data
+		-- water
+		-- city_vis
+		-- sample
+		-- light
+		-- entity
+	'tree'	TEXT,
+	'on_enter'	TEXT,
+	'on_exit'	TEXT,
+	'on_inside'	TEXT,
+	PRIMARY KEY('region_id' AUTOINCREMENT),
+	FOREIGN KEY('level_name') REFERENCES 'level_info'('name')
+);
+
+-- TODO - don't know how to properly derive radius yet but it controls as you'd expect the width of the plane
+-- TODO in the game, planes are defined with 4 points but in the editor
+-- it only uses 2.
+-- Either there is a bug or the editor is wrong, as these two points define the proper plane
+-- but when it's filled in, it gets drawn on the first point, perpendicular.
+--
+-- There is a bunch of complicated vector math that converts from 2 points to 4 points, and this
+-- is probably the source of the problem.
+CREATE TABLE IF NOT EXISTS 'region_face' (
+	'region_face_id'	INTEGER NOT NULL,
+	'region_id'	INTEGER NOT NULL,
+	-- Can be:
+	  -- plane
+		-- face
+	'kind'	TEXT,
+	-- Can be:
+	  -- orient (face the opposite direction of the normal)
+	'flags'	TEXT,
+	-- 'radius'	REAL, removed, radius only allows for square planes, not good enough.
+	-- Added by us so that the regions can actually be displayed as they are
+	-- in the final game
+	'normal_x' REAL,
+	'normal_y' REAL,
+	'normal_z' REAL,
+	'normal_w' REAL,
+	'pos_x'	REAL,
+	'pos_y'	REAL,
+	'pos_z'	REAL,
+	'pos_w'	REAL,
+	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
+	PRIMARY KEY('region_face_id' AUTOINCREMENT)
+);
+
+CREATE TABLE IF NOT EXISTS 'region_point' (
+	'region_point_id'	INTEGER,
+	'region_face_id'	INTEGER NOT NULL,
+	'idx'	INTEGER,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	-- also added, doesn't hurt
+	'w' REAL,
+	FOREIGN KEY('region_face_id') REFERENCES 'region_face'('region_face_id'),
+	PRIMARY KEY('region_point_id' AUTOINCREMENT)
+);
+
+CREATE TABLE IF NOT EXISTS 'region_sphere' (
+	'region_sphere_id'	INTEGER,
+	'region_id'	INTEGER,
+	'x'	REAL,
+	'y'	REAL,
+	'z'	REAL,
+	'r'	REAL,
+	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
+	PRIMARY KEY('region_sphere_id' AUTOINCREMENT)
 );
 
 CREATE TABLE IF NOT EXISTS 'nav_edge' (
@@ -149,49 +224,9 @@ CREATE TABLE IF NOT EXISTS 'race_path' (
 	PRIMARY KEY('race_path_id' AUTOINCREMENT)
 );
 
-CREATE TABLE IF NOT EXISTS 'region' (
-	'region_id'	INTEGER NOT NULL,
-	'level_name'	TEXT,
-	'flags'	NUMERIC,
-	'tree'	TEXT,
-	'on_enter'	TEXT,
-	'on_exit'	TEXT,
-	'on_inside'	TEXT,
-	PRIMARY KEY('region_id' AUTOINCREMENT)
-);
-
-CREATE TABLE IF NOT EXISTS 'region_face' (
-	'region_face_id'	INTEGER NOT NULL,
-	'region_id'	INTEGER NOT NULL,
-	'idx'	INTEGER,
-	'kind'	TEXT,
-	'radius'	REAL,
-	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
-	PRIMARY KEY('region_face_id' AUTOINCREMENT)
-);
-
-CREATE TABLE IF NOT EXISTS 'region_point' (
-	'region_point_id'	INTEGER,
-	'region_face_id'	INTEGER NOT NULL,
-	'idx'	INTEGER,
-	'x'	REAL,
-	'y'	REAL,
-	'z'	REAL,
-	FOREIGN KEY('region_face_id') REFERENCES 'region_face'('region_face_id'),
-	PRIMARY KEY('region_point_id' AUTOINCREMENT)
-);
-
-CREATE TABLE IF NOT EXISTS 'region_sphere' (
-	'region_sphere_id'	INTEGER,
-	'region_id'	INTEGER,
-	'x'	REAL,
-	'y'	REAL,
-	'z'	REAL,
-	'r'	REAL,
-	FOREIGN KEY('region_id') REFERENCES 'region'('region_id'),
-	PRIMARY KEY('region_sphere_id' AUTOINCREMENT)
-);
-
+-- I believe these are related to the camera tracking-spline sample points
+-- but these were all "manual" and i don't think they are stored in the level files at all
+-- though who knows, the bsp-header is not 100% filled out
 CREATE TABLE IF NOT EXISTS 'sample_point' (
 	'sample_point_id'	INTEGER,
 	'level_info_id'	INTEGER NOT NULL,

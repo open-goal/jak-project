@@ -57,7 +57,7 @@
   (sf31 31)
   )
 
-(defenum attack-info-mask
+(defenum attack-mask
   :bitfield #t
   :type uint32
   (trans        0) ;; 1
@@ -83,6 +83,30 @@
   (shield-damage 20) ;; hi16
   (knock        21) ;; hi 32
   (test         22) ;; hi 64
+  )
+
+
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
+        )
+      )
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (or (eq? (car x) 'vector)
+                                     (eq? (car x) 'intersection)
+                                     (eq? (car x) 'attacker-velocity))
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) args)
+        atk)
+    )
+  )
+
+(defmacro new-attack-id ()
+  "generate a new attack-id"
+  `(1+! (-> *game-info* attack-id))
   )
 
 ;; DECOMP BEGINS
@@ -307,30 +331,30 @@
 
 
 (deftype attack-info (structure)
-  ((trans             vector           :inline :offset-assert   0)
-   (vector            vector           :inline :offset-assert  16)
-   (attacker-velocity vector           :inline :offset-assert  32)
-   (intersection      vector           :inline :offset-assert  48)
-   (attacker          handle                   :offset-assert  64)
-   (attack-time       time-frame               :offset-assert  72)
-   (invinc-time       time-frame               :offset-assert  80)
-   (mask              attack-info-mask         :offset-assert  88)
-   (mode              symbol                   :offset-assert  92)
-   (shove-back        meters                   :offset-assert  96)
-   (shove-up          meters                   :offset-assert 100)
-   (speed             meters                   :offset-assert 104)
-   (dist              meters                   :offset-assert 108)
-   (control           float                    :offset-assert 112)
-   (angle             symbol                   :offset-assert 116)
-   (rotate-to         degrees                  :offset-assert 120)
-   (prev-state        state                    :offset-assert 124)
-   (id                uint32                   :offset-assert 128)
-   (count             uint32                   :offset-assert 132)
-   (penetrate-using   penetrate                :offset-assert 136)
-   (damage            float                    :offset-assert 144)
-   (shield-damage     float                    :offset-assert 148)
-   (knock             uint8                    :offset-assert 152)
-   (test              symbol                   :offset-assert 156)
+  ((trans             vector      :inline :offset-assert   0)
+   (vector            vector      :inline :offset-assert  16)
+   (attacker-velocity vector      :inline :offset-assert  32)
+   (intersection      vector      :inline :offset-assert  48)
+   (attacker          handle              :offset-assert  64)
+   (attack-time       time-frame          :offset-assert  72)
+   (invinc-time       time-frame          :offset-assert  80)
+   (mask              attack-mask         :offset-assert  88)
+   (mode              symbol              :offset-assert  92)
+   (shove-back        meters              :offset-assert  96)
+   (shove-up          meters              :offset-assert 100)
+   (speed             meters              :offset-assert 104)
+   (dist              meters              :offset-assert 108)
+   (control           float               :offset-assert 112)
+   (angle             symbol              :offset-assert 116)
+   (rotate-to         degrees             :offset-assert 120)
+   (prev-state        state               :offset-assert 124)
+   (id                uint32              :offset-assert 128)
+   (count             uint32              :offset-assert 132)
+   (penetrate-using   penetrate           :offset-assert 136)
+   (damage            float               :offset-assert 144)
+   (shield-damage     float               :offset-assert 148)
+   (knock             uint8               :offset-assert 152)
+   (test              symbol              :offset-assert 156)
    )
   :method-count-assert 12
   :size-assert         #xa0

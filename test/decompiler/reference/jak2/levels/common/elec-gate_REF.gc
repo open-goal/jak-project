@@ -243,8 +243,8 @@
 ;; failed to figure out what this is:
 (defstate idle (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
@@ -303,23 +303,21 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 0.0)
     (if (nonzero? (-> self part-off))
         (spawn-particles self (-> self part-off))
         )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate active (elec-gate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('shutdown)
        (go-virtual shutdown)
        )
@@ -409,7 +407,6 @@
         (blocking-plane-spawn (the-as curve-control #f) vec-pair f0-6)
         )
       )
-    (none)
     )
   :trans (behavior ()
     (local-vars
@@ -448,29 +445,22 @@
                          )
                        (< (fabs (-> s3-1 y)) (-> self wall-y))
                        )
-              (let ((evt (new 'stack-no-clear 'event-message-block)))
-                (set! (-> evt from) (process->ppointer self))
-                (set! (-> evt num-params) 2)
-                (set! (-> evt message) 'attack)
-                (set! (-> evt param 0) (the-as uint #f))
-                (let ((attack (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-                  (let* ((game-info *game-info*)
-                         (attack-id (+ (-> game-info attack-id) 1))
-                         )
-                    (set! (-> game-info attack-id) attack-id)
-                    (set! (-> attack id) attack-id)
-                    )
-                  (set! (-> attack vector quad) (-> s4-0 dir quad))
-                  (set! (-> attack shove-back) 24576.0)
-                  (set! (-> attack shove-up) 12288.0)
-                  (set! (-> attack control) (if (focus-test? proc-focus board)
-                                                1.0
-                                                0.0
-                                                )
-                        )
-                  (set! (-> evt param 1) (the-as uint attack))
+              (send-event
+                proc-focus
+                'attack
+                #f
+                (static-attack-info
+                  ((id (new-attack-id))
+                   (vector (-> s4-0 dir))
+                   (shove-back (meters 6))
+                   (shove-up (meters 3))
+                   (control (if (focus-test? proc-focus board)
+                                1.0
+                                0.0
+                                )
+                            )
+                   )
                   )
-                (send-event-function proc-focus evt)
                 )
               (let* ((s4-1 (-> self l-bolt))
                      (s3-2 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) (-> s4-1 0 pos) 'interp))
@@ -565,7 +555,7 @@
                         )
                     )
               )
-          (seek! (-> s3-5 pos) 1.5 (* (-> s2-2 speed-mult) (+ 0.2 (-> s3-5 pos)) (-> self clock seconds-per-frame)))
+          (seek! (-> s3-5 pos) 1.5 (* (-> s2-2 speed-mult) (+ 0.2 (-> s3-5 pos)) (seconds-per-frame)))
           (cond
             ((>= (-> s3-5 pos) 1.5)
              (let ((v1-59 (-> self l-bolt bolt-idx bolt))
@@ -685,9 +675,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 1.0)
     (if (nonzero? (-> self part))
@@ -695,7 +684,6 @@
         )
     (update! (-> self sound))
     (elec-gate-post)
-    (none)
     )
   )
 
@@ -710,13 +698,12 @@
     (if (-> self on-stop)
         (script-eval (-> self on-stop) :vector (-> self root trans))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((go-idle? #t))
       (dotimes (bolt-idx 5)
         (let ((left-bolt-0 (-> self l-bolt bolt-idx)))
-          (seek! (-> left-bolt-0 pos) 0.0 (* (- 1.14 (-> left-bolt-0 pos)) (-> self clock seconds-per-frame)))
+          (seek! (-> left-bolt-0 pos) 0.0 (* (- 1.14 (-> left-bolt-0 pos)) (seconds-per-frame)))
           (set! go-idle?
                 (cond
                   ((or (< 1.0 (-> left-bolt-0 pos)) (>= 0.0 (-> left-bolt-0 pos)))
@@ -782,16 +769,14 @@
           (go-virtual idle)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior elec-gate) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (set-elec-scale-if-close! self 0.0)
     (if (nonzero? (-> self part-off))
         (spawn-particles self (-> self part-off))
         )
     (elec-gate-post)
-    (none)
     )
   )
 

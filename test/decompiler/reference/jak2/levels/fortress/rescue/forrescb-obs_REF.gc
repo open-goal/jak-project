@@ -39,14 +39,13 @@
 ;; failed to figure out what this is:
 (defstate idle (fort-twist-rail)
   :virtual #t
-  :trans (the-as (function none :behavior fort-twist-rail) rider-trans)
-  :code (the-as (function none :behavior fort-twist-rail) sleep-code)
+  :trans rider-trans
+  :code sleep-code
   :post (behavior ()
     (let ((f0-0 (get-norm! (-> self sync) 0)))
       (quaternion-rotate-y! (-> self root quat) (-> self init-quat) (+ -2730.6667 (* 5461.3335 f0-0)))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -201,7 +200,6 @@ This commonly includes things such as:
       (set! (-> v1-0 state mode) (the-as lightning-mode a0-0))
       )
     (go-virtual running)
-    (none)
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -214,9 +212,8 @@ This commonly includes things such as:
         (set! (-> self root trans quad) (-> v1-7 quad))
         )
       )
-    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (+! (-> self path-u) (* (-> self path-du) (seconds-per-frame)))
     (ja-post)
-    (none)
     )
   )
 
@@ -225,15 +222,13 @@ This commonly includes things such as:
   :virtual #t
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (>= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (none)
     )
-  :code (the-as (function none :behavior fort-elec-belt-inst) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars
       (sv-1696
@@ -251,7 +246,7 @@ This commonly includes things such as:
         (set! (-> self root trans quad) (-> v1-7 quad))
         )
       )
-    (+! (-> self path-u) (* (-> self path-du) (-> self clock seconds-per-frame)))
+    (+! (-> self path-u) (* (-> self path-du) (seconds-per-frame)))
     (let ((s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
           (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
           )
@@ -376,21 +371,13 @@ This commonly includes things such as:
                     (-> s2-4 ppointer)
                     )
                   )
-                (let ((v1-68 (vector-reset! (new 'stack-no-clear 'vector)))
-                      (a1-28 (new 'stack-no-clear 'event-message-block))
-                      )
-                  (set! (-> a1-28 from) (process->ppointer self))
-                  (set! (-> a1-28 num-params) 2)
-                  (set! (-> a1-28 message) 'attack)
-                  (set! (-> a1-28 param 0) (the-as uint #f))
-                  (let ((a0-50 (new 'static 'attack-info :mask (attack-info-mask vector invinc-time shove-up id))))
-                    (set! (-> a0-50 id) (-> self attack-id))
-                    (set! (-> a0-50 invinc-time) (seconds 3))
-                    (set! (-> a0-50 vector quad) (-> v1-68 quad))
-                    (set! (-> a0-50 shove-up) 12288.0)
-                    (set! (-> a1-28 param 1) (the-as uint a0-50))
+                (let ((v1-68 (vector-reset! (new 'stack-no-clear 'vector))))
+                  (send-event
+                    (-> s3-3 cshape process)
+                    'attack
+                    #f
+                    (static-attack-info ((id (-> self attack-id)) (invinc-time (seconds 3)) (vector v1-68) (shove-up (meters 3))))
                     )
-                  (send-event-function (-> s3-3 cshape process) a1-28)
                   )
                 )
               )
@@ -400,7 +387,6 @@ This commonly includes things such as:
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -428,7 +414,6 @@ This commonly includes things such as:
       )
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -535,18 +520,17 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (fort-elec-belt)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('get-point-norm)
-                      (get-point-at-percent-along-path!
-                        (-> self path)
-                        (the-as vector (-> event param 0))
-                        (the-as float (-> event param 1))
-                        'interp
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('get-point-norm)
+       (get-point-at-percent-along-path!
+         (-> self path)
+         (the-as vector (-> block param 0))
+         (the-as float (-> block param 1))
+         'interp
+         )
+       )
+      )
     )
   :trans (behavior ()
     (set-forrescb-electricity-scale! 1.0 0)
@@ -562,9 +546,8 @@ This commonly includes things such as:
         )
       (set! (-> self next-spawn-time) (get-timeframe-offset! (-> self sync) 0))
       )
-    (none)
     )
-  :code (the-as (function none :behavior fort-elec-belt) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 15 of type fort-elec-belt

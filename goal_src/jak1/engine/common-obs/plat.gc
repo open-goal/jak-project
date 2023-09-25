@@ -7,10 +7,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/plat-sunken-ag.gc")
-(import "goal_src/jak1/import/plat-ag.gc")
-(import "goal_src/jak1/import/plat-jungleb-ag.gc")
-
 (defpartgroup group-standard-plat
   :id 107
   :bounds (static-bspherem 0 -12 0 14)
@@ -191,16 +187,14 @@
         (go-virtual plat-idle)
         )
       )
-    (none)
     )
   )
 
 (defstate plat-idle (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :trans (behavior ()
     (baseplat-method-20 self)
-    (none)
     )
   :code (behavior ()
     (plat-trans)
@@ -220,16 +214,14 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
 (defstate plat-path-active (plat)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior plat) plat-event)
+  :event plat-event
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
@@ -242,10 +234,9 @@
         (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
         )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function plat none :behavior plat) anim-loop)
-  :post (the-as (function none :behavior plat) plat-post)
+  :code (the-as (function plat object) anim-loop)
+  :post plat-post
   )
 
 (defmethod init-from-entity! plat ((obj plat) (arg0 entity-actor))

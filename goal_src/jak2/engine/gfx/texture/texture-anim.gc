@@ -7,6 +7,7 @@
 
 ;; DECOMP BEGINS
 
+;; og:preserve-this
 ;; The "texture animation" system modifies a texture according to a series of layers.
 
 (define *texture-anim-work*
@@ -166,6 +167,7 @@
     )
   )
 
+;; og:preserve-this
 (defenum texture-anim-pc
   (start-anim-array 12)
   (finish-anim-array 13)
@@ -196,6 +198,9 @@
   (metkor 38)
   (shield 39)
   (krew-holo 40)
+  (clouds-and-fog 41)
+  (slime 42)
+  (clouds-hires 43)
   )
 
 (deftype texture-anim-pc-upload (structure)
@@ -204,7 +209,8 @@
    (height uint16)
    (dest uint32)
    (format gs-psm)
-   (pad uint8 3)
+   (force-to-gpu uint8)
+   (pad uint8 2)
    )
   :size-assert 16
   )
@@ -239,6 +245,7 @@
   "Add DMA to set the GS to use the given shader. This can be used to read from the texture."
   (let ((s5-0 (-> arg1 tex)))
     (when s5-0
+        ;; og:preserve-this
         (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
@@ -267,6 +274,7 @@
   "Add DMA to set the GS to use the clut as a ct32 texture. This is used to abuse the GS to blend cluts by pretending they are ct32's."
   (let ((a1-1 (-> arg1 tex)))
     (when a1-1
+        ;; og:preserve-this
         (pc-texture-anim-flag set-shader arg0)
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0 :tbw #x1 :tw #x4 :th #x4 :tcc arg2 :tbp0 (-> a1-1 clutdest)))
@@ -286,7 +294,8 @@
    Always draws a tristrip with two triangles.
    "
   (local-vars (v1-27 float) (sv-224 matrix) (sv-228 matrix) (sv-232 matrix) (sv-236 matrix))
-  (pc-texture-anim-flag draw dma-buf) ;; added
+  ;; og:preserve-this added
+  (pc-texture-anim-flag draw dma-buf)
 
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -428,6 +437,7 @@
       (texture-anim-layer-draw dma-buf 16 16 layer)
       )
     )
+   ;; og:preserve-this
    (format 0 "after blend-clut-texture-anim-layer-func ~X~%" (-> dma-buf base))
 
   0
@@ -436,7 +446,7 @@
 (defun move-rg-to-ba-texture-anim-layer-func ((dma-buf dma-buffer) (fbp-to-draw uint) (width int) (height int) (layer texture-anim-layer) (time float))
   "Some cursed texture drawing."
 
-  ;; HACK added:
+  ;; og:preserve-this HACK added:
   (pc-texture-anim-flag move-rg-to-ba dma-buf :qwc 1)
   (let ((transform (the texture-anim-pc-texture-transform (-> dma-buf base))))
     (set! (-> transform src-tbp) (-> layer tex dest 0))
@@ -446,7 +456,7 @@
     )
   (&+! (-> dma-buf base) 16)
   (return 0)
-  ;; end added
+  ;; og:preserve-this end added
 
   (-> layer tex)
   (let ((tw (log2 (* width 2)))
@@ -495,7 +505,7 @@
                            )
     )
 
-  ;; manually done from the stuff below.
+  ;; og:preserve-this manually done from the stuff below.
   (dma-buffer-add-gs-set-flusha dma-buf
                                 (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy #x7300))
                                 (frame-1 (new 'static 'gs-frame :fbw (/ (+ width 63) 64) :fbp fbp-to-draw))
@@ -536,6 +546,7 @@
          (vf2 :class vf)
          )
     (let ((s5-0 (/ (+ width 63) 64)))
+      ;; og:preserve-this
       ;; set frame to mask alpha
       (dma-buffer-add-gs-set-flusha dma-buf
                                     (frame-1 (new 'static 'gs-frame :fbmsk #xff000000 :fbw s5-0 :fbp fbp-to-draw))
@@ -561,6 +572,7 @@
         (set-vector! (the-as vector4w (&+ v1-4 64)) (* a0-8 16) (* a1-15 16) 0 0)
         )
       (&+! (-> dma-buf base) 80)
+      ;; og:preserve-this
       ;; reset frame.
       (dma-buffer-add-gs-set-flusha dma-buf
                                     (frame-1 (new 'static 'gs-frame :fbw s5-0 :fbp fbp-to-draw))
@@ -593,7 +605,10 @@
     )
   )
 
+;; og:preserve-this
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
+(#when PC_PORT
+  (define-extern *sky-hires-texture-anim-array* (texture-anim-array texture-anim)))
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *jakb-prison-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *darkjak-hires-texture-anim-array* (texture-anim-array texture-anim))
@@ -613,7 +628,24 @@
 (define-extern *metkor-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *shield-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *krew-holo-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *toxic-slime-texture-anim-array* (texture-anim-array texture-anim))
 
+(defun pc-update-anim-frame-time ((anim texture-anim))
+  (when (not (paused?))
+    (with-pp
+      (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (seconds-per-frame))))
+            (f1-2 (-> anim frame-mod))
+            )
+        (set! (-> anim frame-time) (- f0-2 (* (the float (the int (/ f0-2 f1-2))) f1-2)))
+        )
+      (if (< (-> anim frame-time) 0.0)
+          (+! (-> anim frame-time) (-> anim frame-mod))
+          )
+      )
+    )
+  )
+
+;; og:preserve-this
 (defun pc-update-fixed-anim ((bucket bucket-id) (anim-id texture-anim-pc) (anim-array texture-anim-array))
   "Run a 'fixed' texture-anim, which should run entirely in C++."
   (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
@@ -660,18 +692,7 @@
             (when (-> anim func)
               ((-> anim func) dma-buf anim)
               )
-            (when (not (paused?))
-              (with-pp
-                (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (-> pp clock seconds-per-frame))))
-                      (f1-2 (-> anim frame-mod))
-                      )
-                  (set! (-> anim frame-time) (- f0-2 (* (the float (the int (/ f0-2 f1-2))) f1-2)))
-                  )
-                (if (< (-> anim frame-time) 0.0)
-                    (+! (-> anim frame-time) (-> anim frame-mod))
-                    )
-                )
-              )
+            (pc-update-anim-frame-time anim)
             )
           )
         )
@@ -684,21 +705,145 @@
   (none)
   )
 
+(deftype sky-input (structure)
+  ((fog-height  float)
+   (cloud-min   float)
+   (cloud-max   float)
+   (times       float 11)
+   (max-times   float 6)
+   (scales      float 6)
+   (cloud-dest  int32)
+   )
+  )
+
+(defun make-sky-input ((si sky-input))
+  (set! (-> si fog-height) (-> (the-as (array texture-anim) *sky-texture-anim-array*) 8 extra z))
+  (set! (-> si cloud-min)  (-> *sky-texture-anim-array* array-data 7 extra y))
+  (set! (-> si cloud-max)  (-> *sky-texture-anim-array* array-data 7 extra z))
+  (set! (-> si cloud-dest) (the int (-> *sky-texture-anim-array* array-data 6 tex dest 0)))
+  (dotimes (i (-> *sky-texture-anim-array* array-data 5 num-layers))
+    (set! (-> si scales i) (-> *sky-texture-anim-array* array-data 5 data i start-color w))
+    (set! (-> si max-times i) (-> *sky-texture-anim-array* array-data (1+ i) frame-mod))
+    )
+  (dotimes (i 9)
+    (set! (-> si times i)
+          (-> *sky-texture-anim-array* array-data i frame-time)
+          )
+    )
+  )
+
+(defun make-sky-hires-input ((si sky-input))
+  (set! (-> si fog-height) (-> (the-as (array texture-anim) *sky-hires-texture-anim-array*) 10 extra z))
+  (set! (-> si cloud-min)  (-> *sky-hires-texture-anim-array* array-data 9 extra y))
+  (set! (-> si cloud-max)  (-> *sky-hires-texture-anim-array* array-data 9 extra z))
+  (set! (-> si cloud-dest) (the int (-> *sky-hires-texture-anim-array* array-data 8 tex dest 0)))
+  (dotimes (i (-> *sky-hires-texture-anim-array* array-data 7 num-layers))
+    (set! (-> si scales i) (-> *sky-hires-texture-anim-array* array-data 7 data i start-color w))
+    (set! (-> si max-times i) (-> *sky-hires-texture-anim-array* array-data (1+ i) frame-mod))
+    )
+  (dotimes (i 11)
+    (set! (-> si times i)
+          (-> *sky-hires-texture-anim-array* array-data i frame-time)
+          )
+    )
+  )
+
+#|
+struct SlimeInput {
+  float alphas[4];
+  float times[9];
+  int32_t dest;
+  int32_t scroll_dest;
+};
+|#
+
+(deftype slime-input (structure)
+  (;(alphas float 4)
+   (times  float 9)
+   (dest   int32)
+   (scroll-dest int32)
+   )
+  )
+
+(defun make-slime-input ((si slime-input))
+  (dotimes (i 9)
+    (set! (-> si times i)
+          (-> *toxic-slime-texture-anim-array* array-data i frame-time)
+          )
+    )
+  (set! (-> si dest)
+        (the int (-> *toxic-slime-texture-anim-array* array-data 6 tex dest 0)))
+  (set! (-> si scroll-dest)
+        (the int (-> *toxic-slime-texture-anim-array* array-data 8 tex dest 0)))
+  )
+
+
 
 (defun update-texture-anim ((bucket bucket-id) (anim-array texture-anim-array))
   "Generate all DMA to update all textures in the given list for the given bucket."
-  (cond
-    ((or (= anim-array *sky-texture-anim-array*)
+  (let ((anim-idx 0))
+    (cond
+      ((= anim-array *toxic-slime-texture-anim-array*)
+       (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                    bucket
+                                    )
+         (pc-texture-anim-flag start-anim-array dma-buf)
+         (pc-texture-anim-flag slime dma-buf :qwc 4)
+         (make-slime-input (the slime-input (-> dma-buf base)))
+         (&+! (-> dma-buf base) 64)
+         (pc-texture-anim-flag finish-anim-array dma-buf)
+         (dotimes (i 9)
+           (pc-update-anim-frame-time (-> *toxic-slime-texture-anim-array* array-data i))
+           )
          )
-
+       (return #f)
+       )
+    ((= anim-array *sky-texture-anim-array*)
+     (when (= bucket (bucket-id tex-lcom-sky-post))
+       ;; og:preserve-this
+       ;; skip. I believe this is only used to generate the envmap texture for the ocean.
+       ;; it generates the exact same thing, so if we want this on PC one day, we can just
+       ;; steal if from the beginning of the frame.
+       (return #f)
+       )
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag clouds-and-fog dma-buf :qwc (/ (psize-of sky-input) 16))
+       (make-sky-input (the sky-input (-> dma-buf base)))
+       (&+! (-> dma-buf base) (psize-of sky-input))
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       (dotimes (i 8) ;; intentially skipping fog here!!
+         (pc-update-anim-frame-time (-> *sky-texture-anim-array* array-data i))
+         )
+       )
+     ;; falling through on purpose
+     (set! anim-idx 8) ;; fog
+     ;(return #f)
+     )
+    ((= anim-array *sky-hires-texture-anim-array*)
      (when (= bucket (bucket-id tex-lcom-sky-post))
        ;; skip. I believe this is only used to generate the envmap texture for the ocean.
        ;; it generates the exact same thing, so if we want this on PC one day, we can just
        ;; steal if from the beginning of the frame.
        (return #f)
        )
-     ;; for sky, we basically emulate the full thing
-     ;; (format *stdcon* "doing sky to bucket ~d~%" bucket)
+     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                  bucket
+                                  )
+       (pc-texture-anim-flag start-anim-array dma-buf)
+       (pc-texture-anim-flag clouds-hires dma-buf :qwc (/ (psize-of sky-input) 16))
+       (make-sky-hires-input (the sky-input (-> dma-buf base)))
+       (&+! (-> dma-buf base) (psize-of sky-input))
+       (pc-texture-anim-flag finish-anim-array dma-buf)
+       (dotimes (i 10) ;; intentially skipping fog here!!
+         (pc-update-anim-frame-time (-> *sky-hires-texture-anim-array* array-data i))
+         )
+       )
+     ;; falling through on purpose
+     (set! anim-idx 10) ;; fog
+     ;(return #f)
      )
     ((= anim-array *skull-gem-texture-anim-array*)
      (pc-update-fixed-anim bucket (texture-anim-pc skull-gem) anim-array)
@@ -779,7 +924,6 @@
     ((= anim-array *jakb-prison-texture-anim-array*)
      ;; prison is simple, and we reimplemented it in C++.
      ;; so we just have to send the frame-time value.
-     ;; (format *stdcon* "doing prison-jak~%")
      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                   bucket
                                   )
@@ -799,7 +943,6 @@
     ((= anim-array *darkjak-hires-texture-anim-array*)
      ;; oracle is simple, and we reimplemented it in C++.
      ;; so we just have to send the frame-time value.
-     ;; (format *stdcon* "doing oracle jak~%")
      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                   bucket
                                   )
@@ -818,7 +961,6 @@
     ((= anim-array *darkjak-hires-nest-texture-anim-array*)
      ;; oracle is simple, and we reimplemented it in C++.
      ;; so we just have to send the frame-time value.
-     ;; (format *stdcon* "doing nest jak~%")
      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                   bucket
                                   )
@@ -837,7 +979,6 @@
     ((= anim-array *kor-transform-texture-anim-array*)
      ;; kor is simple, and we reimplemented it in C++.
      ;; so we just have to send the frame-time value.
-     ;; (format *stdcon* "doing kor~%")
      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                   bucket
                                   )
@@ -854,15 +995,15 @@
      (return #f)
      )
     (else
-      (return #f) ;; HACK!!!
+      (format 0 "Unhandled texture animation!~%")
+      (break!)
+      (return #f)
       )
     )
-
   ;;
   ;; (return #f)
   ;;
   (local-vars (tex-height int) (fbp-for-tex uint) (layer-idx int))
-  (with-pp
     (if (-> *blit-displays-work* menu-mode)
         (return #f)
         )
@@ -872,15 +1013,16 @@
     (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
                                  bucket
                                  )
+      ;; og:preserve-this
       ;; added: flag for the PC port to indicate start of texture anim data:
       (pc-texture-anim-flag start-anim-array dma-buf)
 
       ;; loop over animated textures. Each will produce a single texture.
-      (dotimes (anim-idx (-> anim-array length))
+      ;(dotimes (anim-idx (-> anim-array length))
+      (while (< anim-idx (-> anim-array length))
         (let* ((anim (-> anim-array array-data anim-idx))
                (dest-tex (-> anim tex))
                )
-          ; (format 0 "texture anim dest tex: ~A~%" dest-tex)
           (when dest-tex
             0
             (let ((tex-width (-> dest-tex w)))
@@ -900,7 +1042,6 @@
                   )
                 )
               (when (and (nonzero? tex-width) (nonzero? tex-height))
-                ; (format 0 " clearing~%")
                 ;; configure for drawing to this texture.
                 (pc-texture-anim-flag erase-and-init dma-buf)
                 (dma-buffer-add-gs-set-flusha dma-buf
@@ -972,7 +1113,7 @@
 
             ;; advance animation.
             (when (not (paused?))
-              (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (-> pp clock seconds-per-frame))))
+              (let ((f0-2 (+ (-> anim frame-time) (* (-> anim frame-delta) (seconds-per-frame))))
                     (f1-2 (-> anim frame-mod))
                     )
                 (set! (-> anim frame-time) (- f0-2 (* (the float (the int (/ f0-2 f1-2))) f1-2)))
@@ -983,6 +1124,7 @@
               )
             )
           )
+        (+! anim-idx 1)
         )
 
       ;; reset GS registers - we messed with frame/scissor.
@@ -1488,8 +1630,6 @@
   (none)
   )
 
-;; definition for function texture-anim-slime-clut-upload
-;; WARN: Return type mismatch int vs none.
 (defun texture-anim-slime-clut-upload ((arg0 dma-buffer) (arg1 texture-anim))
   (when (-> arg1 tex)
     (make-slime-clut (the-as (pointer uint32) (-> arg1 tex pad 0)))
@@ -1500,8 +1640,6 @@
   (none)
   )
 
-;; definition for function texture-anim-slime-clut-init
-;; WARN: Return type mismatch int vs none.
 (defun texture-anim-slime-clut-init ((arg0 texture-anim))
   (let ((s5-0 (new 'loading-level 'texture))
         (s4-0 (the int (-> arg0 extra x)))
@@ -1515,7 +1653,6 @@
   (none)
   )
 
-;; definition for function make-ramp-clut
 ;; WARN: Return type mismatch symbol vs none.
 (defun make-ramp-clut ((arg0 (pointer uint32)) (arg1 pointer) (arg2 object))
   (dotimes (v1-0 256)
@@ -1561,6 +1698,13 @@
       ((128)
        (set! s4-0 (new 'loading-level 'noise128x128))
        )
+      ;; og:preserve-this added these two cases
+      ((256)
+       (set! s4-0 (new 'loading-level 'noise256x256))
+       )
+      ((512)
+       (set! s4-0 (new 'loading-level 'noise512x512))
+       )
       )
     (when s4-0
       (let ((v1-14 (new 'loading-level 'texture)))
@@ -1591,6 +1735,7 @@
 
 (defun texture-anim-alpha-ramp-clut-upload ((arg0 dma-buffer) (arg1 texture-anim))
   (when (-> arg1 tex)
+    ;; og:preserve-this
     ;(upload-vram-data arg0 (the-as int (-> arg1 tex clutdest)) (the-as pointer (-> arg1 tex pad 0)) 16 16)
 
     (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 1)
@@ -1692,7 +1837,6 @@
   obj
   )
 
-;; definition for method 10 of type texture-anim-array
 (defmethod clear! texture-anim-array ((obj texture-anim-array))
   (dotimes (s5-0 (-> obj length))
     (clear-textures! (-> obj array-data s5-0))
@@ -1700,6 +1844,7 @@
   obj
   )
 
+;; og:preserve-this added macro
 (defmacro assert-symbol-is-function (sym)
   `(begin
      (let ((sym-val (-> (the symbol ,sym) value)))
@@ -1724,7 +1869,8 @@
       (set! (-> obj func) (the-as (function dma-buffer texture-anim int) (-> (the-as symbol (-> obj func)) value)))
       )
   (when (logtest? (the-as int (-> obj init-func)) 1)
-    (assert-symbol-is-function (-> obj init-func)) ;; added
+    ;; og:preserve-this added
+    (assert-symbol-is-function (-> obj init-func))
     (set! (-> obj init-func) (the-as (function texture-anim int) (-> (the-as symbol (-> obj init-func)) value)))
     (if (-> obj init-func)
         ((-> obj init-func) obj)
@@ -1796,7 +1942,6 @@
   obj
   )
 
-;; definition for method 10 of type texture-anim
 (defmethod clear-textures! texture-anim ((obj texture-anim))
   (set! (-> obj tex) #f)
   (dotimes (s5-0 (the-as int (-> obj num-layers)))
@@ -1805,10 +1950,10 @@
   obj
   )
 
-;; definition for method 9 of type texture-anim-layer
 (defmethod initialize-texture! texture-anim-layer ((obj texture-anim-layer))
   (when (logtest? (the-as int (-> obj func)) 1)
-    (assert-symbol-is-function (-> obj func)) ;; added
+    ;; og:preserve-this added
+    (assert-symbol-is-function (-> obj func))
       (set! (-> obj func) (the-as
                             (function dma-buffer uint int int texture-anim-layer float int)
                             (-> (the-as symbol (-> obj func)) value)
@@ -1816,7 +1961,8 @@
             )
       )
   (when (logtest? (the-as int (-> obj init-func)) 1)
-    (assert-symbol-is-function (-> obj init-func)) ;; added
+    ;; og:preserve-this added
+    (assert-symbol-is-function (-> obj init-func))
     (set! (-> obj init-func)
           (the-as (function texture-anim-layer int) (-> (the-as symbol (-> obj init-func)) value))
           )
@@ -1832,7 +1978,6 @@
   obj
   )
 
-;; definition for method 10 of type texture-anim-layer
 (defmethod clear-texture! texture-anim-layer ((obj texture-anim-layer))
   (set! (-> obj tex) #f)
   obj

@@ -161,6 +161,6 @@ TEST_F(FormRegressionTestJak1, WeirdShortCircuit2) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function actor-link-info object)";
-  std::string expected = "(the-as object (and (-> arg0 prev) (-> arg0 prev extra process)))";
+  std::string expected = "(and (-> arg0 prev) (-> arg0 prev extra process))";
   test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
 }

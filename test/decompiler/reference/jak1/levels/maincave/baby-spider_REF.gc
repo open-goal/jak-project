@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/baby-spider-ag.gc")
-
 ;; definition of type baby-spider-spawn-params
 (deftype baby-spider-spawn-params (structure)
   ((hatched?                          symbol      :offset-assert   0)
@@ -248,15 +246,14 @@
   )
 
 ;; definition for function baby-spider-default-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 7]
 (defbehavior baby-spider-default-event-handler baby-spider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'victory)
-                       (go-virtual nav-enemy-victory)
-                       (nav-enemy-default-event-handler arg0 arg1 arg2 arg3)
-                       )
-            )
+  (case arg2
+    (('victory)
+     (go-virtual nav-enemy-victory)
+     )
+    (else
+      (nav-enemy-default-event-handler arg0 arg1 arg2 arg3)
+      )
     )
   )
 
@@ -363,9 +360,8 @@ baby-spider-default-event-handler
       (ja :num! (seek!))
       )
     (go baby-spider-resume)
-    (none)
     )
-  :post (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -391,7 +387,6 @@ baby-spider-default-event-handler
        )
       )
     (go-virtual nav-enemy-idle)
-    (none)
     )
   )
 
@@ -411,7 +406,6 @@ baby-spider-default-event-handler
           (set! (-> self collide-info trans quad) (-> gp-0 quad))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (if (nav-enemy-method-53 self)
@@ -422,11 +416,9 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -443,7 +435,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (behavior ()
     (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
@@ -458,7 +449,6 @@ baby-spider-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
@@ -475,7 +465,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :num! (loop!))
@@ -488,7 +477,6 @@ baby-spider-default-event-handler
       )
     (ja-no-eval :num! (seek!))
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -508,7 +496,6 @@ baby-spider-default-event-handler
           (t9-3)
           )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self target-nav-time) (-> *display* base-frame-counter))
@@ -525,12 +512,10 @@ baby-spider-default-event-handler
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
   :post (behavior ()
     (nav-enemy-method-52 self (target-pos 0))
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
@@ -547,7 +532,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   )
@@ -565,7 +549,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self rotate-speed) 1456355.5)
@@ -593,7 +576,6 @@ baby-spider-default-event-handler
           )
         )
       )
-    (none)
     )
   )
 
@@ -610,7 +592,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -633,7 +614,6 @@ baby-spider-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
@@ -650,7 +630,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -660,7 +639,6 @@ baby-spider-default-event-handler
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-victory)
-    (none)
     )
   )
 
@@ -677,7 +655,6 @@ baby-spider-default-event-handler
           (t9-2)
           )
       )
-    (none)
     )
   :code (-> (method-of-type nav-enemy nav-enemy-victory) code)
   )
@@ -685,10 +662,7 @@ baby-spider-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-die (baby-spider)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior baby-spider)
-    process-drawable-death-event-handler
-    )
+  :event process-drawable-death-event-handler
   :enter (behavior ()
     (let ((v1-0 (-> self event-death)))
       (if v1-0
@@ -702,7 +676,6 @@ baby-spider-default-event-handler
           (t9-1)
           )
       )
-    (none)
     )
   )
 
@@ -716,7 +689,6 @@ baby-spider-default-event-handler
           (send-event (ppointer->process (-> self parent)) v1-2)
           )
       )
-    (none)
     )
   )
 

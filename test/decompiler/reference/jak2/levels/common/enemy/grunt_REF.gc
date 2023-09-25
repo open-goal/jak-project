@@ -473,13 +473,12 @@
       (go-hostile obj)
       )
     )
-  (none)
   )
 
 ;; failed to figure out what this is:
 (defstate falling-ambush (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
@@ -516,14 +515,12 @@
       (set! (-> v1-19 prim-core collide-with) (collide-spec))
       )
     0
-    (none)
     )
   :exit (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -538,14 +535,7 @@
     (sound-play "grunt-notice")
     (ja-channel-push! 1 0)
     (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  1.8
-                  )
+                :num! (seek! max 1.8)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -556,12 +546,12 @@
       (suspend)
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior grunt) nav-enemy-falling-post)
+  :post nav-enemy-falling-post
   )
 
 ;; definition for method 93 of type grunt
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-93 grunt ((obj grunt))
   (case (-> obj jump-why)
     ((2)
@@ -577,7 +567,7 @@
 ;; failed to figure out what this is:
 (defstate jumping-ambush (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy ambush) enter))
     (when (zero? (-> self intro-path))
@@ -585,7 +575,6 @@
       (go-virtual notice)
       )
     (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (set! (-> self unknown-byte-1ji2n3) 1)
@@ -607,14 +596,13 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate jumping-ambush-cont (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :code (behavior ()
     (let ((a0-0 (-> self intro-path))
           (v1-1 (+ (-> self unknown-byte-1ji2n3) 1))
@@ -642,7 +630,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -681,10 +668,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -702,20 +686,14 @@
           (let ((gp-1 (-> self draw art-group data (-> self patrol-anim anim-index)))
                 (s5-1 (get-rand-int-range self 2 5))
                 )
-            (ja-no-eval :group! gp-1
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (ja-blend-eval)
               (suspend)
               (ja :num! (seek! max f30-0))
               )
             (dotimes (s4-1 s5-1)
-              (ja-no-eval :group! gp-1
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -734,14 +712,7 @@
           (nav-enemy-method-167 self)
           (ja-channel-push! 1 (seconds 0.3))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -750,14 +721,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -777,7 +741,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -857,7 +820,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -897,10 +859,7 @@
               0
               )
             )
-          (ja-no-eval :group! gp-0
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -909,15 +868,14 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate attack (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-1 (-> self nav state)))
       (set! (-> v1-1 speed) (-> self enemy-info run-travel-speed))
@@ -933,7 +891,6 @@
       (set! (-> v1-10 attack-id) v0-1)
       (set! (-> self attack-id) v0-1)
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -941,7 +898,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
@@ -949,7 +905,6 @@
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -969,10 +924,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -1012,15 +964,14 @@
       (set! (-> self unknown-byte-n1k2n3) v1-57)
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 ;; failed to figure out what this is:
 (defstate spin-attack (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
@@ -1046,7 +997,6 @@
       (set! (-> v1-21 attack-id) v0-3)
       (set! (-> self attack-id) v0-3)
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -1054,14 +1004,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -1073,10 +1021,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a0-9 (handle->process (-> self focus handle))))
           (if a0-9
@@ -1094,9 +1039,8 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior grunt) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
@@ -1153,10 +1097,7 @@
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -1182,18 +1123,12 @@
               )
           )
         (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
-          (ja-no-eval :group! grunt-celebrate-start-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grunt-celebrate-start-ja) frames num-frames) -1)) f30-2)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! grunt-celebrate-start-ja :num! (seek! max f30-2) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-2))
             )
-          (ja-no-eval :group! grunt-celebrate-finish-ja
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim grunt-celebrate-finish-ja) frames num-frames) -1)) f30-2)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! grunt-celebrate-finish-ja :num! (seek! max f30-2) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-2))
@@ -1202,7 +1137,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1257,10 +1191,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -1268,7 +1199,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1295,10 +1225,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -1306,7 +1233,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1511,7 +1437,7 @@
 ;; failed to figure out what this is:
 (defstate wait-for-focus (grunt)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior grunt) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type nav-enemy idle) enter)
   :trans (behavior ()
     (let ((s5-0 (handle->process (-> self focus handle))))
@@ -1551,7 +1477,6 @@
           )
         )
       )
-    (none)
     )
   :code (-> (method-of-type nav-enemy idle) code)
   :post (-> (method-of-type nav-enemy idle) post)

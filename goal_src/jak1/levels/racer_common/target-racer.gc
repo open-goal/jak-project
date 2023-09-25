@@ -306,8 +306,9 @@
                       (not (-> self racer stick-lock))
                       (not (-> self racer stick-off))
                       )
-                 (* (- 1.0 (* 0.0125 DISPLAY_FPS_RATIO)) f0-13) ;; changed for high fps
-                 (* (- 0.5 (* 0.00625 DISPLAY_FPS_RATIO)) (+ 1.0 f0-13)) ;; changed for high fps
+                 ;; og:preserve-this changed for high fps
+                 (* (- 1.0 (* 0.0125 DISPLAY_FPS_RATIO)) f0-13)
+                 (* (- 0.5 (* 0.00625 DISPLAY_FPS_RATIO)) (+ 1.0 f0-13))
                  )
              )
             (else
@@ -648,10 +649,11 @@
     (when (< 0.0 (-> *part-id-table* 2212 init-specs 11 initial-valuef))
       (set! (-> *part-id-table* 2212 init-specs 14 initial-valuef) (the-as float gp-0))
       (set! (-> *part-id-table* 2212 init-specs 3 initial-valuef) 15155.2)
-      (launch-particles :system *sp-particle-system-3d*
-                        (-> *part-id-table* 2212)
-                        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4))
-                        )
+      (launch-particles
+        :system *sp-particle-system-3d*
+        (-> *part-id-table* 2212)
+        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4))
+        )
       )
     )
   (let ((gp-2 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control unknown-quaternion00))))
@@ -664,10 +666,11 @@
     (when (< 0.0 (-> *part-id-table* 2212 init-specs 11 initial-valuef))
       (set! (-> *part-id-table* 2212 init-specs 14 initial-valuef) (the-as float gp-2))
       (set! (-> *part-id-table* 2212 init-specs 3 initial-valuef) 10240.0)
-      (launch-particles :system *sp-particle-system-3d*
-                        (-> *part-id-table* 2212)
-                        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 10))
-                        )
+      (launch-particles
+        :system *sp-particle-system-3d*
+        (-> *part-id-table* 2212)
+        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 10))
+        )
       )
     )
   (when (and (racer-on-ground?) (< (-> self control unknown-float01) 90112.0))
@@ -729,10 +732,14 @@
            )
       (set! (-> s5-2 y) (-> self control shadow-pos y))
       (if (nonzero? a1-13)
-          (launch-particles :system (if gp-4 *sp-particle-system-3d* *sp-particle-system-2d*)
-                            a1-13
-                            s5-2
-                            )
+          (launch-particles
+            :system (if gp-4
+                *sp-particle-system-3d*
+                *sp-particle-system-2d*
+                )
+            a1-13
+            s5-2
+            )
           )
       )
     (let* ((gp-5 #f)
@@ -759,10 +766,14 @@
            )
       (set! (-> a2-7 y) (-> self control shadow-pos y))
       (if (nonzero? s5-3)
-          (launch-particles :system (if gp-5 *sp-particle-system-3d* *sp-particle-system-2d*)
-                            (the-as sparticle-launcher s5-3)
-                            a2-7
-                            )
+          (launch-particles
+            :system (if gp-5
+                *sp-particle-system-3d*
+                *sp-particle-system-2d*
+                )
+            (the-as sparticle-launcher s5-3)
+            a2-7
+            )
           )
       )
     )
@@ -840,6 +851,7 @@
   (if (and (>= (-> self racer heat) (-> *RACER-bank* heat-max)) (= (-> self game mode) 'play))
       (send-event self 'attack #f (static-attack-info ((mode 'heat))))
       )
+  ;; og:preserve-this allow boost with debug segment enabled
   (if (and *cheat-mode* (or *debug-segment* PC_PORT) (cpad-pressed? 0 l2))
       (send-event self 'boost 1.0)
       )
@@ -877,9 +889,10 @@
   (when (!= (-> self racer boost-output) 0.0)
     (dotimes (gp-7 8)
       (let ((v1-258 (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
-        (launch-particles (-> *part-id-table* 2229)
-                          (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data v1-258))
-                          )
+        (launch-particles
+          (-> *part-id-table* 2229)
+          (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data v1-258))
+          )
         )
       )
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 1 (seconds 0.1))
@@ -928,12 +941,11 @@
     (sound-play "warning")
     )
   (when (rand-vu-percent? (/ (-> self racer heat) (-> *RACER-bank* heat-max)))
-    (let ((a2-28
-            (process-drawable-random-point!
-              (the-as process-drawable (ppointer->process (-> self manipy)))
-              (new 'stack-no-clear 'vector)
-              )
-            )
+    (let ((a2-28 (process-drawable-random-point!
+                   (the-as process-drawable (ppointer->process (-> self manipy)))
+                   (new 'stack-no-clear 'vector)
+                   )
+                 )
           )
       (launch-particles (-> *part-id-table* 2227) a2-28)
       )
@@ -1058,7 +1070,8 @@
     (ja :num-func num-func-identity :frame-num (ja-aframe (-> self racer turn-anim-frame) 0))
     (ja :chan 1 :num! (chan 0) :frame-interp (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
     (let ((gp-2 (-> self skel root-channel 2)))
-      (let ((f0-82 (lerp (-> self racer slide-interp) f30-2 (* DISPLAY_FPS_RATIO 0.125)))) ;; changed for high fps
+      ;; og:preserve-this changed for high fps
+      (let ((f0-82 (lerp (-> self racer slide-interp) f30-2 (* DISPLAY_FPS_RATIO 0.125))))
         (set! (-> self racer slide-interp) f0-82)
         (set! (-> gp-2 frame-interp) f0-82)
         )

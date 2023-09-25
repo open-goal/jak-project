@@ -5,6 +5,13 @@
 ;; name in dgo: under-shoot-block
 ;; dgos: UNB
 
+(defenum under-block-flags
+  :bitfield #t
+  (unbflags-0)
+  (unbflags-1)
+  (unbflags-2)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype under-block-spawner (basic)
@@ -629,7 +636,7 @@
    (pulse-op           int8                       :offset-assert 224)
    (pulse-pc           int8                       :offset-assert 225)
    (pulse-ctr          int8                       :offset-assert 226)
-   (flags              uint64                     :offset-assert 232)
+   (flags              under-block-flags          :offset-assert 232)
    (activated-time     time-frame                 :offset-assert 240)
    (rot-axis           vector             :inline :offset-assert 256)
    (away-from-focal-pt vector             :inline :offset-assert 272)
@@ -695,18 +702,18 @@
     (('track)
      (cond
        ((-> arg3 param 0)
-        (if (logtest? (-> self flags) 1)
+        (if (logtest? (-> self flags) (under-block-flags unbflags-0))
             #t
             'abort
             )
         )
        (else
-         (logtest? (-> self flags) 1)
+         (logtest? (-> self flags) (under-block-flags unbflags-0))
          )
        )
      )
     (('attack)
-     (when (logtest? (-> self flags) 1)
+     (when (logtest? (-> self flags) (under-block-flags unbflags-0))
        (let ((gp-0 (the-as attack-info (-> arg3 param 1))))
          (when (and (!= (-> gp-0 id) (-> self prev-attack-id)) (!= (-> gp-0 id) (-> self puzzle prev-special-attack-id)))
            (let ((s5-0 (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)))
@@ -746,7 +753,7 @@
                   (set! (-> self move-dir-x) s5-1)
                   (set! (-> self move-dir-z) gp-1)
                   (under-block-method-48 self (+ (-> self col) s5-1) (+ (-> self row) gp-1))
-                  (logand! (-> self flags) -2)
+                  (logclear! (-> self flags) (under-block-flags unbflags-0))
                   (if (zero? (-> self activated-time))
                       (under-block-method-42 self)
                       )
@@ -755,7 +762,7 @@
                  ((under-block-method-49 self s5-1 gp-1)
                   (set! (-> self move-dir-x) s5-1)
                   (set! (-> self move-dir-z) gp-1)
-                  (logand! (-> self flags) -2)
+                  (logclear! (-> self flags) (under-block-flags unbflags-0))
                   (go-virtual rock)
                   )
                  ((and (-> self next-state) (= (-> self next-state name) 'idle))
@@ -859,7 +866,7 @@
 
 (defmethod under-block-method-42 under-block ((obj under-block))
   (set! (-> obj activated-time) (current-time))
-  (logior! (-> obj flags) 2)
+  (logior! (-> obj flags) (under-block-flags unbflags-1))
   (set! (-> obj pulse-pc) 0)
   (set! (-> obj pulse-op) 0)
   0
@@ -870,7 +877,7 @@
 ;; WARN: Function (method 45 under-block) has a return type of none, but the expression builder found a return statement.
 (defmethod under-block-method-45 under-block ((obj under-block))
   (let ((v1-0 (-> obj puzzle)))
-    (when (logtest? (-> obj flags) 2)
+    (when (logtest? (-> obj flags) (under-block-flags unbflags-1))
       (cond
         ((!= (-> v1-0 slot-mask) (-> v1-0 slot-mask-full))
          (when (zero? (-> obj pulse-op))
@@ -918,7 +925,7 @@
            )
          )
         (else
-          (logand! (-> obj flags) -3)
+          (logclear! (-> obj flags) (under-block-flags unbflags-1))
           (set-vector! (-> obj draw color-mult) 1.0 1.0 1.0 1.0)
           (set-vector! (-> obj draw color-emissive) 0.0 0.0 0.0 1.0)
           )
@@ -1184,15 +1191,16 @@
 
 (defmethod under-block-method-50 under-block ((obj under-block))
   (with-pp
-    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint (if (logtest? (-> obj flags) 4)
-                                                                    1
-                                                                    0
-                                                                    )
-                                                           )
-                     )
-                )
+    (let ((s5-0
+            (new 'stack 'joint-exploder-tuning (the-as uint (if (logtest? (-> obj flags) (under-block-flags unbflags-2))
+                                                                1
+                                                                0
+                                                                )
+                                                       )
+                 )
+            )
           )
-      (when (logtest? (-> obj flags) 4)
+      (when (logtest? (-> obj flags) (under-block-flags unbflags-2))
         (set! (-> s5-0 fountain-rand-transv-lo quad) (-> obj away-from-focal-pt quad))
         (set! (-> s5-0 fountain-rand-transv-hi x) 24576.0)
         (set! (-> s5-0 fountain-rand-transv-hi y) 49152.0)
@@ -1228,18 +1236,17 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
-    (none)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     )
-  :code (the-as (function none :behavior under-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate rise-up (under-block)
   :virtual #t
   :event under-block-event-handler
-  :trans (the-as (function none :behavior under-block) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (while (not (under-block-method-48 self (-> self col) (-> self row)))
       (suspend)
       )
@@ -1251,12 +1258,7 @@
       (set! (-> gp-1 vector 1 quad) (-> gp-1 vector 0 quad))
       (+! (-> gp-1 vector 1 y) 16384.0)
       (until (>= 409.6 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
-        (vector-seek-3d-smooth!
-          (-> self root trans)
-          (-> gp-1 vector 1)
-          (* 30720.0 (-> self clock seconds-per-frame))
-          0.25
-          )
+        (vector-seek-3d-smooth! (-> self root trans) (-> gp-1 vector 1) (* 30720.0 (seconds-per-frame)) 0.25)
         (rider-post)
         (suspend)
         )
@@ -1264,28 +1266,22 @@
       )
     (rider-post)
     (go-virtual idle)
-    (none)
     )
   )
 
 (defstate follow (under-block)
   :virtual #t
   :event under-block-event-handler
-  :trans (the-as (function none :behavior under-block) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (set! (-> self state-time) (current-time))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (set! (-> gp-0 vector 0 quad) (-> self root trans quad))
       (set! (-> gp-0 vector 1 quad) (-> gp-0 vector 0 quad))
       (+! (-> gp-0 vector 1 y) 16384.0)
       (until (>= 409.6 (fabs (- (-> gp-0 vector 1 y) (-> self root trans y))))
-        (vector-seek-3d-smooth!
-          (-> self root trans)
-          (-> gp-0 vector 1)
-          (* 30720.0 (-> self clock seconds-per-frame))
-          0.25
-          )
+        (vector-seek-3d-smooth! (-> self root trans) (-> gp-0 vector 1) (* 30720.0 (seconds-per-frame)) 0.25)
         (rider-post)
         (suspend)
         )
@@ -1294,7 +1290,6 @@
     (rider-post)
     (go-virtual waiting)
     0
-    (none)
     )
   )
 
@@ -1302,30 +1297,26 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logior! (-> self flags) 1)
+    (logior! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'active)
-    (none)
     )
-  :code (the-as (function none :behavior under-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate active (under-block)
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logior! (-> self flags) 1)
+    (logior! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'active)
-    (none)
     )
   :exit (behavior ()
-    (logand! (-> self flags) -2)
-    (none)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     )
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
-  :code (the-as (function none :behavior under-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate flip (under-block)
@@ -1337,15 +1328,12 @@
     (+! (-> self col) (-> self move-dir-x))
     (+! (-> self row) (-> self move-dir-z))
     (under-block-method-48 self (-> self col) (-> self row))
-    (none)
     )
   :exit (behavior ()
     (under-block-method-46 self (-> self prev-col) (-> self prev-row))
-    (none)
     )
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
   :code (behavior ()
     (local-vars (at-0 int))
@@ -1421,12 +1409,9 @@
               )
             )
           (suspend)
-          ;; WORKAROUND for GOAL bug - vf0 is clobbered on suspend.
-          (init-vf0-vector)
           )
         )
       #f
-      (none)
       )
     )
   )
@@ -1436,7 +1421,6 @@
   :event under-block-event-handler
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
   :code (behavior ()
     (sound-play "und-block-knock")
@@ -1516,7 +1500,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1524,12 +1507,10 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
-    (none)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     )
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (current-time))
@@ -1539,18 +1520,12 @@
       (set! (-> gp-1 vector 1 quad) (-> gp-1 vector 0 quad))
       (+! (-> gp-1 vector 1 y) -1228.8)
       (until (>= 40.96 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
-        (vector-seek-3d-smooth!
-          (-> self root trans)
-          (-> gp-1 vector 1)
-          (* 8192.0 (-> self clock seconds-per-frame))
-          0.25
-          )
+        (vector-seek-3d-smooth! (-> self root trans) (-> gp-1 vector 1) (* 8192.0 (seconds-per-frame)) 0.25)
         (transform-post)
         (suspend)
         )
       )
     (go-virtual sunk-partially)
-    (none)
     )
   )
 
@@ -1559,9 +1534,8 @@
   :event under-block-event-handler
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
-  :code (the-as (function none :behavior under-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate victory (under-block)
@@ -1569,7 +1543,6 @@
   :event under-block-event-handler
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (current-time))
@@ -1580,18 +1553,12 @@
       (set! (-> gp-1 vector 1 y) (-> self puzzle origin y))
       (+! (-> gp-1 vector 1 y) -8192.0)
       (until (>= 40.96 (fabs (- (-> gp-1 vector 1 y) (-> self root trans y))))
-        (vector-seek-3d-smooth!
-          (-> self root trans)
-          (-> gp-1 vector 1)
-          (* 12288.0 (-> self clock seconds-per-frame))
-          0.25
-          )
+        (vector-seek-3d-smooth! (-> self root trans) (-> gp-1 vector 1) (* 12288.0 (seconds-per-frame)) 0.25)
         (transform-post)
         (suspend)
         )
       )
     (go-virtual beaten)
-    (none)
     )
   )
 
@@ -1599,25 +1566,22 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-41 self 'beaten)
-    (none)
     )
-  :code (the-as (function none :behavior under-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate fall (under-block)
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (logclear! (-> self mask) (process-mask actor-pause))
     (under-block-method-41 self 'fall)
-    (none)
     )
   :trans (behavior ()
     (under-block-method-45 self)
-    (none)
     )
   :code (behavior ()
     (set! (-> self state-time) (current-time))
@@ -1627,18 +1591,17 @@
           )
       (quaternion-copy! gp-0 (-> self root quat))
       (while (< (- (current-time) (-> self state-time)) (seconds 1.25))
-        (+! f30-0 (* 65536.0 (-> self clock seconds-per-frame)))
+        (+! f30-0 (* 65536.0 (seconds-per-frame)))
         (quaternion-vector-angle! s5-0 (-> self rot-axis) (- f30-0))
         (quaternion*! (-> self root quat) s5-0 gp-0)
         (suspend)
         )
       )
     (go-virtual explode)
-    (none)
     )
   :post (behavior ()
     (let ((gp-0 (-> self root)))
-      (set! (-> gp-0 transv y) (- (-> gp-0 transv y) (* 348160.0 (-> self clock seconds-per-frame))))
+      (set! (-> gp-0 transv y) (- (-> gp-0 transv y) (* 348160.0 (seconds-per-frame))))
       (let ((a2-0 (new 'stack-no-clear 'collide-query)))
         (set! (-> a2-0 collide-with) (-> gp-0 root-prim prim-core collide-with))
         (set! (-> a2-0 ignore-process0) self)
@@ -1650,12 +1613,11 @@
       (when (and (logtest? (-> (the-as collide-shape-moving gp-0) status) (collide-status touch-surface))
                  (>= (- (current-time) (-> self state-time)) (seconds 0.01))
                  )
-        (logior! (-> self flags) 4)
+        (logior! (-> self flags) (under-block-flags unbflags-2))
         (go-virtual explode)
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -1663,7 +1625,7 @@
   :virtual #t
   :event under-block-event-handler
   :enter (behavior ()
-    (logand! (-> self flags) -2)
+    (logclear! (-> self flags) (under-block-flags unbflags-0))
     (under-block-method-46 self (-> self col) (-> self row))
     (let ((v1-4 (-> self puzzle)))
       (countdown (a0-3 (-> v1-4 slots length))
@@ -1677,7 +1639,6 @@
     (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
     (set-vector! (-> self draw color-emissive) 0.0 0.0 0.0 1.0)
     (send-event (ppointer->process (-> self my-parent)) 'explode (-> self spawner-id))
-    (none)
     )
   :code (behavior ()
     (sound-play "und-block-explo")
@@ -1691,13 +1652,12 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   )
 
 (defstate die-fast (under-block)
   :virtual #t
-  :code (the-as (function none :behavior under-block) nothing)
+  :code nothing
   )
 
 ;; WARN: Return type mismatch collide-status vs none.
@@ -2156,9 +2116,8 @@
         )
       )
     0
-    (none)
     )
-  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate victory-locked (under-shoot-block)
@@ -2183,9 +2142,8 @@
           (go-virtual victory)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  :code sleep-code
   )
 
 (defstate victory (under-shoot-block)
@@ -2225,14 +2183,13 @@
         )
       )
     (go-virtual beaten)
-    (none)
     )
   )
 
 (defstate beaten (under-shoot-block)
   :virtual #t
   :event under-shoot-block-event-handler
-  :code (the-as (function none :behavior under-shoot-block) sleep-code)
+  :code sleep-code
   )
 
 (defmethod deactivate under-shoot-block ((obj under-shoot-block))

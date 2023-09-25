@@ -12,10 +12,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/keg-conveyor-ag.gc")
-(import "goal_src/jak1/import/keg-conveyor-paddle-ag.gc")
-(import "goal_src/jak1/import/keg-ag.gc")
-
 (defpartgroup group-keg-bounce
   :id 197
   :duration (seconds 0.035)
@@ -135,27 +131,26 @@
   )
 
 (defbehavior keg-event-handler keg ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('touch 'attack)
-                    (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
-                      (sound-play "icrate-break")
-                      (process-spawn
-                        part-tracker
-                        :init part-tracker-init
-                        (-> *part-group-id-table* 71)
-                        20
-                        #f
-                        #f
-                        #f
-                        (-> self root-override trans)
-                        :to *entity-pool*
-                        )
-                      (sound-stop (-> self sound-id))
-                      (deactivate self)
-                      )
-                    )
-                   )
-          )
+  (case arg2
+    (('touch 'attack)
+     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+       (sound-play "icrate-break")
+       (process-spawn
+         part-tracker
+         :init part-tracker-init
+         (-> *part-group-id-table* 71)
+         20
+         #f
+         #f
+         #f
+         (-> self root-override trans)
+         :to *entity-pool*
+         )
+       (sound-stop (-> self sound-id))
+       (deactivate self)
+       )
+     )
+    )
   )
 
 (defbehavior keg-post keg ()
@@ -172,8 +167,8 @@
   )
 
 (defstate keg-on-paddle (keg)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('detach)
        (go keg-paddle-to-path)
        )
@@ -191,9 +186,8 @@
       (set! (-> self state-time) (-> *display* base-frame-counter))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg) keg-post)
+  :post keg-post
   )
 
 (defstate keg-paddle-to-path (keg)
@@ -226,9 +220,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg) keg-post)
+  :post keg-post
   )
 
 (defstate keg-on-path (keg)
@@ -342,9 +335,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg) keg-post)
+  :post keg-post
   )
 
 (defstate keg-in-chute (keg)
@@ -382,19 +374,17 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg) keg-post)
+  :post keg-post
   )
 
 (defstate keg-die (keg)
-  :event (the-as (function process int symbol event-message-block object :behavior keg) #f)
+  :event #f
   :code (behavior ()
     (sound-stop (-> self sound-id))
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior keg) transform-post)
+  :post transform-post
   )
 
 (defbehavior keg-init-by-other keg ((arg0 keg) (arg1 int))
@@ -466,9 +456,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg-conveyor) ja-post)
+  :post ja-post
   )
 
 (defstate keg-conveyor-paddle-idle (keg-conveyor-paddle)
@@ -532,9 +521,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior keg-conveyor-paddle) transform-post)
+  :post transform-post
   )
 
 (defbehavior keg-conveyor-paddle-init-by-other keg-conveyor-paddle ((arg0 keg-conveyor-paddle))

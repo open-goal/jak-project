@@ -461,7 +461,7 @@
 
   (with-gensyms (sw)
     ;; save the switch to a variable (only evaluated once)
-    `(let ((sw ,switch))
+    `(let ((,sw ,switch))
         ;; build the cond construct with each case
         (cond ,@(apply
                   (lambda (x) `(
@@ -476,11 +476,11 @@
                             )
                           ;; if the list is made up of a single condition
                           ( (= (length conditions) 1)
-                            `((,comp sw ,(first conditions)) ,@body)
+                            `((,comp ,sw ,(first conditions)) ,@body)
                             )
                           ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(,comp sw ,c)) conditions)) ,@body)
+                            `((or ,@(apply (lambda (c) `(,comp ,sw ,c)) conditions)) ,@body)
                             )
                           )
 
@@ -509,6 +509,17 @@
       )
   )
 
+
+(defmacro the-as-safe (type obj)
+  (with-gensyms (temp)
+    `(let ((,temp ,obj))
+        (if (type? ,temp ,type)
+            (the-as ,type ,temp))
+        )
+    )
+  )
+
+
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
 ;;;;;;;;;;;;;;;;;;;
@@ -529,6 +540,10 @@
   `(+! ,place 1)
   )
 
+(defmacro inc! (place)
+  `(+! ,place 1)
+  )
+
 (defmacro 1- (var)
   `(+ ,var -1)
   )
@@ -542,6 +557,10 @@
   )
 
 (defmacro 1-! (place)
+  `(-! ,place 1)
+  )
+
+(defmacro dec! (place)
   `(-! ,place 1)
   )
 
@@ -905,6 +924,11 @@
   "Make Text"
   `(make-group "text")
   )
+
+;; the default territory the game was built for. overriden in extractor.
+;; this just fetches the goos constant with the same name (TODO fix this)
+(defmacro __get_default_territory () *default-territory*)
+(defconstant *default-territory* (__get_default_territory))
 
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff

@@ -8,11 +8,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/snow-button-ag.gc")
-(import "goal_src/jak1/import/flutflut-plat-med-ag.gc")
-(import "goal_src/jak1/import/flutflut-plat-small-ag.gc")
-(import "goal_src/jak1/import/flutflut-plat-large-ag.gc")
-
 (deftype flutflut-plat (plat)
   ((has-path?           symbol               :offset-assert 264)
    (plat-type           int32                :offset-assert 268)
@@ -229,9 +224,9 @@
   )
 
 (defstate snow-button-up-idle (snow-button)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-2 object))
-    (case event-type
+    (case message
       (('touch 'attack 'bonk)
        (when (and (= (-> proc type) target)
                   (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))
@@ -255,14 +250,13 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate snow-button-activate (snow-button)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 object))
-    (case event-type
+    (case message
       (('untrigger)
        (go snow-button-deactivate)
        )
@@ -275,7 +269,7 @@
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self wiggled?) #f)
-    ;; PAL patch here
+    ;; og:preserve-this PAL patch here
     (set! (-> self trying-for-fuel-cell?) (not (task-complete? *game-info* (game-task snow-ball))))
     (sleep (-> self ticker) (-> self timeout))
     (when (-> self prev-button)
@@ -291,7 +285,6 @@
         )
       )
     (send-to-all-after (-> self link) 'trigger)
-    (none)
     )
   :trans (behavior ()
     (if (completed? (-> self ticker))
@@ -301,7 +294,7 @@
       (set! (-> self trying-for-fuel-cell?) #f)
       (go snow-button-deactivate)
       )
-    ;; PAL patch here
+    ;; og:preserve-this PAL patch here
     (when (reached-delay? (-> self ticker) (-> self delay-til-wiggle))
       (when (not (-> self wiggled?))
         (set! (-> self wiggled?) #t)
@@ -309,7 +302,6 @@
         )
       )
     (rider-trans)
-    (none)
     )
   :code (behavior ()
     (sound-play "prec-button1" :pitch -1)
@@ -321,15 +313,14 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior snow-button) rider-post)
+  :post rider-post
   )
 
 (defstate snow-button-deactivate (snow-button)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (v0-0 symbol))
-    (case event-type
+    (case message
       (('query)
        (return (the-as object #f))
        v0-0
@@ -339,9 +330,8 @@
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (process-entity-status! self (entity-perm-status bit-3) #f)
-    (none)
     )
-  :trans (the-as (function none :behavior snow-button) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (send-to-all-after (-> self link) 'untrigger)
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -354,9 +344,8 @@
       (ja :num! (seek!))
       )
     (go snow-button-up-idle)
-    (none)
     )
-  :post (the-as (function none :behavior snow-button) rider-post)
+  :post rider-post
   )
 
 (defmethod init-from-entity! snow-button ((obj snow-button) (arg0 entity-actor))
@@ -414,7 +403,7 @@
       (set! (-> obj prev-button) (entity-actor-lookup arg0 'alt-actor 0))
       (set! (-> obj prev-button) #f)
       )
-  ;; PAL patch here
+  ;; og:preserve-this PAL patch here
   (set! (-> obj trying-for-fuel-cell?) (not (task-complete? *game-info* (game-task snow-ball))))
   (ja-channel-set! 1)
   (let ((s5-1 (-> obj skel root-channel 0)))
@@ -491,8 +480,8 @@
 
 (defstate plat-startup (flutflut-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (when (or (!= (-> self plat-type) 1)
                  (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
@@ -533,13 +522,12 @@
           )
         )
       )
-    (none)
     )
   )
 
 (defstate flutflut-plat-hidden-idle (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (logclear! (-> self mask) (process-mask actor-pause))
        (go flutflut-plat-appear)
@@ -550,7 +538,6 @@
     (if (and (= (-> self plat-type) 1) (get-lit-skel self))
         (go flutflut-plat-appear)
         )
-    (none)
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
@@ -560,18 +547,16 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate flutflut-plat-appear (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -589,11 +574,9 @@
       (quaternion-axis-angle! gp-0 0.0 1.0 0.0 (rand-vu-float-range -32768.0 32768.0))
       (quaternion*! (-> self appear-quat-bottom) (-> self appear-quat-bottom) gp-0)
       )
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :trans (behavior ()
     (plat-trans)
@@ -633,24 +616,22 @@
         )
       )
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) rider-post)
+  :code anim-loop
+  :post rider-post
   )
 
 (defstate plat-idle (flutflut-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('untrigger)
-                      (go flutflut-plat-hide)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      (('untrigger)
+       (go flutflut-plat-hide)
+       )
+      )
     )
   :enter (behavior ()
     (let ((t9-0 (-> (method-of-type plat plat-idle) enter)))
@@ -659,7 +640,6 @@
           )
       )
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
@@ -668,7 +648,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type plat plat-idle) trans)))
@@ -679,22 +658,20 @@
     (if (and (= (-> self plat-type) 1) (get-lit-skel self))
         (go elevator-idle-at-cave)
         )
-    (none)
     )
   )
 
 (defstate plat-path-active (flutflut-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('untrigger)
-                      (go flutflut-plat-hide)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      (('untrigger)
+       (go flutflut-plat-hide)
+       )
+      )
     )
   :enter (behavior ((arg0 plat))
     (let ((t9-0 (-> (method-of-type plat plat-path-active) enter)))
@@ -707,7 +684,6 @@
             )
         (logclear! (-> self mask) (process-mask actor-pause))
         )
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
@@ -716,18 +692,16 @@
           (t9-0)
           )
       )
-    (none)
     )
   )
 
 (defstate flutflut-plat-hide (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
@@ -744,12 +718,10 @@
       (quaternion-axis-angle! gp-0 0.0 1.0 0.0 (rand-vu-float-range -32768.0 32768.0))
       (quaternion*! (-> self appear-quat-bottom) (-> self appear-quat-bottom) gp-0)
       )
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
     (logior! (-> self root-override root-prim prim-core action) (collide-action rider-plat-sticky))
-    (none)
     )
   :trans (behavior ()
     (plat-trans)
@@ -772,85 +744,75 @@
         )
       )
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) rider-post)
+  :code anim-loop
+  :post rider-post
   )
 
 (defstate elevator-idle-at-cave (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('bonk)
-         (the-as object (baseplat-method-22 self))
-         )
-        (('bounce)
-         (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-             (the-as object (baseplat-method-22 self))
-             )
-         )
-        (('ridden)
-         (if (or (not *target*) (not (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))
-             (go elevator-travel-to-fort)
-             )
-         )
-        )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('bounce)
+       (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+           (baseplat-method-22 self)
+           )
+       )
+      (('ridden)
+       (if (or (not *target*) (not (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))
+           (go elevator-travel-to-fort)
+           )
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self path-pos) 0.0)
     (eval-path-curve! (-> self path) (-> self basetrans) 0.0 'interp)
-    (none)
     )
   :trans (behavior ()
     (plat-trans)
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) plat-post)
+  :code anim-loop
+  :post plat-post
   )
 
 (defstate elevator-travel-to-fort (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      )
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 1.0)
       (baseplat-method-22 self)
       (go elevator-idle-at-fort)
       )
-    ;; PAL patch here
+    ;; og:preserve-this PAL patch here
     (seek! (-> self path-pos) 1.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) plat-post)
+  :code anim-loop
+  :post plat-post
   )
 
 (defstate elevator-idle-at-fort (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self path-pos) 1.0)
     (eval-path-curve! (-> self path) (-> self basetrans) 1.0 'interp)
-    (none)
     )
   :trans (behavior ()
     (when *target*
@@ -865,35 +827,32 @@
       )
     (plat-trans)
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) plat-post)
+  :code anim-loop
+  :post plat-post
   )
 
 (defstate elevator-travel-to-cave (flutflut-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk 'bounce)
-                      (the-as symbol (baseplat-method-22 self))
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk 'bounce)
+       (baseplat-method-22 self)
+       )
+      )
     )
   :trans (behavior ()
     (when (= (-> self path-pos) 0.0)
       (baseplat-method-22 self)
       (go elevator-idle-at-cave)
       )
-    ;; PAL patch here
+    ;; og:preserve-this PAL patch here
     (seek! (-> self path-pos) 0.0 (* 0.16 (-> *display* seconds-per-frame)))
     (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     (plat-trans)
     (baseplat-method-20 self)
-    (none)
     )
-  :code (the-as (function none :behavior flutflut-plat) anim-loop)
-  :post (the-as (function none :behavior flutflut-plat) plat-post)
+  :code anim-loop
+  :post plat-post
   )
 
 (deftype flutflut-plat-small (flutflut-plat)

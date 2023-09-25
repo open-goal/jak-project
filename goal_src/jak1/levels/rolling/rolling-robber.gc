@@ -8,10 +8,8 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/robber-ag.gc")
-
 (defstate fuel-cell-spline-slider (fuel-cell)
-  :trans (the-as (function none :behavior fuel-cell) hide-hud-quick)
+  :trans hide-hud-quick
   :code (behavior ((arg0 handle) (arg1 float) (arg2 float))
     (logclear! (-> self mask) (process-mask actor-pause))
     (ja :group! (-> self draw art-group data 2))
@@ -25,7 +23,7 @@
     (set! (-> *camera-other-root* quad) (-> *math-camera* trans quad))
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (loop
-      (*! arg2 (- 1.0 (* 0.05 (-> *display* time-adjust-ratio)))) ;; changed for high fps
+      (*! arg2 (- 1.0 (* 0.05 (-> *display* time-adjust-ratio)))) ;; og:preserve-this changed for high fps
       (when (and (< (fabs arg2) 13.653334) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.5)))
         (if *target*
             (process-release? *target*)
@@ -57,7 +55,6 @@
       (suspend)
       (ja :num! (loop! 0.5))
       )
-    (none)
     )
   )
 
@@ -315,24 +312,19 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) ja-post)
+  :post ja-post
   )
 
 (defstate robber-dead (robber)
   :code (behavior ()
     (cleanup-for-death self)
     (deactivate self)
-    (none)
     )
   )
 
 (defstate robber-die (robber)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior robber)
-    process-drawable-death-event-handler
-    )
+  :event process-drawable-death-event-handler
   :code (behavior ()
     (let ((gp-0 #t))
       (when (robber-task-complete?)
@@ -393,9 +385,8 @@
       (suspend)
       )
     (go robber-dead)
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-got-away (robber)
@@ -414,7 +405,6 @@
              )
         (go robber-flee)
         )
-    (none)
     )
   :code (behavior ()
     (when (not (ja-group? (-> self draw art-group data 7)))
@@ -430,20 +420,17 @@
       (robber-rotate (the-as target #f) 1820.4445)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-tired (robber)
   :event robber-event-handler
   :enter (behavior ()
     (set! (-> self y-offset-desired) -12288.0)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self y-offset-desired) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (not (and *target*
@@ -452,7 +439,6 @@
              )
         (go robber-got-away)
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -488,9 +474,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-flee (robber)
@@ -499,7 +484,6 @@
     (set! (-> self near-timer) 3000)
     (set! (-> self far-time) (-> *display* base-frame-counter))
     (set! (-> self y-offset-desired) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (not (and *target*
@@ -523,7 +507,6 @@
     (if (>= (- (-> *display* base-frame-counter) (-> self far-time)) (seconds 3))
         (set! (-> self near-timer) (the-as int (-> self timeout)))
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -559,16 +542,14 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-idle (robber)
   :event robber-event-handler
   :enter (behavior ()
     (set! (-> self speed) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (and *target*
@@ -578,7 +559,6 @@
         )
     (robber-rotate (the-as target #t) 182.04445)
     (robber-move)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -589,9 +569,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-initial-notice (robber)
@@ -609,7 +588,6 @@
              )
         (go robber-flee)
         )
-    (none)
     )
   :code (behavior ()
     (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
@@ -633,16 +611,14 @@
         )
       (go robber-flee)
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defstate robber-initial (robber)
   :event robber-event-handler
   :enter (behavior ()
     (set! (-> self speed) 0.0)
-    (none)
     )
   :trans (behavior ()
     (if (and *target*
@@ -651,7 +627,6 @@
         (go robber-initial-notice)
         )
     (robber-move)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -662,9 +637,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior robber) transform-post)
+  :post transform-post
   )
 
 (defmethod init-from-entity! robber ((obj robber) (arg0 entity-actor))

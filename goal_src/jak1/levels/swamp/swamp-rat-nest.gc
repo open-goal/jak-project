@@ -11,8 +11,6 @@
 
 ;; DECOMP BEGINS
 
-(import "goal_src/jak1/import/swamp-rat-nest-ag.gc")
-
 (defpartgroup group-swamp-rat-nest-a-explosion
   :id 292
   :duration (seconds 0.017)
@@ -716,9 +714,8 @@
       (ja :num-func num-func-identity :frame-num max)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest-dummy) transform-post)
+  :post transform-post
   )
 
 (defstate swamp-rat-nest-dummy-hit (swamp-rat-nest-dummy)
@@ -728,7 +725,6 @@
     (if (<= (-> self parent-process 0 hit-points) 0)
         (go swamp-rat-nest-dummy-die)
         )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
@@ -740,9 +736,8 @@
       (ja :num! (seek!))
       )
     (go swamp-rat-nest-dummy-idle)
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest-dummy) transform-post)
+  :post transform-post
   )
 
 (defstate swamp-rat-nest-dummy-shake (swamp-rat-nest-dummy)
@@ -754,13 +749,12 @@
       (ja :num! (seek!))
       )
     (go swamp-rat-nest-dummy-idle)
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest-dummy) transform-post)
+  :post transform-post
   )
 
 (defstate swamp-rat-nest-dummy-die (swamp-rat-nest-dummy)
-  :event (the-as (function process int symbol event-message-block object :behavior swamp-rat-nest-dummy) #f)
+  :event #f
   :code (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self parent-process 0 dummy) (the-as (pointer swamp-rat-nest-dummy) #f))
@@ -783,7 +777,6 @@
       (suspend)
       )
     (deactivate self)
-    (none)
     )
   )
 
@@ -902,8 +895,8 @@ swamp-rat-nest-default-event-handler
   )
 
 (defstate swamp-rat-nest-idle (swamp-rat-nest)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('hit)
        (go swamp-rat-nest-active)
        )
@@ -911,7 +904,6 @@ swamp-rat-nest-default-event-handler
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (if (and *target* (>= (-> self fact-override idle-distance)
@@ -920,23 +912,20 @@ swamp-rat-nest-default-event-handler
              )
         (go swamp-rat-nest-active)
         )
-    (none)
     )
   :code (behavior ()
     (swamp-rat-nest-check-dummy)
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest) #f)
+  :post #f
   )
 
 (defstate swamp-rat-nest-active (swamp-rat-nest)
   :event swamp-rat-nest-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (swamp-rat-nest-check-dummy)
@@ -957,22 +946,19 @@ swamp-rat-nest-default-event-handler
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest) #f)
+  :post #f
   )
 
 (defstate swamp-rat-nest-gestate (swamp-rat-nest)
   :event swamp-rat-nest-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (swamp-rat-nest-check-dummy)
@@ -983,19 +969,17 @@ swamp-rat-nest-default-event-handler
       (swamp-rat-nest-spawn-rat)
       (go swamp-rat-nest-active)
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest) #f)
+  :post #f
   )
 
 (defstate swamp-rat-nest-victory (swamp-rat-nest)
-  :event (the-as (function process int symbol event-message-block object :behavior swamp-rat-nest) #f)
+  :event #f
   :code (behavior ()
     (let ((gp-0 (the-as (pointer process-tree) (-> self child-process))))
       (while gp-0
@@ -1013,9 +997,8 @@ swamp-rat-nest-default-event-handler
         )
       )
     (go swamp-rat-nest-active)
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest) #f)
+  :post #f
   )
 
 (defstate swamp-rat-nest-die (swamp-rat-nest)
@@ -1027,9 +1010,8 @@ swamp-rat-nest-default-event-handler
     (while (-> self child-process)
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior swamp-rat-nest) #f)
+  :post #f
   )
 
 (defmethod init-from-entity! swamp-rat-nest ((obj swamp-rat-nest) (arg0 entity-actor))

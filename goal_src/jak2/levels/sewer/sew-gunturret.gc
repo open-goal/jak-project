@@ -702,7 +702,6 @@
       )
     (ja :group! (-> self draw art-group data (-> self params idle-anim)))
     (set! (-> self flash-state) #f)
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
@@ -714,7 +713,6 @@
           )
       )
     (set! (-> self root penetrated-by) (get-penetrate-info self))
-    (none)
     )
   :code (behavior ()
     (set-aim-at-default! self)
@@ -773,7 +771,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -788,56 +785,41 @@
     (if (!= (-> self activate-distance) 0.0)
         (aim-turret! self #f)
         )
-    (none)
     )
   )
 
 (defmethod general-event-handler sew-gunturret ((obj sew-gunturret) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
-  (with-pp
-    (if (and (= event-type 'notify) (< 1 arg2) (= (-> event param 0) 'attack) (= (-> event param 1) *target*))
-        (set! (-> obj last-hit-time) (current-time))
-        )
-    (case event-type
-      (('start)
-       (let ((v0-0 (the-as object #t)))
-         (set! (-> obj can-shoot) (the-as symbol v0-0))
-         v0-0
-         )
+  (if (and (= event-type 'notify) (< 1 arg2) (= (-> event param 0) 'attack) (= (-> event param 1) *target*))
+      (set! (-> obj last-hit-time) (current-time))
+      )
+  (case event-type
+    (('start)
+     (let ((v0-0 (the-as object #t)))
+       (set! (-> obj can-shoot) (the-as symbol v0-0))
+       v0-0
        )
-      (('stop)
-       (set! (-> obj can-shoot) #f)
+     )
+    (('stop)
+     (set! (-> obj can-shoot) #f)
+     #f
+     )
+    (('bonk)
+     (send-event proc 'target-mech-get-off (seconds 0.3))
+     (send-event
+       proc
+       'shove
        #f
+       (static-attack-info ((id (new-attack-id)) (shove-back (meters 2)) (shove-up (meters 0.5))))
        )
-      (('bonk)
-       (send-event proc 'target-mech-get-off (seconds 0.3))
-       (let ((evt (new 'stack-no-clear 'event-message-block)))
-         (set! (-> evt from) (process->ppointer pp))
-         (set! (-> evt num-params) 2)
-         (set! (-> evt message) 'shove)
-         (set! (-> evt param 0) (the-as uint #f))
-         (let ((attack-info (new 'static 'attack-info :mask (attack-info-mask shove-back shove-up id))))
-           (let* ((game-info *game-info*)
-                  (id (+ (-> game-info attack-id) 1))
-                  )
-             (set! (-> game-info attack-id) id)
-             (set! (-> attack-info id) id)
-             )
-           (set! (-> attack-info shove-back) 8192.0)
-           (set! (-> attack-info shove-up) 2048.0)
-           (set! (-> evt param 1) (the-as uint attack-info))
-           )
-         (send-event-function proc evt)
-         )
-       #f
-       )
-      (('flash-state)
-       (-> obj flash-state)
-       )
-      (else
-        ((method-of-type enemy general-event-handler) obj proc arg2 event-type event)
-        )
+     #f
+     )
+    (('flash-state)
+     (-> obj flash-state)
+     )
+    (else
+      ((method-of-type enemy general-event-handler) obj proc arg2 event-type event)
       )
     )
   )
@@ -853,7 +835,6 @@
     0
     (set! (-> self hit-points) 0)
     (play-communicator-speech! (-> *talker-speech* 53))
-    (none)
     )
   :code (behavior ()
     (let ((exploder-tuning (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -890,11 +871,9 @@
     (while (-> self child)
       (suspend)
       )
-    (none)
     )
   :post (behavior ()
     (track-target! self)
-    (none)
     )
   )
 

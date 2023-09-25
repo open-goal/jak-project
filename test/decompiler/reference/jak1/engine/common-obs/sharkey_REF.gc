@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/sharkey-ag.gc")
-
 ;; failed to figure out what this is:
 (defpartgroup group-sharkey-splash
   :id 106
@@ -85,13 +83,13 @@
 ;; definition for method 44 of type sharkey
 ;; INFO: Return type mismatch symbol vs object.
 (defmethod touch-handler sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
-  (the-as object #t)
+  #t
   )
 
 ;; definition for method 43 of type sharkey
 ;; INFO: Return type mismatch symbol vs object.
 (defmethod attack-handler sharkey ((obj sharkey) (arg0 process) (arg1 event-message-block))
-  (the-as object #t)
+  #t
   )
 
 ;; failed to figure out what this is:
@@ -254,18 +252,13 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-idle (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-status hidden))
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -302,7 +295,6 @@ nav-enemy-default-event-handler
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -318,23 +310,18 @@ nav-enemy-default-event-handler
       )
     (logior! (-> self draw status) (draw-status hidden))
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior sharkey) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-patrol (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (sharkey-notice-player?)
         (go-virtual nav-enemy-chase)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
@@ -360,28 +347,21 @@ nav-enemy-default-event-handler
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
   :post (behavior ()
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-notice (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   :code (behavior ()
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -398,10 +378,7 @@ nav-enemy-default-event-handler
 ;; failed to figure out what this is:
 (defstate nav-enemy-attack (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
@@ -462,24 +439,18 @@ nav-enemy-default-event-handler
     (sharkey-reset-position)
     (logior! (-> self draw status) (draw-status hidden))
     (go-virtual nav-enemy-idle)
-    (none)
     )
   :post (behavior ()
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-chase (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (not *target*)
@@ -529,7 +500,6 @@ nav-enemy-default-event-handler
           (set! (-> self target-speed) (-> self chase-speed))
           )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self player-water-time) (-> *display* base-frame-counter))
@@ -546,7 +516,6 @@ nav-enemy-default-event-handler
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
   :post (behavior ()
     (sharkey-get-player-position (-> self nav target-pos))
@@ -562,17 +531,13 @@ nav-enemy-default-event-handler
         :position (the-as symbol (-> self collide-info trans))
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
     (loop
@@ -587,17 +552,13 @@ nav-enemy-default-event-handler
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-stare (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :trans (behavior ()
     (if (target-in-range? self (-> self nav-info notice-distance))
         (go-virtual nav-enemy-chase)
@@ -605,7 +566,6 @@ nav-enemy-default-event-handler
     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self state-timeout))
         (go-virtual nav-enemy-patrol)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
@@ -617,17 +577,13 @@ nav-enemy-default-event-handler
       (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (-> *display* seconds-per-frame)))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate nav-enemy-victory (sharkey)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior sharkey)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
     (dotimes (gp-0 3)
@@ -641,7 +597,6 @@ nav-enemy-default-event-handler
         )
       )
     (go-virtual nav-enemy-stare)
-    (none)
     )
   )
 

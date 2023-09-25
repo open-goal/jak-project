@@ -486,7 +486,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy jump) exit)))
@@ -503,7 +502,6 @@
       (set! (-> v1-5 settings bot-plane w) (- -4096.0))
       )
     0
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy jump) trans)))
@@ -520,7 +518,6 @@
       (set! (-> v1-5 settings top-plane w) (- (+ (- 8192.0 (-> self root trans y)) (-> self root gspot-pos y))))
       )
     0
-    (none)
     )
   )
 
@@ -626,7 +623,6 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (none)
     )
   )
 
@@ -654,7 +650,6 @@
     (set! (-> self next-jump-time) (the-as int (+ (current-time) (get-rand-int-range self 0 120))))
     (set! (-> self step-num) 0)
     (set! (-> self best-score) -2.0)
-    (none)
     )
   :exit (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
@@ -662,7 +657,6 @@
           (t9-0)
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -792,9 +786,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior hopper) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate active (hopper)
@@ -805,16 +798,12 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! hopper-idle-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim hopper-idle-ja) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! hopper-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -822,9 +811,8 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior hopper) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate notice (hopper)
@@ -838,10 +826,7 @@
           (ja :group! hopper-notice-ja)
           (ja :group! hopper-notice-alt-ja)
           )
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a1-4 (-> self nav state)))
           (set! (-> gp-0 quad) (-> a1-4 travel quad))
@@ -852,7 +837,6 @@
         )
       )
     (react-to-focus self)
-    (none)
     )
   )
 
@@ -897,18 +881,15 @@
         (set! (-> gp-1 trans quad) (-> s5-0 quad))
         )
       )
-    (none)
     )
   :exit (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (none)
     )
   :trans (behavior ()
     '()
-    (none)
     )
   :code (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
@@ -923,7 +904,6 @@
       (send-event self 'jump 2 gp-0)
       )
     (go-virtual hostile)
-    (none)
     )
   )
 

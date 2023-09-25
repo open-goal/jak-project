@@ -37,8 +37,8 @@
 ;; failed to figure out what this is:
 (defstate idle (pal-falling-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('ridden)
        (go-virtual fall)
        )
@@ -46,67 +46,56 @@
     )
   :enter (behavior ()
     (logior! (-> self root root-prim prim-core action) (collide-action rideable))
-    (none)
     )
-  :trans (the-as (function none :behavior pal-falling-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 2) :num! zero)
     (transform-post)
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior pal-falling-plat) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate fall (pal-falling-plat)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (when ((method-of-type touching-shapes-entry prims-touching?)
-                             (the-as touching-shapes-entry (-> event param 0))
-                             (-> self root)
-                             (the-as uint 8)
-                             )
-                        (when (< 18.0 (ja-frame-num 0))
-                          (let ((v1-6 (-> self skel root-channel 0)))
-                            (set! (-> v1-6 num-func) num-func-identity)
-                            (set! (-> v1-6 frame-num) 18.0)
-                            )
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (when ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> block param 0))
+              (-> self root)
+              (the-as uint 8)
+              )
+         (when (< 18.0 (ja-frame-num 0))
+           (let ((v1-6 (-> self skel root-channel 0)))
+             (set! (-> v1-6 num-func) num-func-identity)
+             (set! (-> v1-6 frame-num) 18.0)
+             )
+           )
+         )
+       )
+      )
     )
   :enter (behavior ()
     (sound-play "pal-fall-plat")
-    (none)
     )
-  :trans (the-as (function none :behavior pal-falling-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior pal-falling-plat) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type pal-falling-plat
@@ -315,8 +304,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (pal-grind-ring-center)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('track)
        #t
        )
@@ -327,21 +316,16 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (ja-post)
-    (none)
     )
   )
 
@@ -372,19 +356,17 @@ This commonly includes things such as:
       )
     0
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
-  :exit (the-as (function none :behavior pal-grind-ring-center) #f)
-  :trans (the-as (function none :behavior pal-grind-ring-center) #f)
+  :exit #f
+  :trans #f
   :code (behavior ()
     (send-event (ppointer->process (-> self parent)) 'fall)
     (while (-> self child)
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-grind-ring-center) #f)
+  :post #f
   )
 
 ;; definition for method 29 of type pal-grind-ring-center
@@ -513,8 +495,8 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (pal-grind-ring)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('track)
        #t
        )
@@ -525,22 +507,17 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (spawn (-> self part) (-> self root trans))
     (ja-post)
-    (none)
     )
   )
 
@@ -586,11 +563,10 @@ This commonly includes things such as:
         (-> gp-1 ppointer)
         )
       )
-    (none)
     )
   :trans (behavior ()
-    (+! (-> self speed-y) (* -163840.0 (-> self clock seconds-per-frame)))
-    (+! (-> self root trans y) (* (-> self speed-y) (-> self clock seconds-per-frame)))
+    (+! (-> self speed-y) (* -163840.0 (seconds-per-frame)))
+    (+! (-> self root trans y) (* (-> self speed-y) (seconds-per-frame)))
     (when (< (-> self root trans y) 1441792.0)
       (when (not (-> self hit-sound-played?))
         (sound-play "grind-ring-hit")
@@ -599,23 +575,18 @@ This commonly includes things such as:
       (set! (-> self root trans y) 1441792.0)
       (set! (-> self speed-y) (* -0.3 (-> self speed-y)))
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior pal-grind-ring) transform-post)
+  :post transform-post
   )
 
 ;; definition for method 29 of type pal-grind-ring
@@ -743,9 +714,9 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate die (pal-ent-glass)
   :virtual #t
-  :enter (the-as (function none :behavior pal-ent-glass) #f)
-  :exit (the-as (function none :behavior pal-ent-glass) #f)
-  :trans (the-as (function none :behavior pal-ent-glass) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (sound-play "glass-crash")
     (let ((v1-2 (-> self root root-prim)))
@@ -758,16 +729,15 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-ent-glass) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate idle (pal-ent-glass)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (when (not (and (-> self next-state) (= (-> self next-state name) 'die)))
          (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -792,12 +762,10 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior pal-ent-glass) sleep-code)
+  :code sleep-code
   :post (behavior ()
     '()
-    (none)
     )
   )
 
@@ -948,11 +916,9 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :exit (behavior ()
     '()
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -998,12 +964,10 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior palent-turret) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (transform-post)
-    (none)
     )
   )
 
@@ -1164,9 +1128,9 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate die (pal-breakable-window)
   :virtual #t
-  :enter (the-as (function none :behavior pal-breakable-window) #f)
-  :exit (the-as (function none :behavior pal-breakable-window) #f)
-  :trans (the-as (function none :behavior pal-breakable-window) #f)
+  :enter #f
+  :exit #f
+  :trans #f
   :code (behavior ()
     (let ((v1-1 (-> self root root-prim)))
       (set! (-> v1-1 prim-core collide-as) (collide-spec))
@@ -1178,16 +1142,15 @@ This commonly includes things such as:
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior pal-breakable-window) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
 (defstate idle (pal-breakable-window)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('attack)
        (sound-play "glass-crash-big")
        (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
@@ -1211,12 +1174,10 @@ This commonly includes things such as:
     )
   :exit (behavior ()
     '()
-    (none)
     )
-  :code (the-as (function none :behavior pal-breakable-window) sleep-code)
+  :code sleep-code
   :post (behavior ()
     '()
-    (none)
     )
   )
 

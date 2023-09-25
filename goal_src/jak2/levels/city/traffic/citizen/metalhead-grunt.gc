@@ -326,15 +326,11 @@
       (go-hostile obj)
       )
     )
-  (none)
   )
 
 (defstate falling-ambush (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
       (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
@@ -366,17 +362,10 @@
       (set! (-> v1-17 attack-id) v0-9)
       (set! (-> self attack-id) v0-9)
       )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
-                :num! (seek!
-                  (the float
-                       (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info notice-anim))) frames num-frames)
-                          -1
-                          )
-                       )
-                  )
+                :num! (seek!)
                 :frame-num 0.0
                 )
     (until (ja-done? 0)
@@ -385,11 +374,11 @@
       )
     (sound-play "grunt-notice")
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-falling-post)
+  :post nav-enemy-falling-post
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod enemy-method-93 metalhead-grunt ((obj metalhead-grunt))
   (case (-> obj jump-why)
     ((2)
@@ -404,10 +393,7 @@
 
 (defstate jumping-ambush (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy ambush) enter))
     (when (zero? (-> self intro-path))
@@ -415,7 +401,6 @@
       (go-virtual notice)
       )
     (get-point-in-path! (-> self intro-path) (-> self root trans) 0.0 'interp)
-    (none)
     )
   :code (behavior ()
     (set! (-> self jumping-ambush-path-pt) 1)
@@ -437,16 +422,12 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 (defstate jumping-ambush-cont (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :code (behavior ()
     (let ((a0-0 (-> self intro-path))
           (v1-1 (+ (-> self jumping-ambush-path-pt) 1))
@@ -474,7 +455,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -519,10 +499,7 @@
                 )
             )
           (dotimes (s4-0 s5-0)
-            (ja-no-eval :group! gp-0
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (suspend)
               (ja :num! (seek! max f30-0))
@@ -540,20 +517,14 @@
           (let ((gp-1 (-> self draw art-group data (-> self patrol-anim anim-index)))
                 (s5-1 (get-rand-int-range self 2 5))
                 )
-            (ja-no-eval :group! gp-1
-                        :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                        :frame-num 0.0
-                        )
+            (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (ja-blend-eval)
               (suspend)
               (ja :num! (seek! max f30-0))
               )
             (dotimes (s4-1 s5-1)
-              (ja-no-eval :group! gp-1
-                          :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-1) frames num-frames) -1)) f30-0)
-                          :frame-num 0.0
-                          )
+              (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
               (until (ja-done? 0)
                 (suspend)
                 (ja :num! (seek! max f30-0))
@@ -572,14 +543,7 @@
           (nav-enemy-method-167 self)
           (ja-channel-push! 1 (seconds 0.3))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                      :num! (seek!
-                        (the float
-                             (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                -1
-                                )
-                             )
-                        f30-0
-                        )
+                      :num! (seek! max f30-0)
                       :frame-num 0.0
                       )
           (until (ja-done? 0)
@@ -588,14 +552,7 @@
             )
           (until (not (enemy-method-123 self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
-                        :num! (seek!
-                          (the float
-                               (+ (-> (the-as art-joint-anim (-> self draw art-group data (-> self enemy-info idle-anim))) frames num-frames)
-                                  -1
-                                  )
-                               )
-                          f30-0
-                          )
+                        :num! (seek! max f30-0)
                         :frame-num 0.0
                         )
             (until (ja-done? 0)
@@ -615,7 +572,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -693,7 +649,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -737,10 +692,7 @@
               0
               )
             )
-          (ja-no-eval :group! gp-0
-                      :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (suspend)
@@ -749,17 +701,13 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate attack (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-1 (-> self nav state)))
       (set! (-> v1-1 speed) (-> self enemy-info run-travel-speed))
@@ -781,7 +729,6 @@
       #t
       (t9-1 a0-6)
       )
-    (none)
     )
   :exit (behavior ()
     (let* ((a0-0 self)
@@ -794,7 +741,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (enemy-method-49 self)
@@ -802,7 +748,6 @@
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -822,10 +767,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max f30-0))
@@ -865,17 +807,13 @@
       (set! (-> self use-charge-anim-index) v1-57)
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate spin-attack (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((v1-2 self))
@@ -907,7 +845,6 @@
       #t
       (t9-3 a0-14)
       )
-    (none)
     )
   :exit (behavior ()
     (let* ((a0-0 self)
@@ -920,14 +857,12 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (when (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
       (logclear! (-> self enemy-flags) (enemy-flag look-at-focus))
       (sound-play "grunt-hit")
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self attack-anim) (-> *grunt-global-info* attack-anim (get-rand-int self 2)))
@@ -939,10 +874,7 @@
             (ja-channel-push! 1 (seconds 0.2))
             )
         )
-      (ja-no-eval :group! gp-0
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (let ((a0-9 (handle->process (-> self focus handle))))
           (if a0-9
@@ -960,9 +892,8 @@
           )
       )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior metalhead-grunt) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate stop-chase (metalhead-grunt)
@@ -987,10 +918,7 @@
             )
         )
       (until #f
-        (ja-no-eval :group! gp-0
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! gp-0 :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -998,7 +926,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1196,10 +1123,7 @@
 
 (defstate wait-for-focus (metalhead-grunt)
   :virtual #t
-  :event (the-as
-    (function process int symbol event-message-block object :behavior metalhead-grunt)
-    enemy-event-handler
-    )
+  :event enemy-event-handler
   :enter (-> (method-of-type nav-enemy idle) enter)
   :trans (behavior ()
     (let ((s5-0 (handle->process (-> self focus handle))))
@@ -1239,7 +1163,6 @@
           )
         )
       )
-    (none)
     )
   :code (-> (method-of-type nav-enemy idle) code)
   :post (-> (method-of-type nav-enemy idle) post)

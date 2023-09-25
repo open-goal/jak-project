@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/kermit-ag.gc")
-
 ;; failed to figure out what this is:
 (defpartgroup group-kermit-charging-up
   :id 298
@@ -468,6 +466,7 @@
 
 ;; definition for function joint-mod-tracker-callback
 ;; INFO: Used lq/sq
+;; INFO: Return type mismatch object vs none.
 (defun joint-mod-tracker-callback ((arg0 cspace) (arg1 transformq))
   (let ((s4-0 (the-as joint-mod-tracker (-> arg0 param1))))
     (cond
@@ -561,21 +560,19 @@
 
 ;; failed to figure out what this is:
 (defstate kermit-pulse-idle (kermit-pulse)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (send-event proc 'attack (-> event param 0) (new 'static 'attack-info))
+       (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))
        (go kermit-pulse-impact)
        )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :code (behavior ()
     (while (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
@@ -593,11 +590,9 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
     (update-transforms! (-> self root-override))
-    (none)
     )
   )
 
@@ -617,7 +612,6 @@
       :to *entity-pool*
       )
     (cleanup-for-death self)
-    (none)
     )
   )
 
@@ -999,14 +993,10 @@ nav-enemy-default-event-handler
 
 ;; failed to figure out what this is:
 (defstate kermit-idle (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self notice-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (if (and *target* (>= (-> self enemy-info idle-distance)
@@ -1015,7 +1005,6 @@ nav-enemy-default-event-handler
              )
         (go kermit-patrol)
         )
-    (none)
     )
   :code (behavior ()
     (kermit-disable-tongue)
@@ -1024,23 +1013,18 @@ nav-enemy-default-event-handler
       (ja :num! (loop!))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior kermit) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-patrol (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
     (kermit-get-new-patrol-point)
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (if (and (or (not *target*) (< (-> self enemy-info idle-distance)
@@ -1058,7 +1042,6 @@ nav-enemy-default-event-handler
     (if (logtest? (nav-control-flags navcf19) (-> self nav flags))
         (kermit-get-new-patrol-point)
         )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -1069,58 +1052,43 @@ nav-enemy-default-event-handler
         )
       (kermit-hop 20480.0)
       )
-    (none)
     )
   :post kermit-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-notice (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
-    (none)
     )
   :trans (behavior ()
     (kermit-set-rotate-dir-to-player)
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
     (kermit-hop 0.0)
     (go kermit-chase)
-    (none)
     )
   :post kermit-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-give-up (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
-    (none)
     )
   :code (behavior ()
     (go kermit-patrol)
-    (none)
     )
   :post kermit-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-chase-new-position (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self miss-count) 0)
@@ -1144,7 +1112,6 @@ nav-enemy-default-event-handler
           )
       )
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (when (not (-> self airborne))
@@ -1156,7 +1123,6 @@ nav-enemy-default-event-handler
           (go kermit-chase)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
@@ -1171,23 +1137,18 @@ nav-enemy-default-event-handler
       (kermit-hop 81920.0)
       (nop!)
       )
-    (none)
     )
   :post kermit-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-chase (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
     (kermit-set-nav-mesh-target (-> self collide-info trans))
     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
-    (none)
     )
   :trans (behavior ()
     (kermit-set-nav-mesh-target (-> self collide-info trans))
@@ -1220,7 +1181,6 @@ nav-enemy-default-event-handler
           (go kermit-give-up)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
@@ -1234,17 +1194,13 @@ nav-enemy-default-event-handler
           (kermit-hop 81920.0)
           )
       )
-    (none)
     )
   :post kermit-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-attack (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.17))
     (set! (-> self tongue-control forward-scale-control) 0.0)
@@ -1290,24 +1246,19 @@ nav-enemy-default-event-handler
           )
         )
       )
-    (none)
     )
   :post kermit-simple-post
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-tongue-stuck (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self miss-count) 0)
     (set! (-> self tongue-control forward-scale-control) 1.0)
     (kermit-enable-tongue)
     (set! (-> self tongue-pulse-pos) 0.0)
     (spawn-kermit-pulse self (kermit-tongue-pos self) (-> self entity))
-    (none)
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
@@ -1316,7 +1267,6 @@ nav-enemy-default-event-handler
           (deactivate (-> v1-0 0))
           )
       )
-    (none)
     )
   :trans (behavior ()
     (let ((s5-0 (kermit-player-target-pos))
@@ -1350,7 +1300,6 @@ nav-enemy-default-event-handler
         )
       (send-event *target* 'tongue gp-0)
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1362,31 +1311,24 @@ nav-enemy-default-event-handler
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   :post (behavior ()
     (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) (seconds 0.05))
     (kermit-simple-post)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate kermit-retract-tongue (kermit)
-  :event (the-as
-    (function process int symbol event-message-block object :behavior kermit)
-    nav-enemy-default-event-handler
-    )
+  :event nav-enemy-default-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self charged-up) #f)
     (+! (-> self miss-count) 1)
-    (none)
     )
   :exit (behavior ()
     (set! (-> self tongue-control forward-scale-control) 0.0)
     (kermit-disable-tongue)
-    (none)
     )
   :trans (behavior ()
     (kermit-set-nav-mesh-target (-> self collide-info trans))
@@ -1398,7 +1340,6 @@ nav-enemy-default-event-handler
         (go kermit-chase)
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -1421,7 +1362,6 @@ nav-enemy-default-event-handler
         )
       (kermit-hop 0.0)
       )
-    (none)
     )
   :post kermit-post
   )

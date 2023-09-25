@@ -809,60 +809,58 @@
       )
 
 (defmethod predator-method-183 predator ((obj predator))
-  (with-pp
-    (cond
-      ((< (-> obj hit-points) 2)
-       (when (!= (-> obj dest-fade) 128.0)
-         (sound-play "pred-uncloak")
-         (stop! (-> obj sound))
-         (set! (-> obj sound) (the-as ambient-sound 0))
-         0
-         )
-       (set! (-> obj dest-fade) 128.0)
+  (cond
+    ((< (-> obj hit-points) 2)
+     (when (!= (-> obj dest-fade) 128.0)
+       (sound-play "pred-uncloak")
+       (stop! (-> obj sound))
+       (set! (-> obj sound) (the-as ambient-sound 0))
+       0
        )
-      (else
-        (set! (-> obj dest-fade) 0.0)
-        )
+     (set! (-> obj dest-fade) 128.0)
+     )
+    (else
+      (set! (-> obj dest-fade) 0.0)
       )
-    (seek! (-> obj fade) (-> obj dest-fade) (* 60.0 (-> pp clock seconds-per-frame)))
-    (set! (-> obj draw force-fade) (the-as uint (the int (-> obj fade))))
-    (cond
-      ((zero? (-> obj draw force-fade))
-       (setup-masks (-> obj draw) 8 0)
-       (setup-masks (-> obj draw) 0 4)
-       (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-       )
-      ((= (-> obj draw force-fade) 128)
-       (setup-masks (-> obj draw) 0 8)
-       (setup-masks (-> obj draw) 4 0)
-       (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-       )
-      (else
-        (setup-masks (-> obj draw) 8 0)
-        (setup-masks (-> obj draw) 4 0)
-        (logior! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
-        )
-      )
-    (if (< 245760.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
-        (setup-masks (-> obj draw) 0 8)
-        )
-    (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
-      (when (>= (- (current-time) (-> obj shock-effect-time)) (seconds 0.04))
-        (set! (-> obj shock-effect-time) (current-time))
-        (process-drawable-shock-skel-effect
-          obj
-          (-> *lightning-spec-id-table* 18)
-          lightning-probe-callback
-          (-> *part-id-table* 166)
-          2048.0
-          -1
-          -1
-          )
-        )
-      )
-    0
-    (none)
     )
+  (seek! (-> obj fade) (-> obj dest-fade) (* 60.0 (seconds-per-frame)))
+  (set! (-> obj draw force-fade) (the-as uint (the int (-> obj fade))))
+  (cond
+    ((zero? (-> obj draw force-fade))
+     (setup-masks (-> obj draw) 8 0)
+     (setup-masks (-> obj draw) 0 4)
+     (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+     )
+    ((= (-> obj draw force-fade) 128)
+     (setup-masks (-> obj draw) 0 8)
+     (setup-masks (-> obj draw) 4 0)
+     (logclear! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+     )
+    (else
+      (setup-masks (-> obj draw) 8 0)
+      (setup-masks (-> obj draw) 4 0)
+      (logior! (-> obj draw status) (draw-control-status force-fade warp-cross-fade))
+      )
+    )
+  (if (< 245760.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
+      (setup-masks (-> obj draw) 0 8)
+      )
+  (when (< (current-time) (the-as time-frame (-> obj shock-effect-end)))
+    (when (>= (- (current-time) (-> obj shock-effect-time)) (seconds 0.04))
+      (set! (-> obj shock-effect-time) (current-time))
+      (process-drawable-shock-skel-effect
+        obj
+        (-> *lightning-spec-id-table* 18)
+        lightning-probe-callback
+        (-> *part-id-table* 166)
+        2048.0
+        -1
+        -1
+        )
+      )
+    )
+  0
+  (none)
   )
 
 (defstate active (predator)
@@ -873,16 +871,12 @@
           (t9-0)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! predator-idle-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-idle-ja) frames num-frames) -1)) f30-0)
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! predator-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -890,17 +884,15 @@
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior predator) nav-enemy-simple-post)
+  :post nav-enemy-simple-post
   )
 
 (defstate notice (predator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (go-virtual hostile)
-    (none)
     )
   )
 
@@ -913,13 +905,12 @@
           )
       )
     (predator-method-183 self)
-    (none)
     )
   )
 
 (defstate fire (predator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-2 *game-info*)
@@ -928,20 +919,17 @@
       (set! (-> v1-2 attack-id) v0-0)
       (set! (-> self attack-id) v0-0)
       )
-    (none)
     )
   :exit (behavior ()
     (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (if (not (handle->process (-> self focus handle)))
         (go-virtual active)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -949,10 +937,7 @@
       (let ((gp-0 0))
         (set! (-> self shoot-angle) (* 182.04445 (rand-vu-float-range -45.0 45.0)))
         (ja-channel-push! 1 (seconds 0.2))
-        (ja-no-eval :group! predator-shoot-guns0-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-shoot-guns0-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! predator-shoot-guns0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (when (and (< 9.0 (ja-frame-num 0)) (zero? gp-0))
             (set! gp-0 1)
@@ -984,14 +969,13 @@
     (the-as none #f)
     (label cfg-26)
     (go-virtual hide)
-    (none)
     )
-  :post (the-as (function none :behavior predator) enemy-simple-post)
+  :post enemy-simple-post
   )
 
 (defstate close-attack (predator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set-dangerous! self #t)
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -1006,7 +990,6 @@
       (set! (-> v1-7 target-speed) 0.0)
       )
     0
-    (none)
     )
   :exit (behavior ()
     (set-dangerous! self #f)
@@ -1014,14 +997,10 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! predator-close-attack-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-close-attack-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! predator-close-attack-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1030,10 +1009,7 @@
       (set! (-> v1-25 speed) 0.0)
       )
     0
-    (ja-no-eval :group! predator-close-attack-recover-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-close-attack-recover-ja) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! predator-close-attack-recover-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -1042,14 +1018,13 @@
         (sound-play "pred-talk")
         )
     (go-virtual hostile)
-    (none)
     )
-  :post (the-as (function none :behavior predator) nav-enemy-chase-post)
+  :post nav-enemy-chase-post
   )
 
 (defstate hidden (predator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (let ((v1-2 self))
@@ -1060,7 +1035,6 @@
     (set! (-> self next-change)
           (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 5.0)))))
           )
-    (none)
     )
   :trans (behavior ()
     (predator-method-186 self)
@@ -1085,16 +1059,12 @@
     (if (< (the-as time-frame (-> self next-change)) (current-time))
         (go-virtual hide)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
       (ja-channel-push! 1 (seconds 0.2))
       (until (logtest? (-> self nav state flags) (nav-state-flag at-target))
-        (ja-no-eval :group! predator-run0-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-run0-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! predator-run0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1102,10 +1072,7 @@
         )
       (ja-channel-push! 1 (seconds 0.2))
       (until (not (logtest? (-> self nav state flags) (nav-state-flag at-target)))
-        (ja-no-eval :group! predator-idle-ja
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-idle-ja) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! predator-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1113,17 +1080,15 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
 (defstate hide (predator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior predator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (nav-enemy-method-166 self)
@@ -1138,7 +1103,6 @@
     (predator-method-187 self)
     (set! (-> self next-change) (the-as uint 0))
     0
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self focus handle))))
@@ -1171,26 +1135,20 @@
              )
         (go-virtual hidden)
         )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (ja-no-eval :group! predator-run0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-run0-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! predator-run0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (nav-enemy-method-176 self)
-    (none)
     )
   )
 
@@ -1210,7 +1168,6 @@
     (if (zero? (get-rand-int self 3))
         (sound-play "pred-talk")
         )
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -1240,30 +1197,22 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! predator-run0-ja
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-run0-ja) frames num-frames) -1)))
-                :frame-num 6.0
-                )
+    (ja-no-eval :group! predator-run0-ja :num! (seek!) :frame-num 6.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (until #f
-      (ja-no-eval :group! predator-run0-ja
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim predator-run0-ja) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! predator-run0-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   )
 
@@ -1607,14 +1556,12 @@ This commonly includes things such as:
   :virtual #t
   :enter (behavior ()
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-predator :init hud-init-by-other :to self)))
-    (none)
     )
   :exit (behavior ()
     (when (-> self hud-counter)
       (send-event (handle->process (-> self hud-counter)) 'hide-and-die)
       (set! (-> self hud-counter) (the-as handle #f))
       )
-    (none)
     )
   :trans (behavior ()
     (predator-manager-method-16 self)
@@ -1639,14 +1586,13 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior predator-manager) sleep-code)
+  :code sleep-code
   )
 
 (defstate closed (predator-manager)
   :virtual #t
-  :code (the-as (function none :behavior predator-manager) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1718,7 +1664,7 @@ This commonly includes things such as:
           (dotimes (s4-1 (the-as int (-> *predator-graph* node-count)))
             (let ((s3-1 (-> *predator-graph* node s4-1)))
               (when (logtest? (-> s3-1 flags) (predator-node-flag spawnable))
-                (let ((s2-1 (new 'stack-no-clear 'transformq)))
+                (let ((s2-1 (new 'stack-no-clear 'enemy-init-by-other-params)))
                   (new 'stack-no-clear 'vector)
                   (let ((s0-0 (new 'stack-no-clear 'vector))
                         (s1-0 (new 'stack-no-clear 'vector))
@@ -1750,9 +1696,9 @@ This commonly includes things such as:
                     (set! (-> s2-1 trans quad) (-> s1-0 quad))
                     )
                   (quaternion-copy! (-> s2-1 quat) *unity-quaternion*)
-                  (set! (-> s2-1 scale x) (the-as float (-> obj actor-group 1 data s5-2 actor)))
-                  (set! (-> s2-1 scale y) (the-as float #f))
-                  (set! (-> s2-1 scale z) (the-as float #f))
+                  (set! (-> s2-1 entity) (-> obj actor-group 1 data s5-2 actor))
+                  (set! (-> s2-1 directed?) #f)
+                  (set! (-> s2-1 no-initial-move-to-ground?) #f)
                   (let* ((s1-2 (ppointer->process (process-spawn predator :init enemy-init-by-other obj s2-1 :to obj)))
                          (s2-2 (if (type? s1-2 process-focusable)
                                    s1-2

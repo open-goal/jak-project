@@ -295,10 +295,8 @@
   0
   )
 
-;; WARN: Return type mismatch object vs none.
 (defmethod go-hostile gator ((obj gator))
   (go (method-of-object obj hostile))
-  (none)
   )
 
 (defmethod get-enemy-target gator ((obj gator))
@@ -353,7 +351,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((circle-for (get-rand-float-range self 0.9 1.1)))
@@ -364,13 +361,12 @@
         )
       )
     #f
-    (none)
     )
   )
 
 (defstate attack-forward (gator)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior gator) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
     (let ((_self self))
@@ -397,7 +393,6 @@
       (set! (-> game-info attack-id) id)
       (set! (-> self attack-id) id)
       )
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -405,7 +400,6 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (let ((focus (handle->process (-> self focus handle))))
@@ -454,18 +448,11 @@
         0
         )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.07))
-    (ja-no-eval :group! (-> self draw art-group data 15)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 15)) frames num-frames) -1)))
-                :frame-num (ja-aframe 0.0 0)
-                )
-    (ja-no-eval :group! (ja-group)
-                :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 15) :num! (seek!) :frame-num (ja-aframe 0.0 0))
+    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (let ((target-pos (new 'stack-no-clear 'vector)))
         (let ((nav-state (-> self nav state)))
@@ -479,9 +466,8 @@
       (ja :num! (seek!))
       )
     (react-to-focus self)
-    (none)
     )
-  :post (the-as (function none :behavior gator) nav-enemy-travel-post)
+  :post nav-enemy-travel-post
   )
 
 (defstate pacing (gator)
@@ -495,7 +481,6 @@
         )
       )
     #f
-    (none)
     )
   )
 
@@ -503,7 +488,6 @@
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let ((func (-> (method-of-type nav-enemy stare) trans)))
@@ -514,7 +498,6 @@
     (if (>= (- (current-time) (-> self state-time)) (seconds 0.017))
         (go-virtual pacing)
         )
-    (none)
     )
   :code (behavior ()
     (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
@@ -525,7 +508,6 @@
         )
       )
     #f
-    (none)
     )
   )
 

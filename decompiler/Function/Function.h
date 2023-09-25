@@ -188,6 +188,7 @@ class Function {
     std::string debug_form_string;
     bool print_debug_forms = false;
     bool expressions_succeeded = false;
+    bool skip_final_none = false;
   } ir2;
 
   std::optional<std::string> mips2c_output;

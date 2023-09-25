@@ -1,8 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(import "goal_src/jak1/import/plat-button-ag.gc")
-
 ;; definition of type plat-button
 (deftype plat-button (process-drawable)
   ((root-override           collide-shape-moving         :offset        112)
@@ -73,12 +71,12 @@
 ;; failed to figure out what this is:
 (defstate plat-button-idle (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch)
        (when (can-activate? self)
          (if (and ((method-of-type touching-shapes-entry prims-touching?)
-                   (the-as touching-shapes-entry (-> event param 0))
+                   (the-as touching-shapes-entry (-> block param 0))
                    (-> self root-override)
                    (the-as uint 1)
                    )
@@ -120,7 +118,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -141,14 +138,13 @@
       )
     (ja-post)
     (go-virtual plat-button-idle)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-pressed (plat-button)
   :virtual #t
-  :trans (the-as (function none :behavior plat-button) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (ja-no-eval :num! (seek!))
     (until (ja-done? 0)
@@ -161,9 +157,8 @@
         (go-virtual plat-button-move-downward)
         (go-virtual plat-button-move-upward)
         )
-    (none)
     )
-  :post (the-as (function none :behavior plat-button) rider-post)
+  :post rider-post
   )
 
 ;; definition for function plat-button-camera-on
@@ -189,24 +184,21 @@
 ;; failed to figure out what this is:
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
-                     (set! (-> self state-time) (-> *display* base-frame-counter))
-                     #f
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (or (= message 'touch) (= message 'attack))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      #f
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! 'allow-look-around #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (plat-button-camera-off)
     (remove-setting! 'allow-look-around)
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) 1.0)
@@ -255,33 +247,29 @@
     (if (and (-> self grab-player?) (< 0.2 (-> self path-pos)))
         (set! (-> self grab-player?) (not (process-release? *target*)))
         )
-    (none)
     )
-  :code (the-as (function none :behavior plat-button) anim-loop)
-  :post (the-as (function none :behavior plat-button) rider-post)
+  :code anim-loop
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (when (or (= event-type 'touch) (= event-type 'attack))
-                     (set! (-> self state-time) (-> *display* base-frame-counter))
-                     #f
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (or (= message 'touch) (= message 'attack))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      #f
+      )
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (process-entity-status! self (entity-perm-status bit-3) #t)
     (plat-button-camera-on)
     (set-setting! 'allow-look-around #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (plat-button-camera-off)
     (remove-setting! 'allow-look-around)
-    (none)
     )
   :trans (behavior ()
     (if (= (-> self path-pos) 0.0)
@@ -330,10 +318,9 @@
     (if (and (-> self grab-player?) (< (-> self path-pos) 0.8))
         (set! (-> self grab-player?) (not (process-release? *target*)))
         )
-    (none)
     )
-  :code (the-as (function none :behavior plat-button) anim-loop)
-  :post (the-as (function none :behavior plat-button) rider-post)
+  :code anim-loop
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
@@ -353,7 +340,6 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 

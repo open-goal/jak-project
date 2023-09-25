@@ -31,6 +31,15 @@
 (declare-type tomb-simon-block base-plat)
 (define-extern tomb-simon-block-init-by-other (function vector int int int int none :behavior tomb-simon-block))
 
+(defenum tomb-vibe-flags
+  :bitfield #t
+  :type uint16
+  (tovflags-0)
+  (tovflags-1)
+  (tovflags-2)
+  (tovflags-3)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype tomb-door (process-drawable)
@@ -55,8 +64,8 @@
 
 (defstate idle (tomb-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('simon-done)
        (sound-play "simon-correct")
        )
@@ -86,9 +95,8 @@
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-door) sleep-code)
+  :code sleep-code
   )
 
 (defstate open (tomb-door)
@@ -127,7 +135,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ((arg0 time-frame))
     (let ((s5-0 (current-time)))
@@ -135,10 +142,7 @@
         (suspend)
         )
       )
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (-> self root quat)
       (transform-post)
@@ -146,7 +150,6 @@
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   )
 
@@ -238,8 +241,8 @@ This commonly includes things such as:
 
 (defstate idle (tomb-beetle-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('add-beetle)
        (set! (-> self beetle (-> self offset-index)) (process->handle proc))
        (+! (-> self offset-index) 1)
@@ -256,10 +259,9 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior tomb-beetle-door) sleep-code)
+  :code sleep-code
   :post (behavior ()
     0
-    (none)
     )
   )
 
@@ -304,22 +306,17 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
-  :post (the-as (function none :behavior tomb-beetle-door) ja-post)
+  :post ja-post
   )
 
 (define tomb-beetle-door-offsets (new 'static 'inline-array vector 3
@@ -538,13 +535,13 @@ This commonly includes things such as:
 
 (defstate going-down (tomb-beetle-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('get-round)
        (-> self round)
        )
       (else
-        ((-> (method-of-type basebutton going-down) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton going-down) event) proc argc message block)
         )
       )
     )
@@ -555,30 +552,26 @@ This commonly includes things such as:
           )
       )
     (process-grab? *target* #f)
-    (none)
     )
   )
 
 (defstate down-idle (tomb-beetle-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (let ((v1-0 event-type))
-      (the-as object (cond
-                       ((= v1-0 'set-round)
-                        (let ((v0-0 (the-as object (-> event param 0))))
-                          (set! (-> self round) (the-as uint v0-0))
-                          v0-0
-                          )
-                        )
-                       ((= v1-0 'door-open)
-                        (remove-setting! 'gun)
-                        (the-as object (remove-setting! 'entity-name))
-                        )
-                       (else
-                         ((-> (method-of-type basebutton down-idle) event) proc arg1 event-type event)
-                         )
-                       )
-              )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-round)
+       (let ((v0-0 (the-as object (-> block param 0))))
+         (set! (-> self round) (the-as uint v0-0))
+         v0-0
+         )
+       )
+      (('door-open)
+       (remove-setting! 'gun)
+       (remove-setting! 'entity-name)
+       )
+      (else
+        ((-> (method-of-type basebutton down-idle) event) proc argc message block)
+        )
       )
     )
   :trans (behavior ()
@@ -589,7 +582,7 @@ This commonly includes things such as:
       )
     (when (>= (- (current-time) (-> self state-time)) (seconds 4))
       (if (and *target* (focus-test? *target* grabbed)
-               ;; pc port note : added this check to make the beetle button not break everything!!
+               ;; og:preserve-this added this check to make the beetle button not break everything!!
                (< (vector-vector-xz-distance (-> *target* control trans) (-> self root trans)) (meters 10)))
           (process-release? *target*)
           )
@@ -600,22 +593,21 @@ This commonly includes things such as:
           (tomb-beetle-button-method-39 self)
           )
       )
-    (none)
     )
   )
 
 (defstate going-up (tomb-beetle-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('set-round)
-       (let ((v0-0 (the-as object (-> event param 0))))
+       (let ((v0-0 (the-as object (-> block param 0))))
          (set! (-> self round) (the-as uint v0-0))
          v0-0
          )
        )
       (else
-        ((-> (method-of-type basebutton going-up) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton going-up) event) proc argc message block)
         )
       )
     )
@@ -623,19 +615,19 @@ This commonly includes things such as:
 
 (defstate up-idle (tomb-beetle-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('get-round)
        (-> self round)
        )
       (('set-round)
-       (let ((v0-0 (the-as object (-> event param 0))))
+       (let ((v0-0 (the-as object (-> block param 0))))
          (set! (-> self round) (the-as uint v0-0))
          v0-0
          )
        )
       (else
-        ((-> (method-of-type basebutton up-idle) event) proc arg1 event-type event)
+        ((-> (method-of-type basebutton up-idle) event) proc argc message block)
         )
       )
     )
@@ -670,7 +662,6 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
@@ -811,95 +802,90 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 4)
               )
 
-;; WARN: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 135]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 199]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 280]
 (defbehavior tomb-plat-simon-handler tomb-plat-simon ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as object (case arg2
-                   (('ready-index)
-                    (tomb-plat-simon-method-24 self (the-as int (-> arg3 param 0)))
-                    )
-                   (('plat-ridden)
-                    (logior! (-> self flags) 1)
-                    (when (= (-> arg3 param 0) (-> self plat-seq (+ (-> self plat-seq-count) -1)))
-                      (when (-> self notify-actor)
-                        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-2 from) (process->ppointer self))
-                          (set! (-> a1-2 num-params) 0)
-                          (set! (-> a1-2 message) 'simon-done)
-                          (let ((t9-1 send-event-function)
-                                (v1-11 (-> self notify-actor))
-                                )
-                            (t9-1
-                              (if v1-11
-                                  (-> v1-11 extra process)
-                                  )
-                              a1-2
-                              )
-                            )
-                          )
-                        (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
-                          (let ((v1-20 (-> *event-queue* data (-> *event-queue* length))))
-                            (+! (-> *event-queue* length) 1)
-                            (set! (-> v1-20 form-handle) (process->handle self))
-                            (let ((a0-23 (-> self notify-actor)))
-                              (set! (-> v1-20 to-handle) (process->handle (if a0-23
-                                                                              (-> a0-23 extra process)
-                                                                              )
-                                                                          )
-                                    )
-                              )
-                            (set! (-> v1-20 num-params) 0)
-                            (set! (-> v1-20 message) 'trigger)
-                            )
-                          )
-                        )
-                      (sound-play "tomb-simon-fall")
-                      (dotimes (s5-1 (-> self plat-count))
-                        (if (!= s5-1 (-> arg3 param 0))
-                            (send-event (handle->process (-> self plat s5-1)) 'die-unmaskable)
-                            )
-                        )
-                      #f
-                      )
-                    )
-                   (('finished)
-                    (if (-> self button-handle)
-                        (send-event (handle->process (-> self button-handle)) 'trigger)
-                        )
-                    (dotimes (gp-1 (-> self plat-count))
-                      (send-event (handle->process (-> self plat gp-1)) 'die-unmaskable)
-                      )
-                    (go-virtual dormant)
-                    )
-                   (('die-but)
-                    (if (-> self button-handle)
-                        (send-event (handle->process (-> self button-handle)) 'untrigger)
-                        )
-                    (sound-play "tomb-simon-fall")
-                    (dotimes (s5-3 (-> self plat-count))
-                      (if (!= s5-3 (-> arg3 param 0))
-                          (send-event (handle->process (-> self plat s5-3)) 'die)
-                          )
-                      )
-                    (go-virtual dormant)
-                    )
+  (case arg2
+    (('ready-index)
+     (tomb-plat-simon-method-24 self (the-as int (-> arg3 param 0)))
+     )
+    (('plat-ridden)
+     (logior! (-> self flags) 1)
+     (when (= (-> arg3 param 0) (-> self plat-seq (+ (-> self plat-seq-count) -1)))
+       (when (-> self notify-actor)
+         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-2 from) (process->ppointer self))
+           (set! (-> a1-2 num-params) 0)
+           (set! (-> a1-2 message) 'simon-done)
+           (let ((t9-1 send-event-function)
+                 (v1-11 (-> self notify-actor))
+                 )
+             (t9-1
+               (if v1-11
+                   (-> v1-11 extra process)
                    )
-          )
+               a1-2
+               )
+             )
+           )
+         (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+           (let ((v1-20 (-> *event-queue* data (-> *event-queue* length))))
+             (+! (-> *event-queue* length) 1)
+             (set! (-> v1-20 form-handle) (process->handle self))
+             (let ((a0-23 (-> self notify-actor)))
+               (set! (-> v1-20 to-handle) (process->handle (if a0-23
+                                                               (-> a0-23 extra process)
+                                                               )
+                                                           )
+                     )
+               )
+             (set! (-> v1-20 num-params) 0)
+             (set! (-> v1-20 message) 'trigger)
+             )
+           )
+         )
+       (sound-play "tomb-simon-fall")
+       (dotimes (s5-1 (-> self plat-count))
+         (if (!= s5-1 (-> arg3 param 0))
+             (send-event (handle->process (-> self plat s5-1)) 'die-unmaskable)
+             )
+         )
+       #f
+       )
+     )
+    (('finished)
+     (if (-> self button-handle)
+         (send-event (handle->process (-> self button-handle)) 'trigger)
+         )
+     (dotimes (gp-1 (-> self plat-count))
+       (send-event (handle->process (-> self plat gp-1)) 'die-unmaskable)
+       )
+     (go-virtual dormant)
+     )
+    (('die-but)
+     (if (-> self button-handle)
+         (send-event (handle->process (-> self button-handle)) 'untrigger)
+         )
+     (sound-play "tomb-simon-fall")
+     (dotimes (s5-3 (-> self plat-count))
+       (if (!= s5-3 (-> arg3 param 0))
+           (send-event (handle->process (-> self plat s5-3)) 'die)
+           )
+       )
+     (go-virtual dormant)
+     )
+    )
   )
 
 (defstate dormant (tomb-plat-simon)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (set! (-> self button-handle) (process->handle proc))
        (go-virtual appear)
        )
       )
     )
-  :code (the-as (function none :behavior tomb-plat-simon) sleep-code)
+  :code sleep-code
   )
 
 (defstate appear (tomb-plat-simon)
@@ -984,7 +970,6 @@ This commonly includes things such as:
         (set! (-> self plat gp-2) (ppointer->handle s4-0))
         )
       )
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -993,7 +978,6 @@ This commonly includes things such as:
         )
       )
     (go-virtual show-sequence)
-    (none)
     )
   )
 
@@ -1004,7 +988,6 @@ This commonly includes things such as:
     (set! (-> self state-time) (+ (current-time) (seconds -1)))
     (set! (-> self plat-idx) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (seconds 2))
@@ -1020,15 +1003,14 @@ This commonly includes things such as:
           (go-virtual idle)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-simon) sleep-code)
+  :code sleep-code
   )
 
 (defstate idle (tomb-plat-simon)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (dotimes (gp-0 (-> self plat-count))
          (send-event (handle->process (-> self plat gp-0)) 'reset)
@@ -1036,7 +1018,7 @@ This commonly includes things such as:
        (go-virtual show-sequence)
        )
       (else
-        (tomb-plat-simon-handler proc arg1 event-type event)
+        (tomb-plat-simon-handler proc argc message block)
         )
       )
     )
@@ -1044,12 +1026,10 @@ This commonly includes things such as:
     (if (-> self button-handle)
         (send-event (handle->process (-> self button-handle)) 'untrigger)
         )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-plat-simon) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (debug-draw (-> self path))
-    (none)
     )
   )
 
@@ -1118,7 +1098,7 @@ This commonly includes things such as:
 
 (defbehavior tomb-simon-block-post tomb-simon-block ()
   (when (!= (-> self basetrans y) (-> self base-height))
-    (seek! (-> self basetrans y) (-> self base-height) (* (-> self move-rate) (-> self clock seconds-per-frame)))
+    (seek! (-> self basetrans y) (-> self base-height) (* (-> self move-rate) (seconds-per-frame)))
     (when (and (< (- (-> self base-height) (-> self basetrans y)) 21504.0)
                (not (logtest? (-> self flags) (simon-block-flags sbf5)))
                )
@@ -1126,7 +1106,7 @@ This commonly includes things such as:
       (logior! (-> self flags) (simon-block-flags sbf5))
       )
     (if (< (- (-> self base-height) (-> self basetrans y)) 81920.0)
-        (seek! (-> self move-rate) 0.0 (* 81920.0 (-> self clock seconds-per-frame)))
+        (seek! (-> self move-rate) 0.0 (* 81920.0 (seconds-per-frame)))
         )
     (when (< (+ -409.6 (-> self base-height)) (-> self basetrans y))
       (sound-play "simon-hit")
@@ -1163,54 +1143,50 @@ This commonly includes things such as:
 
 (defstate idle (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('reparent)
-         (change-parent self proc)
-         )
-        (('blink)
-         (the-as object (set-blink-timers! self))
-         )
-        (('edge-grabbed)
-         (go-virtual dangerous)
-         )
-        (('ridden 'bonk)
-         (let* ((gp-0 *target*)
-                (a0-12 (if (type? gp-0 process-focusable)
-                           gp-0
-                           )
-                       )
-                )
-           (when a0-12
-             (let ((v1-6 (get-trans a0-12 0))
-                   (a0-14 (-> self root trans))
-                   )
-               (if (and (>= 8192.0 (fabs (- (-> v1-6 x) (-> a0-14 x)))) (>= 8192.0 (fabs (- (-> v1-6 z) (-> a0-14 z)))))
-                   (go-virtual dangerous)
-                   )
-               )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('reparent)
+       (change-parent self proc)
+       )
+      (('blink)
+       (set-blink-timers! self)
+       )
+      (('edge-grabbed)
+       (go-virtual dangerous)
+       )
+      (('ridden 'bonk)
+       (let* ((gp-0 *target*)
+              (a0-12 (if (type? gp-0 process-focusable)
+                         gp-0
+                         )
+                     )
+              )
+         (when a0-12
+           (let ((v1-6 (get-trans a0-12 0))
+                 (a0-14 (-> self root trans))
+                 )
+             (if (and (>= 8192.0 (fabs (- (-> v1-6 x) (-> a0-14 x)))) (>= 8192.0 (fabs (- (-> v1-6 z) (-> a0-14 z)))))
+                 (go-virtual dangerous)
+                 )
              )
            )
          )
-        (('die 'die-unmaskable)
-         (go-virtual die)
-         )
-        (('ready)
-         (go-virtual ready)
-         )
-        )
+       )
+      (('die 'die-unmaskable)
+       (go-virtual die)
+       )
+      (('ready)
+       (go-virtual ready)
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
     (logclear! (-> self flags) (simon-block-flags sbf0 sbf1 sbf2 sbf5))
     (set! (-> self move-rate) 122880.0)
-    (none)
     )
   :trans tomb-simon-block-trans
-  :code (the-as (function none :behavior tomb-simon-block) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (>= (- (current-time) (-> self state-time))
             (the int (* 300.0 (+ (* 0.1 (the float (-> self order))) (* 0.015 (the float (-> self my-idx))))))
@@ -1218,14 +1194,13 @@ This commonly includes things such as:
         (tomb-simon-block-post)
         (plat-post)
         )
-    (none)
     )
   )
 
 (defstate dangerous (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-unmaskable)
        (go-virtual die)
        )
@@ -1246,30 +1221,18 @@ This commonly includes things such as:
            (set! (-> v1-10 y) 0.0)
            (set! (-> v1-10 z) 1.0)
            (set! (-> v1-10 w) 0.0)
-           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-6 from) (process->ppointer self))
-             (set! (-> a1-6 num-params) 2)
-             (set! (-> a1-6 message) 'attack)
-             (set! (-> a1-6 param 0) (the-as uint #f))
-             (let ((a2-4 (new 'static 'attack-info :mask (attack-info-mask vector shove-back shove-up control id))))
-               (let* ((a3-2 *game-info*)
-                      (t0-1 (+ (-> a3-2 attack-id) 1))
-                      )
-                 (set! (-> a3-2 attack-id) t0-1)
-                 (set! (-> a2-4 id) t0-1)
-                 )
-               (set! (-> a2-4 vector quad) (-> v1-10 quad))
-               (set! (-> a2-4 shove-back) 0.0)
-               (set! (-> a2-4 shove-up) 12288.0)
-               (set! (-> a2-4 control) (if (focus-test? a0-10 board)
-                                           1.0
-                                           0.0
-                                           )
-                     )
-               (set! (-> a1-6 param 1) (the-as uint a2-4))
-               )
-             (send-event-function a0-10 a1-6)
-             )
+           (send-event a0-10 'attack #f (static-attack-info ((id (new-attack-id))
+                                                             (vector v1-10)
+                                                             (shove-back (meters 0))
+                                                             (shove-up (meters 3))
+                                                             (control (if (focus-test? a0-10 board)
+                                                                          1.0
+                                                                          0.0
+                                                                          )
+                                                                      )
+                                                             )
+                                                            )
+                       )
            )
          (let ((v0-0 (the-as object (logclear (-> self flags) (simon-block-flags sbf4)))))
            (set! (-> self flags) (the-as simon-block-flags v0-0))
@@ -1284,7 +1247,6 @@ This commonly includes things such as:
     (logior! (-> self flags) (simon-block-flags sbf4))
     (set! (-> self ride-timer) (current-time))
     (send-event (ppointer->process (-> self parent)) 'die-but (-> self my-idx))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self ride-timer)) (seconds 1))
@@ -1292,71 +1254,67 @@ This commonly includes things such as:
       (go-virtual die)
       )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-simon-block) sleep-code)
+  :code sleep-code
   :post tomb-simon-block-post
   )
 
 (defstate ready (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (start-bouncing! self))
-                      )
-                     (('reset)
-                      (go-virtual idle)
-                      )
-                     (('blink)
-                      (the-as object (set-blink-timers! self))
-                      )
-                     (('die 'die-unmaskable)
-                      (go-virtual die)
-                      )
-                     (('ridden)
-                      (send-event (ppointer->process (-> self parent)) 'plat-ridden (-> self my-idx))
-                      (if (!= (-> self next-idx) -1)
-                          (send-event (ppointer->process (-> self parent)) 'ready-index (-> self next-idx))
-                          )
-                      (go-virtual ridden)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (start-bouncing! self)
+       )
+      (('reset)
+       (go-virtual idle)
+       )
+      (('blink)
+       (set-blink-timers! self)
+       )
+      (('die 'die-unmaskable)
+       (go-virtual die)
+       )
+      (('ridden)
+       (send-event (ppointer->process (-> self parent)) 'plat-ridden (-> self my-idx))
+       (if (!= (-> self next-idx) -1)
+           (send-event (ppointer->process (-> self parent)) 'ready-index (-> self next-idx))
+           )
+       (go-virtual ridden)
+       )
+      )
     )
   :trans tomb-simon-block-trans
-  :code (the-as (function none :behavior tomb-simon-block) sleep-code)
+  :code sleep-code
   :post tomb-simon-block-post
   )
 
 (defstate ridden (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (start-bouncing! self))
-                      )
-                     (('reset)
-                      (go-virtual idle)
-                      )
-                     (('die-unmaskable)
-                      (go-virtual die)
-                      )
-                     (('die)
-                      (go-virtual temporary)
-                      )
-                     (('ridden)
-                      (let ((v0-0 (the-as object (current-time))))
-                        (set! (-> self ride-timer) (the-as time-frame v0-0))
-                        v0-0
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (start-bouncing! self)
+       )
+      (('reset)
+       (go-virtual idle)
+       )
+      (('die-unmaskable)
+       (go-virtual die)
+       )
+      (('die)
+       (go-virtual temporary)
+       )
+      (('ridden)
+       (let ((v0-0 (the-as object (current-time))))
+         (set! (-> self ride-timer) (the-as time-frame v0-0))
+         v0-0
+         )
+       )
+      )
     )
   :enter (behavior ()
     (set! (-> self ride-timer) (current-time))
-    (none)
     )
   :trans (behavior ()
     (let* ((gp-0 *target*)
@@ -1390,41 +1348,38 @@ This commonly includes things such as:
         )
       )
     (tomb-simon-block-trans)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-simon-block) sleep-code)
+  :code sleep-code
   :post tomb-simon-block-post
   )
 
 (defstate temporary (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (start-bouncing! self))
-                      )
-                     (('reset)
-                      (go-virtual idle)
-                      )
-                     (('die-unmaskable)
-                      (go-virtual die)
-                      )
-                     (('ridden)
-                      (when (not (logtest? (-> self flags) (simon-block-flags sbf2)))
-                        (logior! (-> self flags) (simon-block-flags sbf2))
-                        (let ((v0-0 (the-as object (current-time))))
-                          (set! (-> self ride-timer) (the-as time-frame v0-0))
-                          v0-0
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (start-bouncing! self)
+       )
+      (('reset)
+       (go-virtual idle)
+       )
+      (('die-unmaskable)
+       (go-virtual die)
+       )
+      (('ridden)
+       (when (not (logtest? (-> self flags) (simon-block-flags sbf2)))
+         (logior! (-> self flags) (simon-block-flags sbf2))
+         (let ((v0-0 (the-as object (current-time))))
+           (set! (-> self ride-timer) (the-as time-frame v0-0))
+           v0-0
+           )
+         )
+       )
+      )
     )
   :enter (behavior ()
     (logclear! (-> self flags) (simon-block-flags sbf0 sbf1 sbf2))
     (set! (-> self draw color-mult quad) (-> self color quad))
-    (none)
     )
   :trans (behavior ()
     (if (and (logtest? (-> self flags) (simon-block-flags sbf2))
@@ -1433,16 +1388,15 @@ This commonly includes things such as:
         (go-virtual wobble-die)
         )
     (plat-trans)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-simon-block) sleep-code)
+  :code sleep-code
   :post tomb-simon-block-post
   )
 
 (defstate wobble-die (tomb-simon-block)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('reset)
        (go-virtual idle)
        )
@@ -1451,19 +1405,15 @@ This commonly includes things such as:
        )
       )
     )
-  :trans (the-as (function none :behavior tomb-simon-block) plat-trans)
+  :trans plat-trans
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (sound-play "tomb-simon-last")
     (go-virtual die)
-    (none)
     )
   :post tomb-simon-block-post
   )
@@ -1484,15 +1434,11 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (none)
     )
   :post (behavior ()
-    (set! (-> self root transv y)
-          (- (-> self root transv y) (* (-> self move-rate) (-> self clock seconds-per-frame)))
-          )
+    (set! (-> self root transv y) (- (-> self root transv y) (* (-> self move-rate) (seconds-per-frame))))
     (+! (-> self root trans y) (-> self root transv y))
     (transform-post)
-    (none)
     )
   )
 
@@ -1584,8 +1530,8 @@ This commonly includes things such as:
 
 (defstate idle (tomb-simon-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual open #f)
        )
@@ -1599,9 +1545,8 @@ This commonly includes things such as:
             )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-simon-button) sleep-code)
+  :code sleep-code
   )
 
 (defstate open (tomb-simon-button)
@@ -1610,22 +1555,16 @@ This commonly includes things such as:
     (let ((v1-2 (-> self entity extra perm)))
       (set! (-> v1-2 user-int8 0) 1)
       )
-    (none)
     )
-  :trans (the-as (function none :behavior tomb-simon-button) rider-trans)
+  :trans rider-trans
   :code (behavior ((arg0 symbol))
     (cond
       (arg0
-        (ja :group! (-> self draw art-group data 3)
-            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-            )
+        (ja :group! (-> self draw art-group data 3) :num! max)
         )
       (else
         (sound-play "simon-btn-open")
-        (ja-no-eval :group! (-> self draw art-group data 3)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -1633,18 +1572,17 @@ This commonly includes things such as:
         )
       )
     (go-virtual waiting)
-    (none)
     )
-  :post (the-as (function none :behavior tomb-simon-button) rider-post)
+  :post rider-post
   )
 
 (defstate waiting (tomb-simon-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('bonk 'touch)
        (when ((method-of-type touching-shapes-entry prims-touching?)
-              (the-as touching-shapes-entry (-> event param 0))
+              (the-as touching-shapes-entry (-> block param 0))
               (the-as collide-shape (-> self root))
               (the-as uint 1)
               )
@@ -1667,20 +1605,16 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (transform-post)
-    (none)
     )
-  :code (the-as (function none :behavior tomb-simon-button) sleep-code)
+  :code sleep-code
   )
 
 (defstate pressed (tomb-simon-button)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual unpress)
        )
@@ -1692,17 +1626,12 @@ This commonly includes things such as:
       )
     (cond
       (arg0
-        (ja :group! (-> self draw art-group data 4)
-            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-            )
+        (ja :group! (-> self draw art-group data 4) :num! max)
         (transform-post)
         )
       (else
         (sound-play "simon-btn-press")
-        (ja-no-eval :group! (-> self draw art-group data 4)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (transform-post)
           (suspend)
@@ -1716,17 +1645,13 @@ This commonly includes things such as:
         )
       )
     (sleep-code)
-    (none)
     )
   )
 
 (defstate unpress (tomb-simon-button)
   :virtual #t
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 5)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
@@ -1736,7 +1661,6 @@ This commonly includes things such as:
       (set! (-> v1-26 user-int8 0) 1)
       )
     (go-virtual waiting)
-    (none)
     )
   )
 
@@ -1849,7 +1773,7 @@ This commonly includes things such as:
    (pat-duration      time-frame                    :offset-assert 248)
    (actor-group       (pointer actor-group)         :offset-assert 256)
    (actor-group-count int32                         :offset-assert 260)
-   (flags             uint16                        :offset-assert 264)
+   (flags             tomb-vibe-flags               :offset-assert 264)
    (on-activate       basic                         :offset-assert 268)
    )
   :heap-base #x90
@@ -1915,13 +1839,12 @@ This commonly includes things such as:
         )
       )
     #f
-    (none)
     )
   )
 
 (defstate idle (tomb-vibe)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (let ((v1-0 (new 'static 'array int32 4 -1 0 0 0))
           (gp-0 (new 'static 'array handle 2
                   (new 'static 'handle :process #xffffffff :pid #xffffffff :u64 #xffffffffffffffff)
@@ -1929,15 +1852,15 @@ This commonly includes things such as:
                   )
                 )
           )
-      (case event-type
+      (case message
         (('attack)
-         (case (-> (the-as attack-info (-> event param 1)) mode)
+         (case (-> (the-as attack-info (-> block param 1)) mode)
            (('flop 'spin 'punch)
             (cond
               ((and (= (-> v1-0 0) (-> self pat-tbl (-> self pat-index))) (!= (-> gp-0 0) (process->handle self)))
                (send-event (handle->process (-> gp-0 0)) 'interrupt)
                (send-event (handle->process (-> gp-0 0)) 'die)
-               (logior! (-> self flags) 1)
+               (logior! (-> self flags) (tomb-vibe-flags tovflags-0))
                (go-virtual vibrate)
                )
               (else
@@ -1952,7 +1875,7 @@ This commonly includes things such as:
         (('set-pattern)
          (set! (-> v1-0 0) -1)
          (set! (-> gp-0 0) (the-as handle #f))
-         (let ((v0-0 (the-as object (-> event param 0))))
+         (let ((v0-0 (the-as object (-> block param 0))))
            (set! (-> self pat-index) (the-as int v0-0))
            v0-0
            )
@@ -1971,9 +1894,8 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     0
-    (none)
     )
-  :code (the-as (function none :behavior tomb-vibe) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let* ((s5-0 *target*)
            (gp-0 (if (type? s5-0 process-focusable)
@@ -1982,37 +1904,33 @@ This commonly includes things such as:
                  )
            )
       (when gp-0
-        (when (and (not (logtest? (-> self flags) 2))
+        (when (and (not (logtest? (-> self flags) (tomb-vibe-flags tovflags-1)))
                    (< (vector-vector-distance (-> self root trans) (get-trans gp-0 0)) 102400.0)
                    )
           (set-setting! 'sound-mode #f 0.0 2)
-          (logior! (-> self flags) 2)
+          (logior! (-> self flags) (tomb-vibe-flags tovflags-1))
           )
-        (when (and (logtest? (-> self flags) 2)
+        (when (and (logtest? (-> self flags) (tomb-vibe-flags tovflags-1))
                    (< 184320.0 (vector-vector-distance (-> self root trans) (get-trans gp-0 0)))
                    )
           (remove-setting! 'sound-mode)
-          (logand! (-> self flags) -3)
+          (logclear! (-> self flags) (tomb-vibe-flags tovflags-1))
           )
         )
       )
-    (none)
     )
   )
 
 (defstate vibrate (tomb-vibe)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('interrupt)
-         (the-as object (kill-persister *setting-control* (the-as engine-pers (process->ppointer self)) 'sound-tune))
-         )
-        (('die)
-         (go-virtual die #f)
-         )
-        )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('interrupt)
+       (kill-persister *setting-control* (the-as engine-pers (process->ppointer self)) 'sound-tune)
+       )
+      (('die)
+       (go-virtual die #f)
+       )
       )
     )
   :enter (behavior ()
@@ -2046,17 +1964,14 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (process-release? *target*)
     (kill-persister *setting-control* (the-as engine-pers (process->ppointer self)) 'sound-tune)
     (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
-    (none)
     )
   :trans (behavior ()
     0
-    (none)
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
@@ -2090,27 +2005,23 @@ This commonly includes things such as:
         )
       )
     (process-release? *target*)
-    (if (logtest? (-> self flags) 1)
+    (if (logtest? (-> self flags) (tomb-vibe-flags tovflags-0))
         (go-virtual die #f)
         (go-virtual idle)
         )
-    (none)
     )
-  :post (the-as (function none :behavior tomb-vibe) transform-post)
+  :post transform-post
   )
 
 (defstate die (tomb-vibe)
   :virtual #t
   :enter (behavior ((arg0 symbol))
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (cond
       (arg0
-        (ja :group! (-> self draw art-group data 5)
-            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-            )
+        (ja :group! (-> self draw art-group data 5) :num! max)
         (transform-post)
         )
       (else
@@ -2144,10 +2055,7 @@ This commonly includes things such as:
             (-> gp-1 ppointer)
             )
           )
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (transform-post)
           (suspend)
@@ -2165,7 +2073,6 @@ This commonly includes things such as:
       )
     (label cfg-13)
     (sleep-code)
-    (none)
     )
   )
 
@@ -2277,7 +2184,7 @@ This commonly includes things such as:
       (joint-control-channel-group! a0-53 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
       )
     (transform-post)
-    (set! (-> obj flags) (the-as uint 0))
+    (set! (-> obj flags) (tomb-vibe-flags))
     (set! (-> obj event-hook) (-> (method-of-type tomb-vibe idle) event))
     (cond
       ((logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))
@@ -2336,7 +2243,7 @@ This commonly includes things such as:
       )
     (cond
       ((< 0.0 (-> self volume))
-       (seek! (-> self volume) 0.0 (* 2.0 (-> self clock seconds-per-frame)))
+       (seek! (-> self volume) 0.0 (* 2.0 (seconds-per-frame)))
        (update-vol! (-> self sound) (-> self volume))
        (update! (-> self sound))
        )
@@ -2344,9 +2251,8 @@ This commonly includes things such as:
         (logior! (-> self mask) (process-mask actor-pause))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior tomb-water-trap) sleep-code)
+  :code sleep-code
   )
 
 (defstate running (tomb-water-trap)
@@ -2361,11 +2267,9 @@ This commonly includes things such as:
               )
         )
       )
-    (none)
     )
   :exit (behavior ()
     (set-tombc-electricity-scale! 0.0)
-    (none)
     )
   :trans (behavior ()
     (when (-> self can-exit-running?)
@@ -2375,7 +2279,6 @@ This commonly includes things such as:
             )
         )
       )
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -2394,7 +2297,7 @@ This commonly includes things such as:
                 )
               )
             )
-          (seek! (-> self volume) 1.0 (* 2.0 (-> self clock seconds-per-frame)))
+          (seek! (-> self volume) 1.0 (* 2.0 (seconds-per-frame)))
           (cond
             ((logtest? gp-0 8)
              (set! gp-0 0)
@@ -2441,19 +2344,17 @@ This commonly includes things such as:
               (set! s5-2 #t)
               (set-tombc-electricity-scale! 0.0)
               )
-            (seek! (-> self volume) 0.0 (* 2.0 (-> self clock seconds-per-frame)))
+            (seek! (-> self volume) 0.0 (* 2.0 (seconds-per-frame)))
             (suspend)
             )
           )
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-vol! (-> self sound) (-> self volume))
     (update! (-> self sound))
-    (none)
     )
   )
 
@@ -2472,58 +2373,49 @@ This commonly includes things such as:
 
 ;; WARN: Return type mismatch time-frame vs none.
 (defmethod tomb-water-trap-method-23 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector))
-  (with-pp
-    (let ((s4-0 (new 'stack-no-clear 'collide-query))
-          (s3-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
-          )
-      (set! (-> s4-0 start-pos quad) (-> arg0 quad))
-      (set! (-> s4-0 move-dist quad) (-> s3-1 quad))
-      (let ((v1-3 s4-0))
-        (set! (-> v1-3 radius) 2048.0)
-        (set! (-> v1-3 collide-with) (collide-spec jak bot player-list))
-        (set! (-> v1-3 ignore-process0) obj)
-        (set! (-> v1-3 ignore-process1) #f)
-        (set! (-> v1-3 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
-        (set! (-> v1-3 action-mask) (collide-action solid semi-solid))
+  (let ((s4-0 (new 'stack-no-clear 'collide-query))
+        (s3-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
         )
-      (let ((f30-0 (probe-using-line-sphere *collide-cache* s4-0)))
-        (when (>= f30-0 0.0)
-          (let* ((s2-0 (-> s4-0 best-other-tri collide-ptr))
-                 (s4-1 (if (type? s2-0 collide-shape-prim-sphere)
-                           (the-as collide-shape-prim-sphere s2-0)
-                           )
-                       )
-                 )
-            (when s4-1
-              (let ((s2-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s3-1 f30-0)))
-                (tomb-water-trap-method-24 obj arg0 s2-2 (the int (* 3.0 (rand-vu-float-range 5.0 11.0))))
-                )
-              (let ((v1-10 (vector-reset! (new 'stack-no-clear 'vector)))
-                    (a1-5 (new 'stack-no-clear 'event-message-block))
+    (set! (-> s4-0 start-pos quad) (-> arg0 quad))
+    (set! (-> s4-0 move-dist quad) (-> s3-1 quad))
+    (let ((v1-3 s4-0))
+      (set! (-> v1-3 radius) 2048.0)
+      (set! (-> v1-3 collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-3 ignore-process0) obj)
+      (set! (-> v1-3 ignore-process1) #f)
+      (set! (-> v1-3 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
+      (set! (-> v1-3 action-mask) (collide-action solid semi-solid))
+      )
+    (let ((f30-0 (probe-using-line-sphere *collide-cache* s4-0)))
+      (when (>= f30-0 0.0)
+        (let* ((s2-0 (-> s4-0 best-other-tri collide-ptr))
+               (s4-1 (if (type? s2-0 collide-shape-prim-sphere)
+                         (the-as collide-shape-prim-sphere s2-0)
+                         )
+                     )
+               )
+          (when s4-1
+            (let ((s2-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s3-1 f30-0)))
+              (tomb-water-trap-method-24 obj arg0 s2-2 (the int (* 3.0 (rand-vu-float-range 5.0 11.0))))
+              )
+            (let ((v1-10 (vector-reset! (new 'stack-no-clear 'vector))))
+              (if (send-event
+                    (-> s4-1 cshape process)
+                    'attack
+                    #f
+                    (static-attack-info
+                      ((id (-> obj attack-id)) (invinc-time (seconds 3)) (mode 'shock) (vector v1-10) (shove-up (meters 3)))
+                      )
                     )
-                (set! (-> a1-5 from) (process->ppointer pp))
-                (set! (-> a1-5 num-params) 2)
-                (set! (-> a1-5 message) 'attack)
-                (set! (-> a1-5 param 0) (the-as uint #f))
-                (let ((a0-17 (new 'static 'attack-info :mask (attack-info-mask vector invinc-time mode shove-up id))))
-                  (set! (-> a0-17 id) (-> obj attack-id))
-                  (set! (-> a0-17 invinc-time) (seconds 3))
-                  (set! (-> a0-17 mode) 'shock)
-                  (set! (-> a0-17 vector quad) (-> v1-10 quad))
-                  (set! (-> a0-17 shove-up) 12288.0)
-                  (set! (-> a1-5 param 1) (the-as uint a0-17))
+                  (set! (-> obj harmless-time) (+ (current-time) (seconds 3)))
                   )
-                (if (send-event-function (-> s4-1 cshape process) a1-5)
-                    (set! (-> obj harmless-time) (+ (current-time) (seconds 3)))
-                    )
-                )
               )
             )
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 (defmethod tomb-water-trap-method-24 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector) (arg2 int))
@@ -2682,22 +2574,21 @@ This commonly includes things such as:
 
 (defstate idle (tomb-smash-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger 'cue-chase)
        (set! (-> self button) (process->handle proc))
        (go-virtual open)
        )
       )
     )
-  :code (the-as (function none :behavior tomb-smash-door) sleep-code)
+  :code sleep-code
   )
 
 (defstate open (tomb-smash-door)
   :virtual #t
   :enter (behavior ()
     (set! (-> self state-time) (current-time))
-    (none)
     )
   :trans (behavior ()
     (when (>= (- (current-time) (-> self state-time)) (-> self timeout))
@@ -2729,30 +2620,22 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   )
 
 (defstate close (tomb-smash-door)
   :virtual #t
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 4)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
@@ -2760,7 +2643,6 @@ This commonly includes things such as:
       )
     (send-event (handle->process (-> self button)) 'untrigger)
     (go-virtual idle)
-    (none)
     )
   )
 

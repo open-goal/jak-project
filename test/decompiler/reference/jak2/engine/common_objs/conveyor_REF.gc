@@ -208,7 +208,7 @@ and return it as well.  Otherwise, set it to `0`"
                                     (* f0-10 (-> (the-as (pointer float) (+ (the-as uint (-> obj speed-mult-array)) (* section-idx 4)))))
                                     )
                               )
-                          (vector-float*! a2-8 (-> section pull-dir) (* f0-10 (-> self clock seconds-per-frame)))
+                          (vector-float*! a2-8 (-> section pull-dir) (* f0-10 (seconds-per-frame)))
                           )
                         (send-event proc-focus 'push-trans a2-8 (seconds 10))
                         )
@@ -428,13 +428,12 @@ and return it as well.  Otherwise, set it to `0`"
 ;; failed to figure out what this is:
 (defstate idle (conveyor)
   :virtual #t
-  :code (the-as (function none :behavior conveyor) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (conveyor-method-27 self)
     (if (nonzero? (-> self sound))
         (update! (-> self sound))
         )
-    (none)
     )
   )
 
@@ -548,17 +547,13 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 3)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((t9-0 (-> (method-of-type conveyor idle) post)))
@@ -567,6 +562,5 @@ This commonly includes things such as:
           )
       )
     (ja-post)
-    (none)
     )
   )

@@ -109,6 +109,7 @@
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s4-0 quad) (-> arg1 quad))
     (vector-reflect-flat! arg0 s4-0 arg2)
+    ;; og:preserve-this
     (let* ((s2-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 1.0)) ;; src normalized
            (f28-0 (vector-length s4-0)) ;; src original len
            (f30-0 (vector-length arg0)) ;; dst original len
@@ -280,7 +281,7 @@
          (vf6 :class vf)
          )
     (init-vf0-vector)
-    (.lvf vf1 (&-> arg2 vec quad))
+    (.lvf vf1 (&-> arg2 quad))
     (.lvf vf6 (&-> arg1 quad))
     (.add.vf vf5 vf1 vf1)
     (.add.w.vf vf2 vf0 vf1 :mask #b1)
@@ -326,6 +327,7 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
+    ;; og:preserve-this
     ;; (.sub.vf vf7 vf7 vf7)
     (.xor.vf vf7 vf7 vf7)
     (.lvf vf1 (&-> arg2 vec quad))
@@ -544,6 +546,7 @@
     )
   )
 
+;; og:preserve-this
 ;; hack for the smoothed matrix from vectors to handle cases where they accidentally set turnvf to 0.
 ;; this causes the smoothing to go away on ps2, due to some behavior of inf/nan that differ.
 ;; if we cheat this to a small but nonzero value, it behaves like on ps2.
@@ -560,33 +563,31 @@
    arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
    arg4 is a 'slow down when getting close to the end' limit.
    This is used in rotate-toward-orientation, which is much improved from jak 1."
-  (with-pp
-    (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
-           (f0-1 (vector-dot arg1 arg2))
-           (f0-2 (acos f0-1))
-           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-2)) (int-to-float-nonzero-hack arg4))))
-           (f30-0 (fmax (fmin f0-2 f1-2) (- f1-2)))
-           )
-      (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))
-      )
-    arg0
+  (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
+         (f0-1 (vector-dot arg1 arg2))
+         (f0-2 (acos f0-1))
+         ;; og:preserve-this
+         (f1-2 (fmin (* arg3 (seconds-per-frame)) (/ (* 5.0 (fabs f0-2)) (int-to-float-nonzero-hack arg4))))
+         (f30-0 (fmax (fmin f0-2 f1-2) (- f1-2)))
+         )
+    (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))
     )
+  arg0
   )
 
 (defun matrix-from-two-vectors-the-long-way-smooth! ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
   "Same as above, but rotates you away from the target.
    Note that the 'near the end' smoothing will apply when you're near the target."
-  (with-pp
-    (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
-           (f0-1 (vector-dot arg1 arg2))
-           (f0-3 (- (acos f0-1)))
-           (f1-2 (fmin (* arg3 (-> pp clock seconds-per-frame)) (/ (* 5.0 (fabs f0-3)) (int-to-float-nonzero-hack arg4))))
-           (f30-0 (fmax (fmin f0-3 f1-2) (- f1-2)))
-           )
-      (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))
-      )
-    arg0
+  (let* ((s5-1 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) arg2 arg1) 1.0))
+         (f0-1 (vector-dot arg1 arg2))
+         (f0-3 (- (acos f0-1)))
+         ;; og:preserve-this
+         (f1-2 (fmin (* arg3 (seconds-per-frame)) (/ (* 5.0 (fabs f0-3)) (int-to-float-nonzero-hack arg4))))
+         (f30-0 (fmax (fmin f0-3 f1-2) (- f1-2)))
+         )
+    (matrix-axis-sin-cos! arg0 s5-1 (sin f30-0) (cos f30-0))
     )
+  arg0
   )
 
 (defun quaternion-from-two-vectors-smooth! ((arg0 quaternion) (arg1 vector) (arg2 vector) (arg3 float) (arg4 int))
@@ -687,7 +688,7 @@
         (quaternion-negate! s5-0 s5-0)
         )
     (let ((f30-1 (* 2.0 (acos (-> s5-0 w)))))
-      (set! (-> arg0 quad) (-> s5-0 vec quad))
+      (set! (-> arg0 quad) (-> s5-0 quad))
       (vector-negate! arg0 arg0)
       (if (= (vector-normalize-ret-len! arg0 1.0) 0.0)
           (set! (-> arg0 y) 1.0)
@@ -835,12 +836,14 @@
   "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
   ;; (declare (print-asm))
   (local-vars
+   ;; og:preserve-this float -> uint
    (v1-0 uint)
    (v1-4 uint)
    (v1-5 uint)
    (v1-6 uint)
    (v1-7 uint)
    (v1-10 uint)
+   ;; og:preserve-this float -> uint
    (a0-1 uint)
    (a1-1 uint)
    )
@@ -868,13 +871,13 @@
     (init-vf0-vector)
     (nop!)
     (nop!)
-    (.lvf vf3 (&-> arg2 vector 1 quad))
+    (.lvf vf3 (&-> arg2 quad 1))
     (nop!)
-    (.lvf vf4 (&-> arg2 vector 2 quad))
+    (.lvf vf4 (&-> arg2 quad 2))
     (nop!)
     (.lvf vf5 (&-> arg1 quad))
     (.sub.vf vf6 vf3 vf4)
-    (.lvf vf2 (&-> arg2 vector 0 quad))
+    (.lvf vf2 (&-> arg2 quad 0))
     (.sub.vf vf7 vf3 vf5)
     (.lvf vf1 (&-> arg3 quad))
     (.sub.vf vf8 vf3 vf2)
@@ -895,7 +898,7 @@
     (.add.z.vf vf11 vf11 vf11 :mask #b10)
     (.add.z.vf vf12 vf12 vf12 :mask #b10)
     (.add.z.vf vf13 vf13 vf13 :mask #b10)
-    ;; note: these types were changed to uint to make this copy 64 bits.
+    ;; og:preserve-this these types were changed to uint to make this copy 64 bits.
     (.mov v1-0 vf11)
     (.mov a1-1 vf12)
     (.mov a0-1 vf13)
@@ -965,6 +968,7 @@
 
 (defun point-in-triangle-cross ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector))
   "Check if point is in the triangle using cross product check (so you have to get the order of points right)"
+  ;; og:preserve-this float -> int
   (local-vars (v1-0 int) (a0-1 int) (a1-1 int))
   (rlet ((acc :class vf)
          (vf1 :class vf)
@@ -1009,6 +1013,7 @@
    (.mov a0-1 vf2)
    (.mov a1-1 vf3)
    (.mov v1-0 vf4)
+   ;; og:preserve-this
    (>= (the-as int (logior (logior a0-1 a1-1) v1-0)) 0)
    )
   )
@@ -1198,11 +1203,13 @@
 (defun calculate-basis-functions-vector! ((arg0 vector) (arg1 int) (arg2 float) (arg3 (pointer float)))
   "Calculate polynomial basis for a given control point."
   (local-vars (v1-0 int) (v1-1 object))
+  ;; og:preserve-this
   ;;(.sll v1-0 arg1 2)
   (set! v1-0 (* 4 arg1)) ;; originally used 32-bit asm
   (let ((a1-1 #x3f800000)
         (f3-0 arg2)
         )
+    ;; og:preserve-this
     ;;(.addu v1-1 arg3 v1-0)
     (set! v1-1 (&+ arg3 v1-0))
     (let* ((f1-0 (the-as float a1-1)) ;; trick to load float constant.
@@ -1325,6 +1332,7 @@
      (nop!)
      (nop!)
      (label cfg-11)
+     ;; og:preserve-this
      ;; calculate coefficients for this knot's polynomial, store in s4-0
      (calculate-basis-functions-vector!
       s4-0
@@ -1333,10 +1341,12 @@
       (the-as (pointer float) arg4)
       )
      )
+    ;; og:preserve-this
     ;;(.addiu v1-7 s3-0 -3)
     (set! v1-7 (- s3-0 3))
     (.lvf vf6 s4-0)
     )
+   ;; og:preserve-this
    ;; evaluate polynomial!
    ;;(.sll v1-8 v1-7 4)
    (set! v1-8 (* v1-7 16))
@@ -1497,7 +1507,3 @@
         )
     )
   )
-
-
-
-

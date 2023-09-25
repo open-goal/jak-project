@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/sprite/sprite_common.h"
 
 class GlowRenderer {
@@ -10,6 +11,8 @@ class GlowRenderer {
 
   void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window();
+
+  bool new_mode = true;
 
   // Vertex can hold all possible values for all passes. The total number of vertices is very small
   // so it ends up a lot faster to do a single upload, even if the size is like 50% larger than it
@@ -25,6 +28,7 @@ class GlowRenderer {
   struct {
     bool show_probes = false;
     bool show_probe_copies = false;
+    bool enable_glow_boost = false;
     int num_sprites = 0;
     float glow_boost = 1.f;
   } m_debug;
@@ -32,7 +36,14 @@ class GlowRenderer {
   void add_sprite_pass_2(const SpriteGlowOutput& data, int sprite_idx);
   void add_sprite_pass_3(const SpriteGlowOutput& data, int sprite_idx);
 
+  void add_sprite_new(const SpriteGlowOutput& data, int sprite_idx);
+
+  void probe_and_copy_old(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void probe_and_copy_new(SharedRenderState* render_state, ScopedProfilerNode& prof);
+
   void blit_depth(SharedRenderState* render_state);
+
+  void setup_buffers_for_draws();
 
   void draw_probes(SharedRenderState* render_state,
                    ScopedProfilerNode& prof,
@@ -91,9 +102,13 @@ class GlowRenderer {
 
     GLuint probe_fbo;
     GLuint probe_fbo_rgba_tex;
-    GLuint probe_fbo_zbuf_rb;
+    GLuint probe_fbo_depth_tex;
+    GLuint first_ds_depth_rb;
+    // GLuint probe_fbo_zbuf_rb;
     int probe_fbo_w = 640;
     int probe_fbo_h = 480;
+
+    GLuint depth_texture;
 
     DsFbo downsample_fbos[kDownsampleIterations];
   } m_ogl;
