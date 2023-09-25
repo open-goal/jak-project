@@ -40,21 +40,25 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       {">", ConditionKind::GT},           {"<", ConditionKind::LT},
       {">=", ConditionKind::GEQ},         {"<=", ConditionKind::LEQ}};
 
+  // we may have gotten a macro as a condition, expand it first.
+  // note : use the `condition` arg for errors still so that the user can actually tell what code
+  // went wrong!
+  auto new_c = expand_macro_completely(condition, env);
+
   // possibly a form with an optimizable condition?
-  if (condition.is_pair()) {
-    auto first = pair_car(condition);
-    auto rest = pair_cdr(condition);
+  if (new_c.is_pair()) {
+    auto& first = pair_car(new_c);
+    auto& rest = pair_cdr(new_c);
 
     if (first.is_symbol()) {
       auto fas = first.as_symbol();
 
       // if there's a not, we can just try again to get an optimization with the invert flipped.
       if (fas->name == "not") {
-        auto arg = pair_car(rest);
         if (!pair_cdr(rest).is_empty_list()) {
           throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
-        return compile_condition(arg, env, !invert);
+        return compile_condition(pair_car(rest), env, !invert);
       }
 
       auto& conditions = invert ? conditions_inverted : conditions_normal;
