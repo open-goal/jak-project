@@ -705,63 +705,118 @@ u32 alloc_vagdir_names(u32 heap_sym) {
   return s7.offset;
 }
 
-// std::vector<std::string> valid_levels = {
-//    "default-level", "intro",    "demo",     "title",    "vinroom",   "drillmid", "drill",
-//    "drillb",        "drillmtn", "sewer",    "sewerb",   "sewer",     "sewescb",  "tomba",
-//    "tombb",         "tombc",    "tombd",    "tombe",    "tombext",   "tombboss", "under",
-//    "underb",        "palcab",   "palshaft", "palboss",  "palroof",   "palout",   "throne",
-//    "palent",        "prison",   "forexita", "forexitb", "forresca",  "forrescb", "fordumpa",
-//    "fordumpb",      "fordumpc", "fordumpd", "strip",    "ruins",     "sagehut",  "atoll",
-//    "atollext",      "mountain", "mtnext",   "forest",   "forestb",   "mincan",   "ctywide",
-//    "ctykora",       "ctyasha",  "ctygena",  "ctygenb",  "ctygenc",   "ctysluma", "ctyslumb",
-//    "ctyslumc",      "ctyport",  "ctyfarma", "ctyfarmb", "ctyinda",   "consite",  "consiteb",
-//    "ctyindb",       "ctymarka", "ctymarkb", "ctypal",   "stadium",   "stadiumb", "stadiumc",
-//    "stadiumd",      "skatea",   "garage",   "stadblmp", "onintent",  "kiosk",    "oracle",
-//    "hideout",       "hiphog",   "gungame",  "dig1",     "dig3a",     "dig3b",    "caspad",
-//    "castle",        "casboss",  "casext",   "cascity",  "village1",  "introcst", "nest",
-//    "nestb",         "outrocst", "portwall", "island1",  "skatepark", "halfpipe", "vistest",
-//    "woodstest",     "tobytest", "chartest", "dptest",   "ctyfence",  "4aaron",   "4pal01",
-//    "andrew01",      "bsbs",     "eitest",   "miketest", "tatetest",  "teststdc", "teststdd",
-//    "wasall",        "stadocc"};
-//
-// std::vector<std::string> levels_dumped_lights = {};
-// std::vector<std::string> levels_dumped_regions = {};
-// std::vector<std::string> levels_dumped_samples = {};
-
 inline u64 bool_to_symbol(const bool val) {
   return val ? static_cast<u64>(s7.offset) + true_symbol_offset(g_game_version) : s7.offset;
 }
 
-// u64 pc_has_level_been_dumped_lights(u32 level_name_str) {
-//  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
-//
-//  for (const auto& level : levels_dumped_lights) {
-//    if (level == level_name) {
-//      return bool_to_symbol(true);
-//    }
-//  }
-//
-//  levels_dumped_lights.push_back(level_name);
-//  return bool_to_symbol(false);
-//}
-//
-// u64 pc_has_level_been_dumped_regions(u32 level_name_str) {
-//  auto level_name = std::string(Ptr<String>(level_name_str).c()->data());
-//
-//  for (const auto& level : levels_dumped_regions) {
-//    if (level == level_name) {
-//      return bool_to_symbol(true);
-//    }
-//  }
-//
-//  levels_dumped_regions.push_back(level_name);
-//  return bool_to_symbol(false);
-//}
-
+// TODO - move to common
 void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
   auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
   std::string converted = get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(str);
   strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
+}
+
+#include "curl/curl.h"
+
+static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+  ((std::string*)userp)->append((char*)contents, size * nmemb);
+  return size * nmemb;
+}
+
+// TODO - move into a general background thread process so the game isn't blocked
+// TODO - add a TTL to this
+std::unordered_map<std::string, std::vector<std::pair<std::string, float>>>
+    external_speedrun_time_cache = {};
+
+const std::unordered_map<std::string, std::string> external_speedrun_lookup_urls = {
+    {"any",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wdmze42q?embed=players"},
+    {"anyhoverless",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/xd1rxxrk?embed=players"},
+    {"allmissions",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/mkeon9d6?embed=players"},
+    {"100",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/7dg8q424?embed=players"},
+    {"anyorbs",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/wkpj7vkr?embed=players"},
+    {"anyhero",
+     "https://www.speedrun.com/api/v1/leaderboards/ok6qlo1g/category/vdo0jodp?embed=players"}};
+
+s32 pc_fetch_external_speedrun_times(u32 speedrun_id_ptr, u32 highscore_array_ptr) {
+  auto speedrun_id = std::string(Ptr<String>(speedrun_id_ptr).c()->data());
+  // TODO - ensure the id is valid
+
+  // First check to see if we've already retrieved this info
+  if (external_speedrun_time_cache.find(speedrun_id) != external_speedrun_time_cache.end()) {
+    return external_speedrun_time_cache.at(speedrun_id).size();
+  } else {
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(true);
+    intern_from_c("*pc-rpc-error?")->value() = bool_to_symbol(false);
+    // otherwise, hit the URL
+    // TODO - move this into some common util function
+    CURL* curl;
+    CURLcode res;
+    std::string readBuffer;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    curl = curl_easy_init();
+    if (curl) {
+      const auto& url = external_speedrun_lookup_urls.at(speedrun_id);
+      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+      /* cache the CA cert bundle in memory for a week */
+      curl_easy_setopt(curl, CURLOPT_CA_CACHE_TIMEOUT, 604800L);
+      curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 10000L);
+      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+      /* Perform the request, res will get the return code */
+      res = curl_easy_perform(curl);
+      /* Check for errors */
+      if (res != CURLE_OK) {
+        intern_from_c("*pc-rpc-error?")->value() = bool_to_symbol(true);
+        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+      } else {
+        lg::info("[cURL:{}]: {}", speedrun_id, readBuffer);
+        // Parse the response
+        // TODO - very unsafe, no checking of anything here!
+        nlohmann::json data = parse_commented_json(readBuffer, "TODO");
+        auto players = data.at("data").at("players").at("data");
+        auto runs = data.at("data").at("runs");
+        std::vector<std::pair<std::string, float>> times = {};
+        for (const auto& run_info : runs) {
+          std::pair<std::string, float> time_info;
+          if (players.size() > times.size() && players.at(times.size()).contains("names") &&
+              players.at(times.size()).at("names").contains("international")) {
+            time_info.first = players.at(times.size()).at("names").at("international");
+          } else {
+            time_info.first = "Unknown";  // TODO - guest name, forget the field to check for
+          }
+          if (run_info.contains("run") && run_info.at("run").contains("times") &&
+              run_info.at("run").at("times").contains("primary_t")) {
+            time_info.second = run_info.at("run").at("times").at("primary_t");
+          } else {
+            time_info.second = -1;  // TODO - should probably just skip if they dont have a time
+          }
+
+          times.push_back(time_info);
+        }
+        external_speedrun_time_cache[speedrun_id] = times;
+        return times.size();
+      }
+      /* always cleanup */
+      curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+    intern_from_c("*pc-waiting-on-rpc?*")->value() = bool_to_symbol(false);
+  }
+
+  return 0;
+}
+
+s32 pc_fetch_external_race_times(u32 race_id, u32 highscore_array_ptr) {
+  return 0;
 }
 
 void InitMachine_PCPort() {
@@ -788,10 +843,10 @@ void InitMachine_PCPort() {
   // debugging tools
   make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
 
-  /*make_function_symbol_from_c("has-level-been-dumped-lights?",
-                              (void*)pc_has_level_been_dumped_lights);
-  make_function_symbol_from_c("has-level-been-dumped-regions?",
-                              (void*)pc_has_level_been_dumped_regions);*/
+  // external RPCs
+  make_function_symbol_from_c("pc-fetch-external-race-times", (void*)pc_fetch_external_race_times);
+  make_function_symbol_from_c("pc-fetch-external-speedrun-times",
+                              (void*)pc_fetch_external_speedrun_times);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();

@@ -183,6 +183,16 @@ include_directories(./)
 # build templating engine library
 include_directories(SYSTEM third-party/inja)
 
+# libcurl for HTTP requests
+# TODO - OpenSSL for linux/macOS?
+set(CURL_USE_SCHANNEL ON)
+include_directories(third-party/curl/include)
+if(STATICALLY_LINK)
+    build_third_party_lib(curl libcurl_static)
+else()
+    build_third_party_lib(curl libcurl_shared)
+endif()
+
 # build repl library
 build_third_party_lib(replxx replxx)
 
