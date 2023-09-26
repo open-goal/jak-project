@@ -66,32 +66,32 @@
   )
 
 
-(defmethod basebutton-method-33 mtn-dice-button ((obj mtn-dice-button))
+(defmethod basebutton-method-33 mtn-dice-button ((this mtn-dice-button))
   "TODO - joint stuff"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-dice-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
   (cond
-    ((logtest? (-> obj button-status) (button-status pressed))
-     (let ((s5-1 (-> obj skel root-channel 0)))
+    ((logtest? (-> this button-status) (button-status pressed))
+     (let ((s5-1 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-1
-         (the-as art-joint-anim (-> obj draw art-group data 3))
+         (the-as art-joint-anim (-> this draw art-group data 3))
          num-func-identity
          )
        (set! (-> s5-1 frame-num)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 3)) frames num-frames) -1))
              )
        )
      )
     (else
-      (let ((s5-2 (-> obj skel root-channel 0)))
+      (let ((s5-2 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-2
-          (the-as art-joint-anim (-> obj draw art-group data 3))
+          (the-as art-joint-anim (-> this draw art-group data 3))
           num-func-identity
           )
         (set! (-> s5-2 frame-num) 0.0)
@@ -102,9 +102,9 @@
   (none)
   )
 
-(defmethod basebutton-method-34 mtn-dice-button ((obj mtn-dice-button))
+(defmethod basebutton-method-34 mtn-dice-button ((this mtn-dice-button))
   "TODO - collision stuff"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -120,17 +120,17 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod prepare-trigger-event! mtn-dice-button ((obj mtn-dice-button))
+(defmethod prepare-trigger-event! mtn-dice-button ((this mtn-dice-button))
   "Sets `event-going-down` to `'trigger`"
-  (logior! (-> obj button-status) (button-status button-status-4))
-  (logior! (-> obj button-status) (button-status pressed))
-  (set! (-> obj event-going-down) 'trigger)
+  (logior! (-> this button-status) (button-status button-status-4))
+  (logior! (-> this button-status) (button-status pressed))
+  (set! (-> this event-going-down) 'trigger)
   0
   (none)
   )
@@ -319,15 +319,15 @@
               :bounds (static-spherem 0 0 0 100)
               )
 
-(defmethod mtn-dice-method-25 mtn-dice ((obj mtn-dice) (arg0 int))
-  (let ((s4-0 (-> obj face-matrix arg0)))
+(defmethod mtn-dice-method-25 mtn-dice ((this mtn-dice) (arg0 int))
+  (let ((s4-0 (-> this face-matrix arg0)))
     (dotimes (s3-0 6)
-      (let* ((v1-4 (-> obj face-matrix s3-0))
+      (let* ((v1-4 (-> this face-matrix s3-0))
              (f0-2 (fabs (vector-dot (the-as vector s4-0) (the-as vector v1-4))))
              )
-        (when (and (!= s3-0 arg0) (zero? (-> obj face-status s3-0)) (< f0-2 0.001))
-          (set! (-> obj face-status s3-0) 1)
-          (mtn-dice-method-25 obj s3-0)
+        (when (and (!= s3-0 arg0) (zero? (-> this face-status s3-0)) (< f0-2 0.001))
+          (set! (-> this face-status s3-0) 1)
+          (mtn-dice-method-25 this s3-0)
           )
         )
       )
@@ -356,12 +356,12 @@
         )
       )
     (sound-play "dice-sink")
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (set! (-> self draw color-mult quad) (-> self color quad))
     (cond
-      ((>= (- (current-time) (-> self state-time)) (seconds 0.5))
+      ((time-elapsed? (-> self state-time) (seconds 0.5))
        (+! (-> self speed-anim) (* -0.5 (seconds-per-frame) (-> self time-anim)))
        (+! (-> self speed-anim) (* -6.0 (seconds-per-frame) (-> self speed-anim)))
        (+! (-> self time-anim) (-> self speed-anim))
@@ -373,7 +373,7 @@
         (set! (-> self active) (the-as uint 3))
         )
       )
-    (when (and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (!= (-> self active) 2))
+    (when (and (time-elapsed? (-> self state-time) (seconds 0.5)) (!= (-> self active) 2))
       (set! (-> self active) (the-as uint 2))
       (dotimes (gp-0 6)
         (matrix-rotate-xyz! (-> self face-matrix gp-0) (-> *dice-angle-array* gp-0))
@@ -405,7 +405,7 @@
             (+ (-> self face-matrix-back v1-51 trans y) (* 4096.0 (-> self time-anim)))
             )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 2))
+    (when (time-elapsed? (-> self state-time) (seconds 2))
       (set! (-> self active) (-> self first))
       (go-virtual idle)
       )
@@ -414,7 +414,7 @@
   :post transform-post
   )
 
-(defmethod mtn-dice-method-26 mtn-dice ((obj mtn-dice) (arg0 process-focusable) (arg1 touching-shapes-entry))
+(defmethod mtn-dice-method-26 mtn-dice ((this mtn-dice) (arg0 process-focusable) (arg1 touching-shapes-entry))
   (local-vars (sv-96 vector) (sv-112 vector) (sv-128 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -443,17 +443,17 @@
             )
           (let ((s1-1 (-> arg1 head)))
             (while s1-1
-              (let ((v1-4 (get-touched-prim s1-1 (-> obj root) arg1)))
+              (let ((v1-4 (get-touched-prim s1-1 (-> this root) arg1)))
                 (-> v1-4 cshape)
                 (set! sv-128 (new 'stack-no-clear 'vector))
                 (set! (-> sv-128 quad) (the-as uint128 0))
                 (set! sv-112 (new 'stack-no-clear 'vector))
                 (let ((s0-1 (new 'stack-no-clear 'vector)))
                   (new 'stack-no-clear 'vector)
-                  (when (>= (-> obj face-status (-> v1-4 prim-id)) 0)
-                    (set! (-> sv-128 quad) (-> obj face-matrix (-> v1-4 prim-id) quad 0))
-                    (set! (-> sv-128 w) (- (vector-dot (-> obj face-matrix (-> v1-4 prim-id) trans) sv-128)))
-                    (set! (-> sv-112 quad) (-> obj face-matrix (-> v1-4 prim-id) trans quad))
+                  (when (>= (-> this face-status (-> v1-4 prim-id)) 0)
+                    (set! (-> sv-128 quad) (-> this face-matrix (-> v1-4 prim-id) quad 0))
+                    (set! (-> sv-128 w) (- (vector-dot (-> this face-matrix (-> v1-4 prim-id) trans) sv-128)))
+                    (set! (-> sv-112 quad) (-> this face-matrix (-> v1-4 prim-id) trans quad))
                     (let ((f0-4 (vector4-dot sv-128 (-> s4-0 trans)))
                           (f28-0 (vector-dot sv-128 s3-1))
                           )
@@ -482,7 +482,7 @@
                               )
                           )
                         (let ((a0-40 sv-112))
-                          (let ((v1-8 (-> obj face-matrix (-> v1-4 prim-id) trans)))
+                          (let ((v1-8 (-> this face-matrix (-> v1-4 prim-id) trans)))
                             (let ((a1-26 sv-128))
                               (let ((a2-10 16384.0))
                                 (.mov vf7 a2-10)
@@ -498,7 +498,7 @@
                           )
                         (vector-negate-in-place! sv-128)
                         (set! f28-0 (- f28-0))
-                        (if (!= (-> obj free-face) 5)
+                        (if (!= (-> this free-face) 5)
                             (set! f28-0 1.0)
                             )
                         )
@@ -537,7 +537,7 @@
     )
   )
 
-(defmethod mtn-dice-method-27 mtn-dice ((obj mtn-dice) (arg0 collide-shape) (arg1 process-focusable) (arg2 touching-shapes-entry))
+(defmethod mtn-dice-method-27 mtn-dice ((this mtn-dice) (arg0 collide-shape) (arg1 process-focusable) (arg2 touching-shapes-entry))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -553,9 +553,12 @@
                  )
            )
       (when s0-0
-        (let ((s5-1
-                ((method-of-type touching-prims-entry get-touched-prim) (the-as touching-prims-entry arg0) (-> obj root) arg2)
-                )
+        (let ((s5-1 ((method-of-type touching-prims-entry get-touched-prim)
+                     (the-as touching-prims-entry arg0)
+                     (-> this root)
+                     arg2
+                     )
+                    )
               )
           (-> s5-1 cshape)
           (let ((s1-0 (new-stack-vector0))
@@ -563,7 +566,7 @@
                 (s3-1 (new 'stack-no-clear 'vector))
                 (s4-1 (new 'stack-no-clear 'vector))
                 )
-            (let ((v1-6 (-> obj face-matrix (-> s5-1 prim-id))))
+            (let ((v1-6 (-> this face-matrix (-> s5-1 prim-id))))
               (set! (-> s1-0 quad) (-> v1-6 vector 0 quad))
               (set! (-> s1-0 w) (- (vector-dot (-> v1-6 trans) s1-0)))
               (set! (-> s4-1 quad) (-> v1-6 trans quad))
@@ -590,11 +593,11 @@
             (set! (-> s2-0 y) 1.0)
             (vector-cross! s3-1 s2-0 s1-0)
             (vector-normalize! s3-1 1.0)
-            (set! (-> obj rot-axis quad) (-> s3-1 quad))
-            (set! (-> obj rot-org quad) (-> s4-1 quad))
+            (set! (-> this rot-axis quad) (-> s3-1 quad))
+            (set! (-> this rot-org quad) (-> s4-1 quad))
             )
-          (set! (-> obj face-status (-> s5-1 prim-id)) 1)
-          (mtn-dice-method-25 obj (the-as int (-> s5-1 prim-id)))
+          (set! (-> this face-status (-> s5-1 prim-id)) 1)
+          (mtn-dice-method-25 this (the-as int (-> s5-1 prim-id)))
           )
         )
       )
@@ -856,9 +859,9 @@
     )
   :trans (behavior ()
     (if (nonzero? (-> self curtime))
-        (set! (-> self first-touch-time) (current-time))
+        (set-time! (-> self first-touch-time))
         )
-    (set! (-> self curtime) (current-time))
+    (set-time! (-> self curtime))
     (when (and (zero? (-> self active)) (dice-wrong-way?))
       )
     )
@@ -938,7 +941,7 @@
         (set! (-> a0-2 trans quad) t0-1)
         )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self time-anim) 1.0)
     (set! (-> self speed-anim) -0.5)
     )
@@ -959,7 +962,7 @@
       (set! (-> self time-anim) 0.0)
       (set! (-> self speed-anim) (- (-> self speed-anim)))
       )
-    (if (>= (- (current-time) (-> self state-time)) (seconds 0.7))
+    (if (time-elapsed? (-> self state-time) (seconds 0.7))
         (set! (-> self time-anim) 0.0)
         )
     (let ((s4-0 (new 'stack-no-clear 'matrix))
@@ -981,7 +984,7 @@
             )
         )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.7))
+    (when (time-elapsed? (-> self state-time) (seconds 0.7))
       (dotimes (v1-34 6)
         (when (= (-> self face-status v1-34) 1)
           (set! (-> self face-status v1-34) 0)
@@ -1002,7 +1005,7 @@
   :enter (behavior ()
     (set! (-> self time-anim) 0.0)
     (set! (-> self speed-anim) 0.0)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (sound-play "dice-sink")
     )
   :trans (behavior ()
@@ -1013,7 +1016,7 @@
     (dotimes (v1-5 6)
       (+! (-> self face-matrix v1-5 trans y) (* 4096.0 (-> self time-anim)))
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 1))
+    (when (time-elapsed? (-> self state-time) (seconds 1))
       (dotimes (v1-11 6)
         (when (= (-> self face-status v1-11) 1)
           (set! (-> self face-status v1-11) 0)
@@ -1291,14 +1294,14 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-dice ((obj mtn-dice) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-dice ((this mtn-dice) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 7))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -1355,24 +1358,24 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-23 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-23 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-dice" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj skel postbind-function) dice-joint-callback)
-  (set! (-> obj first) (the-as uint 0))
+  (set! (-> this skel postbind-function) dice-joint-callback)
+  (set! (-> this first) (the-as uint 0))
   (let ((v1-30 (res-lump-value arg0 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
     (if (= (the-as uint v1-30) 2)
-        (set! (-> obj first) (the-as uint 1))
+        (set! (-> this first) (the-as uint 1))
         )
     )
-  (let* ((a0-48 (the int (* 0.00024414062 (-> obj root trans x))))
-         (v1-37 (the int (* 0.00024414062 (-> obj root trans y))))
-         (a1-21 (the int (* 0.00024414062 (-> obj root trans z))))
+  (let* ((a0-48 (the int (* 0.00024414062 (-> this root trans x))))
+         (v1-37 (the int (* 0.00024414062 (-> this root trans y))))
+         (a1-21 (the int (* 0.00024414062 (-> this root trans z))))
          (a0-49 (- a0-48 *dice-offset-x*))
          (a2-13 (- a1-21 *dice-offset-z*))
          (a1-22 (+ a0-49 1))
@@ -1383,55 +1386,55 @@ This commonly includes things such as:
          (a1-24 (+ a1-23 *dice-offset-x*))
          (a0-52 (+ a0-51 *dice-offset-z*))
          )
-    (set! (-> obj root trans x) (* 4096.0 (the float a1-24)))
-    (set! (-> obj root trans y) (* 4096.0 (the float v1-38)))
-    (set! (-> obj root trans z) (* 4096.0 (the float a0-52)))
+    (set! (-> this root trans x) (* 4096.0 (the float a1-24)))
+    (set! (-> this root trans y) (* 4096.0 (the float v1-38)))
+    (set! (-> this root trans z) (* 4096.0 (the float a0-52)))
     )
   (dotimes (s4-2 6)
-    (matrix-rotate-xyz! (-> obj face-matrix s4-2) (-> *dice-angle-array* s4-2))
-    (set! (-> obj face-matrix s4-2 trans quad) (-> *dice-position-array* s4-2 quad))
-    (vector+! (-> obj face-matrix s4-2 trans) (-> obj face-matrix s4-2 trans) (-> obj root trans))
-    (+! (-> obj face-matrix s4-2 trans y) 8192.0)
+    (matrix-rotate-xyz! (-> this face-matrix s4-2) (-> *dice-angle-array* s4-2))
+    (set! (-> this face-matrix s4-2 trans quad) (-> *dice-position-array* s4-2 quad))
+    (vector+! (-> this face-matrix s4-2 trans) (-> this face-matrix s4-2 trans) (-> this root trans))
+    (+! (-> this face-matrix s4-2 trans y) 8192.0)
     )
   (mem-set32! (the-as pointer *dice-blocked-array*) 13 0)
   (set! (-> *dice-blocked-array* 1) (the-as uint 256))
   (set! *dice-back-way-num* 0)
   (set-vector! *dice-last-safe-position* -2603417.5 384983.03 -107683.84 1.0)
-  (set-vector! (-> obj color) 0.5 0.5 0.5 1.0)
-  (set! (-> obj free-face) (the-as uint 6))
-  (set! (-> obj watervol) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
-  (set! (-> obj hint-count) 0.0)
-  (set! (-> obj active) (-> obj first))
-  (setup-masks (-> obj draw) 0 -1)
-  (setup-masks (-> obj draw) 1 0)
+  (set-vector! (-> this color) 0.5 0.5 0.5 1.0)
+  (set! (-> this free-face) (the-as uint 6))
+  (set! (-> this watervol) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (set! (-> this hint-count) 0.0)
+  (set! (-> this active) (-> this first))
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 1 0)
   (cond
     ((task-node-closed? (game-task-node mountain-shard-dice))
      (let ((v1-71 (res-lump-value arg0 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
        (dotimes (a0-76 6)
          (let ((a1-42 (-> *mtn-dice-done-info* (+ a0-76 (* 6 (the-as int (+ v1-71 -1)))))))
-           (set! (-> obj face-matrix a0-76 vector 0 x) (-> a1-42 mat 0))
-           (set! (-> obj face-matrix a0-76 vector 0 y) (-> a1-42 mat 1))
-           (set! (-> obj face-matrix a0-76 vector 0 z) (-> a1-42 mat 2))
-           (set! (-> obj face-matrix a0-76 vector 0 w) 0.0)
-           (set! (-> obj face-matrix a0-76 vector 1 x) (-> a1-42 mat 3))
-           (set! (-> obj face-matrix a0-76 vector 1 y) (-> a1-42 mat 4))
-           (set! (-> obj face-matrix a0-76 vector 1 z) (-> a1-42 mat 5))
-           (set! (-> obj face-matrix a0-76 vector 1 w) 0.0)
-           (set! (-> obj face-matrix a0-76 vector 2 x) (-> a1-42 mat 6))
-           (set! (-> obj face-matrix a0-76 vector 2 y) (-> a1-42 mat 7))
-           (set! (-> obj face-matrix a0-76 vector 2 z) (-> a1-42 mat 8))
-           (set! (-> obj face-matrix a0-76 vector 2 w) 0.0)
-           (set! (-> obj face-matrix a0-76 trans x) (-> a1-42 mat 9))
-           (set! (-> obj face-matrix a0-76 trans y) (-> a1-42 mat 10))
-           (set! (-> obj face-matrix a0-76 trans z) (-> a1-42 mat 11))
+           (set! (-> this face-matrix a0-76 vector 0 x) (-> a1-42 mat 0))
+           (set! (-> this face-matrix a0-76 vector 0 y) (-> a1-42 mat 1))
+           (set! (-> this face-matrix a0-76 vector 0 z) (-> a1-42 mat 2))
+           (set! (-> this face-matrix a0-76 vector 0 w) 0.0)
+           (set! (-> this face-matrix a0-76 vector 1 x) (-> a1-42 mat 3))
+           (set! (-> this face-matrix a0-76 vector 1 y) (-> a1-42 mat 4))
+           (set! (-> this face-matrix a0-76 vector 1 z) (-> a1-42 mat 5))
+           (set! (-> this face-matrix a0-76 vector 1 w) 0.0)
+           (set! (-> this face-matrix a0-76 vector 2 x) (-> a1-42 mat 6))
+           (set! (-> this face-matrix a0-76 vector 2 y) (-> a1-42 mat 7))
+           (set! (-> this face-matrix a0-76 vector 2 z) (-> a1-42 mat 8))
+           (set! (-> this face-matrix a0-76 vector 2 w) 0.0)
+           (set! (-> this face-matrix a0-76 trans x) (-> a1-42 mat 9))
+           (set! (-> this face-matrix a0-76 trans y) (-> a1-42 mat 10))
+           (set! (-> this face-matrix a0-76 trans z) (-> a1-42 mat 11))
            )
-         (set! (-> obj face-matrix a0-76 trans w) 1.0)
+         (set! (-> this face-matrix a0-76 trans w) 1.0)
          )
        )
-     (go (method-of-object obj idle-done))
+     (go (method-of-object this idle-done))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -1451,39 +1454,39 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 7)
               )
 
-(defmethod get-art-group mtn-plat-elevator ((obj mtn-plat-elevator))
+(defmethod get-art-group mtn-plat-elevator ((this mtn-plat-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-mtn-plat-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod set-ambient-sound! mtn-plat-elevator ((obj mtn-plat-elevator))
+(defmethod set-ambient-sound! mtn-plat-elevator ((this mtn-plat-elevator))
   "Sets the elevator's [[ambient-sound]] up"
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "mtn-elevator-lp" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "mtn-elevator-lp" :fo-max 70) (-> this root trans))
         )
   0
   (none)
   )
 
-(defmethod move-between-points mtn-plat-elevator ((obj mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points mtn-plat-elevator ((this mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
 @param point-b The second point fetched from the path
 @see [[path-control]] and [[elevator]]"
-  (let ((s4-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg1 'interp))
-        (a0-3 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) arg2 'interp))
+  (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
+        (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
         )
     (and (< (-> a0-3 y) (-> s4-0 y))
-         (< (-> arg0 y) (+ -4096.0 (-> obj root trans y)))
+         (< (-> arg0 y) (+ -4096.0 (-> this root trans y)))
          (< (vector-vector-xz-distance a0-3 arg0) 24576.0)
          )
     )
   )
 
-(defmethod init-plat-collision! mtn-plat-elevator ((obj mtn-plat-elevator))
+(defmethod init-plat-collision! mtn-plat-elevator ((this mtn-plat-elevator))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -1499,7 +1502,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
@@ -1552,9 +1555,9 @@ This commonly includes things such as:
   :post plat-post
   )
 
-(defmethod init-plat-collision! mtn-plat-updown ((obj mtn-plat-updown))
+(defmethod init-plat-collision! mtn-plat-updown ((this mtn-plat-updown))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -1570,51 +1573,51 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-updown ((obj mtn-plat-updown) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-plat-updown ((this mtn-plat-updown) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-plat-updown" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((a0-5 (-> obj skel root-channel 0)))
-    (set! (-> a0-5 frame-group) (if (> (-> obj skel active-channels) 0)
-                                    (-> obj skel root-channel 0 frame-group)
+  (let ((a0-5 (-> this skel root-channel 0)))
+    (set! (-> a0-5 frame-group) (if (> (-> this skel active-channels) 0)
+                                    (-> this skel root-channel 0 frame-group)
                                     )
           )
     (set! (-> a0-5 param 0) 1.0)
     (set! (-> a0-5 frame-num) 0.0)
     (joint-control-channel-group!
       a0-5
-      (if (> (-> obj skel active-channels) 0)
-          (-> obj skel root-channel 0 frame-group)
+      (if (> (-> this skel active-channels) 0)
+          (-> this skel root-channel 0 frame-group)
           )
       num-func-loop!
       )
     )
   (ja-post)
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 arg0 #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (let ((a1-7 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-24 0))
-      (if (not (logtest? (-> obj fact options) (actor-option loop)))
+      (if (not (logtest? (-> this fact options) (actor-option loop)))
           (set! v1-24 (logior v1-24 1))
           )
       (set! (-> a1-7 sync-type) 'sync-eased)
@@ -1627,17 +1630,17 @@ This commonly includes things such as:
     (set! (-> a1-7 ease-out) 0.15)
     (set! (-> a1-7 pause-in) 0.2)
     (set! (-> a1-7 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-7)
+    (initialize! (-> this sync) a1-7)
     )
   (cond
-    ((logtest? (-> obj path flags) (path-control-flag not-found))
-     (go (method-of-object obj idle))
+    ((logtest? (-> this path flags) (path-control-flag not-found))
+     (go (method-of-object this idle))
      )
-    ((> (-> obj sync period) 0)
-     (go (method-of-object obj active))
+    ((> (-> this sync period) 0)
+     (go (method-of-object this active))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -1692,8 +1695,8 @@ This commonly includes things such as:
     )
   )
 
-(defmethod mtn-plat-eject-method-22 mtn-plat-eject ((obj mtn-plat-eject))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod mtn-plat-eject-method-22 mtn-plat-eject ((this mtn-plat-eject))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -1708,39 +1711,39 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-eject ((obj mtn-plat-eject) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-plat-eject ((this mtn-plat-eject) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (mtn-plat-eject-method-22 obj)
-  (process-drawable-from-entity! obj arg0)
+  (mtn-plat-eject-method-22 this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-plat-eject" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj dest-pos quad) (-> obj root trans quad))
+  (set! (-> this dest-pos quad) (-> this root trans quad))
   (let ((s5-2 (new 'stack-no-clear 'vector)))
     (set! (-> s5-2 x) 0.0)
     (set! (-> s5-2 y) 0.0)
     (set! (-> s5-2 z) -40960.0)
     (set! (-> s5-2 w) 1.0)
-    (vector-orient-by-quat! s5-2 s5-2 (-> obj root quat))
-    (vector+! (-> obj root trans) (-> obj root trans) s5-2)
+    (vector-orient-by-quat! s5-2 s5-2 (-> this root quat))
+    (vector+! (-> this root trans) (-> this root trans) s5-2)
     )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj eject))
-      (go (method-of-object obj wait))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this eject))
+      (go (method-of-object this wait))
       )
   (none)
   )
@@ -1786,9 +1789,9 @@ This commonly includes things such as:
   :post plat-post
   )
 
-(defmethod init-plat-collision! mtn-plat-long ((obj mtn-plat-long))
+(defmethod init-plat-collision! mtn-plat-long ((this mtn-plat-long))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -1804,36 +1807,36 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-long ((obj mtn-plat-long) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-plat-long ((this mtn-plat-long) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-plat-long" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (stop-bouncing! obj)
-  (update-transforms (-> obj root))
-  (base-plat-method-32 obj)
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (stop-bouncing! this)
+  (update-transforms (-> this root))
+  (base-plat-method-32 this)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
   (let ((a1-5 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-13 0))
-      (if (not (logtest? (-> obj fact options) (actor-option loop)))
+      (if (not (logtest? (-> this fact options) (actor-option loop)))
           (set! v1-13 (logior v1-13 1))
           )
       (set! (-> a1-5 sync-type) 'sync-linear)
@@ -1842,9 +1845,9 @@ This commonly includes things such as:
     (set! (-> a1-5 entity) arg0)
     (set! (-> a1-5 period) (the-as uint 1200))
     (set! (-> a1-5 percent) 0.0)
-    (initialize! (-> obj sync) a1-5)
+    (initialize! (-> this sync) a1-5)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1886,7 +1889,7 @@ This commonly includes things such as:
       )
     (set-setting! 'entity-name "camera-259" 0.0 0)
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 1))
+      (until (time-elapsed? gp-0 (seconds 1))
         (suspend)
         )
       )
@@ -1896,7 +1899,7 @@ This commonly includes things such as:
       (ja :num! (seek!))
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 1))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
@@ -1909,14 +1912,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-gate ((obj mtn-gate) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-gate ((this mtn-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1943,25 +1946,25 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-gate" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-push! 1 0)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 3))
+      (the-as art-joint-anim (-> this draw art-group data 3))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1984,11 +1987,11 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch process-drawable vs mtn-aval-rocks.
-(defmethod relocate mtn-aval-rocks ((obj mtn-aval-rocks) (arg0 int))
-  (if (nonzero? (-> obj rock-data))
-      (&+! (-> obj rock-data) arg0)
+(defmethod relocate mtn-aval-rocks ((this mtn-aval-rocks) (arg0 int))
+  (if (nonzero? (-> this rock-data))
+      (&+! (-> this rock-data) arg0)
       )
-  (the-as mtn-aval-rocks ((method-of-type process-drawable relocate) obj arg0))
+  (the-as mtn-aval-rocks ((method-of-type process-drawable relocate) this arg0))
   )
 
 (deftype mtn-aval-rocks-shadow (process-drawable)
@@ -2368,7 +2371,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-aval-rocks ((obj mtn-aval-rocks) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-aval-rocks ((this mtn-aval-rocks) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2376,8 +2379,8 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 collide-shape-prim-sphere) (sv-48 collide-shape-prim-sphere) (sv-64 vector))
-  (stack-size-set! (-> obj main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (stack-size-set! (-> this main-thread) 512)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 49) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 50))
@@ -2466,41 +2469,43 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-27 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-27 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) 32768.0)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) 32768.0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-aval-rocks-1" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj skel status) (joint-control-status sync-math))
-  (set! (-> obj art-name) (the-as symbol "mtn-aval-rocks-1"))
-  (set! (-> obj anim)
+  (logior! (-> this skel status) (joint-control-status sync-math))
+  (set! (-> this art-name) (the-as symbol "mtn-aval-rocks-1"))
+  (set! (-> this anim)
         (new 'static 'spool-anim :name "mtn-aval-rocks-1" :anim-name "1-fall" :parts 8 :command-list '())
         )
-  (set! (-> obj loop-id) (new-sound-id))
-  (set! (-> obj rock-data) (new 'process 'vector-array (-> obj node-list length)))
-  (dotimes (v1-42 (-> obj node-list length))
+  (set! (-> this loop-id) (new-sound-id))
+  (set! (-> this rock-data) (new 'process 'vector-array (-> this node-list length)))
+  (dotimes (v1-42 (-> this node-list length))
     (let* ((a0-21 *game-info*)
            (a1-13 (the-as number (+ (-> a0-21 attack-id) 1)))
            )
       (set! (-> a0-21 attack-id) (the-as uint a1-13))
-      (set! (-> obj rock-data data v1-42 z) (the-as float a1-13))
+      (set! (-> this rock-data data v1-42 z) (the-as float a1-13))
       )
-    (set! (-> obj rock-data data v1-42 w) 0.0)
+    (set! (-> this rock-data data v1-42 w) 0.0)
     )
-  (let ((a2-7 (matrix<-transformq! (-> obj node-list data 0 bone transform) (the-as transformq (-> obj root trans))))
+  (let ((a2-7
+          (matrix<-transformq! (-> this node-list data 0 bone transform) (the-as transformq (-> this root trans)))
+          )
         (a1-17 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a1-17 quad) (-> obj draw bounds quad))
+    (set! (-> a1-17 quad) (-> this draw bounds quad))
     (set! (-> a1-17 w) 1.0)
-    (vector-matrix*! (-> obj draw origin) a1-17 a2-7)
+    (vector-matrix*! (-> this draw origin) a1-17 a2-7)
     )
-  (set! (-> obj draw origin w) (-> obj draw bounds w))
-  (go (method-of-object obj idle))
+  (set! (-> this draw origin w) (-> this draw bounds w))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -2545,16 +2550,16 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
     )
   :trans (behavior ()
     (logclear! (-> self flags) (mtn-plat-flags mtpflags-0))
     (plat-trans)
     (if (not (logtest? (-> self flags) (mtn-plat-flags mtpflags-0)))
-        (set! (-> self ride-timer) (current-time))
+        (set-time! (-> self ride-timer))
         )
-    (let ((v1-10 (and (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
+    (let ((v1-10 (and (time-elapsed? (-> self ride-timer) (seconds 0.5))
                       (logtest? (-> self flags) (mtn-plat-flags mtpflags-0))
                       (if (logtest? (-> self flags) (mtn-plat-flags mtpflags-1))
                           (and *target* (process-grab? *target* #f))
@@ -2627,7 +2632,7 @@ This commonly includes things such as:
     )
   :trans (behavior ()
     (plat-trans)
-    (when (>= (- (current-time) (-> self ride-timer)) (seconds 1))
+    (when (time-elapsed? (-> self ride-timer) (seconds 1))
       (cond
         ((= (-> self path-pos) 1.0)
          (set! (-> self dest-pos) 0.0)
@@ -2644,14 +2649,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod mtn-plat-return-method-37 mtn-plat-return ((obj mtn-plat-return))
-  (go (method-of-object obj waiting))
+(defmethod mtn-plat-return-method-37 mtn-plat-return ((this mtn-plat-return))
+  (go (method-of-object this waiting))
   (none)
   )
 
-(defmethod init-plat-collision! mtn-plat-return ((obj mtn-plat-return))
+(defmethod init-plat-collision! mtn-plat-return ((this mtn-plat-return))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -2667,43 +2672,43 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
-(defmethod init-from-entity! mtn-plat-return ((obj mtn-plat-return) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-plat-return ((this mtn-plat-return) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-plat-return" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (stop-bouncing! obj)
-  (set! (-> obj flags) (mtn-plat-flags))
-  (set! (-> obj path-pos) 0.0)
-  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (if (logtest? (-> obj path flags) (path-control-flag not-found))
+  (stop-bouncing! this)
+  (set! (-> this flags) (mtn-plat-flags))
+  (set! (-> this path-pos) 0.0)
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (if (logtest? (-> this path flags) (path-control-flag not-found))
       (go process-drawable-art-error "error in path")
       )
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (let ((f30-0 (total-distance (-> obj path))))
-    (set! (-> obj path-speed) (/ (res-lump-float arg0 'speed :default 40960.0) f30-0))
-    (set! (-> obj root pause-adjust-distance) (+ 204800.0 f30-0))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (let ((f30-0 (total-distance (-> this path))))
+    (set! (-> this path-speed) (/ (res-lump-float arg0 'speed :default 40960.0) f30-0))
+    (set! (-> this root pause-adjust-distance) (+ 204800.0 f30-0))
     )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 70) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "mtn-plat-lp" :fo-max 70) (-> this root trans))
         )
-  (init-plat! obj)
-  (mtn-plat-return-method-37 obj)
+  (init-plat! this)
+  (mtn-plat-return-method-37 this)
   (none)
   )
 
@@ -2848,14 +2853,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-button ((obj mtn-button) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-button ((this mtn-button) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -2884,25 +2889,25 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj on-activate) (res-lump-struct (-> obj entity) 'on-activate symbol))
-  (let ((a0-22 (-> obj skel root-channel 0)))
-    (set! (-> a0-22 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (set! (-> this on-activate) (res-lump-struct (-> this entity) 'on-activate symbol))
+  (let ((a0-22 (-> this skel root-channel 0)))
+    (set! (-> a0-22 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-22 param 0) 1.0)
     (set! (-> a0-22 frame-num) 0.0)
-    (joint-control-channel-group! a0-22 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+    (joint-control-channel-group! a0-22 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-loop!)
     )
   (transform-post)
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj pressed) #t)
-      (go (method-of-object obj idle))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this pressed) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -2955,7 +2960,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-gear-device ((obj mtn-gear-device) (arg0 entity-actor))
+(defmethod init-from-entity! mtn-gear-device ((this mtn-gear-device) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2964,7 +2969,7 @@ This commonly includes things such as:
 - sounds"
   (cond
     ((task-complete? *game-info* (game-task mountain-gear))
-     (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+     (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
        (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
          (set! (-> s4-0 total-prims) (the-as uint 10))
          (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -3042,21 +3047,21 @@ This commonly includes things such as:
          (set! (-> s4-0 backup-collide-as) (-> v1-29 prim-core collide-as))
          (set! (-> s4-0 backup-collide-with) (-> v1-29 prim-core collide-with))
          )
-       (set! (-> obj root) s4-0)
+       (set! (-> this root) s4-0)
        )
-     (process-drawable-from-entity! obj arg0)
+     (process-drawable-from-entity! this arg0)
      (initialize-skeleton
-       obj
+       this
        (the-as
          skeleton-group
          (art-group-get-by-name *level* "skel-mtn-gear-device-collapse" (the-as (pointer uint32) #f))
          )
        (the-as pair 0)
        )
-     (go (method-of-object obj idle-collapsed))
+     (go (method-of-object this idle-collapsed))
      )
     (else
-      (let ((s4-2 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+      (let ((s4-2 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
         (let ((v1-38 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
           (set! (-> v1-38 prim-core collide-as) (collide-spec obstacle))
           (set! (-> v1-38 prim-core collide-with) (collide-spec jak bot player-list))
@@ -3071,29 +3076,29 @@ This commonly includes things such as:
           (set! (-> s4-2 backup-collide-as) (-> v1-41 prim-core collide-as))
           (set! (-> s4-2 backup-collide-with) (-> v1-41 prim-core collide-with))
           )
-        (set! (-> obj root) s4-2)
+        (set! (-> this root) s4-2)
         )
-      (process-drawable-from-entity! obj arg0)
+      (process-drawable-from-entity! this arg0)
       (initialize-skeleton
-        obj
+        this
         (the-as skeleton-group (art-group-get-by-name *level* "skel-mtn-gear-device" (the-as (pointer uint32) #f)))
         (the-as pair 0)
         )
-      (set! (-> obj root pause-adjust-distance) 450560.0)
-      (add-connection *part-engine* obj 24 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 25 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 21 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 22 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 14 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 13 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 15 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 16 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 17 obj 1492 (new 'static 'vector :w 163840.0))
-      (add-connection *part-engine* obj 18 obj 1492 (new 'static 'vector :w 163840.0))
-      (set! (-> obj sound)
-            (new 'process 'ambient-sound (static-sound-spec "mtn-gear-device" :fo-max 90) (-> obj root trans))
+      (set! (-> this root pause-adjust-distance) 450560.0)
+      (add-connection *part-engine* this 24 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 25 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 21 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 22 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 14 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 13 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 15 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 16 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 17 this 1492 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 18 this 1492 (new 'static 'vector :w 163840.0))
+      (set! (-> this sound)
+            (new 'process 'ambient-sound (static-sound-spec "mtn-gear-device" :fo-max 90) (-> this root trans))
             )
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)
@@ -3121,14 +3126,14 @@ This commonly includes things such as:
                                          )
         )
 
-(defmethod init-water! water-anim-mountain ((obj water-anim-mountain))
+(defmethod init-water! water-anim-mountain ((this water-anim-mountain))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)
@@ -3246,23 +3251,23 @@ This commonly includes things such as:
   :virtual #t
   :trans (behavior ()
     (plat-trans)
-    (if (>= (- (current-time) (-> self ride-timer)) (seconds 1))
+    (if (time-elapsed? (-> self ride-timer) (seconds 1))
         (go-virtual waiting)
         )
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod mtn-plat-return-method-37 trans-plat ((obj trans-plat))
-  (go (method-of-object obj rising))
+(defmethod mtn-plat-return-method-37 trans-plat ((this trans-plat))
+  (go (method-of-object this rising))
   (none)
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod init-plat! trans-plat ((obj trans-plat))
+(defmethod init-plat! trans-plat ((this trans-plat))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
-  (logior! (-> obj flags) (mtn-plat-flags mtpflags-1))
+  (logior! (-> this flags) (mtn-plat-flags mtpflags-1))
   (let* ((s5-0 *target*)
          (a0-2 (if (type? s5-0 process-focusable)
                    s5-0
@@ -3271,10 +3276,10 @@ For example for an elevator pre-compute the distance between the first and last 
          )
     (when a0-2
       (let ((s4-0 (get-trans a0-2 0))
-            (s3-0 (-> obj path))
+            (s3-0 (-> this path))
             (f28-0 0.0)
             (f30-0 -1.0)
-            (s5-1 (-> obj path curve num-cverts))
+            (s5-1 (-> this path curve num-cverts))
             )
         (dotimes (s2-0 s5-1)
           (let ((f0-2
@@ -3288,7 +3293,7 @@ For example for an elevator pre-compute the distance between the first and last 
             )
           )
         (if (!= f30-0 -1.0)
-            (set! (-> obj path-pos) (/ f30-0 (+ -1.0 (the float s5-1))))
+            (set! (-> this path-pos) (/ f30-0 (+ -1.0 (the float s5-1))))
             )
         )
       )

@@ -7,39 +7,39 @@
 
 ;; DECOMP BEGINS
 
-(defmethod draw hud-plasmite ((obj hud-plasmite))
+(defmethod draw hud-plasmite ((this hud-plasmite))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> obj sprites))
-    (the int (+ 457.0 (* 130.0 (-> obj offset))))
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 457.0 (* 130.0 (-> this offset))))
     210
     )
-  (format (clear (-> obj strings 0 text)) "~D" (-> obj values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> obj strings 0 pos)) (the-as vector4w (-> obj sprites)) -16 20)
-  ((method-of-type hud draw) obj)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 20)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
-(defmethod update-values hud-plasmite ((obj hud-plasmite))
-  (set! (-> obj values 0 target) (the int (-> *game-info* counter)))
-  ((method-of-type hud update-values) obj)
+(defmethod update-values hud-plasmite ((this hud-plasmite))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-plasmite ((obj hud-plasmite))
-  (set! (-> obj level) (level-get *level* 'strip))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback hud-plasmite ((this hud-plasmite))
+  (set! (-> this level) (level-get *level* 'strip))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xb26)))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 0 scale-x) 1.0)
-  (set! (-> obj sprites 0 scale-y) 1.0)
-  (alloc-string-if-needed obj 0)
-  (set! (-> obj strings 0 scale) 0.6)
-  (set! (-> obj strings 0 flags) (font-flags kerning middle large))
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xb26)))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
   0
   (none)
   )
@@ -109,7 +109,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior strip-trans strip-hazard ()
   (when (and (nonzero? (-> self no-collision-timer))
-             (>= (- (current-time) (the-as int (-> self no-collision-timer))) (seconds 0.3))
+             (time-elapsed? (the-as int (-> self no-collision-timer)) (seconds 0.3))
              )
     (let ((v1-7 (-> self root root-prim)))
       (set! (-> v1-7 prim-core collide-as) (-> self root backup-collide-as))
@@ -150,7 +150,7 @@
   :post transform-post
   )
 
-(defmethod init-from-entity! strip-hazard ((obj strip-hazard) (arg0 entity-actor))
+(defmethod init-from-entity! strip-hazard ((this strip-hazard) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -158,13 +158,13 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 res-tag))
-  (set-vector! (-> obj shove-vec) 0.0 12288.0 24576.0 1.0)
-  (set! (-> obj no-collision-timer) (the-as uint 0))
+  (set-vector! (-> this shove-vec) 0.0 12288.0 24576.0 1.0)
+  (set! (-> this no-collision-timer) (the-as uint 0))
   (let* ((v1-1 *game-info*)
          (a0-5 (+ (-> v1-1 attack-id) 1))
          )
     (set! (-> v1-1 attack-id) a0-5)
-    (set! (-> obj attack-id) a0-5)
+    (set! (-> this attack-id) a0-5)
     )
   (let ((s4-0 (new 'stack-no-clear 'sync-info-params))
         (s3-0 1200)
@@ -187,8 +187,8 @@ This commonly includes things such as:
     (set! (-> s4-0 entity) arg0)
     (set! (-> s4-0 period) (the-as uint s3-0))
     (set! (-> s4-0 percent) 0.0)
-    (initialize! (-> obj sync) s4-0)
-    (sync-now! (-> obj sync) f30-0)
+    (initialize! (-> this sync) s4-0)
+    (sync-now! (-> this sync) f30-0)
     )
   (none)
   )
@@ -235,7 +235,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fencespikes ((obj fencespikes) (arg0 entity-actor))
+(defmethod init-from-entity! fencespikes ((this fencespikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -243,7 +243,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 string))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -275,30 +275,30 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-19 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fencespikes" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-9 (method-of-type strip-hazard init-from-entity!)))
-    (t9-9 obj arg0)
+    (t9-9 this arg0)
     )
-  (quaternion-copy! (-> obj start-quat) (-> obj root quat))
+  (quaternion-copy! (-> this start-quat) (-> this root quat))
   (set! sv-16 "#f")
   (let ((a0-24 (entity-lookup-part-group arg0 (& sv-16) 'art-name)))
     (when a0-24
       (let ((a0-25 (-> a0-24 0)))
         (if (and (nonzero? a0-25) (= (-> a0-25 type) sparticle-launch-group))
-            (set! (-> obj part) (create-launch-control a0-25 obj))
+            (set! (-> this part) (create-launch-control a0-25 this))
             )
         )
       )
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -366,25 +366,25 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch strip-hazard vs pitspikes.
-(defmethod relocate pitspikes ((obj pitspikes) (arg0 int))
-  (if (nonzero? (-> obj spinner))
-      (&+! (-> obj spinner) arg0)
+(defmethod relocate pitspikes ((this pitspikes) (arg0 int))
+  (if (nonzero? (-> this spinner))
+      (&+! (-> this spinner) arg0)
       )
   (the-as
     pitspikes
-    ((the-as (function strip-hazard int strip-hazard) (find-parent-method pitspikes 7)) obj arg0)
+    ((the-as (function strip-hazard int strip-hazard) (find-parent-method pitspikes 7)) this arg0)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pitspikes ((obj pitspikes) (arg0 entity-actor))
+(defmethod init-from-entity! pitspikes ((this pitspikes) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -403,28 +403,28 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-pitspikes" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
-    (t9-6 obj arg0)
+    (t9-6 this arg0)
     )
-  (set! (-> obj spinner) (new 'process 'joint-mod-spinner obj 4 (new 'static 'vector :x 1.0 :w 1.0) 262144.0))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "pit-spikes" :fo-max 55)
-                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 4))
-                         )
+  (set! (-> this spinner) (new 'process 'joint-mod-spinner this 4 (new 'static 'vector :x 1.0 :w 1.0) 262144.0))
+  (set! (-> this sound) (new
+                          'process
+                          'ambient-sound
+                          (static-sound-spec "pit-spikes" :fo-max 55)
+                          (vector<-cspace! (new 'static 'vector) (-> this node-list data 4))
+                          )
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 214) obj))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 214) this))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -475,14 +475,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! curtainsaw ((obj curtainsaw) (arg0 entity-actor))
+(defmethod init-from-entity! curtainsaw ((this curtainsaw) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -501,27 +501,27 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-curtainsaw" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-6 (method-of-type strip-hazard init-from-entity!)))
-    (t9-6 obj arg0)
+    (t9-6 this arg0)
     )
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "curtainsaw" :fo-max 55)
-                         (vector<-cspace! (new 'static 'vector) (-> obj node-list data 3))
-                         )
+  (set! (-> this sound) (new
+                          'process
+                          'ambient-sound
+                          (static-sound-spec "curtainsaw" :fo-max 55)
+                          (vector<-cspace! (new 'static 'vector) (-> this node-list data 3))
+                          )
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 213) obj))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 213) this))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -551,30 +551,30 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch process-drawable vs grenade-point.
-(defmethod relocate grenade-point ((obj grenade-point) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate grenade-point ((this grenade-point) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (if (nonzero? (-> obj part3))
-      (&+! (-> obj part3) arg0)
+  (if (nonzero? (-> this part3))
+      (&+! (-> this part3) arg0)
       )
-  (if (nonzero? (-> obj part-lightning-hit))
-      (&+! (-> obj part-lightning-hit) arg0)
+  (if (nonzero? (-> this part-lightning-hit))
+      (&+! (-> this part-lightning-hit) arg0)
       )
-  (the-as grenade-point ((method-of-type process-drawable relocate) obj arg0))
+  (the-as grenade-point ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate grenade-point ((obj grenade-point))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate grenade-point ((this grenade-point))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  (if (nonzero? (-> obj part3))
-      (kill-and-free-particles (-> obj part3))
+  (if (nonzero? (-> this part3))
+      (kill-and-free-particles (-> this part3))
       )
-  (if (nonzero? (-> obj part-lightning-hit))
-      (kill-and-free-particles (-> obj part-lightning-hit))
+  (if (nonzero? (-> this part-lightning-hit))
+      (kill-and-free-particles (-> this part-lightning-hit))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -750,11 +750,11 @@ This commonly includes things such as:
                 (set-setting! 'entity-name (-> self camera-name) 0.0 -1)
                 )
             )
-           ((>= (- (current-time) (-> self enter-time)) (seconds 3))
+           ((time-elapsed? (-> self enter-time) (seconds 3))
             (talker-speech-class-method-12 (-> *talker-speech* 194) 1)
             )
            )
-         (set! (-> self enter-time) (current-time))
+         (set-time! (-> self enter-time))
          )
        #f
        )
@@ -859,23 +859,23 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! grenade-point ((obj grenade-point) (arg0 entity-actor))
+(defmethod init-from-entity! grenade-point ((this grenade-point) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj parented?) #f)
-  (when (not (-> obj parented?))
+  (set! (-> this parented?) #f)
+  (when (not (-> this parented?))
     (let ((a1-1 (handle->process (-> *game-info* controller 0))))
       (when a1-1
-        (change-parent obj a1-1)
-        (set! (-> obj parented?) #t)
+        (change-parent this a1-1)
+        (set! (-> this parented?) #t)
         )
       )
     )
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-10 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-10 prim-core collide-as) (collide-spec backgnd obstacle))
       (set-vector! (-> v1-10 local-sphere) 0.0 0.0 0.0 81920.0)
@@ -887,32 +887,32 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj camera-name) (res-lump-struct (-> obj entity) 'camera-name string))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 215) obj))
-  (set! (-> obj part2) (create-launch-control (-> *part-group-id-table* 216) obj))
-  (set! (-> obj part3) (create-launch-control (-> *part-group-id-table* 217) obj))
-  (set! (-> obj part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) obj))
-  (set! (-> obj lightning-time) 0)
-  (set! (-> obj strike-table)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this camera-name) (res-lump-struct (-> this entity) 'camera-name string))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
+  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 216) this))
+  (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 217) this))
+  (set! (-> this part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) this))
+  (set! (-> this lightning-time) 0)
+  (set! (-> this strike-table)
         (-> *grenade-point-strike-table*
-            (+ (res-lump-value (-> obj entity) 'extra-id uint128 :default (the-as uint128 1) :time -1000000000.0) -1)
+            (+ (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 1) :time -1000000000.0) -1)
             )
         )
-  (set! (-> obj last-strike-index) (rand-vu-int-range 0 19))
-  (set! (-> obj speed) (res-lump-float (-> obj entity) 'speed :default 118784.0))
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "eco-plume1" :fo-min 5 :fo-max 90) (-> obj root trans))
+  (set! (-> this last-strike-index) (rand-vu-int-range 0 19))
+  (set! (-> this speed) (res-lump-float (-> this entity) 'speed :default 118784.0))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "eco-plume1" :fo-min 5 :fo-max 90) (-> this root trans))
         )
-  (update-transforms (-> obj root))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (if (or (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
+  (update-transforms (-> this root))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           (task-complete? *game-info* (game-task strip-grenade))
           )
-      (go (method-of-object obj die) #f)
-      (go (method-of-object obj idle))
+      (go (method-of-object this die) #f)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -1104,7 +1104,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod draw-laser-sight grenade ((obj grenade))
+(defmethod draw-laser-sight grenade ((this grenade))
   "TODO - confirm If applicable, draw the laser sight particles"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1126,7 +1126,7 @@ This commonly includes things such as:
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-2)
          a0-3
          a1-2
@@ -1145,15 +1145,15 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod spawn-impact-particles grenade ((obj grenade))
+(defmethod spawn-impact-particles grenade ((this grenade))
   "Spawns associated particles with the projectile if applicable"
-  ((method-of-type projectile spawn-impact-particles) obj)
+  ((method-of-type projectile spawn-impact-particles) this)
   (ja-post)
   0
   (none)
   )
 
-(defmethod spawn-shell-particles grenade ((obj grenade))
+(defmethod spawn-shell-particles grenade ((this grenade))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -1175,7 +1175,7 @@ This commonly includes things such as:
             (t2-0 #f)
             (t3-0 *launch-matrix*)
             )
-        (set! (-> t3-0 trans quad) (-> obj root trans quad))
+        (set! (-> t3-0 trans quad) (-> this root trans quad))
         ((the-as (function object object object object object object object object none) t9-2)
          a0-3
          a1-2
@@ -1194,7 +1194,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod play-impact-sound grenade ((obj grenade) (arg0 projectile-options))
+(defmethod play-impact-sound grenade ((this grenade) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -1254,7 +1254,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (send-event (handle->process (-> self end-target)) 'die)
     (remove-setting! 'point-of-interest)
     )
@@ -1292,40 +1292,40 @@ This commonly includes things such as:
     )
   )
 
-(defmethod grenade-method-40 grenade ((obj grenade))
-  (let ((s5-0 (the-as process-drawable (-> obj end-target process 0))))
+(defmethod grenade-method-40 grenade ((this grenade))
+  (let ((s5-0 (the-as process-drawable (-> this end-target process 0))))
     (when s5-0
-      (set! (-> obj root transv x) (* 4.0 (- (-> s5-0 root trans x) (-> obj root trans x))))
-      (set! (-> obj root transv z) (* 4.0 (- (-> s5-0 root trans z) (-> obj root trans z))))
-      (let ((v1-12 (-> obj root transv)))
+      (set! (-> this root transv x) (* 4.0 (- (-> s5-0 root trans x) (-> this root trans x))))
+      (set! (-> this root transv z) (* 4.0 (- (-> s5-0 root trans z) (-> this root trans z))))
+      (let ((v1-12 (-> this root transv)))
         (if (< (sqrtf (+ (* (-> v1-12 x) (-> v1-12 x)) (* (-> v1-12 z) (-> v1-12 z)))) 16384.0)
-            (vector-xz-normalize! (-> obj root transv) 16384.0)
+            (vector-xz-normalize! (-> this root transv) 16384.0)
             )
         )
-      (if (or (logtest? (-> obj root status) (collide-status on-surface on-ground))
-              (< (vector-vector-distance (-> s5-0 root trans) (-> obj root trans)) 4096.0)
+      (if (or (logtest? (-> this root status) (collide-status on-surface on-ground))
+              (< (vector-vector-distance (-> s5-0 root trans) (-> this root trans)) 4096.0)
               )
-          (go (method-of-object obj impact))
+          (go (method-of-object this impact))
           )
       )
     )
-  (vector-v++! (-> obj root transv) (compute-acc-due-to-gravity (-> obj root) (new-stack-vector0) 1.0))
+  (vector-v++! (-> this root transv) (compute-acc-due-to-gravity (-> this root) (new-stack-vector0) 1.0))
   0
   (none)
   )
 
-(defmethod grenade-method-41 grenade ((obj grenade))
-  (quaternion*! (-> obj root quat) (-> obj root quat) (-> obj tumble-quat))
-  (projectile-move-fill-all-dirs obj)
-  (set-setting! 'point-of-interest 'abs (-> obj root trans) 0)
+(defmethod grenade-method-41 grenade ((this grenade))
+  (quaternion*! (-> this root quat) (-> this root quat) (-> this tumble-quat))
+  (projectile-move-fill-all-dirs this)
+  (set-setting! 'point-of-interest 'abs (-> this root trans) 0)
   0
   (none)
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-proj-collision! grenade ((obj grenade))
+(defmethod init-proj-collision! grenade ((this grenade))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-projectile)
     (set! (-> s5-0 no-reaction)
@@ -1349,48 +1349,48 @@ This commonly includes things such as:
       )
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
     (set! (-> s5-0 event-self) 'touched)
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
-(defmethod init-proj-settings! grenade ((obj grenade))
+(defmethod init-proj-settings! grenade ((this grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (with-pp
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-grenade" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (logclear! (-> obj options) (projectile-options proj-options-4))
-    (vector-normalize! (-> obj root transv) 1.0)
-    (+! (-> obj root transv y) 1.0)
-    (vector-normalize! (-> obj root transv) 184320.0)
-    (set! (-> obj attack-mode) 'eco-yellow)
-    (set! (-> obj blast-radius) 20480.0)
-    (set! (-> obj max-speed) 184320.0)
-    (set! (-> obj timeout) (seconds 3.6))
-    (set! (-> obj update-velocity) (method-of-object obj grenade-method-40))
-    (set! (-> obj move) (method-of-object obj grenade-method-41))
-    (set! (-> obj root dynam gravity y) 327680.0)
-    (set! (-> obj root dynam gravity-length) 327680.0)
-    (set! (-> obj root dynam gravity-max) 327680.0)
+    (logclear! (-> this options) (projectile-options proj-options-4))
+    (vector-normalize! (-> this root transv) 1.0)
+    (+! (-> this root transv y) 1.0)
+    (vector-normalize! (-> this root transv) 184320.0)
+    (set! (-> this attack-mode) 'eco-yellow)
+    (set! (-> this blast-radius) 20480.0)
+    (set! (-> this max-speed) 184320.0)
+    (set! (-> this timeout) (seconds 3.6))
+    (set! (-> this update-velocity) (method-of-object this grenade-method-40))
+    (set! (-> this move) (method-of-object this grenade-method-41))
+    (set! (-> this root dynam gravity y) 327680.0)
+    (set! (-> this root dynam gravity-length) 327680.0)
+    (set! (-> this root dynam gravity-max) 327680.0)
     (let ((f0-7 1092.2667))
-      (quaternion-axis-angle! (-> obj tumble-quat) 1.0 0.0 0.0 f0-7)
+      (quaternion-axis-angle! (-> this tumble-quat) 1.0 0.0 0.0 f0-7)
       )
     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-5 from) (process->ppointer pp))
       (set! (-> a1-5 num-params) 0)
       (set! (-> a1-5 message) 'target)
-      (let ((s5-1 (send-event-function (ppointer->process (-> obj parent)) a1-5)))
-        (set! (-> obj end-target) (process->handle (if (type? s5-1 process-drawable)
-                                                       (the-as process-drawable s5-1)
-                                                       )
-                                                   )
+      (let ((s5-1 (send-event-function (ppointer->process (-> this parent)) a1-5)))
+        (set! (-> this end-target) (process->handle (if (type? s5-1 process-drawable)
+                                                        (the-as process-drawable s5-1)
+                                                        )
+                                                    )
               )
         )
       )
-    (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 235) obj))
+    (set! (-> this part) (create-launch-control (-> *part-group-id-table* 235) this))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
     (none)
     )
@@ -1451,11 +1451,11 @@ This commonly includes things such as:
   (lambda :behavior task-manager
     ()
     (local-vars (sv-16 object))
-    (set! (-> self start-time) (current-time))
+    (set-time! (-> self start-time))
     (set! (-> self total-time) (seconds 120))
     (set! (-> self hud-timer) (ppointer->handle (process-spawn hud-timer :init hud-init-by-other :to *target*)))
     (set! (-> self hud-counter) (ppointer->handle (process-spawn hud-plasmite :init hud-init-by-other :to self)))
-    (while (or (< (- (current-time) (-> self start-time)) (-> self total-time))
+    (while (or (not (time-elapsed? (-> self start-time) (-> self total-time)))
                (and *target* (focus-test? *target* in-air))
                )
       (let ((v1-18 (the-as int (- (-> self total-time) (- (current-time) (-> self start-time))))))
@@ -1511,7 +1511,7 @@ This commonly includes things such as:
          (talker-spawn-func (-> *talker-speech* 195) *entity-pool* (target-pos 0) (the-as region #f))
          )
         )
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       (set! (-> *game-info* counter) (the float (the-as int sv-16)))
       (if (>= 1 (the-as int sv-16))
           (gui-control-method-12
@@ -1559,18 +1559,18 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch process-drawable vs drill-plat.
-(defmethod relocate drill-plat ((obj drill-plat) (arg0 int))
-  (if (nonzero? (-> obj plat-sound))
-      (&+! (-> obj plat-sound) arg0)
+(defmethod relocate drill-plat ((this drill-plat) (arg0 int))
+  (if (nonzero? (-> this plat-sound))
+      (&+! (-> this plat-sound) arg0)
       )
-  (the-as drill-plat ((method-of-type process-drawable relocate) obj arg0))
+  (the-as drill-plat ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate drill-plat ((obj drill-plat))
-  (if (nonzero? (-> obj plat-sound))
-      (stop! (-> obj plat-sound))
+(defmethod deactivate drill-plat ((this drill-plat))
+  (if (nonzero? (-> this plat-sound))
+      (stop! (-> this plat-sound))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -1635,14 +1635,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-plat ((obj drill-plat) (arg0 entity-actor))
+(defmethod init-from-entity! drill-plat ((this drill-plat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -1684,32 +1684,32 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-plat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((t9-10 (method-of-type strip-hazard init-from-entity!)))
-    (t9-10 obj arg0)
+    (t9-10 this arg0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logclear! (-> this mask) (process-mask actor-pause))
   (let ((a3-5 (new 'stack-no-clear 'vector)))
-    (set! (-> a3-5 quad) (-> obj root trans quad))
+    (set! (-> a3-5 quad) (-> this root trans quad))
     (+! (-> a3-5 x) 57344.0)
-    (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "drill-plat-a" :fo-max 90) a3-5))
+    (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "drill-plat-a" :fo-max 90) a3-5))
     )
   (ja-post)
-  (set! (-> obj plat-sound) (new
-                              'process
-                              'ambient-sound
-                              (static-sound-spec "drill-plat-b" :fo-max 50)
-                              (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 7))
-                              )
+  (set! (-> this plat-sound) (new
+                               'process
+                               'ambient-sound
+                               (static-sound-spec "drill-plat-b" :fo-max 50)
+                               (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 7))
+                               )
         )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 

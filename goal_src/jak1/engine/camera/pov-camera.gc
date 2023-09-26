@@ -7,22 +7,20 @@
 
 ;; DECOMP BEGINS
 
-(defmethod check-for-abort pov-camera ((obj pov-camera))
-  (when (or (and (>= (- (-> *display* base-frame-counter) (-> obj debounce-start-time)) (seconds 0.2))
-                 (cpad-pressed? 0 triangle)
-                 )
-            (logtest? (-> obj flags) (pov-camera-flag allow-abort))
+(defmethod check-for-abort pov-camera ((this pov-camera))
+  (when (or (and (time-elapsed? (-> this debounce-start-time) (seconds 0.2)) (cpad-pressed? 0 triangle))
+            (logtest? (-> this flags) (pov-camera-flag allow-abort))
             )
     (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
     (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-    (when (logtest? (-> obj flags) (pov-camera-flag notify-of-abort))
-      (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
+    (when (logtest? (-> this flags) (pov-camera-flag notify-of-abort))
+      (send-event (handle->process (-> this notify-handle)) 'notify 'abort-request)
       #t
       )
     )
   )
 
-(defmethod target-grabbed? pov-camera ((obj pov-camera))
+(defmethod target-grabbed? pov-camera ((this pov-camera))
   (or (not *target*) (process-grab? *target*))
   )
 
@@ -91,7 +89,7 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
+    (set-time! (-> self debounce-start-time))
     (if (= (-> self anim-name type) string)
         (backup-load-state-and-set-cmds *load-state* (-> self command-list))
         )
@@ -161,12 +159,12 @@
     )
   )
 
-(defmethod pre-startup-callback pov-camera ((obj pov-camera))
+(defmethod pre-startup-callback pov-camera ((this pov-camera))
   0
   (none)
   )
 
-(defmethod set-stack-size! pov-camera ((obj pov-camera))
+(defmethod set-stack-size! pov-camera ((this pov-camera))
   (none)
   )
 
@@ -181,7 +179,7 @@
       (set! (-> self notify-handle) (process->handle arg4))
       (set! (-> self notify-handle) (the-as handle #f))
       )
-  (set! (-> self debounce-start-time) (-> *display* base-frame-counter))
+  (set-time! (-> self debounce-start-time))
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))

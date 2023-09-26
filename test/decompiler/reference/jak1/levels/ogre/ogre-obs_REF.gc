@@ -321,11 +321,11 @@
   )
 
 ;; definition for method 3 of type tntbarrel
-(defmethod inspect tntbarrel ((obj tntbarrel))
+(defmethod inspect tntbarrel ((this tntbarrel))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -393,8 +393,8 @@
 
 ;; definition for method 11 of type tntbarrel
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! tntbarrel ((obj tntbarrel) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! tntbarrel ((this tntbarrel) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -406,12 +406,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *tntbarrel-sg* '())
-  (set-vector! (-> obj draw color-mult) 1.3 1.3 1.3 1.0)
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *tntbarrel-sg* '())
+  (set-vector! (-> this draw color-mult) 1.3 1.3 1.3 1.0)
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -473,24 +473,27 @@
   )
 
 ;; definition for method 3 of type ogre-plat
-(defmethod inspect ogre-plat ((obj ogre-plat))
+(defmethod inspect ogre-plat ((this ogre-plat))
   (let ((t9-0 (method-of-type rigid-body-platform inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> obj anchor-point))
-  (format #t "~T~Tidle-y-offset: ~f~%" (-> obj idle-y-offset))
-  (format #t "~T~Tfloat-y-offset: ~f~%" (-> obj float-y-offset))
-  (format #t "~T~Tdelay: ~D~%" (-> obj delay))
-  (format #t "~T~Tactive: ~A~%" (-> obj active))
-  (format #t "~T~Ttriggered: ~A~%" (-> obj triggered))
-  obj
+  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> this anchor-point))
+  (format #t "~T~Tidle-y-offset: ~f~%" (-> this idle-y-offset))
+  (format #t "~T~Tfloat-y-offset: ~f~%" (-> this float-y-offset))
+  (format #t "~T~Tdelay: ~D~%" (-> this delay))
+  (format #t "~T~Tactive: ~A~%" (-> this active))
+  (format #t "~T~Ttriggered: ~A~%" (-> this triggered))
+  this
   )
 
 ;; definition for method 23 of type ogre-plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-23 ogre-plat ((obj ogre-plat) (arg0 float))
-  ((the-as (function rigid-body-platform basic none) (find-parent-method ogre-plat 23)) obj (the-as basic arg0))
-  (rigid-body-platform-method-27 obj (-> obj anchor-point))
+(defmethod rigid-body-platform-method-23 ogre-plat ((this ogre-plat) (arg0 float))
+  ((the-as (function rigid-body-platform basic none) (find-parent-method ogre-plat 23))
+   this
+   (the-as basic arg0)
+   )
+  (rigid-body-platform-method-27 this (-> this anchor-point))
   0
   (none)
   )
@@ -503,7 +506,7 @@
       (('trigger)
        (set! (-> self triggered) (the-as entity-actor #t))
        (set! (-> self delay) (the-as time-frame (-> block param 0)))
-       (let ((v0-0 (-> *display* base-frame-counter)))
+       (let ((v0-0 (current-time)))
          (set! (-> self state-time) v0-0)
          v0-0
          )
@@ -524,7 +527,7 @@
          )
        )
       (else
-        (if (and (-> self triggered) (>= (- (-> *display* base-frame-counter) (-> self state-time)) (-> self delay)))
+        (if (and (-> self triggered) (time-elapsed? (-> self state-time) (-> self delay)))
             (set! (-> self active) #t)
             )
         )
@@ -550,14 +553,14 @@
                              )
            )
        (let ((f30-1 (-> self idle-y-offset)))
-         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (-> *display* seconds-per-frame)))
+         (seek! (-> self float-height-offset) f30-1 (* 2048.0 (seconds-per-frame)))
          (if (= (-> self float-height-offset) f30-1)
              (go-virtual rigid-body-platform-idle)
              )
          )
        )
       (else
-        (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (-> *display* seconds-per-frame)))
+        (seek! (-> self float-height-offset) (-> self float-y-offset) (* 32768.0 (seconds-per-frame)))
         )
       )
     )
@@ -572,8 +575,8 @@
 
 ;; definition for method 30 of type ogre-plat
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-30 ogre-plat ((obj ogre-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod rigid-body-platform-method-30 ogre-plat ((this ogre-plat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -591,7 +594,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-overlay) s5-0)
+    (set! (-> this root-overlay) s5-0)
     )
   0
   (none)
@@ -600,13 +603,13 @@
 ;; definition for method 31 of type ogre-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-plat ((obj ogre-plat))
-  (set! (-> obj float-height-offset) (-> obj idle-y-offset))
-  (let ((s5-0 (-> obj info control-point-count)))
+(defmethod rigid-body-platform-method-31 ogre-plat ((this ogre-plat))
+  (set! (-> this float-height-offset) (-> this idle-y-offset))
+  (let ((s5-0 (-> this info control-point-count)))
     (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> obj control-point-array data s4-0)))
+      (let ((s3-0 (-> this control-point-array data s4-0)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0))))
-              (f28-0 (-> obj root-overlay root-prim local-sphere w))
+              (f28-0 (-> this root-overlay root-prim local-sphere w))
               )
           (set! (-> s3-0 local-pos x) (* f28-0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) 0.0)
@@ -616,9 +619,9 @@
         )
       )
     )
-  (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
-  (set! (-> obj active) #f)
-  (set! (-> obj triggered) #f)
+  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (set! (-> this active) #f)
+  (set! (-> this triggered) #f)
   0
   (none)
   )
@@ -660,24 +663,24 @@
   )
 
 ;; definition for method 3 of type ogre-step
-(defmethod inspect ogre-step ((obj ogre-step))
+(defmethod inspect ogre-step ((this ogre-step))
   (let ((t9-0 (method-of-type ogre-plat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 31 of type ogre-step
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-step ((obj ogre-step))
-  (set! (-> obj idle-y-offset) -28672.0)
-  (set! (-> obj float-y-offset) 0.0)
-  (+! (-> obj root-overlay trans y) (-> obj idle-y-offset))
-  (rigid-body-platform-method-29 obj *ogre-step-constants*)
-  ((the-as (function ogre-plat none) (find-parent-method ogre-step 31)) obj)
-  (let ((a0-5 (entity-actor-lookup (-> obj entity) 'alt-actor 0)))
+(defmethod rigid-body-platform-method-31 ogre-step ((this ogre-step))
+  (set! (-> this idle-y-offset) -28672.0)
+  (set! (-> this float-y-offset) 0.0)
+  (+! (-> this root-overlay trans y) (-> this idle-y-offset))
+  (rigid-body-platform-method-29 this *ogre-step-constants*)
+  ((the-as (function ogre-plat none) (find-parent-method ogre-step 31)) this)
+  (let ((a0-5 (entity-actor-lookup (-> this entity) 'alt-actor 0)))
     (if (and a0-5 (logtest? (-> a0-5 extra perm status) (entity-perm-status complete)))
-        (set! (-> obj active) #t)
+        (set! (-> this active) #t)
         )
     )
   0
@@ -686,10 +689,10 @@
 
 ;; definition for method 34 of type ogre-step
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-34 ogre-step ((obj ogre-step))
-  (if (-> obj active)
-      (go (method-of-object obj rigid-body-platform-float))
-      (go (method-of-object obj rigid-body-platform-idle))
+(defmethod rigid-body-platform-method-34 ogre-step ((this ogre-step))
+  (if (-> this active)
+      (go (method-of-object this rigid-body-platform-float))
+      (go (method-of-object this rigid-body-platform-idle))
       )
   0
   (none)
@@ -705,11 +708,11 @@
   )
 
 ;; definition for method 3 of type ogre-step-a
-(defmethod inspect ogre-step-a ((obj ogre-step-a))
+(defmethod inspect ogre-step-a ((this ogre-step-a))
   (let ((t9-0 (method-of-type ogre-step inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type ogre-step-b
@@ -722,11 +725,11 @@
   )
 
 ;; definition for method 3 of type ogre-step-b
-(defmethod inspect ogre-step-b ((obj ogre-step-b))
+(defmethod inspect ogre-step-b ((this ogre-step-b))
   (let ((t9-0 (method-of-type ogre-step inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type ogre-step-c
@@ -739,11 +742,11 @@
   )
 
 ;; definition for method 3 of type ogre-step-c
-(defmethod inspect ogre-step-c ((obj ogre-step-c))
+(defmethod inspect ogre-step-c ((this ogre-step-c))
   (let ((t9-0 (method-of-type ogre-step inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type ogre-step-d
@@ -756,49 +759,49 @@
   )
 
 ;; definition for method 3 of type ogre-step-d
-(defmethod inspect ogre-step-d ((obj ogre-step-d))
+(defmethod inspect ogre-step-d ((this ogre-step-d))
   (let ((t9-0 (method-of-type ogre-step inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 31 of type ogre-step-a
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-step-a ((obj ogre-step-a))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-a-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-a 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-step-a ((this ogre-step-a))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-a-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-a 31)) this)
   0
   (none)
   )
 
 ;; definition for method 31 of type ogre-step-b
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-step-b ((obj ogre-step-b))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-b-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-b 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-step-b ((this ogre-step-b))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-b-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-b 31)) this)
   0
   (none)
   )
 
 ;; definition for method 31 of type ogre-step-c
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-step-c ((obj ogre-step-c))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
-  (initialize-skeleton obj *ogre-step-c-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-c 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-step-c ((this ogre-step-c))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
+  (initialize-skeleton this *ogre-step-c-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-c 31)) this)
   0
   (none)
   )
 
 ;; definition for method 31 of type ogre-step-d
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-step-d ((obj ogre-step-d))
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
-  (initialize-skeleton obj *ogre-step-b-sg* '())
-  ((the-as (function ogre-step none) (find-parent-method ogre-step-d 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-step-d ((this ogre-step-d))
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
+  (initialize-skeleton this *ogre-step-b-sg* '())
+  ((the-as (function ogre-step none) (find-parent-method ogre-step-d 31)) this)
   0
   (none)
   )
@@ -841,21 +844,21 @@
   )
 
 ;; definition for method 3 of type ogre-isle
-(defmethod inspect ogre-isle ((obj ogre-isle))
+(defmethod inspect ogre-isle ((this ogre-isle))
   (let ((t9-0 (method-of-type ogre-plat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 31 of type ogre-isle
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-isle ((obj ogre-isle))
-  (set! (-> obj idle-y-offset) -6144.0)
-  (set! (-> obj float-y-offset) 4096.0)
-  (rigid-body-platform-method-29 obj *ogre-isle-constants*)
-  ((the-as (function ogre-plat none) (find-parent-method ogre-isle 31)) obj)
-  (set! (-> obj active) #t)
+(defmethod rigid-body-platform-method-31 ogre-isle ((this ogre-isle))
+  (set! (-> this idle-y-offset) -6144.0)
+  (set! (-> this float-y-offset) 4096.0)
+  (rigid-body-platform-method-29 this *ogre-isle-constants*)
+  ((the-as (function ogre-plat none) (find-parent-method ogre-isle 31)) this)
+  (set! (-> this active) #t)
   0
   (none)
   )
@@ -870,11 +873,11 @@
   )
 
 ;; definition for method 3 of type ogre-isle-b
-(defmethod inspect ogre-isle-b ((obj ogre-isle-b))
+(defmethod inspect ogre-isle-b ((this ogre-isle-b))
   (let ((t9-0 (method-of-type ogre-isle inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type ogre-isle-c
@@ -887,11 +890,11 @@
   )
 
 ;; definition for method 3 of type ogre-isle-c
-(defmethod inspect ogre-isle-c ((obj ogre-isle-c))
+(defmethod inspect ogre-isle-c ((this ogre-isle-c))
   (let ((t9-0 (method-of-type ogre-isle inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type ogre-isle-d
@@ -904,43 +907,43 @@
   )
 
 ;; definition for method 3 of type ogre-isle-d
-(defmethod inspect ogre-isle-d ((obj ogre-isle-d))
+(defmethod inspect ogre-isle-d ((this ogre-isle-d))
   (let ((t9-0 (method-of-type ogre-isle inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 31 of type ogre-isle-b
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-isle-b ((obj ogre-isle-b))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
-  (initialize-skeleton obj *ogre-isle-b-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-b 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-isle-b ((this ogre-isle-b))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton this *ogre-isle-b-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-b 31)) this)
   0
   (none)
   )
 
 ;; definition for method 31 of type ogre-isle-c
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-isle-c ((obj ogre-isle-c))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
-  (initialize-skeleton obj *ogre-isle-b-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-c 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-isle-c ((this ogre-isle-c))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
+  (initialize-skeleton this *ogre-isle-b-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-c 31)) this)
   0
   (none)
   )
 
 ;; definition for method 31 of type ogre-isle-d
 ;; INFO: Return type mismatch int vs none.
-(defmethod rigid-body-platform-method-31 ogre-isle-d ((obj ogre-isle-d))
-  (+! (-> obj root-overlay trans x) -8192.0)
-  (+! (-> obj root-overlay trans z) -8192.0)
-  (set-vector! (-> obj root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
-  (initialize-skeleton obj *ogre-isle-d-sg* '())
-  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-d 31)) obj)
+(defmethod rigid-body-platform-method-31 ogre-isle-d ((this ogre-isle-d))
+  (+! (-> this root-overlay trans x) -8192.0)
+  (+! (-> this root-overlay trans z) -8192.0)
+  (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
+  (initialize-skeleton this *ogre-isle-d-sg* '())
+  ((the-as (function ogre-isle none) (find-parent-method ogre-isle-d 31)) this)
   0
   (none)
   )
@@ -971,26 +974,26 @@
   )
 
 ;; definition for method 3 of type ogre-bridge
-(defmethod inspect ogre-bridge ((obj ogre-bridge))
+(defmethod inspect ogre-bridge ((this ogre-bridge))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tjoint-mod-array[8] @ #x~X~%" (-> obj joint-mod-array))
-  (format #t "~T~Tdead-joint-count: ~D~%" (-> obj dead-joint-count))
-  obj
+  (format #t "~T~Tjoint-mod-array[8] @ #x~X~%" (-> this joint-mod-array))
+  (format #t "~T~Tdead-joint-count: ~D~%" (-> this dead-joint-count))
+  this
   )
 
 ;; definition for method 7 of type ogre-bridge
 ;; INFO: Return type mismatch process-drawable vs ogre-bridge.
-(defmethod relocate ogre-bridge ((obj ogre-bridge) (arg0 int))
+(defmethod relocate ogre-bridge ((this ogre-bridge) (arg0 int))
   (dotimes (v1-0 8)
-    (if (nonzero? (-> obj joint-mod-array v1-0))
-        (&+! (-> obj joint-mod-array v1-0) arg0)
+    (if (nonzero? (-> this joint-mod-array v1-0))
+        (&+! (-> this joint-mod-array v1-0) arg0)
         )
     )
   (the-as
     ogre-bridge
-    ((the-as (function process-drawable int process-drawable) (find-parent-method ogre-bridge 7)) obj arg0)
+    ((the-as (function process-drawable int process-drawable) (find-parent-method ogre-bridge 7)) this arg0)
     )
   )
 
@@ -1133,10 +1136,10 @@
 
 ;; definition for method 11 of type ogre-bridge
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! ogre-bridge ((obj ogre-bridge) (arg0 entity-actor))
-  (stack-size-set! (-> obj main-thread) 512)
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ogre-bridge ((this ogre-bridge) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 512)
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1306,21 +1309,21 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (initialize-skeleton obj *ogre-bridge-sg* '())
-  (logior! (-> obj skel effect flags) 1)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton this *ogre-bridge-sg* '())
+  (logior! (-> this skel effect flags) 1)
   (dotimes (s5-1 8)
-    (let ((v1-185 (new 'process 'joint-mod-set-local obj (the-as int (-> *ogre-bridge-joint-array* s5-1)) #f #f #f)))
-      (set! (-> obj joint-mod-array s5-1) (the-as joint-mod v1-185))
+    (let ((v1-185 (new 'process 'joint-mod-set-local this (the-as int (-> *ogre-bridge-joint-array* s5-1)) #f #f #f)))
+      (set! (-> this joint-mod-array s5-1) (the-as joint-mod v1-185))
       (vector-reset! (-> v1-185 transform scale))
       )
     )
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-     (set! (-> obj dead-joint-count) 8)
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+     (set! (-> this dead-joint-count) 8)
      (ogre-bridge-update-joints)
      (go ogre-bridge-activated)
      )
@@ -1351,11 +1354,11 @@
   )
 
 ;; definition for method 3 of type ogre-bridgeend
-(defmethod inspect ogre-bridgeend ((obj ogre-bridgeend))
+(defmethod inspect ogre-bridgeend ((this ogre-bridgeend))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1368,8 +1371,8 @@
 
 ;; definition for method 11 of type ogre-bridgeend
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! ogre-bridgeend ((obj ogre-bridgeend) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-from-entity! ogre-bridgeend ((this ogre-bridgeend) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1381,10 +1384,10 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *ogre-bridgeend-sg* '())
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *ogre-bridgeend-sg* '())
   (go ogre-bridgeend-idle)
   (none)
   )
@@ -1401,13 +1404,13 @@
   )
 
 ;; definition for method 3 of type ogre-lava
-(defmethod inspect ogre-lava ((obj ogre-lava))
+(defmethod inspect ogre-lava ((this ogre-lava))
   (let ((t9-0 (method-of-type water-anim inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tidle-anim: ~D~%" (-> obj idle-anim))
-  (format #t "~T~Tanim: ~D~%" (-> obj anim))
-  obj
+  (format #t "~T~Tidle-anim: ~D~%" (-> this idle-anim))
+  (format #t "~T~Tanim: ~D~%" (-> this anim))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1484,18 +1487,18 @@
 
 ;; definition for method 22 of type ogre-lava
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod water-vol-method-22 ogre-lava ((obj ogre-lava))
+(defmethod water-vol-method-22 ogre-lava ((this ogre-lava))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
+    (set! (-> this draw ripple) v1-2)
     (set! (-> v1-2 global-scale) 2048.0)
     (set! (-> v1-2 waveform) ripple-for-ogre-lava)
     )
-  (logclear! (-> obj flags) (water-flags wt23))
-  (logior! (-> obj flags) (water-flags wt25))
-  (set! (-> obj attack-event) 'lava)
+  (logclear! (-> this flags) (water-flags wt23))
+  (logior! (-> this flags) (water-flags wt25))
+  (set! (-> this attack-event) 'lava)
   (none)
   )
 
@@ -1515,12 +1518,12 @@
   )
 
 ;; definition for method 3 of type shortcut-boulder
-(defmethod inspect shortcut-boulder ((obj shortcut-boulder))
+(defmethod inspect shortcut-boulder ((this shortcut-boulder))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tbroken-look: #<lod-set @ #x~X>~%" (-> obj broken-look))
-  obj
+  (format #t "~T~Tbroken-look: #<lod-set @ #x~X>~%" (-> this broken-look))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1666,8 +1669,8 @@
 
 ;; definition for method 11 of type shortcut-boulder
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! shortcut-boulder ((obj shortcut-boulder) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! shortcut-boulder ((this shortcut-boulder) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1679,12 +1682,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *shortcut-boulder-whole-sg* '())
-  (setup-lods! (-> obj broken-look) *shortcut-boulder-broken-sg* (-> obj draw art-group) (-> obj entity))
-  (set-vector! (-> obj draw color-emissive) 0.125 0.0625 0.0 0.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *shortcut-boulder-whole-sg* '())
+  (setup-lods! (-> this broken-look) *shortcut-boulder-broken-sg* (-> this draw art-group) (-> this entity))
+  (set-vector! (-> this draw color-emissive) 0.125 0.0625 0.0 0.0)
   (go shortcut-boulder-idle)
   (none)
   )

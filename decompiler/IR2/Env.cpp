@@ -66,7 +66,7 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
 
 void Env::set_remap_for_method(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
-  m_var_remap["a0-0"] = "obj";
+  m_var_remap["a0-0"] = "this";
   for (int i = 1; i < nargs; i++) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 1));
   }

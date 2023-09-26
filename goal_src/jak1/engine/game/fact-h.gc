@@ -5,6 +5,8 @@
 ;; name in dgo: fact-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;; The fact bank is a single static object containing health/eco parameters
 ;; All game code should reference *FACT-bank* to determine these parameters
 
@@ -168,18 +170,18 @@
    fails will use the values in the arguments"
   (local-vars (tag res-tag))
   ;; allocate.
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (let ((ent (the res-lump (-> proc entity))))
       ;; confirm that we allocated successfully
-      (when (zero? obj)
+      (when (zero? this)
         (go process-drawable-art-error "memory")
         ;; this is already true...
-        (set! obj (the-as fact-info 0))
+        (set! this (the-as fact-info 0))
         (goto cfg-10)
         )
 
       ;; remember who we belong to
-      (set! (-> obj process) proc)
+      (set! (-> this process) proc)
 
       ;; eco may override the pickup type and amount, so try to get this.
       (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
@@ -188,7 +190,7 @@
            ;; eco-info lookup succeeded,
            (let ((a0-6 (-> tag elt-count)))
              ;; first thing is pickup type, it's always there
-             (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+             (set! (-> this pickup-type) (the-as pickup-type (-> v1-6 0)))
              ;; pickup amount is optional.
              (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
                                    (the float (-> v1-6 1))
@@ -196,57 +198,57 @@
                                    )
                    )
              )
-           (set! (-> obj pickup-amount) pkup-amount)
+           (set! (-> this pickup-amount) pkup-amount)
            )
           (else
            ;; no eco-info, use stuff from args
-           (set! (-> obj pickup-type) pkup-type)
-           (set! (-> obj pickup-amount) pkup-amount)
+           (set! (-> this pickup-type) pkup-type)
+           (set! (-> this pickup-amount) pkup-amount)
            )
           )
         )
 
       ;; read the options
-      (set! (-> obj options) (res-lump-value ent 'options fact-options))
+      (set! (-> this options) (res-lump-value ent 'options fact-options))
 
       ;; read fade time, if we have fade or respawn
-      (if (logtest? (fact-options fade respawn) (-> obj options))
-          (set! (-> obj fade-time) (the int (* 300.0 (res-lump-float ent 'timeout))))
+      (if (logtest? (fact-options fade respawn) (-> this options))
+          (set! (-> this fade-time) (the int (* 300.0 (res-lump-float ent 'timeout))))
           )
       )
 
     (label cfg-10)
-    obj
+    this
     )
   )
 
-(defmethod pickup-collectable! fact-info ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
+(defmethod pickup-collectable! fact-info ((this fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
   0.0
   )
 
 (defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process-drawable) (kind pickup-type) (amount float))
   "Create information about an enemy. Possibly includes what the enemy will drop when it is killed?"
   ;; base class ctor
-  (let ((obj (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
+  (let ((this (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
     ;; read values from the process entity
-    (let ((entity (the res-lump (-> obj process entity))))
-      (set! (-> obj speed) (res-lump-float entity 'speed :default 1.0))
-      (set! (-> obj idle-distance) (res-lump-float entity 'idle-distance :default 327680.0))
-      (set! (-> obj notice-top) (res-lump-float entity 'notice-top :default 4096000.0))
-      (set! (-> obj notice-bottom) (res-lump-float entity 'notice-bottom :default 4096000.0))
-      (set! (-> obj cam-horz) (res-lump-float entity 'cam-horz))
-      (set! (-> obj cam-vert) (res-lump-float entity 'cam-vert))
-      (set! (-> obj cam-notice-dist) (res-lump-float entity 'cam-notice-dist :default -4096.0))
+    (let ((entity (the res-lump (-> this process entity))))
+      (set! (-> this speed) (res-lump-float entity 'speed :default 1.0))
+      (set! (-> this idle-distance) (res-lump-float entity 'idle-distance :default 327680.0))
+      (set! (-> this notice-top) (res-lump-float entity 'notice-top :default 4096000.0))
+      (set! (-> this notice-bottom) (res-lump-float entity 'notice-bottom :default 4096000.0))
+      (set! (-> this cam-horz) (res-lump-float entity 'cam-horz))
+      (set! (-> this cam-vert) (res-lump-float entity 'cam-vert))
+      (set! (-> this cam-notice-dist) (res-lump-float entity 'cam-notice-dist :default -4096.0))
       )
-    obj
+    this
     )
   )
 
 (defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
   "Create information about target. Not sure why this has stuff like pickup-type."
-  (let ((obj (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (set! (-> obj eco-source) (the-as handle #f))
-    (reset! obj #f)
-    obj
+  (let ((this (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (set! (-> this eco-source) (the-as handle #f))
+    (reset! this #f)
+    this
     )
   )

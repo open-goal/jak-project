@@ -10,6 +10,7 @@
 
 ;; The "perm" data is saved to the memory card.
 
+;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;;
 ;; border plane
@@ -17,9 +18,9 @@
 
 ;; This border-plane seems to be unused.  This is separate from load boundaries.
 
-(defmethod debug-draw! border-plane ((obj border-plane))
+(defmethod debug-draw! border-plane ((this border-plane))
   "Debug draw a border plane with a vector and text."
-  (let* ((v1-0 (-> obj action))
+  (let* ((v1-0 (-> this action))
          ;; pick color based on action
          (s5-0 (if (= v1-0 'load)
                    (new 'static 'rgba :g #xff :a #x80)
@@ -29,22 +30,22 @@
          )
 
     ;; add text and vector
-    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> obj trans) 819.2 (symbol->string (-> obj name)) s5-0)
-    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> obj trans) (-> obj normal) (meters 2) s5-0)
+    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> this trans) 819.2 (symbol->string (-> this name)) s5-0)
+    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> this trans) (-> this normal) (meters 2) s5-0)
     )
   0
   (none)
   )
 
-(defmethod point-past-plane? border-plane ((obj border-plane) (arg0 vector))
+(defmethod point-past-plane? border-plane ((this border-plane) (arg0 vector))
   "Which side of the plane is the given point on?
    #t = on the plane, or on the side the normal points toward."
-  (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)) (-> obj normal)) 0.0)
+  (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) (-> this normal)) 0.0)
   )
 
-(defmethod task-complete? game-info ((obj game-info) (arg0 game-task))
+(defmethod task-complete? game-info ((this game-info) (arg0 game-task))
   "Likely closed, or in the process of closing"
-  (logtest? (-> obj task-perm-list data arg0 status) (entity-perm-status real-complete))
+  (logtest? (-> this task-perm-list data arg0 status) (entity-perm-status real-complete))
   )
 
 ;; set up a static continue point that can be used as a temporary continue point.
@@ -63,13 +64,13 @@
                              )
         )
 
-(defmethod get-or-create-continue! game-info ((obj game-info))
+(defmethod get-or-create-continue! game-info ((this game-info))
   "Attempt to get a continue point, if it doesn't exist set the
    default-continue to a location in front of the camera."
   (cond
-    ((and (= (-> obj mode) 'play) (-> obj current-continue))
+    ((and (= (-> this mode) 'play) (-> this current-continue))
      ;; we have a continue.
-     (-> obj current-continue)
+     (-> this current-continue)
      )
     (else
      ;; need to make one
@@ -87,7 +88,7 @@
     )
   )
 
-(defmethod get-continue-by-name game-info ((obj game-info) (arg0 string))
+(defmethod get-continue-by-name game-info ((this game-info) (arg0 string))
   "Look up a continue point by string name"
   (let ((s5-0 *level-load-list*))
     ;; loop over levels
@@ -110,7 +111,7 @@
   (the-as continue-point #f)
   )
 
-(defmethod set-continue! game-info ((obj game-info) (arg0 basic))
+(defmethod set-continue! game-info ((this game-info) (arg0 basic))
   "Set the current continue point to to arg0.
    arg0 can be:
     '() or #f, in which case it does nothing.
@@ -122,20 +123,20 @@
 
    If the continue is changed, resets the death and time counters
    "
-  (let ((s5-0 (-> obj current-continue)))
+  (let ((s5-0 (-> this current-continue)))
     (if (null? arg0)
         (set! arg0 #f)
         )
     (case (-> arg0 type)
       ((string)
-       (let ((v1-5 (get-continue-by-name obj (the-as string arg0))))
+       (let ((v1-5 (get-continue-by-name this (the-as string arg0))))
          (if v1-5
-             (set! (-> obj current-continue) v1-5)
+             (set! (-> this current-continue) v1-5)
              )
          )
        )
       ((continue-point)
-       (set! (-> obj current-continue) (the-as continue-point arg0))
+       (set! (-> this current-continue) (the-as continue-point arg0))
        )
       (else
         (let ((s4-3 *default-continue*))
@@ -146,24 +147,24 @@
           (set! (-> s4-3 disp0) (-> *load-state* want 0 display?))
           (set! (-> s4-3 lev1) (-> *load-state* want 1 name))
           (set! (-> s4-3 disp1) (-> *load-state* want 1 display?))
-          (set! (-> obj current-continue) s4-3)
+          (set! (-> this current-continue) s4-3)
           )
         )
       )
-    (when (!= s5-0 (-> obj current-continue))
-      (set! (-> obj continue-deaths) 0)
-      (set! (-> obj continue-time) (-> *display* base-frame-counter))
+    (when (!= s5-0 (-> this current-continue))
+      (set! (-> this continue-deaths) 0)
+      (set-time! (-> this continue-time))
       )
     )
-  (-> obj current-continue)
+  (-> this current-continue)
   )
 
-(defmethod get-entity-task-perm game-info ((obj game-info) (arg0 game-task))
+(defmethod get-entity-task-perm game-info ((this game-info) (arg0 game-task))
   "Get the permanent storage for a game-task"
-  (-> obj task-perm-list data arg0)
+  (-> this task-perm-list data arg0)
   )
 
-(defmethod initialize! game-info ((obj game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
+(defmethod initialize! game-info ((this game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
   "Initialize the game-info.
     The cause can be 'dead if you die, or 'game to reset everything.
     If save-to-load is not #f will load data from that.
@@ -173,34 +174,34 @@
   (case cause
     (('dead)
      ;; reload game-info because we died.  Increase death counts
-     (+! (-> obj total-deaths) 1)
-     (+! (-> obj continue-deaths) 1)
-     (+! (-> obj fuel-cell-deaths) 1)
+     (+! (-> this total-deaths) 1)
+     (+! (-> this continue-deaths) 1)
+     (+! (-> this fuel-cell-deaths) 1)
      (when *target*
        (let ((lev-info (-> *target* current-level info)))
          (set! v0-0
                (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
                  ;; update death per level.
                  (set! v0-0
-                       (seekl (the-as int (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1)))) 255 1)
+                       (seekl (the-as int (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1)))) 255 1)
                        )
-                 (set! (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
+                 (set! (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
                  v0-0
                  )
                )
          )
        )
-     (case (-> obj mode)
+     (case (-> this mode)
        (('play)
         ;; now pick between life/try depending on if we ran out of lives or not. (this isnt really used)
-        (if (< 0.0 (-> obj life))
+        (if (< 0.0 (-> this life))
             (set! cause 'life)
             (set! cause 'try)
             )
         )
        (else
          ;; not in play mode, we're done.
-         (set! obj obj)
+         (set! this this)
          (goto cfg-50)
          )
        )
@@ -212,7 +213,7 @@
      ;; we are doing a full restart.
      ;; reset everything!
      (reset-all-hint-controls)
-     (set-continue! obj (cond
+     (set-continue! this (cond
                           (continue-point-override
                             (empty)
                             continue-point-override
@@ -228,34 +229,34 @@
                             )
                           )
                     )
-     (set! (-> obj auto-save-count) 0)
+     (set! (-> this auto-save-count) 0)
      (set! (-> *setting-control* default auto-save) #f)
-     (set! (-> obj money) 0.0)
-     (set! (-> obj fuel) 0.0)
-     (set! (-> obj money-total) 0.0)
-     (set! (-> obj buzzer-total) 0.0)
-     (set! (-> obj perm-list length) 0)
-     (clear-all! (-> obj text-ids-seen))
-     (set! (-> obj death-movie-tick) (rand-vu-int-count 10))
-     (set! (-> obj total-deaths) 0)
-     (set! (-> obj continue-deaths) 0)
-     (set! (-> obj fuel-cell-deaths) 0)
-     (set! (-> obj death-pos length) 0)
-     (set! (-> obj game-start-time) (-> *display* base-frame-counter))
-     (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
-     (set! (-> obj continue-time) (-> *display* base-frame-counter))
-     (set! (-> obj death-time) (-> *display* base-frame-counter))
-     (set! (-> obj hit-time) (-> *display* base-frame-counter))
+     (set! (-> this money) 0.0)
+     (set! (-> this fuel) 0.0)
+     (set! (-> this money-total) 0.0)
+     (set! (-> this buzzer-total) 0.0)
+     (set! (-> this perm-list length) 0)
+     (clear-all! (-> this text-ids-seen))
+     (set! (-> this death-movie-tick) (rand-vu-int-count 10))
+     (set! (-> this total-deaths) 0)
+     (set! (-> this continue-deaths) 0)
+     (set! (-> this fuel-cell-deaths) 0)
+     (set! (-> this death-pos length) 0)
+     (set-time! (-> this game-start-time))
+     (set-time! (-> this fuel-cell-pickup-time))
+     (set-time! (-> this continue-time))
+     (set-time! (-> this death-time))
+     (set-time! (-> this hit-time))
      (dotimes (v1-50 116)
-       (set! (-> obj fuel-cell-time 0) 0)
+       (set! (-> this fuel-cell-time 0) 0)
        (nop!)
        )
      (dotimes (v1-53 32)
-       (set! (-> obj money-per-level v1-53) (the-as uint 0))
-       (set! (-> obj deaths-per-level v1-53) (the-as uint 0))
-       (set! (-> obj enter-level-time v1-53) 0)
-       (set! (-> obj in-level-time v1-53) 0)
-       (set! (-> obj level-opened v1-53) (the-as uint 0))
+       (set! (-> this money-per-level v1-53) (the-as uint 0))
+       (set! (-> this deaths-per-level v1-53) (the-as uint 0))
+       (set! (-> this enter-level-time v1-53) 0)
+       (set! (-> this in-level-time v1-53) 0)
+       (set! (-> this level-opened v1-53) (the-as uint 0))
        (nop!)
        )
      )
@@ -263,24 +264,24 @@
   (case cause
     (('game 'try)
      ;; full restart, or ran out of lives
-     (case (-> obj mode)
+     (case (-> this mode)
        (('play)
         (set! *display-profile* #f)
         (set! *display-entity-errors* #f)
         )
        )
-     (set! (-> obj life-max) (-> *GAME-bank* life-max-default))
-     (set! (-> obj life) (-> *GAME-bank* life-start-default))
+     (set! (-> this life-max) (-> *GAME-bank* life-max-default))
+     (set! (-> this life) (-> *GAME-bank* life-start-default))
      )
     )
 
-  (let ((v1-65 (-> obj mode)))
+  (let ((v1-65 (-> this mode)))
     (cond
       ((= v1-65 'debug)
        ;; in debug, we didn't kill things so we don't need to restart them
        (reset-actors cause)
        (if save-to-load
-           (load-game! obj save-to-load)
+           (load-game! this save-to-load)
            )
        )
       ((= v1-65 'play)
@@ -315,7 +316,7 @@
                                            (start arg0 arg2)
                                            (none)
                                            )
-                              (-> obj mode) cause (get-or-create-continue! obj) save-to-load
+                              (-> this mode) cause (get-or-create-continue! this) save-to-load
                               :from *4k-dead-pool*
                               )
        (set-master-mode 'game)
@@ -323,23 +324,23 @@
       )
     )
   (label cfg-50)
-  obj
+  this
   )
 
 
-(defmethod adjust game-info ((obj game-info) (item symbol) (amount float) (source handle))
+(defmethod adjust game-info ((this game-info) (item symbol) (amount float) (source handle))
   "Adjust the number of items by amount."
   (case item
     (('life)
      ;; get/lose a life, just modify the life field
      (if (>= amount 0.0)
-         (seek! (-> obj life) (-> obj life-max) amount)
-         (seek! (-> obj life) 0.0 (- amount))
+         (seek! (-> this life) (-> this life-max) amount)
+         (seek! (-> this life) 0.0 (- amount))
          )
-     (-> obj life)
+     (-> this life)
      )
     (('money)
-     (if (and (< 0.0 amount) (= (+ (-> obj money) amount) (-> *GAME-bank* money-task-inc)))
+     (if (and (< 0.0 amount) (= (+ (-> this money) amount) (-> *GAME-bank* money-task-inc)))
          ;; got enough orbs to trade, display a hint
          (level-hint-spawn
            (text-id sidekick-reminder-money)
@@ -359,11 +360,11 @@
              ;; get the level index
              (let ((level-idx (-> *level-task-data-remap* (+ (-> proc entity extra level info index) -1))))
                ;; increment the level money count
-               (+! (-> obj money-per-level level-idx) (the int amount))
+               (+! (-> this money-per-level level-idx) (the int amount))
                ;; increment our total money in the game (out of the 2000 max orbs)
-               (+! (-> obj money-total) amount)
+               (+! (-> this money-total) amount)
                ;; if we have all the money in our level, display the all orbs graphic
-               (if (= (-> obj money-per-level level-idx) (-> (get-game-count level-idx) money-count))
+               (if (= (-> this money-per-level level-idx) (-> (get-game-count level-idx) money-count))
                    (activate-orb-all level-idx)
                    )
                )
@@ -373,29 +374,29 @@
        )
 
      ;; increment our current money count
-     (+! (-> obj money) amount)
+     (+! (-> this money) amount)
      )
     (('fuel-cell)
      ;; got a power cell!
      ;; in this case, the amount is actually the index of the power cell's task
      (let ((s5-1 (the int amount)))
-       (when (not (or (task-complete? obj (the-as game-task s5-1)) (>= (the-as uint 1) (the-as uint s5-1))))
+       (when (not (or (task-complete? this (the-as game-task s5-1)) (>= (the-as uint 1) (the-as uint s5-1))))
          ;; the cell corresponds to a valid and previously incomplete task.
          ;; update our stats
-         (set! (-> obj fuel-cell-deaths) 0)
-         (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
-         (set! (-> obj fuel-cell-time s5-1) (-> *display* base-frame-counter))
+         (set! (-> this fuel-cell-deaths) 0)
+         (set-time! (-> this fuel-cell-pickup-time))
+         (set-time! (-> this fuel-cell-time s5-1))
          ;; increment power cells!
-         (+! (-> obj fuel) 1.0)
+         (+! (-> this fuel) 1.0)
          ;; mark as completed
-         (logior! (-> obj task-perm-list data s5-1 status) (entity-perm-status real-complete))
+         (logior! (-> this task-perm-list data s5-1 status) (entity-perm-status real-complete))
          ;; unused.
          (get-task-control (the-as game-task s5-1))
          ;; close the task!
          (close-specific-task! (the-as game-task s5-1) (task-status need-resolution))
          )
        )
-     (-> obj fuel)
+     (-> this fuel)
      )
     (('buzzer)
      ;; got a scout fly. In this case, the amount is actually two 16 bit numbers
@@ -414,7 +415,7 @@
 
              ;; increment total if we haven't collected it before
              (if (not (logtest? buzz-bits (ash 1 buzz-index)))
-                 (+! (-> obj buzzer-total) 1.0)
+                 (+! (-> this buzzer-total) 1.0)
                  )
 
              ;; set the updated bits
@@ -438,13 +439,13 @@
     )
   )
 
-(defmethod got-buzzer? game-info ((obj game-info) (arg0 game-task) (arg1 int))
+(defmethod got-buzzer? game-info ((this game-info) (arg0 game-task) (arg1 int))
   "Do we have the arg1-th buzzer for the given buzzer task?"
   ;; buzzers mis-use their reminder bits as a bitfield of which ones have been collected
   (logtest? (get-reminder (get-task-control arg0) 0) (ash 1 arg1))
   )
 
-(defmethod buzzer-count game-info ((obj game-info) (arg0 game-task))
+(defmethod buzzer-count game-info ((this game-info) (arg0 game-task))
   "How many buzzers do we have for this task?"
   (let ((v1-1 (get-reminder (get-task-control arg0) 0)) ;; buzzer bitmask
         (v0-2 0)                                        ;; count
@@ -458,55 +459,55 @@
     )
   )
 
-(defmethod seen-text? game-info ((obj game-info) (arg0 text-id))
+(defmethod seen-text? game-info ((this game-info) (arg0 text-id))
   "Have we already displayed this text?
    This is used to display level names on only the first enter.
    It seems like hints could also display text on screen at one point in time."
-  (get-bit (-> obj text-ids-seen) (the-as int arg0))
+  (get-bit (-> this text-ids-seen) (the-as int arg0))
   )
 
-(defmethod mark-text-as-seen game-info ((obj game-info) (arg0 text-id))
+(defmethod mark-text-as-seen game-info ((this game-info) (arg0 text-id))
   "Mark the game text as seen.  This only works if the text id < 4096, and ignores otherwise"
   (if (and (< (the-as uint arg0) (the-as uint 4095)) (> (the-as uint arg0) 0))
-      (set-bit (-> obj text-ids-seen) (the-as int arg0))
+      (set-bit (-> this text-ids-seen) (the-as int arg0))
       )
   0
   (none)
   )
 
-(defmethod clear-text-seen! game-info ((obj game-info) (arg0 text-id))
+(defmethod clear-text-seen! game-info ((this game-info) (arg0 text-id))
   "Mark text as unseen. MUST be a valid text id"
-  (clear-bit (-> obj text-ids-seen) (the-as int arg0))
+  (clear-bit (-> this text-ids-seen) (the-as int arg0))
   0
   (none)
   )
 
-(defmethod reset! fact-info-target ((obj fact-info-target) (arg0 symbol))
+(defmethod reset! fact-info-target ((this fact-info-target) (arg0 symbol))
   "Reset the facts for a given thing"
   (when (or (not arg0) (= arg0 'eco))
-    (set! (-> obj eco-timeout) 0)
-    (set! (-> obj eco-level) 0.0)
-    (set! (-> obj eco-pickup-time) (-> *display* game-frame-counter))
+    (set! (-> this eco-timeout) 0)
+    (set! (-> this eco-level) 0.0)
+    (set! (-> this eco-pickup-time) (-> *display* game-frame-counter))
     )
   (when (or (not arg0) (= arg0 'health))
-    (set! (-> obj health-max) (-> *FACT-bank* health-max-default))
-    (set! (-> obj health) (-> obj health-max))
-    (set! (-> obj health-pickup-time) (seconds -100))
+    (set! (-> this health-max) (-> *FACT-bank* health-max-default))
+    (set! (-> this health) (-> this health-max))
+    (set! (-> this health-pickup-time) (seconds -100))
     )
   (when (or (not arg0) (= arg0 'buzzer))
-    (set! (-> obj buzzer-max) (-> *FACT-bank* buzzer-max-default))
-    (set! (-> obj buzzer) 0.0)
+    (set! (-> this buzzer-max) (-> *FACT-bank* buzzer-max-default))
+    (set! (-> this buzzer) 0.0)
     )
   (when (or (not arg0) (= arg0 'eco-pill))
-    (set! (-> obj eco-pill-max) (-> *FACT-bank* eco-pill-max-default))
-    (set! (-> obj eco-pill) 0.0)
+    (set! (-> this eco-pill-max) (-> *FACT-bank* eco-pill-max-default))
+    (set! (-> this eco-pill) 0.0)
     )
   (none)
   )
 
 (declare-type vent process-drawable)
 
-(defmethod pickup-collectable! fact-info-target ((obj fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
+(defmethod pickup-collectable! fact-info-target ((this fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
   "Pickup a thing!"
   (case kind
     (((pickup-type eco-green))
@@ -517,8 +518,8 @@
         (when (< 0.0 amount)
           ;; when we get a different source, OR we it's been more than 0.5 seconds since we last got eco
           ;; from this source.
-          (if (or (!= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                  (>= (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
+          (if (or (!= (handle->process source-handle) (handle->process (-> this eco-source)))
+                  (time-elapsed? (-> this eco-source-time) (seconds 0.5))
                   )
 
               ;; play the sound!
@@ -527,46 +528,46 @@
 
           ;; remember the source.
           (when (handle->process source-handle)
-            (set! (-> obj eco-source) source-handle)
-            (set! (-> obj eco-source-time) (-> *display* base-frame-counter))
+            (set! (-> this eco-source) source-handle)
+            (set-time! (-> this eco-source-time))
             )
           )
 
         ;; if we are at max health (3), and collect additional an additional big green eco,
         ;; then max out the little green ecos.
-        (if (= (-> obj health) (-> obj health-max))
+        (if (= (-> this health) (-> this health-max))
             (pickup-collectable!
-              obj
+              this
               (pickup-type eco-pill)
               (-> *FACT-bank* eco-pill-max-default)
-              (process->handle (-> obj process))
+              (process->handle (-> this process))
               )
             )
 
         ;; remember when
-        (set! (-> obj health-pickup-time) (-> *display* base-frame-counter))
+        (set-time! (-> this health-pickup-time))
         ;; increase the health!
-        (seek! (-> obj health) (-> obj health-max) amount)
+        (seek! (-> this health) (-> this health-max) amount)
         )
        (else
          ;; negative health. Subtract.
-         (seek! (-> obj health) 0.0 (- amount))
+         (seek! (-> this health) 0.0 (- amount))
 
          ;; not sure why we do this. But this will set the eco pill collection time.
          (if (>= amount -10.0)
-             (pickup-collectable! obj (pickup-type eco-pill) 0.0 source-handle)
+             (pickup-collectable! this (pickup-type eco-pill) 0.0 source-handle)
              )
 
          ;; subtract lives.
-         (if (= (-> obj health) 0.0)
-             (adjust (-> (the-as target (-> obj process)) game) 'life (- (-> *GAME-bank* life-single-inc)) source-handle)
+         (if (= (-> this health) 0.0)
+             (adjust (-> (the-as target (-> this process)) game) 'life (- (-> *GAME-bank* life-single-inc)) source-handle)
              )
          )
        )
 
      ;; some sort of hack for eco vents.
      (b!
-       (and (logtest? (-> (the-as collide-shape (-> obj process root)) root-prim prim-core action) 
+       (and (logtest? (-> (the-as collide-shape (-> this process root)) root-prim prim-core action) 
                       (collide-action racer)
                       )
             (type-type? (-> (handle->process source-handle) type) vent)
@@ -574,30 +575,30 @@
        cfg-80
        :delay (nop!)
        )
-     (-> obj health)
+     (-> this health)
      )
 
     (((pickup-type eco-pill))
      ;; collect small green eco
      (when (>= amount 0.0)
        ;; update small eco count
-       (set! (-> obj eco-pill-pickup-time) (-> *display* base-frame-counter))
-       (seek! (-> obj eco-pill) (-> obj eco-pill-max) amount)
+       (set-time! (-> this eco-pill-pickup-time))
+       (seek! (-> this eco-pill) (-> this eco-pill-max) amount)
 
        ;; increment big health if needed
-       (when (and (>= (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)) (< (-> obj health) (-> obj health-max)))
+       (when (and (>= (-> this eco-pill) (-> *FACT-bank* eco-pill-max-default)) (< (-> this health) (-> this health-max)))
          ;; decrease eco pills
-         (set! (-> obj eco-pill) (- (-> obj eco-pill) (-> *FACT-bank* eco-pill-max-default)))
+         (set! (-> this eco-pill) (- (-> this eco-pill) (-> *FACT-bank* eco-pill-max-default)))
          ;; get a big health.
          (pickup-collectable!
-           obj
+           this
            (pickup-type eco-green)
            (-> *FACT-bank* health-small-inc)
-           (process->handle (-> obj process))
+           (process->handle (-> this process))
            )
          )
        )
-     (-> obj eco-pill)
+     (-> this eco-pill)
      )
 
     (((pickup-type money))
@@ -608,42 +609,44 @@
         (hide-speedrun-display)
         )
        ;; play sound.
-       (if (>= (- (-> *display* base-frame-counter) (-> obj money-pickup-time)) (seconds 0.05))
+       (if (time-elapsed? (-> this money-pickup-time) (seconds 0.05))
            (sound-play "money-pickup")
            )
-       (set! (-> obj money-pickup-time) (-> *display* base-frame-counter))
+       (set-time! (-> this money-pickup-time))
        )
-     (adjust (-> (the-as target (-> obj process)) game) 'money amount source-handle)
+     (adjust (-> (the-as target (-> this process)) game) 'money amount source-handle)
      )
     (((pickup-type fuel-cell))
      ;; the amount is actually the index of the task.
      (let ((s4-2 (the int amount)))
-       (when (not (or (task-complete? (-> (the-as target (-> obj process)) game) (the-as game-task s4-2))
+       (when (not (or (task-complete? (-> (the-as target (-> this process)) game) (the-as game-task s4-2))
                     (>= (the-as uint 1) (the-as uint s4-2))
                     )
                 )
+           ;; og:preserve-this
            (#when PC_PORT
             ;; make sure any speedrun display is hidden
             (hide-speedrun-display)
             )
-           (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
+           (set-time! (-> this fuel-cell-pickup-time))
            )
        )
-     (adjust (-> (the-as target (-> obj process)) game) 'fuel-cell amount source-handle)
+     (adjust (-> (the-as target (-> this process)) game) 'fuel-cell amount source-handle)
      )
     (((pickup-type buzzer))
      ;; buzzer
-     (let ((buzz-count (adjust (-> (the-as target (-> obj process)) game) 'buzzer amount source-handle)))
-       (when (!= buzz-count (-> obj buzzer))
+     (let ((buzz-count (adjust (-> (the-as target (-> this process)) game) 'buzzer amount source-handle)))
+       (when (!= buzz-count (-> this buzzer))
+           ;; og:preserve-this
            (#when PC_PORT
              ;; make sure any speedrun display is hidden
              (hide-speedrun-display)
             )
-           (set! (-> obj buzzer-pickup-time) (-> *display* base-frame-counter))
+           (set-time! (-> this buzzer-pickup-time))
            )
-       (set! (-> obj buzzer) buzz-count)
+       (set! (-> this buzzer) buzz-count)
        )
-     (-> obj buzzer)
+     (-> this buzzer)
      )
     (((pickup-type eco-red) (pickup-type eco-blue) (pickup-type eco-yellow))
      ;; the green vent jumps here.
@@ -651,55 +654,55 @@
 
      ;; if the amount is zero, we just want to know how much eco there is.
      (if (= amount 0.0)
-         (return (if (= (-> obj eco-type) kind)
-                     (-> obj eco-level)
+         (return (if (= (-> this eco-type) kind)
+                     (-> this eco-level)
                      0.0 ;; we don't have this kind of eco.
                      )
                  )
          )
 
      ;; new type of eco. Reset and use the new type.
-     (when (!= (-> obj eco-type) kind)
+     (when (!= (-> this eco-type) kind)
        ;; as far as I can tell, the eco-level isn't really used other than just 1 or 0.
-       (set! (-> obj eco-level) 0.0)
-       (set! (-> obj eco-timeout) 0)
+       (set! (-> this eco-level) 0.0)
+       (set! (-> this eco-timeout) 0)
        )
-     (set! (-> obj eco-type) kind)
+     (set! (-> this eco-type) kind)
 
 
-     (let ((eco-lev (-> obj eco-level)))
-       (set! (-> obj eco-level) 1.0) ;; just set to 1.
+     (let ((eco-lev (-> this eco-level)))
+       (set! (-> this eco-level) 1.0) ;; just set to 1.
 
        ;; this check now doesn't make much sense...
-       (when (and (= eco-lev 0.0) (< 0.0 (-> obj eco-level)))
+       (when (and (= eco-lev 0.0) (< 0.0 (-> this eco-level)))
          ;; didn't have eco and now we do, remember when
-         (set! (-> obj eco-pickup-time) (-> *display* game-frame-counter))
+         (set-time! (-> this eco-pickup-time))
 
          ;; send a reset-collide message. Not sure why we do this.
-         (send-event (-> obj process) 'reset-collide)
+         (send-event (-> this process) 'reset-collide)
          )
 
        ;; this logic prevents eco from respawning before you are out.
        ;; the time until respawn is min(full_eco_time, old_time + single_timeout)
-       (set! (-> obj eco-timeout)
+       (set! (-> this eco-timeout)
              (the-as seconds
-                     (min (the-as int (+ (-> obj eco-timeout) (* (the-as int (-> *FACT-bank* eco-single-timeout)) (the int amount))))
-                          (the-as int (+ (-> *FACT-bank* eco-full-timeout) (- (-> *display* game-frame-counter) (-> obj eco-pickup-time))))
+                     (min (the-as int (+ (-> this eco-timeout) (* (the-as int (-> *FACT-bank* eco-single-timeout)) (the int amount))))
+                          (the-as int (+ (-> *FACT-bank* eco-full-timeout) (- (-> *display* game-frame-counter) (-> this eco-pickup-time))))
                           )
                      )
              )
 
        ;; if you max out the eco, this should trigger
-       (if (>= (the-as int (- (-> obj eco-timeout) (the-as uint (- (-> *display* game-frame-counter) (-> obj eco-pickup-time)))))
+       (if (>= (the-as int (- (-> this eco-timeout) (the-as uint (- (-> *display* game-frame-counter) (-> this eco-pickup-time)))))
                (the-as int (-> *FACT-bank* eco-full-timeout))
                )
-           (set! (-> obj eco-level) 2.0)
+           (set! (-> this eco-level) 2.0)
            )
 
 
        ;; sound and controller vibration.
-       (when (not (and (= (handle->process source-handle) (handle->process (-> obj eco-source)))
-                       (< (- (-> *display* base-frame-counter) (-> obj eco-source-time)) (seconds 0.5))
+       (when (not (and (= (handle->process source-handle) (handle->process (-> this eco-source)))
+                       (not (time-elapsed? (-> this eco-source-time) (seconds 0.5)))
                        )
                   )
          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
@@ -720,13 +723,13 @@
            )
          )
 
-       (set! (-> obj eco-source) source-handle)
-       (set! (-> obj eco-source-time) (-> *display* base-frame-counter))
+       (set! (-> this eco-source) source-handle)
+       (set-time! (-> this eco-source-time))
 
        ;; special case for blue eco magnet effect
        (when (= kind (pickup-type eco-blue))
          (when (= eco-lev 0.0)
-           (let ((s5-1 (-> obj process)))
+           (let ((s5-1 (-> this process)))
              (let ((s4-3
                      (process-spawn
                        touch-tracker
@@ -756,8 +759,8 @@
              (process-spawn-function
                process
                (lambda ((arg0 process-drawable))
-                 (let ((s5-0 (-> *display* base-frame-counter)))
-                   (until (>= (- (-> *display* base-frame-counter) s5-0) (seconds 0.6))
+                 (let ((s5-0 (current-time)))
+                   (until (time-elapsed? s5-0 (seconds 0.6))
                      (send-event arg0 'effect 'eco-blue)
                      (suspend)
                      )
@@ -772,16 +775,16 @@
            )
          )
        )
-     (-> obj eco-level)
+     (-> this eco-level)
      )
     (else
-      ((method-of-type fact-info pickup-collectable!) obj kind amount source-handle)
+      ((method-of-type fact-info pickup-collectable!) this kind amount source-handle)
       )
     )
   )
 
-(defmethod lookup-entity-perm-by-aid game-info ((obj game-info) (aid actor-id))
-  (let ((v1-0 (-> obj perm-list)))
+(defmethod lookup-entity-perm-by-aid game-info ((this game-info) (aid actor-id))
+  (let ((v1-0 (-> this perm-list)))
     (countdown (a0-1 (-> v1-0 length))
       (if (= aid (-> v1-0 data a0-1 aid))
           (return (-> v1-0 data a0-1))
@@ -791,9 +794,9 @@
   (the-as entity-perm #f)
   )
 
-(defmethod copy-perms-from-level! game-info ((obj game-info) (lev level))
+(defmethod copy-perms-from-level! game-info ((this game-info) (lev level))
   "Iterate through entities in the level and copy their perms into game-info"
-  (let ((perms (-> obj perm-list))               ;; our perms
+  (let ((perms (-> this perm-list))               ;; our perms
         (lev-entities (-> lev bsp level entity)) ;; entities in the level
         )
     ;; loop over every entity in the level
@@ -803,7 +806,7 @@
         ;; only look at ones with an associated task
         (when (nonzero? (-> lev-entity-perm task))
           ;; look up the perm in the game info
-          (let ((info-entity-perm (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid))))
+          (let ((info-entity-perm (lookup-entity-perm-by-aid this (-> lev-entity-perm aid))))
             (cond
               (info-entity-perm
                 ;; it exists, set it to the value from the level
@@ -824,12 +827,12 @@
   (none)
   )
 
-(defmethod copy-perms-to-level! game-info ((obj game-info) (lev level))
+(defmethod copy-perms-to-level! game-info ((this game-info) (lev level))
   "Does the opposite of the previous, copies perms from game-info to level entities"
   (let ((lev-entities (-> lev bsp level entity)))
     (dotimes (lev-entity-idx (-> lev-entities length))
       (let* ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm))
-             (info-entity-perm (lookup-entity-perm-by-aid obj (-> lev-entity-perm aid)))
+             (info-entity-perm (lookup-entity-perm-by-aid this (-> lev-entity-perm aid)))
              )
         (when info-entity-perm
           ;; found the level entity in game-info, copy
@@ -848,28 +851,28 @@
   (none)
   )
 
-(defmethod print continue-point ((obj continue-point))
-  (format #t "#<~A ~S @ #x~X>" (-> obj type) (-> obj name) obj)
-  obj
+(defmethod print continue-point ((this continue-point))
+  (format #t "#<~A ~S @ #x~X>" (-> this type) (-> this name) this)
+  this
   )
 
 
-(defmethod debug-draw! continue-point ((obj continue-point))
+(defmethod debug-draw! continue-point ((this continue-point))
   "Draw a continue point."
-  (add-debug-x #t (bucket-id debug-no-zbuf) (-> obj trans) (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf) (-> this trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
     #t
     (bucket-id debug-no-zbuf)
-    (-> obj name)
-    (-> obj trans)
+    (-> this name)
+    (-> this trans)
     (font-color white)
     (new 'static 'vector2h :y 8)
     )
-  (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> obj quat))))
+  (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> this quat))))
     (add-debug-vector
       #t
       (bucket-id debug-no-zbuf)
-      (-> obj trans)
+      (-> this trans)
       a3-2
       (meters 2)
       (new 'static 'rgba :r #xff :g #x80 :a #x80)
@@ -926,25 +929,25 @@
   (enum->string game-task arg0)
   )
 
-(defmethod debug-print game-info ((obj game-info) (arg0 symbol))
-  (inspect obj)
+(defmethod debug-print game-info ((this game-info) (arg0 symbol))
+  (inspect this)
   (when (or (not arg0) (= arg0 'game-task))
     (format #t "~Tgame-task:~%")
     (dotimes (s4-0 116)
-      (if (task-complete? obj (the-as game-task s4-0))
+      (if (task-complete? this (the-as game-task s4-0))
           (format #t "~T~T~S~%" (game-task->string (the-as game-task s4-0)))
           )
       )
     )
   (when (or (not arg0) (= arg0 'entity-perm))
     (format #t "~Tentity-perm:~%")
-    (let ((s5-1 (-> obj perm-list)))
+    (let ((s5-1 (-> this perm-list)))
       (dotimes (s4-1 (-> s5-1 length))
         (format #t "~T~T~`entity-perm`P~%" (-> s5-1 data s4-1))
         )
       )
     )
-  obj
+  this
   )
 
 ;; allocate storage for game info
@@ -995,14 +998,14 @@
   (set! (-> gp-0 other-camera-handle) (the-as handle #f))
   )
 
-(defmethod get-death-count game-info ((obj game-info) (arg0 symbol))
+(defmethod get-death-count game-info ((this game-info) (arg0 symbol))
   (let ((v1-13
           (if (and arg0 *target* (>= (-> *level-task-data-remap* length) (-> *target* current-level info index)))
               (the-as
                 int
-                (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+                (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
                 )
-              (-> obj fuel-cell-deaths)
+              (-> this fuel-cell-deaths)
               )
           )
         )
@@ -1011,10 +1014,6 @@
     )
   )
 
-(defmethod get-health-percent-lost game-info ((obj game-info) (arg0 symbol))
-  (* 0.25 (the float (get-death-count obj #f)))
+(defmethod get-health-percent-lost game-info ((this game-info) (arg0 symbol))
+  (* 0.25 (the float (get-death-count this #f)))
   )
-
-
-
-

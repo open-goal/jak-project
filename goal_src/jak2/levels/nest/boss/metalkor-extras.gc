@@ -110,7 +110,7 @@
   :virtual #t
   :event metalkor-egg-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (local-vars (v1-5 float) (v1-27 float) (v1-34 float))
@@ -136,7 +136,7 @@
             ((< f0-0 (* f1-0 f1-0))
              (go-virtual idle)
              )
-            ((>= (- (current-time) (-> self state-time)) (seconds 4))
+            ((time-elapsed? (-> self state-time) (seconds 4))
              (go-virtual hatch)
              )
             (else
@@ -219,10 +219,10 @@
   :virtual #t
   :event metalkor-egg-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (>= (- (current-time) (-> self state-time)) (seconds 3))
+    (if (time-elapsed? (-> self state-time) (seconds 3))
         (go-virtual hatch)
         )
     (let ((v1-9 (ja-group)))
@@ -275,27 +275,27 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init-proj-settings! metalkor-shot ((obj metalkor-shot))
+(defmethod init-proj-settings! metalkor-shot ((this metalkor-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
-  (set! (-> obj attack-mode) 'metalhead-shot)
-  (set! (-> obj max-speed) 532480.0)
-  (set! (-> obj move) metalkor-shot-move)
-  (set! (-> obj timeout) (seconds 0.767))
-  (set-gravity-length (-> obj root dynam) 573440.0)
-  (set! (-> obj old-transv quad) (-> obj root transv quad))
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'metalhead-shot)
+  (set! (-> this max-speed) 532480.0)
+  (set! (-> this move) metalkor-shot-move)
+  (set! (-> this timeout) (seconds 0.767))
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (set! (-> this old-transv quad) (-> this root transv quad))
   (none)
   )
 
-(defmethod spawn-shell-particles metalkor-shot ((obj metalkor-shot))
+(defmethod spawn-shell-particles metalkor-shot ((this metalkor-shot))
   "TODO - confirm"
   (local-vars
     (sv-224 (function vector entity-actor skeleton-group vector object none :behavior manipy))
     (sv-240 vector)
     (sv-256 entity-actor)
     )
-  (let* ((s4-0 (-> obj root))
-         (v0-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> s4-0 trans)) 2048.0))
+  (let* ((s4-0 (-> this root))
+         (v0-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
     (set! (-> gp-0 quad) (-> s4-0 trans quad))
@@ -337,7 +337,7 @@
       )
     )
   (let ((s4-2 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-2 quad) (-> obj root trans quad))
+    (set! (-> s4-2 quad) (-> this root trans quad))
     (let ((gp-1 (new 'stack-no-clear 'quaternion)))
       (let ((s3-0 (lambda :behavior metalkor-shot
                     ()
@@ -373,7 +373,7 @@
                   )
             )
         (let ((s2-0 (new 'stack-no-clear 'matrix)))
-          (vector-normalize-copy! (-> s2-0 vector 1) (-> obj old-transv) -1.0)
+          (vector-normalize-copy! (-> s2-0 vector 1) (-> this old-transv) -1.0)
           (cond
             ((and (< (fabs (-> s2-0 vector 1 y)) (fabs (-> s2-0 vector 1 x)))
                   (< (fabs (-> s2-0 vector 1 y)) (fabs (-> s2-0 vector 1 z)))
@@ -403,7 +403,7 @@
                          )
                      (set! sv-224 manipy-init)
                      (set! sv-240 s4-2)
-                     (set! sv-256 (-> obj entity))
+                     (set! sv-256 (-> this entity))
                      (let ((t0-2 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f)))
                            (t1-2 #f)
                            (t2-2 0)
@@ -436,7 +436,7 @@
                     manipy
                     :init manipy-init
                     s4-2
-                    (-> obj entity)
+                    (-> this entity)
                     (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f))
                     #f
                     0
@@ -456,32 +456,32 @@
   (none)
   )
 
-(defmethod get-trans metalkor-legs ((obj metalkor-legs) (arg0 int))
+(defmethod get-trans metalkor-legs ((this metalkor-legs) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (cond
     ((or (= arg0 2) (= arg0 3))
      (let ((v0-0 (new 'static 'vector :w 1.0)))
        (set! (-> v0-0 quad)
-             (-> (the-as collide-shape-prim-group (-> obj root root-prim)) child 0 prim-core world-sphere quad)
+             (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0 prim-core world-sphere quad)
              )
        (+! (-> v0-0 y) 32768.0)
        v0-0
        )
      )
     (else
-      ((method-of-type process-focusable get-trans) obj arg0)
+      ((method-of-type process-focusable get-trans) this arg0)
       )
     )
   )
 
 ;; WARN: Return type mismatch process-focusable vs metalkor-legs.
-(defmethod relocate metalkor-legs ((obj metalkor-legs) (arg0 int))
+(defmethod relocate metalkor-legs ((this metalkor-legs) (arg0 int))
   (dotimes (v1-0 6)
-    (if (nonzero? (-> obj joint-ik v1-0))
-        (&+! (-> obj joint-ik v1-0) arg0)
+    (if (nonzero? (-> this joint-ik v1-0))
+        (&+! (-> this joint-ik v1-0) arg0)
         )
     )
-  (the-as metalkor-legs ((method-of-type process-focusable relocate) obj arg0))
+  (the-as metalkor-legs ((method-of-type process-focusable relocate) this arg0))
   )
 
 (defbehavior metalkor-legs-handler metalkor-legs ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -679,7 +679,7 @@
   :virtual #t
   :event metalkor-legs-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (dotimes (gp-0 6)
       (enable-set! (-> self joint-ik gp-0) #t)
       ((method-of-type cam-float-seeker init) (the-as cam-float-seeker (-> self foot-locks gp-0)) 0.0 0.1 0.3 0.9)
@@ -781,17 +781,17 @@
     )
   )
 
-(defmethod apply-gravity metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
+(defmethod apply-gravity metalkor-chain-physics ((this metalkor-chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
   (local-vars (f0-16 float) (f0-31 float))
   (cond
     ((zero? arg1)
-     (set! (-> obj joint-length) 8192.0)
+     (set! (-> this joint-length) 8192.0)
      )
     ((= arg1 1)
-     (set! (-> obj joint-length) 12288.0)
+     (set! (-> this joint-length) 12288.0)
      )
     ((= arg1 2)
-     (set! (-> obj joint-length) 8192.0)
+     (set! (-> this joint-length) 8192.0)
      )
     (else
       (let ((v1-8 (-> arg2 parent)))
@@ -813,21 +813,21 @@
                       )
                    )
                  )
-            (set! (-> obj joint-length) 5734.4)
-            (set! (-> obj joint-length) 5324.8)
+            (set! (-> this joint-length) 5734.4)
+            (set! (-> this joint-length) 5324.8)
             )
         )
       )
     )
   (vector-float*!
     arg0
-    (-> obj gravity)
+    (-> this gravity)
     (* 4096.0 (-> self clock time-adjust-ratio) (lerp-scale 0.2 0.1 (the float arg1) 0.0 20.0))
     )
   (vector-float*! arg0 arg0 0.75)
-  (set! (-> obj axial-slop) (* 364.0889 (the float arg1)))
-  (let ((f26-0 (-> obj prev-rotation))
-        (f28-0 (-> obj prev-y-rotation))
+  (set! (-> this axial-slop) (* 364.0889 (the float arg1)))
+  (let ((f26-0 (-> this prev-rotation))
+        (f28-0 (-> this prev-y-rotation))
         (f30-1 (ja-aframe-num-of-proc (the-as process-drawable (ppointer->process (-> arg2 parent))) 0))
         )
     (let* ((v1-27 (-> arg2 parent))
@@ -925,8 +925,8 @@
                                )
                              )
                        )
-                   (set! f26-0 (+ f0-16 (* 182.04445 (-> obj osc-z value))))
-                   (+ f1-3 (* 182.04445 (-> obj osc-y value)))
+                   (set! f26-0 (+ f0-16 (* 182.04445 (-> this osc-z value))))
+                   (+ f1-3 (* 182.04445 (-> this osc-y value)))
                    )
                  )
                 (else
@@ -954,7 +954,7 @@
                          (set! s2-2 #f)
                          )
                         (else
-                          (vector-! arg0 (target-pos 0) (the-as vector (-> obj chain-joints arg1)))
+                          (vector-! arg0 (target-pos 0) (the-as vector (-> this chain-joints arg1)))
                           (vector-normalize! arg0 12288.0)
                           )
                         )
@@ -1013,8 +1013,8 @@
                                 (set! f0-31 (+ 910.2222 f26-0))
                                 )
                               )
-                            (set! f26-0 (+ f0-31 (* 182.04445 (-> obj osc-z value))))
-                            (+! f28-0 (* 182.04445 (-> obj osc-y value)))
+                            (set! f26-0 (+ f0-31 (* 182.04445 (-> this osc-z value))))
+                            (+! f28-0 (* 182.04445 (-> this osc-y value)))
                             )
                           )
                         )
@@ -1025,8 +1025,8 @@
                 )
               )
         )
-      (set! (-> obj prev-rotation) f26-0)
-      (set! (-> obj prev-y-rotation) f28-0)
+      (set! (-> this prev-rotation) f26-0)
+      (set! (-> this prev-y-rotation) f28-0)
       (when (not s2-2)
         (let ((a1-11 (-> arg2 node-list data 3 bone transform))
               (s2-3 (new 'stack-no-clear 'matrix))
@@ -1041,7 +1041,7 @@
         (vector+float*!
           arg0
           arg0
-          (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* arg1 64)))
+          (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* arg1 64)))
           (lerp-scale 0.9 0.5 (the float arg1) 0.0 20.0)
           )
         )
@@ -1095,15 +1095,15 @@
          (vector+float*!
            arg0
            arg0
-           (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* (+ arg1 -1) 64)))
+           (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* (+ arg1 -1) 64)))
            0.9
            )
          )
-        ((-> obj move-with-parent)
+        ((-> this move-with-parent)
          (vector+float*!
            arg0
            arg0
-           (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* (+ arg1 -1) 64)))
+           (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* (+ arg1 -1) 64)))
            0.8
            )
          )
@@ -1114,18 +1114,18 @@
   (none)
   )
 
-(defmethod chain-physics-method-16 metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 int))
+(defmethod chain-physics-method-16 metalkor-chain-physics ((this metalkor-chain-physics) (arg0 int))
   10922.667
   )
 
-(defmethod chain-physics-method-14 metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 vector) (arg1 int))
+(defmethod chain-physics-method-14 metalkor-chain-physics ((this metalkor-chain-physics) (arg0 vector) (arg1 int))
   (vector-reset! arg0)
   0
   (none)
   )
 
-(defmethod clamp-length metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 vector) (arg1 vector) (arg2 object) (arg3 process-drawable))
-  ((method-of-type chain-physics clamp-length) obj arg0 arg1 arg2 arg3)
+(defmethod clamp-length metalkor-chain-physics ((this metalkor-chain-physics) (arg0 vector) (arg1 vector) (arg2 object) (arg3 process-drawable))
+  ((method-of-type chain-physics clamp-length) this arg0 arg1 arg2 arg3)
   (when (< 5 (the-as int arg2))
     (let ((a0-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg3 node-list data 3)))
           (s5-1 (new 'stack-no-clear 'vector))
@@ -1140,14 +1140,14 @@
     )
   )
 
-(defmethod gravity-update metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 process-drawable))
+(defmethod gravity-update metalkor-chain-physics ((this metalkor-chain-physics) (arg0 process-drawable))
   (let ((t9-0 (method-of-type chain-physics gravity-update)))
-    (t9-0 obj arg0)
+    (t9-0 this arg0)
     )
-  (update! (-> obj rand-y))
-  (update! (-> obj rand-z))
-  (update! (-> obj osc-y) (-> obj rand-y value))
-  (update! (-> obj osc-z) (-> obj rand-z value))
+  (update! (-> this rand-y))
+  (update! (-> this rand-z))
+  (update! (-> this osc-y) (-> this rand-y value))
+  (update! (-> this osc-z) (-> this rand-z value))
   (let ((s5-1 (new 'stack-no-clear 'collide-query)))
     (let ((s4-0 (new 'stack-no-clear 'bounding-box)))
       (let ((s3-0 (new 'stack-no-clear 'sphere)))
@@ -1168,7 +1168,7 @@
   (none)
   )
 
-(defmethod chain-physics-method-17 metalkor-chain-physics ((obj metalkor-chain-physics) (arg0 vector) (arg1 int))
+(defmethod chain-physics-method-17 metalkor-chain-physics ((this metalkor-chain-physics) (arg0 vector) (arg1 int))
   (local-vars (v1-26 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1177,7 +1177,7 @@
          )
     (init-vf0-vector)
     (let* ((s5-0 (new 'stack-no-clear 'collide-query))
-           (v1-2 (-> obj chain-joints arg1))
+           (v1-2 (-> this chain-joints arg1))
            (s4-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> v1-2 position)))
            (s3-0 0)
            )
@@ -1235,20 +1235,20 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs metalkor-lowtorso.
-(defmethod relocate metalkor-lowtorso ((obj metalkor-lowtorso) (arg0 int))
-  (if (nonzero? (-> obj tail))
-      (&+! (-> obj tail) arg0)
+(defmethod relocate metalkor-lowtorso ((this metalkor-lowtorso) (arg0 int))
+  (if (nonzero? (-> this tail))
+      (&+! (-> this tail) arg0)
       )
-  (if (nonzero? (-> obj egg-toss-joint-1))
-      (&+! (-> obj egg-toss-joint-1) arg0)
+  (if (nonzero? (-> this egg-toss-joint-1))
+      (&+! (-> this egg-toss-joint-1) arg0)
       )
-  (if (nonzero? (-> obj egg-toss-joint-2))
-      (&+! (-> obj egg-toss-joint-2) arg0)
+  (if (nonzero? (-> this egg-toss-joint-2))
+      (&+! (-> this egg-toss-joint-2) arg0)
       )
-  (if (nonzero? (-> obj egg-toss-joint-3))
-      (&+! (-> obj egg-toss-joint-3) arg0)
+  (if (nonzero? (-> this egg-toss-joint-3))
+      (&+! (-> this egg-toss-joint-3) arg0)
       )
-  (the-as metalkor-lowtorso ((method-of-type process-focusable relocate) obj arg0))
+  (the-as metalkor-lowtorso ((method-of-type process-focusable relocate) this arg0))
   )
 
 (defstate idle (metalkor-lowtorso)
@@ -1357,7 +1357,7 @@
                        (-> block param 0)
                        (static-attack-info ((id (new-attack-id)) (mode 'deadly) (vector s4-2) (shove-up (meters 4))))
                        )
-                 (set! (-> self no-collision-timer) (current-time))
+                 (set-time! (-> self no-collision-timer))
                  (let ((v1-52 (-> self root root-prim)))
                    (set! (-> v1-52 prim-core collide-as) (collide-spec))
                    (set! (-> v1-52 prim-core collide-with) (collide-spec))
@@ -1372,11 +1372,11 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set-params! (-> self egg-toss-joint-angle) 0.0 0.05 0.3 0.9)
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self no-collision-timer)) (seconds 0.1))
+    (when (time-elapsed? (-> self no-collision-timer) (seconds 0.1))
       (let ((v1-5 (-> self root root-prim)))
         (set! (-> v1-5 prim-core collide-as) (-> self root backup-collide-as))
         (set! (-> v1-5 prim-core collide-with) (-> self root backup-collide-with))
@@ -1455,137 +1455,137 @@
   )
 
 
-(defmethod hover-formation-method-15 nestb-formation ((obj nestb-formation) (arg0 vector) (arg1 vector))
-  (logior! (-> obj formation flags) 2)
+(defmethod hover-formation-method-15 nestb-formation ((this nestb-formation) (arg0 vector) (arg1 vector))
+  (logior! (-> this formation flags) 2)
   0
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod init-enemy! metalkor-flitter ((obj metalkor-flitter))
+(defmethod init-enemy! metalkor-flitter ((this metalkor-flitter))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flitter" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (init-enemy-behaviour-and-stats! obj *metalkor-flitter-nav-enemy-info*)
-  (set! (-> obj move-angle) 10922.667)
-  (set! (-> obj heading) (the-as basic (if (= (rand-vu-int-range 0 1) 1)
-                                           #t
-                                           #f
-                                           )
-                                 )
+  (init-enemy-behaviour-and-stats! this *metalkor-flitter-nav-enemy-info*)
+  (set! (-> this move-angle) 10922.667)
+  (set! (-> this heading) (the-as basic (if (= (rand-vu-int-range 0 1) 1)
+                                            #t
+                                            #f
+                                            )
+                                  )
         )
-  (set! (-> obj change-dir-time) 0)
-  (set! (-> obj off-screen-timer) (the-as uint 0))
-  (set! (-> obj amb-sound-timer) (the-as uint 0))
+  (set! (-> this change-dir-time) 0)
+  (set! (-> this off-screen-timer) (the-as uint 0))
+  (set! (-> this amb-sound-timer) (the-as uint 0))
   (add-connection
     *part-engine*
-    obj
+    this
     28
-    obj
+    this
     318
     (new 'static 'vector :x 942.08 :y -860.16 :z 1269.76 :w 163840.0)
     )
   (add-connection
     *part-engine*
-    obj
+    this
     28
-    obj
+    this
     318
     (new 'static 'vector :x -942.08 :y -860.16 :z 1269.76 :w 163840.0)
     )
-  (set-gravity-length (-> obj root dynam) 491520.0)
-  (set! (-> obj minimap) #f)
+  (set-gravity-length (-> this root dynam) 491520.0)
+  (set! (-> this minimap) #f)
   (none)
   )
 
-(defmethod dispose! metalkor-flitter ((obj metalkor-flitter))
+(defmethod dispose! metalkor-flitter ((this metalkor-flitter))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (with-pp
-    (when (not (logtest? (enemy-flag recover-applied-velocity) (-> obj enemy-flags)))
-      (when (and (>= (-> obj enemy-info gem-joint) 0)
-                 (not (logtest? (enemy-flag cam-attack-mode) (-> obj enemy-flags)))
+    (when (not (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
+      (when (and (>= (-> this enemy-info gem-joint) 0)
+                 (not (logtest? (enemy-flag cam-attack-mode) (-> this enemy-flags)))
                  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-0 from) (process->ppointer pp))
                    (set! (-> a1-0 num-params) 0)
                    (set! (-> a1-0 message) 'have-gem?)
-                   (or (send-event-function (ppointer->process (-> obj parent)) a1-0)
+                   (or (send-event-function (ppointer->process (-> this parent)) a1-0)
                        (task-node-closed? (game-task-node city-win-introduction))
                        (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                        )
                    )
                  )
-        (logior! (-> obj enemy-flags) (enemy-flag cam-attack-mode))
-        (remove-from-process *part-engine* obj)
+        (logior! (-> this enemy-flags) (enemy-flag cam-attack-mode))
+        (remove-from-process *part-engine* this)
         (setup-masks
-          (-> obj draw)
-          (the-as int (-> obj enemy-info gem-no-seg))
-          (the-as int (-> obj enemy-info gem-seg))
+          (-> this draw)
+          (the-as int (-> this enemy-info gem-no-seg))
+          (the-as int (-> this enemy-info gem-seg))
           )
         (let ((v1-30
                 (ppointer->process
                   (birth-pickup-at-point
-                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data (-> obj enemy-info gem-joint)))
+                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data (-> this enemy-info gem-joint)))
                     (pickup-type gem)
                     1.0
                     #t
-                    (ppointer->process (-> obj parent))
-                    (-> obj fact)
+                    (ppointer->process (-> this parent))
+                    (-> this fact)
                     )
                   )
                 )
               )
-          (send-event (ppointer->process (-> obj parent)) 'flitter-change-gem obj v1-30)
+          (send-event (ppointer->process (-> this parent)) 'flitter-change-gem this v1-30)
           )
         )
       )
-    ((method-of-type flitter dispose!) obj)
+    ((method-of-type flitter dispose!) this)
     (none)
     )
   )
 
-(defmethod dispose! metalkor-wasp ((obj metalkor-wasp))
+(defmethod dispose! metalkor-wasp ((this metalkor-wasp))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (with-pp
-    (when (not (logtest? (enemy-flag recover-applied-velocity) (-> obj enemy-flags)))
-      (when (and (>= (-> obj enemy-info gem-joint) 0)
-                 (not (logtest? (enemy-flag cam-attack-mode) (-> obj enemy-flags)))
+    (when (not (logtest? (enemy-flag recover-applied-velocity) (-> this enemy-flags)))
+      (when (and (>= (-> this enemy-info gem-joint) 0)
+                 (not (logtest? (enemy-flag cam-attack-mode) (-> this enemy-flags)))
                  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-0 from) (process->ppointer pp))
                    (set! (-> a1-0 num-params) 0)
                    (set! (-> a1-0 message) 'have-gem?)
-                   (or (send-event-function (ppointer->process (-> obj parent)) a1-0)
+                   (or (send-event-function (ppointer->process (-> this parent)) a1-0)
                        (task-node-closed? (game-task-node city-win-introduction))
                        (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                        )
                    )
                  )
-        (logior! (-> obj enemy-flags) (enemy-flag cam-attack-mode))
-        (remove-from-process *part-engine* obj)
+        (logior! (-> this enemy-flags) (enemy-flag cam-attack-mode))
+        (remove-from-process *part-engine* this)
         (setup-masks
-          (-> obj draw)
-          (the-as int (-> obj enemy-info gem-no-seg))
-          (the-as int (-> obj enemy-info gem-seg))
+          (-> this draw)
+          (the-as int (-> this enemy-info gem-no-seg))
+          (the-as int (-> this enemy-info gem-seg))
           )
         (let ((v1-28
                 (ppointer->process
                   (birth-pickup-at-point
-                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data (-> obj enemy-info gem-joint)))
+                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data (-> this enemy-info gem-joint)))
                     (pickup-type gem)
                     1.0
                     #t
                     *entity-pool*
-                    (-> obj fact)
+                    (-> this fact)
                     )
                   )
                 )
               )
-          (send-event (ppointer->process (-> obj parent)) 'wasp-change-gem obj v1-28)
+          (send-event (ppointer->process (-> this parent)) 'wasp-change-gem this v1-28)
           )
         )
       )
-    ((method-of-type wasp dispose!) obj)
+    ((method-of-type wasp dispose!) this)
     (none)
     )
   )
@@ -1643,62 +1643,62 @@
     )
   )
 
-(defmethod deactivate rift-ring-ingame ((obj rift-ring-ingame))
-  (if (-> obj spin-sound-playing)
-      (sound-stop (-> obj spin-sound))
+(defmethod deactivate rift-ring-ingame ((this rift-ring-ingame))
+  (if (-> this spin-sound-playing)
+      (sound-stop (-> this spin-sound))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! rift-ring-ingame ((obj rift-ring-ingame) (arg0 entity-actor))
+(defmethod init-from-entity! rift-ring-ingame ((this rift-ring-ingame) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-rift-ring-ingame" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 1236) obj))
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (set! (-> obj stutter) #f)
-  (set! (-> obj spin-sound) (new-sound-id))
-  (set! (-> obj spin-sound-playing) #f)
-  (go (method-of-object obj idle))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1236) this))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (set! (-> this stutter) #f)
+  (set! (-> this spin-sound) (new-sound-id))
+  (set! (-> this spin-sound-playing) #f)
+  (go (method-of-object this idle))
   (none)
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod apply-gravity metalkor-spinner-chain-physics ((obj metalkor-spinner-chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
-  (vector-float*! arg0 (-> obj gravity) (-> obj gravity-mult))
+(defmethod apply-gravity metalkor-spinner-chain-physics ((this metalkor-spinner-chain-physics) (arg0 vector) (arg1 int) (arg2 process-drawable))
+  (vector-float*! arg0 (-> this gravity) (-> this gravity-mult))
   (vector+float*!
     arg0
     arg0
-    (the-as vector (+ (the-as uint (-> obj chain-joints 0 velocity)) (* arg1 64)))
-    (-> obj velocity-mult)
+    (the-as vector (+ (the-as uint (-> this chain-joints 0 velocity)) (* arg1 64)))
+    (-> this velocity-mult)
     )
   (none)
   )
 
-(defmethod chain-physics-method-14 metalkor-spinner-chain-physics ((obj metalkor-spinner-chain-physics) (arg0 vector) (arg1 int))
+(defmethod chain-physics-method-14 metalkor-spinner-chain-physics ((this metalkor-spinner-chain-physics) (arg0 vector) (arg1 int))
   (vector-reset! arg0)
   0
   (none)
   )
 
 ;; WARN: Return type mismatch process-drawable vs metalkor-spinner.
-(defmethod relocate metalkor-spinner ((obj metalkor-spinner) (arg0 int))
-  (if (nonzero? (-> obj chain))
-      (&+! (-> obj chain) arg0)
+(defmethod relocate metalkor-spinner ((this metalkor-spinner) (arg0 int))
+  (if (nonzero? (-> this chain))
+      (&+! (-> this chain) arg0)
       )
-  (the-as metalkor-spinner ((method-of-type process-drawable relocate) obj arg0))
+  (the-as metalkor-spinner ((method-of-type process-drawable relocate) this arg0))
   )
 
 (defstate break-it (metalkor-spinner)
@@ -1707,7 +1707,7 @@ This commonly includes things such as:
     (set! (-> self chain joint-length) (* 12288.0 (-> self root scale y)))
     (set! (-> self root scale y) 1.0)
     (initialize-chain-joints (-> self chain))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let* ((f30-0 0.9)
            (f28-0 0.2)
            (v1-12 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -1734,7 +1734,7 @@ This commonly includes things such as:
     (quaternion-normalize! (-> self root quat))
     (update (-> self chain) self)
     (cond
-      ((< (- (current-time) (-> self state-time)) (seconds 1))
+      ((not (time-elapsed? (-> self state-time) (seconds 1)))
        )
       ((let ((v1-13 (ja-group)))
          (and v1-13 (= v1-13 (-> self draw art-group data 53)))
@@ -1897,92 +1897,92 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nest-break-precipice ((obj nest-break-precipice) (arg0 entity-actor))
+(defmethod init-from-entity! nest-break-precipice ((this nest-break-precipice) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-nest-break-precipice" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 17))
+  (set! (-> this draw light-index) (the-as uint 17))
   (if (task-node-closed? (game-task-node nest-boss-introduction))
-      (go (method-of-object obj die))
-      (go (method-of-object obj idle))
+      (go (method-of-object this die))
+      (go (method-of-object this idle))
       )
   (none)
   )
 
-(defmethod draw hud-metalkor ((obj hud-metalkor))
-  (set-hud-piece-position! (-> obj sprites 1) (the int (+ 462.0 (* 130.0 (-> obj offset)))) 350)
-  (set-as-offset-from! (the-as hud-sprite (-> obj sprites)) (the-as vector4w (-> obj sprites 1)) -32 0)
-  (set-as-offset-from! (-> obj sprites 5) (the-as vector4w (-> obj sprites 1)) -62 14)
-  (set-as-offset-from! (-> obj sprites 6) (the-as vector4w (-> obj sprites 1)) -32 14)
-  (let ((s5-0 (-> obj values 0 current))
-        (f30-0 (* 0.01 (the float (-> obj values 1 current))))
+(defmethod draw hud-metalkor ((this hud-metalkor))
+  (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
+  (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites 1)) -62 14)
+  (set-as-offset-from! (-> this sprites 6) (the-as vector4w (-> this sprites 1)) -32 14)
+  (let ((s5-0 (-> this values 0 current))
+        (f30-0 (* 0.01 (the float (-> this values 1 current))))
         )
-    (set-as-offset-from! (-> obj sprites 4) (the-as vector4w (-> obj sprites 1)) -92 15)
+    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 1)) -92 15)
     (cond
       ((= s5-0 1)
-       (set! (-> obj sprites 4 color x) 0)
-       (set! (-> obj sprites 4 color y) 255)
+       (set! (-> this sprites 4 color x) 0)
+       (set! (-> this sprites 4 color y) 255)
        (set! f30-0 (+ 2.0 f30-0))
        )
       ((= s5-0 2)
-       (set! (-> obj sprites 4 color y) 255)
-       (set! (-> obj sprites 4 color x) 255)
+       (set! (-> this sprites 4 color y) 255)
+       (set! (-> this sprites 4 color x) 255)
        (set! f30-0 (+ 1.0 f30-0))
        )
       ((= s5-0 3)
-       (set! (-> obj sprites 4 color x) 255)
-       (set! (-> obj sprites 4 color y) 0)
+       (set! (-> this sprites 4 color x) 255)
+       (set! (-> this sprites 4 color y) 0)
        0
        )
       (else
         (set! f30-0 0.0)
         )
       )
-    (set! (-> obj sprites 4 scale-x) (* -7.25 f30-0))
+    (set! (-> this sprites 4 scale-x) (* -7.25 f30-0))
     )
-  ((method-of-type hud draw) obj)
+  ((method-of-type hud draw) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-metalkor ((obj hud-metalkor))
-  (set! (-> obj gui-id)
-        (add-process *gui-control* obj (gui-channel hud-middle-right) (gui-action hidden) (-> obj name) 81920.0 0)
+(defmethod init-callback hud-metalkor ((this hud-metalkor))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
-  (set! (-> obj values 0 target) 1)
-  (set! (-> obj values 1 target) 100)
-  (logior! (-> obj flags) (hud-flags show))
-  (set! (-> obj sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
-  (set! (-> obj sprites 0 flags) (the-as uint 4))
-  (set! (-> obj sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
-  (set! (-> obj sprites 1 flags) (the-as uint 4))
-  (set! (-> obj sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
-  (set! (-> obj sprites 5 scale-x) 0.5)
-  (set! (-> obj sprites 5 flags) (the-as uint 4))
-  (set! (-> obj sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
-  (set! (-> obj sprites 6 scale-x) 0.5)
-  (set! (-> obj sprites 6 flags) (the-as uint 4))
-  (set! (-> obj sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
-  (set! (-> obj sprites 4 scale-y) 3.25)
-  (set! (-> obj sprites 4 color z) 0)
-  (set! (-> obj sprites 4 flags) (the-as uint 4))
-  (set! (-> obj sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
-  (set! (-> obj sprites 3 scale-y) 1.5)
-  (set! (-> obj sprites 3 color z) 0)
-  (set! (-> obj sprites 3 flags) (the-as uint 4))
+  (set! (-> this values 0 target) 1)
+  (set! (-> this values 1 target) 100)
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
+  (set! (-> this sprites 0 flags) (the-as uint 4))
+  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
+  (set! (-> this sprites 1 flags) (the-as uint 4))
+  (set! (-> this sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 5 scale-x) 0.5)
+  (set! (-> this sprites 5 flags) (the-as uint 4))
+  (set! (-> this sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 6 scale-x) 0.5)
+  (set! (-> this sprites 6 flags) (the-as uint 4))
+  (set! (-> this sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 4 scale-y) 3.25)
+  (set! (-> this sprites 4 color z) 0)
+  (set! (-> this sprites 4 flags) (the-as uint 4))
+  (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 3 scale-y) 1.5)
+  (set! (-> this sprites 3 color z) 0)
+  (set! (-> this sprites 3 flags) (the-as uint 4))
   0
   (none)
   )
@@ -2272,15 +2272,15 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch process-drawable vs metalkor-bomb.
-(defmethod relocate metalkor-bomb ((obj metalkor-bomb) (arg0 int))
+(defmethod relocate metalkor-bomb ((this metalkor-bomb) (arg0 int))
   (dotimes (v1-0 (min 49 (-> *metalkor-bomb-probe-joints* length)))
-    (when (nonzero? (-> obj joint-mods v1-0))
-      (if (nonzero? (-> obj joint-mods v1-0))
-          (&+! (-> obj joint-mods v1-0) arg0)
+    (when (nonzero? (-> this joint-mods v1-0))
+      (if (nonzero? (-> this joint-mods v1-0))
+          (&+! (-> this joint-mods v1-0) arg0)
           )
       )
     )
-  (the-as metalkor-bomb ((method-of-type process-drawable relocate) obj arg0))
+  (the-as metalkor-bomb ((method-of-type process-drawable relocate) this arg0))
   )
 
 (define *metalkor-bomb-collide-joints* (new 'static 'boxed-array :type int8

@@ -39,14 +39,14 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-twist-rail ((obj fort-twist-rail) (arg0 entity-actor))
+(defmethod init-from-entity! fort-twist-rail ((this fort-twist-rail) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -81,15 +81,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-20 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-20 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-twist-rail" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (quaternion-copy! (-> this init-quat) (-> this root quat))
   (let ((a1-14 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-26 0))
       (if #t
@@ -99,21 +99,21 @@ This commonly includes things such as:
       (set! (-> a1-14 sync-flags) (the-as sync-flags v1-26))
       )
     (set! (-> a1-14 period) (the-as uint 900))
-    (set! (-> a1-14 entity) (-> obj entity))
+    (set! (-> a1-14 entity) (-> this entity))
     (set! (-> a1-14 percent) 0.0)
     (set! (-> a1-14 ease-in) 0.15)
     (set! (-> a1-14 ease-out) 0.15)
     (set! (-> a1-14 pause-in) 0.0)
     (set! (-> a1-14 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-14)
+    (initialize! (-> this sync) a1-14)
     )
-  (let ((a0-29 (-> obj skel root-channel 0)))
-    (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (let ((a0-29 (-> this skel root-channel 0)))
+    (set! (-> a0-29 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     (set! (-> a0-29 frame-num) 0.0)
-    (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+    (joint-control-channel-group! a0-29 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -382,16 +382,16 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-elec-belt-inst.
-(defmethod relocate fort-elec-belt-inst ((obj fort-elec-belt-inst) (arg0 int))
-  (if (nonzero? (-> obj l-bolt))
-      (&+! (-> obj l-bolt) arg0)
+(defmethod relocate fort-elec-belt-inst ((this fort-elec-belt-inst) (arg0 int))
+  (if (nonzero? (-> this l-bolt))
+      (&+! (-> this l-bolt) arg0)
       )
-  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) obj arg0))
+  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate fort-elec-belt-inst ((obj fort-elec-belt-inst))
-  (sound-stop (-> obj sound-id))
-  ((the-as (function process-drawable none) (find-parent-method fort-elec-belt-inst 10)) obj)
+(defmethod deactivate fort-elec-belt-inst ((this fort-elec-belt-inst))
+  (sound-stop (-> this sound-id))
+  ((the-as (function process-drawable none) (find-parent-method fort-elec-belt-inst 10)) this)
   (none)
   )
 
@@ -491,9 +491,9 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod fort-elec-belt-method-15 fort-elec-belt ((obj fort-elec-belt))
-  (let* ((f28-0 (total-distance (-> obj path)))
-         (s5-0 (-> obj sync))
+(defmethod fort-elec-belt-method-15 fort-elec-belt ((this fort-elec-belt))
+  (let* ((f28-0 (total-distance (-> this path)))
+         (s5-0 (-> this sync))
          (f26-0 81.92)
          (a0-3 (- (current-time) (get-timeframe-offset! s5-0 0)))
          (v1-6 (-> s5-0 period))
@@ -504,12 +504,12 @@ This commonly includes things such as:
       (if (>= f30-0 0.0)
           (process-spawn
             fort-elec-belt-inst
-            (-> obj init-quat)
+            (-> this init-quat)
             f30-0
-            (-> obj path-du)
-            (-> obj l-spec)
-            (-> obj attack-id)
-            :to obj
+            (-> this path-du)
+            (-> this l-spec)
+            (-> this attack-id)
+            :to this
             )
           )
       (+! f30-0 f28-1)
@@ -519,15 +519,15 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch process vs fort-elec-belt.
-(defmethod relocate fort-elec-belt ((obj fort-elec-belt) (arg0 int))
-  (if (nonzero? (-> obj path))
-      (&+! (-> obj path) arg0)
+(defmethod relocate fort-elec-belt ((this fort-elec-belt) (arg0 int))
+  (if (nonzero? (-> this path))
+      (&+! (-> this path) arg0)
       )
-  (the-as fort-elec-belt ((method-of-type process relocate) obj arg0))
+  (the-as fort-elec-belt ((method-of-type process relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-elec-belt ((obj fort-elec-belt) (arg0 entity-actor))
+(defmethod init-from-entity! fort-elec-belt ((this fort-elec-belt) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -535,7 +535,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 int))
-  (quaternion-copy! (-> obj init-quat) (-> arg0 quat))
+  (quaternion-copy! (-> this init-quat) (-> arg0 quat))
   (let ((s5-0 (new 'stack-no-clear 'sync-info-params)))
     (let ((s3-0 1200))
       0.0
@@ -557,41 +557,41 @@ This commonly includes things such as:
       (set! (-> s5-0 period) (the-as uint s3-0))
       )
     (set! (-> s5-0 percent) 0.0)
-    (initialize! (-> obj sync) s5-0)
+    (initialize! (-> this sync) s5-0)
     )
-  (set! (-> obj l-spec) (new 'static 'lightning-spec
-                          :name #f
-                          :flags (lightning-spec-flags lsf2)
-                          :rand-func #x2
-                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                          :end-color (new 'static 'rgba :a #x80)
-                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                          :fade-start-factor 0.2
-                          :fade-time 120.0
-                          :texture (new 'static 'texture-id :index #x83 :page #xc)
-                          :reduction 0.72
-                          :num-points 17
-                          :box-size 4997.12
-                          :merge-factor 0.32
-                          :merge-count 2
-                          :radius 7372.8
-                          :duration -1.0
-                          :sound #f
-                          )
+  (set! (-> this l-spec) (new 'static 'lightning-spec
+                           :name #f
+                           :flags (lightning-spec-flags lsf2)
+                           :rand-func #x2
+                           :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                           :end-color (new 'static 'rgba :a #x80)
+                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                           :fade-start-factor 0.2
+                           :fade-time 120.0
+                           :texture (new 'static 'texture-id :index #x83 :page #xc)
+                           :reduction 0.72
+                           :num-points 17
+                           :box-size 4997.12
+                           :merge-factor 0.32
+                           :merge-count 2
+                           :radius 7372.8
+                           :duration -1.0
+                           :sound #f
+                           )
         )
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj path-du) (/ 24576.0 (total-distance (-> obj path))))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this path-du) (/ 24576.0 (total-distance (-> this path))))
   (let* ((v1-14 *game-info*)
          (a0-15 (+ (-> v1-14 attack-id) 1))
          )
     (set! (-> v1-14 attack-id) a0-15)
-    (set! (-> obj attack-id) a0-15)
+    (set! (-> this attack-id) a0-15)
     )
-  (fort-elec-belt-method-15 obj)
-  (set! (-> obj next-spawn-time) (get-timeframe-offset! (-> obj sync) 0))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (fort-elec-belt-method-15 this)
+  (set! (-> this next-spawn-time) (get-timeframe-offset! (-> this sync) 0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -609,15 +609,15 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 16 16.5)
               )
 
-(defmethod get-art-group fort-conveyor ((obj fort-conveyor))
+(defmethod get-art-group fort-conveyor ((this fort-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod reset-root! fort-conveyor ((obj fort-conveyor))
+(defmethod reset-root! fort-conveyor ((this fort-conveyor))
   "Re-initializes the `root` [[trsqv]]"
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -638,33 +638,33 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod init! fort-conveyor ((obj fort-conveyor))
+(defmethod init! fort-conveyor ((this fort-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
-  (set! (-> obj speed) -47104.0)
-  (set! (-> obj belt-radius) 24576.0)
-  (set! (-> obj pull-y-threshold) 4096.0)
-  (if (name= (-> obj name) "fort-conveyor-4")
-      (set-vector! (-> obj root scale) 0.8 0.0 0.657 1.0)
+  (set! (-> this speed) -47104.0)
+  (set! (-> this belt-radius) 24576.0)
+  (set! (-> this pull-y-threshold) 4096.0)
+  (if (name= (-> this name) "fort-conveyor-4")
+      (set-vector! (-> this root scale) 0.8 0.0 0.657 1.0)
       )
   (none)
   )
 
-(defmethod set-and-get-ambient-sound! fort-conveyor ((obj fort-conveyor))
+(defmethod set-and-get-ambient-sound! fort-conveyor ((this fort-conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"
-  (let* ((s5-0 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 0.0 'interp))
-         (v1-2 (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) 1.0 'interp))
+  (let* ((s5-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 0.0 'interp))
+         (v1-2 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) 1.0 'interp))
          (a3-3 (vector+! (new 'stack-no-clear 'vector) s5-0 v1-2))
          )
     (vector-float*! a3-3 a3-3 0.5)
     (let ((v0-2 (new 'process 'ambient-sound (static-sound-spec "fort-conveyor" :fo-max 50) a3-3)))
-      (set! (-> obj sound) v0-2)
+      (set! (-> this sound) v0-2)
       v0-2
       )
     )

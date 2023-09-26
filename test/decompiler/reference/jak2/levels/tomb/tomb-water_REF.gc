@@ -17,18 +17,18 @@
   )
 
 ;; definition for method 3 of type tomb-door
-(defmethod inspect tomb-door ((obj tomb-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-door ((this tomb-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
-  (format #t "~2Tround: ~D~%" (-> obj round))
+  (format #t "~2Tnotify-actor: ~A~%" (-> this notify-actor))
+  (format #t "~2Tround: ~D~%" (-> this round))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -115,7 +115,7 @@
     )
   :code (behavior ((arg0 time-frame))
     (let ((s5-0 (current-time)))
-      (until (>= (- (current-time) s5-0) arg0)
+      (until (time-elapsed? s5-0 arg0)
         (suspend)
         )
       )
@@ -132,14 +132,14 @@
 
 ;; definition for method 11 of type tomb-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-door ((obj tomb-door) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-door ((this tomb-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
@@ -169,27 +169,27 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj round) (res-lump-value (-> obj entity) 'extra-id uint :time -1000000000.0))
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this round) (res-lump-value (-> this entity) 'extra-id uint :time -1000000000.0))
   (ja-channel-push! 1 0)
-  (let ((a0-27 (-> obj skel root-channel 0)))
-    (set! (-> a0-27 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-27 (-> this skel root-channel 0)))
+    (set! (-> a0-27 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-27 frame-num) 0.0)
-    (joint-control-channel-group! a0-27 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-27 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -213,25 +213,25 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-beetle-door
-(defmethod inspect tomb-beetle-door ((obj tomb-beetle-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-beetle-door ((this tomb-beetle-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-7)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Toffset[3] @ #x~X~%" (-> obj offset))
-  (format #t "~2Toffset-index: ~D~%" (-> obj offset-index))
-  (format #t "~2Tkey-index: ~D~%" (-> obj key-index))
-  (format #t "~2Tbeetle[3] @ #x~X~%" (-> obj beetle))
-  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
-  (dotimes (s5-0 (-> obj actor-group-count))
-    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+  (format #t "~2Toffset[3] @ #x~X~%" (-> this offset))
+  (format #t "~2Toffset-index: ~D~%" (-> this offset-index))
+  (format #t "~2Tkey-index: ~D~%" (-> this key-index))
+  (format #t "~2Tbeetle[3] @ #x~X~%" (-> this beetle))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
     )
-  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
   (label cfg-7)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -333,7 +333,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type tomb-beetle-door
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-beetle-door ((obj tomb-beetle-door) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-beetle-door ((this tomb-beetle-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -341,7 +341,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
@@ -371,43 +371,43 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-beetle-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (countdown (s5-2 3)
-    (vector-orient-by-quat! (-> obj offset s5-2) (-> tomb-beetle-door-offsets s5-2) (-> obj root quat))
-    (set! (-> obj offset s5-2 w) (quaternion-y-angle (-> obj root quat)))
-    (set! (-> obj beetle s5-2) (the-as handle #f))
+    (vector-orient-by-quat! (-> this offset s5-2) (-> tomb-beetle-door-offsets s5-2) (-> this root quat))
+    (set! (-> this offset s5-2 w) (quaternion-y-angle (-> this root quat)))
+    (set! (-> this beetle s5-2) (the-as handle #f))
     )
-  (set! (-> obj offset-index) 0)
-  (set! (-> obj key-index) 0)
+  (set! (-> this offset-index) 0)
+  (set! (-> this key-index) 0)
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-33 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-33 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) v1-33))
-       (set! (-> obj actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-33))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
   (ja-channel-push! 1 0)
-  (let ((a0-30 (-> obj skel root-channel 0)))
-    (set! (-> a0-30 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-30 (-> this skel root-channel 0)))
+    (set! (-> a0-30 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-30 frame-num) 0.0)
-    (joint-control-channel-group! a0-30 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-30 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -427,46 +427,46 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-button
-(defmethod inspect tomb-button ((obj tomb-button))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-button ((this tomb-button))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type basebutton inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 33 of type tomb-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod basebutton-method-33 tomb-button ((obj tomb-button))
+(defmethod basebutton-method-33 tomb-button ((this tomb-button))
   "TODO - joint stuff"
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-set! 1)
   (cond
-    ((logtest? (-> obj button-status) (button-status pressed))
-     (let ((s5-1 (-> obj skel root-channel 0)))
+    ((logtest? (-> this button-status) (button-status pressed))
+     (let ((s5-1 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-1
-         (the-as art-joint-anim (-> obj draw art-group data 2))
+         (the-as art-joint-anim (-> this draw art-group data 2))
          num-func-identity
          )
        (set! (-> s5-1 frame-num)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 2)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) frames num-frames) -1))
              )
        )
      )
     (else
-      (let ((s5-2 (-> obj skel root-channel 0)))
+      (let ((s5-2 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-2
-          (the-as art-joint-anim (-> obj draw art-group data 2))
+          (the-as art-joint-anim (-> this draw art-group data 2))
           num-func-identity
           )
         (set! (-> s5-2 frame-num) 0.0)
@@ -479,9 +479,9 @@ This commonly includes things such as:
 
 ;; definition for method 34 of type tomb-button
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod basebutton-method-34 tomb-button ((obj tomb-button))
+(defmethod basebutton-method-34 tomb-button ((this tomb-button))
   "TODO - collision stuff"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -497,18 +497,18 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (none)
   )
 
 ;; definition for method 35 of type tomb-button
 ;; WARN: Return type mismatch float vs none.
-(defmethod prepare-trigger-event! tomb-button ((obj tomb-button))
+(defmethod prepare-trigger-event! tomb-button ((this tomb-button))
   "Sets `event-going-down` to `'trigger`"
-  (logior! (-> obj button-status) (button-status button-status-4))
-  (set! (-> obj event-going-down) 'cue-chase)
-  (+! (-> obj root trans y) 204.8)
+  (logior! (-> this button-status) (button-status button-status-4))
+  (set! (-> this event-going-down) 'cue-chase)
+  (+! (-> this root trans y) 204.8)
   (none)
   )
 
@@ -528,26 +528,26 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-beetle-button
-(defmethod inspect tomb-beetle-button ((obj tomb-beetle-button))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-beetle-button ((this tomb-beetle-button))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type tomb-button inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tround: ~D~%" (-> obj round))
-  (format #t "~2Tspeech-mask: ~D~%" (-> obj speech-mask))
-  (format #t "~2Tspeech-timer: ~D~%" (-> obj speech-timer))
+  (format #t "~2Tround: ~D~%" (-> this round))
+  (format #t "~2Tspeech-mask: ~D~%" (-> this speech-mask))
+  (format #t "~2Tspeech-timer: ~D~%" (-> this speech-timer))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 39 of type tomb-beetle-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod tomb-beetle-button-method-39 tomb-beetle-button ((obj tomb-beetle-button))
-  (when (>= (- (current-time) (-> obj speech-timer)) (seconds 6))
-    (let ((s5-0 (rand-vu-int-count-excluding 4 (the-as int (-> obj speech-mask)))))
+(defmethod tomb-beetle-button-method-39 tomb-beetle-button ((this tomb-beetle-button))
+  (when (time-elapsed? (-> this speech-timer) (seconds 6))
+    (let ((s5-0 (rand-vu-int-count-excluding 4 (the-as int (-> this speech-mask)))))
       (let* ((v1-4 s5-0)
              (t0-0 (cond
                      ((zero? v1-4)
@@ -565,11 +565,11 @@ This commonly includes things such as:
                      )
                    )
              )
-        (add-process *gui-control* obj (gui-channel alert) (gui-action play) t0-0 -99.0 0)
+        (add-process *gui-control* this (gui-channel alert) (gui-action play) t0-0 -99.0 0)
         )
-      (set! (-> obj speech-mask) (the-as uint (ash 1 s5-0)))
+      (set! (-> this speech-mask) (the-as uint (ash 1 s5-0)))
       )
-    (set! (-> obj speech-timer) (current-time))
+    (set-time! (-> this speech-timer))
     )
   0
   (none)
@@ -624,7 +624,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 4))
+    (when (time-elapsed? (-> self state-time) (seconds 4))
       (if (and *target* (focus-test? *target* grabbed))
           (process-release? *target*)
           )
@@ -711,7 +711,7 @@ This commonly includes things such as:
 
 ;; definition for method 36 of type tomb-beetle-button
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod send-event! tomb-beetle-button ((obj tomb-beetle-button) (arg0 symbol))
+(defmethod send-event! tomb-beetle-button ((this tomb-beetle-button) (arg0 symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
 - the `notify-actor`
 - every [[entity-actor]] in the `actor-group` array
@@ -722,7 +722,7 @@ This commonly includes things such as:
       (set! (-> a1-1 num-params) 0)
       (set! (-> a1-1 message) arg0)
       (let ((t9-0 send-event-function)
-            (v1-1 (-> obj notify-actor))
+            (v1-1 (-> this notify-actor))
             )
         (t9-0
           (if v1-1
@@ -732,13 +732,13 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((s4-0 (-> obj actor-group (-> obj round))))
+    (let ((s4-0 (-> this actor-group (-> this round))))
       (dotimes (s3-0 (-> s4-0 length))
         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-2 from) (process->ppointer self))
           (set! (-> a1-2 num-params) 1)
           (set! (-> a1-2 message) arg0)
-          (set! (-> a1-2 param 0) (-> obj round))
+          (set! (-> a1-2 param 0) (-> this round))
           (let ((t9-1 send-event-function)
                 (v1-11 (-> s4-0 data s3-0 actor))
                 )
@@ -758,14 +758,14 @@ This commonly includes things such as:
 
 ;; definition for method 35 of type tomb-beetle-button
 ;; WARN: Return type mismatch int vs none.
-(defmethod prepare-trigger-event! tomb-beetle-button ((obj tomb-beetle-button))
+(defmethod prepare-trigger-event! tomb-beetle-button ((this tomb-beetle-button))
   "Sets `event-going-down` to `'trigger`"
   (let ((t9-0 (method-of-type tomb-button prepare-trigger-event!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj round) (-> obj entity extra perm user-uint8 0))
-  (set! (-> obj speech-mask) (the-as uint 0))
-  (set! (-> obj speech-timer) 0)
+  (set! (-> this round) (-> this entity extra perm user-uint8 0))
+  (set! (-> this speech-mask) (the-as uint 0))
+  (set! (-> this speech-timer) 0)
   0
   (none)
   )
@@ -807,26 +807,26 @@ This commonly includes things such as:
 
 ;; definition for method 3 of type tomb-simon-block
 ;; INFO: Used lq/sq
-(defmethod inspect tomb-simon-block ((obj tomb-simon-block))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-simon-block ((this tomb-simon-block))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type base-plat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsound-show: ~D~%" (-> obj sound-show))
-  (format #t "~2Tcolor: #<vector @ #x~X>~%" (-> obj color))
-  (format #t "~2Tmy-idx: ~D~%" (-> obj my-idx))
-  (format #t "~2Tnext-idx: ~D~%" (-> obj next-idx))
-  (format #t "~2Tflags: ~D~%" (-> obj flags))
-  (format #t "~2Tblink-timer[2] @ #x~X~%" (-> obj blink-timer))
-  (format #t "~2Tride-timer: ~D~%" (-> obj ride-timer))
-  (format #t "~2Torder: ~D~%" (-> obj order))
-  (format #t "~2Tbase-height: ~f~%" (-> obj base-height))
-  (format #t "~2Tmove-rate: ~f~%" (-> obj move-rate))
+  (format #t "~2Tsound-show: ~D~%" (-> this sound-show))
+  (format #t "~2Tcolor: #<vector @ #x~X>~%" (-> this color))
+  (format #t "~2Tmy-idx: ~D~%" (-> this my-idx))
+  (format #t "~2Tnext-idx: ~D~%" (-> this next-idx))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tblink-timer[2] @ #x~X~%" (-> this blink-timer))
+  (format #t "~2Tride-timer: ~D~%" (-> this ride-timer))
+  (format #t "~2Torder: ~D~%" (-> this order))
+  (format #t "~2Tbase-height: ~f~%" (-> this base-height))
+  (format #t "~2Tmove-rate: ~f~%" (-> this move-rate))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type tomb-plat-simon
@@ -854,24 +854,24 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-plat-simon
-(defmethod inspect tomb-plat-simon ((obj tomb-plat-simon))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-plat-simon ((this tomb-plat-simon))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tplat: ~A~%" (-> obj plat))
-  (format #t "~2Tplat-seq: #x~X~%" (-> obj plat-seq))
-  (format #t "~2Tplat-count: ~D~%" (-> obj plat-count))
-  (format #t "~2Tplat-seq-count: ~D~%" (-> obj plat-seq-count))
-  (format #t "~2Tplat-idx: ~D~%" (-> obj plat-idx))
-  (format #t "~2Tbutton-handle: ~D~%" (-> obj button-handle))
-  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
-  (format #t "~2Tflags: ~D~%" (-> obj flags))
+  (format #t "~2Tplat: ~A~%" (-> this plat))
+  (format #t "~2Tplat-seq: #x~X~%" (-> this plat-seq))
+  (format #t "~2Tplat-count: ~D~%" (-> this plat-count))
+  (format #t "~2Tplat-seq-count: ~D~%" (-> this plat-seq-count))
+  (format #t "~2Tplat-idx: ~D~%" (-> this plat-idx))
+  (format #t "~2Tbutton-handle: ~D~%" (-> this button-handle))
+  (format #t "~2Tnotify-actor: ~A~%" (-> this notify-actor))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for symbol *tomb-simon-sound-tbl*, type (pointer sound-name)
@@ -999,7 +999,7 @@ This commonly includes things such as:
       (sv-160 int)
       (sv-176 (function vector vector float))
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self plat-idx) 0)
     (dotimes (gp-0 (-> self plat-count))
       (if (nonzero? (-> self plat gp-0))
@@ -1072,7 +1072,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 2))
+      (until (time-elapsed? gp-0 (seconds 2))
         (suspend)
         )
       )
@@ -1090,8 +1090,8 @@ This commonly includes things such as:
     0
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (seconds 2))
-      (set! (-> self state-time) (current-time))
+    (when (time-elapsed? (-> self state-time) (seconds 2))
+      (set-time! (-> self state-time))
       (if (< (-> self plat-idx) (-> self plat-seq-count))
           (send-event (handle->process (-> self plat (-> self plat-seq (-> self plat-idx)))) 'blink)
           )
@@ -1136,8 +1136,8 @@ This commonly includes things such as:
 
 ;; definition for method 24 of type tomb-plat-simon
 ;; WARN: Return type mismatch object vs none.
-(defmethod tomb-plat-simon-method-24 tomb-plat-simon ((obj tomb-plat-simon) (arg0 int))
-  (let ((a0-3 (handle->process (-> obj plat arg0))))
+(defmethod tomb-plat-simon-method-24 tomb-plat-simon ((this tomb-plat-simon) (arg0 int))
+  (let ((a0-3 (handle->process (-> this plat arg0))))
     (send-event a0-3 'ready)
     )
   (none)
@@ -1145,17 +1145,17 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type tomb-plat-simon
 ;; WARN: Return type mismatch process-drawable vs tomb-plat-simon.
-(defmethod relocate tomb-plat-simon ((obj tomb-plat-simon) (arg0 int))
-  (if (nonzero? (-> obj plat))
-      (&+! (-> obj plat) arg0)
+(defmethod relocate tomb-plat-simon ((this tomb-plat-simon) (arg0 int))
+  (if (nonzero? (-> this plat))
+      (&+! (-> this plat) arg0)
       )
-  (the-as tomb-plat-simon ((method-of-type process-drawable relocate) obj arg0))
+  (the-as tomb-plat-simon ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 11 of type tomb-plat-simon
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-plat-simon ((obj tomb-plat-simon) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-plat-simon ((this tomb-plat-simon) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1163,20 +1163,20 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (change-parent obj *pusher-pool*)
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (change-parent this *pusher-pool*)
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-2 (res-lump-data (-> obj entity) 'plat-seq pointer :tag-ptr (& sv-16))))
+  (let ((v1-2 (res-lump-data (-> this entity) 'plat-seq pointer :tag-ptr (& sv-16))))
     (cond
       ((and v1-2 (nonzero? (-> sv-16 elt-count)))
-       (set! (-> obj plat-seq-count) (the-as int (-> sv-16 elt-count)))
-       (set! (-> obj plat-seq) (the-as (pointer uint32) v1-2))
+       (set! (-> this plat-seq-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this plat-seq) (the-as (pointer uint32) v1-2))
        )
       (else
-        (set! (-> obj plat-seq-count) 0)
-        (set! (-> obj plat-seq) (the-as (pointer uint32) #f))
+        (set! (-> this plat-seq-count) 0)
+        (set! (-> this plat-seq) (the-as (pointer uint32) #f))
         )
       )
     )
@@ -1186,14 +1186,14 @@ This commonly includes things such as:
           (set! s4-0 v1-4)
           )
       )
-    (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 s4-0 #f))
+    (set! (-> this path) (new 'process 'path-control this 'path 0.0 s4-0 #f))
     )
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj plat-count) (-> obj path curve num-cverts))
-  (set! (-> obj plat) (new 'process 'boxed-array handle (-> obj plat-count)))
-  (set! (-> obj flags) (the-as uint 0))
-  (set! (-> obj button-handle) (the-as handle #f))
-  (go (method-of-object obj dormant))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this plat-count) (-> this path curve num-cverts))
+  (set! (-> this plat) (new 'process 'boxed-array handle (-> this plat-count)))
+  (set! (-> this flags) (the-as uint 0))
+  (set! (-> this button-handle) (the-as handle #f))
+  (go (method-of-object this dormant))
   (none)
   )
 
@@ -1241,7 +1241,7 @@ This commonly includes things such as:
       (logxor! (-> self flags) (simon-block-flags sbf1))
       (set! (-> self blink-timer 1) (+ (current-time) (seconds 0.2)))
       )
-    (when (>= (- (current-time) (-> self blink-timer 0)) (seconds 1.2))
+    (when (time-elapsed? (-> self blink-timer 0) (seconds 1.2))
       (logclear! (-> self flags) (simon-block-flags sbf0))
       (set! (-> self draw color-mult quad) (-> self color quad))
       )
@@ -1291,16 +1291,17 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logclear! (-> self flags) (simon-block-flags sbf0 sbf1 sbf2 sbf5))
     (set! (-> self move-rate) 122880.0)
     )
   :trans tomb-simon-block-trans
   :code sleep-code
   :post (behavior ()
-    (if (>= (- (current-time) (-> self state-time))
-            (the int (* 300.0 (+ (* 0.1 (the float (-> self order))) (* 0.015 (the float (-> self my-idx))))))
-            )
+    (if (time-elapsed?
+          (-> self state-time)
+          (the int (* 300.0 (+ (* 0.1 (the float (-> self order))) (* 0.015 (the float (-> self my-idx))))))
+          )
         (tomb-simon-block-post)
         (plat-post)
         )
@@ -1319,7 +1320,7 @@ This commonly includes things such as:
        (go-virtual idle)
        )
       (('touch 'ridden 'bonk 'edge-grabbed)
-       (set! (-> self ride-timer) (current-time))
+       (set-time! (-> self ride-timer))
        (when (logtest? (-> self flags) (simon-block-flags sbf4))
          (let* ((gp-0 *target*)
                 (a0-10 (if (type? gp-0 process-focusable)
@@ -1354,13 +1355,13 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self flags) (simon-block-flags sbf4))
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     (send-event (ppointer->process (-> self parent)) 'die-but (-> self my-idx))
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self ride-timer)) (seconds 1))
+    (when (time-elapsed? (-> self ride-timer) (seconds 1))
       (sound-play "tomb-simon-last")
       (go-virtual die)
       )
@@ -1427,7 +1428,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self ride-timer) (current-time))
+    (set-time! (-> self ride-timer))
     )
   :trans (behavior ()
     (let* ((gp-0 *target*)
@@ -1441,7 +1442,7 @@ This commonly includes things such as:
               (a0-3 (-> self root trans))
               )
           (when (and (or (< 16384.0 (fabs (- (-> a0-3 x) (-> v1-2 x)))) (< 16384.0 (fabs (- (-> a0-3 z) (-> v1-2 z)))))
-                     (>= (- (current-time) (-> self ride-timer)) (seconds 0.25))
+                     (time-elapsed? (-> self ride-timer) (seconds 0.25))
                      )
             (when (= (-> self next-idx) -1)
               (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
@@ -1496,9 +1497,7 @@ This commonly includes things such as:
     (set! (-> self draw color-mult quad) (-> self color quad))
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self flags) (simon-block-flags sbf2))
-             (>= (- (current-time) (-> self ride-timer)) (seconds 0.5))
-             )
+    (if (and (logtest? (-> self flags) (simon-block-flags sbf2)) (time-elapsed? (-> self ride-timer) (seconds 0.5)))
         (go-virtual wobble-die)
         )
     (plat-trans)
@@ -1539,13 +1538,13 @@ This commonly includes things such as:
   :code (behavior ()
     (set! (-> self move-rate) (* 4096.0 (rand-vu-float-range 0.5 1.5)))
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 0.25))
+      (until (time-elapsed? gp-0 (seconds 0.25))
         (suspend)
         )
       )
     (logclear! (-> self root root-prim prim-core action) (collide-action rideable))
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 1))
+      (until (time-elapsed? gp-1 (seconds 1))
         (suspend)
         )
       )
@@ -1560,24 +1559,24 @@ This commonly includes things such as:
 
 ;; definition for method 41 of type tomb-simon-block
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod set-blink-timers! tomb-simon-block ((obj tomb-simon-block))
-  (logior! (-> obj flags) (simon-block-flags sbf0 sbf1))
-  (set! (-> obj blink-timer 0) (current-time))
-  (set! (-> obj blink-timer 1) (current-time))
+(defmethod set-blink-timers! tomb-simon-block ((this tomb-simon-block))
+  (logior! (-> this flags) (simon-block-flags sbf0 sbf1))
+  (set-time! (-> this blink-timer 0))
+  (set-time! (-> this blink-timer 1))
   (none)
   )
 
 ;; definition for method 30 of type tomb-simon-block
-(defmethod get-art-group tomb-simon-block ((obj tomb-simon-block))
+(defmethod get-art-group tomb-simon-block ((this tomb-simon-block))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-tomb-simon-block" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 31 of type tomb-simon-block
 ;; WARN: Return type mismatch collide-shape vs none.
-(defmethod init-plat-collision! tomb-simon-block ((obj tomb-simon-block))
+(defmethod init-plat-collision! tomb-simon-block ((this tomb-simon-block))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -1593,7 +1592,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   (none)
   )
@@ -1645,19 +1644,19 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-simon-button
-(defmethod inspect tomb-simon-button ((obj tomb-simon-button))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-simon-button ((this tomb-simon-button))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tnotify-actor: ~A~%" (-> obj notify-actor))
-  (format #t "~2Ton-notice: ~A~%" (-> obj on-notice))
-  (format #t "~2Ton-activate: ~A~%" (-> obj on-activate))
+  (format #t "~2Tnotify-actor: ~A~%" (-> this notify-actor))
+  (format #t "~2Ton-notice: ~A~%" (-> this on-notice))
+  (format #t "~2Ton-activate: ~A~%" (-> this on-activate))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1809,14 +1808,14 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type tomb-simon-button
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-simon-button ((obj tomb-simon-button) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-simon-button ((this tomb-simon-button) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 6))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -1866,41 +1865,41 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-21 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-21 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-simon-button" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> obj on-notice) (res-lump-struct (-> obj entity) 'on-notice (function none)))
-  (set! (-> obj on-activate) (res-lump-struct (-> obj entity) 'on-activate (function none)))
-  (let ((a0-42 (-> obj skel root-channel 0)))
-    (set! (-> a0-42 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this on-notice) (res-lump-struct (-> this entity) 'on-notice (function none)))
+  (set! (-> this on-activate) (res-lump-struct (-> this entity) 'on-activate (function none)))
+  (let ((a0-42 (-> this skel root-channel 0)))
+    (set! (-> a0-42 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     (set! (-> a0-42 param 0) 1.0)
     (set! (-> a0-42 frame-num) 0.0)
-    (joint-control-channel-group! a0-42 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-loop!)
+    (joint-control-channel-group! a0-42 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-loop!)
     )
   (transform-post)
-  (let ((s5-1 (-> obj on-notice)))
+  (let ((s5-1 (-> this on-notice)))
     (when s5-1
       (if (script-eval (the-as pair s5-1))
-          (go (method-of-object obj open) #t)
+          (go (method-of-object this open) #t)
           )
       )
     )
-  (let ((v1-49 (-> obj entity extra perm user-uint8 0)))
+  (let ((v1-49 (-> this entity extra perm user-uint8 0)))
     (cond
       ((zero? v1-49)
-       (go (method-of-object obj idle))
+       (go (method-of-object this idle))
        )
       ((= v1-49 1)
-       (go (method-of-object obj open) #t)
+       (go (method-of-object this open) #t)
        )
       ((= v1-49 2)
-       (go (method-of-object obj pressed) #t)
+       (go (method-of-object this pressed) #t)
        )
       )
     )
@@ -1934,30 +1933,30 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-vibe
-(defmethod inspect tomb-vibe ((obj tomb-vibe))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-vibe ((this tomb-vibe))
+  (when (not this)
+    (set! this this)
     (goto cfg-7)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tspawn-pos: #<vector @ #x~X>~%" (-> obj spawn-pos))
-  (format #t "~2Tpat-tbl: #x~X~%" (-> obj pat-tbl))
-  (format #t "~2Tpat-count: ~D~%" (-> obj pat-count))
-  (format #t "~2Tpat-index: ~D~%" (-> obj pat-index))
-  (format #t "~2Tpat-entry-index: ~D~%" (-> obj pat-entry-index))
-  (format #t "~2Tpat-timer: ~D~%" (-> obj pat-timer))
-  (format #t "~2Tpat-duration: ~D~%" (-> obj pat-duration))
-  (format #t "~2Tactor-group: #x~X~%" (-> obj actor-group))
-  (dotimes (s5-0 (-> obj actor-group-count))
-    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> obj actor-group s5-0))
+  (format #t "~2Tspawn-pos: #<vector @ #x~X>~%" (-> this spawn-pos))
+  (format #t "~2Tpat-tbl: #x~X~%" (-> this pat-tbl))
+  (format #t "~2Tpat-count: ~D~%" (-> this pat-count))
+  (format #t "~2Tpat-index: ~D~%" (-> this pat-index))
+  (format #t "~2Tpat-entry-index: ~D~%" (-> this pat-entry-index))
+  (format #t "~2Tpat-timer: ~D~%" (-> this pat-timer))
+  (format #t "~2Tpat-duration: ~D~%" (-> this pat-duration))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
     )
-  (format #t "~2Tactor-group-count: ~D~%" (-> obj actor-group-count))
-  (format #t "~2Tflags: ~D~%" (-> obj flags))
-  (format #t "~2Ton-activate: ~A~%" (-> obj on-activate))
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Ton-activate: ~A~%" (-> this on-activate))
   (label cfg-7)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -2006,7 +2005,7 @@ This commonly includes things such as:
           )
         )
       (let ((gp-0 (current-time)))
-        (until (>= (- (current-time) gp-0) (seconds 0.45))
+        (until (time-elapsed? gp-0 (seconds 0.45))
           (suspend)
           )
         )
@@ -2109,7 +2108,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self pat-entry-index) 0)
     (set-vector! (-> self draw color-mult) 0.9 0.9 0.9 1.0)
     (let ((gp-0 (-> self actor-group 0)))
@@ -2150,7 +2149,7 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (seconds 0.2))
+      (until (time-elapsed? gp-0 (seconds 0.2))
         (suspend)
         )
       )
@@ -2164,7 +2163,7 @@ This commonly includes things such as:
       (+ (-> self pat-tbl (-> self pat-index)) 18)
       )
     (let ((gp-1 (current-time)))
-      (until (>= (- (current-time) gp-1) (seconds 0.2))
+      (until (time-elapsed? gp-1 (seconds 0.2))
         (suspend)
         )
       )
@@ -2174,7 +2173,7 @@ This commonly includes things such as:
           (f30-0 1.0)
           )
       (ja-no-eval :group! (-> self draw art-group data 4) :num! (loop! f30-0) :frame-num 0.0)
-      (until (>= (- (current-time) gp-2) s5-0)
+      (until (time-elapsed? gp-2 s5-0)
         (suspend)
         (ja :num! (loop! f30-0))
         )
@@ -2255,7 +2254,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type tomb-vibe
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-vibe ((obj tomb-vibe) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-vibe ((this tomb-vibe) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2264,7 +2263,7 @@ This commonly includes things such as:
 - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (with-pp
-    (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
       (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
         (set! (-> s4-0 total-prims) (the-as uint 3))
         (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
@@ -2294,59 +2293,59 @@ This commonly includes things such as:
         (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
         (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
         )
-      (set! (-> obj root) s4-0)
+      (set! (-> this root) s4-0)
       )
-    (process-drawable-from-entity! obj arg0)
+    (process-drawable-from-entity! this arg0)
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-vibe" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (set! (-> obj entity) arg0)
-    (set! (-> obj spawn-pos quad) (-> obj root trans quad))
-    (+! (-> obj spawn-pos y) 81.92)
-    (set! (-> obj fact)
-          (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+    (set! (-> this entity) arg0)
+    (set! (-> this spawn-pos quad) (-> this root trans quad))
+    (+! (-> this spawn-pos y) 81.92)
+    (set! (-> this fact)
+          (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
           )
     (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-26 (res-lump-data (-> obj entity) 'vibe-pattern pointer :tag-ptr (& sv-16))))
+    (let ((v1-26 (res-lump-data (-> this entity) 'vibe-pattern pointer :tag-ptr (& sv-16))))
       (cond
         ((and v1-26 (nonzero? (-> sv-16 elt-count)))
-         (set! (-> obj pat-tbl) (the-as (pointer int32) v1-26))
-         (set! (-> obj pat-count) (the-as int (-> sv-16 elt-count)))
+         (set! (-> this pat-tbl) (the-as (pointer int32) v1-26))
+         (set! (-> this pat-count) (the-as int (-> sv-16 elt-count)))
          )
         (else
-          (set! (-> obj pat-tbl) (the-as (pointer int32) #f))
-          (set! (-> obj pat-count) 0)
+          (set! (-> this pat-tbl) (the-as (pointer int32) #f))
+          (set! (-> this pat-count) 0)
           0
           )
         )
       )
     (set! sv-32 (new 'static 'res-tag))
-    (let ((v1-33 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-32))))
+    (let ((v1-33 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-32))))
       (cond
         ((and v1-33 (nonzero? (-> sv-32 elt-count)))
-         (set! (-> obj actor-group) (the-as (pointer actor-group) v1-33))
-         (set! (-> obj actor-group-count) (the-as int (-> sv-32 elt-count)))
+         (set! (-> this actor-group) (the-as (pointer actor-group) v1-33))
+         (set! (-> this actor-group-count) (the-as int (-> sv-32 elt-count)))
          )
         (else
-          (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-          (set! (-> obj actor-group-count) 0)
+          (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+          (set! (-> this actor-group-count) 0)
           0
           )
         )
       )
-    (when (logtest? (actor-option user17) (-> obj fact options))
-      (let ((s5-1 (-> obj entity extra perm)))
+    (when (logtest? (actor-option user17) (-> this fact options))
+      (let ((s5-1 (-> this entity extra perm)))
         (when (not (logtest? (-> s5-1 status) (entity-perm-status bit-5)))
-          (set! (-> s5-1 user-object 0) (rand-vu-int-range 0 (+ (-> obj pat-count) -1)))
+          (set! (-> s5-1 user-object 0) (rand-vu-int-range 0 (+ (-> this pat-count) -1)))
           (logior! (-> s5-1 status) (entity-perm-status bit-5))
           )
         (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
           (let ((v1-56 (-> *event-queue* data (-> *event-queue* length))))
             (+! (-> *event-queue* length) 1)
             (set! (-> v1-56 form-handle) (process->handle pp))
-            (set! (-> v1-56 to-handle) (process->handle obj))
+            (set! (-> v1-56 to-handle) (process->handle this))
             (set! (-> v1-56 num-params) 1)
             (set! (-> v1-56 message) 'set-pattern)
             (set! (-> v1-56 param 0) (the-as uint (-> s5-1 user-object 0)))
@@ -2354,25 +2353,25 @@ This commonly includes things such as:
           )
         )
       )
-    (set! (-> obj pat-index) -1)
+    (set! (-> this pat-index) -1)
     (ja-channel-push! 1 0)
-    (let ((a0-53 (-> obj skel root-channel 0)))
-      (set! (-> a0-53 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+    (let ((a0-53 (-> this skel root-channel 0)))
+      (set! (-> a0-53 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
       (set! (-> a0-53 frame-num) 0.0)
-      (joint-control-channel-group! a0-53 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-identity)
+      (joint-control-channel-group! a0-53 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
       )
     (transform-post)
-    (set! (-> obj flags) (tomb-vibe-flags))
-    (set! (-> obj event-hook) (-> (method-of-type tomb-vibe idle) event))
+    (set! (-> this flags) (tomb-vibe-flags))
+    (set! (-> this event-hook) (-> (method-of-type tomb-vibe idle) event))
     (cond
-      ((logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))
-       (go (method-of-object obj die) #t)
+      ((logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+       (go (method-of-object this die) #t)
        )
-      ((logtest? (actor-option user17) (-> obj fact options))
-       (go (method-of-object obj idle))
+      ((logtest? (actor-option user17) (-> this fact options))
+       (go (method-of-object this idle))
        )
       (else
-        (go (method-of-object obj get-pattern))
+        (go (method-of-object this get-pattern))
         )
       )
     (none)
@@ -2407,27 +2406,27 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-water-trap
-(defmethod inspect tomb-water-trap ((obj tomb-water-trap))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-water-trap ((this tomb-water-trap))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tbbox: #<bounding-box @ #x~X>~%" (-> obj bbox))
-  (format #t "~2Trun-bbox: #<bounding-box @ #x~X>~%" (-> obj run-bbox))
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
-  (format #t "~2Ton-duration: ~D~%" (-> obj on-duration))
-  (format #t "~2Tharmless-time: ~D~%" (-> obj harmless-time))
-  (format #t "~2Tl-spec: ~A~%" (-> obj l-spec))
-  (format #t "~2Tl-count: ~D~%" (-> obj l-count))
-  (format #t "~2Tl-index: ~A~%" (-> obj l-index))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
-  (format #t "~2Tvolume: ~f~%" (-> obj volume))
-  (format #t "~2Tcan-exit-running?: ~A~%" (-> obj can-exit-running?))
+  (format #t "~2Tbbox: #<bounding-box @ #x~X>~%" (-> this bbox))
+  (format #t "~2Trun-bbox: #<bounding-box @ #x~X>~%" (-> this run-bbox))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Ton-duration: ~D~%" (-> this on-duration))
+  (format #t "~2Tharmless-time: ~D~%" (-> this harmless-time))
+  (format #t "~2Tl-spec: ~A~%" (-> this l-spec))
+  (format #t "~2Tl-count: ~D~%" (-> this l-count))
+  (format #t "~2Tl-index: ~A~%" (-> this l-index))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tvolume: ~f~%" (-> this volume))
+  (format #t "~2Tcan-exit-running?: ~A~%" (-> this can-exit-running?))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -2490,7 +2489,7 @@ This commonly includes things such as:
       (let ((gp-0 0)
             (s5-0 (current-time))
             )
-        (until (>= (- (current-time) s5-0) (-> self on-duration))
+        (until (time-elapsed? s5-0 (-> self on-duration))
           (when (< (-> self harmless-time) (current-time))
             (tomb-water-trap-method-22 self)
             (dotimes (s4-0 (+ (-> self path curve num-cverts) -1))
@@ -2534,17 +2533,18 @@ This commonly includes things such as:
       (set! (-> self can-exit-running?) #t)
       (let ((gp-1 90))
         (let ((s5-1 (current-time)))
-          (until (>= (- (current-time) s5-1) gp-1)
+          (until (time-elapsed? s5-1 gp-1)
             (suspend)
             )
           )
         (let ((s5-2 #f)
               (s4-2 (current-time))
               )
-          (until (>= (- (current-time) s4-2)
-                     (the-as time-frame (- (- (-> self sync period) (the-as uint (-> self on-duration))) (the-as uint gp-1)))
-                     )
-            (when (and (not s5-2) (>= (- (current-time) s4-2) (seconds 0.3)))
+          (until (time-elapsed?
+                   s4-2
+                   (the-as time-frame (- (- (-> self sync period) (the-as uint (-> self on-duration))) (the-as uint gp-1)))
+                   )
+            (when (and (not s5-2) (time-elapsed? s4-2 (seconds 0.3)))
               (set! s5-2 #t)
               (set-tombc-electricity-scale! 0.0)
               )
@@ -2563,14 +2563,14 @@ This commonly includes things such as:
   )
 
 ;; definition for method 22 of type tomb-water-trap
-(defmethod tomb-water-trap-method-22 tomb-water-trap ((obj tomb-water-trap))
+(defmethod tomb-water-trap-method-22 tomb-water-trap ((this tomb-water-trap))
   (let ((gp-0 (new 'stack-no-clear 'collide-query)))
     (set! (-> gp-0 collide-with) (collide-spec jak bot player-list))
-    (set! (-> gp-0 ignore-process0) obj)
+    (set! (-> gp-0 ignore-process0) this)
     (set! (-> gp-0 ignore-process1) #f)
     (set! (-> gp-0 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
     (set! (-> gp-0 action-mask) (collide-action solid))
-    (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer (-> obj bbox)) 32)
+    (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer (-> this bbox)) 32)
     (fill-using-bounding-box *collide-cache* gp-0)
     )
   (none)
@@ -2579,7 +2579,7 @@ This commonly includes things such as:
 ;; definition for method 23 of type tomb-water-trap
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod tomb-water-trap-method-23 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector))
+(defmethod tomb-water-trap-method-23 tomb-water-trap ((this tomb-water-trap) (arg0 vector) (arg1 vector))
   (let ((s4-0 (new 'stack-no-clear 'collide-query))
         (s3-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
         )
@@ -2588,7 +2588,7 @@ This commonly includes things such as:
     (let ((v1-3 s4-0))
       (set! (-> v1-3 radius) 2048.0)
       (set! (-> v1-3 collide-with) (collide-spec jak bot player-list))
-      (set! (-> v1-3 ignore-process0) obj)
+      (set! (-> v1-3 ignore-process0) this)
       (set! (-> v1-3 ignore-process1) #f)
       (set! (-> v1-3 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> v1-3 action-mask) (collide-action solid semi-solid))
@@ -2603,7 +2603,7 @@ This commonly includes things such as:
                )
           (when s4-1
             (let ((s2-2 (vector+float*! (new 'stack-no-clear 'vector) arg0 s3-1 f30-0)))
-              (tomb-water-trap-method-24 obj arg0 s2-2 (the int (* 3.0 (rand-vu-float-range 5.0 11.0))))
+              (tomb-water-trap-method-24 this arg0 s2-2 (the int (* 3.0 (rand-vu-float-range 5.0 11.0))))
               )
             (let ((v1-10 (vector-reset! (new 'stack-no-clear 'vector))))
               (if (send-event
@@ -2611,10 +2611,10 @@ This commonly includes things such as:
                     'attack
                     #f
                     (static-attack-info
-                      ((id (-> obj attack-id)) (invinc-time (seconds 3)) (mode 'shock) (vector v1-10) (shove-up (meters 3)))
+                      ((id (-> this attack-id)) (invinc-time (seconds 3)) (mode 'shock) (vector v1-10) (shove-up (meters 3)))
                       )
                     )
-                  (set! (-> obj harmless-time) (+ (current-time) (seconds 3)))
+                  (set! (-> this harmless-time) (+ (current-time) (seconds 3)))
                   )
               )
             )
@@ -2627,11 +2627,11 @@ This commonly includes things such as:
 
 ;; definition for method 24 of type tomb-water-trap
 ;; INFO: Used lq/sq
-(defmethod tomb-water-trap-method-24 tomb-water-trap ((obj tomb-water-trap) (arg0 vector) (arg1 vector) (arg2 int))
+(defmethod tomb-water-trap-method-24 tomb-water-trap ((this tomb-water-trap) (arg0 vector) (arg1 vector) (arg2 int))
   (let ((v1-1 (process-spawn
                 lightning-tracker
                 :init lightning-tracker-init
-                (-> obj l-spec)
+                (-> this l-spec)
                 (+ arg2 120)
                 #f
                 #f
@@ -2654,32 +2654,32 @@ This commonly includes things such as:
          )
     (set! (-> s2-2 trans quad) (-> arg0 quad))
     (set! (-> s3-3 trans quad) (-> arg1 quad))
-    (spawn-with-matrix (-> obj part) s2-2)
-    (spawn-with-matrix (-> obj part) s3-3)
+    (spawn-with-matrix (-> this part) s2-2)
+    (spawn-with-matrix (-> this part) s3-3)
     )
   (none)
   )
 
 ;; definition for method 7 of type tomb-water-trap
 ;; WARN: Return type mismatch process-drawable vs tomb-water-trap.
-(defmethod relocate tomb-water-trap ((obj tomb-water-trap) (arg0 int))
-  (if (nonzero? (-> obj l-index))
-      (&+! (-> obj l-index) arg0)
+(defmethod relocate tomb-water-trap ((this tomb-water-trap) (arg0 int))
+  (if (nonzero? (-> this l-index))
+      (&+! (-> this l-index) arg0)
       )
-  (the-as tomb-water-trap ((method-of-type process-drawable relocate) obj arg0))
+  (the-as tomb-water-trap ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 11 of type tomb-water-trap
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-water-trap ((obj tomb-water-trap) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-water-trap ((this tomb-water-trap) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (let ((a1-3 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-1 0))
       (if #t
@@ -2691,74 +2691,74 @@ This commonly includes things such as:
     (set! (-> a1-3 entity) arg0)
     (set! (-> a1-3 period) (the-as uint 2400))
     (set! (-> a1-3 percent) 0.75)
-    (initialize! (-> obj sync) a1-3)
+    (initialize! (-> this sync) a1-3)
     )
-  (set! (-> obj on-duration) (the-as time-frame (the int (-> obj sync offset))))
-  (set! (-> obj harmless-time) 0)
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 arg0 #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this on-duration) (the-as time-frame (the int (-> this sync offset))))
+  (set! (-> this harmless-time) 0)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s5-1 (new 'stack-no-clear 'sphere)))
-    (get-point-in-path! (-> obj path) s5-1 0.0 'interp)
+    (get-point-in-path! (-> this path) s5-1 0.0 'interp)
     (set! (-> s5-1 r) 4096.0)
-    (set-from-sphere! (-> obj bbox) s5-1)
-    (countdown (s4-0 (+ (-> obj path curve num-cverts) -1))
+    (set-from-sphere! (-> this bbox) s5-1)
+    (countdown (s4-0 (+ (-> this path curve num-cverts) -1))
       (add-point!
-        (-> obj bbox)
-        (get-point-in-path! (-> obj path) (new 'stack-no-clear 'vector) (the float s4-0) 'interp)
+        (-> this bbox)
+        (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) (the float s4-0) 'interp)
         )
       )
-    (get-bounding-sphere (-> obj bbox) s5-1)
+    (get-bounding-sphere (-> this bbox) s5-1)
     (+! (-> s5-1 r) 81920.0)
-    (set-from-sphere! (-> obj run-bbox) s5-1)
+    (set-from-sphere! (-> this run-bbox) s5-1)
     )
   (let* ((v1-29 *game-info*)
          (a0-17 (+ (-> v1-29 attack-id) 1))
          )
     (set! (-> v1-29 attack-id) a0-17)
-    (set! (-> obj attack-id) a0-17)
+    (set! (-> this attack-id) a0-17)
     )
-  (set! (-> obj l-spec) (new 'static 'lightning-spec
-                          :name #f
-                          :flags (lightning-spec-flags lsf2)
-                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                          :end-color (new 'static 'rgba :a #x80)
-                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                          :fade-start-factor 0.2
-                          :fade-time 120.0
-                          :texture (new 'static 'texture-id :index #x83 :page #xc)
-                          :reduction 0.42
-                          :num-points 12
-                          :box-size 14336.0
-                          :merge-factor 0.5
-                          :merge-count 4
-                          :radius 3276.8
-                          :duration -1.0
-                          :sound #f
-                          )
+  (set! (-> this l-spec) (new 'static 'lightning-spec
+                           :name #f
+                           :flags (lightning-spec-flags lsf2)
+                           :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                           :end-color (new 'static 'rgba :a #x80)
+                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                           :fade-start-factor 0.2
+                           :fade-time 120.0
+                           :texture (new 'static 'texture-id :index #x83 :page #xc)
+                           :reduction 0.42
+                           :num-points 12
+                           :box-size 14336.0
+                           :merge-factor 0.5
+                           :merge-count 4
+                           :radius 3276.8
+                           :duration -1.0
+                           :sound #f
+                           )
         )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 696) obj))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 696) this))
   (let ((a3-3 (new 'stack-no-clear 'vector)))
-    (set! (-> a3-3 x) (* 0.5 (+ (-> obj bbox min x) (-> obj bbox max x))))
-    (set! (-> a3-3 y) (* 0.5 (+ (-> obj bbox min y) (-> obj bbox max y))))
-    (set! (-> a3-3 z) (* 0.5 (+ (-> obj bbox min z) (-> obj bbox max z))))
-    (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "water-trap-zap" :fo-max 55) a3-3))
+    (set! (-> a3-3 x) (* 0.5 (+ (-> this bbox min x) (-> this bbox max x))))
+    (set! (-> a3-3 y) (* 0.5 (+ (-> this bbox min y) (-> this bbox max y))))
+    (set! (-> a3-3 z) (* 0.5 (+ (-> this bbox min z) (-> this bbox max z))))
+    (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "water-trap-zap" :fo-max 55) a3-3))
     )
-  (set! (-> obj volume) 0.0)
-  (let ((a0-20 (-> obj entity)))
-    (set! (-> obj l-count) (the-as uint ((method-of-object a0-20 get-property-value)
-                                         a0-20
-                                         'bolt-count
-                                         'interp
-                                         -1000000000.0
-                                         (the-as uint128 8)
-                                         (the-as (pointer res-tag) #f)
-                                         *res-static-buf*
-                                         )
-                                   )
+  (set! (-> this volume) 0.0)
+  (let ((a0-20 (-> this entity)))
+    (set! (-> this l-count) (the-as uint ((method-of-object a0-20 get-property-value)
+                                          a0-20
+                                          'bolt-count
+                                          'interp
+                                          -1000000000.0
+                                          (the-as uint128 8)
+                                          (the-as (pointer res-tag) #f)
+                                          *res-static-buf*
+                                          )
+                                    )
           )
     )
-  (set! (-> obj l-index) (new 'process 'boxed-array uint32 (the-as int (-> obj l-count))))
-  (go (method-of-object obj idle))
+  (set! (-> this l-index) (new 'process 'boxed-array uint32 (the-as int (-> this l-count))))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -2779,18 +2779,18 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type tomb-smash-door
-(defmethod inspect tomb-smash-door ((obj tomb-smash-door))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect tomb-smash-door ((this tomb-smash-door))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Ttimeout: ~D~%" (-> obj timeout))
-  (format #t "~2Tbutton: ~D~%" (-> obj button))
+  (format #t "~2Ttimeout: ~D~%" (-> this timeout))
+  (format #t "~2Tbutton: ~D~%" (-> this button))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -2817,10 +2817,10 @@ This commonly includes things such as:
 (defstate open (tomb-smash-door)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (when (>= (- (current-time) (-> self state-time)) (-> self timeout))
+    (when (time-elapsed? (-> self state-time) (-> self timeout))
       (let* ((s5-0 *target*)
              (gp-0 (if (type? s5-0 process-focusable)
                        s5-0
@@ -2878,14 +2878,14 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type tomb-smash-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! tomb-smash-door ((obj tomb-smash-door) (arg0 entity-actor))
+(defmethod init-from-entity! tomb-smash-door ((this tomb-smash-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
@@ -2914,18 +2914,18 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-tomb-smash-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((f30-0 300.0)
-        (a0-22 (-> obj entity))
+        (a0-22 (-> this entity))
         )
-    (set! (-> obj timeout)
+    (set! (-> this timeout)
           (the-as time-frame (the int (* f30-0 ((method-of-object a0-22 get-property-value-float)
                                                 a0-22
                                                 'timeout
@@ -2941,12 +2941,12 @@ This commonly includes things such as:
           )
     )
   (ja-channel-push! 1 0)
-  (let ((a0-24 (-> obj skel root-channel 0)))
-    (set! (-> a0-24 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-24 (-> this skel root-channel 0)))
+    (set! (-> a0-24 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-24 frame-num) 0.0)
-    (joint-control-channel-group! a0-24 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-24 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

@@ -228,7 +228,7 @@
 (defstate idle (prsn-hang-cell)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let* ((f0-2 (* (/ 1.0 (-> self path-du)) (-> self path-u)))
            (f0-3 (- f0-2 (* (the float (the int (/ f0-2 1.0))) 1.0)))
            )
@@ -244,7 +244,7 @@
     (seek! (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)))
     (when (>= (-> self path-u) 1.0)
       (set! (-> self path-u) 0.0)
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       )
     (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
     (ja-post)
@@ -252,30 +252,30 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! prsn-hang-cell ((obj prsn-hang-cell) (arg0 entity-actor))
+(defmethod init-from-entity! prsn-hang-cell ((this prsn-hang-cell) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-hang-cell" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj path-du) 0.01)
-  (let ((f0-2 (* 300.0 (/ 1.0 (-> obj path-du))))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this path-du) 0.01)
+  (let ((f0-2 (* 300.0 (/ 1.0 (-> this path-du))))
         (f1-3 (the float (current-time)))
         )
-    (set! (-> obj path-u) (/ (- f1-3 (* (the float (the int (/ f1-3 f0-2))) f0-2)) f0-2))
+    (set! (-> this path-u) (/ (- f1-3 (* (the float (the int (/ f1-3 f0-2))) f0-2)) f0-2))
     )
-  (let* ((f30-0 (-> obj path-u))
+  (let* ((f30-0 (-> this path-u))
          (f28-0 8.0)
          (f26-0 (/ 1.0 f28-0))
          )
@@ -287,11 +287,11 @@ This commonly includes things such as:
             (+ -1.0 f30-0)
             f30-0
             )
-        :to obj
+        :to this
         )
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -329,8 +329,8 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-skel-and-collide warp-gate-b ((obj warp-gate-b))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+(defmethod init-skel-and-collide warp-gate-b ((this warp-gate-b))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -345,10 +345,10 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-warp-gate-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -409,14 +409,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! prsn-cell-door ((obj prsn-cell-door) (arg0 entity-actor))
+(defmethod init-from-entity! prsn-cell-door ((this prsn-cell-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -431,18 +431,18 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-cell-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj frame) 0.0)
-  (set! (-> obj desired) 0.0)
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (go (method-of-object obj idle))
+  (set! (-> this frame) 0.0)
+  (set! (-> this desired) 0.0)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -480,22 +480,22 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! prsn-vent-fan ((obj prsn-vent-fan) (arg0 entity-actor))
+(defmethod init-from-entity! prsn-vent-fan ((this prsn-vent-fan) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-vent-fan" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -530,14 +530,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! prsn-torture ((obj prsn-torture) (arg0 entity-actor))
+(defmethod init-from-entity! prsn-torture ((this prsn-torture) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 10))
@@ -617,16 +617,16 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-30 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-30 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-prsn-torture" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this idle))
   (none)
   )
 
