@@ -67,23 +67,48 @@
         (new 'static 'highscore-cup-draw-params :cup-scale 0.15  :cup-y 244  :cup-x 109  :font-scale -1.0)
         (new 'static 'highscore-cup-draw-params :cup-scale 0.15  :cup-y 256  :cup-x 109  :font-scale -1.0)
         (new 'static 'highscore-cup-draw-params :cup-scale 0.15  :cup-y 268  :cup-x 109  :font-scale -1.0)
-        (new 'static 'highscore-cup-draw-params :cup-scale 0.15  :cup-y 280  :cup-x 109  :font-scale -1.0)
-        ))
+        (new 'static 'highscore-cup-draw-params :cup-scale 0.15  :cup-y 280  :cup-x 109  :font-scale -1.0)))
 
-(defun print-highscore ((arg0 print-highscore-obj))
+(defun str-print-time-pc ((time float) (omit-milliseconds? symbol))
+  "Basically the same as str-print-time, but with hours support and can omit milliseconds
+   uses letters for the units instead of colons which can be ambiguous"
+  (let* ((hours (the int (/ time 3600)))
+         (minutes (the int (/ (- time (* 3600.0 hours)) 60)))
+         (seconds (the int (- time (* 3600.0 hours) (* 60.0 minutes))))
+         (milliseconds (the int (* 1000 (- time (* 3600.0 hours) (* 60.0 minutes) seconds)))))
+    (clear *temp-string*)
+    (when (> hours 0)
+      (format *temp-string* "~Dh" hours))
+    (format *temp-string* "~Dm" minutes)
+    (format *temp-string* "~Ds" seconds)
+    (when (not omit-milliseconds?)
+      (format *temp-string* "~Dms" milliseconds)))
+    *temp-string*)
+
+(defun get-highscore-type ((highscore-index-arg int))
+  "Given a highscore index, return it's type as a symbol
+@param highscore-index-arg something
+@returns The type, as as symbol."
+  (let ((highscore-type 'game))
+    (let ((highscore-index highscore-index-arg))
+      (cond
+        ((and (>= highscore-index 0) (<= highscore-index 4)) (set! highscore-type 'game))
+        ((and (>= highscore-index 5) (<= highscore-index 12)) (set! highscore-type 'race))
+        ((= highscore-index 13) (set! highscore-type 'game))
+        ((and (>= highscore-index 15) (<= highscore-index 20)) (set! highscore-type 'speedrun))))
+    highscore-type))
+
+(defun print-highscore-pc ((arg0 print-highscore-obj) (name string) (highscore-index int))
   (local-vars (sv-16 font-context) (sv-20 float) (sv-24 int) (sv-32 int))
   (set! sv-16 (-> arg0 context))
   (set! sv-20 (-> arg0 interp))
   (set! sv-24 50)
   (set! sv-32 (if (= (get-aspect-ratio) 'aspect4x3)
                   320
-                  300
-                  )
-        )
+                  300))
   (when (not (-> *pc-settings* use-vis?))
     (set! sv-32 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) sv-32)))
-    (set! sv-24 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) sv-24)))
-    )
+    (set! sv-24 (the int (* (-> *pc-settings* aspect-ratio-reciprocal) sv-24))))
   (set-flags! sv-16 (font-flags kerning large))
   (+! (-> sv-16 origin x) (the float sv-24))
 
@@ -99,45 +124,42 @@
       (when (< 0 (-> arg0 place))
           (+! (-> sv-16 origin y) (the float (- (-> draw-params cup-y) (-> *highscore-cup-draw-params* (1- (-> arg0 place)) cup-y)))))
       ;; print highscore text
-      (print-game-text (string-format "~S" (lookup-text! *common-text* (-> (new 'static 'boxed-array :type text-id  (text-id progress-highscores-1st)
-                                                                                                                    (text-id progress-highscores-2nd)
-                                                                                                                    (text-id progress-highscores-3rd)
-                                                                                                                    (text-id progress-highscores-4th)
-                                                                                                                    (text-id progress-highscores-5th)
-                                                                                                                    (text-id progress-highscores-6th)
-                                                                                                                    (text-id progress-highscores-7th)
-                                                                                                                    (text-id progress-highscores-8th))
-                                                                          (-> arg0 place)) #f)) sv-16 #f 44 (bucket-id progress))
+      (if (and (nonzero? name) (!= name #f))
+        (print-game-text (string-format "~S" name) sv-16 #f 44 (bucket-id progress))
+        (print-game-text (string-format "~S" (lookup-text! *common-text* (-> (new 'static 'boxed-array :type text-id (text-id progress-highscores-1st)
+                                                                                                                     (text-id progress-highscores-2nd)
+                                                                                                                     (text-id progress-highscores-3rd)
+                                                                                                                     (text-id progress-highscores-4th)
+                                                                                                                     (text-id progress-highscores-5th)
+                                                                                                                     (text-id progress-highscores-6th)
+                                                                                                                     (text-id progress-highscores-7th)
+                                                                                                                     (text-id progress-highscores-8th))
+                                                                             (-> arg0 place)) #f)) sv-16 #f 44 (bucket-id progress)))
       ;; draw cup icon if we're not the previous page
-      (if (not (-> arg0 previous))
-          (draw-highscore-cup (-> arg0 self) (eval-highscore arg0) (+ (the int sv-20) cup-x) (-> draw-params cup-y) (-> draw-params cup-scale) (-> arg0 local-scale)))
-    )
-
+      ;; TODO - go cleanup related functions
+      (cond
+        ;; For speedruns, we can just draw the cup based on the index, it's not that complicated
+        ((= (get-highscore-type highscore-index) 'speedrun)
+         ;; TODO - enum
+         (let ((place (case (-> arg0 place)
+                       ((0) 3)
+                       ((1) 2)
+                       ((2) 1)
+                       (else 0))))
+          (draw-highscore-cup (-> arg0 self) place (+ (the int sv-20) cup-x) (-> draw-params cup-y) (-> draw-params cup-scale) (-> arg0 local-scale))))
+        (else
+         (if (not (-> arg0 previous))
+          (draw-highscore-cup (-> arg0 self) (eval-highscore arg0) (+ (the int sv-20) cup-x) (-> draw-params cup-y) (-> draw-params cup-scale) (-> arg0 local-scale))))))
   (+! (-> sv-16 origin x) (the float sv-32))
   (set-flags! sv-16 (font-flags kerning right large))
   (cond
     ((-> arg0 game-score)
-     (print-game-text (string-format "~D" (the int (-> arg0 score))) sv-16 #f 44 (bucket-id progress))
-     )
+     (print-game-text (string-format "~D" (the int (-> arg0 score))) sv-16 #f 44 (bucket-id progress)))
     (else
-      (print-game-text (str-print-time (-> arg0 score)) sv-16 #f 44 (bucket-id progress))
-      )
-    )
+     (print-game-text (str-print-time-pc (-> arg0 score) (= 'speedrun (get-highscore-type highscore-index))) sv-16 #f 44 (bucket-id progress))))
 
   (set-flags! sv-16 (font-flags kerning large))
-  (set! (-> sv-16 origin x) (- (-> sv-16 origin x) (the float (+ sv-24 sv-32))))
-  )
-
-;; speedrunner mode additional highscores:
-;; - any%
-;; - any% hoverless
-;; - all missions
-;; - 100%
-;; - any% all orbs
-;; - any% hero mode
-;; and ILs we can pull from the LB:
-;; - all races
-;; TODO - think of ways to support highscores, could do it via the jakspeedruns website
+  (set! (-> sv-16 origin x) (- (-> sv-16 origin x) (the float (+ sv-24 sv-32)))))
 
 (defun highscore-available? ((highscore-index int))
   (let ((available? #f))
@@ -212,7 +234,7 @@
         ((and (>= index 5) (<= index 12)) (set! texture (new 'static 'texture-id :index #x1 :page #xc93)))
         ((= index 13) (set! texture (new 'static 'texture-id :index #x16 :page #xc93)))
         ((= index 14) (set! texture (new 'static 'texture-id :index #x17 :page #xc93)))
-        ;; TODO - maybe i can lookup some unique icons for the categories? Maybe some of the bigmap ones?
+        ;; TODO - maybe i can lookup some unique icons for the categories? Maybe some of the bigmap ones? for now just the jetboard because fast
         ((and (>= index 15) (<= index 20)) (set! texture (new 'static 'texture-id :index #xe :page #xc93)))))
     (the-as texture-id texture)))
 
@@ -278,6 +300,17 @@
 ;; - nothing found
 ;; - API error
 
+(defun progress-pc-get-external-time ((highscore-index int) (row-index uint))
+  (when (and (-> *pc-settings* speedrunner-mode?) (>= highscore-index 15) (<= highscore-index 20))
+    (case highscore-index
+      ;; TODO - get rid of the uint, annoying syntax
+      ((15) (pc-get-external-speedrun-time "any" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+      ((16) (pc-get-external-speedrun-time "anyhoverless" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+      ((17) (pc-get-external-speedrun-time "allmissions" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+      ((18) (pc-get-external-speedrun-time "100" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+      ((19) (pc-get-external-speedrun-time "anyorbs" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+      ((20) (pc-get-external-speedrun-time "anyhero" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score))))))
+
 (defmethod draw-option menu-highscores-option ((this menu-highscores-option) (progress progress) (font-ctx font-context) (option-index int) (selected? symbol))
   (let ((alpha (fmax 0.0 (* 2.0 (- 0.5 (-> progress menu-transition)))))
         (padding 20.0)
@@ -295,8 +328,7 @@
   (set! row-width (* (-> progress sliding) line-width))
   (set! unknown-todo (* (-> progress sliding-off) (-> this slide-dir) line-width))
   (cond
-    ;; TODO - wire up to an general-purpose await flag that gk is waiting for a response
-    ((not (-> *bigmap* progress-minimap))
+    ((or (= *pc-waiting-on-rpc?* #t) (not (-> *bigmap* progress-minimap)))
      (draw-busy-loading font-ctx))
     (else
       ;; initial font parameters
@@ -380,7 +412,7 @@
         (get-highscore-icon-scale (-> this page-index))
         )
 
-      ;; print the 8 scores now.
+      ;; print the scores now.
       (set! old-font-origin-x (-> font-ctx origin x))
       (set-color! font-ctx (font-color progress))
       (+! (-> font-ctx origin x) row-width)
@@ -390,22 +422,24 @@
         (set! (-> highscore-row previous) #f)
         (set! (-> highscore-row self) this)
         (case (get-highscore-type (-> this page-index))
-          (('game)
-           (set! (-> highscore-row game-score) #t)
-           )
-          (('race)
-           (set! (-> highscore-row game-score) #f)
-           )
-          )
+          (('game) (set! (-> highscore-row game-score) #t))
+          (('race) (set! (-> highscore-row game-score) #f))
+          (('speedrun) (set! (-> highscore-row game-score) #f)))
         (set! (-> highscore-row context) font-ctx)
         (set! (-> highscore-row local-scale) alpha)
         (set! (-> highscore-row interp) row-width)
-        (dotimes (row-index 8)
-          (set! (-> highscore-row place) row-index)
-          (set! (-> highscore-row score) (-> score-ptr row-index))
-          (print-highscore highscore-row)
-          )
-        )
+        (if (= (get-highscore-type (-> this page-index)) 'speedrun)
+          ;; TODO - scrolling
+          (dotimes (row-index 8)
+            ;; fetch the info
+            (progress-pc-get-external-time (-> this page-index) (the uint row-index))
+            (set! (-> highscore-row place) row-index)
+            (set! (-> highscore-row score) (-> *progress-pc-generic-store* custom-highscore-score))
+            (print-highscore-pc highscore-row *pc-cpp-temp-string* (-> this page-index)))
+          (dotimes (row-index 8)
+            (set! (-> highscore-row place) row-index)
+            (set! (-> highscore-row score) (-> score-ptr row-index))
+            (print-highscore-pc highscore-row (the-as string #f) (-> this page-index)))))
       (set! (-> font-ctx origin x) old-font-origin-x)
 
       ;; draw the previous highscore that was seen
@@ -482,7 +516,7 @@
           (dotimes (s5-10 8)
             (set! (-> highscore-row place) s5-10)
             (set! (-> highscore-row score) (-> gp-11 s5-10))
-            (print-highscore highscore-row)
+            (print-highscore-pc highscore-row (the-as string #f) (-> this prev-page-index))
             )
           )
         (set! (-> font-ctx origin x) old-font-origin-x)
