@@ -198,7 +198,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       throw_compiler_error(form, "Cond from cannot have any cases after else.");
     }
 
-    if (test.is_symbol() && symbol_string(test) == "else") {
+    if (test.is_symbol("else")) {
       got_else = true;
     }
 
