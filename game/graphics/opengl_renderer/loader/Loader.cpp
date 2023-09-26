@@ -385,11 +385,15 @@ void Loader::update(TexturePool& texture_pool) {
   Timer loader_timer;
 
   // only main thread can touch this.
-  for (auto& [name, lev] : m_loaded_tfrag3_levels) {
-    if (std::find(m_active_levels.begin(), m_active_levels.end(), name) == m_active_levels.end()) {
-      lev->frames_since_last_used++;
-    } else {
-      lev->frames_since_last_used = 0;
+  {
+    std::unique_lock<std::mutex> lk(m_loader_mutex);
+    for (auto& [name, lev] : m_loaded_tfrag3_levels) {
+      if (std::find(m_active_levels.begin(), m_active_levels.end(), name) ==
+          m_active_levels.end()) {
+        lev->frames_since_last_used++;
+      } else {
+        lev->frames_since_last_used = 0;
+      }
     }
   }
 
