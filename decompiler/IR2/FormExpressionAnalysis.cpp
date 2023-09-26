@@ -5284,14 +5284,14 @@ FormElement* ConditionElement::make_time_elapsed(const Env& env,
     std::vector<Form*> args;
     args.push_back(time_elapsed);
     args.push_back(time);
-    if (m_kind == IR2_Condition::Kind::LESS_THAN_SIGNED ||
-        m_kind == IR2_Condition::Kind::LESS_THAN_UNSIGNED) {
+    // TODO - how to handle unsigned case?
+    if (m_kind == IR2_Condition::Kind::LESS_THAN_SIGNED) {
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
           pool.form<GenericElement>(
               GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
               make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env)));
-    } else {
+    } else if (m_kind == IR2_Condition::Kind::GEQ_SIGNED) {
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_function(pool.form<ConstantTokenElement>("time-elapsed?")),
           make_casts_if_needed(args, types, TypeSpec("time-frame"), pool, env));
