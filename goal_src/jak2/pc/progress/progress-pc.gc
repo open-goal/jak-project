@@ -757,8 +757,16 @@
   )
 
 (defun progress-pc-fetch-external-times ((highscore-index int))
-  (when (and (-> *pc-settings* speedrunner-mode?) (>= highscore-index 15) (<= highscore-index 20))
+  (when (-> *pc-settings* speedrunner-mode?)
     (case highscore-index
+      ((5) (pc-fetch-external-race-times "class3"))
+      ((6) (pc-fetch-external-race-times "class2"))
+      ((7) (pc-fetch-external-race-times "class1"))
+      ((8) (pc-fetch-external-race-times "port"))
+      ((9) (pc-fetch-external-race-times "erol"))
+      ((10) (pc-fetch-external-race-times "class3rev"))
+      ((11) (pc-fetch-external-race-times "class2rev"))
+      ((12) (pc-fetch-external-race-times "class1rev"))
       ((15) (pc-fetch-external-speedrun-times "any"))
       ((16) (pc-fetch-external-speedrun-times "anyhoverless"))
       ((17) (pc-fetch-external-speedrun-times "allmissions"))
@@ -766,8 +774,39 @@
       ((19) (pc-fetch-external-speedrun-times "anyorbs"))
       ((20) (pc-fetch-external-speedrun-times "anyhero")))))
 
+;; NOTE - this technically includes the gold/silver/bronze times
+;; maybe figure out how to omit them eventually, (not sure if there is anything that differentiates them)
+;; From a highscores perspective it doesn't really matter, the default scores are awful
+(define-extern get-highscore-score (function int int))
+(defun progress-pc-get-num-nonzero-local-scores ((highscore-index int))
+  (let ((count 0)
+        (score-ptr (get-game-score-ref *game-info* (get-highscore-score highscore-index))))
+    (dotimes (idx 8)
+      (when (> (-> score-ptr idx) 0)
+        (inc! count)))
+    count))
+
+(defun progress-pc-max-external-race-times ((highscore-index int))
+  (case highscore-index
+    ((5) (pc-get-num-external-race-times "class3"))
+    ((6) (pc-get-num-external-race-times "class2"))
+    ((7) (pc-get-num-external-race-times "class1"))
+    ((8) (pc-get-num-external-race-times "port"))
+    ((9) (pc-get-num-external-race-times "erol"))
+    ((10) (pc-get-num-external-race-times "class3rev"))
+    ((11) (pc-get-num-external-race-times "class2rev"))
+    ((12) (pc-get-num-external-race-times "class1rev"))))
+
 (defun progress-pc-max-highscore-rows ((highscore-index int))
   (case highscore-index
+    ((5) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class3")))
+    ((6) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class2")))
+    ((7) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class1")))
+    ((8) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "port")))
+    ((9) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "erol")))
+    ((10) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class3rev")))
+    ((11) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class2rev")))
+    ((12) (+ (progress-pc-get-num-nonzero-local-scores highscore-index) (pc-get-num-external-race-times "class1rev")))
     ((15) (pc-get-num-external-speedrun-times "any"))
     ((16) (pc-get-num-external-speedrun-times "anyhoverless"))
     ((17) (pc-get-num-external-speedrun-times "allmissions"))
@@ -792,6 +831,7 @@
            (set! (-> this page-index) (get-next-highscore (-> this page-index)))
            ;; ensure external data is fetched if applicable
            (progress-pc-fetch-external-times (-> this page-index))
+           (set! (-> *progress-pc-generic-store* current-highscore-page-index) 0)
            (set! (-> progress sliding) 1.0)
            (set! (-> progress sliding-off) 0.0)
            (set! (-> this slide-dir) -1.0)))
@@ -803,6 +843,7 @@
            (set! (-> this page-index) (get-prev-highscore (-> this page-index)))
            ;; ensure external data is fetched if applicable
            (progress-pc-fetch-external-times (-> this page-index))
+           (set! (-> *progress-pc-generic-store* current-highscore-page-index) 0)
            (set! play-sound? #t)
            (set! (-> progress sliding) -1.0)
            (set! (-> progress sliding-off) 0.0)
@@ -820,6 +861,7 @@
           (sound-play "secrets-scroll")
           (dec! (-> *progress-pc-generic-store* current-highscore-page-index))))
         ((cpad-pressed? 0 triangle confirm)
+         (set! (-> *progress-pc-generic-store* current-highscore-page-index) 0)
          (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle confirm))
          (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle confirm))
          (set! (-> progress sliding) 0.0)
