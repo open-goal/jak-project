@@ -32,8 +32,8 @@ class BackgroundWorker {
   // Because jobs can be quite lengthy, we want to minimize contention time for events being
   // inserted by the main thread
   //
-  // By using a separate queue as our "inbox" there will only ever be a blocking scenario for the queue
-  // while it's being quickly copied over to the main queue
+  // By using a separate queue as our "inbox" there will only ever be a blocking scenario for the
+  // queue while it's being quickly copied over to the main queue
   std::queue<BackgroundJob> inbox_queue;
   std::queue<BackgroundJob> job_queue;
   std::mutex inbox_queue_lock;

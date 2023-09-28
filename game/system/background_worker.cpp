@@ -1,8 +1,8 @@
 #include "background_worker.h"
 
-#include <common/log/log.h>
+#include "common/log/log.h"
 
-#include <curl/curl.h>
+#include "curl/curl.h"
 
 bool BackgroundWorker::process_queues() {
   std::lock_guard<std::mutex> job_lock(job_queue_lock);
