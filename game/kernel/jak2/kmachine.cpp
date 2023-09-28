@@ -747,7 +747,7 @@ const std::unordered_map<std::string, std::string> external_race_lookup_urls = {
 // clang-format on
 
 void callback_fetch_external_speedrun_times(bool success,
-                                            std::string cache_id,
+                                            const std::string& cache_id,
                                             std::optional<std::string> result) {
   std::scoped_lock lock{background_task_lock};
 
@@ -801,7 +801,7 @@ void callback_fetch_external_speedrun_times(bool success,
 
 // TODO - duplicate code, put it in a function
 void callback_fetch_external_race_times(bool success,
-                                        std::string cache_id,
+                                        const std::string& cache_id,
                                         std::optional<std::string> result) {
   std::scoped_lock lock{background_task_lock};
 
