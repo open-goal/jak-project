@@ -819,7 +819,7 @@ s32 pc_fetch_external_race_times(u32 race_id, u32 highscore_array_ptr) {
 }
 
 void pc_get_external_speedrun_time(u32 speedrun_id_ptr,
-                                   u32 index,
+                                   s32 index,
                                    u32 name_dest_ptr,
                                    u32 time_dest_ptr) {
   std::scoped_lock lock{background_task_lock};
