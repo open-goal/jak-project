@@ -9,22 +9,12 @@
 (defenum simon-block-flags
   :type uint16
   :bitfield #t
-  (sbf0)
-  (sbf1)
-  (sbf2)
+  (blink)
+  (blink-on)
+  (ridden)
   (sbf3)
-  (sbf4)
-  (sbf5)
-  (sbf6)
-  (sbf7)
-  (sbf8)
-  (sbf9)
-  (sbf10)
-  (sbf11)
-  (sbf12)
-  (sbf13)
-  (sbf14)
-  (sbf15)
+  (dangerous)
+  (up-sound-played)
   )
 ;; ---tomb-water:simon-block-flags
 
@@ -580,7 +570,7 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (when (>= (- (current-time) (-> self state-time)) (seconds 4))
+    (when (time-elapsed? (-> self state-time) (seconds 4))
       (if (and *target* (focus-test? *target* grabbed)
                ;; og:preserve-this added this check to make the beetle button not break everything!!
                (< (vector-vector-xz-distance (-> *target* control trans) (-> self root trans)) (meters 10)))
@@ -729,7 +719,7 @@ This commonly includes things such as:
               )
 
 (deftype tomb-simon-block (base-plat)
-  ((sound-show  uint128                   :offset-assert 272)
+  ((sound-show  sound-name                :offset-assert 272)
    (color       vector            :inline :offset-assert 288)
    (my-idx      int32                     :offset-assert 304)
    (next-idx    int32                     :offset-assert 308)
@@ -1100,10 +1090,10 @@ This commonly includes things such as:
   (when (!= (-> self basetrans y) (-> self base-height))
     (seek! (-> self basetrans y) (-> self base-height) (* (-> self move-rate) (seconds-per-frame)))
     (when (and (< (- (-> self base-height) (-> self basetrans y)) 21504.0)
-               (not (logtest? (-> self flags) (simon-block-flags sbf5)))
+               (not (logtest? (-> self flags) (simon-block-flags up-sound-played)))
                )
       (sound-play "simon-up")
-      (logior! (-> self flags) (simon-block-flags sbf5))
+      (logior! (-> self flags) (simon-block-flags up-sound-played))
       )
     (if (< (- (-> self base-height) (-> self basetrans y)) 81920.0)
         (seek! (-> self move-rate) 0.0 (* 81920.0 (seconds-per-frame)))
@@ -1118,22 +1108,28 @@ This commonly includes things such as:
   )
 
 (defbehavior tomb-simon-block-trans tomb-simon-block ()
-  (when (logtest? (-> self flags) (simon-block-flags sbf0))
+  (when (logtest? (-> self flags) (simon-block-flags blink))
     (when (>= (current-time) (-> self blink-timer 1))
       (cond
-        ((logtest? (-> self flags) (simon-block-flags sbf1))
+        ((logtest? (-> self flags) (simon-block-flags blink-on))
          (set! (-> self draw color-mult quad) (-> self color quad))
+          (#when PC_PORT
+            ;; og:preserve-this controller led mechanics
+            (vector-copy! *led-tomb-simon-color* *led-tomb-simon-off-color*))
          )
         (else
-          (sound-play-by-name (the-as sound-name (-> self sound-show)) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
+          (sound-play-by-name (-> self sound-show) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
+          (#when PC_PORT
+            ;; og:preserve-this controller led mechanics
+            (vector-copy! *led-tomb-simon-color* (-> self color)))
           (set-vector! (-> self draw color-mult) 1.0 1.0 1.0 1.0)
           )
         )
-      (logxor! (-> self flags) (simon-block-flags sbf1))
+      (logxor! (-> self flags) (simon-block-flags blink-on))
       (set! (-> self blink-timer 1) (+ (current-time) (seconds 0.2)))
       )
     (when (time-elapsed? (-> self blink-timer 0) (seconds 1.2))
-      (logclear! (-> self flags) (simon-block-flags sbf0))
+      (logclear! (-> self flags) (simon-block-flags blink))
       (set! (-> self draw color-mult quad) (-> self color quad))
       )
     )
@@ -1182,7 +1178,7 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (logclear! (-> self flags) (simon-block-flags sbf0 sbf1 sbf2 sbf5))
+    (logclear! (-> self flags) (simon-block-flags blink blink-on ridden up-sound-played))
     (set! (-> self move-rate) 122880.0)
     )
   :trans tomb-simon-block-trans
@@ -1210,7 +1206,7 @@ This commonly includes things such as:
        )
       (('touch 'ridden 'bonk 'edge-grabbed)
        (set-time! (-> self ride-timer))
-       (when (logtest? (-> self flags) (simon-block-flags sbf4))
+       (when (logtest? (-> self flags) (simon-block-flags dangerous))
          (let* ((gp-0 *target*)
                 (a0-10 (if (type? gp-0 process-focusable)
                            gp-0
@@ -1235,7 +1231,7 @@ This commonly includes things such as:
                                                             )
                        )
            )
-         (let ((v0-0 (the-as object (logclear (-> self flags) (simon-block-flags sbf4)))))
+         (let ((v0-0 (the-as object (logclear (-> self flags) (simon-block-flags dangerous)))))
            (set! (-> self flags) (the-as simon-block-flags v0-0))
            v0-0
            )
@@ -1245,9 +1241,12 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (logior! (-> self flags) (simon-block-flags sbf4))
+    (logior! (-> self flags) (simon-block-flags dangerous))
     (set-time! (-> self ride-timer))
     (send-event (ppointer->process (-> self parent)) 'die-but (-> self my-idx))
+    (#when PC_PORT
+      ;; og:preserve-this controller led mechanics
+      (enable *led-fader-state* (-> self color)))
     )
   :trans (behavior ()
     (when (time-elapsed? (-> self ride-timer) (seconds 1))
@@ -1281,6 +1280,9 @@ This commonly includes things such as:
        (if (!= (-> self next-idx) -1)
            (send-event (ppointer->process (-> self parent)) 'ready-index (-> self next-idx))
            )
+       (#when PC_PORT
+         ;; og:preserve-this controller led mechanics
+         (vector-copy! (-> *led-fader-state* end-color) (-> self color)))
        (go-virtual ridden)
        )
       )
@@ -1368,8 +1370,8 @@ This commonly includes things such as:
        (go-virtual die)
        )
       (('ridden)
-       (when (not (logtest? (-> self flags) (simon-block-flags sbf2)))
-         (logior! (-> self flags) (simon-block-flags sbf2))
+       (when (not (logtest? (-> self flags) (simon-block-flags ridden)))
+         (logior! (-> self flags) (simon-block-flags ridden))
          (let ((v0-0 (the-as object (current-time))))
            (set! (-> self ride-timer) (the-as time-frame v0-0))
            v0-0
@@ -1379,11 +1381,11 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (logclear! (-> self flags) (simon-block-flags sbf0 sbf1 sbf2))
+    (logclear! (-> self flags) (simon-block-flags blink blink-on ridden))
     (set! (-> self draw color-mult quad) (-> self color quad))
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self flags) (simon-block-flags sbf2)) (time-elapsed? (-> self ride-timer) (seconds 0.5)))
+    (if (and (logtest? (-> self flags) (simon-block-flags ridden)) (time-elapsed? (-> self ride-timer) (seconds 0.5)))
         (go-virtual wobble-die)
         )
     (plat-trans)
@@ -1443,7 +1445,7 @@ This commonly includes things such as:
 
 ;; WARN: Return type mismatch time-frame vs none.
 (defmethod set-blink-timers! tomb-simon-block ((this tomb-simon-block))
-  (logior! (-> this flags) (simon-block-flags sbf0 sbf1))
+  (logior! (-> this flags) (simon-block-flags blink blink-on))
   (set-time! (-> this blink-timer 0))
   (set-time! (-> this blink-timer 1))
   (none)

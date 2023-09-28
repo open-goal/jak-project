@@ -323,9 +323,9 @@
 
 (defmethod led-enabled? pc-settings-jak1 ((obj pc-settings-jak1))
   "should the controller led be set?"
-  (or (-> obj controller-hp-led?)
-      (-> obj controller-eco-led?)
-      (-> obj controller-heat-led?)))
+  (or (-> obj controller-led-hp?)
+      (-> obj controller-led-eco?)
+      (-> obj controller-led-heat?)))
 
 (defmethod update-led pc-settings-jak1 ((obj pc-settings-jak1))
   "set the controller led color by modifying the controller-led-color vector"
@@ -337,7 +337,7 @@
 
   (when *target*
     (let ((set-no-eco-color? #t))
-    (when (-> obj controller-hp-led?)
+    (when (-> obj controller-led-hp?)
       ;; flicker led according to hp. lower hp = faster and more intense flicker
       (cond
         ((= (-> *target* fact-info-target health) 0.0)
@@ -358,7 +358,7 @@
         )
       )
 
-    (when (and  (-> obj controller-heat-led?)
+    (when (and  (-> obj controller-led-heat?)
                 (nonzero? (-> *target* racer))
                 (logtest? (-> *target* control root-prim prim-core action) (collide-action racer))
                 (or (= (-> *target* current-level name) 'lavatube)
@@ -378,7 +378,7 @@
         )
       )
 
-    (when (-> obj controller-eco-led?)
+    (when (-> obj controller-led-eco?)
     ;; get remaining eco as a number from 0.0 to 1.0
     (let ((eco-remain-fac (/ (the float (- (-> *target* fact-info-target eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time))))
                              (the float (-> *FACT-bank* eco-full-timeout)))))
