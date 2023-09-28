@@ -202,7 +202,7 @@ TEST_F(FormRegressionTestJak1, EliminateFloatDeadSet) {
       "      (f0-1 0.0)\n"
       "      (f2-2\n"
       "       (+\n"
-      "        (the float (mod (the-as uint (-> *display* base-frame-counter)) v1-0))\n"
+      "        (the float (mod (the-as uint (current-time)) v1-0))\n"
       "        (-> arg0 offset)\n"
       "        )\n"
       "       )\n"

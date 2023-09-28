@@ -14,6 +14,22 @@
 (define-extern get-current-time (function time-frame))
 (define-extern get-integral-current-time (function time-frame))
 
+(#when PC_PORT
+;;;;;;;;;;;;;;;;;;;;;;
+;; opengoal territory override
+;;;;;;;;;;;;;;;;;;;;;;
+
+(define *debug-territory* GAME_TERRITORY_SCEA)
+(defun scf-get-territory ()
+  "redefined from C kernel for convenience"
+  (if *debug-segment*
+      *debug-territory*
+      *default-territory*)
+  )
+)
+
+;; DECOMP BEGINS
+
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -139,11 +155,11 @@
 
 (defmethod new cpad-info ((alloction symbol) (type-to-make type) (idx int))
   "Allocate a new cpad-info and open the pad itself through the kernel"
-  (let ((obj (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
-   (set! (-> obj number) idx)
-   (set! (-> obj buzz) #f)
-   (cpad-open obj idx) ;; kernel function.
-   (cpad-invalid! obj)
+  (let ((this (object-new alloction type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> this number) idx)
+   (set! (-> this buzz) #f)
+   (cpad-open this idx) ;; kernel function.
+   (cpad-invalid! this)
    )
   )
 

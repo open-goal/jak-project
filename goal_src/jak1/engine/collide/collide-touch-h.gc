@@ -66,11 +66,12 @@
     )
   )
 
-(defmethod init-list! touching-prims-entry-pool ((obj touching-prims-entry-pool))
+
+(defmethod init-list! touching-prims-entry-pool ((this touching-prims-entry-pool))
   "Initialize all entries to be not allocated and in a linked list."
   (let ((prev (the-as touching-prims-entry #f)))
-    (let ((current (the-as touching-prims-entry (-> obj nodes))))
-      (set! (-> obj head) current)
+    (let ((current (the-as touching-prims-entry (-> this nodes))))
+      (set! (-> this head) current)
       (countdown (a0-1 64)
         (set! (-> current prev) prev)
         (let ((next (&+ current 240)))
@@ -88,18 +89,18 @@
 
 (defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
   "Allocate and initialize a new touching-prims-entry-pool"
-
+  ;; og:preserve-this
   ;; Note - the original code passed (-> type-to-make size) as an argument.
   ;; however, the new method of structure doesn't have this argument.
   ;; it uses the same value for the size so it doesn't really matter.
-  (let ((obj (the touching-prims-entry-pool ((method-of-type structure new)
+  (let ((this (the touching-prims-entry-pool ((method-of-type structure new)
                                              allocation
                                              type-to-make
                                              ;; (-> type-to-make size) see note
                                              )
                   )))
-    (init-list! obj)
-    obj
+    (init-list! this)
+    this
     )
   )
 
@@ -148,27 +149,27 @@
     )
   )
 
+
 (defmethod new touching-list ((allocation symbol) (type-to-make type))
   "See note in touching-prims-entry-pool"
-  (let ((obj (the touching-list ((method-of-type structure new)
+  ;; og:preserve-this
+  (let ((this (the touching-list ((method-of-type structure new)
                                  allocation
                                  type-to-make
                                  ;; (-> type-to-make size) see note
                                  )
                   )))
-    (set! (-> obj num-touching-shapes) 0)
-    (set! (-> obj resolve-u) 0)
-    obj
+    (set! (-> this num-touching-shapes) 0)
+    (set! (-> this resolve-u) 0)
+    this
     )
   )
 
-(defmethod get-head touching-shapes-entry ((obj touching-shapes-entry))
-  "Get the first pair of touching prims in a touching-shapes-entry"
-  (-> obj head)
+(defmethod get-head touching-shapes-entry ((this touching-shapes-entry))
+  (-> this head)
   )
 
-(defmethod get-next touching-shapes-entry ((obj touching-shapes-entry) (arg0 touching-prims-entry))
-  "Get the next pair of touching prims."
+(defmethod get-next touching-shapes-entry ((this touching-shapes-entry) (arg0 touching-prims-entry))
   (-> arg0 next)
   )
 

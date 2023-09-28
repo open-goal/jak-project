@@ -69,12 +69,12 @@
   )
 
 
-(defmethod next-actor entity-actor ((obj entity-actor))
-  (entity-actor-lookup obj 'next-actor 0)
+(defmethod next-actor entity-actor ((this entity-actor))
+  (entity-actor-lookup this 'next-actor 0)
   )
 
-(defmethod prev-actor entity-actor ((obj entity-actor))
-  (entity-actor-lookup obj 'prev-actor 0)
+(defmethod prev-actor entity-actor ((this entity-actor))
+  (entity-actor-lookup this 'prev-actor 0)
   )
 
 (defmethod new actor-link-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol))
@@ -94,36 +94,36 @@
     )
   )
 
-(defmethod get-next actor-link-info ((obj actor-link-info))
-  (-> obj next)
+(defmethod get-next actor-link-info ((this actor-link-info))
+  (-> this next)
   )
 
-(defmethod get-prev actor-link-info ((obj actor-link-info))
-  (-> obj prev)
-  )
-
-;; WARN: Return type mismatch basic vs process.
-(defmethod get-next-process actor-link-info ((obj actor-link-info))
-  (the-as process (and (-> obj next) (-> obj next extra process)))
+(defmethod get-prev actor-link-info ((this actor-link-info))
+  (-> this prev)
   )
 
 ;; WARN: Return type mismatch basic vs process.
-(defmethod get-prev-process actor-link-info ((obj actor-link-info))
-  (the-as process (and (-> obj prev) (-> obj prev extra process)))
+(defmethod get-next-process actor-link-info ((this actor-link-info))
+  (the-as process (and (-> this next) (-> this next extra process)))
   )
 
-(defmethod link-to-next-and-prev-actor actor-link-info ((obj actor-link-info))
-  (let ((a0-1 (-> obj process entity)))
-    (set! (-> obj next) (entity-actor-lookup a0-1 'next-actor 0))
-    )
-  (let ((a0-2 (-> obj process entity)))
-    (set! (-> obj prev) (entity-actor-lookup a0-2 'prev-actor 0))
-    )
-  obj
+;; WARN: Return type mismatch basic vs process.
+(defmethod get-prev-process actor-link-info ((this actor-link-info))
+  (the-as process (and (-> this prev) (-> this prev extra process)))
   )
 
-(defmethod apply-function-forward actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
-  (let ((s3-0 (-> obj next)))
+(defmethod link-to-next-and-prev-actor actor-link-info ((this actor-link-info))
+  (let ((a0-1 (-> this process entity)))
+    (set! (-> this next) (entity-actor-lookup a0-1 'next-actor 0))
+    )
+  (let ((a0-2 (-> this process entity)))
+    (set! (-> this prev) (entity-actor-lookup a0-2 'prev-actor 0))
+    )
+  this
+  )
+
+(defmethod apply-function-forward actor-link-info ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  (let ((s3-0 (-> this next)))
     (while s3-0
       (if (arg0 s3-0 arg1)
           (return (the-as int #f))
@@ -134,8 +134,8 @@
   0
   )
 
-(defmethod apply-function-reverse actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
-  (let ((s3-0 (-> obj prev)))
+(defmethod apply-function-reverse actor-link-info ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  (let ((s3-0 (-> this prev)))
     (while s3-0
       (if (arg0 s3-0 arg1)
           (return (the-as int #f))
@@ -146,8 +146,8 @@
   0
   )
 
-(defmethod apply-all actor-link-info ((obj actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
-  (let ((s4-0 (-> obj process entity)))
+(defmethod apply-all actor-link-info ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  (let ((s4-0 (-> this process entity)))
     (while (let ((a0-2 s4-0))
              (entity-actor-lookup a0-2 'prev-actor 0)
              )
@@ -165,9 +165,9 @@
   0
   )
 
-(defmethod send-to-all-after actor-link-info ((obj actor-link-info) (arg0 symbol))
+(defmethod send-to-all-after actor-link-info ((this actor-link-info) (arg0 symbol))
   (with-pp
-    (let ((s4-0 (-> obj next))
+    (let ((s4-0 (-> this next))
           (s5-0 (the-as object #f))
           )
       (while s4-0
@@ -188,9 +188,9 @@
     )
   )
 
-(defmethod send-to-all-before actor-link-info ((obj actor-link-info) (arg0 symbol))
+(defmethod send-to-all-before actor-link-info ((this actor-link-info) (arg0 symbol))
   (with-pp
-    (let ((s4-0 (-> obj prev))
+    (let ((s4-0 (-> this prev))
           (s5-0 (the-as object #f))
           )
       (while s4-0
@@ -212,8 +212,8 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod send-to-next actor-link-info ((obj actor-link-info) (arg0 symbol))
-  (let ((a0-1 (-> obj next)))
+(defmethod send-to-next actor-link-info ((this actor-link-info) (arg0 symbol))
+  (let ((a0-1 (-> this next)))
     (when a0-1
       (let ((a0-2 (-> a0-1 extra process)))
         (if a0-2
@@ -226,8 +226,8 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod send-to-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
-  (let ((a0-1 (-> obj prev)))
+(defmethod send-to-prev actor-link-info ((this actor-link-info) (arg0 symbol))
+  (let ((a0-1 (-> this prev)))
     (when a0-1
       (let ((a0-2 (-> a0-1 extra process)))
         (if a0-2
@@ -240,21 +240,21 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod send-to-next-and-prev actor-link-info ((obj actor-link-info) (arg0 symbol))
-  (send-to-next obj arg0)
-  (send-to-prev obj arg0)
+(defmethod send-to-next-and-prev actor-link-info ((this actor-link-info) (arg0 symbol))
+  (send-to-next this arg0)
+  (send-to-prev this arg0)
   (none)
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod send-to-all actor-link-info ((obj actor-link-info) (arg0 symbol))
-  (send-to-all-after obj arg0)
-  (send-to-all-before obj arg0)
+(defmethod send-to-all actor-link-info ((this actor-link-info) (arg0 symbol))
+  (send-to-all-after this arg0)
+  (send-to-all-before this arg0)
   (none)
   )
 
-(defmethod actor-count actor-link-info ((obj actor-link-info))
-  (let ((s5-0 (-> obj process entity))
+(defmethod actor-count actor-link-info ((this actor-link-info))
+  (let ((s5-0 (-> this process entity))
         (gp-0 0)
         )
     (while (let ((a0-2 s5-0))
@@ -272,8 +272,8 @@
     )
   )
 
-(defmethod get-matching-actor-type-mask actor-link-info ((obj actor-link-info) (arg0 type))
-  (let ((s3-0 (-> obj process entity))
+(defmethod get-matching-actor-type-mask actor-link-info ((this actor-link-info) (arg0 type))
+  (let ((s3-0 (-> this process entity))
         (s5-0 0)
         )
     (let ((s4-0 1))
@@ -296,8 +296,8 @@
     )
   )
 
-(defmethod actor-count-before actor-link-info ((obj actor-link-info))
-  (let* ((s5-0 (-> obj process entity))
+(defmethod actor-count-before actor-link-info ((this actor-link-info))
+  (let* ((s5-0 (-> this process entity))
          (s4-0 s5-0)
          (gp-0 0)
          )

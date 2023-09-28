@@ -16,6 +16,7 @@
 
 (defconstant SPOOL_HEAP_SIZE (* 247 1024)) ;; size of the heap to be used for each spool
 
+;; DECOMP BEGINS
 
 ;; A load-dir is a collection of references to loaded art.
 ;; This type didn't have a nomral inspect method, so these field names are made up.
@@ -50,33 +51,33 @@
 
 (defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (lev level))
   "Allocate a new load-dir with room for length entries"
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj lev) lev)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this lev) lev)
     ;; create the name array
-    (set! (-> obj string-array)
+    (set! (-> this string-array)
           (the-as (array string)
                   ((method-of-type array new) allocation array string length)
                   )
           )
-    (set! (-> obj string-array length) 0)
+    (set! (-> this string-array length) 0)
     ;; create the data array
-    (set! (-> obj data-array)
+    (set! (-> this data-array)
           (the-as (array art-group)
                   ((method-of-type array new) allocation array basic length)
                   ))
-    (set! (-> obj data-array length) 0)
-    obj
+    (set! (-> this data-array length) 0)
+    this
     )
   )
 
 (defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (lev level))
   "Allocate a new load-dir with room for length art-groups"
   ;; call parent ctor.
-  (let ((obj ((method-of-type load-dir new) allocation type-to-make length lev)))
+  (let ((this ((method-of-type load-dir new) allocation type-to-make length lev)))
     ;; override the content type
-    (set! (-> obj data-array content-type) art-group)
+    (set! (-> this data-array content-type) art-group)
     ;; and cast to child.
-    (the-as load-dir-art-group obj)
+    (the-as load-dir-art-group this)
     )
   )
 
@@ -128,21 +129,21 @@
 
 (defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
   "Allocate a new external-art-buffer"
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-   (set! (-> obj index) idx)
-   (set! (-> obj load-file) #f)
-   (set! (-> obj load-file-part) -1)
-   (set! (-> obj load-file-owner) (the-as handle #f))
-   (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
-   (set! (-> obj pending-load-file) #f)
-   (set! (-> obj pending-load-file-part) -1)
-   (set! (-> obj pending-load-file-owner) (the-as handle #f))
-   (set! (-> obj pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
-   (set! (-> obj art-group) #f)
-   (set! (-> obj status) 'initialize)
-   (set! (-> obj locked?) #f)
-   (set! (-> obj other) #f)
-   obj
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> this index) idx)
+   (set! (-> this load-file) #f)
+   (set! (-> this load-file-part) -1)
+   (set! (-> this load-file-owner) (the-as handle #f))
+   (set! (-> this load-file-priority) SPOOL_PRIORITY_LOWEST)
+   (set! (-> this pending-load-file) #f)
+   (set! (-> this pending-load-file-part) -1)
+   (set! (-> this pending-load-file-owner) (the-as handle #f))
+   (set! (-> this pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
+   (set! (-> this art-group) #f)
+   (set! (-> this status) 'initialize)
+   (set! (-> this locked?) #f)
+   (set! (-> this other) #f)
+   this
    )
   )
 
@@ -196,38 +197,36 @@
 
 
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; allocate buffers.
     (dotimes (buff-idx 2)
-      (set! (-> obj buffer buff-idx)
+      (set! (-> this buffer buff-idx)
             ((method-of-type external-art-buffer new) allocation external-art-buffer buff-idx)
             )
       )
     ;; point buffers to each other
-    (set! (-> obj buffer 0 other) (-> obj buffer 1))
-    (set! (-> obj buffer 1 other) (-> obj buffer 0))
+    (set! (-> this buffer 0 other) (-> this buffer 1))
+    (set! (-> this buffer 1 other) (-> this buffer 0))
     ;; set up recs
     (dotimes (rec-idx 3)
-      (set! (-> obj rec rec-idx name) #f)
-      (set! (-> obj rec rec-idx priority) SPOOL_PRIORITY_LOWEST)
-      (set! (-> obj rec rec-idx owner) (the-as handle #f))
+      (set! (-> this rec rec-idx name) #f)
+      (set! (-> this rec rec-idx priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> this rec rec-idx owner) (the-as handle #f))
       )
     ;; set up defaults.
-    (set! (-> obj spool-lock) (the-as handle #f))
-    (set! (-> obj reserve-buffer) #f)
-    (set! (-> obj active-stream) #f)
-    (set! (-> obj preload-stream name) #f)
-    (set! (-> obj preload-stream priority) SPOOL_PRIORITY_LOWEST)
-    (set! (-> obj preload-stream owner) (the-as handle #f))
-    (set! (-> obj last-preload-stream name) #f)
-    (set! (-> obj last-preload-stream priority) SPOOL_PRIORITY_LOWEST)
-    (set! (-> obj last-preload-stream owner) (the-as handle #f))
-    obj
+    (set! (-> this spool-lock) (the-as handle #f))
+    (set! (-> this reserve-buffer) #f)
+    (set! (-> this active-stream) #f)
+    (set! (-> this preload-stream name) #f)
+    (set! (-> this preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> this preload-stream owner) (the-as handle #f))
+    (set! (-> this last-preload-stream name) #f)
+    (set! (-> this last-preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> this last-preload-stream owner) (the-as handle #f))
+    this
     )
   )
 
 
 (define-extern *art-control* external-art-control)
 (defun-extern art-group-load-check string kheap int art-group)
-
-

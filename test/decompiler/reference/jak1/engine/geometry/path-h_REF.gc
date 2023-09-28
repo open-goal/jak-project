@@ -31,15 +31,15 @@
   )
 
 ;; definition for method 3 of type path-control
-(defmethod inspect path-control ((obj path-control))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tflags: #x~X~%" (-> obj flags))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> obj cverts))
-  (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
-  (format #t "~Tcverts: #x~X~%" (-> obj cverts))
-  obj
+(defmethod inspect path-control ((this path-control))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tflags: #x~X~%" (-> this flags))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> this cverts))
+  (format #t "~Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> this cverts))
+  this
   )
 
 ;; definition of type curve-control
@@ -54,15 +54,15 @@
   )
 
 ;; definition for method 3 of type curve-control
-(defmethod inspect curve-control ((obj curve-control))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tflags: #x~X~%" (-> obj flags))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> obj cverts))
-  (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
-  (format #t "~Tcverts: #x~X~%" (-> obj cverts))
-  obj
+(defmethod inspect curve-control ((this curve-control))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tflags: #x~X~%" (-> this flags))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tprocess: ~A~%" (-> this process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> this cverts))
+  (format #t "~Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> this cverts))
+  this
   )
 
 ;; definition for method 0 of type path-control
@@ -70,14 +70,14 @@
 ;; INFO: Return type mismatch object vs path-control.
 (defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
   (local-vars (tag res-tag))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (when (zero? obj)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? this)
       (go process-drawable-art-error "memory")
-      (set! obj (the-as path-control 0))
+      (set! this (the-as path-control 0))
       (goto cfg-9)
       )
-    (set! (-> obj process) (the-as process-drawable proc))
-    (set! (-> obj name) name)
+    (set! (-> this process) (the-as process-drawable proc))
+    (set! (-> this name) name)
     (let ((ent (-> proc entity)))
       (when (= name 'path)
         (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
@@ -90,43 +90,43 @@
       (let ((data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
         (cond
           (data
-            (set! (-> obj cverts) (the-as (inline-array vector) data))
-            (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
+            (set! (-> this cverts) (the-as (inline-array vector) data))
+            (set! (-> this curve num-cverts) (the-as int (-> tag elt-count)))
             )
           (else
-            (logior! (-> obj flags) (path-control-flag not-found))
-            (set! (-> obj cverts) (the-as (inline-array vector) #f))
-            (set! (-> obj curve num-cverts) 0)
+            (logior! (-> this flags) (path-control-flag not-found))
+            (set! (-> this cverts) (the-as (inline-array vector) #f))
+            (set! (-> this curve num-cverts) 0)
             0
             )
           )
         )
       )
     (label cfg-9)
-    (the-as path-control obj)
+    (the-as path-control this)
     )
   )
 
 ;; definition for method 18 of type path-control
-(defmethod should-display? path-control ((obj path-control))
-  (and *display-path-marks* (logtest? (-> obj flags) (path-control-flag display)))
+(defmethod should-display? path-control ((this path-control))
+  (and *display-path-marks* (logtest? (-> this flags) (path-control-flag display)))
   )
 
 ;; definition for method 15 of type path-control
-(defmethod length-as-float path-control ((obj path-control))
-  (the float (+ (-> obj curve num-cverts) -1))
+(defmethod length-as-float path-control ((this path-control))
+  (the float (+ (-> this curve num-cverts) -1))
   )
 
 ;; definition for method 17 of type path-control
-(defmethod get-num-verts path-control ((obj path-control))
-  (-> obj curve num-cverts)
+(defmethod get-num-verts path-control ((this path-control))
+  (-> this curve num-cverts)
   )
 
 ;; definition for method 0 of type curve-control
 (defmethod new curve-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj process) (the-as process-drawable proc))
-    (set! (-> obj name) name)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this process) (the-as process-drawable proc))
+    (set! (-> this name) name)
     (let* ((ent (-> proc entity))
            (v1-2 name)
            (s2-0 (cond
@@ -147,21 +147,21 @@
             (set! ent lookup-entity)
             )
         )
-      (when (not (get-curve-data! ent (the-as curve (&-> obj cverts)) name s2-0 time))
+      (when (not (get-curve-data! ent (the-as curve (&-> this cverts)) name s2-0 time))
         (cond
-          ((> (-> obj curve num-cverts) 0)
-           (set! (-> obj type) path-control)
+          ((> (-> this curve num-cverts) 0)
+           (set! (-> this type) path-control)
            )
           (else
-            (logior! (-> obj flags) (path-control-flag not-found))
-            (set! (-> obj cverts) (the-as (inline-array vector) #f))
-            (set! (-> obj curve num-cverts) 0)
+            (logior! (-> this flags) (path-control-flag not-found))
+            (set! (-> this cverts) (the-as (inline-array vector) #f))
+            (set! (-> this curve num-cverts) 0)
             0
             )
           )
         )
       )
-    obj
+    this
     )
   )
 

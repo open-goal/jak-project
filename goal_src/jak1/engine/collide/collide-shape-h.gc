@@ -108,10 +108,10 @@
     )
   )
 
-(defmethod set-rider! collide-sticky-rider ((obj collide-sticky-rider) (arg0 handle))
+(defmethod set-rider! collide-sticky-rider ((this collide-sticky-rider) (arg0 handle))
   "Set the rider and clear the primitive."
-  (set! (-> obj rider-handle) arg0)
-  (set! (-> obj sticky-prim) #f)
+  (set! (-> this rider-handle) arg0)
+  (set! (-> this sticky-prim) #f)
   #f
   )
 
@@ -132,9 +132,9 @@
     )
   )
 
-(defmethod reset! collide-sticky-rider-group ((obj collide-sticky-rider-group))
+(defmethod reset! collide-sticky-rider-group ((this collide-sticky-rider-group))
   "Reset all active riders"
-  (set! (-> obj num-riders) 0)
+  (set! (-> this num-riders) 0)
   0
   )
 
@@ -189,12 +189,12 @@
     )
   )
 
-(defmethod reset! collide-overlap-result ((obj collide-overlap-result))
+(defmethod reset! collide-overlap-result ((this collide-overlap-result))
   "Reset the result."
 
-  (set! (-> obj best-dist) 0.0)
-  (set! (-> obj best-from-prim) #f)
-  (set! (-> obj best-to-prim) #f)
+  (set! (-> this best-dist) 0.0)
+  (set! (-> this best-from-prim) #f)
+  (set! (-> this best-to-prim) #f)
   (none)
   )
 
@@ -666,17 +666,17 @@
   "Allocate a new collide-shape-prim. It is expected that children of collide-shape-prim override this.
    NOTE: uses the size-bytes as the TOTAL size of the structure."
 
-  (let ((obj (object-new allocation type-to-make size-bytes)))
-    (set! (-> obj cshape) (the-as collide-shape cshape))
+  (let ((this (object-new allocation type-to-make size-bytes)))
+    (set! (-> this cshape) (the-as collide-shape cshape))
     ;; sphere/mesh?
-    (set! (-> obj prim-id) prim-id)
-    (set! (-> obj prim-core action) (collide-action))
-    (set! (-> obj prim-core collide-as) (collide-kind))
-    (set! (-> obj collide-with) (collide-kind))
-    (set! (-> obj transform-index) -2)
-    (set! (-> obj prim-core offense) (collide-offense no-offense))
-    (set! (-> obj prim-core prim-type) -2)
-    obj
+    (set! (-> this prim-id) prim-id)
+    (set! (-> this prim-core action) (collide-action))
+    (set! (-> this prim-core collide-as) (collide-kind))
+    (set! (-> this collide-with) (collide-kind))
+    (set! (-> this transform-index) -2)
+    (set! (-> this prim-core offense) (collide-offense no-offense))
+    (set! (-> this prim-core prim-type) -2)
+    this
     )
   )
 
@@ -684,114 +684,114 @@
 (defmethod new collide-shape-prim-sphere ((allocation symbol) (type-to-make type) (cshape collide-shape) (prim-id uint))
   "Allocate a new sphere primitive"
 
-  (let ((obj (the collide-shape-prim-sphere ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-sphere)))))
-      (set! (-> obj pat) (new 'static 'pat-surface :mode (pat-mode obstacle)))
-      (set! (-> obj prim-core prim-type) -1)
-      obj
+  (let ((this (the collide-shape-prim-sphere ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-sphere)))))
+      (set! (-> this pat) (new 'static 'pat-surface :mode (pat-mode obstacle)))
+      (set! (-> this prim-core prim-type) -1)
+      this
       )
   )
 
 (defmethod new collide-shape-prim-mesh ((allocation symbol) (type-to-make type) (cshape collide-shape) (mesh-id uint) (prim-id uint))
   "Allocate a new mesh primitive"
 
-  (let ((obj (the collide-shape-prim-mesh ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-mesh)))))
-    (set! (-> obj mesh) #f)
-    (set! (-> obj mesh-id) (the int mesh-id))
-    (set! (-> obj mesh-cache-id) 0)
-    (set! (-> obj prim-core prim-type) 1)
-    obj
+  (let ((this (the collide-shape-prim-mesh ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-mesh)))))
+    (set! (-> this mesh) #f)
+    (set! (-> this mesh-id) (the int mesh-id))
+    (set! (-> this mesh-cache-id) 0)
+    (set! (-> this prim-core prim-type) 1)
+    this
     )
   )
 
 (defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (cshape collide-shape) (elt-count uint) (prim-id int))
   "Allocate a group of primitives."
 
-  (let ((obj (the collide-shape-prim-group ((method-of-type collide-shape-prim new) allocation type-to-make cshape (the uint prim-id) (the int (+ (-> type-to-make size) (* (+ elt-count -1) 4)))))))
-    (set! (-> obj allocated-prims) (the int elt-count))
-    (set! (-> obj num-prims) 0)
-    (set! (-> obj prim-core prim-type) 0)
+  (let ((this (the collide-shape-prim-group ((method-of-type collide-shape-prim new) allocation type-to-make cshape (the uint prim-id) (the int (+ (-> type-to-make size) (* (+ elt-count -1) 4)))))))
+    (set! (-> this allocated-prims) (the int elt-count))
+    (set! (-> this num-prims) 0)
+    (set! (-> this prim-core prim-type) 0)
     (while (nonzero? elt-count)
       (+! elt-count -1)
-      (set! (-> obj prim elt-count) (the collide-shape-prim #f))
+      (set! (-> this prim elt-count) (the collide-shape-prim #f))
       (nop!)
       )
-    obj
+    this
     )
   )
 
-(defmethod length collide-shape-prim-group ((obj collide-shape-prim-group))
+(defmethod length collide-shape-prim-group ((this collide-shape-prim-group))
   "How many primitives are used?"
-  (-> obj num-prims)
+  (-> this num-prims)
   )
 
-(defmethod asize-of collide-shape-prim-group ((obj collide-shape-prim-group))
+(defmethod asize-of collide-shape-prim-group ((this collide-shape-prim-group))
   "How big is this in memory?"
-  (the-as int (+ (-> obj type size) (* (+ (-> obj allocated-prims) -1) 4)))
+  (the-as int (+ (-> this type size) (* (+ (-> this allocated-prims) -1) 4)))
   )
 
 (defmethod new collide-shape ((allocation symbol) (type-to-make type) (proc process-drawable) (collide-list-kind collide-list-enum))
   "Allocate a new collide-shape and add to a collide-list"
 
-  (let ((obj (object-new allocation type-to-make (the int (-> type-to-make size)))))
-    (set! (-> obj process) proc)
-    (set! (-> obj max-iteration-count) 1)
-    (set! (-> obj nav-flags) (nav-flags navf0))
-    (set! (-> obj event-self) #f)
-    (set! (-> obj event-other) #f)
-    (set! (-> obj riders) #f)
-    (set! (-> obj root-prim) #f)
+  (let ((this (object-new allocation type-to-make (the int (-> type-to-make size)))))
+    (set! (-> this process) proc)
+    (set! (-> this max-iteration-count) 1)
+    (set! (-> this nav-flags) (nav-flags navf0))
+    (set! (-> this event-self) #f)
+    (set! (-> this event-other) #f)
+    (set! (-> this riders) #f)
+    (set! (-> this root-prim) #f)
 
     ;; add a special ignore mask for the camera vs other things.
     (case (-> proc type symbol)
       (('camera)
-       (set! (-> obj pat-ignore-mask) (new 'static 'pat-surface :skip #x2 :nocamera #x1))
+       (set! (-> this pat-ignore-mask) (new 'static 'pat-surface :skip #x2 :nocamera #x1))
        )
       (else
-        (set! (-> obj pat-ignore-mask) (new 'static 'pat-surface :skip #x1 :noentity #x1))
+        (set! (-> this pat-ignore-mask) (new 'static 'pat-surface :skip #x1 :noentity #x1))
         )
       )
     ;; reset transformation to the origin.
-    (set! (-> obj trans w) 1.0)
-    (quaternion-identity! (-> obj quat))
-    (vector-identity! (-> obj scale))
+    (set! (-> this trans w) 1.0)
+    (quaternion-identity! (-> this quat))
+    (vector-identity! (-> this scale))
 
     ;; add us to right list.
     (case collide-list-kind
       (((collide-list-enum hit-by-player))
-       (add-connection *collide-hit-by-player-list* proc #f obj #f #f))
+       (add-connection *collide-hit-by-player-list* proc #f this #f #f))
 
       (((collide-list-enum usually-hit-by-player))
-       (add-connection *collide-usually-hit-by-player-list* proc #f obj #f #f))
+       (add-connection *collide-usually-hit-by-player-list* proc #f this #f #f))
 
       (((collide-list-enum hit-by-others))
-       (add-connection *collide-hit-by-others-list* proc #f obj #f #f))
+       (add-connection *collide-hit-by-others-list* proc #f this #f #f))
 
       (((collide-list-enum player))
-       (add-connection *collide-player-list* proc #f obj #f #f))
+       (add-connection *collide-player-list* proc #f this #f #f))
 
       (else
        (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%"))
       )
-    obj
+    this
     )
   )
 
 (defmethod new collide-sticky-rider-group ((allocation symbol) (type-to-make type) (riders-amount int))
   "Allocate a new collide-sticky-rider-group with space for riders-amount sticky riders."
 
-  (let ((obj (object-new allocation type-to-make (the int (+ (-> type-to-make size) (the uint (* (1- riders-amount) (size-of collide-sticky-rider))))))))
-   (set! (-> obj allocated-riders) riders-amount)
-   (set! (-> obj num-riders) 0)
-   obj
+  (let ((this (object-new allocation type-to-make (the int (+ (-> type-to-make size) (the uint (* (1- riders-amount) (size-of collide-sticky-rider))))))))
+   (set! (-> this allocated-riders) riders-amount)
+   (set! (-> this num-riders) 0)
+   this
    )
   )
 
-(defmethod length collide-sticky-rider-group ((obj collide-sticky-rider-group))
-  (-> obj num-riders)
+(defmethod length collide-sticky-rider-group ((this collide-sticky-rider-group))
+  (-> this num-riders)
   )
 
-(defmethod asize-of collide-sticky-rider-group ((obj collide-sticky-rider-group))
-  (the-as int (+ (-> obj type size) (* (+ (-> obj allocated-riders) -1) 32)))
+(defmethod asize-of collide-sticky-rider-group ((this collide-sticky-rider-group))
+  (the-as int (+ (-> this type size) (* (+ (-> this allocated-riders) -1) 32)))
   )
 
 ;;;;;;;;;;;;;;;;;;;;

@@ -25,24 +25,24 @@
   )
 
 ;; definition for method 3 of type piston
-(defmethod inspect piston ((obj piston))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect piston ((this piston))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsound-trans: #<vector @ #x~X>~%" (-> obj sound-trans))
-  (format #t "~2Tinit-height: ~f~%" (-> obj init-height))
-  (format #t "~2Trange-top: ~f~%" (-> obj range-top))
-  (format #t "~2Trange-bottom: ~f~%" (-> obj range-bottom))
-  (format #t "~2Tsound-time[2] @ #x~X~%" (-> obj sound-time))
-  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
-  (format #t "~2Tpiston-id: ~D~%" (-> obj piston-id))
-  (format #t "~2Tlooping-id: ~D~%" (-> obj looping-id))
+  (format #t "~2Tsound-trans: #<vector @ #x~X>~%" (-> this sound-trans))
+  (format #t "~2Tinit-height: ~f~%" (-> this init-height))
+  (format #t "~2Trange-top: ~f~%" (-> this range-top))
+  (format #t "~2Trange-bottom: ~f~%" (-> this range-bottom))
+  (format #t "~2Tsound-time[2] @ #x~X~%" (-> this sound-time))
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> this sync))
+  (format #t "~2Tpiston-id: ~D~%" (-> this piston-id))
+  (format #t "~2Tlooping-id: ~D~%" (-> this looping-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -136,16 +136,16 @@
   )
 
 ;; definition for method 10 of type piston
-(defmethod deactivate piston ((obj piston))
-  (sound-stop (-> obj looping-id))
-  ((method-of-type process-focusable deactivate) obj)
+(defmethod deactivate piston ((this piston))
+  (sound-stop (-> this looping-id))
+  ((method-of-type process-focusable deactivate) this)
   (none)
   )
 
 ;; definition for method 11 of type piston
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! piston ((obj piston) (arg0 entity-actor))
+(defmethod init-from-entity! piston ((this piston) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -153,7 +153,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -169,23 +169,23 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj sound-trans quad) (-> obj root trans quad))
-  (+! (-> obj root trans y) 53248.0)
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this sound-trans quad) (-> this root trans quad))
+  (+! (-> this root trans y) 53248.0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-piston" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logior! (-> obj focus-status) (focus-status ignore))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (logior! (-> this focus-status) (focus-status ignore))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (set! (-> obj piston-id)
-        (res-lump-value (-> obj entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
+  (set! (-> this piston-id)
+        (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
         )
   (let ((a1-8 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-29 0))
@@ -196,13 +196,13 @@ This commonly includes things such as:
       (set! (-> a1-8 sync-flags) (the-as sync-flags v1-29))
       )
     (set! (-> a1-8 period) (the-as uint 1500))
-    (set! (-> a1-8 entity) (-> obj entity))
+    (set! (-> a1-8 entity) (-> this entity))
     (set! (-> a1-8 percent) 0.0)
     (set! (-> a1-8 ease-in) 0.15)
     (set! (-> a1-8 ease-out) 0.15)
     (set! (-> a1-8 pause-in) 0.0)
     (set! (-> a1-8 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-8)
+    (initialize! (-> this sync) a1-8)
     )
   (let ((f28-0 -3.0)
         (f30-0 3.0)
@@ -214,29 +214,29 @@ This commonly includes things such as:
         (set! f30-0 (-> v1-40 1))
         )
       )
-    (set! (-> obj range-bottom) (* 4096.0 f28-0))
-    (set! (-> obj range-top) (* 4096.0 f30-0))
+    (set! (-> this range-bottom) (* 4096.0 f28-0))
+    (set! (-> this range-top) (* 4096.0 f30-0))
     )
-  (set! (-> obj init-height) (-> obj root trans y))
-  (+! (-> obj root trans y) -40960.0)
+  (set! (-> this init-height) (-> this root trans y))
+  (+! (-> this root trans y) -40960.0)
   (cond
-    ((logtest? (actor-option user18) (-> obj fact options))
-     (set! (-> obj looping-id) (new-sound-id))
+    ((logtest? (actor-option user18) (-> this fact options))
+     (set! (-> this looping-id) (new-sound-id))
      )
     (else
-      (set! (-> obj looping-id) (new 'static 'sound-id))
+      (set! (-> this looping-id) (new 'static 'sound-id))
       0
       )
     )
   (ja-channel-push! 1 0)
-  (let ((a0-26 (-> obj skel root-channel 0)))
-    (set! (-> a0-26 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (let ((a0-26 (-> this skel root-channel 0)))
+    (set! (-> a0-26 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     (set! (-> a0-26 param 0) 1.0)
     (set! (-> a0-26 frame-num) 0.0)
-    (joint-control-channel-group! a0-26 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-loop!)
+    (joint-control-channel-group! a0-26 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-loop!)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -258,20 +258,20 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type turbine
-(defmethod inspect turbine ((obj turbine))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect turbine ((this turbine))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tdest-height: ~f~%" (-> obj dest-height))
-  (format #t "~2Trise-height: ~f~%" (-> obj rise-height))
-  (format #t "~2Trotspeed: ~f~%" (-> obj rotspeed))
-  (format #t "~2Trisen: ~A~%" (-> obj risen))
+  (format #t "~2Tdest-height: ~f~%" (-> this dest-height))
+  (format #t "~2Trise-height: ~f~%" (-> this rise-height))
+  (format #t "~2Trotspeed: ~f~%" (-> this rotspeed))
+  (format #t "~2Trisen: ~A~%" (-> this risen))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -332,7 +332,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type turbine
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! turbine ((obj turbine) (arg0 entity-actor))
+(defmethod init-from-entity! turbine ((this turbine) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -340,7 +340,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -356,18 +356,18 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (+! (-> obj root trans y) 73728.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this arg0)
+  (+! (-> this root trans y) 73728.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-turbine" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj dest-height) (-> obj root trans y))
-  (set! (-> obj risen) #f)
+  (set! (-> this dest-height) (-> this root trans y))
+  (set! (-> this risen) #f)
   (let ((f30-0 8192.0)
         (f28-0 0.0)
         )
@@ -383,21 +383,21 @@ This commonly includes things such as:
           (set! f28-0 (-> (the-as (pointer float) v1-27)))
           )
       )
-    (set! (-> obj rotspeed) f30-0)
-    (set! (-> obj rise-height) f28-0)
+    (set! (-> this rotspeed) f30-0)
+    (set! (-> this rise-height) f28-0)
     )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "turbine" :fo-max 50) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "turbine" :fo-max 50) (-> this root trans))
         )
   (ja-channel-push! 1 0)
-  (let ((a0-19 (-> obj skel root-channel 0)))
-    (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (let ((a0-19 (-> this skel root-channel 0)))
+    (set! (-> a0-19 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     (set! (-> a0-19 param 0) 1.0)
     (set! (-> a0-19 frame-num) 0.0)
-    (joint-control-channel-group! a0-19 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-loop!)
+    (joint-control-channel-group! a0-19 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-loop!)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -418,18 +418,18 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type liftcat
-(defmethod inspect liftcat ((obj liftcat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect liftcat ((this liftcat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tup-y: ~f~%" (-> obj up-y))
-  (format #t "~2Tdown-y: ~f~%" (-> obj down-y))
+  (format #t "~2Tup-y: ~f~%" (-> this up-y))
+  (format #t "~2Tdown-y: ~f~%" (-> this down-y))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -467,7 +467,7 @@ This commonly includes things such as:
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (sound-play "liftcat")
     )
   :trans (behavior ()
@@ -476,7 +476,7 @@ This commonly includes things such as:
       (if (>= (-> self down-y) (-> gp-0 trans y))
           (go-virtual idle-down)
           )
-      (if (>= (- (current-time) (-> self state-time)) (seconds 0.5))
+      (if (time-elapsed? (-> self state-time) (seconds 0.5))
           (set! (-> self root transv y) -8192.0)
           (set! (-> self root transv y) 0.0)
           )
@@ -509,7 +509,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type liftcat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! liftcat ((obj liftcat) (arg0 entity-actor))
+(defmethod init-from-entity! liftcat ((this liftcat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -517,7 +517,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -533,10 +533,10 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (let ((s4-1 (-> obj root)))
+  (process-drawable-from-entity! this arg0)
+  (let ((s4-1 (-> this root)))
     (set! sv-16 (new 'static 'res-tag))
     (let ((v1-15 (res-lump-data arg0 'trans-offset vector :tag-ptr (& sv-16))))
       (when v1-15
@@ -554,40 +554,40 @@ This commonly includes things such as:
         )
       )
     )
-  (+! (-> obj root trans y) 55558.145)
+  (+! (-> this root trans y) 55558.145)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-liftcat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((v1-24 (-> obj root)))
-    (set! (-> obj down-y) (-> v1-24 trans y))
+  (let ((v1-24 (-> this root)))
+    (set! (-> this down-y) (-> v1-24 trans y))
     (+! (-> v1-24 trans y) 28672.0)
-    (set! (-> obj up-y) (-> v1-24 trans y))
+    (set! (-> this up-y) (-> v1-24 trans y))
     (vector-reset! (-> v1-24 transv))
     )
   (ja-channel-set! 1)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 3))
+      (the-as art-joint-anim (-> this draw art-group data 3))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (if (task-complete? *game-info* (game-task atoll-sig))
-      (process-entity-status! obj (entity-perm-status subtask-complete) #t)
+      (process-entity-status! this (entity-perm-status subtask-complete) #t)
       )
   (cond
-    ((and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-     (set! (-> obj root trans y) (-> obj down-y))
+    ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+     (set! (-> this root trans y) (-> this down-y))
      (transform-post)
-     (go (method-of-object obj idle-down))
+     (go (method-of-object this idle-down))
      )
     (else
-      (set! (-> obj root trans y) (-> obj up-y))
+      (set! (-> this root trans y) (-> this up-y))
       (transform-post)
-      (go (method-of-object obj idle-up))
+      (go (method-of-object this idle-up))
       )
     )
   (none)
@@ -613,22 +613,22 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atollrotpipe
-(defmethod inspect atollrotpipe ((obj atollrotpipe))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atollrotpipe ((this atollrotpipe))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsmush: #<smush-control @ #x~X>~%" (-> obj smush))
-  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
-  (format #t "~2Trot-angle: ~f~%" (-> obj rot-angle))
-  (format #t "~2Tshudder-angle: ~f~%" (-> obj shudder-angle))
-  (format #t "~2Tcycle-time: ~f~%" (-> obj cycle-time))
-  (format #t "~2Tcycle-offset: ~f~%" (-> obj cycle-offset))
+  (format #t "~2Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> this init-quat))
+  (format #t "~2Trot-angle: ~f~%" (-> this rot-angle))
+  (format #t "~2Tshudder-angle: ~f~%" (-> this shudder-angle))
+  (format #t "~2Tcycle-time: ~f~%" (-> this cycle-time))
+  (format #t "~2Tcycle-offset: ~f~%" (-> this cycle-offset))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -660,20 +660,20 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (let ((gp-0 (current-time)))
-      (until (>= (- (current-time) gp-0) (the int (-> self cycle-offset)))
+      (until (time-elapsed? gp-0 (the int (-> self cycle-offset)))
         (suspend)
         )
       )
     (until #f
       (let ((gp-1 (current-time)))
-        (until (>= (- (current-time) gp-1) (the int (-> self cycle-time)))
+        (until (time-elapsed? gp-1 (the int (-> self cycle-time)))
           (suspend)
           )
         )
       (activate! (-> self smush) -1.0 60 225 1.0 1.0 (-> self clock))
       (sound-play "rot-pipe-wiggle" :position (-> self root trans))
       (let ((gp-3 (current-time)))
-        (until (>= (- (current-time) gp-3) (seconds 0.75))
+        (until (time-elapsed? gp-3 (seconds 0.75))
           (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
           (suspend)
           )
@@ -681,7 +681,7 @@ This commonly includes things such as:
       (set! (-> self shudder-angle) 0.0)
       (set-zero! (-> self smush))
       (let ((gp-4 (current-time)))
-        (until (>= (- (current-time) gp-4) (seconds 0.25))
+        (until (time-elapsed? gp-4 (seconds 0.25))
           (suspend)
           )
         )
@@ -690,7 +690,7 @@ This commonly includes things such as:
              (f30-1 (* 16384.0 f0-7))
              (gp-6 (current-time))
              )
-        (until (>= (- (current-time) gp-6) (seconds 0.5))
+        (until (time-elapsed? gp-6 (seconds 0.5))
           (set! (-> self rot-angle)
                 (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (seconds-per-frame)))) 48) 48))
                 )
@@ -718,7 +718,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type atollrotpipe
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atollrotpipe ((obj atollrotpipe) (arg0 entity-actor))
+(defmethod init-from-entity! atollrotpipe ((this atollrotpipe) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -726,7 +726,7 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
       (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
@@ -742,24 +742,24 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (set! (-> obj root rider-max-momentum) 8192.0)
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root rider-max-momentum) 8192.0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atollrotpipe" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj rot-angle) 0.0)
-  (set! (-> obj shudder-angle) 0.0)
-  (quaternion-copy! (-> obj init-quat) (-> obj root quat))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this rot-angle) 0.0)
+  (set! (-> this shudder-angle) 0.0)
+  (quaternion-copy! (-> this init-quat) (-> this root quat))
   (ja-channel-push! 1 0)
-  (let ((s4-2 (-> obj skel root-channel 0)))
+  (let ((s4-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s4-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s4-2 frame-num) 0.0)
@@ -775,10 +775,10 @@ This commonly includes things such as:
         (set! f30-0 (-> v1-29 1))
         )
       )
-    (set! (-> obj cycle-time) (the float (max 0 (+ (the int (* 300.0 f28-0)) -375))))
-    (set! (-> obj cycle-offset) (the float (the int (* 300.0 f30-0))))
+    (set! (-> this cycle-time) (the float (max 0 (+ (the int (* 300.0 f28-0)) -375))))
+    (set! (-> this cycle-offset) (the float (the int (* 300.0 f30-0))))
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -803,23 +803,23 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type slider
-(defmethod inspect slider ((obj slider))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect slider ((this slider))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tpath-pos: ~f~%" (-> obj path-pos))
-  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> obj sync))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
-  (format #t "~2Tsound-id: ~D~%" (-> obj sound-id))
-  (format #t "~2Tcollide-off-timer: ~D~%" (-> obj collide-off-timer))
-  (format #t "~2Tl-points[6] @ #x~X~%" (-> obj l-points))
-  (format #t "~2Tl-bolts[4] @ #x~X~%" (-> obj l-bolts))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> this sync))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
+  (format #t "~2Tcollide-off-timer: ~D~%" (-> this collide-off-timer))
+  (format #t "~2Tl-points[6] @ #x~X~%" (-> this l-points))
+  (format #t "~2Tl-bolts[4] @ #x~X~%" (-> this l-bolts))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -834,7 +834,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (when (>= (- (current-time) (the-as int (-> self collide-off-timer))) (seconds 2))
+       (when (time-elapsed? (the-as int (-> self collide-off-timer)) (seconds 2))
          (let* ((s4-0 proc)
                 (s3-0 (if (type? s4-0 process-focusable)
                           s4-0
@@ -911,42 +911,42 @@ This commonly includes things such as:
   )
 
 ;; definition for method 12 of type slider
-(defmethod run-logic? slider ((obj slider))
+(defmethod run-logic? slider ((this slider))
   #t
   )
 
 ;; definition for method 10 of type slider
-(defmethod deactivate slider ((obj slider))
-  (sound-stop (the-as sound-id (-> obj sound-id)))
-  ((the-as (function process-drawable none) (find-parent-method slider 10)) obj)
+(defmethod deactivate slider ((this slider))
+  (sound-stop (the-as sound-id (-> this sound-id)))
+  ((the-as (function process-drawable none) (find-parent-method slider 10)) this)
   (none)
   )
 
 ;; definition for method 7 of type slider
 ;; WARN: Return type mismatch process-drawable vs slider.
-(defmethod relocate slider ((obj slider) (arg0 int))
+(defmethod relocate slider ((this slider) (arg0 int))
   (dotimes (v1-0 4)
-    (if (nonzero? (-> obj l-bolts v1-0))
-        (&+! (-> obj l-bolts v1-0) arg0)
+    (if (nonzero? (-> this l-bolts v1-0))
+        (&+! (-> this l-bolts v1-0) arg0)
         )
     )
   (the-as
     slider
-    ((the-as (function process-drawable int process-drawable) (find-parent-method slider 7)) obj arg0)
+    ((the-as (function process-drawable int process-drawable) (find-parent-method slider 7)) this arg0)
     )
   )
 
 ;; definition for method 11 of type slider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! slider ((obj slider) (arg0 entity-actor))
+(defmethod init-from-entity! slider ((this slider) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -960,12 +960,12 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (process-drawable-from-entity! obj arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-slider" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -978,31 +978,31 @@ This commonly includes things such as:
       (set! (-> a1-7 sync-flags) (the-as sync-flags v1-12))
       )
     (set! (-> a1-7 period) (the-as uint 2400))
-    (set! (-> a1-7 entity) (-> obj entity))
+    (set! (-> a1-7 entity) (-> this entity))
     (set! (-> a1-7 percent) 0.0)
     (set! (-> a1-7 ease-in) 0.15)
     (set! (-> a1-7 ease-out) 0.15)
     (set! (-> a1-7 pause-in) 0.0)
     (set! (-> a1-7 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-7)
+    (initialize! (-> this sync) a1-7)
     )
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj path-pos) 0.0)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this path-pos) 0.0)
   (let* ((v1-24 *game-info*)
          (a0-20 (+ (-> v1-24 attack-id) 1))
          )
     (set! (-> v1-24 attack-id) a0-20)
-    (set! (-> obj attack-id) a0-20)
+    (set! (-> this attack-id) a0-20)
     )
-  (set! (-> obj sound-id) (the-as uint (new-sound-id)))
-  (set! (-> obj collide-off-timer) (the-as uint 0))
-  (set-vector! (-> obj l-points 0) 19660.8 20480.0 1638.4 0.0)
-  (set-vector! (-> obj l-points 1) 0.0 24576.0 1638.4 0.0)
-  (set-vector! (-> obj l-points 2) -19660.8 20480.0 1638.4 0.0)
-  (set-vector! (-> obj l-points 3) 19660.8 20480.0 -1638.4 0.0)
-  (set-vector! (-> obj l-points 4) 0.0 24576.0 -1638.4 0.0)
-  (set-vector! (-> obj l-points 5) -19660.8 20480.0 -1638.4 0.0)
+  (set! (-> this sound-id) (the-as uint (new-sound-id)))
+  (set! (-> this collide-off-timer) (the-as uint 0))
+  (set-vector! (-> this l-points 0) 19660.8 20480.0 1638.4 0.0)
+  (set-vector! (-> this l-points 1) 0.0 24576.0 1638.4 0.0)
+  (set-vector! (-> this l-points 2) -19660.8 20480.0 1638.4 0.0)
+  (set-vector! (-> this l-points 3) 19660.8 20480.0 -1638.4 0.0)
+  (set-vector! (-> this l-points 4) 0.0 24576.0 -1638.4 0.0)
+  (set-vector! (-> this l-points 5) -19660.8 20480.0 -1638.4 0.0)
   (let ((s5-2
           (new 'static 'lightning-spec
             :name #f
@@ -1023,11 +1023,11 @@ This commonly includes things such as:
             :sound #f
             )
           )
-        (s4-2 (-> obj l-points))
-        (s3-0 (-> obj root trans))
+        (s4-2 (-> this l-points))
+        (s3-0 (-> this root trans))
         )
     (dotimes (s2-0 4)
-      (set! (-> obj l-bolts s2-0) (new 'process 'lightning-control s5-2 obj 0.0))
+      (set! (-> this l-bolts s2-0) (new 'process 'lightning-control s5-2 this 0.0))
       (let* ((a1-10 (if (< s2-0 1)
                         (+ s2-0 1)
                         s2-0
@@ -1036,27 +1036,27 @@ This commonly includes things such as:
              (a0-39 (vector+! (new 'stack-no-clear 'vector) s3-0 (-> s4-2 a1-10)))
              (v1-37 (vector+! (new 'stack-no-clear 'vector) s3-0 (-> s4-2 (+ a1-10 1))))
              )
-        (set! (-> obj l-bolts s2-0 state meet data 0 quad) (-> a0-39 quad))
-        (let ((a0-43 (-> obj l-bolts s2-0)))
+        (set! (-> this l-bolts s2-0 state meet data 0 quad) (-> a0-39 quad))
+        (let ((a0-43 (-> this l-bolts s2-0)))
           (set! (-> a0-43 state meet data (+ (-> a0-43 state points-to-draw) -1) quad) (-> v1-37 quad))
           )
         )
       )
     )
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "slider" :fo-max 50) (-> obj root trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "slider" :fo-max 50) (-> this root trans))
         )
   (ja-channel-push! 1 0)
-  (let ((s5-3 (-> obj skel root-channel 0)))
+  (let ((s5-3 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-3
-      (the-as art-joint-anim (-> obj draw art-group data 3))
+      (the-as art-joint-anim (-> this draw art-group data 3))
       num-func-identity
       )
     (set! (-> s5-3 frame-num) 0.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1076,19 +1076,19 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atoll-windmill
-(defmethod inspect atoll-windmill ((obj atoll-windmill))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atoll-windmill ((this atoll-windmill))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> obj sync))
-  (format #t "~2Tblade-normal: #<vector @ #x~X>~%" (-> obj blade-normal))
-  (format #t "~2Torig-quat: #<quaternion @ #x~X>~%" (-> obj orig-quat))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Tblade-normal: #<vector @ #x~X>~%" (-> this blade-normal))
+  (format #t "~2Torig-quat: #<quaternion @ #x~X>~%" (-> this orig-quat))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1124,14 +1124,14 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type atoll-windmill
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-windmill ((obj atoll-windmill) (arg0 entity-actor))
+(defmethod init-from-entity! atoll-windmill ((this atoll-windmill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
+  (logior! (-> this mask) (process-mask ambient))
   (let ((a1-1 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-2 0))
       (if #f
@@ -1143,33 +1143,33 @@ This commonly includes things such as:
     (set! (-> a1-1 entity) arg0)
     (set! (-> a1-1 period) (the-as uint 3000))
     (set! (-> a1-1 percent) 0.0)
-    (initialize! (-> obj sync) a1-1)
+    (initialize! (-> this sync) a1-1)
     )
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atoll-windmill" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-copy! (-> obj orig-quat) (-> obj root quat))
-  (vector-z-quaternion! (-> obj blade-normal) (-> obj root quat))
-  (vector-normalize! (-> obj blade-normal) 1.0)
-  (set! (-> obj sound)
-        (new 'process 'ambient-sound (static-sound-spec "atoll-windmill" :fo-max 50) (-> obj root trans))
+  (quaternion-copy! (-> this orig-quat) (-> this root quat))
+  (vector-z-quaternion! (-> this blade-normal) (-> this root quat))
+  (vector-normalize! (-> this blade-normal) 1.0)
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "atoll-windmill" :fo-max 50) (-> this root trans))
         )
   (ja-channel-push! 1 0)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 4))
+      (the-as art-joint-anim (-> this draw art-group data 4))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1186,16 +1186,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atoll-valve
-(defmethod inspect atoll-valve ((obj atoll-valve))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atoll-valve ((this atoll-valve))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1213,24 +1213,24 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type atoll-valve
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-valve ((obj atoll-valve) (arg0 entity-actor))
+(defmethod init-from-entity! atoll-valve ((this atoll-valve) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atoll-valve" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1247,16 +1247,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atoll-hatch
-(defmethod inspect atoll-hatch ((obj atoll-hatch))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atoll-hatch ((this atoll-hatch))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1274,48 +1274,48 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type atoll-hatch
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-hatch ((obj atoll-hatch) (arg0 entity-actor))
+(defmethod init-from-entity! atoll-hatch ((this atoll-hatch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atoll-hatch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (cond
     ((task-complete? *game-info* (game-task atoll-water))
-     (let ((a0-8 (-> obj skel root-channel 0)))
-       (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+     (let ((a0-8 (-> this skel root-channel 0)))
+       (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
        (set! (-> a0-8 param 0)
-             (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 3)) frames num-frames) -1))
              )
        (set! (-> a0-8 param 1) 1.0)
        (set! (-> a0-8 frame-num) 1.0)
-       (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-seek!)
+       (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-seek!)
        )
      )
     (else
-      (let ((a0-9 (-> obj skel root-channel 0)))
-        (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+      (let ((a0-9 (-> this skel root-channel 0)))
+        (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
         (set! (-> a0-9 param 0)
-              (the float (+ (-> (the-as art-joint-anim (-> obj draw art-group data 3)) frames num-frames) -1))
+              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 3)) frames num-frames) -1))
               )
         (set! (-> a0-9 param 1) 1.0)
         (set! (-> a0-9 frame-num) 0.0)
-        (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> obj draw art-group data 3)) num-func-seek!)
+        (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-seek!)
         )
       )
     )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1333,16 +1333,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atoll-hellcat
-(defmethod inspect atoll-hellcat ((obj atoll-hellcat))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atoll-hellcat ((this atoll-hellcat))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1361,14 +1361,14 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type atoll-hellcat
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-hellcat ((obj atoll-hellcat) (arg0 entity-actor))
+(defmethod init-from-entity! atoll-hellcat ((this atoll-hellcat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core action) (collide-action solid))
@@ -1382,22 +1382,22 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atoll-hellcat" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (let ((a1-7 (new 'stack-no-clear 'vector)))
     (set-vector! a1-7 0.0 19441.436 0.0 1.0)
-    (quaternion-zxy! (-> obj root quat) a1-7)
+    (quaternion-zxy! (-> this root quat) a1-7)
     )
   (transform-post)
   (if (task-complete? *game-info* (game-task atoll-battle))
-      (go (method-of-object obj die-fast))
-      (go (method-of-object obj idle))
+      (go (method-of-object this die-fast))
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -1422,16 +1422,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type atoll-mar-symbol
-(defmethod inspect atoll-mar-symbol ((obj atoll-mar-symbol))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect atoll-mar-symbol ((this atoll-mar-symbol))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -1442,22 +1442,22 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type atoll-mar-symbol
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! atoll-mar-symbol ((obj atoll-mar-symbol) (arg0 entity-actor))
+(defmethod init-from-entity! atoll-mar-symbol ((this atoll-mar-symbol) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-atoll-mar-symbol" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1470,9 +1470,9 @@ This commonly includes things such as:
     ()
     (local-vars (v1-31 symbol))
     (set! (-> self data-int32 0) 0)
-    (set! (-> self beep-time) (current-time))
+    (set-time! (-> self beep-time))
     (until #f
-      (when (>= (- (current-time) (-> self beep-time)) (seconds 40))
+      (when (time-elapsed? (-> self beep-time) (seconds 40))
         (let ((v1-7 (logand (-> self data-int32 0) 3)))
           (cond
             ((zero? v1-7)
@@ -1489,7 +1489,7 @@ This commonly includes things such as:
              )
             )
           )
-        (set! (-> self beep-time) (current-time))
+        (set-time! (-> self beep-time))
         (+! (-> self data-int32 0) 1)
         )
       (b!

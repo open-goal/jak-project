@@ -235,10 +235,12 @@
     ;; now multiply by the brightness setting
     (vector-float*! (-> obj controller-led-color) (-> obj controller-led-color) (-> obj controller-led-brightness))
     ;; now use it as the controller led color
-    (pc-set-controller-led! 0
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
-                            (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0)))
+    (let ((led-rgba (new 'static 'rgba :r (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color r) 0.0 1.0))
+                                       :g (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color g) 0.0 1.0))
+                                       :b (the int (lerp-scale 0.0 255.0 (-> obj controller-led-color b) 0.0 1.0))
+                                       :a #x80)))
+        (set! *display-led-rgba* led-rgba)
+        (pc-set-controller-led! 0 (the-as int (-> led-rgba r)) (the-as int (-> led-rgba g)) (the-as int (-> led-rgba b))))
     )
 
   (none))
@@ -656,9 +658,9 @@
     (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
 
     (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
-    (("controller-hp-led?") (set! (-> obj controller-hp-led?) (file-stream-read-symbol file)))
-    (("controller-eco-led?") (set! (-> obj controller-eco-led?) (file-stream-read-symbol file)))
-    (("controller-heat-led?") (set! (-> obj controller-heat-led?) (file-stream-read-symbol file)))
+    (("controller-hp-led?") (set! (-> obj controller-led-hp?) (file-stream-read-symbol file)))
+    (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
+    (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
     (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
     (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
@@ -733,9 +735,9 @@
   (format file "  (lod-force-actor ~D)~%" (-> obj lod-force-actor))
 
   (format file "  (ignore-controller-win-unfocused? ~A)~%" (-> obj ignore-controller-win-unfocused?))
-  (format file "  (controller-hp-led? ~A)~%" (-> obj controller-hp-led?))
-  (format file "  (controller-eco-led? ~A)~%" (-> obj controller-eco-led?))
-  (format file "  (controller-heat-led? ~A)~%" (-> obj controller-heat-led?))
+  (format file "  (controller-hp-led? ~A)~%" (-> obj controller-led-hp?))
+  (format file "  (controller-eco-led? ~A)~%" (-> obj controller-led-eco?))
+  (format file "  (controller-heat-led? ~A)~%" (-> obj controller-led-heat?))
   (format file "  (controller-led-brightness ~f)~%" (-> obj controller-led-brightness))
   (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
   (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))

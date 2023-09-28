@@ -127,9 +127,9 @@
   :post plat-post
   )
 
-(defmethod init-plat-collision! drill-flip-step ((obj drill-flip-step))
+(defmethod init-plat-collision! drill-flip-step ((this drill-flip-step))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 4))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
@@ -167,47 +167,47 @@
       (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
       )
     (set! (-> s5-0 rider-max-momentum) 0.0)
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
-(defmethod get-skel drill-flip-step ((obj drill-flip-step))
+(defmethod get-skel drill-flip-step ((this drill-flip-step))
   (art-group-get-by-name *level* "skel-drill-flip-step" (the-as (pointer uint32) #f))
   )
 
-(defmethod set-flipped-state drill-flip-step ((obj drill-flip-step))
+(defmethod set-flipped-state drill-flip-step ((this drill-flip-step))
   "Set the state of the platform based on the completion of the drill-mech task."
-  (if (and (= (-> obj entity extra perm task) (game-task drill-mech))
+  (if (and (= (-> this entity extra perm task) (game-task drill-mech))
            (task-node-closed? (game-task-node drill-mech-smash-consoles))
            )
-      (process-entity-status! obj (entity-perm-status bit-12) #t)
+      (process-entity-status! this (entity-perm-status bit-12) #t)
       )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
-      (go (method-of-object obj up))
-      (go (method-of-object obj down))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status bit-12)))
+      (go (method-of-object this up))
+      (go (method-of-object this down))
       )
   0
   (none)
   )
 
-(defmethod init-from-entity! drill-flip-step ((obj drill-flip-step) (arg0 entity-actor))
+(defmethod init-from-entity! drill-flip-step ((this drill-flip-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (init-plat-collision! obj)
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj (the-as skeleton-group (get-skel obj)) (the-as pair 0))
-  (stop-bouncing! obj)
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+  (init-plat-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (stop-bouncing! this)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
         )
-  (base-plat-method-32 obj)
-  (set-flipped-state obj)
+  (base-plat-method-32 this)
+  (set-flipped-state this)
   (none)
   )
 
@@ -349,14 +349,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-falling-door ((obj drill-falling-door) (arg0 entity-actor))
+(defmethod init-from-entity! drill-falling-door ((this drill-falling-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -381,29 +381,29 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-falling-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-push! 1 0)
-  (let ((a0-18 (-> obj skel root-channel 0)))
-    (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-18 (-> this skel root-channel 0)))
+    (set! (-> a0-18 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-18 frame-num) 0.0)
-    (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-identity)
+    (joint-control-channel-group! a0-18 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     )
   (transform-post)
-  (set! (-> obj hit-state) 0)
-  (set! (-> obj next-hit-state) 0)
+  (set! (-> this hit-state) 0)
+  (set! (-> this next-hit-state) 0)
   (if (task-node-closed? (game-task-node drill-mech-smash-consoles))
-      (process-entity-status! obj (entity-perm-status bit-12) #t)
+      (process-entity-status! this (entity-perm-status bit-12) #t)
       )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status bit-12)))
-      (go (method-of-object obj fall) #t)
-      (go (method-of-object obj idle))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status bit-12)))
+      (go (method-of-object this fall) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -457,14 +457,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-sliding-door ((obj drill-sliding-door) (arg0 entity-actor))
+(defmethod init-from-entity! drill-sliding-door ((this drill-sliding-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -491,25 +491,25 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-sliding-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (ja-channel-push! 1 0)
-  (let ((s5-2 (-> obj skel root-channel 0)))
+  (let ((s5-2 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-2
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-2 frame-num) 0.0)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -527,23 +527,23 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 9)
               )
 
-(defmethod get-art-group drill-accelerator-floor ((obj drill-accelerator-floor))
+(defmethod get-art-group drill-accelerator-floor ((this drill-accelerator-floor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-drill-accelerator-floor" (the-as (pointer uint32) #f))
   )
 
-(defmethod init! drill-accelerator-floor ((obj drill-accelerator-floor))
+(defmethod init! drill-accelerator-floor ((this drill-accelerator-floor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
-  (set! (-> obj speed) 7372.8)
-  (set! (-> obj belt-radius) 11878.4)
-  (set! (-> obj pull-y-threshold) 10240.0)
+  (set! (-> this speed) 7372.8)
+  (set! (-> this belt-radius) 11878.4)
+  (set! (-> this pull-y-threshold) 10240.0)
   0
   (none)
   )
 
-(defmethod reset-root! drill-accelerator-floor ((obj drill-accelerator-floor))
+(defmethod reset-root! drill-accelerator-floor ((this drill-accelerator-floor))
   "Re-initializes the `root` [[trsqv]]"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
       (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
@@ -559,7 +559,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
@@ -620,14 +620,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-breakable-barrel ((obj drill-breakable-barrel) (arg0 entity-actor))
+(defmethod init-from-entity! drill-breakable-barrel ((this drill-breakable-barrel) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -642,18 +642,18 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-drill-breakable-barrel" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -809,7 +809,7 @@ This commonly includes things such as:
         )
       )
     (let ((gp-2 (current-time)))
-      (until (>= (- (current-time) gp-2) (seconds 0.5))
+      (until (time-elapsed? gp-2 (seconds 0.5))
         (suspend)
         )
       )
@@ -836,7 +836,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-metalhead-eggs ((obj drill-metalhead-eggs) (arg0 entity-actor))
+(defmethod init-from-entity! drill-metalhead-eggs ((this drill-metalhead-eggs) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -844,22 +844,22 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (init-collision! obj)
-  (process-drawable-from-entity! obj arg0)
-  (skel-init! obj)
-  (set! (-> obj entity extra perm task) (game-task drill-eggs))
-  (set! (-> obj notify-actor) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (skel-init! this)
+  (set! (-> this entity extra perm task) (game-task drill-eggs))
+  (set! (-> this notify-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-6 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((v1-6 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (if (and v1-6 (= (-> sv-16 elt-count) 1))
-        (set! (-> obj actor-group) (the-as actor-group (-> (the-as (pointer uint32) v1-6))))
-        (set! (-> obj actor-group) #f)
+        (set! (-> this actor-group) (the-as actor-group (-> (the-as (pointer uint32) v1-6))))
+        (set! (-> this actor-group) #f)
         )
     )
-  (if (or (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete))
+  (if (or (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
           (or (task-node-closed? (game-task-node drill-eggs-resolution))
               (task-closed? (the-as string ((method-of-type res-lump get-property-struct)
-                                            (-> obj entity)
+                                            (-> this entity)
                                             'task-name
                                             'interp
                                             -1000000000.0
@@ -871,9 +871,9 @@ This commonly includes things such as:
                             )
               )
           )
-      (go (method-of-object obj die-fast))
+      (go (method-of-object this die-fast))
       )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -919,28 +919,28 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0.3 2)
               )
 
-(defmethod skel-init! drill-metalhead-eggs-a ((obj drill-metalhead-eggs-a))
+(defmethod skel-init! drill-metalhead-eggs-a ((this drill-metalhead-eggs-a))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-drill-metalhead-eggs-a" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (let ((a0-3 (-> obj skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-3 (-> this skel root-channel 0)))
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-3 param 0) 1.0)
     (set! (-> a0-3 frame-num) 0.0)
-    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-loop!)
     )
   (none)
   )
 
-(defmethod init-collision! drill-metalhead-eggs-a ((obj drill-metalhead-eggs-a))
+(defmethod init-collision! drill-metalhead-eggs-a ((this drill-metalhead-eggs-a))
   "Define the collision for this object."
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -955,34 +955,34 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
-(defmethod skel-init! drill-metalhead-eggs-b ((obj drill-metalhead-eggs-b))
+(defmethod skel-init! drill-metalhead-eggs-b ((this drill-metalhead-eggs-b))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-drill-metalhead-eggs-b" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (let ((a0-3 (-> obj skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-3 (-> this skel root-channel 0)))
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-3 param 0) 1.0)
     (set! (-> a0-3 frame-num) 0.0)
-    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-loop!)
     )
   (none)
   )
 
-(defmethod init-collision! drill-metalhead-eggs-b ((obj drill-metalhead-eggs-b))
+(defmethod init-collision! drill-metalhead-eggs-b ((this drill-metalhead-eggs-b))
   "Define the collision for this object."
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -997,34 +997,34 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
   )
 
-(defmethod skel-init! drill-metalhead-eggs-c ((obj drill-metalhead-eggs-c))
+(defmethod skel-init! drill-metalhead-eggs-c ((this drill-metalhead-eggs-c))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-drill-metalhead-eggs-c" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (let ((a0-3 (-> obj skel root-channel 0)))
-    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (let ((a0-3 (-> this skel root-channel 0)))
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> a0-3 param 0) 1.0)
     (set! (-> a0-3 frame-num) 0.0)
-    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> obj draw art-group data 2)) num-func-loop!)
+    (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-loop!)
     )
   (none)
   )
 
-(defmethod init-collision! drill-metalhead-eggs-c ((obj drill-metalhead-eggs-c))
+(defmethod init-collision! drill-metalhead-eggs-c ((this drill-metalhead-eggs-c))
   "Define the collision for this object."
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -1039,7 +1039,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
@@ -1179,14 +1179,14 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-bridge-shot ((obj drill-bridge-shot) (arg0 entity-actor))
+(defmethod init-from-entity! drill-bridge-shot ((this drill-bridge-shot) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
@@ -1217,23 +1217,23 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving s4-0))
+    (set! (-> this root) (the-as collide-shape-moving s4-0))
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-bridge-shot" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw force-lod) 1)
-  (let ((f0-18 (res-lump-float (-> obj entity) 'rotoffset))
-        (a1-16 (-> obj root quat))
+  (set! (-> this draw force-lod) 1)
+  (let ((f0-18 (res-lump-float (-> this entity) 'rotoffset))
+        (a1-16 (-> this root quat))
         )
     (quaternion-rotate-y! a1-16 a1-16 f0-18)
     )
-  (if (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status subtask-complete)))
-      (go (method-of-object obj die) #t)
-      (go (method-of-object obj idle))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this die) #t)
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -1271,22 +1271,22 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-drill ((obj drill-drill) (arg0 entity-actor))
+(defmethod init-from-entity! drill-drill ((this drill-drill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-drill-drill" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (go (method-of-object obj idle))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1329,9 +1329,9 @@ This commonly includes things such as:
       )
     (if (-> self ridden?)
         (set! (-> self ridden?) #f)
-        (set! (-> self not-ridden-timer) (current-time))
+        (set-time! (-> self not-ridden-timer))
         )
-    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 0.4))
+    (if (time-elapsed? (-> self not-ridden-timer) (seconds 0.4))
         (go-virtual swing-down)
         )
     )
@@ -1352,27 +1352,27 @@ This commonly includes things such as:
           (t9-0)
           )
       )
-    (if (>= (- (current-time) (-> self not-ridden-timer)) (seconds 2))
+    (if (time-elapsed? (-> self not-ridden-timer) (seconds 2))
         (send-event self 'trigger)
         )
     )
   )
 
-(defmethod get-skel drill-drop-plat ((obj drill-drop-plat))
+(defmethod get-skel drill-drop-plat ((this drill-drop-plat))
   (art-group-get-by-name *level* "skel-drill-drop-plat" (the-as (pointer uint32) #f))
   )
 
-(defmethod set-flipped-state drill-drop-plat ((obj drill-drop-plat))
+(defmethod set-flipped-state drill-drop-plat ((this drill-drop-plat))
   "Set the state of the platform."
-  (set! (-> obj not-ridden-timer) (current-time))
-  (go (method-of-object obj up))
+  (set-time! (-> this not-ridden-timer))
+  (go (method-of-object this up))
   0
   (none)
   )
 
-(defmethod init-plat-collision! drill-drop-plat ((obj drill-drop-plat))
+(defmethod init-plat-collision! drill-drop-plat ((this drill-drop-plat))
   "TODO - collision stuff for setting up the platform"
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
       (set! (-> s5-0 total-prims) (the-as uint 4))
       (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
@@ -1408,7 +1408,7 @@ This commonly includes things such as:
       (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
       )
     (set! (-> s5-0 rider-max-momentum) 0.0)
-    (set! (-> obj root) (the-as collide-shape-moving s5-0))
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
     )
   0
   (none)
