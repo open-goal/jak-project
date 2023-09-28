@@ -25,7 +25,7 @@ endif()
 # For clangd
 if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
     configure_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" 
+        "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json"
         "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
 endif()
 
@@ -184,8 +184,15 @@ include_directories(./)
 include_directories(SYSTEM third-party/inja)
 
 # libcurl for HTTP requests
-# TODO - OpenSSL for linux/macOS?
-set(CURL_USE_SCHANNEL ON)
+
+# Enable SSL Support, most URLs now-a-days use SSL!
+if(WIN32)
+    set(CURL_USE_SCHANNEL ON) # native Windows SSL support
+elseif(APPLE)
+    set(CURL_USE_SECTRANSP ON) # native macOS SSL support
+else
+    set(CURL_USE_OPENSSL ON) # not native, but seems to be the best choice for linux
+endif()
 include_directories(third-party/curl/include)
 if(STATICALLY_LINK)
     build_third_party_lib(curl libcurl_static)
