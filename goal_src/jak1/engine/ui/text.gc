@@ -14,6 +14,8 @@
 ;; It seems like there it would be possible to have multiple "groups" of text,
 ;; but in practice, only the COMMON group is used.
 
+;; DECOMP BEGINS
+
 ;; State of text drawing.
 (define *game-text-word* (new 'global 'string 128 (the string '#f)))
 (define *game-text-line* (new 'global 'string 256 (the string '#f)))
@@ -31,40 +33,40 @@
 
 ;; The game-text-info stores records for each string in the loaded text on the text heap.
 
-(defmethod length game-text-info ((obj game-text-info))
+(defmethod length game-text-info ((this game-text-info))
   "Get the length (number of strings) in a game-text-info."
-  (-> obj length)
+  (-> this length)
   )
 
-(defmethod asize-of game-text-info ((obj game-text-info))
+(defmethod asize-of game-text-info ((this game-text-info))
   "Get the size in memory of the game-text-info"
   ;; each record is 8 bytes
-  (the int (+ (-> obj type size) (* 8 (-> obj length))))
+  (the int (+ (-> this type size) (* 8 (-> this length))))
   )
 
-(defmethod inspect game-text-info ((obj game-text-info))
+(defmethod inspect game-text-info ((this game-text-info))
   "Print a game text info, including all strings"
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (format '#t "[~8x] ~A~%" this (-> this type))
+  (format '#t "~Tlength: ~D~%" (-> this length))
+  (format '#t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   
   (let ((i 0))
-    (while (< i (-> obj length))
-      (format '#t "~T  [~D] #x~X ~A~%" i (-> obj data i id) (-> obj data i text))
+    (while (< i (-> this length))
+      (format '#t "~T  [~D] #x~X ~A~%" i (-> this data i id) (-> this data i text))
       (+! i 1)
       )
     )
-  obj
+  this
   )
 
-(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage game-text-info ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage."
   (set! (-> arg0 length) (max 81 (-> arg0 length)))
   (set! (-> arg0 data 80 name) "string")
   (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
 
   ;; get the size of this structure
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-6))
     (set! (-> arg0 data 80 total)
           (+ (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
@@ -72,33 +74,33 @@
     )
 
   ;; get the size of all the strings
-  (dotimes (s4-0 (-> obj length))
+  (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 81 (-> arg0 length)))
     (set! (-> arg0 data 80 name) "string")
     (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
-    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+    (let ((v1-18 (asize-of (-> this data s4-0 text))))
       (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-18))
       (set! (-> arg0 data 80 total)
             (+ (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
             )
       )
     )
-  obj
+  this
   )
 
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! game-text-info ((this game-text-info) (arg0 text-id) (arg1 symbol))
   "Look up text by ID.  Will return the string.
    If the ID can't be found, and arg1 is #t, it will return #f,
    otherwise the temp string UNKNOWN ID <id number>"
 
   ;; binary search for it
   (let* ((a1-1 0)                     ;; min
-         (a3-0 (+ (-> obj length) 1)) ;; max
+         (a3-0 (+ (-> this length) 1)) ;; max
          (v1-2 (/ (+ a1-1 a3-0) 2))   ;; mid
          )
     (let ((t0-0 -1)) ;; last time's lookup
-      (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
-        (if (< arg0 (-> obj data v1-2 id))
+      (while (and (!= (-> this data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
+        (if (< arg0 (-> this data v1-2 id))
             (set! a3-0 v1-2) ;; bisect, right
             (set! a1-1 v1-2) ;; bisect, left
             )
@@ -107,7 +109,7 @@
         )
       )
     (cond
-      ((!= (-> obj data v1-2 id) arg0) ;; didn't find it :(
+      ((!= (-> this data v1-2 id) arg0) ;; didn't find it :(
        (cond
          (arg1
           (the-as string #f)
@@ -126,7 +128,7 @@
          )
        )
       (else
-       (-> obj data v1-2 text) ;; found it!
+       (-> this data v1-2 text) ;; found it!
        )
       )
     )
@@ -358,6 +360,9 @@
   (let ((s5-0 (new 'static 'vector4w))
         (gp-0 (new 'static 'matrix))
         )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     (let ((s4-0 (new 'static 'vector)))
       (set-vector! s4-0 (-> arg0 origin x) (-> arg0 origin y) 0.0 1.0)
       (set! (-> s4-0 x) (* (-> s4-0 x) (-> *video-parms* relative-x-scale-reciprical)))
@@ -417,6 +422,9 @@
       (the-as vector (-> gp-0 vector))
       (the-as vector s5-0)
       )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     )
   0
   (none)
@@ -446,7 +454,7 @@
       (if (logtest? (-> font-ctxt flags) (font-flags middle))
           (+! (-> font-ctxt origin x) (* 0.5 (- orig-width scaled-width)))
           )
-      (if (logtest? (-> font-ctxt flags) (font-flags left))
+      (if (logtest? (-> font-ctxt flags) (font-flags middle-vert))
           ;; this code is really weird. it does the divide with an int, but fails
           ;; to convert it back to a float before adding??
           (+! (-> font-ctxt origin y) (the-as float (/ (the int (- orig-height scaled-height)) 2)))
@@ -514,8 +522,8 @@
       (set! (-> gp-0 flags) (-> font-ctxt flags))
       (set! (-> gp-0 color) (-> font-ctxt color))
       (set! (-> gp-0 scale) sv-136)
-      (when (logtest? (-> gp-0 flags) (font-flags left))
-        (logclear! (-> gp-0 flags) (font-flags left))
+      (when (logtest? (-> gp-0 flags) (font-flags middle-vert))
+        (logclear! (-> gp-0 flags) (font-flags middle-vert))
         (let ((f30-0 (-> gp-0 width))
               (f28-0 (-> gp-0 height))
               )
@@ -688,4 +696,3 @@
   (set! *level-text-file-load-flag* #t)
   (none)
   )
-

@@ -32,50 +32,50 @@
 
 (kmemclose)
 
-(defmethod relocate game-text-info ((obj game-text-info) (arg0 int))
+(defmethod relocate game-text-info ((this game-text-info) (arg0 int))
   (let ((v1-1 (-> *level* loading-level)))
     (when v1-1
-      (set! (-> v1-1 loaded-text-info (-> v1-1 loaded-text-info-count)) obj)
+      (set! (-> v1-1 loaded-text-info (-> v1-1 loaded-text-info-count)) this)
       (+! (-> v1-1 loaded-text-info-count) 1)
       )
     )
-  obj
+  this
   )
 
-(defmethod length game-text-info ((obj game-text-info))
-  (-> obj length)
+(defmethod length game-text-info ((this game-text-info))
+  (-> this length)
   )
 
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of game-text-info ((obj game-text-info))
-  (the-as int (+ (-> obj type size) (* (-> obj length) 8)))
+(defmethod asize-of game-text-info ((this game-text-info))
+  (the-as int (+ (-> this type size) (* (-> this length) 8)))
   )
 
 
-(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage game-text-info ((this game-text-info) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 84 (-> arg0 length)))
   (set! (-> arg0 data 83 name) "string")
   (+! (-> arg0 data 83 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 83 used) v1-6)
     (+! (-> arg0 data 83 total) (logand -16 (+ v1-6 15)))
     )
-  (dotimes (s4-0 (-> obj length))
+  (dotimes (s4-0 (-> this length))
     (set! (-> arg0 length) (max 84 (-> arg0 length)))
     (set! (-> arg0 data 83 name) "string")
     (+! (-> arg0 data 83 count) 1)
-    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+    (let ((v1-18 (asize-of (-> this data s4-0 text))))
       (+! (-> arg0 data 83 used) v1-18)
       (+! (-> arg0 data 83 total) (logand -16 (+ v1-18 15)))
       )
     )
-  obj
+  this
   )
 
 (defun convert-korean-text ((arg0 string))
   "Converts the provided [[string]] of [[game-text]] into korean. Returns a [[string]]"
   (local-vars (v1-21 int))
-  (let ((gp-0 (-> arg0 data)))
+  (let ((charp (-> arg0 data)))
     *expanded-text-line0*
     (let ((s4-0 0))
       0
@@ -93,26 +93,26 @@
             (clear s3-0)
             (while (< s4-0 s5-0)
               (cond
-                ((= (-> gp-0 s4-0) 3)
+                ((= (-> charp s4-0) 3)
                  (+! s4-0 1)
-                 (while (and (< s4-0 s5-0) (!= (-> gp-0 s4-0) 3) (!= (-> gp-0 s4-0) 4))
-                   (set! (-> s3-0 data s1-0) (-> gp-0 s4-0))
+                 (while (and (< s4-0 s5-0) (!= (-> charp s4-0) 3) (!= (-> charp s4-0) 4))
+                   (set! (-> s3-0 data s1-0) (-> charp s4-0))
                    (+! s4-0 1)
                    (+! s1-0 1)
                    )
                  )
                 (else
                   (let ((v1-17 (+ s4-0 1)))
-                    (-> gp-0 v1-17)
+                    (-> charp v1-17)
                     (set! s4-0 (+ v1-17 1))
                     )
                   (set! (-> s3-0 data s1-0) (the-as uint 126))
                   (let ((v1-19 (+ s1-0 1)))
                     (set! (-> s3-0 data v1-19) (the-as uint 89))
                     (let ((v1-20 (+ v1-19 1)))
-                      (while (and (< s4-0 s5-0) (< v1-20 s2-0) (!= (-> gp-0 s4-0) 3) (!= (-> gp-0 s4-0) 4))
+                      (while (and (< s4-0 s5-0) (< v1-20 s2-0) (!= (-> charp s4-0) 3) (!= (-> charp s4-0) 4))
                         (cond
-                          ((= (-> gp-0 s4-0) 5)
+                          ((= (-> charp s4-0) 5)
                            (set! (-> s3-0 data v1-20) (the-as uint 1))
                            (+! s4-0 1)
                            (set! v1-21 (+ v1-20 1))
@@ -122,7 +122,7 @@
                             (set! v1-21 (+ v1-20 1))
                             )
                           )
-                        (set! (-> s3-0 data v1-21) (-> gp-0 s4-0))
+                        (set! (-> s3-0 data v1-21) (-> charp s4-0))
                         (+! s4-0 1)
                         (let ((v1-22 (+ v1-21 1)))
                           (set! (-> s3-0 data v1-22) (the-as uint 126))
@@ -160,9 +160,9 @@
     )
   )
 
-(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text! game-text-info ((this game-text-info) (arg0 text-id) (arg1 symbol))
   (cond
-    ((= obj #f)
+    ((= this #f)
      (cond
        (arg1
          (the-as string #f)
@@ -175,12 +175,12 @@
      )
     (else
       (let* ((a1-2 0)
-             (a3-0 (+ (-> obj length) 1))
+             (a3-0 (+ (-> this length) 1))
              (v1-2 (/ (+ a1-2 a3-0) 2))
              )
         (let ((t0-0 -1))
-          (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0))
-            (if (< (the-as uint arg0) (the-as uint (-> obj data v1-2 id)))
+          (while (and (!= (-> this data v1-2 id) arg0) (!= v1-2 t0-0))
+            (if (< (the-as uint arg0) (the-as uint (-> this data v1-2 id)))
                 (set! a3-0 v1-2)
                 (set! a1-2 v1-2)
                 )
@@ -189,7 +189,7 @@
             )
           )
         (cond
-          ((!= (-> obj data v1-2 id) arg0)
+          ((!= (-> this data v1-2 id) arg0)
            (cond
              (arg1
                (the-as string #f)
@@ -200,11 +200,11 @@
                )
              )
            )
-          ((= (-> obj language-id) 6)
-           (convert-korean-text (-> obj data v1-2 text))
+          ((= (-> this language-id) 6)
+           (convert-korean-text (-> this data v1-2 text))
            )
           (else
-            (-> obj data v1-2 text)
+            (-> this data v1-2 text)
             )
           )
         )
@@ -212,11 +212,11 @@
     )
   )
 
-(defmethod lookup-text level ((obj level) (arg0 text-id) (arg1 symbol))
+(defmethod lookup-text level ((this level) (arg0 text-id) (arg1 symbol))
   (let ((v1-0 *common-text*))
-    (dotimes (a3-0 (-> obj loaded-text-info-count))
-      (if (= (-> obj loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
-          (set! v1-0 (-> obj loaded-text-info a3-0))
+    (dotimes (a3-0 (-> this loaded-text-info-count))
+      (if (= (-> this loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
+          (set! v1-0 (-> this loaded-text-info a3-0))
           )
       )
     (lookup-text! v1-0 arg0 arg1)
@@ -234,7 +234,7 @@ the game-text-info, and heap is the heap to load to. The heap will be cleared."
   (set! sv-24 (the-as int (-> *setting-control* user-current language)))
   (set! sv-32 0)
   (set! sv-40 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
-  (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= sv-24 (language-enum english)) (not (demo?)))
+  (if (and (= (scf-get-territory) 1) (= sv-24 (language-enum english)) (not (demo?)))
       (set! sv-24 7)
       )
   (when (or (= sv-16 #f) (!= (-> sv-16 language-id) sv-24) (not (string= (-> sv-16 group-name) arg0)))
@@ -314,8 +314,11 @@ in a single text group and file."
   )
 
 (defun draw-debug-text-box ((arg0 font-context))
-  "Draws some lines"
+  "Draws the boundaries of the font context. requires any cheat to be enabled."
   (when *cheat-mode*
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     (let ((s5-0 (new 'static 'vector4w))
           (gp-0 (new 'static 'vector4w-4))
           )
@@ -353,6 +356,9 @@ in a single text group and file."
       (add-debug-line2d #t (bucket-id debug-no-zbuf1) (-> gp-0 vector 2) (-> gp-0 vector 3) s5-0)
       (add-debug-line2d #t (bucket-id debug-no-zbuf1) (-> gp-0 vector 3) (the-as vector4w (-> gp-0 vector)) s5-0)
       )
+    (#when PC_PORT
+      (if (logtest? (-> arg0 flags) (font-flags right))
+          (set! (-> arg0 width) (- (-> arg0 width)))))
     )
   0
   (none)
@@ -372,7 +378,7 @@ in a single text group and file."
       (if (logtest? (-> arg2 flags) (font-flags middle))
           (+! (-> arg2 origin x) (* 0.5 (- f26-0 f0-1)))
           )
-      (if (logtest? (-> arg2 flags) (font-flags left))
+      (if (logtest? (-> arg2 flags) (font-flags middle-vert))
           (+! (-> arg2 origin y) (* 0.5 (- f30-0 f1-2)))
           )
       (let ((v1-10 arg2))
@@ -422,8 +428,8 @@ in a single text group and file."
      (set! sv-20 (-> arg1 origin y))
      (set! sv-24 (-> arg1 flags))
      (set! sv-28 (-> arg1 color))
-     (when (logtest? (-> arg1 flags) (font-flags left))
-       (logclear! (-> arg1 flags) (font-flags left))
+     (when (logtest? (-> arg1 flags) (font-flags middle-vert))
+       (logclear! (-> arg1 flags) (font-flags middle-vert))
        (+! (-> arg1 origin y)
            (the float (the int (* 0.5 (- (-> arg1 height) (print-game-text arg0 arg1 #t 44 (bucket-id progress))))))
            )
@@ -561,6 +567,7 @@ in a single text group and file."
      (set! (-> arg1 origin y) sv-20)
      (set! (-> arg1 flags) sv-24)
      (set! (-> arg1 color) sv-28)
+     ;; og:preserve-this
      (#when PC_PORT
        (if (and *debug-segment* *display-text-box*)
          (draw-debug-text-box arg1)))

@@ -429,7 +429,7 @@
         )
     )
   :code (behavior ()
-    (let ((gp-0 (-> *display* base-frame-counter)))
+    (let ((gp-0 (current-time)))
       (loop
         (when (not (paused?))
           (let ((s4-0 (vector-reset! (new-stack-vector0)))
@@ -475,10 +475,10 @@
               )
             (cond
               ((and (= (-> s4-0 x) 0.0) (= (-> s4-0 y) 0.0))
-               (set! gp-0 (-> *display* base-frame-counter))
+               (set! gp-0 (current-time))
                )
               (else
-                (let ((v1-44 (min 10 (max 1 (- (-> *display* base-frame-counter) gp-0)))))
+                (let ((v1-44 (min 10 (max 1 (- (current-time) gp-0)))))
                   (vector-float*! s4-0 s4-0 (* 0.1 (the float v1-44)))
                   )
                 )
@@ -884,7 +884,7 @@
                      (the-as float 128.0)
                      (the-as float 32.0)
                      (the-as float 110.0)
-                     (* 8192.0 (-> *display* seconds-per-frame))
+                     (* 8192.0 (seconds-per-frame))
                      )
                    )
             (f1-2 (analog-input-vertical-third   ;; og:preserve-this changed for pc port
@@ -892,7 +892,7 @@
                     (the-as float 128.0)
                     (the-as float 32.0)
                     (the-as float 110.0)
-                    (* 8192.0 (-> *display* seconds-per-frame))
+                    (* 8192.0 (seconds-per-frame))
                     )
                   )
             (s2-0 (new-stack-matrix0))
@@ -911,9 +911,7 @@
                 (set! f1-2 (- f1-2))
                 )
             (let* ((f1-3 (+ f24-0 f1-2))
-                   (f1-5
-                     (fmin (* 8192.0 (-> *display* seconds-per-frame)) (fmax (* -8192.0 (-> *display* seconds-per-frame)) f1-3))
-                     )
+                   (f1-5 (fmin (* 8192.0 (seconds-per-frame)) (fmax (* -8192.0 (seconds-per-frame)) f1-3)))
                    )
               (cond
                 ((and (< 0.0 f1-5) (< 0.0 f0-9) (< (-> self max-angle-curr) f28-0))
@@ -1781,6 +1779,7 @@
                         (f6-0 (-> sv-224 y))
                         (f7-0 (-> sv-224 z))
                         )
+                   ;; og:preserve-this inlined vector-dot
                    ; (.mula.s f2-0 f5-0)
                    ; (.madda.s f3-0 f6-0)
                    ; (.madd.s f2-1 f4-0 f7-0)
@@ -2033,8 +2032,8 @@
                         )
                       (set! (-> self los-last-pos quad) (-> self good-point quad))
                       (when *display-cam-los-debug*
-                        (format 0 "going because u(~f) > 0 frame ~D~%" f30-2 (-> *display* base-frame-counter))
-                        (format *stdcon* " going because u(~f) > 0 frame ~D~%" f30-2 (-> *display* base-frame-counter))
+                        (format 0 "going because u(~f) > 0 frame ~D~%" f30-2 (current-time))
+                        (format *stdcon* " going because u(~f) > 0 frame ~D~%" f30-2 (current-time))
                         )
                       (logior! (-> self options) 4096)
                       )
@@ -2255,9 +2254,7 @@
     (if (-> self have-phony-joystick)
         (set! f28-0 (* 0.05 (-> self phony-joystick-y)))
         )
-    (if (and (-> *camera* being-attacked)
-             (< (- (-> *display* base-frame-counter) (-> *camera* attack-start)) (seconds 0.25))
-             )
+    (if (and (-> *camera* being-attacked) (not (time-elapsed? (-> *camera* attack-start) (seconds 0.25))))
         (set! f28-0 0.05)
         )
     (if (!= f28-0 0.0)
@@ -2338,7 +2335,7 @@
                    (the-as float 128.0)
                    (the-as float 32.0)
                    (the-as float 110.0)
-                   (* 21845.334 (-> *display* seconds-per-frame))
+                   (* 21845.334 (seconds-per-frame))
                    )
                  )
           (s4-0 (new-stack-matrix0))
@@ -2346,7 +2343,7 @@
           (s5-2 (new-stack-vector0))
           )
       (if (-> self have-phony-joystick)
-          (set! f0-29 (* 21845.334 (-> self phony-joystick-x) (-> *display* seconds-per-frame)))
+          (set! f0-29 (* 21845.334 (-> self phony-joystick-x) (seconds-per-frame)))
           )
       (cond
         ((and (= (-> self los-state) (slave-los-state ccw)) (< 0.0 f0-29))
@@ -2354,7 +2351,7 @@
                  (fmax (-> self string-min-val z) (fmin (-> self string-max-val z) (vector-length (-> self view-flat))))
                  )
                )
-           (set! f0-29 (* 21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-34)) (-> *display* seconds-per-frame)))
+           (set! f0-29 (* 21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-34)) (seconds-per-frame)))
            )
          )
         ((and (= (-> self los-state) (slave-los-state cw)) (< f0-29 0.0))
@@ -2362,7 +2359,7 @@
                  (fmax (-> self string-min-val z) (fmin (-> self string-max-val z) (vector-length (-> self view-flat))))
                  )
                )
-           (set! f0-29 (* -21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-40)) (-> *display* seconds-per-frame)))
+           (set! f0-29 (* -21845.334 (+ 0.1 (/ (-> self string-min-val z) f0-40)) (seconds-per-frame)))
            )
          )
         )
@@ -2380,7 +2377,7 @@
            s4-0
            gp-2
            s5-2
-           (* 10922.667 (-> *display* seconds-per-frame))
+           (* 10922.667 (seconds-per-frame))
            (the-as float 0.05)
            )
          (vector-matrix*! (-> self view-flat) (-> self view-flat) s4-0)
@@ -3089,7 +3086,7 @@
                        (the-as float 128.0)
                        (the-as float 32.0)
                        (the-as float 110.0)
-                       (* 21845.334 (-> *display* seconds-per-frame))
+                       (* 21845.334 (seconds-per-frame))
                        )
                      )
               (gp-0 (new-stack-matrix0))
@@ -3114,7 +3111,7 @@
                gp-0
                s5-0
                s4-0
-               (* 10922.667 (-> *display* seconds-per-frame))
+               (* 10922.667 (seconds-per-frame))
                (the-as float 0.05)
                )
              (vector-matrix*! (-> self view-flat) (-> self view-flat) gp-0)

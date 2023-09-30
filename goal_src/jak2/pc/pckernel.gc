@@ -77,6 +77,102 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; fancy controller LED fader mechanics
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(deftype led-fader-state (structure)
+  ((enable?     symbol)
+   (amount      float)
+   (cur-color   vector :inline)
+   (start-color vector :inline)
+   (end-color   vector :inline)
+   )
+  (:methods
+    (enable (_type_ vector) int)
+    (update (_type_ float float) vector)
+    (disable (_type_) int)
+    )
+  )
+
+(defmethod enable led-fader-state ((this led-fader-state) (start-from vector))
+  "begin transition."
+  
+  (when (-> this enable?)
+    (disable this))
+
+  (vector-copy! (-> this start-color) start-from)
+  (set! (-> this amount) 0.0)
+  (true! (-> this enable?))
+  0)
+
+(defmethod disable led-fader-state ((this led-fader-state))
+  "disable transition."
+  
+  (set! (-> this amount) 0.0)
+  (update this 0.0 0.1)
+  (false! (-> this enable?))
+  0)
+
+(defun vector3-lerp! ((dest vector) (a vector) (b vector) (alpha float))
+  "Linearly interpolate between two vectors. Alpha isn't clamped.
+   w will be set to what's in vector a."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> a quad))
+    (.lvf vf2 (&-> b quad))
+    (.mov vf4 alpha)
+    (.add.x.vf vf3 vf1 vf0 :mask #b1000)
+    (.sub.vf vf2 vf2 vf1)
+    (.mul.x.vf vf2 vf2 vf4)
+    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.svf (&-> dest quad) vf3)
+    dest
+    )
+  )
+
+(defun vector3-copy!! ((dest vector) (src vector))
+  "copy just the xyz fields of src into dest"
+  (declare (print-asm))
+  (rlet ((vf0 :class vf)
+         (dest-vf :class vf)
+         (src-vf :class vf))
+    (init-vf0-vector)
+    (.lvf dest-vf (&-> dest quad))
+    (.lvf src-vf (&-> src quad))
+    (.add.vf dest-vf vf0 src-vf :mask #b111)
+    (.svf (&-> dest quad) dest-vf)
+    dest
+    )
+  )
+
+(defmethod update led-fader-state ((this led-fader-state) (to float) (duration float))
+  "disable transition."
+  
+  (when (-> this enable?)
+    (seek! (-> this amount) to (/ (-> *target* clock seconds-per-frame) duration))
+    (vector4-lerp! (-> this cur-color) (-> this start-color) (-> this end-color) (-> this amount))
+    (if (and (= to 0.0) (= 0.0 (-> this amount)))
+        (false! (-> this enable?)))
+    )
+  (-> this cur-color))
+
+
+;; global vars
+(define *led-fader-state* (new 'static 'led-fader-state :enable? #f))
+
+(define *led-darkjak-color*         (static-vector 0.5 0.0 0.5 1.0))
+(define *led-tomb-simon-off-color*  (static-vector 0.0 0.0 0.0 1.0))
+(define *led-tomb-simon-color*      (static-vector 0.0 0.0 0.0 1.0))
+(define *led-wanted-flash-color*    (static-vector 1.0 0.0 0.0 1.0))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -131,6 +227,11 @@
   ((method-of-type pc-settings update) obj)
   
   (set! *hires-sky* (-> obj hires-clouds?))
+
+  (when (not (led-enabled? obj))
+    (disable *led-fader-state*)
+    )
+
   (none))
 
 
@@ -199,6 +300,142 @@
   (if (-> obj fast-airlock?)
       (-> *pc-cheat-state* airlock-close-speed)
       1.0))
+
+
+(defmethod led-enabled? pc-settings-jak2 ((obj pc-settings-jak2))
+  "should the controller led be set?"
+  (or (-> obj controller-led-hp?)
+      (-> obj controller-led-status?)
+      ))
+
+(defmethod update-led pc-settings-jak2 ((obj pc-settings-jak2))
+  "set the controller led color by modifying the controller-led-color vector"
+  
+  ;; default color is just blue.
+  (set-vector-xyz! (-> obj controller-led-color) 0.0 0.0 1.0)
+
+  (when *target*
+    (let ((disable-fader? #t)
+          (simon-plat (the process #f)))
+    (when (-> obj controller-led-hp?)
+      ;; flicker led according to hp. lower hp = faster and more intense flicker
+      (cond
+        ((= (-> *target* fact health) 0.0)
+          ;; dead. just set to minimum brightness.
+          (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness))
+          )
+        (else
+          (let ((flicker-speed (lerp-scale  2.0 0.0
+                                            (-> *target* fact health)
+                                            1.0 (-> *FACT-bank* health-max-default)))
+                (flicker-amp (lerp-scale  (- 1.0 (-> obj controller-led-min-brightness)) (- 1.0 (-> obj controller-led-max-brightness))
+                                          (-> *target* fact health)
+                                          1.0 (-> *FACT-bank* health-max-default)))
+                )
+            (set! (-> obj controller-led-color a) (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (current-time))))) 2.0))))
+            )
+          )
+        )
+      )
+
+    (when (-> obj controller-led-status?)
+      (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 1.0)
+      (cond
+        ;; simon plat
+        ((set! simon-plat (search-process-tree *active-pool*
+                  (lambda ((proc process)) (and (= (-> proc type symbol) 'tomb-plat-simon)
+                                                (-> proc next-state)
+                                                (eq-any? (-> proc next-state name) 'appear 'show-sequence 'idle)))))
+          (set! disable-fader? #f)
+          (case (-> simon-plat next-state name)
+            (('appear)
+              ;; simon plats appearing - fade to black
+              (vector-copy! *led-tomb-simon-color* *led-tomb-simon-off-color*)
+              (vector-copy! (-> *led-fader-state* end-color) *led-tomb-simon-off-color*)
+              (if (not (-> *led-fader-state* enable?))
+                  (enable *led-fader-state* (-> obj controller-led-color)))
+              )
+            (('show-sequence)
+              ;; showing simon sequence - use only the flashing color
+              (vector-copy! (-> obj controller-led-color) *led-tomb-simon-color*)
+              ;; set fader color to max, if it's not somehow.
+              (when (!= (-> *led-fader-state* amount) 1.0)
+                  (set! (-> *led-fader-state* amount) 1.0))
+              )
+            (('idle)
+              ;; playing simon sequence - simon blocks set end-color here
+              )
+            )
+          (update *led-fader-state* 1.0 2.0)
+          (unless (= (-> simon-plat next-state name) 'show-sequence)
+              (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color)))
+          )
+        ;; simon plat block
+        ((set! simon-plat (search-process-tree *active-pool*
+                  (lambda ((proc process)) (and (= (-> proc type symbol) 'tomb-simon-block)
+                                                (-> proc next-state)
+                                                (= (-> proc next-state name) 'dangerous)))))
+          ;; simon plat mistake - fade to black (start color was set by simon block)
+          (set! disable-fader? #f)
+          (vector-copy! (-> *led-fader-state* end-color) *led-tomb-simon-off-color*)
+          (update *led-fader-state* 1.0 1.5)
+          (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
+          )
+
+        ;; gun
+        ((and (nonzero? (-> *target* gun)) (focus-test? *target* gun))
+          (case (-> *target* gun gun-type)
+            (((pickup-type eco-yellow))
+              (set-vector-xyz! (-> obj controller-led-color) 1.0 0.75 0.125))
+            (((pickup-type eco-red))
+              (set-vector-xyz! (-> obj controller-led-color) 0.65 0.0 0.0))
+            (((pickup-type eco-blue))
+              (set-vector-xyz! (-> obj controller-led-color) 0.4375 0.8125 1.0))
+            (((pickup-type eco-dark))
+              (set-vector-xyz! (-> obj controller-led-color) 0.6875 0.6 0.78125))
+            )
+          )
+        
+        ;; darkjak
+        ((and (nonzero? (-> *target* darkjak)) (focus-test? *target* dark))
+          (vector-copy! (-> *led-fader-state* end-color) *led-darkjak-color*)
+          (set! disable-fader? #f)
+          (if (not (-> *led-fader-state* enable?))
+              (enable *led-fader-state* (-> obj controller-led-color)))
+          (if (and (-> *target* next-state) (= (-> *target* next-state name) 'target-darkjak-get-off))
+              (update *led-fader-state* 0.0 0.75)
+              (update *led-fader-state* 1.0 0.3))
+          (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
+          )
+        
+        ;; indax
+        ((focus-test? *target* indax)
+          (set-vector-xyz! (-> obj controller-led-color) 1.0 0.5 0.0)
+          )
+        
+        ;; mech
+        ((focus-test? *target* mech)
+          (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 0.0)
+          )
+        
+        ;; board
+        ((focus-test? *target* board)
+          (set-vector-xyz! (-> obj controller-led-color) 0.0 1.0 1.0)
+          )
+        )
+      
+      ;; wanted flash
+      (awhen (the hud-map (process-by-name "hud-map" *active-pool*))
+        (when (not (hidden? it))
+          (let ((flash-amount (/ (+ (sin (degrees (-> it values 1 current))) 1.0) 2)))
+            (vector3-lerp! (-> obj controller-led-color) (-> obj controller-led-color) *led-wanted-flash-color* flash-amount)
+            ))
+        )
+      )
+    (when disable-fader?
+      (disable *led-fader-state*))
+    ))
+  #t)
 
 (defmacro flava-unlocked? (flava)
   "return #t if the specified flava is unlocked"
@@ -323,6 +560,7 @@
     (("smooth-minimap?") (set! (-> obj smooth-minimap?) (file-stream-read-symbol file)))
     (("hires-clouds?") (set! (-> obj hires-clouds?) (file-stream-read-symbol file)))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
+    (("controller-led-status?") (set! (-> obj controller-led-status?) (file-stream-read-symbol file)))
     (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
@@ -350,6 +588,7 @@
   (format file "  (smooth-minimap? ~A)~%" (-> obj smooth-minimap?))
   (format file "  (hires-clouds? ~A)~%" (-> obj hires-clouds?))
   (format file "  (text-language ~D)~%" (-> obj text-language))
+  (format file "  (controller-led-status? ~D)~%" (-> obj controller-led-status?))
   (format file "  (cheats #x~x)~%" (-> obj cheats))
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
@@ -432,3 +671,5 @@
 (defmacro adjust-game-x (x)
   `(adjust-game-x-centered CENTER_X ,x))
 
+(defmacro adjust-game-x-int (x-float)
+  `(the int (adjust-game-x-centered CENTER_X (the float ,x-float))))

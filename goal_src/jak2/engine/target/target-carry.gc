@@ -152,7 +152,7 @@
     )
   :enter (behavior ()
     (set! (-> self control mod-surface) *walk-mods*)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set-forward-vel 0.0)
     (set! (-> self carry other) (the-as handle #f))
     (set! (-> self carry other-value) 100000000000.0)
@@ -291,7 +291,7 @@
   :event target-standard-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *walk-mods*)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set-forward-vel 0.0)
     )
   :code (behavior ()
@@ -413,7 +413,7 @@
   :event target-standard-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *carry-walk-mods*)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     ((-> target-carry-pickup exit))
@@ -465,7 +465,7 @@
 (defstate target-carry-walk (target)
   :event target-standard-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self control mod-surface) *carry-walk-mods*)
     )
   :exit (behavior ()
@@ -523,7 +523,7 @@
   :event target-jump-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *carry-jump-mods*)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (logtest? (-> self control status) (collide-status on-surface))
@@ -539,7 +539,7 @@
            )
       (when (if (and (< f0-0 (-> *TARGET-bank* stuck-distance))
                      (and (>= v1-12 0)
-                          (>= (- (current-time) (-> self state-time)) v1-12)
+                          (time-elapsed? (-> self state-time) v1-12)
                           (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
                           )
                      )
@@ -630,7 +630,7 @@
 (defstate target-carry-jump (target)
   :event target-jump-event-handler
   :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (sound-play "jump" :vol 70)
     (init-var-jump arg0 arg1 #t #f (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
@@ -694,7 +694,7 @@
   :event target-standard-event-handler
   :enter (behavior ()
     (set! (-> self control mod-surface) *walk-mods*)
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set-forward-vel 0.0)
     )
   :code (behavior ()

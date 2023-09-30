@@ -247,7 +247,7 @@
                (zero? (-> *game-info* hint-control v1-0 start-time))
                (!= (-> *game-info* hint-control v1-0 num-attempts-before-playing) 1)
                )
-      (set! (-> *game-info* hint-control v1-0 start-time) (-> *display* base-frame-counter))
+      (set-time! (-> *game-info* hint-control v1-0 start-time))
       0
       )
     )
@@ -280,7 +280,7 @@
         (set! v1-0 (appeared-for-long-enough? (the-as level-hint (ppointer->process *hint-semaphore*))))
         0
         )
-      (when (and v1-0 (< (- (-> *display* base-frame-counter) (-> *game-info* hint-play-time)) (seconds 0.1)))
+      (when (and v1-0 (not (time-elapsed? (-> *game-info* hint-play-time) (seconds 0.1))))
         (set! v1-0 #f)
         0
         )
@@ -289,7 +289,7 @@
                       (not (-> *setting-control* current spooling))
                       (not (-> *setting-control* current hint))
                       (not (-> *setting-control* current ambient))
-                      (>= (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+                      (>= (current-time) (-> *game-info* blackout-time))
                       )
             )
       0
@@ -303,7 +303,7 @@
              )
             (else
               (let ((gp-1 (-> *game-info* hint-control v1-16))
-                    (a0-24 (- (-> *display* base-frame-counter) (-> *game-info* hint-control v1-16 last-time-called)))
+                    (a0-24 (- (current-time) (-> *game-info* hint-control v1-16 last-time-called)))
                     (v1-21 #t)
                     )
                 (if (and (= (-> gp-1 num-attempts-before-playing) 1) (< a0-24 (seconds 0.1)))
@@ -312,13 +312,13 @@
                 (cond
                   ((and (!= (-> gp-1 num-attempts-before-playing) 1)
                         (nonzero? (-> gp-1 last-time-called))
-                        (< (- (-> *display* base-frame-counter) (-> gp-1 last-time-called)) (seconds 0.5))
+                        (not (time-elapsed? (-> gp-1 last-time-called) (seconds 0.5)))
                         )
-                   (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
+                   (set-time! (-> gp-1 last-time-called))
                    #f
                    )
                   (else
-                    (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
+                    (set-time! (-> gp-1 last-time-called))
                     (when (nonzero? (-> gp-1 delay-before-playing))
                       (if (< (-> gp-1 start-time) (-> gp-1 delay-before-playing))
                           (set! v1-21 #f)

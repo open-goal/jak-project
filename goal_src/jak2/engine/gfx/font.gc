@@ -5,8 +5,7 @@
 ;; name in dgo: font
 ;; dgos: ENGINE, GAME
 
-(def-mips2c draw-string-asm (function string dma-buffer font-context uint))
-(def-mips2c draw-string (function string dma-buffer font-context draw-string-result))
+(def-mips2c draw-string-asm (function string dma-buffer font-context draw-string-result))
 (def-mips2c get-string-length (function string font-context draw-string-result))
 
 ;; DECOMP BEGINS
@@ -146,7 +145,29 @@
 
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun draw-string ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
+  (local-vars (result draw-string-result))
+  (let ((v1-1 (the int (* 128.0 (-> arg2 alpha)))))
+    (-> arg2 origin quad)
+    (dotimes (a0-2 40)
+      (dotimes (a1-1 4)
+        (set! (-> *font-work* color-table a0-2 color a1-1 a) v1-1)
+        )
+      )
+    (set! (-> *font-work* color-shadow w) v1-1)
+    )
+  (if (< (the-as uint (dma-buffer-free arg1)) (the-as uint (* (length arg0) 32)))
+      (set! result (the-as draw-string-result (-> arg2 origin quad)))
+      (set! result (draw-string-asm arg0 arg1 arg2))
+      )
+  (dotimes (v1-7 40)
+    (dotimes (a0-9 4)
+      (set! (-> *font-work* color-table v1-7 color a0-9 a) #x80)
+      )
+    )
+  (set! (-> *font-work* color-shadow w) 128)
+  result
+  )
 
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
