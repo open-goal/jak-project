@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "common/util/Timer.h"
 #include "common/util/string_util.h"
 
@@ -455,7 +456,15 @@ u64 pc_get_display_name(u32 id, u32 str_dest_ptr) {
   if (name.empty()) {
     return bool_to_symbol(false);
   }
-  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+  if (g_game_version == GameVersion::Jak1) {
+    // The Jak 1 font has only caps
+    name = str_util::to_upper(name).c_str();
+  }
+  // Encode the string to the game font
+  const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                ->convert_utf8_to_game(str_util::titlize(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::titlize(encoded_name).c_str());
   return bool_to_symbol(true);
 }
 
@@ -600,7 +609,16 @@ u64 pc_get_controller_name(u32 id, u32 str_dest_ptr) {
   if (name.empty()) {
     return bool_to_symbol(false);
   }
-  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+
+  if (g_game_version == GameVersion::Jak1) {
+    // The Jak 1 font has only caps
+    name = str_util::to_upper(name).c_str();
+  }
+  // Encode the string to the game font
+  const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                ->convert_utf8_to_game(str_util::titlize(name).c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::titlize(encoded_name).c_str());
   return bool_to_symbol(true);
 }
 
@@ -624,7 +642,14 @@ u64 pc_get_current_bind(s32 bind_assignment_info, u32 str_dest_ptr) {
     if (name.empty()) {
       return bool_to_symbol(false);
     }
-    strcpy(Ptr<String>(str_dest_ptr).c()->data(), str_util::to_upper(name).c_str());
+    if (g_game_version == GameVersion::Jak1) {
+      // The Jak 1 font has only caps
+      name = str_util::to_upper(name).c_str();
+    }
+    // Encode the string to the game font
+    const auto encoded_name = get_font_bank_from_game_version(g_game_version)
+                                  ->convert_utf8_to_game(str_util::titlize(name).c_str());
+    strcpy(Ptr<String>(str_dest_ptr).c()->data(), encoded_name.c_str());
     return bool_to_symbol(true);
   }
   // TODO - return something that lets the runtime use a translatable string if unknown

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/versions/versions.h"
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
 // somehow, since the encoding changes.
@@ -92,5 +93,6 @@ extern GameTextFontBank g_font_bank_jak2;
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 
 const GameTextFontBank* get_font_bank(GameTextVersion version);
+const GameTextFontBank* get_font_bank_from_game_version(GameVersion version);
 const GameTextFontBank* get_font_bank(const std::string& name);
 bool font_bank_exists(GameTextVersion version);
