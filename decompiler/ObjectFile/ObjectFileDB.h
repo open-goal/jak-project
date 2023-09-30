@@ -395,4 +395,5 @@ class ObjectFileDB {
 };
 
 std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);
+std::string print_jg_for_dump(const std::string& jg_name, const std::string& joint_name, int idx);
 }  // namespace decompiler

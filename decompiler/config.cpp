@@ -56,6 +56,14 @@ Config make_config_via_json(nlohmann::json& json) {
     config.art_group_info_dump = serialized;
   }
 
+  if (json.contains("joint_node_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({json.at("joint_node_dump_file").get<std::string>()}));
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> serialized =
+        parse_commented_json(json_data, "joint_node_dump_file");
+    config.jg_info_dump = serialized;
+  }
+
   if (json.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
   }
@@ -75,6 +83,7 @@ Config make_config_via_json(nlohmann::json& json) {
     config.process_subtitle_images = json.at("process_subtitle_images").get<bool>();
   }
   config.dump_art_group_info = json.at("dump_art_group_info").get<bool>();
+  config.dump_joint_geo_info = json.at("dump_joint_geo_info").get<bool>();
   config.hexdump_code = json.at("hexdump_code").get<bool>();
   config.hexdump_data = json.at("hexdump_data").get<bool>();
   config.find_functions = json.at("find_functions").get<bool>();
