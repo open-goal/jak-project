@@ -2621,7 +2621,9 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
-FormElement* SetFormFormElement::make_set_time(const Env& env, FormPool& pool, FormStack& stack) {
+FormElement* SetFormFormElement::make_set_time(const Env& /*env*/,
+                                               FormPool& pool,
+                                               FormStack& /*stack*/) {
   auto matcher = match(
       Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}), m_src);
   if (matcher.matched) {
@@ -3905,6 +3907,39 @@ void FunctionCallElement::update_from_stack(const Env& env,
       new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_function(pool.form<ConstantTokenElement>("launch-particles")),
           macro);
+    }
+  }
+
+  // detect call-parent-method
+  {
+    const auto& guessed_name = env.func->guessed_name;
+    if (guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+      // detect stuff like: ((find-parent-method...) arg...)
+      auto mr_find_parent =
+          match(Matcher::func(Matcher::symbol("find-parent-method"),
+                              {Matcher::symbol(env.func->method_of_type),
+                               Matcher::integer(env.func->guessed_name.method_id)}),
+                unstacked.at(0)
+
+          );
+      if (mr_find_parent.matched) {
+        new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("call-parent-method")),
+            arg_forms);
+      }
+    } else if (guessed_name.kind == FunctionName::FunctionKind::V_STATE && arg_forms.size() == 2) {
+      // here, simply detect (find-parent-method...)
+      //
+      auto mr_find_parent = match(Matcher::symbol("find-parent-method"), unstacked.at(0));
+      if (mr_find_parent.matched) {
+        auto state_info =
+            env.dts->ts.lookup_method(guessed_name.type_name, guessed_name.state_name);
+        if (arg_forms.at(0)->to_string(env) == guessed_name.type_name &&
+            arg_forms.at(1)->to_string(env) == std::to_string(state_info.id)) {
+          new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("find-parent-state")));
+        }
+      }
     }
   }
 

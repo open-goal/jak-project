@@ -1159,7 +1159,7 @@
         (when (handle->process v0-7)
           (set! (-> arg0 creature) v0-7)
           (set! (-> arg0 mode) (the-as uint 1))
-          (set! (-> arg0 last-spawn-time) (current-time))
+          (set-time! (-> arg0 last-spawn-time))
           )
         )
       )
@@ -1197,10 +1197,10 @@
     (let ((v1-5 (-> arg0 noticed-attack-time)))
       (cond
         ((zero? v1-5)
-         (set! (-> arg0 noticed-attack-time) (current-time))
+         (set-time! (-> arg0 noticed-attack-time))
          )
         (else
-          (if (>= (- (current-time) v1-5) (the-as time-frame (-> arg0 notice-attack-delay)))
+          (if (time-elapsed? v1-5 (the-as time-frame (-> arg0 notice-attack-delay)))
               (logior! (-> arg0 flags) (battle-spawner-flags hit))
               )
           )
@@ -1387,7 +1387,7 @@
   :virtual #t
   :event battle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((gp-0 (-> self on-notice)))
       (if gp-0
           (script-eval (the-as pair gp-0) :vector (-> self root trans))
@@ -1467,10 +1467,10 @@
          (let ((a1-14 (-> this jammed-starting-time)))
            (cond
              ((zero? (-> this jammed-starting-time))
-              (set! (-> this jammed-starting-time) (current-time))
+              (set-time! (-> this jammed-starting-time))
               )
              (else
-               (if (>= (- (current-time) a1-14) (seconds 3.5))
+               (if (time-elapsed? a1-14 (seconds 3.5))
                    (logior! (-> this flags) (battle-flags no-spawner-block))
                    )
                )
@@ -1488,23 +1488,23 @@
               (< a0-4 (the-as int (-> this info desired-alive-count)))
               (< (-> this count) v1-4)
               )
-         (when (>= (- (current-time) (-> this cant-spawn-time)) (the-as time-frame (-> this next-spawn-delay)))
+         (when (time-elapsed? (-> this cant-spawn-time) (the-as time-frame (-> this next-spawn-delay)))
            (let ((a1-29 (get-best-spawner this)))
              (cond
                (a1-29
                  (spawn-from-spawner this a1-29 #f)
                  (set! (-> this next-spawn-delay) (the-as uint (get-spawn-delay this)))
-                 (set! (-> this cant-spawn-time) (current-time))
+                 (set-time! (-> this cant-spawn-time))
                  )
                (else
-                 (set! (-> this cant-spawn-time) (current-time))
+                 (set-time! (-> this cant-spawn-time))
                  )
                )
              )
            )
          )
         (else
-          (set! (-> this cant-spawn-time) (current-time))
+          (set-time! (-> this cant-spawn-time))
           )
         )
       )
@@ -1516,7 +1516,7 @@
   :virtual #t
   :event battle-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self flags) (battle-flags active))
     (logclear! (-> self flags) (battle-flags no-spawner-block))
     (set! (-> self jammed-starting-time) 0)
@@ -1594,14 +1594,10 @@
   this
   )
 
-;; WARN: Return type mismatch process-drawable vs battle.
 (defmethod relocate battle ((this battle) (arg0 int))
   (&+! (-> this spawners) arg0)
   (&+! (-> this allies) arg0)
-  (the-as
-    battle
-    ((the-as (function process-drawable int process-drawable) (find-parent-method battle 7)) this arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 (defmethod initialize-spawner-breeds battle ((this battle) (arg0 battle-spawner) (arg1 entity-actor))

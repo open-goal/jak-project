@@ -8,7 +8,7 @@
 
 using json = nlohmann::json;
 
-std::optional<json> initialize_handler(Workspace& workspace, int id, json params) {
+std::optional<json> initialize_handler(Workspace& /*workspace*/, int /*id*/, json /*params*/) {
   InitializeResult result;
   return result.to_json();
 }
