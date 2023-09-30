@@ -15,9 +15,6 @@
 #include "third-party/json.hpp"
 #include "third-party/zstd/lib/common/xxhash.h"
 
-const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
-    {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
-
 const std::unordered_map<int, std::string> game_iso_territory_map = {
     {GAME_TERRITORY_SCEA, "NTSC-U"},
     {GAME_TERRITORY_SCEE, "PAL"},
@@ -30,10 +27,6 @@ std::string get_territory_name(int territory) {
   return game_iso_territory_map.at(territory);
 }
 
-// used for - decompiler_out/<jak1> and iso_data/<jak1>
-const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
-                                                                      {"jak2", "jak2"}};
-
 const ISOMetadata jak1_ntsc_black_label_info = {"Jak & Daxter™: The Precursor Legacy (Black Label)",
                                                 GAME_TERRITORY_SCEA,
                                                 337,
@@ -43,67 +36,72 @@ const ISOMetadata jak1_ntsc_black_label_info = {"Jak & Daxter™: The Precursor 
                                                 {"jak1-black-label"}};
 
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> iso_database = {
-    {"SCUS-97124",
-     {{7280758013604870207U, jak1_ntsc_black_label_info},
-      {744661860962747854,
-       {"Jak & Daxter™: The Precursor Legacy",
-        GAME_TERRITORY_SCEA,
-        338,
-        {8538304367812415885U},
-        "ntsc_v2",
-        "jak1",
-        {}}}}},
-    {"SCES-50361",
-     {{12150718117852276522U,
-       {"Jak & Daxter™: The Precursor Legacy",
-        GAME_TERRITORY_SCEE,
-        338,
-        {16850370297611763875U},
-        "pal",
-        "jak1",
-        {}}}}},
-    {"SCPS-15021",
-     {{16909372048085114219U,
-       {"ジャックＸダクスター　～　旧世界の遺産",
-        GAME_TERRITORY_SCEI,
-        338,
-        {1262350561338887717},
-        "jp",
-        "jak1",
-        {}}}}},
-    // Jak 2, NTSC v1 and v2.
-    // we put both of them together because they have the same serial and ELF.
-    {"SCUS-97265",             // serial from ELF name
-     {{18445016742498932084U,  // hash of ELF
-       {"Jak II",              // canonical name
-        GAME_TERRITORY_SCEA,
-        593,                                           // number of files
-        {4835330407820245819U, 5223305410190549348U},  // iso hash
-        "ntsc_v1",                                     // decompiler config
-        "jak2",
-        {}}}}},
-    // Jak 2 PAL
-    {"SCES-51608",             // serial from ELF name
-     {{18188891052467821088U,  // hash of ELF
-       {"Jak II: Renegade",    // canonical name
-        GAME_TERRITORY_SCEE,
-        593,                     // number of files
-        {8410801891219727031U},  // iso hash
-        "pal",                   // decompiler config
-        "jak2",
-        {}}}}},
-    // Jak 2 Japan
-    {"SCPS-15057",            // serial from ELF name
-     {{7409991384254810731U,  // hash of ELF
-       {"Jak II: Japan",      // canonical name
-        GAME_TERRITORY_SCEI,
-        593,                     // number of files
-        {1686904681401593185U},  // iso hash
-        "jp",                    // decompiler config
-        "jak2",
-        {}}}}},
-};
+const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>&
+extractor_iso_database() {
+  static const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>> database =
+      {
+          {"SCUS-97124",
+           {{7280758013604870207U, jak1_ntsc_black_label_info},
+            {744661860962747854,
+             {"Jak & Daxter™: The Precursor Legacy",
+              GAME_TERRITORY_SCEA,
+              338,
+              {8538304367812415885U},
+              "ntsc_v2",
+              "jak1",
+              {}}}}},
+          {"SCES-50361",
+           {{12150718117852276522U,
+             {"Jak & Daxter™: The Precursor Legacy",
+              GAME_TERRITORY_SCEE,
+              338,
+              {16850370297611763875U},
+              "pal",
+              "jak1",
+              {}}}}},
+          {"SCPS-15021",
+           {{16909372048085114219U,
+             {"ジャックＸダクスター　～　旧世界の遺産",
+              GAME_TERRITORY_SCEI,
+              338,
+              {1262350561338887717},
+              "jp",
+              "jak1",
+              {}}}}},
+          // Jak 2, NTSC v1 and v2.
+          // we put both of them together because they have the same serial and ELF.
+          {"SCUS-97265",             // serial from ELF name
+           {{18445016742498932084U,  // hash of ELF
+             {"Jak II",              // canonical name
+              GAME_TERRITORY_SCEA,
+              593,                                           // number of files
+              {4835330407820245819U, 5223305410190549348U},  // iso hash
+              "ntsc_v1",                                     // decompiler config
+              "jak2",
+              {}}}}},
+          // Jak 2 PAL
+          {"SCES-51608",             // serial from ELF name
+           {{18188891052467821088U,  // hash of ELF
+             {"Jak II: Renegade",    // canonical name
+              GAME_TERRITORY_SCEE,
+              593,                     // number of files
+              {8410801891219727031U},  // iso hash
+              "pal",                   // decompiler config
+              "jak2",
+              {}}}}},
+          // Jak 2 Japan
+          {"SCPS-15057",            // serial from ELF name
+           {{7409991384254810731U,  // hash of ELF
+             {"Jak II: Japan",      // canonical name
+              GAME_TERRITORY_SCEI,
+              593,                     // number of files
+              {1686904681401593185U},  // iso hash
+              "jp",                    // decompiler config
+              "jak2",
+              {}}}}},
+      };
+  return database;
+}
 
 void to_json(nlohmann::json& j, const BuildInfo& info) {
   j = nlohmann::json{{"serial", info.serial}, {"elf_hash", info.elf_hash}};
@@ -133,8 +131,8 @@ std::optional<ISOMetadata> get_version_info_from_build_info(const BuildInfo& bui
   if (build_info.serial.empty() || build_info.elf_hash == 0) {
     return {};
   }
-  auto dbEntry = iso_database.find(build_info.serial);
-  if (dbEntry == iso_database.end()) {
+  auto dbEntry = extractor_iso_database().find(build_info.serial);
+  if (dbEntry == extractor_iso_database().end()) {
     return {};
   }
 

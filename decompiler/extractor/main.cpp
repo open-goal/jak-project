@@ -1,23 +1,21 @@
-#include <map>
-#include <regex>
-#include <unordered_map>
-
-#include "extractor_util.h"
-
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
 #include "common/util/read_iso_file.h"
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
-#include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "decompiler/config.h"
+#include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
+
+// used for - decompiler_out/<jak1> and iso_data/<jak1>
+const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
+                                                                      {"jak2", "jak2"}};
 
 IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
   lg::info(
@@ -52,6 +50,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   }
 
   // Find the game in our tracking database
+  const auto& iso_database = extractor_iso_database();
   auto dbEntry = iso_database.find(serial.value());
   if (dbEntry == iso_database.end()) {
     lg::error("Serial '{}' not found in the validation database", serial.value());
@@ -196,6 +195,9 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
                        config.extract_collision, level_out_path);
   }
 }
+
+const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
+    {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
 ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& data_subfolder) {
   // Determine which config to use from the database
