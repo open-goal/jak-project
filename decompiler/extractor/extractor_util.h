@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <regex>
+#include <set>
 #include <unordered_map>
 
 #include "common/log/log.h"
@@ -46,7 +47,7 @@ struct ISOMetadata {
   std::string canonical_name;
   int region;  // territory code
   int num_files;
-  uint64_t contents_hash;
+  std::set<uint64_t> contents_hash;
   std::string decomp_config_version;
   std::string game_name;
   std::vector<std::string> flags;

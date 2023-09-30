@@ -31,12 +31,13 @@ std::string get_territory_name(int territory) {
 }
 
 // used for - decompiler_out/<jak1> and iso_data/<jak1>
-const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"}};
+const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
+                                                                      {"jak2", "jak2"}};
 
 const ISOMetadata jak1_ntsc_black_label_info = {"Jak & Daxter™: The Precursor Legacy (Black Label)",
                                                 GAME_TERRITORY_SCEA,
                                                 337,
-                                                11363853835861842434U,
+                                                {11363853835861842434U},
                                                 "ntsc_v1",
                                                 "jak1",
                                                 {"jak1-black-label"}};
@@ -49,7 +50,7 @@ const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>
        {"Jak & Daxter™: The Precursor Legacy",
         GAME_TERRITORY_SCEA,
         338,
-        8538304367812415885U,
+        {8538304367812415885U},
         "ntsc_v2",
         "jak1",
         {}}}}},
@@ -58,7 +59,7 @@ const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>
        {"Jak & Daxter™: The Precursor Legacy",
         GAME_TERRITORY_SCEE,
         338,
-        16850370297611763875U,
+        {16850370297611763875U},
         "pal",
         "jak1",
         {}}}}},
@@ -67,10 +68,42 @@ const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>
        {"ジャックＸダクスター　～　旧世界の遺産",
         GAME_TERRITORY_SCEI,
         338,
-        1262350561338887717,
+        {1262350561338887717},
         "jp",
         "jak1",
-        {}}}}}};
+        {}}}}},
+    // Jak 2, NTSC v1 and v2.
+    // we put both of them together because they have the same serial and ELF.
+    {"SCUS-97265",             // serial from ELF name
+     {{18445016742498932084U,  // hash of ELF
+       {"Jak II",              // canonical name
+        GAME_TERRITORY_SCEA,
+        593,                                           // number of files
+        {4835330407820245819U, 5223305410190549348U},  // iso hash
+        "ntsc_v1",                                     // decompiler config
+        "jak2",
+        {}}}}},
+    // Jak 2 PAL
+    {"SCES-51608",             // serial from ELF name
+     {{18188891052467821088U,  // hash of ELF
+       {"Jak II: Renegade",    // canonical name
+        GAME_TERRITORY_SCEE,
+        593,                     // number of files
+        {8410801891219727031U},  // iso hash
+        "pal",                   // decompiler config
+        "jak2",
+        {}}}}},
+    // Jak 2 Japan
+    {"SCPS-15057",            // serial from ELF name
+     {{7409991384254810731U,  // hash of ELF
+       {"Jak II: Japan",      // canonical name
+        GAME_TERRITORY_SCEI,
+        593,                     // number of files
+        {1686904681401593185U},  // iso hash
+        "jp",                    // decompiler config
+        "jak2",
+        {}}}}},
+};
 
 void to_json(nlohmann::json& j, const BuildInfo& info) {
   j = nlohmann::json{{"serial", info.serial}, {"elf_hash", info.elf_hash}};
@@ -168,10 +201,8 @@ void log_potential_new_db_entry(ExtractorErrorCode error_code,
     lg::info(
         "If this is a new release or version that should be supported, consider adding the "
         "following serial entry to the database:");
-    lg::info(
-        "\t'{{\"{}\", {{{{{}U, {{\"GAME_TITLE\", \"NTSC-U/PAL/NTSC-J\", {}, {}U, "
-        "\"DECOMP_CONFIG_FILENAME_NO_EXTENSION\", \"jak1|jak2|jak3|jakx\", {}}}}}}}}}'",
-        serial, elf_hash, files_extracted, contents_hash);
+    lg::info("serial {}, elf hash {}, files {}, hash {}", serial, elf_hash, files_extracted,
+             contents_hash);
   } else if (error_code == ExtractorErrorCode::VALIDATION_ELF_MISSING_FROM_DB) {
     lg::info(
         "If this is a new release or version that should be supported, consider adding the "

@@ -87,9 +87,13 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT};
   }
   // Check the ISO Hash
-  if (version_info.contents_hash != expected_hash) {
-    lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'",
-              version_info.contents_hash, expected_hash);
+  if (version_info.contents_hash.count(expected_hash) == 0) {
+    std::string all_expected;
+    for (const auto& hash : version_info.contents_hash) {
+      all_expected += fmt::format("{}, ", hash);
+    }
+    lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'", all_expected,
+              expected_hash);
     return {std::nullopt, ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
   }
 
@@ -226,8 +230,10 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   return ExtractorErrorCode::SUCCESS;
 }
 
-void launch_game() {
-  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
+void launch_game(const std::string& game_version) {
+  system(fmt::format("\"{}\" -g {}", (file_util::get_jak_project_dir() / "../gk").string(),
+                     game_version)
+             .c_str());
 }
 
 int main(int argc, char** argv) {
@@ -252,7 +258,7 @@ int main(int argc, char** argv) {
       ->required();
   app.add_option("--proj-path", project_path_override,
                  "Explicitly set the location of the 'data/' folder");
-  app.add_flag("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
+  app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
   app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
   app.add_flag("-v,--validate", flag_fail_on_validation,
@@ -413,7 +419,7 @@ int main(int argc, char** argv) {
   }
 
   if (flag_play) {
-    launch_game();
+    launch_game(game_name);
   }
 
   return 0;
