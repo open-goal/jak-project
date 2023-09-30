@@ -2621,7 +2621,9 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
-FormElement* SetFormFormElement::make_set_time(const Env& env, FormPool& pool, FormStack& stack) {
+FormElement* SetFormFormElement::make_set_time(const Env& /*env*/,
+                                               FormPool& pool,
+                                               FormStack& /*stack*/) {
   auto matcher = match(
       Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}), m_src);
   if (matcher.matched) {
