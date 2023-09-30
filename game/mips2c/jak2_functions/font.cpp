@@ -478,10 +478,10 @@ u64 execute(void* ctxt) {
   c->load_symbol2(v1, cache.video_params);           // lw v1, *video-params*(s7)
   c->mov64(v1, v1);                                 // or v1, v1, r0
   // shadow hack begin
-  c->lw(t0, 16, v1);
+  c->lw(t0, 16, v1);    // lw t0, 16(v1)
   // mmultiply shadow offset by font scale and screen x scale
-  c->vfs[vf26].f[0] += c->vfs[vf25].f[3] * c->gprs[t0].f[0] * 2;
-  c->vfs[vf26].f[1] += c->vfs[vf25].f[3] * 1;
+  c->vfs[vf26].f[0] += c->gprs[t0].f[0] * 2;
+  c->vfs[vf26].f[1] += 1;
   // shadow hack end
   c->lqc2(vf1, 32, v1);                             // lqc2 vf1, 32(v1)
   c->vdiv(vf0, BC::w, vf25, BC::w);                 // vdiv Q, vf0.w, vf25.w
@@ -493,6 +493,11 @@ u64 execute(void* ctxt) {
   if (!(c->gprs[v1].du32[0] & (1 << 6))) {
     // pc-hack flag
     c->vmul(DEST::x, vf24, vf24, vf1);                // vmul.x vf24, vf24, vf1
+  }
+  if (!(c->gprs[v1].du32[0] & (1 << 5))) {
+    // small font, readjust shadow
+    c->vfs[vf26].f[0] -= (c->gprs[t0].f[0] * 2) - (c->vfs[vf25].f[3] * c->gprs[t0].f[0] * 2);
+    c->vfs[vf26].f[1] -= 1 - (c->vfs[vf25].f[3] * 1);
   }
   // pc-hack end
   c->vwaitq();                                      // vwaitq
