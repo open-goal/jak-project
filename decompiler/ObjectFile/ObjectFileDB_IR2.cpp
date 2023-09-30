@@ -550,10 +550,13 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
 
         if (config.art_groups_by_function.find(func_name) != config.art_groups_by_function.end()) {
           func.ir2.env.set_art_group(config.art_groups_by_function.at(func_name));
+          func.ir2.env.set_jg(func.ir2.env.art_group());
         } else if (config.art_groups_by_file.find(obj_name) != config.art_groups_by_file.end()) {
           func.ir2.env.set_art_group(config.art_groups_by_file.at(obj_name));
+          func.ir2.env.set_jg(func.ir2.env.art_group());
         } else {
           func.ir2.env.set_art_group(obj_name + "-ag");
+          func.ir2.env.set_jg(func.ir2.env.art_group());
         }
 
         constexpr bool kForceNewTypes = false;
