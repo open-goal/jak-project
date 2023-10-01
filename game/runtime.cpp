@@ -116,7 +116,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   // then allow the server to accept connections
   bool server_ok = server.init_server();
   if (!server_ok) {
-    lg::error("[DECI2] failed to initialize, REPL will not work.\n");
+    lg::error("[DECI2] failed to initialize, REPL will not work.");
   }
 
   lg::debug("[DECI2] Waiting for listener...");
@@ -434,8 +434,8 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     try {
       Gfx::Loop([]() { return MasterExit == RuntimeExitStatus::RUNNING; });
     } catch (std::exception& e) {
-      lg::error("Exception thrown from graphics loop: {}\n", e.what());
-      lg::error("Everything will crash now. good luck\n");
+      lg::error("Exception thrown from graphics loop: {}", e.what());
+      lg::error("Everything will crash now. good luck");
       throw;
     }
   }
