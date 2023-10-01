@@ -282,7 +282,7 @@
     (update-video-hacks obj)
     )
   (cond
-    ((not (-> *pc-settings* ps2-actor-vis?))
+    ((not (-> obj ps2-actor-vis?))
       ;; kinda overkill.
       (set! (-> *ACTOR-bank* birth-dist) (meters 10000))
       (set! (-> *ACTOR-bank* pause-dist) (meters 10000))
@@ -390,6 +390,14 @@
   (pc-set-mouse-camera-sens! (-> obj mouse-xsens) (-> obj mouse-ysens))
   (pc-set-auto-hide-cursor! (-> obj auto-hide-cursor?))
   (none))
+
+
+(defmethod debug-font-scale-factor pc-settings ((this pc-settings))
+  "return the debug font scale factor to be used."
+  (declare (inline))
+  (if (-> this debug-font-scale-auto?)
+      (/ (-> this debug-font-scale) (max 1.0 (/ (the float (get-current-game-height this)) PC_BASE_HEIGHT)))
+      (-> this debug-font-scale)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -693,6 +701,10 @@
     (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
     (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
     (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
+
+    ;; debug
+    (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
+    (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
     (("panic")
       (when (file-stream-read-symbol file)
         (reset obj #t)
@@ -718,6 +730,8 @@
   (format file "  (letterbox ~A)~%" (-> obj letterbox?))
   (format file "  (vsync ~A)~%" (-> obj vsync?))
   ;(format file "  (font-scale ~f)~%" (-> obj font-scale))
+  (format file "  (debug-font-scale ~f)~%" (-> obj debug-font-scale))
+  (format file "  (debug-font-scale-auto? ~A)~%" (-> obj debug-font-scale-auto?))
 
   ;(format file "  (audio-latency-ms ~D)~%" (-> obj audio-latency-ms))
   ;(format file "  (audio-pan-override ~f)~%" (-> obj audio-pan-override))
