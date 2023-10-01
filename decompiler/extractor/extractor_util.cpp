@@ -68,7 +68,7 @@ extractor_iso_database() {
               "jp",
               "jak1",
               {}}}}},
-          // Jak 2, NTSC v1 and v2.
+          // Jak 2, NTSC-U v1 and v2.
           // we put both of them together because they have the same serial and ELF.
           {"SCUS-97265",             // serial from ELF name
            {{18445016742498932084U,  // hash of ELF
@@ -89,14 +89,24 @@ extractor_iso_database() {
               "pal",                   // decompiler config
               "jak2",
               {}}}}},
-          // Jak 2 Japan
-          {"SCPS-15057",            // serial from ELF name
-           {{7409991384254810731U,  // hash of ELF
-             {"Jak II: Japan",      // canonical name
+          // Jak 2 NTSC-J
+          {"SCPS-15057",                // serial from ELF name
+           {{7409991384254810731U,      // hash of ELF
+             {"ジャックＸダクスター2",  // canonical name
               GAME_TERRITORY_SCEI,
               593,                     // number of files
               {1686904681401593185U},  // iso hash
               "jp",                    // decompiler config
+              "jak2",
+              {}}}}},
+          // Jak 2 NTSC-K
+          {"SCKA-20010",            // serial from ELF name
+           {{8398029689314218575U,  // hash of ELF
+             {"Jak II",             // canonical name
+              GAME_TERRITORY_SCEI,
+              593,                     // number of files
+              {4637199624374114440U},  // iso hash
+              "ko",                    // decompiler config
               "jak2",
               {}}}}},
       };
