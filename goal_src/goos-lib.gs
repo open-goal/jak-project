@@ -491,6 +491,9 @@
 ;; a map for art definitions used by art loading code.
 (define *art-info* (make-string-hash-table))
 
+;; a map for joint node names used by art loading code.
+(define *jg-info* (make-string-hash-table))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  build system      ;;
