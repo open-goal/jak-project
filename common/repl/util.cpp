@@ -207,7 +207,7 @@ std::string find_repl_username() {
     }
   }
 
-  return "#f";
+  return "unknown";
 }
 
 fs::path get_startup_file_path(const std::string& username, const GameVersion game_version) {

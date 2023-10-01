@@ -35,7 +35,6 @@ Interpreter::Interpreter(const std::string& username) {
   // set user profile name
   auto user = SymbolObject::make_new(reader.symbolTable, username);
   define_var_in_env(global_environment, user, "*user*");
-  define_var_in_env(goal_env, user, "*user*");
 
   // setup maps
   special_forms = {

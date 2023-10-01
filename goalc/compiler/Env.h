@@ -240,6 +240,8 @@ class FunctionEnv : public DeclareEnv {
 
   int segment = -1;
   std::string method_of_type_name = "#f";
+  TypeSpec method_function_type;
+  std::optional<int> method_id;
   bool is_asm_func = false;
   bool asm_func_saved_regs = false;
   TypeSpec asm_func_return_type;

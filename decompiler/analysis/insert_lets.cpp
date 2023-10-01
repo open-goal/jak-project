@@ -483,6 +483,10 @@ FormElement* rewrite_as_send_event(LetElement* in,
             {"'color-effect", {1}},
             {"'set-alert-duration", {0}},
         };
+
+        // enum to cast to.
+        EnumType* enum_ts = nullptr;
+
         auto float_arg_settings = jak2_float_args.find(msg_str);
         auto time_frame_arg_settings = jak2_time_frame_args.find(msg_str);
         if ((float_arg_settings != jak2_float_args.end() &&
@@ -499,39 +503,34 @@ FormElement* rewrite_as_send_event(LetElement* in,
                 pool.form<ConstantTokenElement>(seconds_to_string(val)));
           }
         } else if (param_idx == 0 && (msg_str == "'get-pickup" || msg_str == "'test-pickup")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
         } else if (param_idx == 1 &&
                    (param_values.at(0)->to_string(env) == "'error" ||
                     param_values.at(0)->to_string(env) == "'done") &&
                    msg_str == "'notify") {
-          auto enum_ts = env.dts->ts.try_enum_lookup("mc-status-code");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("mc-status-code");
         } else if (param_idx == 0 &&
                    (msg_str == "'deactivate-by-type" || msg_str == "'set-object-reserve-count" ||
                     msg_str == "'set-object-target-count" ||
                     msg_str == "'set-object-auto-activate" || msg_str == "'end-pursuit-by-type" ||
                     msg_str == "'get-object-remaining-count")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("traffic-type");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("traffic-type");
         } else if (param_idx == 0 &&
                    (msg_str == "'clear-slave-option" || msg_str == "'set-slave-option" ||
                     msg_str == "'toggle-slave-option")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("cam-slave-options");
-          if (enum_ts) {
-            param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("cam-slave-options");
         } else if (param_idx == 2 && param_values.at(0)->to_string(env) == "'darkjak" &&
                    msg_str == "'change-mode") {
-          auto enum_ts = env.dts->ts.try_enum_lookup("darkjak-stage");
-          if (enum_ts) {
+          enum_ts = env.dts->ts.try_enum_lookup("darkjak-stage");
+        } else if (param_idx == 2 && param_values.at(0)->to_string(env) == "'gun" &&
+                   msg_str == "'change-mode") {
+          enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
+        }
+        if (enum_ts) {
+          if (enum_ts->is_bitfield()) {
             param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
+          } else {
+            param_val = cast_to_int_enum(enum_ts, pool, env, val);
           }
         }
       }

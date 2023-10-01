@@ -29,8 +29,8 @@ LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> req
     : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
-  m_routes["shutdown"] =
-      LSPRoute([](Workspace& workspace, int id, nlohmann::json params) -> std::optional<json> {
+  m_routes["shutdown"] = LSPRoute(
+      [](Workspace& /*workspace*/, int /*id*/, nlohmann::json /*params*/) -> std::optional<json> {
         lg::info("Shutting down LSP due to explicit request");
         exit(0);
       });

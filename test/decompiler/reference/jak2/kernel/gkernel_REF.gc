@@ -410,6 +410,7 @@
   )
 
 ;; definition for method 2 of type process
+;; INFO: this function exists in multiple non-identical object files
 (defmethod print process ((this process))
   (cond
     ((and (-> this top-thread) (!= (-> this status) 'dead))
@@ -953,26 +954,20 @@
 (define *global-search-count* 0)
 
 ;; definition for function process-by-name
-;; WARN: Return type mismatch process-tree vs process.
 (defun process-by-name ((arg0 string) (arg1 process-tree))
   (set! *global-search-name* arg0)
-  (the-as process (search-process-tree
-                    arg1
-                    (lambda ((arg0 process)) (string= (-> arg0 name) (the-as string *global-search-name*)))
-                    )
-          )
+  (search-process-tree
+    arg1
+    (lambda ((arg0 process)) (string= (-> arg0 name) (the-as string *global-search-name*)))
+    )
   )
 
 ;; definition for function process-not-name
-;; WARN: Return type mismatch process-tree vs process.
 (defun process-not-name ((arg0 string) (arg1 process-tree))
   (set! *global-search-name* arg0)
-  (the-as
-    process
-    (search-process-tree
-      arg1
-      (lambda ((arg0 process)) (not (string= (-> arg0 name) (the-as string *global-search-name*))))
-      )
+  (search-process-tree
+    arg1
+    (lambda ((arg0 process)) (not (string= (-> arg0 name) (the-as string *global-search-name*))))
     )
   )
 
@@ -998,7 +993,7 @@
 
 ;; definition for function kill-by-type
 (defun kill-by-type ((arg0 type) (arg1 process-tree))
-  (local-vars (a0-1 process-tree))
+  (local-vars (a0-1 process))
   (set! *global-search-name* arg0)
   (while (begin
            (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process)) (= (-> arg0 type) *global-search-name*))))
@@ -1020,7 +1015,7 @@
 
 ;; definition for function kill-not-type
 (defun kill-not-type ((arg0 type) (arg1 process-tree))
-  (local-vars (a0-1 process-tree))
+  (local-vars (a0-1 process))
   (set! *global-search-name* arg0)
   (while (begin
            (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process)) (!= (-> arg0 type) *global-search-name*))))
@@ -1085,10 +1080,11 @@
   )
 
 ;; definition for function search-process-tree
+;; WARN: Return type mismatch process-tree vs process.
 (defun search-process-tree ((arg0 process-tree) (arg1 (function process-tree object)))
   (when (not (logtest? (-> arg0 mask) (process-mask process-tree)))
     (if (arg1 arg0)
-        (return arg0)
+        (return (the-as process arg0))
         )
     )
   (let ((v1-5 (-> arg0 child)))
@@ -1103,7 +1099,7 @@
         )
       )
     )
-  (the-as process-tree #f)
+  (the-as process #f)
   )
 
 ;; definition for function kernel-dispatcher

@@ -219,8 +219,8 @@ class Compiler {
                 const std::vector<std::optional<goos::ObjectType>>& unnamed,
                 const std::unordered_map<std::string,
                                          std::pair<bool, std::optional<goos::ObjectType>>>& named);
-  std::string as_string(const goos::Object& o);
-  std::string symbol_string(const goos::Object& o);
+  const std::string& as_string(const goos::Object& o);
+  const std::string& symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
   goos::Object unquote(const goos::Object& o);
   bool is_quoted_sym(const goos::Object& o);
@@ -246,7 +246,6 @@ class Compiler {
 
   TypeSpec parse_typespec(const goos::Object& src, Env* env);
   bool is_local_symbol(const goos::Object& obj, Env* env);
-  emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
@@ -697,6 +696,7 @@ class Compiler {
   Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method_of_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_method_id_of_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method_of_object(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -705,6 +705,9 @@ class Compiler {
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   ConstPropResult const_prop_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_current_method_id(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_current_method_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cast_to_method_type(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // State
   Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);

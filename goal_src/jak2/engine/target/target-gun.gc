@@ -154,8 +154,8 @@
 
 (defbehavior target-gun-setup target ((arg0 symbol))
   (when (zero? (-> self gun))
-    (if (zero? (-> self game gun-type))
-        (set! (-> self game gun-type) 2)
+    (if (= (-> self game gun-type) (pickup-type none))
+        (set! (-> self game gun-type) (pickup-type eco-red))
         )
     (set! (-> self gun) (new 'process 'gun-info))
     (set! (-> self gun process) (the-as (pointer target) (process->ppointer self)))
@@ -190,7 +190,7 @@
   (none)
   )
 
-(defbehavior target-gun-init target ((arg0 int))
+(defbehavior target-gun-init target ((arg0 pickup-type))
   (let ((gp-0 (-> self gun)))
     (if (zero? (-> gp-0 hips))
         (set! (-> gp-0 hips) (new 'process 'joint-mod (joint-mod-mode rotate) self 26))
@@ -575,8 +575,8 @@
     )
   )
 
-(defbehavior target-gun-type-set! target ((arg0 int))
-  (if (zero? arg0)
+(defbehavior target-gun-type-set! target ((arg0 pickup-type))
+  (if (= arg0 (pickup-type none))
       (set! arg0 (-> self game gun-type))
       )
   (when (not (logtest? (the-as game-feature (ash 1 (+ arg0 5)))
@@ -589,7 +589,7 @@
                          (-> self game features)
                          )
                )
-      (set! arg0 1)
+      (set! arg0 (pickup-type eco-yellow))
       (goto cfg-39)
       )
     (when (and (logtest? (-> self game features) (game-feature gun))
@@ -598,7 +598,7 @@
                          (-> self game features)
                          )
                )
-      (set! arg0 2)
+      (set! arg0 (pickup-type eco-red))
       (goto cfg-39)
       )
     (when (and (logtest? (-> self game features) (game-feature gun))
@@ -607,7 +607,7 @@
                          (-> self game features)
                          )
                )
-      (set! arg0 3)
+      (set! arg0 (pickup-type eco-blue))
       (goto cfg-39)
       )
     (when (and (logtest? (-> self game features) (game-feature gun))
@@ -616,14 +616,14 @@
                          (-> self game features)
                          )
                )
-      (set! arg0 4)
+      (set! arg0 (pickup-type eco-dark))
       (goto cfg-39)
       )
-    (set! arg0 0)
+    (set! arg0 (pickup-type none))
     (label cfg-39)
     (cond
-      ((zero? arg0)
-       (set! arg0 arg0)
+      ((zero? (the-as int arg0))
+       (set! arg0 (the-as pickup-type arg0))
        (goto cfg-190)
        )
       (else
@@ -631,7 +631,7 @@
         )
       )
     )
-  (set! (-> self game gun-type) arg0)
+  (set! (-> self game gun-type) (the-as pickup-type arg0))
   (set! (-> self gun track-turnv-range) 81920.0)
   (set! (-> self gun track-tilt-range) 0.0)
   (set! (-> self gun track-turn-range) 0.0)
@@ -650,7 +650,7 @@
     (let ((s5-0 (-> self gun gun-type)))
       (set! (-> self gun gun-type) (the-as pickup-type arg0))
       (set! (-> self gun using-gun-type) (the-as pickup-type arg0))
-      (case arg0
+      (case (the-as int arg0)
         ((3)
          (set! (-> self gun gun-control) (the-as uint 4))
          (set! (-> self gun fire-range) 327680.0)
@@ -715,7 +715,7 @@
       (set! (-> self skel top-anim frame-post-blend) 0.1333333)
       (cond
         ((focus-test? self pilot-riding)
-         (let ((v1-164 arg0))
+         (let ((v1-164 (the-as int arg0)))
            (cond
              ((and (= s5-0 (pickup-type eco-red)) (= v1-164 4))
               (push-anim-to-targ
@@ -865,7 +865,7 @@
            )
          )
         (else
-          (let ((v1-227 arg0))
+          (let ((v1-227 (the-as int arg0)))
             (cond
               ((and (= s5-0 (pickup-type eco-red)) (= v1-227 4))
                (if (rand-vu-percent? 0.5)
@@ -1534,7 +1534,7 @@
              )
          (when gp-0
            (if (not (using-gun? self))
-               (send-event self 'change-mode 'gun #f 0)
+               (send-event self 'change-mode 'gun #f (pickup-type none))
                )
            (combo-tracker-method-12
              (-> self gun attack-combo)
