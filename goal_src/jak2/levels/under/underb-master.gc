@@ -39,8 +39,8 @@
 
 (defstate idle (under-warp)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die-fast)
        (set-under-fog-interp! 0.0)
        (go-virtual die-fast)
@@ -57,31 +57,26 @@
         )
       (ja :num! (loop!))
       (ja :chan 1 :num! (chan 0))
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (under-warp-method-22 self)
     (ja-post)
-    (none)
     )
   )
 
 (defstate die-fast (under-warp)
   :virtual #t
-  :code (the-as (function none :behavior under-warp) nothing)
+  :code nothing
   )
 
-(defmethod under-warp-method-22 under-warp ((obj under-warp))
+(defmethod under-warp-method-22 under-warp ((this under-warp))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -97,12 +92,12 @@
           )
       ;; og:preserve-this changed for PC port: resize warp effect based on aspect ratio
       (let ((f0-4 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
-        (set-vector! (-> obj root scale) (* f0-4 (if (-> *pc-settings* use-vis?) 1.0 (-> *pc-settings* aspect-ratio-scale))) f0-4 f0-4 1.0)
+        (set-vector! (-> this root scale) (* f0-4 (if (-> *pc-settings* use-vis?) 1.0 (-> *pc-settings* aspect-ratio-scale))) f0-4 f0-4 1.0)
         )
       (set! (-> gp-0 quad) (-> (camera-pos) quad))
       (vector-normalize-copy! s5-0 (-> s3-0 vector 2) 1.0)
-      (matrix->quaternion (-> obj root quat) s3-0)
-      (let ((v1-10 (-> obj root trans)))
+      (matrix->quaternion (-> this root quat) s3-0)
+      (let ((v1-10 (-> this root trans)))
         (let ((a0-5 f30-0))
           (.mov vf7 a0-5)
           )
@@ -181,11 +176,11 @@
 
 (define *underb-master* (the-as (pointer underb-master) #f))
 
-(defmethod deactivate underb-master ((obj underb-master))
-  (sound-stop (-> obj ambient-sound-id))
-  (send-event (handle->process (-> obj warp-handle)) 'die-fast)
+(defmethod deactivate underb-master ((this underb-master))
+  (sound-stop (-> this ambient-sound-id))
+  (send-event (handle->process (-> this warp-handle)) 'die-fast)
   (set! *underb-master* (the-as (pointer underb-master) #f))
-  ((method-of-type process deactivate) obj)
+  ((method-of-type process deactivate) this)
   (none)
   )
 
@@ -328,7 +323,7 @@
     )
   )
 
-(defmethod under-warp-check underb-master ((obj underb-master))
+(defmethod under-warp-check underb-master ((this underb-master))
   "Used to check whether the underwater warp effect should be drawn."
   (let ((target-pos (target-pos 0))
         (tpos-offset (new 'stack-no-clear 'vector))
@@ -346,19 +341,19 @@
     )
   )
 
-(defmethod spawn-air-tank-hud underb-master ((obj underb-master) (arg0 symbol))
+(defmethod spawn-air-tank-hud underb-master ((this underb-master) (arg0 symbol))
   "Spawns or hides the air tank HUD bar."
   (cond
     (arg0
-      (if (not (handle->process (-> obj tank-handle)))
-          (set! (-> obj tank-handle)
-                (ppointer->handle (process-spawn hud-mech-air-tank :init hud-init-by-other :to obj))
+      (if (not (handle->process (-> this tank-handle)))
+          (set! (-> this tank-handle)
+                (ppointer->handle (process-spawn hud-mech-air-tank :init hud-init-by-other :to this))
                 )
           )
       )
     (else
-      (send-event (handle->process (-> obj tank-handle)) 'hide-and-die)
-      (set! (-> obj tank-handle) (the-as handle #f))
+      (send-event (handle->process (-> this tank-handle)) 'hide-and-die)
+      (set! (-> this tank-handle) (the-as handle #f))
       )
     )
   (none)
@@ -388,7 +383,7 @@
       )
     (if (or (not gp-0) (not (logtest? (-> gp-0 water flags) (water-flags under-water))))
         (set! (-> self air-charge-up?) #t)
-        (set! (-> self underwater-time) (current-time))
+        (set-time! (-> self underwater-time))
         )
     )
   (cond
@@ -410,8 +405,8 @@
         (else
           (when (>= 0.4 (-> self air-supply))
             (let ((v1-39 (the int (lerp-scale 90.0 300.0 (-> self air-supply) 0.0 0.4))))
-              (when (>= (- (current-time) (-> self last-air-beep-time)) v1-39)
-                (set! (-> self last-air-beep-time) (current-time))
+              (when (time-elapsed? (-> self last-air-beep-time) v1-39)
+                (set-time! (-> self last-air-beep-time))
                 (sound-play "oxygen-warning")
                 )
               )
@@ -422,7 +417,7 @@
     )
   (set! (-> *game-info* air-supply) (fmin 1.0 (-> self air-supply)))
   (if (or (and *target* (not (logtest? (focus-status mech) (-> *target* focus-status))))
-          (and (>= (-> self air-supply) 1.0) (>= (- (current-time) (-> self underwater-time)) (seconds 3)))
+          (and (>= (-> self air-supply) 1.0) (time-elapsed? (-> self underwater-time) (seconds 3)))
           )
       (spawn-air-tank-hud self #f)
       (spawn-air-tank-hud self #t)
@@ -435,15 +430,13 @@
   :event underb-master-event-handler
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (if (-> self big-room-entered)
         (go-virtual big-room-player-under)
         )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -452,7 +445,6 @@
   :event underb-master-event-handler
   :enter (behavior ()
     0
-    (none)
     )
   :trans (behavior ()
     (if (-> self under-plat-player-on)
@@ -461,9 +453,8 @@
     (if (not (-> self big-room-entered))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -473,11 +464,9 @@
   :enter (behavior ()
     (set-setting! 'entity-name "camera-239" 0.0 0)
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #f)
-    (none)
     )
   :exit (behavior ()
     (remove-setting! 'entity-name)
-    (none)
     )
   :trans (behavior ()
     (let ((gp-0 (target-pos 0)))
@@ -488,9 +477,8 @@
           (go-virtual big-room-player-falling)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -500,15 +488,13 @@
   :enter (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 600.0 0)
     (remove-setting! 'mode-name)
-    (none)
     )
   :trans (behavior ()
     (if (< (-> (target-pos 0) y) -245760.0)
         (go-virtual big-room-player-falling)
         )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -517,13 +503,11 @@
   :event underb-master-event-handler
   :enter (behavior ()
     (set-setting! 'mode-name 'cam-endlessfall 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
     (remove-setting! 'mode-name)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -541,9 +525,8 @@
             )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -553,22 +536,19 @@
   :enter (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
     (set-setting! 'entity-name "camera-244" 0.0 0)
-    (set! (-> self big-room-timer) (current-time))
+    (set-time! (-> self big-room-timer))
     (send-event (ppointer->process *underb-master*) 'request 'under-warp #t)
-    (none)
     )
   :exit (behavior ()
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 600.0 0)
     (remove-setting! 'entity-name)
-    (none)
     )
   :trans (behavior ()
-    (if (>= (- (current-time) (-> self big-room-timer)) (seconds 1))
+    (if (time-elapsed? (-> self big-room-timer) (seconds 1))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -577,9 +557,8 @@
   :event underb-master-event-handler
   :enter (behavior ()
     (go-virtual idle)
-    (none)
     )
-  :code (the-as (function none :behavior underb-master) sleep-code)
+  :code sleep-code
   :post underb-master-post
   )
 
@@ -649,34 +628,32 @@
 
 
 ;; WARN: Return type mismatch process-drawable vs under-locking.
-(defmethod relocate under-locking ((obj under-locking) (arg0 int))
-  (if (nonzero? (-> obj draining-part))
-      (&+! (-> obj draining-part) arg0)
+(defmethod relocate under-locking ((this under-locking) (arg0 int))
+  (if (nonzero? (-> this draining-part))
+      (&+! (-> this draining-part) arg0)
       )
-  (the-as under-locking ((method-of-type process-drawable relocate) obj arg0))
+  (the-as under-locking ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod deactivate under-locking ((obj under-locking))
-  (if (nonzero? (-> obj draining-part))
-      (kill-and-free-particles (-> obj draining-part))
+(defmethod deactivate under-locking ((this under-locking))
+  (if (nonzero? (-> this draining-part))
+      (kill-and-free-particles (-> this draining-part))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
 (defstate startup (under-locking)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('test)
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('test)
+       #f
+       )
+      )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (let ((v1-0 (-> self actor-group)))
@@ -698,7 +675,7 @@
                     )
                 )
               )
-         (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+         (when (time-elapsed? (-> self state-time) (seconds 0.1))
            (let ((a0-13 (-> v1-0 0 data 0 actor)))
              (if a0-13
                  (-> a0-13 extra process)
@@ -755,23 +732,22 @@
            )
          )
         (else
-          (set! (-> self state-time) (current-time))
+          (set-time! (-> self state-time))
           )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-locking) sleep-code)
+  :code sleep-code
   )
 
 (defstate active (under-locking)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('test)
        (let ((v1-1 (-> self mode)))
          (cond
-           ((-> event param 0)
+           ((-> block param 0)
             (when (or (= v1-1 (under-locking-mode want-mech)) (= v1-1 (under-locking-mode want-exit-mech)))
               (let ((a0-4 *target*))
                 (and a0-4 (not (logtest? (focus-status mech) (-> a0-4 focus-status))))
@@ -842,8 +818,8 @@
            0
            )
          )
-       (when (>= (- (current-time) (-> self last-reminder-time)) (seconds 9))
-         (set! (-> self last-reminder-time) (current-time))
+       (when (time-elapsed? (-> self last-reminder-time) (seconds 9))
+         (set-time! (-> self last-reminder-time))
          (add-process
            *gui-control*
            self
@@ -860,9 +836,8 @@
          )
        )
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-locking) sleep-code)
+  :code sleep-code
   )
 
 (defstate filling (under-locking)
@@ -878,19 +853,16 @@
                                             0
                                             )
           )
-    (none)
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
                (= (get-status *gui-control* (-> self spooled-sound-id)) (gui-status ready))
                )
-      (set! (-> self state-time) (current-time))
-      (set! (-> self last-reminder-time) (current-time))
+      (set-time! (-> self state-time))
+      (set-time! (-> self last-reminder-time))
       )
     (when (nonzero? (-> self state-time))
-      (when (and (>= (-> self spooled-sound-delay) 0)
-                 (>= (- (current-time) (-> self state-time)) (-> self spooled-sound-delay))
-                 )
+      (when (and (>= (-> self spooled-sound-delay) 0) (time-elapsed? (-> self state-time) (-> self spooled-sound-delay)))
         (set-action!
           *gui-control*
           (gui-action play)
@@ -917,13 +889,12 @@
                 )
               )
             )
-          (if (>= (- (current-time) (-> self state-time)) (seconds 2))
+          (if (time-elapsed? (-> self state-time) (seconds 2))
               (spawn (-> self part) (-> self root trans))
               )
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (zero? (-> self state-time))
@@ -971,7 +942,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
@@ -984,14 +954,13 @@
           )
     (set! (-> self state-time) 0)
     0
-    (none)
     )
   :trans (behavior ()
     (when (and (zero? (-> self state-time))
                (= (get-status *gui-control* (-> self spooled-sound-id)) (gui-status ready))
                )
-      (set! (-> self state-time) (current-time))
-      (set! (-> self last-reminder-time) (current-time))
+      (set-time! (-> self state-time))
+      (set-time! (-> self last-reminder-time))
       (set-action!
         *gui-control*
         (gui-action play)
@@ -1018,13 +987,12 @@
                 )
               )
             )
-          (if (< (- (current-time) (-> self state-time)) (seconds 1))
+          (if (not (time-elapsed? (-> self state-time) (seconds 1)))
               (spawn (-> self draining-part) (-> self root trans))
               )
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     (while (zero? (-> self state-time))
@@ -1073,12 +1041,11 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-locking ((obj under-locking) (arg0 entity-actor))
+(defmethod init-from-entity! under-locking ((this under-locking) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1086,30 +1053,30 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-16 res-tag))
-  (set! (-> obj which-reminder?) #f)
-  (set! (-> obj spooled-sound-id) (new 'static 'sound-id))
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj id) (res-lump-value arg0 'extra-id int :time -1000000000.0))
-  (let ((f0-0 (-> obj root trans y)))
-    (set! (-> obj up-y) (+ 49152.0 f0-0))
-    (set! (-> obj down-y) (+ f0-0 (if (= (-> obj id) 2)
-                                      -16384.0
-                                      -20480.0
-                                      )
-                             )
+  (set! (-> this which-reminder?) #f)
+  (set! (-> this spooled-sound-id) (new 'static 'sound-id))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this id) (res-lump-value arg0 'extra-id int :time -1000000000.0))
+  (let ((f0-0 (-> this root trans y)))
+    (set! (-> this up-y) (+ 49152.0 f0-0))
+    (set! (-> this down-y) (+ f0-0 (if (= (-> this id) 2)
+                                       -16384.0
+                                       -20480.0
+                                       )
+                              )
           )
     )
   (set! sv-16 (new 'static 'res-tag))
-  (let ((a0-6 (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let ((a0-6 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (if (and a0-6 (nonzero? (-> sv-16 elt-count)))
-        (set! (-> obj actor-group) (the-as (pointer actor-group) a0-6))
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group) (the-as (pointer actor-group) a0-6))
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
         )
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 498) obj))
-  (set! (-> obj draining-part) (create-launch-control (-> *part-group-id-table* 499) obj))
-  (go (method-of-object obj startup))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 498) this))
+  (set! (-> this draining-part) (create-launch-control (-> *part-group-id-table* 499) this))
+  (go (method-of-object this startup))
   (none)
   )
 
@@ -1135,14 +1102,14 @@ This commonly includes things such as:
                                       )
         )
 
-(defmethod init-water! water-anim-under ((obj water-anim-under))
+(defmethod init-water! water-anim-under ((this water-anim-under))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) v1-2)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) v1-2)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)

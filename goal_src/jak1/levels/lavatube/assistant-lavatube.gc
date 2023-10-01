@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype assistant-lavatube-start (process-taskable)
   ()
   :heap-base #x110
@@ -23,11 +22,11 @@
               :shadow assistant-lavatube-start-shadow-mg
               )
 
-(defmethod play-anim! assistant-lavatube-start ((obj assistant-lavatube-start) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! assistant-lavatube-start ((this assistant-lavatube-start) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status need-reward-speech))
      (if arg0
-         (close-current! (-> obj tasks))
+         (close-current! (-> this tasks))
          )
      (new 'static 'spool-anim
        :name "assistant-lavatube-start-resolution"
@@ -41,17 +40,17 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (get-art-elem obj)
+      (get-art-elem this)
       )
     )
   )
 
-(defmethod get-art-elem assistant-lavatube-start ((obj assistant-lavatube-start))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem assistant-lavatube-start ((this assistant-lavatube-start))
+  (-> this draw art-group data 3)
   )
 
 (defstate hidden (assistant-lavatube-start)
@@ -63,7 +62,7 @@
                   #t
                   )
                  (else
-                   (set! (-> self state-time) (-> *display* base-frame-counter))
+                   (set-time! (-> self state-time))
                    #f
                    )
                  )
@@ -71,7 +70,7 @@
                     (not (movie?))
                     (not (level-hint-displayed?))
                     (not (and *cheat-mode* (cpad-hold? 0 l3)))
-                    (< (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 10))
+                    (not (time-elapsed? (-> self state-time) (seconds 10)))
                     )
                )
       (hide-hud)
@@ -95,13 +94,7 @@
             (set! (-> v1-28 scale) 0.8)
             )
           (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
-          (print-game-text
-            (lookup-text! *common-text* (text-id assistant-lavatube-need-cells-text) #f)
-            gp-0
-            #f
-            128
-            22
-            )
+          (print-game-text (lookup-text! *common-text* (text-id assistant-lavatube-need-cells-text) #f) gp-0 #f 128 22)
           )
         )
       (level-hint-spawn
@@ -112,7 +105,6 @@
         (game-task none)
         )
       )
-    (none)
     )
   )
 
@@ -143,19 +135,18 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
-(defmethod should-display? assistant-lavatube-start ((obj assistant-lavatube-start))
-  (first-any (-> obj tasks) #t)
-  (= (current-status (-> obj tasks)) (task-status need-reward-speech))
+(defmethod should-display? assistant-lavatube-start ((this assistant-lavatube-start))
+  (first-any (-> this tasks) #t)
+  (= (current-status (-> this tasks)) (task-status need-reward-speech))
   )
 
-(defmethod init-from-entity! assistant-lavatube-start ((obj assistant-lavatube-start) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-lavatube-start-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task lavatube-start)))
-  (first-any (-> obj tasks) #t)
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! assistant-lavatube-start ((this assistant-lavatube-start) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-lavatube-start-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task lavatube-start)))
+  (first-any (-> this tasks) #t)
+  (process-taskable-method-42 this)
   (none)
   )

@@ -84,7 +84,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
   } else {
     // newly defined!
 
-    // none/object get to skip these checks because they are roots.
+    // objects get to skip these checks because it is the root
     if (name != "object" && name != "none" && name != "_type_" && name != "_varargs_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         throw_typesystem_error(
@@ -1538,8 +1538,8 @@ void TypeSystem::builtin_structure_inherit(StructureType* st) {
   st->inherit(get_type_of_type<StructureType>(st->get_parent()));
 }
 
-bool TypeSystem::tc(const TypeSpec& expected, const TypeSpec& actual) const {
-  return typecheck_and_throw(expected, actual, "", false, false);
+bool TypeSystem::tc(const TypeSpec& less_specific, const TypeSpec& more_specific) const {
+  return typecheck_and_throw(less_specific, more_specific, "", false, false);
 }
 
 /*!
@@ -1590,7 +1590,7 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
       if (!got) {
         success = false;
       } else {
-        if (*got != tag.value) {
+        if (!tc(tag.value, *got)) {
           success = false;
         }
       }
@@ -1713,10 +1713,6 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) c
 std::string TypeSystem::lca_base(const std::string& a, const std::string& b) const {
   if (a == b) {
     return a;
-  }
-
-  if (a == "none" || b == "none") {
-    return "none";
   }
 
   auto a_up = get_path_up_tree(a);

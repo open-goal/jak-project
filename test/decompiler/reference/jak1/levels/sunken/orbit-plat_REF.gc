@@ -19,12 +19,12 @@
   )
 
 ;; definition for method 3 of type orbit-plat-bottom
-(defmethod inspect orbit-plat-bottom ((obj orbit-plat-bottom))
+(defmethod inspect orbit-plat-bottom ((this orbit-plat-bottom))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tpart2: ~A~%" (-> obj part2))
-  obj
+  (format #t "~T~Tpart2: ~A~%" (-> this part2))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -62,18 +62,18 @@
   )
 
 ;; definition for method 3 of type orbit-plat
-(defmethod inspect orbit-plat ((obj orbit-plat))
+(defmethod inspect orbit-plat ((this orbit-plat))
   (let ((t9-0 (method-of-type baseplat inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tother: ~A~%" (-> obj other))
-  (format #t "~T~Trot-dir: ~f~%" (-> obj rot-dir))
-  (format #t "~T~Treset-trans: #<vector @ #x~X>~%" (-> obj reset-trans))
-  (format #t "~T~Tis-reset?: ~A~%" (-> obj is-reset?))
-  (format #t "~T~Treset-length: ~f~%" (-> obj reset-length))
-  (format #t "~T~Ttimeout: ~f~%" (-> obj timeout))
-  (format #t "~T~Tplat-status: ~D~%" (-> obj plat-status))
-  obj
+  (format #t "~T~Tother: ~A~%" (-> this other))
+  (format #t "~T~Trot-dir: ~f~%" (-> this rot-dir))
+  (format #t "~T~Treset-trans: #<vector @ #x~X>~%" (-> this reset-trans))
+  (format #t "~T~Tis-reset?: ~A~%" (-> this is-reset?))
+  (format #t "~T~Treset-length: ~f~%" (-> this reset-length))
+  (format #t "~T~Ttimeout: ~f~%" (-> this timeout))
+  (format #t "~T~Tplat-status: ~D~%" (-> this plat-status))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -161,7 +161,7 @@
 
 ;; definition for method 20 of type orbit-plat-bottom
 ;; INFO: Return type mismatch int vs none.
-(defmethod orbit-plat-bottom-method-20 orbit-plat-bottom ((obj orbit-plat-bottom) (arg0 vector) (arg1 vector))
+(defmethod orbit-plat-bottom-method-20 orbit-plat-bottom ((this orbit-plat-bottom) (arg0 vector) (arg1 vector))
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
          (f30-0 (vector-length s5-1))
          )
@@ -249,26 +249,25 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat-bottom) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 7 of type orbit-plat-bottom
 ;; INFO: Return type mismatch process-drawable vs orbit-plat-bottom.
-(defmethod relocate orbit-plat-bottom ((obj orbit-plat-bottom) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate orbit-plat-bottom ((this orbit-plat-bottom) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (the-as orbit-plat-bottom ((method-of-type process-drawable relocate) obj arg0))
+  (the-as orbit-plat-bottom ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; definition for method 10 of type orbit-plat-bottom
-(defmethod deactivate orbit-plat-bottom ((obj orbit-plat-bottom))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate orbit-plat-bottom ((this orbit-plat-bottom))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -294,41 +293,40 @@
 
 ;; failed to figure out what this is:
 (defstate orbit-plat-idle (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     (('query-reset)
-                      (if (not (-> self is-reset?))
-                          (go orbit-plat-reset)
-                          )
-                      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                        (set! (-> a1-1 from) self)
-                        (set! (-> a1-1 num-params) 0)
-                        (set! (-> a1-1 message) 'reset)
-                        (let ((t9-3 send-event-function)
-                              (v1-8 (-> self other))
-                              )
-                          (t9-3
-                            (if v1-8
-                                (-> v1-8 extra process)
-                                )
-                            a1-1
-                            )
-                          )
-                        )
-                      )
-                     (('reset)
-                      (go orbit-plat-reset)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      (('query-reset)
+       (if (not (-> self is-reset?))
+           (go orbit-plat-reset)
+           )
+       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-1 from) self)
+         (set! (-> a1-1 num-params) 0)
+         (set! (-> a1-1 message) 'reset)
+         (let ((t9-3 send-event-function)
+               (v1-8 (-> self other))
+               )
+           (t9-3
+             (if v1-8
+                 (-> v1-8 extra process)
+                 )
+             a1-1
+             )
+           )
+         )
+       )
+      (('reset)
+       (go orbit-plat-reset)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
     (ja-no-eval :num! (seek! 0.0))
@@ -380,19 +378,18 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; definition for method 28 of type orbit-plat
-(defmethod orbit-plat-method-28 orbit-plat ((obj orbit-plat))
-  (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) (the int (* 300.0 (-> obj timeout))))
+(defmethod orbit-plat-method-28 orbit-plat ((this orbit-plat))
+  (when (time-elapsed? (-> this state-time) (the int (* 300.0 (-> this timeout))))
     (cond
       (*target*
         (let ((s5-0 (target-pos 0)))
-          (if (or (>= (vector-vector-xz-distance s5-0 (-> obj root-override trans)) 102400.0)
-                  (>= (- (-> obj root-override trans y) (-> s5-0 y)) 16384.0)
+          (if (or (>= (vector-vector-xz-distance s5-0 (-> this root-override trans)) 102400.0)
+                  (>= (- (-> this root-override trans y) (-> s5-0 y)) 16384.0)
                   )
               (return #t)
               )
@@ -408,21 +405,20 @@
 
 ;; failed to figure out what this is:
 (defstate orbit-plat-still (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 0))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (ja-no-eval :num! (seek! 0.0))
     (until (orbit-plat-method-28 self)
       (when (nonzero? (-> self root-override riders num-riders))
@@ -449,15 +445,14 @@
           )
       )
     (go orbit-plat-idle)
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
 (defstate orbit-plat-riding (orbit-plat)
-  :event (the-as (function process int symbol event-message-block object :behavior orbit-plat) plat-event)
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :event plat-event
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 1))
     (ja-no-eval :num! (seek!))
@@ -485,9 +480,8 @@
           (ja :num! (seek!))
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; definition for function get-rotate-point!
@@ -499,7 +493,7 @@
         (set! (-> s2-0 x) (* arg4 (-> s5-0 z)))
         (set! (-> s2-0 y) 0.0)
         (set! (-> s2-0 z) (- (* arg4 (-> s5-0 x))))
-        (vector-normalize! s2-0 (* arg5 (-> *display* seconds-per-frame)))
+        (vector-normalize! s2-0 (* arg5 (seconds-per-frame)))
         (+! (-> s5-0 x) (-> s2-0 x))
         (+! (-> s5-0 z) (-> s2-0 z))
         )
@@ -520,7 +514,7 @@
     (if (< arg3 f0-0)
         (set! f0-0 arg3)
         )
-    (vector-normalize! (-> arg1 nav travel) (* f0-0 (-> *display* seconds-per-frame)))
+    (vector-normalize! (-> arg1 nav travel) (* f0-0 (seconds-per-frame)))
     )
   (set! (-> arg0 x) (+ (-> arg1 root-override trans x) (-> arg1 nav travel x)))
   (set! (-> arg0 y) (-> arg1 root-override trans x))
@@ -530,18 +524,17 @@
 
 ;; failed to figure out what this is:
 (defstate orbit-plat-rotating (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('stop)
-                      (go orbit-plat-still)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('stop)
+       (go orbit-plat-still)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 2))
     (set! (-> self is-reset?) #f)
@@ -585,18 +578,17 @@
         (ja :num! (seek! 0.0))
         )
     (b! #t cfg-3 :delay (nop!))
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; definition for method 27 of type orbit-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 132. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod orbit-plat-method-27 orbit-plat ((obj orbit-plat))
+(defmethod orbit-plat-method-27 orbit-plat ((this orbit-plat))
   (local-vars (v0-11 object))
-  (let* ((v1-0 (-> obj other))
+  (let* ((v1-0 (-> this other))
          (s5-0 (if v1-0
                    (-> v1-0 extra process)
                    )
@@ -607,27 +599,27 @@
       (cond
         ((and s5-0
               (< (vector-vector-xz-distance (the-as vector (&-> s5-0 stack 96)) (the-as vector (&-> s5-0 stack 128)))
-                 (vector-vector-xz-distance (-> obj basetrans) (-> obj reset-trans))
+                 (vector-vector-xz-distance (-> this basetrans) (-> this reset-trans))
                  )
               )
          (cond
            ((-> (the-as orbit-plat s5-0) is-reset?)
-            (when (!= (-> obj plat-status) 2)
-              (set! (-> obj plat-status) (the-as uint 2))
+            (when (!= (-> this plat-status) 2)
+              (set! (-> this plat-status) (the-as uint 2))
               (let ((f30-1 (atan
-                             (- (-> obj basetrans x) (-> (the-as orbit-plat s5-0) basetrans x))
-                             (- (-> obj basetrans z) (-> (the-as orbit-plat s5-0) basetrans z))
+                             (- (-> this basetrans x) (-> (the-as orbit-plat s5-0) basetrans x))
+                             (- (-> this basetrans z) (-> (the-as orbit-plat s5-0) basetrans z))
                              )
                            )
                     (f0-9 (atan
-                            (- (-> obj reset-trans x) (-> (the-as orbit-plat s5-0) basetrans x))
-                            (- (-> obj reset-trans z) (-> (the-as orbit-plat s5-0) basetrans z))
+                            (- (-> this reset-trans x) (-> (the-as orbit-plat s5-0) basetrans x))
+                            (- (-> this reset-trans z) (-> (the-as orbit-plat s5-0) basetrans z))
                             )
                           )
                     )
                 (if (>= (deg- f0-9 f30-1) 0.0)
-                    (set! (-> obj rot-dir) 1.0)
-                    (set! (-> obj rot-dir) -1.0)
+                    (set! (-> this rot-dir) 1.0)
+                    (set! (-> this rot-dir) -1.0)
                     )
                 )
               )
@@ -637,7 +629,7 @@
                     (s5-1 (new 'stack-no-clear 'vector))
                     )
                 (let ((v1-9 s4-0)
-                      (a1-5 (-> obj other))
+                      (a1-5 (-> this other))
                       )
                   (set! (-> v1-9 quad) (-> (the-as orbit-plat (if a1-5
                                                                   (-> a1-5 extra process)
@@ -649,36 +641,36 @@
                                            )
                         )
                   )
-                (vector-! a0-7 (-> obj basetrans) s4-0)
+                (vector-! a0-7 (-> this basetrans) s4-0)
                 (let ((f30-2 (vector-length a0-7)))
-                  (get-rotate-point! s5-1 s4-0 (-> obj basetrans) (the-as vector f30-2) (-> obj rot-dir) 40960.0)
+                  (get-rotate-point! s5-1 s4-0 (-> this basetrans) (the-as vector f30-2) (-> this rot-dir) 40960.0)
                   (cond
-                    ((nav-control-method-16 (-> obj nav) s5-1)
-                     (set! (-> obj basetrans quad) (-> s5-1 quad))
+                    ((nav-control-method-16 (-> this nav) s5-1)
+                     (set! (-> this basetrans quad) (-> s5-1 quad))
                      )
                     (else
-                      (set! (-> obj rot-dir) (- (-> obj rot-dir)))
-                      (get-rotate-point! s5-1 s4-0 (-> obj basetrans) (the-as vector f30-2) (-> obj rot-dir) 40960.0)
-                      (if (nav-control-method-16 (-> obj nav) s5-1)
-                          (set! (-> obj basetrans quad) (-> s5-1 quad))
+                      (set! (-> this rot-dir) (- (-> this rot-dir)))
+                      (get-rotate-point! s5-1 s4-0 (-> this basetrans) (the-as vector f30-2) (-> this rot-dir) 40960.0)
+                      (if (nav-control-method-16 (-> this nav) s5-1)
+                          (set! (-> this basetrans quad) (-> s5-1 quad))
                           )
                       )
                     )
                   )
                 )
               )
-            (when (>= 614.4 (vector-vector-xz-distance (-> obj basetrans) (-> obj reset-trans)))
-              (set! v0-11 (logior (nav-control-flags navcf19) (-> obj nav flags)))
-              (set! (-> obj nav flags) (the-as nav-control-flags v0-11))
+            (when (>= 614.4 (vector-vector-xz-distance (-> this basetrans) (-> this reset-trans)))
+              (set! v0-11 (logior (nav-control-flags navcf19) (-> this nav flags)))
+              (set! (-> this nav flags) (the-as nav-control-flags v0-11))
               v0-11
               )
             )
            (else
              (let ((s5-2 (new 'stack-no-clear 'vector)))
                (let ((s4-1 (new 'stack-no-clear 'vector)))
-                 (get-nav-point! s5-2 obj (-> obj reset-trans) 40960.0)
+                 (get-nav-point! s5-2 this (-> this reset-trans) 40960.0)
                  (let ((v1-20 s4-1)
-                       (a0-19 (-> obj other))
+                       (a0-19 (-> this other))
                        )
                    (set! (-> v1-20 quad) (-> (the-as orbit-plat (if a0-19
                                                                     (-> a0-19 extra process)
@@ -692,36 +684,36 @@
                    )
                  (set! (-> s5-2 y) (-> s4-1 y))
                  (vector-! s5-2 s5-2 s4-1)
-                 (vector-normalize! s5-2 (-> obj reset-length))
+                 (vector-normalize! s5-2 (-> this reset-length))
                  (vector+! s5-2 s5-2 s4-1)
-                 (when (not (nav-control-method-16 (-> obj nav) s5-2))
-                   (logclear! (-> obj nav flags) (nav-control-flags navcf19))
-                   (get-rotate-point! s5-2 s4-1 (-> obj basetrans) (the-as vector (-> obj reset-length)) 0.0 40960.0)
-                   (when (not (nav-control-method-16 (-> obj nav) s5-2))
+                 (when (not (nav-control-method-16 (-> this nav) s5-2))
+                   (logclear! (-> this nav flags) (nav-control-flags navcf19))
+                   (get-rotate-point! s5-2 s4-1 (-> this basetrans) (the-as vector (-> this reset-length)) 0.0 40960.0)
+                   (when (not (nav-control-method-16 (-> this nav) s5-2))
                      (get-rotate-point!
                        s5-2
                        s4-1
-                       (-> obj basetrans)
-                       (the-as vector (-> obj reset-length))
-                       (-> obj rot-dir)
+                       (-> this basetrans)
+                       (the-as vector (-> this reset-length))
+                       (-> this rot-dir)
                        40960.0
                        )
-                     (when (not (nav-control-method-16 (-> obj nav) s5-2))
-                       (set! (-> obj rot-dir) (- (-> obj rot-dir)))
+                     (when (not (nav-control-method-16 (-> this nav) s5-2))
+                       (set! (-> this rot-dir) (- (-> this rot-dir)))
                        (get-rotate-point!
                          s5-2
                          s4-1
-                         (-> obj basetrans)
-                         (the-as vector (-> obj reset-length))
-                         (-> obj rot-dir)
+                         (-> this basetrans)
+                         (the-as vector (-> this reset-length))
+                         (-> this rot-dir)
                          40960.0
                          )
                        )
                      )
                    )
                  )
-               (set! (-> s5-2 y) (-> obj basetrans y))
-               (set! v0-11 (-> obj basetrans))
+               (set! (-> s5-2 y) (-> this basetrans y))
+               (set! v0-11 (-> this basetrans))
                (set! (-> (the-as vector v0-11) quad) (-> s5-2 quad))
                )
              v0-11
@@ -730,9 +722,9 @@
          )
         (else
           (let ((s5-3 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-3 quad) (-> obj basetrans quad))
-            (get-nav-point! (-> obj basetrans) obj (-> obj reset-trans) 40960.0)
-            (set! (-> obj basetrans y) (-> s5-3 y))
+            (set! (-> s5-3 quad) (-> this basetrans quad))
+            (get-nav-point! (-> this basetrans) this (-> this reset-trans) 40960.0)
+            (set! (-> this basetrans y) (-> s5-3 y))
             )
           )
         )
@@ -742,18 +734,17 @@
 
 ;; failed to figure out what this is:
 (defstate orbit-plat-reset (orbit-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('bonk)
-                      (the-as object (baseplat-method-22 self))
-                      )
-                     (('go)
-                      (go orbit-plat-rotating)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('bonk)
+       (baseplat-method-22 self)
+       )
+      (('go)
+       (go orbit-plat-rotating)
+       )
+      )
     )
-  :trans (the-as (function none :behavior orbit-plat) plat-trans)
+  :trans plat-trans
   :code (behavior ()
     (set! (-> self plat-status) (the-as uint 3))
     (logclear! (-> self nav flags) (nav-control-flags navcf19))
@@ -785,9 +776,8 @@
       )
     (set! (-> self is-reset?) #t)
     (go orbit-plat-idle)
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) plat-post)
+  :post plat-post
   )
 
 ;; failed to figure out what this is:
@@ -809,18 +799,17 @@
           (ja :num! (seek! 0.0))
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior orbit-plat) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 11 of type orbit-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! orbit-plat ((obj orbit-plat) (arg0 entity-actor))
-  (set! (-> obj plat-status) (the-as uint 0))
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! orbit-plat ((this orbit-plat) (arg0 entity-actor))
+  (set! (-> this plat-status) (the-as uint 0))
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -838,35 +827,35 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *orbit-plat-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *orbit-plat-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
-  (let ((s4-1 (-> obj skel root-channel 0)))
+  (let ((s4-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s4-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s4-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> obj root-override))
-  (baseplat-method-21 obj)
-  (set! (-> obj nav) (new 'process 'nav-control (-> obj root-override) 16 40960.0))
-  (logior! (-> obj nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (set! (-> obj nav gap-event) 'blocked)
-  (set! (-> obj other) (entity-actor-lookup arg0 'alt-actor 0))
+  (update-transforms! (-> this root-override))
+  (baseplat-method-21 this)
+  (set! (-> this nav) (new 'process 'nav-control (-> this root-override) 16 40960.0))
+  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (set! (-> this nav gap-event) 'blocked)
+  (set! (-> this other) (entity-actor-lookup arg0 'alt-actor 0))
   (let ((f0-7 (res-lump-float arg0 'scale :default 1.0)))
-    (set-vector! (-> obj root-override scale) f0-7 f0-7 f0-7 1.0)
+    (set-vector! (-> this root-override scale) f0-7 f0-7 f0-7 1.0)
     )
-  (set! (-> obj timeout) (res-lump-float arg0 'timeout :default 10.0))
-  (set! (-> obj rot-dir) 1.0)
-  (set! (-> obj reset-trans quad) (-> obj basetrans quad))
-  (set! (-> obj is-reset?) #t)
-  (process-spawn orbit-plat-bottom (-> obj entity) obj :to obj)
+  (set! (-> this timeout) (res-lump-float arg0 'timeout :default 10.0))
+  (set! (-> this rot-dir) 1.0)
+  (set! (-> this reset-trans quad) (-> this basetrans quad))
+  (set! (-> this is-reset?) #t)
+  (process-spawn orbit-plat-bottom (-> this entity) this :to this)
   (go orbit-plat-wait-for-other)
   (none)
   )

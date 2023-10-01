@@ -8,11 +8,11 @@
 ;; DECOMP BEGINS
 
 (defstate target-gun-stance (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('gun)
-       (let ((gp-0 (-> event param 0))
-             (v0-0 (target-standard-event-handler proc arg1 event-type event))
+       (let ((gp-0 (-> block param 0))
+             (v0-0 (target-standard-event-handler proc argc message block))
              )
          (when v0-0
            (cond
@@ -40,7 +40,7 @@
        #f
        )
       (else
-        (target-standard-event-handler proc arg1 event-type event)
+        (target-standard-event-handler proc argc message block)
         )
       )
     )
@@ -48,15 +48,13 @@
     (logior! (-> self state-flags) (state-flags lleg-still rleg-still))
     (set! (-> self control mod-surface) *gun-walk-mods*)
     (set! (-> self control unknown-word04) (the-as uint #f))
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     (set! (-> self control bend-target) 0.0)
     (logclear! (-> self state-flags) (state-flags lleg-still rleg-still))
     (target-state-hook-exit)
     (target-gun-exit)
-    (none)
     )
   :trans (behavior ()
     ((-> self state-hook))
@@ -116,7 +114,6 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code (behavior ()
     (local-vars (v1-232 object))
@@ -127,7 +124,7 @@
                 (= gp-0 (-> self draw art-group data 264))
                 )
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! gp-0 :num! (seek! (the float (+ (-> gp-0 frames num-frames) -1))) :frame-num 0.0)
+        (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -162,10 +159,7 @@
                       (or (= gp-1 (-> self draw art-group data 244)) (= gp-1 (-> self draw art-group data 253)))
                       )
                  (ja-channel-push! 1 (seconds 0.1))
-                 (ja-no-eval :group! (-> self draw art-group data 269)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 269)) frames num-frames) -1)))
-                             :frame-num 0.0
-                             )
+                 (ja-no-eval :group! (-> self draw art-group data 269) :num! (seek!) :frame-num 0.0)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek!))
@@ -179,10 +173,7 @@
                         )
                    )
                  (ja-channel-push! 1 (seconds 0.1))
-                 (ja-no-eval :group! (-> self draw art-group data 270)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 270)) frames num-frames) -1)))
-                             :frame-num 0.0
-                             )
+                 (ja-no-eval :group! (-> self draw art-group data 270) :num! (seek!) :frame-num 0.0)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek!))
@@ -196,10 +187,7 @@
                         )
                    )
                  (ja-channel-push! 1 (seconds 0.1))
-                 (ja-no-eval :group! (-> self draw art-group data 268)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 268)) frames num-frames) -1)))
-                             :frame-num 0.0
-                             )
+                 (ja-no-eval :group! (-> self draw art-group data 268) :num! (seek!) :frame-num 0.0)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek!))
@@ -213,10 +201,7 @@
                         )
                    )
                  (ja-channel-push! 1 (seconds 0.1))
-                 (ja-no-eval :group! (-> self draw art-group data 252)
-                             :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 252)) frames num-frames) -1)))
-                             :frame-num 0.0
-                             )
+                 (ja-no-eval :group! (-> self draw art-group data 252) :num! (seek!) :frame-num 0.0)
                  (until (ja-done? 0)
                    (suspend)
                    (ja :num! (seek!))
@@ -236,7 +221,7 @@
       (suspend)
       (ja :num! (loop!))
       (when (can-play-stance-amibent?)
-        (set! (-> self ambient-time) (current-time))
+        (set-time! (-> self ambient-time))
         (target-gun-end-mode #t)
         )
       (cond
@@ -246,6 +231,7 @@
          (ja-channel-push! 1 0)
          (ja :group! (-> self control unknown-spool-anim00))
          (suspend)
+         ;; og:preserve-this
          ;(b! #t cfg-94) ; branch to the next instruction...
          (until (not v1-232)
            (let ((v1-231 (get-channel (-> self skel top-anim) 0)))
@@ -271,12 +257,7 @@
          )
         (else
           (ja-channel-push! 1 0)
-          (ja-no-eval :group! (-> self control unknown-spool-anim00)
-                      :num! (seek!
-                        (the float (+ (-> (the-as art-joint-anim (-> self control unknown-spool-anim00)) frames num-frames) -1))
-                        )
-                      :frame-num 0.0
-                      )
+          (ja-no-eval :group! (-> self control unknown-spool-anim00) :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!))
@@ -292,7 +273,7 @@
              (= gp-2 (-> self draw art-group data 264))
              )
          (ja-channel-push! 1 (seconds 0.1))
-         (ja-no-eval :group! gp-2 :num! (seek! 0.0) :frame-num (the float (+ (-> gp-2 frames num-frames) -1)))
+         (ja-no-eval :group! gp-2 :num! (seek! 0.0) :frame-num max)
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! 0.0))
@@ -309,7 +290,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-gun-post
   )
@@ -317,7 +297,7 @@
 (defstate target-gun-walk (target)
   :event target-standard-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self control mod-surface) *gun-walk-mods*)
     (case (-> self gun gun-type)
       (((pickup-type eco-yellow) (pickup-type eco-blue))
@@ -328,13 +308,11 @@
         (set! (-> self control unknown-word04) (the-as uint 1))
         )
       )
-    (none)
     )
   :exit (behavior ()
     (target-effect-exit)
     (target-state-hook-exit)
     (target-gun-exit)
-    (none)
     )
   :trans (behavior ()
     (cond
@@ -429,11 +407,9 @@
         )
     (slide-down-test)
     (fall-test target-falling -4096000.0)
-    (none)
     )
   :code (behavior ()
     (target-walk-anim -300)
-    (none)
     )
   :post target-gun-post
   )

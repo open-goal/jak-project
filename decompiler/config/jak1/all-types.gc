@@ -1858,10 +1858,10 @@
   )
 
 (deftype protect-frame (stack-frame)
-  ((exit (function none)  :offset-assert 12)
+  ((exit (function object)  :offset-assert 12)
    )
   (:methods
-    (new (symbol type (function none)) protect-frame)
+    (new (symbol type (function object)) protect-frame)
     )
   :method-count-assert 9
   :size-assert         #x10
@@ -1879,16 +1879,16 @@
 (declare-type event-message-block structure)
 (deftype state (protect-frame)
   ((code  function         :offset-assert  16)
-   (trans (function none)  :offset-assert  20)
+   (trans (function object)  :offset-assert  20)
    (post  function         :offset-assert  24)
    (enter function         :offset-assert  28)
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
     (new (symbol type symbol function
-          (function none)
+          (function object)
           function
-          (function none)
+          (function object)
           (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
@@ -1968,7 +1968,7 @@
 (define-extern *listener-function* (function object))
 (define-extern reset-and-call (function thread function object))
 (define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern search-process-tree (function process-tree (function process-tree object) process-tree))
+(define-extern search-process-tree (function process-tree (function process-tree object) process))
 (define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
 (define-extern process-not-name (function object process-tree process))
 (define-extern process-by-name (function object process-tree process))
@@ -5986,7 +5986,7 @@
   (shadow 0)
   (kerning 1)
   (middle 2)
-  (left 3)
+  (middle-vert 3)
   (right 4)
   (large 5)
   (pc-hack 6)
@@ -16696,7 +16696,7 @@
 (define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
 (define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
 (define-extern joint-control-copy! (function joint-control joint-control joint-control))
-(define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
+(define-extern joint-control-remap! (function joint-control art-group art-group pair int string symbol))
 (define-extern cspace<-cspace! (function cspace cspace matrix))
 (define-extern cspace<-rot-yxy! (function cspace transform matrix)) ;; unused
 (define-extern cspace<-transform-yxy! (function cspace transform matrix)) ;; unused
@@ -20562,7 +20562,7 @@
 (define-extern rider-post (function int :behavior process-drawable))
 (define-extern pusher-post (function int :behavior process-drawable))
 (define-extern process-drawable-delay-player (function time-frame int :behavior process-drawable))
-(define-extern process-drawable-fuel-cell-handler (function process int symbol event-message-block none :behavior process-drawable))
+(define-extern process-drawable-fuel-cell-handler (function process int symbol event-message-block object :behavior process-drawable))
 (define-extern process-drawable-birth-fuel-cell (function entity vector symbol none :behavior process-drawable))
 (define-extern process-drawable-valid? (function process-drawable symbol))
 
@@ -22063,7 +22063,7 @@
 (define-extern process-taskable-anim-loop (function none :behavior process-taskable))
 (define-extern process-taskable-play-anim-enter (function symbol :behavior process-taskable))
 (define-extern process-taskable-play-anim-exit (function none :behavior process-taskable))
-(define-extern process-taskable-hide-handler (function process int symbol event-message-block none :behavior process-taskable))
+(define-extern process-taskable-hide-handler (function process int symbol event-message-block object :behavior process-taskable))
 (define-extern process-taskable-hide-enter (function int :behavior process-taskable))
 
 ;; - Unknowns
@@ -23386,7 +23386,7 @@
 ;; - Functions
 
 (define-extern matrix-3x3-triple-transpose-product (function matrix matrix matrix matrix))
-(define-extern rigid-body-platform-event-handler (function process int symbol event-message-block vector :behavior rigid-body-platform))
+(define-extern rigid-body-platform-event-handler (function process int symbol event-message-block object :behavior rigid-body-platform))
 (define-extern rigid-body-platform-post (function int :behavior rigid-body-platform))
 
 ;; - Unknowns
@@ -23627,9 +23627,9 @@
 (define-extern nav-enemy-rnd-int-count (function int int))
 (define-extern nav-enemy-rnd-float (function float))
 (define-extern nav-enemy-rnd-percent? (function float symbol))
-(define-extern nav-enemy-default-event-handler (function process int symbol event-message-block none :behavior nav-enemy)) ;; TODO - last arg is definitely a vector...but also not?
+(define-extern nav-enemy-default-event-handler (function process int symbol event-message-block object :behavior nav-enemy))
 (define-extern nav-enemy-jump-event-handler (function process int symbol event-message-block object :behavior nav-enemy))
-(define-extern process-drawable-death-event-handler (function process int symbol event-message-block none :behavior process-drawable)) ;; First two args are unused
+(define-extern process-drawable-death-event-handler (function process int symbol event-message-block object :behavior process-drawable))
 (define-extern nav-enemy-patrol-post (function none :behavior nav-enemy))
 (define-extern nav-enemy-chase-post (function none :behavior nav-enemy))
 (define-extern nav-enemy-flee-post (function none :behavior nav-enemy))
@@ -26396,7 +26396,7 @@
 (define-extern check-drop-level-lighteco-big-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-drop-level-lighteco-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern light-eco-child-default-event-handler (function process int symbol event-message-block object :behavior light-eco-child))
-(define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block int :behavior light-eco-mother))
+(define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block object :behavior light-eco-mother))
 (define-extern light-eco-mother-init-by-other (function entity-actor vector none :behavior light-eco-mother))
 
 ;; - Unknowns
@@ -33724,7 +33724,7 @@
 ;; - Functions
 
 (define-extern minershort-trans-hook (function none :behavior minershort))
-(define-extern miners-anim-loop (function none :behavior minershort))
+(define-extern miners-anim-loop (function object :behavior process-taskable))
 
 ;; - Unknowns
 

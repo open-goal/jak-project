@@ -3374,40 +3374,40 @@
   )
 
 
-(defmethod deactivate hiphog-exterior-marquee ((obj hiphog-exterior-marquee))
+(defmethod deactivate hiphog-exterior-marquee ((this hiphog-exterior-marquee))
   (dotimes (s5-0 1)
-    (let ((a0-1 (-> obj parts s5-0)))
+    (let ((a0-1 (-> this parts s5-0)))
       (if (nonzero? a0-1)
           (kill-and-free-particles a0-1)
           )
       )
     )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
 ;; WARN: Return type mismatch process-drawable vs hiphog-exterior-marquee.
-(defmethod relocate hiphog-exterior-marquee ((obj hiphog-exterior-marquee) (arg0 int))
+(defmethod relocate hiphog-exterior-marquee ((this hiphog-exterior-marquee) (arg0 int))
   (dotimes (v1-0 1)
-    (if (nonzero? (-> obj parts v1-0))
-        (&+! (-> obj parts v1-0) arg0)
+    (if (nonzero? (-> this parts v1-0))
+        (&+! (-> this parts v1-0) arg0)
         )
     )
-  (the-as hiphog-exterior-marquee ((method-of-type process-drawable relocate) obj arg0))
+  (the-as hiphog-exterior-marquee ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod hiphog-exterior-marquee-method-21 hiphog-exterior-marquee ((obj hiphog-exterior-marquee))
-  (+! (-> obj parts 0 state-counter) 1)
-  (when (!= (-> obj parts 0 state-mode 0) (-> obj mode))
-    (set! (-> obj parts 0 state-mode 0) (-> obj mode))
-    (set! (-> obj parts 0 state-counter) (the-as uint 0))
+(defmethod hiphog-exterior-marquee-method-21 hiphog-exterior-marquee ((this hiphog-exterior-marquee))
+  (+! (-> this parts 0 state-counter) 1)
+  (when (!= (-> this parts 0 state-mode 0) (-> this mode))
+    (set! (-> this parts 0 state-mode 0) (-> this mode))
+    (set! (-> this parts 0 state-counter) (the-as uint 0))
     0
     )
-  (let ((s5-0 (-> obj master-enable)))
+  (let ((s5-0 (-> this master-enable)))
     (dotimes (s4-0 1)
       (if (logtest? s5-0 1)
-          (spawn (-> obj parts s4-0) (-> obj root trans))
+          (spawn (-> this parts s4-0) (-> this root trans))
           )
       (set! s5-0 (shr s5-0 1))
       )
@@ -3439,25 +3439,24 @@
       (suspend)
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior hiphog-exterior-marquee) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! hiphog-exterior-marquee ((obj hiphog-exterior-marquee) (arg0 entity-actor))
+(defmethod init-from-entity! hiphog-exterior-marquee ((this hiphog-exterior-marquee) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause enemy))
-  (logior! (-> obj mask) (process-mask ambient))
-  (set! (-> obj master-enable) (the-as uint -1))
-  (set! (-> obj mode) (the-as uint (rand-vu-int-count 8)))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause enemy))
+  (logior! (-> this mask) (process-mask ambient))
+  (set! (-> this master-enable) (the-as uint -1))
+  (set! (-> this mode) (the-as uint (rand-vu-int-count 8)))
   (let ((s5-1 (if (task-node-closed? (game-task-node nest-boss-resolution))
                   *hiphog-exterior-marquee-daxter-group-ids*
                   *hiphog-exterior-marquee-group-ids*
@@ -3465,10 +3464,10 @@ This commonly includes things such as:
               )
         )
     (dotimes (s4-0 1)
-      (set! (-> obj parts s4-0) (create-launch-control (-> *part-group-id-table* (-> s5-1 s4-0)) obj))
+      (set! (-> this parts s4-0) (create-launch-control (-> *part-group-id-table* (-> s5-1 s4-0)) this))
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -3545,56 +3544,51 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (ja-post)
     (if (nonzero? (-> self part))
         (spawn-with-cspace (-> self part) (-> self node-list data 5))
         )
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! farthy ((obj farthy) (arg0 entity-actor))
+(defmethod init-from-entity! farthy ((this farthy) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj root pause-adjust-distance) 1228800.0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this root pause-adjust-distance) 1228800.0)
   (cond
     ((task-node-closed? (game-task-node nest-boss-resolution))
      (initialize-skeleton
-       obj
+       this
        (the-as skeleton-group (art-group-get-by-name *level* "skel-mecha-daxter" (the-as (pointer uint32) #f)))
        (the-as pair 0)
        )
      )
     (else
       (initialize-skeleton
-        obj
+        this
         (the-as skeleton-group (art-group-get-by-name *level* "skel-farthy" (the-as (pointer uint32) #f)))
         (the-as pair 0)
         )
-      (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 969) obj))
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 969) this))
       )
     )
-  (set! (-> obj draw light-index) (the-as uint 10))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go (method-of-object this idle))
   (none)
   )

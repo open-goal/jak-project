@@ -129,6 +129,8 @@
   `(format 0 ,@args)
   )
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TYPES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -396,10 +398,10 @@
 
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
-  ((exit (function none) :offset-assert 12)) ;; function to call to clean up
+  ((exit (function object) :offset-assert 12)) ;; function to call to clean up
 
   (:methods
-   (new (symbol type (function none)) protect-frame)
+   (new (symbol type (function object)) protect-frame)
    )
   :size-assert 16
   :method-count-assert 9
@@ -422,11 +424,11 @@
   :flag-assert #x900000008
   )
 
-(defmethod inspect handle ((obj handle))
+(defmethod inspect handle ((this handle))
   (format #t "[~8x] ~A~%" 'handle)
-  (format #t "~Tprocess: #x~x~%" (-> obj process))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  obj
+  (format #t "~Tprocess: #x~x~%" (-> this process))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  this
   )
 
 
@@ -472,16 +474,16 @@
   `(ppointer->handle (process->ppointer ,proc))
   )
 
-(defmethod print handle ((obj handle))
+(defmethod print handle ((this handle))
   "print a handle"
-  (if (nonzero? (-> obj u64)) ;; zero-initialized handles can't be derefenced safely.
+  (if (nonzero? (-> this u64)) ;; zero-initialized handles can't be derefenced safely.
       (format #t "#<handle :process ~A :pid ~D>"
-              (handle->process obj) ;; actually print the process stored
-              (-> obj pid)
+              (handle->process this) ;; actually print the process stored
+              (-> this pid)
               )
       (format #t "#<handle :process 0 :pid 0>")
       )
-  obj
+  this
   )
 
 ;; A "state" is a collection of 6 functions that describe what code a process should run.
@@ -495,16 +497,16 @@
 ;; so if you abort out of a process, it cleans up the state too.
 (deftype state (protect-frame)
   ((code  function         :offset-assert  16)
-   (trans (function none)  :offset-assert  20)
+   (trans (function object)  :offset-assert  20)
    (post  function         :offset-assert  24)
    (enter function         :offset-assert  28)
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
     (new (symbol type symbol function
-          (function none)
+          (function object)
           function
-          (function none)
+          (function object)
           (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9

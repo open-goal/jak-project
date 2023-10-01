@@ -2962,7 +2962,7 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
 }
 
 ////////////////////////////////
-// DefskelgroupElement
+// WithDmaBufferAddBucketElement
 ////////////////////////////////
 
 WithDmaBufferAddBucketElement::WithDmaBufferAddBucketElement(RegisterAccess dma_buf,

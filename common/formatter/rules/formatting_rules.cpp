@@ -22,7 +22,7 @@ void separate_by_newline(std::string& curr_text,
   // We only are concerned with top level forms or elements
   // Skip the last element, no trailing new-lines (let the editors handle this!)
   // Also peek ahead to see if there was a comment on this line, if so don't separate things!
-  if (!containing_node.metadata.is_top_level || index >= containing_node.refs.size() - 1 ||
+  if (!containing_node.metadata.is_top_level || index >= (int)containing_node.refs.size() - 1 ||
       (containing_node.refs.at(index + 1).metadata.is_comment &&
        containing_node.refs.at(index + 1).metadata.is_inline)) {
     return;
@@ -100,7 +100,7 @@ bool form_should_be_constant_paired(const FormatterTreeNode& node) {
     return false;
   }
   int num_pairs = 0;
-  for (int i = 0; i < node.refs.size() - 1; i++) {
+  for (int i = 0; i < (int)node.refs.size() - 1; i++) {
     const auto& ref = node.refs.at(i);
     const auto& next_ref = node.refs.at(i + 1);
     if (ref.token && next_ref.token) {
@@ -147,7 +147,7 @@ int compute_form_width_after_index(const FormatterTreeNode& node,
     }
   }
   int form_width = 0;
-  for (int i = 0; i < node.refs.size(); i++) {
+  for (int i = 0; i < (int)node.refs.size(); i++) {
     const auto& ref = node.refs.at(i);
     if (depth == 0 && i < index) {
       continue;
@@ -275,7 +275,7 @@ void append_newline(std::string& curr_text,
                     const bool flowing,
                     const bool constant_pair_form,
                     const bool force_newline) {
-  if (force_newline && index >= 1 || (node.metadata.is_comment && !node.metadata.is_inline)) {
+  if ((force_newline && index >= 1) || (node.metadata.is_comment && !node.metadata.is_inline)) {
     curr_text = str_util::rtrim(curr_text) + "\n";
     return;
   }
@@ -362,8 +362,8 @@ void align_lines(std::string& text,
     alignment_width = 1;
   }
   std::string aligned_form = "";
-  for (int i = 0; i < lines.size(); i++) {
-    if (i >= start_index) {
+  for (size_t i = 0; i < lines.size(); i++) {
+    if ((int)i >= start_index) {
       aligned_form += str_util::repeat(alignment_width, " ");
     }
     aligned_form += lines.at(i);

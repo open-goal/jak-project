@@ -58,12 +58,12 @@
   )
 
 ;; definition for method 3 of type crate-bank
-(defmethod inspect crate-bank ((obj crate-bank))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~TCOLLIDE_YOFF: ~f~%" (-> obj COLLIDE_YOFF))
-  (format #t "~TCOLLIDE_RADIUS: ~f~%" (-> obj COLLIDE_RADIUS))
-  (format #t "~TDARKECO_EXPLODE_RADIUS: ~f~%" (-> obj DARKECO_EXPLODE_RADIUS))
-  obj
+(defmethod inspect crate-bank ((this crate-bank))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~TCOLLIDE_YOFF: ~f~%" (-> this COLLIDE_YOFF))
+  (format #t "~TCOLLIDE_RADIUS: ~f~%" (-> this COLLIDE_RADIUS))
+  (format #t "~TDARKECO_EXPLODE_RADIUS: ~f~%" (-> this DARKECO_EXPLODE_RADIUS))
+  this
   )
 
 ;; definition for symbol *CRATE-bank*, type crate-bank
@@ -102,19 +102,19 @@
   )
 
 ;; definition for method 3 of type crate
-(defmethod inspect crate ((obj crate))
+(defmethod inspect crate ((this crate))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> obj smush))
-  (format #t "~T~Tbase: ~`vector`P~%" (-> obj base))
-  (format #t "~T~Tlook: ~A~%" (-> obj look))
-  (format #t "~T~Tdefense: ~A~%" (-> obj defense))
-  (format #t "~T~Tincomming-attack-id: ~D~%" (-> obj incomming-attack-id))
-  (format #t "~T~Ttarget: ~D~%" (-> obj target))
-  (format #t "~T~Tchild-count: ~D~%" (-> obj child-count))
-  (format #t "~T~Tvictory-anim: ~A~%" (-> obj victory-anim))
-  obj
+  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~T~Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~T~Tlook: ~A~%" (-> this look))
+  (format #t "~T~Tdefense: ~A~%" (-> this defense))
+  (format #t "~T~Tincomming-attack-id: ~D~%" (-> this incomming-attack-id))
+  (format #t "~T~Ttarget: ~D~%" (-> this target))
+  (format #t "~T~Tchild-count: ~D~%" (-> this child-count))
+  (format #t "~T~Tvictory-anim: ~A~%" (-> this victory-anim))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -711,9 +711,8 @@
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior crate) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -725,9 +724,8 @@
       (suspend)
       )
     (go-virtual wait)
-    (none)
     )
-  :post (the-as (function none :behavior crate) crate-post)
+  :post crate-post
   )
 
 ;; failed to figure out what this is:
@@ -746,7 +744,6 @@
         (logclear! (-> self mask) (process-mask sleep-code))
         )
       )
-    (none)
     )
   :code (behavior ((arg0 handle))
     (set! (-> self target) arg0)
@@ -803,29 +800,28 @@
         )
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior crate) crate-post)
+  :post crate-post
   )
 
 ;; failed to figure out what this is:
 (defstate die (crate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (case (-> self defense)
          (('darkeco)
           (cond
             ((= (-> proc type) target)
-             (send-event proc 'attack (-> event param 0) (static-attack-info ((mode 'darkeco))))
+             (send-event proc 'attack (-> block param 0) (static-attack-info ((mode 'darkeco))))
              )
             (else
               (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
                 (set! (-> a1-5 from) self)
                 (set! (-> a1-5 num-params) 4)
                 (set! (-> a1-5 message) 'attack)
-                (set! (-> a1-5 param 0) (-> event param 0))
+                (set! (-> a1-5 param 0) (-> block param 0))
                 (set! (-> a1-5 param 1) (the-as uint 'darkeco))
                 (let ((v1-12 (+ *global-attack-id* 1)))
                   (set! *global-attack-id* v1-12)
@@ -849,7 +845,6 @@
            )
        )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol) (arg1 int))
     (clear-collide-with-as (-> self root-override))
@@ -865,8 +860,8 @@
         (logior! (-> self fact options) (fact-options instant-collect))
         )
     (when (not arg0)
-      (let ((s5-1 (-> *display* base-frame-counter)))
-        (until (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.04))
+      (let ((s5-1 (current-time)))
+        (until (time-elapsed? s5-1 (seconds 0.04))
           (suspend)
           )
         )
@@ -959,45 +954,43 @@
     (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) arg1)
     (process-entity-status! self (entity-perm-status dead) #t)
     (process-entity-status! self (entity-perm-status complete) #t)
-    (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 5))
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 5))
         (suspend)
         )
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate special-contents-die (crate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('notify)
-                      (case (-> event param 0)
-                        (('pickup)
-                         (let ((gp-0 (-> self entity extra perm)))
-                           (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
-                           (set! (-> gp-0 user-int8 1) (min 127 (+ (-> gp-0 user-int8 1) 1)))
-                           (+! (-> self child-count) -1)
-                           (when (<= (-> self child-count) 0)
-                             (if (or (= (-> self defense) 'iron) (= (-> self defense) 'steel))
-                                 (process-entity-status! self (entity-perm-status bit-4) #f)
-                                 )
-                             (process-entity-status! self (entity-perm-status dead) #t)
-                             (process-entity-status! self (entity-perm-status complete) #t)
-                             (set! (-> gp-0 user-int8 0) 2)
-                             (let ((v0-0 (logclear (-> self mask) (process-mask sleep))))
-                               (set! (-> self mask) v0-0)
-                               v0-0
-                               )
-                             )
-                           )
-                         )
-                        )
-                      )
-                     )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (let ((gp-0 (-> self entity extra perm)))
+            (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
+            (set! (-> gp-0 user-int8 1) (min 127 (+ (-> gp-0 user-int8 1) 1)))
+            (+! (-> self child-count) -1)
+            (when (<= (-> self child-count) 0)
+              (if (or (= (-> self defense) 'iron) (= (-> self defense) 'steel))
+                  (process-entity-status! self (entity-perm-status bit-4) #f)
+                  )
+              (process-entity-status! self (entity-perm-status dead) #t)
+              (process-entity-status! self (entity-perm-status complete) #t)
+              (set! (-> gp-0 user-int8 0) 2)
+              (let ((v0-0 (logclear (-> self mask) (process-mask sleep))))
+                (set! (-> self mask) v0-0)
+                v0-0
+                )
+              )
             )
+          )
+         )
+       )
+      )
     )
   :trans (-> (method-of-type crate die) trans)
   :code (behavior ()
@@ -1033,7 +1026,6 @@
         (suspend)
         )
       )
-    (none)
     )
   )
 
@@ -1050,19 +1042,19 @@
   )
 
 ;; definition for method 11 of type crate
-(defmethod init-from-entity! crate ((obj crate) (arg0 entity-actor))
-  (params-init obj arg0)
-  (art-init obj)
-  (check-dead obj)
+(defmethod init-from-entity! crate ((this crate) (arg0 entity-actor))
+  (params-init this arg0)
+  (art-init this)
+  (check-dead this)
   (none)
   )
 
 ;; definition for method 25 of type crate
 ;; INFO: Return type mismatch crate vs none.
-(defmethod params-init crate ((obj crate) (arg0 entity))
-  (stack-size-set! (-> obj main-thread) 128)
-  (logior! (-> obj mask) (process-mask crate))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod params-init crate ((this crate) (arg0 entity))
+  (stack-size-set! (-> this main-thread) 128)
+  (logior! (-> this mask) (process-mask crate))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -1080,26 +1072,26 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (set! (-> obj fact)
-        (new 'process 'fact-info obj (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
-  (let ((v1-27 (-> obj entity extra perm)))
-    (set! (-> obj fact pickup-amount)
-          (fmax 0.0 (- (-> obj fact pickup-amount) (the float (-> v1-27 user-int8 1))))
+  (let ((v1-27 (-> this entity extra perm)))
+    (set! (-> this fact pickup-amount)
+          (fmax 0.0 (- (-> this fact pickup-amount) (the float (-> v1-27 user-int8 1))))
           )
     )
-  (when (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-    (set! (-> obj fact pickup-type) (pickup-type eco-pill-random))
-    (set! (-> obj fact pickup-amount) 0.0)
+  (when (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+    (set! (-> this fact pickup-type) (pickup-type eco-pill-random))
+    (set! (-> this fact pickup-amount) 0.0)
     )
   (when arg0
-    (process-drawable-from-entity! obj (the-as entity-actor arg0))
-    (logclear! (-> obj mask) (process-mask actor-pause))
+    (process-drawable-from-entity! this (the-as entity-actor arg0))
+    (logclear! (-> this mask) (process-mask actor-pause))
     )
   (let ((a0-18 ((method-of-type res-lump get-property-struct)
-                (-> obj entity)
+                (-> this entity)
                 'crate-type
                 'interp
                 -1000000000.0
@@ -1109,21 +1101,21 @@
                 )
                )
         )
-    (set! (-> obj look) (the-as symbol a0-18))
-    (set! (-> obj defense) (the-as symbol a0-18))
+    (set! (-> this look) (the-as symbol a0-18))
+    (set! (-> this defense) (the-as symbol a0-18))
     )
-  (case (-> obj fact pickup-type)
+  (case (-> this fact pickup-type)
     (((pickup-type buzzer))
-     (set! (-> obj type) crate-buzzer)
-     (when (= (-> obj look) 'wood)
-       (set! (-> obj look) 'iron)
-       (set! (-> obj defense) 'iron)
+     (set! (-> this type) crate-buzzer)
+     (when (= (-> this look) 'wood)
+       (set! (-> this look) 'iron)
+       (set! (-> this defense) 'iron)
        )
      )
     (else
-      (when (= (-> obj look) 'iron)
-        (set! (-> obj look) 'wood)
-        (set! (-> obj defense) 'wood)
+      (when (= (-> this look) 'iron)
+        (set! (-> this look) 'wood)
+        (set! (-> this defense) 'wood)
         )
       )
     )
@@ -1132,94 +1124,94 @@
 
 ;; definition for method 26 of type crate
 ;; INFO: Used lq/sq
-(defmethod art-init crate ((obj crate))
-  (case (-> obj look)
+(defmethod art-init crate ((this crate))
+  (case (-> this look)
     (('iron)
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense normal-attack))
-     (initialize-skeleton obj *crate-iron-sg* '())
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense normal-attack))
+     (initialize-skeleton this *crate-iron-sg* '())
      )
     (('steel)
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense indestructible))
-     (initialize-skeleton obj *crate-steel-sg* '())
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense indestructible))
+     (initialize-skeleton this *crate-steel-sg* '())
      )
     (('darkeco)
-     (when (= (-> obj fact pickup-type) (pickup-type eco-pill-random))
-       (set! (-> obj fact pickup-type) (pickup-type none))
-       (set! (-> obj fact pickup-amount) 0.0)
+     (when (= (-> this fact pickup-type) (pickup-type eco-pill-random))
+       (set! (-> this fact pickup-type) (pickup-type none))
+       (set! (-> this fact pickup-amount) 0.0)
        )
-     (initialize-skeleton obj *crate-darkeco-sg* '())
-     (set-vector! (-> obj draw color-mult) 0.8 0.8 0.8 1.0)
-     (set-vector! (-> obj draw color-emissive) 0.2 0.2 0.2 1.0)
+     (initialize-skeleton this *crate-darkeco-sg* '())
+     (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
+     (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
      )
     (('barrel)
-     (initialize-skeleton obj *crate-barrel-sg* '())
+     (initialize-skeleton this *crate-barrel-sg* '())
      )
     (('bucket)
-     (when (= (-> obj fact pickup-type) (pickup-type eco-pill-random))
-       (set! (-> obj fact pickup-type) (pickup-type none))
-       (set! (-> obj fact pickup-amount) 0.0)
+     (when (= (-> this fact pickup-type) (pickup-type eco-pill-random))
+       (set! (-> this fact pickup-type) (pickup-type none))
+       (set! (-> this fact pickup-amount) 0.0)
        )
-     (initialize-skeleton obj *crate-bucket-sg* '())
+     (initialize-skeleton this *crate-bucket-sg* '())
      )
     (('none)
-     (initialize-skeleton obj *crate-wood-sg* '())
-     (logior! (-> obj draw status) (draw-status hidden))
+     (initialize-skeleton this *crate-wood-sg* '())
+     (logior! (-> this draw status) (draw-status hidden))
      )
     (else
-      (initialize-skeleton obj *crate-wood-sg* '())
+      (initialize-skeleton this *crate-wood-sg* '())
       )
     )
   (cond
-    ((logtest? (fact-options indestructible) (-> obj fact options))
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense indestructible))
+    ((logtest? (fact-options indestructible) (-> this fact options))
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense indestructible))
      )
-    ((logtest? (-> obj fact options) (fact-options strong-attack))
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense strong-attack))
+    ((logtest? (-> this fact options) (fact-options strong-attack))
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense strong-attack))
      )
-    ((logtest? (-> obj fact options) (fact-options normal-attack))
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense normal-attack))
+    ((logtest? (-> this fact options) (fact-options normal-attack))
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense normal-attack))
      )
-    ((logtest? (-> obj fact options) (fact-options touch))
-     (set! (-> obj root-override root-prim prim-core offense) (collide-offense touch))
+    ((logtest? (-> this fact options) (fact-options touch))
+     (set! (-> this root-override root-prim prim-core offense) (collide-offense touch))
      )
     )
-  (set! (-> obj base quad) (-> obj root-override trans quad))
+  (set! (-> this base quad) (-> this root-override trans quad))
   (crate-post)
-  (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
-  obj
+  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  this
   )
 
 ;; definition for method 27 of type crate
 ;; INFO: Return type mismatch crate vs none.
-(defmethod params-set! crate ((obj crate) (arg0 symbol) (arg1 symbol))
+(defmethod params-set! crate ((this crate) (arg0 symbol) (arg1 symbol))
   (if arg0
-      (set! (-> obj look) arg0)
+      (set! (-> this look) arg0)
       )
   (if arg1
-      (set! (-> obj defense) arg1)
+      (set! (-> this defense) arg1)
       )
   (none)
   )
 
 ;; definition for method 28 of type crate
 ;; INFO: Return type mismatch int vs none.
-(defmethod check-dead crate ((obj crate))
-  (if (>= (-> obj entity extra perm user-int8 0) 1)
-      (go (method-of-object obj die) #t 0)
+(defmethod check-dead crate ((this crate))
+  (if (>= (-> this entity extra perm user-int8 0) 1)
+      (go (method-of-object this die) #t 0)
       )
   0
-  (go (method-of-object obj wait))
+  (go (method-of-object this wait))
   0
   (none)
   )
 
 ;; definition for method 29 of type crate
 ;; INFO: Return type mismatch int vs none.
-(defmethod smush-update! crate ((obj crate))
-  (let ((f0-0 (update! (-> obj smush))))
-    (set! (-> obj root-override scale x) (+ 1.0 (* -0.5 f0-0)))
-    (set! (-> obj root-override scale y) (+ 1.0 f0-0))
-    (set! (-> obj root-override scale z) (+ 1.0 (* -0.5 f0-0)))
+(defmethod smush-update! crate ((this crate))
+  (let ((f0-0 (update! (-> this smush))))
+    (set! (-> this root-override scale x) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root-override scale y) (+ 1.0 f0-0))
+    (set! (-> this root-override scale z) (+ 1.0 (* -0.5 f0-0)))
     )
   0
   (none)
@@ -1235,20 +1227,20 @@
   )
 
 ;; definition for method 3 of type barrel
-(defmethod inspect barrel ((obj barrel))
+(defmethod inspect barrel ((this barrel))
   (let ((t9-0 (method-of-type crate inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 25 of type barrel
 ;; INFO: Return type mismatch barrel vs none.
-(defmethod params-init barrel ((obj barrel) (arg0 entity))
+(defmethod params-init barrel ((this barrel) (arg0 entity))
   (let ((t9-0 (method-of-type crate params-init)))
-    (t9-0 obj arg0)
+    (t9-0 this arg0)
     )
-  (set! (-> obj look) 'barrel)
+  (set! (-> this look) 'barrel)
   (none)
   )
 
@@ -1262,20 +1254,20 @@
   )
 
 ;; definition for method 3 of type bucket
-(defmethod inspect bucket ((obj bucket))
+(defmethod inspect bucket ((this bucket))
   (let ((t9-0 (method-of-type crate inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 25 of type bucket
 ;; INFO: Return type mismatch bucket vs none.
-(defmethod params-init bucket ((obj bucket) (arg0 entity))
+(defmethod params-init bucket ((this bucket) (arg0 entity))
   (let ((t9-0 (method-of-type crate params-init)))
-    (t9-0 obj arg0)
+    (t9-0 this arg0)
     )
-  (set! (-> obj look) 'bucket)
+  (set! (-> this look) 'bucket)
   (none)
   )
 
@@ -1323,29 +1315,29 @@
   )
 
 ;; definition for method 3 of type crate-buzzer
-(defmethod inspect crate-buzzer ((obj crate-buzzer))
+(defmethod inspect crate-buzzer ((this crate-buzzer))
   (let ((t9-0 (method-of-type crate inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition for method 26 of type crate-buzzer
 ;; INFO: Return type mismatch crate-buzzer vs crate.
-(defmethod art-init crate-buzzer ((obj crate-buzzer))
+(defmethod art-init crate-buzzer ((this crate-buzzer))
   (let ((t9-0 (method-of-type crate art-init)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 74) obj))
-  (set! (-> obj sound) (new
-                         'process
-                         'ambient-sound
-                         (static-sound-spec "buzzer" :pitch-mod -762 :fo-max 40)
-                         (-> obj root-override trans)
-                         )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 74) this))
+  (set! (-> this sound) (new
+                          'process
+                          'ambient-sound
+                          (static-sound-spec "buzzer" :pitch-mod -762 :fo-max 40)
+                          (-> this root-override trans)
+                          )
         )
-  (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
-  (the-as crate obj)
+  (set! (-> this victory-anim) (fuel-cell-pick-anim this))
+  (the-as crate this)
   )
 
 ;; failed to figure out what this is:
@@ -1355,7 +1347,7 @@
     (when (and (and *target*
                     (>= 327680.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
                     )
-               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1.5))
+               (time-elapsed? (-> self state-time) (seconds 1.5))
                (rand-vu-percent? 0.03)
                )
       (spawn (-> self part) (-> self root-override trans))
@@ -1368,22 +1360,21 @@
     (if (and *target* (>= (-> *target* fact-info-target buzzer) 6.0))
         (spool-push *art-control* (-> self victory-anim name) 0 self -99.0)
         )
-    (none)
     )
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (suspend)
     (update-transforms! (-> self root-override))
     (loop
-      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (set-time! (-> self state-time))
       (ja-post)
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       (let ((f30-0 57001.605))
         (sound-play "crate-jump")
         (while (or (!= (-> self smush amp) 0.0) (!= f30-0 0.0))
-          (+! f30-0 (* -245760.0 (-> *display* seconds-per-frame)))
-          (+! (-> self root-override trans y) (* f30-0 (-> *display* seconds-per-frame)))
+          (+! f30-0 (* -245760.0 (seconds-per-frame)))
+          (+! (-> self root-override trans y) (* f30-0 (seconds-per-frame)))
           (when (< (-> self root-override trans y) (-> self base y))
             (set! (-> self root-override trans y) (-> self base y))
             (set! f30-0 (* -0.5 f30-0))
@@ -1398,9 +1389,8 @@
         )
       (set! (-> self root-override trans y) (-> self base y))
       )
-    (none)
     )
-  :post (the-as (function none :behavior crate-buzzer) #f)
+  :post #f
   )
 
 ;; failed to figure out what this is:
@@ -1412,7 +1402,6 @@
       (suspend)
       )
     (go-virtual wait)
-    (none)
     )
   )
 
@@ -1427,32 +1416,32 @@
   )
 
 ;; definition for method 3 of type pickup-spawner
-(defmethod inspect pickup-spawner ((obj pickup-spawner))
+(defmethod inspect pickup-spawner ((this pickup-spawner))
   (let ((t9-0 (method-of-type crate inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tblocker: ~A~%" (-> obj blocker))
-  obj
+  (format #t "~T~Tblocker: ~A~%" (-> this blocker))
+  this
   )
 
 ;; definition for method 25 of type pickup-spawner
 ;; INFO: Return type mismatch pickup-spawner vs none.
-(defmethod params-init pickup-spawner ((obj pickup-spawner) (arg0 entity))
+(defmethod params-init pickup-spawner ((this pickup-spawner) (arg0 entity))
   (let ((t9-0 (method-of-type crate params-init)))
-    (t9-0 obj arg0)
+    (t9-0 this arg0)
     )
-  (set! (-> obj look) 'none)
-  (set! (-> obj blocker) #f)
-  (if (logtest? (-> obj fact options) (fact-options vent-blocked))
-      (set! (-> obj blocker) (entity-actor-lookup (-> obj entity) 'alt-actor 0))
+  (set! (-> this look) 'none)
+  (set! (-> this blocker) #f)
+  (if (logtest? (-> this fact options) (fact-options vent-blocked))
+      (set! (-> this blocker) (entity-actor-lookup (-> this entity) 'alt-actor 0))
       )
   (none)
   )
 
 ;; definition for method 28 of type pickup-spawner
 ;; INFO: Return type mismatch int vs none.
-(defmethod check-dead pickup-spawner ((obj pickup-spawner))
-  (go (method-of-object obj wait))
+(defmethod check-dead pickup-spawner ((this pickup-spawner))
+  (go (method-of-object this wait))
   0
   (none)
   )
@@ -1467,6 +1456,5 @@
           )
       (suspend)
       )
-    (none)
     )
   )

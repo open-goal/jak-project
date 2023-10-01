@@ -14,11 +14,11 @@
   )
 
 ;; definition for method 3 of type camera-voicebox
-(defmethod inspect camera-voicebox ((obj camera-voicebox))
+(defmethod inspect camera-voicebox ((this camera-voicebox))
   (let ((t9-0 (method-of-type camera-slave inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type voicebox
@@ -42,21 +42,21 @@
   )
 
 ;; definition for method 3 of type voicebox
-(defmethod inspect voicebox ((obj voicebox))
+(defmethod inspect voicebox ((this voicebox))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tbase-trans: ~`vector`P~%" (-> obj base-trans))
-  (format #t "~T~Tseeker: #<cam-float-seeker @ #x~X>~%" (-> obj seeker))
-  (format #t "~T~Tblend: ~f~%" (-> obj blend))
-  (format #t "~T~Ttwist: ~f~%" (-> obj twist))
-  (format #t "~T~Thint: ~D~%" (-> obj hint))
-  obj
+  (format #t "~T~Tbase-trans: ~`vector`P~%" (-> this base-trans))
+  (format #t "~T~Tseeker: #<cam-float-seeker @ #x~X>~%" (-> this seeker))
+  (format #t "~T~Tblend: ~f~%" (-> this blend))
+  (format #t "~T~Ttwist: ~f~%" (-> this twist))
+  (format #t "~T~Thint: ~D~%" (-> this hint))
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate empty-state (process)
-  :code (the-as (function none :behavior process) nothing)
+  :code nothing
   )
 
 ;; failed to figure out what this is:
@@ -81,9 +81,7 @@
       )
     (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend))
     )
-  (+! (-> self root trans y)
-      (* 1638.4 (sin (* 54.613335 (the float (mod (-> *display* base-frame-counter) 1200)))))
-      )
+  (+! (-> self root trans y) (* 1638.4 (sin (* 54.613335 (the float (mod (current-time) 1200))))))
   (let ((gp-1 (new 'stack-no-clear 'quaternion)))
     (forward-up->quaternion
       gp-1
@@ -100,8 +98,8 @@
              )
            )
       (if (< 0.0 f0-8)
-          (seek! (-> self twist) -0.4 (* 0.3 (-> *display* seconds-per-frame)))
-          (seek! (-> self twist) 0.4 (* 0.3 (-> *display* seconds-per-frame)))
+          (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
+          (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))
           )
       )
     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
@@ -132,8 +130,8 @@
 ;; failed to figure out what this is:
 (defstate enter (voicebox)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual exit)
        )
@@ -144,7 +142,6 @@
     (if (< 0.1 (-> self blend))
         (point-toward-point-clear-roll-pitch! (-> self root) (target-pos 0))
         )
-    (none)
     )
   :code (behavior ()
     (set-setting! 'sound-flava #f 20.0 (music-flava assistant))
@@ -171,9 +168,8 @@
       )
     (set! (-> self blend) 0.0)
     (go-virtual idle)
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -186,9 +182,8 @@
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -197,14 +192,13 @@
   :trans voicebox-track
   :code (behavior ()
     (remove-setting! 'sound-flava)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self seeker target) 1.0)
-    (while (and (< (-> self blend) 0.9999)
-                (not (and (not (handle->process (-> self hint)))
-                          (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.05))
-                          (-> *setting-control* current hint)
-                          )
-                     )
+    (while (and (< (-> self blend) 0.9999) (not (and (not (handle->process (-> self hint)))
+                                                     (time-elapsed? (-> self state-time) (seconds 0.05))
+                                                     (-> *setting-control* current hint)
+                                                     )
+                                                )
                 )
       (update! (-> self seeker) 0.0)
       (set! (-> self blend) (-> self seeker value))
@@ -214,9 +208,8 @@
     (send-event (ppointer->process (-> self parent-override)) 'go empty-state)
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior voicebox) ja-post)
+  :post ja-post
   )
 
 ;; definition for function voicebox-init-by-other
@@ -241,7 +234,6 @@
     (if (not (logtest? (-> *camera* master-options) 2))
         (deactivate self)
         )
-    (none)
     )
   :code (-> cam-string code)
   )

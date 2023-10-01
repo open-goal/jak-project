@@ -20,16 +20,16 @@
   )
 
 ;; definition for method 3 of type minnow
-(defmethod inspect minnow ((obj minnow))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect minnow ((this minnow))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for function minnow-init-by-other
@@ -70,19 +70,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 5.0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 5.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 5.0))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior minnow) ja-post)
+  :post ja-post
   )
 
 ;; definition of type fish
@@ -102,22 +98,22 @@
   )
 
 ;; definition for method 3 of type fish
-(defmethod inspect fish ((obj fish))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect fish ((this fish))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
-  (format #t "[~8x] ~A~%" obj 'fish)
-  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> obj pos))
-  (format #t "~1Tvel: #<vector @ #x~X>~%" (-> obj vel))
-  (format #t "~1Tborder-f: #<vector @ #x~X>~%" (-> obj border-f))
-  (format #t "~1Tavoid-d: #<vector @ #x~X>~%" (-> obj avoid-d))
-  (format #t "~1Twander: ~f~%" (-> obj wander))
-  (format #t "~1Tmax-speed: ~f~%" (-> obj max-speed))
-  (format #t "~1Tspeed: ~f~%" (-> obj speed))
-  (format #t "~1Thandle: ~D~%" (-> obj handle))
+  (format #t "[~8x] ~A~%" this 'fish)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tvel: #<vector @ #x~X>~%" (-> this vel))
+  (format #t "~1Tborder-f: #<vector @ #x~X>~%" (-> this border-f))
+  (format #t "~1Tavoid-d: #<vector @ #x~X>~%" (-> this avoid-d))
+  (format #t "~1Twander: ~f~%" (-> this wander))
+  (format #t "~1Tmax-speed: ~f~%" (-> this max-speed))
+  (format #t "~1Tspeed: ~f~%" (-> this speed))
+  (format #t "~1Thandle: ~D~%" (-> this handle))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type fish-manager
@@ -134,27 +130,27 @@
   )
 
 ;; definition for method 3 of type fish-manager
-(defmethod inspect fish-manager ((obj fish-manager))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect fish-manager ((this fish-manager))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tfishes[12] @ #x~X~%" (-> obj fishes))
+  (format #t "~2Tfishes[12] @ #x~X~%" (-> this fishes))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate idle (fish-manager)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (format #t "training-manager received event ~s~%" event-type)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (format #t "training-manager received event ~s~%" message)
     (format #t "event-from ~s~%" proc)
     )
-  :code (the-as (function none :behavior fish-manager) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars
       (sv-448 (function vector vector float vector))
@@ -492,7 +488,6 @@
             )
           )
         )
-      (none)
       )
     )
   )
@@ -500,14 +495,14 @@
 ;; definition for method 11 of type fish-manager
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fish-manager ((obj fish-manager) (arg0 entity-actor))
+(defmethod init-from-entity! fish-manager ((this fish-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -523,15 +518,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-8 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-8 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (get-nav-control obj (the-as nav-mesh #f))
+  (process-drawable-from-entity! this arg0)
+  (get-nav-control this (the-as nav-mesh #f))
   (let ((s5-1 (rand-vu-int-count 4)))
     (dotimes (s4-1 12)
-      (let ((s3-0 (-> obj fishes s4-1)))
+      (let ((s3-0 (-> this fishes s4-1)))
         (let ((f30-1 (* 182.04445 (the float (rand-vu-int-count 360)))))
-          (set! (-> s3-0 pos quad) (-> obj root trans quad))
+          (set! (-> s3-0 pos quad) (-> this root trans quad))
           (+! (-> s3-0 pos x) (rand-vu-float-range 409.6 4096.0))
           (+! (-> s3-0 pos z) (rand-vu-float-range 409.6 4096.0))
           (set! (-> s3-0 wander) (rand-vu-float-range 0.0 65536.0))
@@ -540,10 +535,10 @@ This commonly includes things such as:
         (set! (-> s3-0 border-f quad) (the-as uint128 0))
         (set! (-> s3-0 avoid-d quad) (the-as uint128 0))
         (set! (-> s3-0 max-speed) 16384.0)
-        (set! (-> s3-0 handle) (ppointer->handle (process-spawn minnow obj s5-1 :to obj)))
+        (set! (-> s3-0 handle) (ppointer->handle (process-spawn minnow this s5-1 :to this)))
         )
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

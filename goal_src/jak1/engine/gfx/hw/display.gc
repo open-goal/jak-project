@@ -5,13 +5,14 @@
 ;; name in dgo: display
 ;; dgos: GAME, ENGINE
 
-
 (defconstant DMA_BUFFER_GLOBAL_SIZE (#if (not PC_PORT)
                                          (* 1712 1024) ;; 1712K
                                          (* PROCESS_HEAP_MULT 2664 1024))) ;; 2600K x actor heap increase (usually 3x)
 (defconstant DMA_BUFFER_DEBUG_SIZE (#if (not PC_PORT)
                                         (* 8 1024 1024) ;; 8M
                                         (* 16 1024 1024))) ;; 16M
+
+;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
@@ -33,42 +34,42 @@
   )
 
 
-(defmethod set-time-ratios display ((obj display) (slowdown float))
+(defmethod set-time-ratios display ((this display) (slowdown float))
   "Set the time ratios for the current game speed. For example, set slowdown = 1.0 if the game
    is running at full speed or slowdown = 2.0 if the game is running at half speed."
 
   ;; don't allow slowdowns of more than 4x. This prevents the dt's in the physics
   ;; calculations from getting huge.
   (let ((ratio (fmin 4.0 slowdown)))
-    (set! (-> obj time-ratio) ratio)
+    (set! (-> this time-ratio) ratio)
     (case (get-video-mode)
       (('pal)
-       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
-       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
-       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) (* 1.2 ratio))
+       (set! (-> this seconds-per-frame) (* 0.02 ratio))
+       (set! (-> this frames-per-second) (* 50.0 (/ 1.0 ratio)))
        ;; 6 "ticks" per frame * 50 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 6.0)
+       (set! (-> this time-factor) 6.0)
        )
       (('ntsc)
-       (set! (-> obj time-adjust-ratio) ratio)
-       (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-       (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) ratio)
+       (set! (-> this seconds-per-frame) (* 0.016666668 ratio))
+       (set! (-> this frames-per-second) (* 60.0 (/ 1.0 ratio)))
        ;; 5 "ticks" per frame * 60 fps = 300 ticks per second.
-       (set! (-> obj time-factor) 5.0)
+       (set! (-> this time-factor) 5.0)
        )
       (('custom)
-       (set! (-> obj time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
-       (set! (-> obj seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
-       (set! (-> obj frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
+       (set! (-> this time-adjust-ratio) (* (/ 60.0 (-> *pc-settings* target-fps)) ratio))
+       (set! (-> this seconds-per-frame) (/ ratio (-> *pc-settings* target-fps)))
+       (set! (-> this frames-per-second) (* (the float (-> *pc-settings* target-fps)) (/ 1.0 ratio)))
        ;; x "ticks" per frame * y fps = 300 ticks per second.
-       (set! (-> obj time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
+       (set! (-> this time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
        )
       (else
        (format #t "Warning: Tried to set unsupported video-mode")
        )
       )
     )
-  (-> obj time-ratio)
+  (-> this time-ratio)
   )
 
 ;; new constant for use in high FPS scenarios
@@ -318,11 +319,11 @@
 ;; PROFILE BAR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-frame profile-bar ((this profile-bar) (name symbol) (color rgba))
   "Add a block to the profile bar. Looks at the timer to determine the current time."
   (if *debug-segment*
-      (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-        (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+      (let ((new-frame (-> this data (-> this profile-frame-count))))
+        (set! (-> this profile-frame-count) (+ (-> this profile-frame-count) 1))
         (set! (-> new-frame name) name)
         (set! (-> new-frame time-stamp) (timer-count (the-as timer-bank #x10000800)))
         (set! (-> new-frame color) color)
@@ -331,17 +332,17 @@
       )
   )
 
-(defmethod reset profile-bar ((obj profile-bar))
+(defmethod reset profile-bar ((this profile-bar))
   "Clear all blocks from the profile bar. Adds the start block"
-  (set! (-> obj profile-frame-count) 0)
-  (add-frame obj 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
-  obj
+  (set! (-> this profile-frame-count) 0)
+  (add-frame this 'start (new 'static 'rgba :r #x40 :b #x40 :a #x80))
+  this
   )
 
-(defmethod add-end-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
+(defmethod add-end-frame profile-bar ((this profile-bar) (name symbol) (color rgba))
   "Finish the frame."
-  (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-   (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+  (let ((new-frame (-> this data (-> this profile-frame-count))))
+   (set! (-> this profile-frame-count) (+ (-> this profile-frame-count) 1))
    (set! (-> new-frame name) name)
    (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
    (set! (-> new-frame color) color)
@@ -358,7 +359,7 @@
 ;; ticks or percent?
 (define *profile-ticks* #f)
 
-(defmethod draw profile-bar ((obj profile-bar) (buf dma-buffer) (bar-pos int))
+(defmethod draw profile-bar ((this profile-bar) (buf dma-buffer) (bar-pos int))
   "Draw the bar! The bar pos shouldn't be changed."
 
   ;; recompute y stuff based on the current relative-y-scale.
@@ -367,7 +368,7 @@
     (set! *profile-h* height) ;; px
     )
   (let ((block-idx 1) ;; block to draw (0 is 'start)
-        (block-count (-> obj profile-frame-count)) ;; total number of blocks
+        (block-count (-> this profile-frame-count)) ;; total number of blocks
         (left (shl *profile-x* 4)) ;; x (12.4) of the current block. initialized to start of bar.
         (end-time 0)               ;; end of last block
         ;; if there's a single really slow frame, we want its time to appear for
@@ -391,7 +392,7 @@
 
       ;; loop through blocks to draw.
       (while (< block-idx block-count)
-        (let ((block (-> obj data block-idx)))
+        (let ((block (-> this data block-idx)))
           ;; add first three regs (prim, color, one vertex)
           (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
                                      (-> block color)
@@ -428,11 +429,11 @@
     ;; update the worst time cache if its more than 0.25 seconds old, or we did worse
     ;; than the cached value.
     ;; we use bar-pos/10 as the index into the cache, which is kind of sketchy.
-    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> obj cache-time)))
+    (when (or (< (seconds 0.25) (- (-> *display* real-frame-counter) (-> this cache-time)))
               (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
               )
       (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      (set! (-> this cache-time) (-> *display* real-frame-counter))
       )
 
     ;; draw the time, either in ticks or percent.

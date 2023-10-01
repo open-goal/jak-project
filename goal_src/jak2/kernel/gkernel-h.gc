@@ -432,13 +432,13 @@
 ;; a "protect" frame is a way to indicate there's a "exit" function that should
 ;; run if there's a "throw" or "abandon".
 (deftype protect-frame (stack-frame)
-  ((exit (function none)  :offset-assert  12)
+  ((exit (function object)  :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   (:methods
-    (new (symbol type (function none)) protect-frame 0)
+    (new (symbol type (function object)) protect-frame 0)
     )
   )
 
@@ -456,14 +456,14 @@
   :flag-assert         #x900000008
   )
 
-(defmethod inspect handle ((obj handle))
-  (when (not obj)
-    (return obj)
+(defmethod inspect handle ((this handle))
+  (when (not this)
+    (return this)
     )
-  (format #t "[~8x] ~A~%" obj 'handle)
-  (format #t "~1Tprocess: #x~X~%" (-> obj process))
-  (format #t "~1Tpid: ~D~%" (-> obj pid))
-  obj
+  (format #t "[~8x] ~A~%" this 'handle)
+  (format #t "~1Tprocess: #x~X~%" (-> this process))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  this
   )
 
 (defmacro handle->process (handle)
@@ -507,12 +507,12 @@
   `(ppointer->handle (process->ppointer (the-as process ,proc)))
   )
 
-(defmethod print handle ((obj handle))
-  (if (nonzero? obj)
-      (format #t "#<handle :process ~A :pid ~D>" (handle->process obj) (-> obj pid))
+(defmethod print handle ((this handle))
+  (if (nonzero? this)
+      (format #t "#<handle :process ~A :pid ~D>" (handle->process this) (-> this pid))
       (format #t "#<handle :process 0 :pid 0>")
       )
-  obj
+  this
   )
 
 ;; A "state" defines functions that a process should run when it is in that state.
@@ -526,7 +526,7 @@
 ;; This type is just a container to hold those functions.
 (deftype state (protect-frame)
   ((code  function                                                  :offset-assert  16)
-   (trans (function none)                                           :offset-assert  20)
+   (trans (function object)                                         :offset-assert  20)
    (post  function                                                  :offset-assert  24)
    (enter function                                                  :offset-assert  28)
    (event (function process int symbol event-message-block object)  :offset-assert  32)
@@ -539,9 +539,9 @@
            type
            symbol
            function
-           (function none)
+           (function object)
            function
-           (function none)
+           (function object)
            (function process int symbol event-message-block object))
          _type_ 0)
     )
@@ -603,14 +603,14 @@
     )
   )
 
-(defmethod print sql-result ((obj sql-result))
+(defmethod print sql-result ((this sql-result))
   "Print a sql-result as an array of symbols."
-  (format #t "#(~A" (-> obj error))
-  (dotimes (s5-0 (-> obj len))
-    (format #t " ~A" (-> obj data s5-0))
+  (format #t "#(~A" (-> this error))
+  (dotimes (s5-0 (-> this len))
+    (format #t " ~A" (-> this data s5-0))
     )
   (format #t ")")
-  obj
+  this
   )
 
 ;; the result that the C Kernel will send us.
@@ -774,4 +774,12 @@
      0.016666668
      (-> PP clock seconds-per-frame)
      )
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
   )

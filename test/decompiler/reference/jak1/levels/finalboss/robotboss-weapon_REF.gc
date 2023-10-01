@@ -20,40 +20,40 @@
   )
 
 ;; definition for method 3 of type torus
-(defmethod inspect torus ((obj torus))
-  (format #t "[~8x] ~A~%" obj 'torus)
-  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
-  (format #t "~Taxis: #<vector @ #x~X>~%" (-> obj axis))
-  (format #t "~Tradius-primary: ~f~%" (-> obj radius-primary))
-  (format #t "~Tradius-secondary: ~f~%" (-> obj radius-secondary))
-  obj
+(defmethod inspect torus ((this torus))
+  (format #t "[~8x] ~A~%" this 'torus)
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~Taxis: #<vector @ #x~X>~%" (-> this axis))
+  (format #t "~Tradius-primary: ~f~%" (-> this radius-primary))
+  (format #t "~Tradius-secondary: ~f~%" (-> this radius-secondary))
+  this
   )
 
 ;; definition for method 10 of type torus
-(defmethod torus-method-10 torus ((obj torus) (arg0 collide-prim-core) (arg1 vector))
+(defmethod torus-method-10 torus ((this torus) (arg0 collide-prim-core) (arg1 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
-        (f30-0 (+ (-> obj radius-secondary) (-> arg0 world-sphere w)))
+        (f30-0 (+ (-> this radius-secondary) (-> arg0 world-sphere w)))
         )
-    (vector-! gp-0 (the-as vector arg0) (-> obj origin))
-    (vector-flatten! s5-0 gp-0 (-> obj axis))
-    (vector-normalize! s5-0 (-> obj radius-primary))
+    (vector-! gp-0 (the-as vector arg0) (-> this origin))
+    (vector-flatten! s5-0 gp-0 (-> this axis))
+    (vector-normalize! s5-0 (-> this radius-primary))
     (vector-! arg1 gp-0 s5-0)
     (< (vector-length-squared arg1) (* f30-0 f30-0))
     )
   )
 
 ;; definition for method 11 of type torus
-(defmethod torus-method-11 torus ((obj torus) (arg0 vector))
+(defmethod torus-method-11 torus ((this torus) (arg0 vector))
   (let ((s4-0 (the-as collide-shape-prim-group (-> *target* control root-prim))))
     (when (and (logtest? (-> s4-0 prim-core collide-as) (collide-kind target))
-               (torus-method-10 obj (-> s4-0 prim-core) arg0)
+               (torus-method-10 this (-> s4-0 prim-core) arg0)
                )
       (countdown (s3-0 (-> s4-0 num-prims))
         (let ((v1-9 (-> s4-0 prims s3-0)))
           (if (and (logtest? (-> v1-9 prim-core action) (collide-action solid))
                    (logtest? (-> v1-9 prim-core collide-as) (collide-kind target))
-                   (torus-method-10 obj (-> v1-9 prim-core) arg0)
+                   (torus-method-10 this (-> v1-9 prim-core) arg0)
                    )
               (return #t)
               )
@@ -74,16 +74,16 @@
   )
 
 ;; definition for method 3 of type torus-verts
-(defmethod inspect torus-verts ((obj torus-verts))
-  (format #t "[~8x] ~A~%" obj 'torus-verts)
-  (format #t "~Tvert[8] @ #x~X~%" (-> obj vert))
-  obj
+(defmethod inspect torus-verts ((this torus-verts))
+  (format #t "[~8x] ~A~%" this 'torus-verts)
+  (format #t "~Tvert[8] @ #x~X~%" (-> this vert))
+  this
   )
 
 ;; definition for method 9 of type torus
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod torus-method-9 torus ((obj torus) (arg0 vector))
+(defmethod torus-method-9 torus ((this torus) (arg0 vector))
   (local-vars (sv-256 int) (sv-272 int) (sv-288 int))
   (let ((s0-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -92,38 +92,38 @@
         (s1-0 (new 'stack-no-clear 'inline-array 'vector 8))
         )
     (set-vector! s0-0 0.0 0.0 1.0 1.0)
-    (vector-flatten! s0-0 s0-0 (-> obj axis))
+    (vector-flatten! s0-0 s0-0 (-> this axis))
     (if (= (vector-normalize-ret-len! s0-0 1.0) 0.0)
         (set-vector! s0-0 0.0 1.0 0.0 1.0)
         )
-    (vector-cross! s4-0 s0-0 (-> obj axis))
+    (vector-cross! s4-0 s0-0 (-> this axis))
     (matrix-axis-angle! s2-0 s4-0 8192.0)
-    (vector-float*! (-> s1-0 0) s0-0 (-> obj radius-secondary))
+    (vector-float*! (-> s1-0 0) s0-0 (-> this radius-secondary))
     (set! sv-256 0)
     (while (< sv-256 7)
       (vector-matrix*! (-> s1-0 (+ sv-256 1)) (-> s1-0 sv-256) s2-0)
       (set! sv-256 (+ sv-256 1))
       )
-    (vector-float*! s0-0 s0-0 (-> obj radius-primary))
+    (vector-float*! s0-0 s0-0 (-> this radius-primary))
     (dotimes (v1-21 8)
       (vector+! (-> s1-0 v1-21) (-> s1-0 v1-21) s0-0)
       )
-    (matrix-axis-angle! s2-0 (-> obj axis) 4096.0)
+    (matrix-axis-angle! s2-0 (-> this axis) 4096.0)
     (dotimes (s0-1 16)
       (set! sv-272 0)
       (while (< sv-272 7)
-        (vector+! s4-0 (-> s1-0 sv-272) (-> obj origin))
-        (vector+! s3-0 (-> s1-0 (+ sv-272 1)) (-> obj origin))
+        (vector+! s4-0 (-> s1-0 sv-272) (-> this origin))
+        (vector+! s3-0 (-> s1-0 (+ sv-272 1)) (-> this origin))
         (camera-line s4-0 s3-0 (the-as vector4w arg0))
         (set! sv-272 (+ sv-272 1))
         )
-      (vector+! s4-0 (-> s1-0 0) (-> obj origin))
+      (vector+! s4-0 (-> s1-0 0) (-> this origin))
       (camera-line s4-0 s3-0 (the-as vector4w arg0))
       (set! sv-288 0)
       (while (< sv-288 8)
-        (vector+! s4-0 (-> s1-0 sv-288) (-> obj origin))
+        (vector+! s4-0 (-> s1-0 sv-288) (-> this origin))
         (vector-matrix*! (-> s1-0 sv-288) (-> s1-0 sv-288) s2-0)
-        (vector+! s3-0 (-> s1-0 sv-288) (-> obj origin))
+        (vector+! s3-0 (-> s1-0 sv-288) (-> this origin))
         (camera-line s4-0 s3-0 (the-as vector4w arg0))
         (set! sv-288 (+ sv-288 1))
         )
@@ -134,17 +134,17 @@
   )
 
 ;; definition for method 12 of type torus
-(defmethod torus-method-12 torus ((obj torus) (arg0 vector))
+(defmethod torus-method-12 torus ((this torus) (arg0 vector))
   (let* ((f30-0 65536.0)
          (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
          (v1-2 (the-as number (logior #x3f800000 v1-1)))
          (f30-1 (* f30-0 (+ -1.0 (the-as float v1-2))))
          )
     (set! (-> arg0 x) 0.0)
-    (set! (-> arg0 y) (* (-> obj radius-secondary) (sin f30-1)))
-    (set! (-> arg0 z) (* (-> obj radius-secondary) (cos f30-1)))
+    (set! (-> arg0 y) (* (-> this radius-secondary) (sin f30-1)))
+    (set! (-> arg0 z) (* (-> this radius-secondary) (cos f30-1)))
     )
-  (+! (-> arg0 z) (-> obj radius-primary))
+  (+! (-> arg0 z) (-> this radius-primary))
   (set! (-> arg0 w) 0.0)
   (let ((s2-0 (new 'stack-no-clear 'matrix)))
     (let* ((s4-0 matrix-rotate-y!)
@@ -156,10 +156,10 @@
       (s4-0 s3-0 (* f30-2 (+ -1.0 (the-as float v1-7))))
       )
     (vector-matrix*! arg0 arg0 s2-0)
-    (matrix-from-two-vectors! s2-0 (new 'static 'vector :y 1.0 :w 1.0) (-> obj axis))
+    (matrix-from-two-vectors! s2-0 (new 'static 'vector :y 1.0 :w 1.0) (-> this axis))
     (vector-matrix*! arg0 arg0 s2-0)
     )
-  (vector+! arg0 arg0 (-> obj origin))
+  (vector+! arg0 arg0 (-> this origin))
   arg0
   )
 
@@ -181,15 +181,15 @@
   )
 
 ;; definition for method 3 of type arcing-shot
-(defmethod inspect arcing-shot ((obj arcing-shot))
+(defmethod inspect arcing-shot ((this arcing-shot))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Ty-vel: ~f~%" (-> obj y-vel))
-  (format #t "~T~Tgrav: ~f~%" (-> obj grav))
-  (format #t "~T~Tfrom: #<vector @ #x~X>~%" (-> obj from))
-  (format #t "~T~Tto: #<vector @ #x~X>~%" (-> obj to))
-  obj
+  (format #t "~T~Ty-vel: ~f~%" (-> this y-vel))
+  (format #t "~T~Tgrav: ~f~%" (-> this grav))
+  (format #t "~T~Tfrom: #<vector @ #x~X>~%" (-> this from))
+  (format #t "~T~Tto: #<vector @ #x~X>~%" (-> this to))
+  this
   )
 
 ;; definition for function arcing-shot-setup
@@ -241,14 +241,12 @@
   :trans (behavior ()
     (arcing-shot-setup (camera-pos) (-> self entity extra trans) 40960.0)
     (arcing-shot-draw)
-    (none)
     )
   :code (behavior ()
     (loop
       (format *stdcon* "debug trajectory~%")
       (suspend)
       )
-    (none)
     )
   )
 
@@ -272,15 +270,15 @@
   )
 
 ;; definition for method 3 of type darkecobomb
-(defmethod inspect darkecobomb ((obj darkecobomb))
+(defmethod inspect darkecobomb ((this darkecobomb))
   (let ((t9-0 (method-of-type arcing-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
-  (format #t "~T~Tcountdown-time: ~f~%" (-> obj countdown-time))
-  (format #t "~T~Tanim-speed: ~f~%" (-> obj anim-speed))
-  (format #t "~T~Tnext-tick: ~f~%" (-> obj next-tick))
-  obj
+  (format #t "~T~Tflight-time: ~D~%" (-> this flight-time))
+  (format #t "~T~Tcountdown-time: ~f~%" (-> this countdown-time))
+  (format #t "~T~Tanim-speed: ~f~%" (-> this anim-speed))
+  (format #t "~T~Tnext-tick: ~f~%" (-> this next-tick))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -315,8 +313,8 @@
            )
        (send-event (ppointer->process (-> self parent)) 'bomb-going)
        (send-event *camera* 'change-to-entity-by-name "camera-402")
-       (set! (-> self state-time) (-> *display* base-frame-counter))
-       (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 2))
+       (set-time! (-> self state-time))
+       (until (time-elapsed? (-> self state-time) (seconds 2))
          (suspend)
          )
        (send-event *camera* 'force-blend 0)
@@ -332,9 +330,8 @@
         )
       )
     (deactivate self)
-    (none)
     )
-  :post (the-as (function none :behavior darkecobomb) ja-post)
+  :post ja-post
   )
 
 ;; definition for function darkecobomb-handler
@@ -361,11 +358,9 @@
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     (set! (-> self next-tick) 0.9)
-    (none)
     )
   :exit (behavior ()
     (stop! (-> self sound))
-    (none)
     )
   :trans (behavior ()
     (darkecobomb-explode-if-player-high-enough)
@@ -406,7 +401,6 @@
         (spawn (-> self part) gp-2)
         )
       )
-    (none)
     )
   :code (behavior ()
     (sound-play "bomb-open")
@@ -423,9 +417,8 @@
         (ja :num! (seek! max (-> self anim-speed)))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior darkecobomb) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -434,14 +427,12 @@
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
     0
-    (none)
     )
   :trans (behavior ()
     (darkecobomb-explode-if-player-high-enough)
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.5))
         (go darkecobomb-countdown)
         )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :num! (seek!))
@@ -456,16 +447,14 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior darkecobomb) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate darkecobomb-idle (darkecobomb)
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (arcing-shot-calculate
@@ -475,7 +464,6 @@
     (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
         (go darkecobomb-land)
         )
-    (none)
     )
   :code (behavior ()
     (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
@@ -490,9 +478,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior darkecobomb) transform-post)
+  :post transform-post
   )
 
 ;; definition for function darkecobomb-init-by-other
@@ -544,12 +531,12 @@
   )
 
 ;; definition for method 3 of type greenshot
-(defmethod inspect greenshot ((obj greenshot))
+(defmethod inspect greenshot ((this greenshot))
   (let ((t9-0 (method-of-type arcing-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
-  obj
+  (format #t "~T~Tflight-time: ~D~%" (-> this flight-time))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -562,7 +549,6 @@
 (defstate greenshot-idle (greenshot)
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (arcing-shot-calculate
@@ -573,7 +559,6 @@
         (deactivate self)
         )
     (spawn (-> self part) (-> self root-override trans))
-    (none)
     )
   :code (behavior ()
     (loop
@@ -583,9 +568,8 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior greenshot) transform-post)
+  :post transform-post
   )
 
 ;; definition for function greenshot-init-by-other
@@ -642,41 +626,41 @@
   )
 
 ;; definition for method 3 of type redshot
-(defmethod inspect redshot ((obj redshot))
+(defmethod inspect redshot ((this redshot))
   (let ((t9-0 (method-of-type arcing-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
-  (format #t "~T~Tstall-time: ~D~%" (-> obj stall-time))
-  (format #t "~T~Tring: #<torus @ #x~X>~%" (-> obj ring))
-  (format #t "~T~Trotation-offset: ~D~%" (-> obj rotation-offset))
-  (format #t "~T~Tpart-track: ~D~%" (-> obj part-track))
-  (format #t "~T~Tshot-particle: ~A~%" (-> obj shot-particle))
-  (format #t "~T~Ttest-particle: ~A~%" (-> obj test-particle))
-  obj
+  (format #t "~T~Tflight-time: ~D~%" (-> this flight-time))
+  (format #t "~T~Tstall-time: ~D~%" (-> this stall-time))
+  (format #t "~T~Tring: #<torus @ #x~X>~%" (-> this ring))
+  (format #t "~T~Trotation-offset: ~D~%" (-> this rotation-offset))
+  (format #t "~T~Tpart-track: ~D~%" (-> this part-track))
+  (format #t "~T~Tshot-particle: ~A~%" (-> this shot-particle))
+  (format #t "~T~Ttest-particle: ~A~%" (-> this test-particle))
+  this
   )
 
 ;; definition for method 7 of type redshot
 ;; INFO: Return type mismatch arcing-shot vs redshot.
-(defmethod relocate redshot ((obj redshot) (arg0 int))
-  (if (nonzero? (-> obj shot-particle))
-      (&+! (-> obj shot-particle) arg0)
+(defmethod relocate redshot ((this redshot) (arg0 int))
+  (if (nonzero? (-> this shot-particle))
+      (&+! (-> this shot-particle) arg0)
       )
-  (if (nonzero? (-> obj test-particle))
-      (&+! (-> obj test-particle) arg0)
+  (if (nonzero? (-> this test-particle))
+      (&+! (-> this test-particle) arg0)
       )
-  (the-as redshot ((method-of-type arcing-shot relocate) obj arg0))
+  (the-as redshot ((method-of-type arcing-shot relocate) this arg0))
   )
 
 ;; definition for method 10 of type redshot
-(defmethod deactivate redshot ((obj redshot))
-  (if (nonzero? (-> obj shot-particle))
-      (kill-and-free-particles (-> obj shot-particle))
+(defmethod deactivate redshot ((this redshot))
+  (if (nonzero? (-> this shot-particle))
+      (kill-and-free-particles (-> this shot-particle))
       )
-  (if (nonzero? (-> obj test-particle))
-      (kill-and-free-particles (-> obj test-particle))
+  (if (nonzero? (-> this test-particle))
+      (kill-and-free-particles (-> this test-particle))
       )
-  ((method-of-type arcing-shot deactivate) obj)
+  ((method-of-type arcing-shot deactivate) this)
   (none)
   )
 
@@ -740,7 +724,6 @@
                                                    )
                                                  )
           )
-    (none)
     )
   :trans (behavior ()
     (set! (-> self ring radius-primary)
@@ -772,16 +755,14 @@
       (send-event (ppointer->process (-> self parent)) 'missed-jak)
       (deactivate self)
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (ja :num-func num-func-identity :frame-num (* 0.000016276043 (-> self ring radius-primary)))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior redshot) transform-post)
+  :post transform-post
   )
 
 ;; definition for function redshot-handler
@@ -798,7 +779,6 @@
   :event redshot-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (redshot-trans (- (-> self stall-time) (- (-> *display* game-frame-counter) (-> self state-time))))
@@ -806,15 +786,13 @@
         (go redshot-explode)
         )
     (spawn (-> self shot-particle) (-> self root-override trans))
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior redshot) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -822,7 +800,6 @@
   :event redshot-handler
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (redshot-trans (seconds 5))
@@ -834,15 +811,13 @@
         (go redshot-wait)
         )
     (spawn (-> self shot-particle) (-> self root-override trans))
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior redshot) transform-post)
+  :post transform-post
   )
 
 ;; definition for function redshot-init-by-other
@@ -900,21 +875,21 @@
   )
 
 ;; definition for method 3 of type yellowshot
-(defmethod inspect yellowshot ((obj yellowshot))
+(defmethod inspect yellowshot ((this yellowshot))
   (let ((t9-0 (method-of-type arcing-shot inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
-  obj
+  (format #t "~T~Tflight-time: ~D~%" (-> this flight-time))
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate yellowshot-idle (yellowshot)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (when (= (-> proc type) target)
-         (send-event *target* 'attack (-> event param 0) (static-attack-info ((mode 'generic))))
+         (send-event *target* 'attack (-> block param 0) (static-attack-info ((mode 'generic))))
          (send-event (ppointer->process (-> self parent)) 'hit-jak)
          )
        )
@@ -922,7 +897,6 @@
     )
   :enter (behavior ()
     (set! (-> self state-time) (-> *display* game-frame-counter))
-    (none)
     )
   :trans (behavior ()
     (arcing-shot-calculate
@@ -934,15 +908,13 @@
       (send-event (ppointer->process (-> self parent)) 'missed-jak)
       (deactivate self)
       )
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior yellowshot) transform-post)
+  :post transform-post
   )
 
 ;; definition for function yellowshot-init-by-other

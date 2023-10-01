@@ -15,19 +15,14 @@
   (let ((s1-1 (process->handle arg0))
         (s2-1 (process->handle arg1))
         )
-    (let ((s0-0 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) s0-0) (+ arg3 arg4))
+    (let ((s0-0 (current-time)))
+      (until (time-elapsed? s0-0 (+ arg3 arg4))
         (let ((v1-8 (or (not (handle->process s1-1)) (not (handle->process s2-1)))))
           (if v1-8
               (deactivate self)
               )
           )
-        (let* ((f0-1
-                 (fmax
-                   0.0
-                   (fmin 1.0 (/ (- (the float (- (-> *display* base-frame-counter) s0-0)) (the float arg3)) (the float arg4)))
-                   )
-                 )
+        (let* ((f0-1 (fmax 0.0 (fmin 1.0 (/ (- (the float (- (current-time) s0-0)) (the float arg3)) (the float arg4)))))
                (a0-18 (process-drawable-pair-random-point!
                         (the-as process-drawable (-> s1-1 process 0))
                         (the-as process-drawable (-> s2-1 process 0))
@@ -48,8 +43,8 @@
          )
        )
       (else
-        (let ((s4-1 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s4-1) arg5)
+        (let ((s4-1 (current-time)))
+          (until (time-elapsed? s4-1 arg5)
             (let ((a0-21 (process-drawable-random-point! (the-as process-drawable (-> s2-1 process 0)) (new-stack-vector0))))
               (arg2 a0-21)
               )
@@ -550,7 +545,7 @@
   (cond
     ((and (= (-> self control ground-pat material) (pat-material ice))
           (and (>= (-> self control unknown-float01) 204.8)
-               (< (- (-> *display* base-frame-counter) (-> self control unknown-dword11)) (seconds 0.05))
+               (not (time-elapsed? (-> self control unknown-dword11) (seconds 0.05)))
                )
           )
      (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 74))))
@@ -580,10 +575,10 @@
            )
        )
      (let ((f0-8 (lerp-scale 60.0 90.0 (-> self control unknown-float01) 0.0 81920.0)))
-       (if (not (ja-group? (-> self draw art-group data 104)))
+       (if (not (ja-group? eichar-ice-stance-ja))
            (set! f0-8 (* 0.75 f0-8))
            )
-       (seek! (-> self control unknown-float141) f0-8 (* 100.0 (-> *display* seconds-per-frame)))
+       (seek! (-> self control unknown-float141) f0-8 (* 100.0 (seconds-per-frame)))
        )
      (let ((f30-0 (-> self control unknown-float141))
            (f0-13 (lerp-scale -0.3 0.3 (-> self control unknown-float01) 0.0 81920.0))

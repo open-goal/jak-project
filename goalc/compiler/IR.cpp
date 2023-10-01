@@ -423,7 +423,7 @@ RegAllocInstr IR_FunctionCall::to_rai() {
   }
 
   for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
-    auto info = emitter::gRegInfo.get_info(i);
+    auto& info = emitter::gRegInfo.get_info(i);
     if (info.temp()) {
       rai.clobber.emplace_back(i);
     }

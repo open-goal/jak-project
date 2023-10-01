@@ -9,9 +9,9 @@
 
 (defstate waiting-idle (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -24,7 +24,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -47,17 +46,16 @@
     (if (logtest? (bot-flags bf19) (-> self bot-flags))
         (ruffian-method-240 self)
         )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate waiting-turn (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -70,7 +68,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -84,21 +81,19 @@
          )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 49152.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate scared-idle (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -111,7 +106,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -131,17 +125,16 @@
     (if (not (logtest? (bot-flags bf19) (-> self bot-flags)))
         (ruffian-method-240 self)
         )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate scared-turn (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -154,7 +147,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -168,23 +160,21 @@
          )
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 49152.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate alert-idle (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (-> (method-of-type ruffian scared-idle) enter)
   :trans (behavior ()
     (bot-method-223 self #t)
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (cond
         ((not (bot-method-214 self))
          (react-to-focus self)
@@ -200,17 +190,16 @@
     (if (and (-> self focus-info fproc) (>= (fabs (-> self focus-info ry-diff)) 9102.223))
         (ruffian-method-241 self)
         )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate alert-turn (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -223,25 +212,22 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #t)
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 49152.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate traveling (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-2 enemy-flags)))
           (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> v1-2 enemy-flags))))
@@ -257,7 +243,6 @@
     (stop-looking-at-target! self)
     (nav-enemy-method-166 self)
     (set! (-> self player-blocking) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -268,15 +253,14 @@
       ((outside-spot-radius? self (the-as bot-spot #f) (the-as vector #f) #t)
        (ruffian-method-240 self)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 0.5)) (bot-method-208 self))
+      ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (bot-method-208 self))
        (go-virtual traveling-blocked)
        )
-      ((and (nav-enemy-method-163 self) (>= (- (current-time) (-> self state-time)) (-> self reaction-time)))
+      ((and (nav-enemy-method-163 self) (time-elapsed? (-> self state-time) (-> self reaction-time)))
        (go-stare2 self)
        )
       )
     0
-    (none)
     )
   :code (behavior ()
     (until #f
@@ -284,7 +268,6 @@
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let ((a0-0 (-> self nav state))
@@ -296,15 +279,14 @@
       )
     0
     (nav-enemy-travel-post)
-    (none)
     )
   )
 
 (defstate traveling-blocked (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -317,7 +299,6 @@
     0
     (look-at-target! self (enemy-flag lock-focus))
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -325,14 +306,13 @@
       ((bot-method-214 self)
        (go-hostile self)
        )
-      ((and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (bot-method-208 self)))
+      ((and (time-elapsed? (-> self state-time) (seconds 1)) (not (bot-method-208 self)))
        (go-virtual traveling)
        )
       )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate stare (ruffian)
@@ -348,11 +328,10 @@
       )
     0
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (when (>= (- (current-time) (-> self state-time)) (seconds 0.1))
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
       (if (bot-method-214 self)
           (go-hostile self)
           )
@@ -360,14 +339,13 @@
           (go-virtual traveling)
           )
       )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   )
 
 (defstate kick (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -385,7 +363,6 @@
       (set! (-> self attack-id) a0-6)
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
@@ -393,23 +370,20 @@
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   :post (behavior ()
     (seek-toward-heading-vec! (-> self root) (-> self focus-info bullseye-xz-dir) 131072.0 (seconds 0.05))
     (nav-enemy-simple-post)
-    (none)
     )
   )
 
 (defstate blast (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type nav-enemy hostile) enter))
     (let ((v1-2 self))
@@ -423,19 +397,17 @@
         (react-to-focus self)
         )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate bomb-recoil (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
     (let ((v1-0 self))
       (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag enemy-flag36))))
@@ -444,10 +416,9 @@
     0
     (nav-enemy-method-167 self)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )
 
 (defstate hit (ruffian)
@@ -461,9 +432,8 @@
     (set! (-> self travel-anim-interp) 0.0)
     (set! (-> self next-fire-time) 0)
     0
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   )
 
 (defstate knocked (ruffian)
@@ -482,7 +452,6 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type bot knocked) trans)))
@@ -494,7 +463,6 @@
       (logclear! (-> self bot-flags) (bot-flags bf24))
       (ruffian-method-242 self)
       )
-    (none)
     )
   )
 
@@ -507,7 +475,6 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   )
 
@@ -520,16 +487,15 @@
           )
       )
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
+  :code nothing
   )
 
 (defstate plant-bomb (ruffian)
   :virtual #t
-  :event (the-as (function process int symbol event-message-block object :behavior ruffian) enemy-event-handler)
+  :event enemy-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag36))))
       (set! (-> v1-2 nav callback-info) *nav-enemy-null-callback-info*)
@@ -542,7 +508,6 @@
     0
     (stop-looking-at-target! self)
     (set! (-> self travel-anim-interp) 0.0)
-    (none)
     )
   :trans (behavior ()
     (bot-method-223 self #f)
@@ -557,8 +522,7 @@
        (react-to-focus self)
        )
       )
-    (none)
     )
-  :code (the-as (function none :behavior ruffian) nothing)
-  :post (the-as (function none :behavior ruffian) nav-enemy-simple-post)
+  :code nothing
+  :post nav-enemy-simple-post
   )

@@ -483,6 +483,10 @@ FormElement* rewrite_as_send_event(LetElement* in,
             {"'color-effect", {1}},
             {"'set-alert-duration", {0}},
         };
+
+        // enum to cast to.
+        EnumType* enum_ts = nullptr;
+
         auto float_arg_settings = jak2_float_args.find(msg_str);
         auto time_frame_arg_settings = jak2_time_frame_args.find(msg_str);
         if ((float_arg_settings != jak2_float_args.end() &&
@@ -499,39 +503,34 @@ FormElement* rewrite_as_send_event(LetElement* in,
                 pool.form<ConstantTokenElement>(seconds_to_string(val)));
           }
         } else if (param_idx == 0 && (msg_str == "'get-pickup" || msg_str == "'test-pickup")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
         } else if (param_idx == 1 &&
                    (param_values.at(0)->to_string(env) == "'error" ||
                     param_values.at(0)->to_string(env) == "'done") &&
                    msg_str == "'notify") {
-          auto enum_ts = env.dts->ts.try_enum_lookup("mc-status-code");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("mc-status-code");
         } else if (param_idx == 0 &&
                    (msg_str == "'deactivate-by-type" || msg_str == "'set-object-reserve-count" ||
                     msg_str == "'set-object-target-count" ||
                     msg_str == "'set-object-auto-activate" || msg_str == "'end-pursuit-by-type" ||
                     msg_str == "'get-object-remaining-count")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("traffic-type");
-          if (enum_ts) {
-            param_val = cast_to_int_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("traffic-type");
         } else if (param_idx == 0 &&
                    (msg_str == "'clear-slave-option" || msg_str == "'set-slave-option" ||
                     msg_str == "'toggle-slave-option")) {
-          auto enum_ts = env.dts->ts.try_enum_lookup("cam-slave-options");
-          if (enum_ts) {
-            param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
-          }
+          enum_ts = env.dts->ts.try_enum_lookup("cam-slave-options");
         } else if (param_idx == 2 && param_values.at(0)->to_string(env) == "'darkjak" &&
                    msg_str == "'change-mode") {
-          auto enum_ts = env.dts->ts.try_enum_lookup("darkjak-stage");
-          if (enum_ts) {
+          enum_ts = env.dts->ts.try_enum_lookup("darkjak-stage");
+        } else if (param_idx == 2 && param_values.at(0)->to_string(env) == "'gun" &&
+                   msg_str == "'change-mode") {
+          enum_ts = env.dts->ts.try_enum_lookup("pickup-type");
+        }
+        if (enum_ts) {
+          if (enum_ts->is_bitfield()) {
             param_val = cast_to_bitfield_enum(enum_ts, pool, env, val);
+          } else {
+            param_val = cast_to_int_enum(enum_ts, pool, env, val);
           }
         }
       }
@@ -1147,13 +1146,13 @@ FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool&
   return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, cond->else_ir);
 }
 
-bool var_equal(const Env& env, const RegisterAccess& a, std::optional<RegisterAccess> b) {
+bool var_equal(const Env& env, RegisterAccess a, std::optional<RegisterAccess> b) {
   ASSERT(b);
   return env.get_variable_name_name_only(*b) == env.get_variable_name_name_only(a);
 }
 
 Form* match_ja_set(const Env& env,
-                   const RegisterAccess& ch_var,
+                   RegisterAccess ch_var,
                    const std::string& field_name,
                    int arr_idx,
                    Form* in,
@@ -1330,14 +1329,19 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
                 Matcher::any_reg(0), false,
                 {DerefTokenMatcher::string("frame-group"), DerefTokenMatcher::string("frames"),
                  DerefTokenMatcher::string("num-frames")});
+  auto matcher_new_group_max_frames =
+      env.version == GameVersion::Jak1
+          ? Matcher::deref(Matcher::any(1), false,
+                           {DerefTokenMatcher::string("data"), DerefTokenMatcher::integer(0),
+                            DerefTokenMatcher::string("length")})
+          : Matcher::deref(
+                Matcher::any(1), false,
+                {DerefTokenMatcher::string("frames"), DerefTokenMatcher::string("num-frames")});
   auto matcher_max_num = Matcher::cast(
-      "float", Matcher::op_fixed(FixedOperatorKind::ADDITION,
-                                 {form_fg ? Matcher::deref(Matcher::any(1), false,
-                                                           {DerefTokenMatcher::string("data"),
-                                                            DerefTokenMatcher::integer(0),
-                                                            DerefTokenMatcher::string("length")})
-                                          : matcher_cur_group_max_frames,
-                                  Matcher::integer(-1)}));
+      "float",
+      Matcher::op_fixed(FixedOperatorKind::ADDITION,
+                        {form_fg ? matcher_new_group_max_frames : matcher_cur_group_max_frames,
+                         Matcher::integer(-1)}));
 
   // DONE CHECKING EVERYTHING!!! Now write the goddamn macro.
   std::vector<Form*> args;
@@ -1712,8 +1716,9 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   enum AttackInfoFieldKind { DEFAULT, VECTOR, METERS, DEGREES };
 
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak1 = {
-      {"vector", {1, VECTOR}},    {"mode", {5, DEFAULT}},     {"shove-back", {6, DEFAULT}},
-      {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}}, {"angle", {11, DEFAULT}},
+      {"vector", {1, VECTOR}},      {"attacker", {3, DEFAULT}}, {"mode", {5, DEFAULT}},
+      {"shove-back", {6, DEFAULT}}, {"shove-up", {7, DEFAULT}}, {"control", {10, DEFAULT}},
+      {"angle", {11, DEFAULT}},
   };
   const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak2 = {
       {"vector", {1, VECTOR}},

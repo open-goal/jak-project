@@ -21,13 +21,13 @@
       (set! (-> a1-0 param 0) (the-as uint 7))
       (let ((f30-0 (send-event-function *target* a1-0)))
         (let ((gp-0 (current-time)))
-          (until (>= (- (current-time) gp-0) (seconds 0.1))
+          (until (time-elapsed? gp-0 (seconds 0.1))
             (suspend)
             )
           )
         (send-event *target* 'change-mode 'darkjak #f (darkjak-stage no-anim))
         (let ((gp-1 (current-time)))
-          (until (>= (- (current-time) gp-1) (seconds 0.1))
+          (until (time-elapsed? gp-1 (seconds 0.1))
             (suspend)
             )
           )
@@ -1628,38 +1628,34 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior nest-gun-parts) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! nest-gun-parts ((obj nest-gun-parts) (arg0 entity-actor))
+(defmethod init-from-entity! nest-gun-parts ((this nest-gun-parts) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nest-gun-parts" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 11))
-  (go (method-of-object obj idle))
+  (set! (-> this draw light-index) (the-as uint 11))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -1685,42 +1681,39 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior nest-unbroken-rocks) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! nest-unbroken-rocks ((obj nest-unbroken-rocks) (arg0 entity-actor))
+;; WARN: Return type mismatch object vs none.
+(defmethod init-from-entity! nest-unbroken-rocks ((this nest-unbroken-rocks) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as
       skeleton-group
       (art-group-get-by-name *level* "skel-nest-unbroken-rocks" (the-as (pointer uint32) #f))
       )
     (the-as pair 0)
     )
-  (set! (-> obj draw light-index) (the-as uint 1))
+  (set! (-> this draw light-index) (the-as uint 1))
   (if (task-node-closed? (game-task-node nest-get-to-gun-resolution))
-      (cleanup-for-death obj)
-      (go (method-of-object obj idle))
+      (cleanup-for-death this)
+      (go (method-of-object this idle))
       )
   (none)
   )

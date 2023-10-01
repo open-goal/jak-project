@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype babak (nav-enemy)
   ()
   :heap-base #x120
@@ -44,7 +43,6 @@
         )
       )
     ((the-as (function none) (-> (method-of-type nav-enemy nav-enemy-patrol) code)))
-    (none)
     )
   )
 
@@ -77,7 +75,6 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (none)
     )
   )
 
@@ -128,7 +125,6 @@
           )
         )
       )
-    (none)
     )
   )
 
@@ -167,7 +163,6 @@
       (ja :num! (seek!))
       )
     (go-virtual nav-enemy-patrol)
-    (none)
     )
   )
 
@@ -186,7 +181,6 @@
       (ja :num! (seek! (ja-aframe 32.0 0) 0.5))
       )
     (go-virtual nav-enemy-chase)
-    (none)
     )
   )
 
@@ -204,11 +198,11 @@
                                  :neck-joint 5
                                  :player-look-at-joint 5
                                  :run-travel-speed (meters 6)
-                                 :run-rotate-speed (degrees 2880.0)
+                                 :run-rotate-speed (degrees 2880)
                                  :run-acceleration (meters 1)
                                  :run-turn-time (seconds 0.1)
                                  :walk-travel-speed (meters 3)
-                                 :walk-rotate-speed (degrees 720.0)
+                                 :walk-rotate-speed (degrees 720)
                                  :walk-acceleration (meters 1)
                                  :walk-turn-time (seconds 0.5)
                                  :attack-shove-back (meters 3)
@@ -245,8 +239,8 @@
                                  )
         )
 
-(defmethod initialize-collision babak ((obj babak))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod initialize-collision babak ((this babak))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
     (set! (-> s5-0 no-reaction)
@@ -286,34 +280,34 @@
     (set! (-> s5-0 nav-radius) 6144.0)
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> obj collide-info) s5-0)
+    (set! (-> this collide-info) s5-0)
     )
   0
   (none)
   )
 
-(defmethod nav-enemy-method-48 babak ((obj babak))
-  (initialize-skeleton obj *babak-sg* '())
-  (init-defaults! obj *babak-nav-enemy-info*)
-  (set! (-> obj neck up) (the-as uint 0))
-  (set! (-> obj neck nose) (the-as uint 1))
-  (set! (-> obj neck ear) (the-as uint 2))
+(defmethod nav-enemy-method-48 babak ((this babak))
+  (initialize-skeleton this *babak-sg* '())
+  (init-defaults! this *babak-nav-enemy-info*)
+  (set! (-> this neck up) (the-as uint 0))
+  (set! (-> this neck nose) (the-as uint 1))
+  (set! (-> this neck ear) (the-as uint 2))
   0
   (none)
   )
 
-(defmethod nav-enemy-method-59 babak ((obj babak))
+(defmethod nav-enemy-method-59 babak ((this babak))
   (cond
-    ((and (and (-> obj entity) (logtest? (-> obj entity extra perm status) (entity-perm-status complete)))
-          (logtest? (-> obj enemy-info options) (fact-options has-power-cell))
+    ((and (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+          (logtest? (-> this enemy-info options) (fact-options has-power-cell))
           )
-     (go (method-of-object obj nav-enemy-fuel-cell))
+     (go (method-of-object this nav-enemy-fuel-cell))
      )
-    ((logtest? (-> obj enemy-info options) (fact-options fop5))
-     (go (method-of-object obj nav-enemy-wait-for-cue))
+    ((logtest? (-> this enemy-info options) (fact-options fop5))
+     (go (method-of-object this nav-enemy-wait-for-cue))
      )
     (else
-      (go (method-of-object obj nav-enemy-idle))
+      (go (method-of-object this nav-enemy-idle))
       )
     )
   0

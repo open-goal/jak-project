@@ -70,19 +70,15 @@
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (-> self draw art-group data 2)
-                  :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)) 5.0)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 5.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 5.0))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior minnow) ja-post)
+  :post ja-post
   )
 
 (deftype fish (structure)
@@ -116,11 +112,11 @@
 
 (defstate idle (fish-manager)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (format #t "training-manager received event ~s~%" event-type)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (format #t "training-manager received event ~s~%" message)
     (format #t "event-from ~s~%" proc)
     )
-  :code (the-as (function none :behavior fish-manager) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (local-vars
       (sv-448 (function vector vector float vector))
@@ -458,20 +454,19 @@
             )
           )
         )
-      (none)
       )
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fish-manager ((obj fish-manager) (arg0 entity-actor))
+(defmethod init-from-entity! fish-manager ((this fish-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
     (set! (-> s4-0 no-reaction)
@@ -487,15 +482,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-8 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-8 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (get-nav-control obj (the-as nav-mesh #f))
+  (process-drawable-from-entity! this arg0)
+  (get-nav-control this (the-as nav-mesh #f))
   (let ((s5-1 (rand-vu-int-count 4)))
     (dotimes (s4-1 12)
-      (let ((s3-0 (-> obj fishes s4-1)))
+      (let ((s3-0 (-> this fishes s4-1)))
         (let ((f30-1 (* 182.04445 (the float (rand-vu-int-count 360)))))
-          (set! (-> s3-0 pos quad) (-> obj root trans quad))
+          (set! (-> s3-0 pos quad) (-> this root trans quad))
           (+! (-> s3-0 pos x) (rand-vu-float-range 409.6 4096.0))
           (+! (-> s3-0 pos z) (rand-vu-float-range 409.6 4096.0))
           (set! (-> s3-0 wander) (rand-vu-float-range 0.0 65536.0))
@@ -504,10 +499,10 @@ This commonly includes things such as:
         (set! (-> s3-0 border-f quad) (the-as uint128 0))
         (set! (-> s3-0 avoid-d quad) (the-as uint128 0))
         (set! (-> s3-0 max-speed) 16384.0)
-        (set! (-> s3-0 handle) (ppointer->handle (process-spawn minnow obj s5-1 :to obj)))
+        (set! (-> s3-0 handle) (ppointer->handle (process-spawn minnow this s5-1 :to this)))
         )
       )
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

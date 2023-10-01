@@ -220,18 +220,18 @@
   )
 
 ;; definition for method 3 of type strip-game-crate
-(defmethod inspect strip-game-crate ((obj strip-game-crate))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect strip-game-crate ((this strip-game-crate))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tlocal-offset: #<vector @ #x~X>~%" (-> obj local-offset))
-  (format #t "~2Tswing-angle: #<vector @ #x~X>~%" (-> obj swing-angle))
+  (format #t "~2Tlocal-offset: #<vector @ #x~X>~%" (-> this local-offset))
+  (format #t "~2Tswing-angle: #<vector @ #x~X>~%" (-> this swing-angle))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -243,15 +243,15 @@
 ;; failed to figure out what this is:
 (defstate idle (strip-game-crate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('go-final)
        (go-virtual final-position)
        )
       )
     )
-  :trans (the-as (function none :behavior strip-game-crate) rider-trans)
-  :code (the-as (function none :behavior strip-game-crate) sleep-code)
+  :trans rider-trans
+  :code sleep-code
   :post (behavior ()
     (let* ((f30-1 (* 333.14133 (cos (* 66.8053 (the float (mod (current-time) 981))))))
            (f28-1 (* 358.62756 (cos (* 48.65331 (the float (mod (current-time) 1346))))))
@@ -266,7 +266,6 @@
       (set! (-> self swing-angle x) (+ f28-1 f0-15))
       )
     (rider-post)
-    (none)
     )
   )
 
@@ -276,20 +275,19 @@
   :enter (behavior ()
     (ja :group! (-> self draw art-group data 3) :num! min)
     (ja-post)
-    (none)
     )
-  :code (the-as (function none :behavior strip-game-crate) sleep-code)
+  :code sleep-code
   )
 
 ;; definition for method 22 of type strip-game-crate
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod strip-game-crate-method-22 strip-game-crate ((obj strip-game-crate) (arg0 vector) (arg1 quaternion))
-  (set! (-> obj root trans quad) (-> arg0 quad))
+(defmethod strip-game-crate-method-22 strip-game-crate ((this strip-game-crate) (arg0 vector) (arg1 quaternion))
+  (set! (-> this root trans quad) (-> arg0 quad))
   (let ((s4-0 (new 'stack-no-clear 'quaternion)))
-    (quaternion-rotate-z! s4-0 arg1 (-> obj swing-angle z))
-    (quaternion-rotate-x! s4-0 s4-0 (-> obj swing-angle x))
-    (quaternion-copy! (-> obj root quat) s4-0)
+    (quaternion-rotate-z! s4-0 arg1 (-> this swing-angle z))
+    (quaternion-rotate-x! s4-0 s4-0 (-> this swing-angle x))
+    (quaternion-copy! (-> this root quat) s4-0)
     )
   (none)
   )
@@ -357,29 +355,29 @@
   )
 
 ;; definition for method 3 of type crane
-(defmethod inspect crane ((obj crane))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect crane ((this crane))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tangle-vel: ~f~%" (-> obj angle-vel))
-  (format #t "~2Tangle: ~f~%" (-> obj angle))
-  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> obj init-quat))
-  (format #t "~2Tfinal-quat: #<quaternion @ #x~X>~%" (-> obj final-quat))
-  (format #t "~2Tcrate: #x~X~%" (-> obj crate))
+  (format #t "~2Tangle-vel: ~f~%" (-> this angle-vel))
+  (format #t "~2Tangle: ~f~%" (-> this angle))
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> this init-quat))
+  (format #t "~2Tfinal-quat: #<quaternion @ #x~X>~%" (-> this final-quat))
+  (format #t "~2Tcrate: #x~X~%" (-> this crate))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 10 of type crane
-(defmethod deactivate crane ((obj crane))
-  (if (-> obj crate)
-      (deactivate (-> obj crate 0))
+(defmethod deactivate crane ((this crane))
+  (if (-> this crate)
+      (deactivate (-> this crate 0))
       )
-  ((method-of-type process-drawable deactivate) obj)
+  ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
@@ -394,56 +392,49 @@
       (suspend)
       )
     #f
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate swinging (crane)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('notice)
-         (when (and *target*
-                    (not (task-complete? *game-info* (game-task strip-drop)))
-                    (or (demo?) (and (task-node-closed? (game-task-node strip-drop-introduction))
-                                     (not (task-node-closed? (game-task-node strip-drop-resolution)))
-                                     )
-                        )
-                    )
-           (let ((gp-0 (if (demo?)
-                           "crane-victory-demo"
-                           "crane-victory"
-                           )
-                       )
-                 )
-             (process-spawn scene-player :init scene-player-init gp-0 #t #f)
-             )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notice)
+       (when (and *target*
+                  (not (task-complete? *game-info* (game-task strip-drop)))
+                  (or (demo?) (and (task-node-closed? (game-task-node strip-drop-introduction))
+                                   (not (task-node-closed? (game-task-node strip-drop-resolution)))
+                                   )
+                      )
+                  )
+         (let ((gp-0 (if (demo?)
+                         "crane-victory-demo"
+                         "crane-victory"
+                         )
+                     )
+               )
+           (process-spawn scene-player :init scene-player-init gp-0 #t #f)
            )
          )
-        )
+       )
       )
     )
   :enter (behavior ()
     (set! (-> self angle) 0.0)
     (set! (-> self angle-vel) 0.0)
     (quaternion-copy! (-> self init-quat) (-> self root quat))
-    (none)
     )
   :trans (behavior ()
     (if (task-complete? *game-info* (game-task strip-drop))
         (go-virtual final-position)
         )
-    (none)
     )
   :code (behavior ()
     (until #f
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let* ((f0-1 (* 3.640889 (the float (mod (current-time) #x4650))))
@@ -455,7 +446,6 @@
     (let ((a1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4))))
       (strip-game-crate-method-22 (-> self crate 0) a1-2 (-> self root quat))
       )
-    (none)
     )
   )
 
@@ -471,39 +461,38 @@
         (strip-game-crate-method-22 (-> self crate 0) a1-3 (-> self root quat))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior crane) sleep-code)
-  :post (the-as (function none :behavior crane) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; definition for method 11 of type crane
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! crane ((obj crane) (arg0 entity-actor))
+(defmethod init-from-entity! crane ((this crane) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-crane" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) 910.2222)
-  (quaternion-copy! (-> obj final-quat) (-> obj root quat))
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj draw light-index) (the-as uint 10))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) 910.2222)
+  (quaternion-copy! (-> this final-quat) (-> this root quat))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this draw light-index) (the-as uint 10))
   (ja-post)
-  (let ((s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> obj node-list data 4))))
-    (set! (-> obj crate) (process-spawn strip-game-crate s5-2 (-> obj root quat) :to obj))
+  (let ((s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 4))))
+    (set! (-> this crate) (process-spawn strip-game-crate s5-2 (-> this root quat) :to this))
     )
   (if (or (task-complete? *game-info* (game-task strip-rescue)) (demo?))
-      (go (method-of-object obj final-position))
-      (go (method-of-object obj idle))
+      (go (method-of-object this final-position))
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -524,17 +513,17 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type cranecrate
-(defmethod inspect cranecrate ((obj cranecrate))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect cranecrate ((this cranecrate))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Troot: #<collide-shape @ #x~X>~%" (-> obj root))
+  (format #t "~2Troot: #<collide-shape @ #x~X>~%" (-> this root))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -548,15 +537,14 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate hidden (cranecrate)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('wake-up)
        (go-virtual idle)
        )
@@ -569,21 +557,20 @@ This commonly includes things such as:
       (suspend)
       )
     (sleep-code)
-    (none)
     )
   )
 
 ;; definition for method 11 of type cranecrate
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cranecrate ((obj cranecrate) (arg0 entity-actor))
+(defmethod init-from-entity! cranecrate ((this cranecrate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
       (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
@@ -598,15 +585,15 @@ This commonly includes things such as:
       (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
       (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
       )
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cranecrate" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (+! (-> obj root trans y) -163348.48)
+  (+! (-> this root trans y) -163348.48)
   (when (or (demo?) (and (= *kernel-boot-message* 'kiosk) (task-node-open? (game-task-node strip-drop-resolution))))
     (let ((s5-2 (new 'stack-no-clear 'task-arrow-params)))
       (set! (-> s5-2 pos quad) (-> (new 'static 'vector :x 9920120.0 :y 288036.03 :z -179639.1 :w 1.0) quad))
@@ -616,12 +603,12 @@ This commonly includes things such as:
         )
       (set! (-> s5-2 flags) (task-arrow-flags task-arrow-flag-02))
       (set! (-> s5-2 map-icon) (the-as uint 15))
-      (task-arrow-spawn s5-2 obj)
+      (task-arrow-spawn s5-2 this)
       )
     )
   (if (task-node-closed? (game-task-node strip-drop-resolution))
-      (go (method-of-object obj idle))
-      (go (method-of-object obj hidden))
+      (go (method-of-object this idle))
+      (go (method-of-object this hidden))
       )
   (none)
   )
@@ -644,18 +631,18 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type grunt-egg
-(defmethod inspect grunt-egg ((obj grunt-egg))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect grunt-egg ((this grunt-egg))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tidle-anim-player: #<idle-control @ #x~X>~%" (-> obj idle-anim-player))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
+  (format #t "~2Tidle-anim-player: #<idle-control @ #x~X>~%" (-> this idle-anim-player))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -721,10 +708,10 @@ This commonly includes things such as:
 ;; failed to figure out what this is:
 (defstate idle (grunt-egg)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
-       (let* ((s5-0 (-> event param 0))
+       (let* ((s5-0 (-> block param 0))
               (s4-0 proc)
               (v1-2 (if (type? s4-0 process-focusable)
                         (the-as process-focusable s4-0)
@@ -752,14 +739,13 @@ This commonly includes things such as:
        )
       )
     )
-  :code (the-as (function none :behavior grunt-egg) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (if (nonzero? (-> self sound))
         (update! (-> self sound))
         )
     (idle-control-method-10 (-> self idle-anim-player) self)
     (ja-post)
-    (none)
     )
   )
 
@@ -768,13 +754,12 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; definition for method 11 of type grunt-egg
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! grunt-egg ((obj grunt-egg) (arg0 entity-actor))
+(defmethod init-from-entity! grunt-egg ((this grunt-egg) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -783,7 +768,7 @@ This commonly includes things such as:
 - sounds"
   (cond
     ((>= (res-lump-value arg0 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
-     (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+     (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
        (let ((v1-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
          (set! (-> v1-4 prim-core collide-as) (collide-spec obstacle))
          (set! (-> v1-4 prim-core collide-with) (collide-spec jak player-list))
@@ -798,34 +783,34 @@ This commonly includes things such as:
          (set! (-> s4-0 backup-collide-as) (-> v1-7 prim-core collide-as))
          (set! (-> s4-0 backup-collide-with) (-> v1-7 prim-core collide-with))
          )
-       (set! (-> obj root) s4-0)
+       (set! (-> this root) s4-0)
        )
      )
     (else
-      (set! (-> obj root) (new 'process 'trsqv))
+      (set! (-> this root) (new 'process 'trsqv))
       )
     )
-  (grunt-egg-method-22 obj)
-  (process-drawable-from-entity! obj arg0)
+  (grunt-egg-method-22 this)
+  (process-drawable-from-entity! this arg0)
   (let* ((v1-12 *game-info*)
          (a0-14 (+ (-> v1-12 attack-id) 1))
          )
     (set! (-> v1-12 attack-id) a0-14)
-    (set! (-> obj attack-id) a0-14)
+    (set! (-> this attack-id) a0-14)
     )
-  (let ((a1-8 (grunt-egg-method-23 obj)))
+  (let ((a1-8 (grunt-egg-method-23 this)))
     (if a1-8
-        (idle-control-method-9 (-> obj idle-anim-player) (the-as (pointer idle-control-frame) a1-8))
+        (idle-control-method-9 (-> this idle-anim-player) (the-as (pointer idle-control-frame) a1-8))
         )
     )
   (if (>= (res-lump-value arg0 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
-      (set! (-> obj sound)
-            (new 'process 'ambient-sound (static-sound-spec "grunt-eggs" :fo-min 5 :fo-max 45) (-> obj root trans))
+      (set! (-> this sound)
+            (new 'process 'ambient-sound (static-sound-spec "grunt-eggs" :fo-min 5 :fo-max 45) (-> this root trans))
             )
       )
   (if (task-complete? *game-info* (game-task strip-drop))
-      (go (method-of-object obj die))
-      (go (method-of-object obj idle))
+      (go (method-of-object this die))
+      (go (method-of-object this idle))
       )
   (none)
   )
@@ -840,16 +825,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type grunt-egg-a
-(defmethod inspect grunt-egg-a ((obj grunt-egg-a))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect grunt-egg-a ((this grunt-egg-a))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt-egg inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type grunt-egg-b
@@ -862,16 +847,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type grunt-egg-b
-(defmethod inspect grunt-egg-b ((obj grunt-egg-b))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect grunt-egg-b ((this grunt-egg-b))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt-egg inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type grunt-egg-c
@@ -884,16 +869,16 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type grunt-egg-c
-(defmethod inspect grunt-egg-c ((obj grunt-egg-c))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect grunt-egg-c ((this grunt-egg-c))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt-egg inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition of type grunt-egg-d
@@ -906,23 +891,23 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type grunt-egg-d
-(defmethod inspect grunt-egg-d ((obj grunt-egg-d))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect grunt-egg-d ((this grunt-egg-d))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type grunt-egg inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
   (label cfg-4)
-  obj
+  this
   )
 
 ;; definition for method 22 of type grunt-egg-a
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod grunt-egg-method-22 grunt-egg-a ((obj grunt-egg-a))
+(defmethod grunt-egg-method-22 grunt-egg-a ((this grunt-egg-a))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-a" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -930,58 +915,58 @@ This commonly includes things such as:
   )
 
 ;; definition for method 23 of type grunt-egg-a
-(defmethod grunt-egg-method-23 grunt-egg-a ((obj grunt-egg-a))
+(defmethod grunt-egg-method-23 grunt-egg-a ((this grunt-egg-a))
   *grunt-egg-a-script*
   )
 
 ;; definition for method 22 of type grunt-egg-b
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-b ((obj grunt-egg-b))
+(defmethod grunt-egg-method-22 grunt-egg-b ((this grunt-egg-b))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-b" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (add-connection *part-engine* obj 9 obj 1035 (new 'static 'vector :w 163840.0))
-  (add-connection *part-engine* obj 14 obj 1035 (new 'static 'vector :w 163840.0))
+  (add-connection *part-engine* this 9 this 1035 (new 'static 'vector :w 163840.0))
+  (add-connection *part-engine* this 14 this 1035 (new 'static 'vector :w 163840.0))
   (none)
   )
 
 ;; definition for method 23 of type grunt-egg-b
-(defmethod grunt-egg-method-23 grunt-egg-b ((obj grunt-egg-b))
+(defmethod grunt-egg-method-23 grunt-egg-b ((this grunt-egg-b))
   *grunt-egg-b-script*
   )
 
 ;; definition for method 22 of type grunt-egg-c
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-c ((obj grunt-egg-c))
+(defmethod grunt-egg-method-22 grunt-egg-c ((this grunt-egg-c))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-c" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (add-connection *part-engine* obj 7 obj 1036 (new 'static 'vector :w 163840.0))
+  (add-connection *part-engine* this 7 this 1036 (new 'static 'vector :w 163840.0))
   (none)
   )
 
 ;; definition for method 23 of type grunt-egg-c
-(defmethod grunt-egg-method-23 grunt-egg-c ((obj grunt-egg-c))
+(defmethod grunt-egg-method-23 grunt-egg-c ((this grunt-egg-c))
   *grunt-egg-c-script*
   )
 
 ;; definition for method 22 of type grunt-egg-d
 ;; WARN: Return type mismatch connection vs none.
-(defmethod grunt-egg-method-22 grunt-egg-d ((obj grunt-egg-d))
+(defmethod grunt-egg-method-22 grunt-egg-d ((this grunt-egg-d))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-grunt-egg-d" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (add-connection *part-engine* obj 10 obj 1037 (new 'static 'vector :w 163840.0))
+  (add-connection *part-engine* this 10 this 1037 (new 'static 'vector :w 163840.0))
   (none)
   )
 
 ;; definition for method 23 of type grunt-egg-d
-(defmethod grunt-egg-method-23 grunt-egg-d ((obj grunt-egg-d))
+(defmethod grunt-egg-method-23 grunt-egg-d ((this grunt-egg-d))
   *grunt-egg-d-script*
   )

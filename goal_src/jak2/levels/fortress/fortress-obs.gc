@@ -59,20 +59,17 @@
 
 (defstate idle (fort-trap-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('attack)
-         (when (logtest? (-> (the-as attack-info (-> event param 1)) penetrate-using) (penetrate flop))
-           (go-virtual die)
-           #f
-           )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (logtest? (-> (the-as attack-info (-> block param 1)) penetrate-using) (penetrate flop))
+         (go-virtual die)
+         #f
          )
-        )
+       )
       )
     )
-  :code (the-as (function none :behavior fort-trap-door) sleep-code)
+  :code sleep-code
   )
 
 (defstate die (fort-trap-door)
@@ -99,7 +96,6 @@
           )
         )
       )
-    (none)
     )
   :code (behavior ()
     ((lambda ()
@@ -136,7 +132,7 @@
     (suspend)
     (ja-channel-set! 0)
     (let ((frame-counter (current-time)))
-      (until (>= (- (current-time) frame-counter) (seconds 1))
+      (until (time-elapsed? frame-counter (seconds 1))
         (suspend)
         )
       )
@@ -145,20 +141,19 @@
       (suspend)
       )
     (cleanup-for-death self)
-    (none)
     )
-  :post (the-as (function none :behavior fort-trap-door) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-trap-door ((obj fort-trap-door) (entity entity-actor))
+(defmethod init-from-entity! fort-trap-door ((this fort-trap-door) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (let ((cshape (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))
       (set! (-> prim-mesh prim-core collide-with) (collide-spec jak bot player-list))
@@ -173,27 +168,27 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) (the-as collide-shape-moving cshape))
+    (set! (-> this root) (the-as collide-shape-moving cshape))
     )
-  (set! (-> (the-as collide-shape-moving (-> obj root)) penetrated-by) (penetrate flop))
-  (process-drawable-from-entity! obj entity)
+  (set! (-> (the-as collide-shape-moving (-> this root)) penetrated-by) (penetrate flop))
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fort-trap-door" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj notify-actor) (entity-actor-lookup entity 'alt-actor 0))
-  (let ((channel (-> obj skel root-channel 0)))
-    (set! (-> channel frame-group) (the-as art-joint-anim (-> obj draw art-group data 2)))
+  (set! (-> this notify-actor) (entity-actor-lookup entity 'alt-actor 0))
+  (let ((channel (-> this skel root-channel 0)))
+    (set! (-> channel frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
     (set! (-> channel frame-num) 0.0)
     (joint-control-channel-group!
       channel
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -220,14 +215,14 @@ This commonly includes things such as:
         )
 
 ;; WARN: Return type mismatch ripple-wave-set vs none.
-(defmethod init-water! water-anim-fortress ((obj water-anim-fortress))
+(defmethod init-water! water-anim-fortress ((this water-anim-fortress))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((parent-method (method-of-type water-anim init-water!)))
-    (parent-method obj)
+    (parent-method this)
     )
   (let ((ripple (new 'process 'ripple-control)))
-    (set! (-> obj draw ripple) ripple)
-    (set-vector! (-> obj draw color-mult) 0.01 0.45 0.5 0.75)
+    (set! (-> this draw ripple) ripple)
+    (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> ripple global-scale) 3072.0)
     (set! (-> ripple close-fade-dist) 163840.0)
     (set! (-> ripple far-fade-dist) 245760.0)

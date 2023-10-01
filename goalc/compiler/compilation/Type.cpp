@@ -492,6 +492,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name, &m_goos.reader);
   new_func_env->set_segment(env->function_env()->segment_for_static_data());
   new_func_env->method_of_type_name = symbol_string(type_name);
+  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
+  new_func_env->method_id = method_info.id;
+  new_func_env->method_function_type = method_info.type;
 
   // set up arguments
   if (lambda.params.size() > 8) {
@@ -517,7 +520,6 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     reset_args_for_coloring.push_back(ireg_arg);
   }
 
-  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
   auto behavior = method_info.type.try_get_tag("behavior");
   if (behavior) {
     auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
@@ -559,22 +561,24 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   // compile the function!
   Val* result = nullptr;
   bool first_thing = true;
+  const goos::Object* result_obj = nullptr;
   for_each_in_list(lambda.body, [&](const goos::Object& o) {
     result = compile_error_guard(o, func_block_env);
-    if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(o, func_block_env);
-    }
+    result_obj = &o;
     if (first_thing) {
       first_thing = false;
       // you could probably cheat and do a (begin (blorp) (declare ...)) to get around this.
       new_func_env->settings.is_set = true;
     }
   });
+  if (result_obj && !dynamic_cast<None*>(result)) {
+    result = result->to_reg(*result_obj, func_block_env);
+  }
 
   if (new_func_env->is_asm_func) {
     // don't add return automatically!
     lambda_ts.add_arg(new_func_env->asm_func_return_type);
-  } else if (result && !dynamic_cast<None*>(result)) {
+  } else if (result && !dynamic_cast<None*>(result) && result->type() != TypeSpec("none")) {
     RegVal* final_result;
     emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
     if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
@@ -746,7 +750,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // special case (-> <state> enter) should return the appropriate function type.
           if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
             if (field_name == "enter" || field_name == "code") {
-              result->set_type(state_to_go_function(in_type, TypeSpec("none")));
+              result->set_type(state_to_go_function(in_type, TypeSpec("object")));
             }
           }
 
@@ -1305,6 +1309,47 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
   return get_none();
 }
 
+Val* Compiler::compile_method_id_of_type(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}}, {});
+  auto arg = args.unnamed.at(0);
+  if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
+    auto info = m_ts.lookup_method(symbol_string(arg), symbol_string(args.unnamed.at(1)));
+    return compile_integer(info.id, env);
+  } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+    throw_compiler_error(
+        form, "The method-id-of-type form is ambiguous when used on a forward declared type.");
+  } else {
+    throw_compiler_error(form, "unknown type");
+  }
+}
+
+Val* Compiler::compile_cast_to_method_type(const goos::Object& form,
+                                           const goos::Object& rest,
+                                           Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}, {}}, {});
+  auto arg = args.unnamed.at(0);
+  if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
+    auto info = m_ts.lookup_method(symbol_string(arg), symbol_string(args.unnamed.at(1)));
+
+    auto base = compile_error_guard(args.unnamed.at(2), env);
+    auto result = env->function_env()->alloc_val<AliasVal>(info.type, base);
+    if (base->settable()) {
+      result->mark_as_settable();
+    }
+
+    return result;
+  } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+    throw_compiler_error(
+        form, "The cast-to-method-type form is ambiguous when used on a forward declared type.");
+  } else {
+    throw_compiler_error(form, "unknown type");
+  }
+}
+
 Val* Compiler::compile_method_of_object(const goos::Object& form,
                                         const goos::Object& rest,
                                         Env* env) {
@@ -1464,4 +1509,28 @@ Compiler::ConstPropResult Compiler::const_prop_size_of(const goos::Object& form,
 
 Val* Compiler::compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_integer((get_size_for_size_of(form, rest) + 0xf) & ~0xf, env);
+}
+
+Val* Compiler::compile_current_method_id(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  auto* fe = env->function_env();
+  if (!fe->method_id) {
+    throw_compiler_error(form, "current-method-id wasn't called from a method.");
+  }
+  return compile_integer(*fe->method_id, env);
+}
+
+Val* Compiler::compile_current_method_type(const goos::Object& form,
+                                           const goos::Object& rest,
+                                           Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  auto* fe = env->function_env();
+  if (!fe->method_id || fe->method_of_type_name.empty()) {
+    throw_compiler_error(form, "current-method-type wasn't called from a method.");
+  }
+  return compile_get_symbol_value(form, fe->method_of_type_name, env);
 }

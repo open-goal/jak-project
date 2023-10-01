@@ -8,6 +8,8 @@
 
 ;; Type definitions/inline functions for bit array and vector types.
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bit array
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,61 +40,61 @@
 (defmethod new bit-array ((allocation symbol) (type-to-make type) (length int))
   "Allocate a new bit-array which can hold length bits.
    Sets both the length and the allocated-length to this length."
-  (let ((obj (object-new allocation type-to-make
+  (let ((this (object-new allocation type-to-make
                          (+ (+ (/ (logand -8 (+ length 7)) 8) -1)
                             (the-as int (-> type-to-make size))
                             )
                          )
           )
         )
-    (set! (-> obj length) length)
-    (set! (-> obj allocated-length) length)
-    obj
+    (set! (-> this length) length)
+    (set! (-> this allocated-length) length)
+    this
     )
   )
 
-(defmethod length bit-array ((obj bit-array))
+(defmethod length bit-array ((this bit-array))
   "Get the length (in bits)"
-  (-> obj length)
+  (-> this length)
   )
 
-(defmethod asize-of bit-array ((obj bit-array))
+(defmethod asize-of bit-array ((this bit-array))
   "Get the size in memory.
    It is wrong and says its one byte longer, which is safe."
   (the-as int
-          (+ (-> obj type size)
-             (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+          (+ (-> this type size)
+             (the-as uint (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
              )
           )
   )
 
-(defmethod get-bit bit-array ((obj bit-array) (idx int))
+(defmethod get-bit bit-array ((this bit-array) (idx int))
   "Is the bit at idx set or not?"
-  (let ((v1-2 (-> obj bytes (/ idx 8))))
+  (let ((v1-2 (-> this bytes (/ idx 8))))
     (logtest? v1-2 (ash 1 (logand idx 7)))
     )
   )
 
-(defmethod clear-bit bit-array ((obj bit-array) (idx int))
+(defmethod clear-bit bit-array ((this bit-array) (idx int))
   "Clear the bit at position idx"
-  (logclear! (-> obj bytes (/ idx 8)) (ash 1 (logand idx 7)))
+  (logclear! (-> this bytes (/ idx 8)) (ash 1 (logand idx 7)))
   0
   )
 
-(defmethod set-bit bit-array ((obj bit-array) (idx int))
+(defmethod set-bit bit-array ((this bit-array) (idx int))
   "Set the bit at position idx"
-  (logior! (-> obj bytes (/ idx 8)) (the-as uint (ash 1 (logand idx 7))))
+  (logior! (-> this bytes (/ idx 8)) (the-as uint (ash 1 (logand idx 7))))
   0
   )
 
-(defmethod clear-all! bit-array ((obj bit-array))
+(defmethod clear-all! bit-array ((this bit-array))
   "Set all bits to zero."
-  (countdown (idx (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+  (countdown (idx (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
     (nop!)
     (nop!)
-    (set! (-> obj bytes idx) (the-as uint 0))
+    (set! (-> this bytes idx) (the-as uint 0))
     )
-  obj
+  this
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -400,14 +402,20 @@
   :flag-assert         #x900000010
   )
 
-(defmacro static-vectorm (x y z w)
-  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,w))
+(defmacro static-vector (x y z w)
+  "creates a static vector."
+  `(new 'static 'vector :x ,x :y ,y :z ,z :w ,w)
+  )
+(defmacro static-vectorm (x y z)
+  "creates a static vector using meters. w is set to 1.0"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w 1.0)
   )
 (defmacro static-spherem (x y z r)
-  "actually makes a vector. use bspherem for sphere."
+  "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 (defmacro static-bspherem (x y z r)
+  "creates a static sphere using meters."
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
@@ -527,6 +535,17 @@
        (set! (-> ,vec y) ,yv)
        (set! (-> ,vec z) ,zv)
        (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defmacro set-vector-xyz! (v xv yv zv)
+  "Set xyz fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
        ,vec
        ))
      )

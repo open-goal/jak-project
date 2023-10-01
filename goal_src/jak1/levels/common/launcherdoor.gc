@@ -8,7 +8,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype launcherdoor (process-drawable)
   ((root-override              collide-shape  :offset        112)
    (notify-player-passed-thru? symbol         :offset-assert 176)
@@ -95,9 +94,8 @@
           )
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior launcherdoor) ja-post)
+  :post ja-post
   )
 
 (defstate launcherdoor-open (launcherdoor)
@@ -131,16 +129,15 @@
       (ja :num! (seek! max (-> self open-speed)))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior launcherdoor) ja-post)
+  :post ja-post
   )
 
-(defmethod init-from-entity! launcherdoor ((obj launcherdoor) (arg0 entity-actor))
-  (set! (-> obj notify-player-passed-thru?) #f)
-  (set! (-> obj open-speed) 4.0)
-  (set! (-> obj close-speed) 2.0)
-  (let ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! launcherdoor ((this launcherdoor) (arg0 entity-actor))
+  (set! (-> this notify-player-passed-thru?) #f)
+  (set! (-> this open-speed) 4.0)
+  (set! (-> this close-speed) 2.0)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -152,37 +149,37 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! this arg0)
   (cond
-    ((= (-> (if (-> obj entity)
-                (-> obj entity extra level)
+    ((= (-> (if (-> this entity)
+                (-> this entity extra level)
                 (-> *level* level-default)
                 )
             name
             )
         'maincave
         )
-     (set! (-> obj close-speed) 4.0)
-     (initialize-skeleton obj *launcherdoor-maincave-sg* '())
+     (set! (-> this close-speed) 4.0)
+     (initialize-skeleton this *launcherdoor-maincave-sg* '())
      (ja-channel-set! 1)
-     (let ((s5-1 (-> obj skel root-channel 0)))
+     (let ((s5-1 (-> this skel root-channel 0)))
        (joint-control-channel-group-eval!
          s5-1
-         (the-as art-joint-anim (-> obj draw art-group data 3))
+         (the-as art-joint-anim (-> this draw art-group data 3))
          num-func-identity
          )
        (set! (-> s5-1 frame-num) 0.0)
        )
      )
     (else
-      (initialize-skeleton obj *launcherdoor-sg* '())
+      (initialize-skeleton this *launcherdoor-sg* '())
       (ja-channel-set! 1)
-      (let ((s5-2 (-> obj skel root-channel 0)))
+      (let ((s5-2 (-> this skel root-channel 0)))
         (joint-control-channel-group-eval!
           s5-2
-          (the-as art-joint-anim (-> obj draw art-group data 3))
+          (the-as art-joint-anim (-> this draw art-group data 3))
           num-func-identity
           )
         (set! (-> s5-2 frame-num) 0.0)
@@ -190,26 +187,22 @@
       )
     )
   (transform-post)
-  (case (-> obj entity extra level name)
+  (case (-> this entity extra level name)
     (('jungle)
-     (set! (-> obj draw shadow-mask) (the-as uint 28))
+     (set! (-> this draw shadow-mask) (the-as uint 28))
      )
     )
-  (set! (-> obj load-mode) (-> (if (-> obj entity)
-                                   (-> obj entity extra level)
-                                   (-> *level* level-default)
-                                   )
-                               name
-                               )
+  (set! (-> this load-mode) (-> (if (-> this entity)
+                                    (-> this entity extra level)
+                                    (-> *level* level-default)
+                                    )
+                                name
+                                )
         )
-  (set! (-> obj thresh-y) (+ -81920.0 (-> obj root-override trans y)))
+  (set! (-> this thresh-y) (+ -81920.0 (-> this root-override trans y)))
   (if (and *target* (= (-> *target* control unknown-surface00 name) 'launch-jump))
       (go launcherdoor-open #t)
       (go launcherdoor-closed #t)
       )
   (none)
   )
-
-
-
-

@@ -27,35 +27,34 @@
   )
 
 ;; definition for method 3 of type minecartsteel
-(defmethod inspect minecartsteel ((obj minecartsteel))
+(defmethod inspect minecartsteel ((this minecartsteel))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tindex: ~D~%" (-> obj index))
-  (format #t "~T~Tanim: ~A~%" (-> obj anim))
-  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
-  obj
+  (format #t "~T~Tindex: ~D~%" (-> this index))
+  (format #t "~T~Tanim: ~A~%" (-> this anim))
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> this sync))
+  this
   )
 
 ;; failed to figure out what this is:
 (defstate idle (minecartsteel)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch 'attack)
-                      (when (= (-> proc type) target)
-                        (let ((a2-1 (new 'stack 'collide-overlap-result)))
-                          (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
-                              (send-event proc 'no-look-around (seconds 1.5))
-                              )
-                          )
-                        )
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (when (= (-> proc type) target)
+         (let ((a2-1 (new 'stack 'collide-overlap-result)))
+           (if (not (on-platform (-> self root-override) (-> *target* control) a2-1))
+               (send-event proc 'no-look-around (seconds 1.5))
+               )
+           )
+         )
+       #f
+       )
+      )
     )
-  :trans (the-as (function none :behavior minecartsteel) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self anim))
@@ -69,9 +68,8 @@
       (update! (-> self sound))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior minecartsteel) rider-post)
+  :post rider-post
   )
 
 ;; definition for function minecartsteel-initialize-by-other
@@ -144,14 +142,14 @@
 
 ;; definition for method 11 of type minecartsteel
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! minecartsteel ((obj minecartsteel) (arg0 entity-actor))
+(defmethod init-from-entity! minecartsteel ((this minecartsteel) (arg0 entity-actor))
   (dotimes (s4-0 4)
     (process-spawn
       minecartsteel
       :init minecartsteel-initialize-by-other
       arg0
       (* 0.2 (the float (+ s4-0 1)))
-      :to obj
+      :to this
       )
     )
   (minecartsteel-initialize-by-other arg0 0.0)

@@ -29,18 +29,18 @@
   )
 
 ;; definition for method 3 of type light-eco-child
-(defmethod inspect light-eco-child ((obj light-eco-child))
+(defmethod inspect light-eco-child ((this light-eco-child))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tangle-bit: ~D~%" (-> obj angle-bit))
-  (format #t "~T~Tground-y: ~f~%" (-> obj ground-y))
-  (format #t "~T~Tfalling-start-time: ~D~%" (-> obj falling-start-time))
-  (format #t "~T~Tlast-update-time: ~D~%" (-> obj last-update-time))
-  (format #t "~T~Trot: #<vector @ #x~X>~%" (-> obj rot))
-  (format #t "~T~Trotv: #<vector @ #x~X>~%" (-> obj rotv))
-  (format #t "~T~Ttraj: #<trajectory @ #x~X>~%" (-> obj traj))
-  obj
+  (format #t "~T~Tangle-bit: ~D~%" (-> this angle-bit))
+  (format #t "~T~Tground-y: ~f~%" (-> this ground-y))
+  (format #t "~T~Tfalling-start-time: ~D~%" (-> this falling-start-time))
+  (format #t "~T~Tlast-update-time: ~D~%" (-> this last-update-time))
+  (format #t "~T~Trot: #<vector @ #x~X>~%" (-> this rot))
+  (format #t "~T~Trotv: #<vector @ #x~X>~%" (-> this rotv))
+  (format #t "~T~Ttraj: #<trajectory @ #x~X>~%" (-> this traj))
+  this
   )
 
 ;; definition of type light-eco-mother
@@ -68,17 +68,17 @@
   )
 
 ;; definition for method 3 of type light-eco-mother
-(defmethod inspect light-eco-mother ((obj light-eco-mother))
+(defmethod inspect light-eco-mother ((this light-eco-mother))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tplayer-got-eco?: ~A~%" (-> obj player-got-eco?))
-  (format #t "~T~Tangle-mask: ~D~%" (-> obj angle-mask))
-  (format #t "~T~Tdelay-til-spawn: ~D~%" (-> obj delay-til-spawn))
-  (format #t "~T~Tpart2: ~A~%" (-> obj part2))
-  (format #t "~T~Tlast-update-time: ~D~%" (-> obj last-update-time))
-  (format #t "~T~Tlast-spawned-time: ~D~%" (-> obj last-spawned-time))
-  obj
+  (format #t "~T~Tplayer-got-eco?: ~A~%" (-> this player-got-eco?))
+  (format #t "~T~Tangle-mask: ~D~%" (-> this angle-mask))
+  (format #t "~T~Tdelay-til-spawn: ~D~%" (-> this delay-til-spawn))
+  (format #t "~T~Tpart2: ~A~%" (-> this part2))
+  (format #t "~T~Tlast-update-time: ~D~%" (-> this last-update-time))
+  (format #t "~T~Tlast-spawned-time: ~D~%" (-> this last-spawned-time))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -406,21 +406,21 @@
 
 ;; definition for method 20 of type light-eco-child
 ;; INFO: Return type mismatch object vs none.
-(defmethod common-trans light-eco-child ((obj light-eco-child))
-  (let ((v1-1 (-> *display* base-frame-counter)))
-    (when (!= v1-1 (-> obj last-update-time))
-      (set! (-> obj last-update-time) v1-1)
+(defmethod common-trans light-eco-child ((this light-eco-child))
+  (let ((v1-1 (current-time)))
+    (when (!= v1-1 (-> this last-update-time))
+      (set! (-> this last-update-time) v1-1)
       (let* ((s5-0 (new 'stack-no-clear 'vector))
-             (s4-0 (-> obj rot))
+             (s4-0 (-> this rot))
              (f30-0 (-> s4-0 w))
              )
-        (vector-v++! s4-0 (-> obj rotv))
-        (set! (-> s4-0 w) (+ f30-0 (* (-> obj rotv w) (-> *display* seconds-per-frame))))
+        (vector-v++! s4-0 (-> this rotv))
+        (set! (-> s4-0 w) (+ f30-0 (* (-> this rotv w) (seconds-per-frame))))
         (set-vector! s5-0 (cos (-> s4-0 x)) (cos (-> s4-0 y)) (cos (-> s4-0 z)) 1.0)
         (vector-normalize! s5-0 1.0)
-        (quaternion-vector-angle! (-> obj root-override quat) s5-0 f30-0)
+        (quaternion-vector-angle! (-> this root-override quat) s5-0 f30-0)
         )
-      (spawn (-> obj part) (-> obj root-override trans))
+      (spawn (-> this part) (-> this root-override trans))
       )
     )
   (none)
@@ -430,41 +430,34 @@
 (defstate light-eco-child-appear (light-eco-child)
   :event light-eco-child-default-event-handler
   :enter (behavior ()
-    (set! (-> self falling-start-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self falling-start-time))
     )
   :trans (behavior ()
-    (let ((f30-0
-            (fmin (the float (- (-> *display* base-frame-counter) (-> self falling-start-time))) (-> self traj time))
-            )
-          )
+    (let ((f30-0 (fmin (the float (- (current-time) (-> self falling-start-time))) (-> self traj time))))
       (eval-position! (-> self traj) f30-0 (-> self root-override trans))
       (if (= f30-0 (-> self traj time))
           (go light-eco-child-hit-ground)
           )
       )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate light-eco-child-hit-ground (light-eco-child)
   :event light-eco-child-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (let ((f30-0 (+ (-> self root-override transv y) (* -544768.0 (-> *display* seconds-per-frame)))))
+    (let ((f30-0 (+ (-> self root-override transv y) (* -544768.0 (seconds-per-frame)))))
       (when (and (< f30-0 0.0) (>= (-> self ground-y) (-> self root-override trans y)))
         (if (>= 4096.0 (fabs f30-0))
             (go light-eco-child-idle)
@@ -494,40 +487,35 @@
         )
       )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
 (defstate light-eco-child-idle (light-eco-child)
   :event light-eco-child-default-event-handler
   :enter (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (none)
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 4))
+    (if (time-elapsed? (-> self state-time) (seconds 4))
         (go light-eco-child-die)
         )
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-child) transform-post)
+  :post transform-post
   )
 
 ;; failed to figure out what this is:
@@ -536,11 +524,10 @@
     (send-event (ppointer->process (-> self parent)) 'untrigger (-> self angle-bit))
     (clear-collide-with-as (-> self root-override))
     (logior! (-> self draw status) (draw-status hidden))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 0.1))
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 0.1))
       (suspend)
       )
-    (none)
     )
   )
 
@@ -549,7 +536,6 @@
   :code (behavior ()
     (suspend)
     0
-    (none)
     )
   )
 
@@ -610,40 +596,36 @@
 
 ;; definition for method 21 of type light-eco-mother
 ;; INFO: Return type mismatch int vs none.
-(defmethod common-trans light-eco-mother ((obj light-eco-mother))
-  (let ((v1-1 (-> *display* base-frame-counter)))
-    (when (!= v1-1 (-> obj last-update-time))
-      (set! (-> obj last-update-time) v1-1)
+(defmethod common-trans light-eco-mother ((this light-eco-mother))
+  (let ((v1-1 (current-time)))
+    (when (!= v1-1 (-> this last-update-time))
+      (set! (-> this last-update-time) v1-1)
       (let ((s5-0 (new 'stack-no-clear 'vector)))
         (set-vector!
           s5-0
-          (cos (* 25.700392 (the float (mod (-> *display* base-frame-counter) 2550))))
-          (cos (* 24.59229 (the float (mod (-> *display* base-frame-counter) 2664))))
-          (cos (* 26.121408 (the float (mod (-> *display* base-frame-counter) 2508))))
+          (cos (* 25.700392 (the float (mod (current-time) 2550))))
+          (cos (* 24.59229 (the float (mod (current-time) 2664))))
+          (cos (* 26.121408 (the float (mod (current-time) 2508))))
           1.0
           )
         (vector-normalize! s5-0 1.0)
-        (quaternion-vector-angle!
-          (-> obj root quat)
-          s5-0
-          (* 48.860058 (the float (mod (-> *display* base-frame-counter) 1341)))
-          )
+        (quaternion-vector-angle! (-> this root quat) s5-0 (* 48.860058 (the float (mod (current-time) 1341))))
         )
       (cond
         ((and *target* (logtest? (-> *target* state-flags) (state-flags grabbed)))
-         (set! (-> obj last-spawned-time) (-> *display* base-frame-counter))
-         (set! (-> obj delay-til-spawn) 2400)
+         (set-time! (-> this last-spawned-time))
+         (set! (-> this delay-til-spawn) 2400)
          )
         (else
-          (when (>= (- (-> *display* base-frame-counter) (-> obj last-spawned-time)) (-> obj delay-til-spawn))
-            (when (spawn-child-eco obj)
-              (set! (-> obj last-spawned-time) (-> *display* base-frame-counter))
-              (set! (-> obj delay-til-spawn) (rand-vu-int-range 300 600))
+          (when (time-elapsed? (-> this last-spawned-time) (-> this delay-til-spawn))
+            (when (spawn-child-eco this)
+              (set-time! (-> this last-spawned-time))
+              (set! (-> this delay-til-spawn) (rand-vu-int-range 300 600))
               )
             )
           )
         )
-      (update! (-> obj sound))
+      (update! (-> this sound))
       0
       )
     )
@@ -651,20 +633,20 @@
   )
 
 ;; definition for method 20 of type light-eco-mother
-(defmethod spawn-child-eco light-eco-mother ((obj light-eco-mother))
+(defmethod spawn-child-eco light-eco-mother ((this light-eco-mother))
   (countdown (s3-0 4)
     (let ((gp-0 (rand-vu-int-count 32)))
-      (when (not (logtest? (-> obj angle-mask) (ash 1 gp-0)))
+      (when (not (logtest? (-> this angle-mask) (ash 1 gp-0)))
         (let ((f28-0 (* 2048.0 (the float gp-0)))
               (f30-0 (rand-vu-float-range 61440.0 88514.56))
               (s4-0 (new 'stack-no-clear 'vector))
               )
           (set-vector! s4-0 (* (sin f28-0) f30-0) 0.0 (* (cos f28-0) f30-0) 1.0)
-          (vector+! s4-0 s4-0 (-> obj root trans))
+          (vector+! s4-0 s4-0 (-> this root trans))
           (set! (-> s4-0 y) 1974272.0)
           (when (or (not *target*) (>= (vector-vector-xz-distance s4-0 (target-pos 0)) 49152.0))
-            (logior! (-> obj angle-mask) (ash 1 gp-0))
-            (process-spawn light-eco-child (-> obj entity) (-> obj root trans) s4-0 gp-0 :to obj)
+            (logior! (-> this angle-mask) (ash 1 gp-0))
+            (process-spawn light-eco-child (-> this entity) (-> this root trans) s4-0 gp-0 :to this)
             (return #t)
             )
           )
@@ -675,7 +657,6 @@
   )
 
 ;; definition for function light-eco-mother-default-event-handler
-;; INFO: Return type mismatch object vs int.
 (defbehavior light-eco-mother-default-event-handler light-eco-mother ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (the-as
     int
@@ -711,20 +692,18 @@
   :trans (behavior ()
     (common-trans self)
     (spawn (-> self part2) (-> self root trans))
-    (none)
     )
   :code (behavior ()
     (while (!= (-> self root scale x) 12.0)
-      (let ((f0-3 (seek-with-smooth (-> self root scale x) 12.0 (* 6.0 (-> *display* seconds-per-frame)) 0.25 0.001)))
+      (let ((f0-3 (seek-with-smooth (-> self root scale x) 12.0 (* 6.0 (seconds-per-frame)) 0.25 0.001)))
         (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
         )
       (suspend)
       (ja :num! (loop!))
       )
     (go light-eco-mother-active)
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -734,16 +713,14 @@
     (common-trans self)
     (spawn (-> self part) (-> self root trans))
     0
-    (none)
     )
   :code (behavior ()
     (loop
       (suspend)
       (ja :num! (loop!))
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -751,11 +728,10 @@
   :event light-eco-mother-default-event-handler
   :trans (behavior ()
     (common-trans self)
-    (none)
     )
   :code (behavior ()
     (while (!= (-> self root scale x) 0.0)
-      (let ((f0-3 (seek-with-smooth (-> self root scale x) 0.0 (* 12.0 (-> *display* seconds-per-frame)) 0.5 0.001)))
+      (let ((f0-3 (seek-with-smooth (-> self root scale x) 0.0 (* 12.0 (seconds-per-frame)) 0.5 0.001)))
         (set-vector! (-> self root scale) f0-3 f0-3 f0-3 1.0)
         )
       (suspend)
@@ -765,27 +741,26 @@
     (until (not (-> self child))
       (suspend)
       )
-    (none)
     )
-  :post (the-as (function none :behavior light-eco-mother) ja-post)
+  :post ja-post
   )
 
 ;; definition for method 10 of type light-eco-mother
-(defmethod deactivate light-eco-mother ((obj light-eco-mother))
-  (if (nonzero? (-> obj part2))
-      (kill-and-free-particles (-> obj part2))
+(defmethod deactivate light-eco-mother ((this light-eco-mother))
+  (if (nonzero? (-> this part2))
+      (kill-and-free-particles (-> this part2))
       )
-  ((method-of-type projectile deactivate) (the-as projectile obj))
+  ((method-of-type projectile deactivate) (the-as projectile this))
   (none)
   )
 
 ;; definition for method 7 of type light-eco-mother
 ;; INFO: Return type mismatch projectile vs light-eco-mother.
-(defmethod relocate light-eco-mother ((obj light-eco-mother) (arg0 int))
-  (if (nonzero? (-> obj part2))
-      (&+! (-> obj part2) arg0)
+(defmethod relocate light-eco-mother ((this light-eco-mother) (arg0 int))
+  (if (nonzero? (-> this part2))
+      (&+! (-> this part2) arg0)
       )
-  (the-as light-eco-mother ((method-of-type projectile relocate) (the-as projectile obj) arg0))
+  (the-as light-eco-mother ((method-of-type projectile relocate) (the-as projectile this) arg0))
   )
 
 ;; definition for function light-eco-mother-init-by-other
@@ -794,7 +769,7 @@
 (defbehavior light-eco-mother-init-by-other light-eco-mother ((arg0 entity-actor) (arg1 vector))
   (set! (-> self entity) arg0)
   (set! (-> self last-update-time) 0)
-  (set! (-> self last-spawned-time) (-> *display* base-frame-counter))
+  (set-time! (-> self last-spawned-time))
   (set! (-> self delay-til-spawn) 2400)
   (set! (-> self angle-mask) 0)
   (set! (-> self player-got-eco?) #f)

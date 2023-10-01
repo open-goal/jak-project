@@ -505,10 +505,10 @@
   )
 
 (deftype protect-frame (stack-frame)
-  ((exit (function none)  :offset-assert 12) ;; guessed by decompiler
+  ((exit (function object)  :offset-assert 12) ;; guessed by decompiler
    )
   (:methods
-    (new (symbol type (function none)) protect-frame)
+    (new (symbol type (function object)) protect-frame)
     )
   :method-count-assert 9
   :size-assert         #x10
@@ -526,16 +526,16 @@
 
 (deftype state (protect-frame)
   ((code  function                                                  :offset-assert 16) ;; guessed by decompiler
-   (trans (function none)                                           :offset-assert 20) ;; guessed by decompiler
+   (trans (function object)                                         :offset-assert 20) ;; guessed by decompiler
    (post  function                                                  :offset-assert 24) ;; guessed by decompiler
    (enter function                                                  :offset-assert 28) ;; guessed by decompiler
    (event (function process int symbol event-message-block object)  :offset-assert 32) ;; guessed by decompiler
    )
   (:methods
     (new (symbol type symbol function
-          (function none)
+          (function object)
           function
-          (function none)
+          (function object)
           (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
@@ -657,7 +657,7 @@
 (define-extern kill-not-type (function type process-tree symbol))
 (define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
 (define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
-(define-extern search-process-tree (function process-tree (function process-tree object) process-tree))
+(define-extern search-process-tree (function process-tree (function process-tree object) process))
 (define-extern kernel-dispatcher (function object))
 (define-extern sync-dispatcher (function object))
 (define-extern inspect-process-tree (function process-tree int int symbol process-tree))
@@ -6381,7 +6381,7 @@
   (shadow 0)
   (kerning 1)
   (middle 2)
-  (left 3)
+  (middle-vert 3)
   (right 4)
   (large 5)
   (pc-hack 6)
@@ -7353,7 +7353,6 @@
   (progress-camera-options-first-vert #x1282)
   (progress-camera-options-third-horz #x1283)
   (progress-camera-options-third-vert #x1284)
-  (progress-reset-to-default #x1285)
   (progress-normal #x1286)
   (progress-inverted #x1287)
   (progress-ps2-parts #x1288)
@@ -7365,6 +7364,33 @@
   (progress-frame-rate #x128e)
   (progress-misc-game-options #x128f)
   (progress-speedrunner-mode  #x1290)
+  (progress-menu-input-options #x1291)
+  (progress-restore-defaults #x1292)
+  (progress-menu-controller-options #x1293)
+  (progress-controller-options-select-controller #x1294)
+  (progress-controller-options-analog-deadzone #x1295)
+  (progress-controller-options-ignore-if-unfocused #x1296)
+  (progress-controller-options-led-hp #x1297)
+  (progress-controller-options-led-state #x1298)
+  (progress-input-options-enable-keyboard #x1299)
+  (progress-input-options-enable-mouse #x129a)
+  (progress-menu-mouse-options #x129b)
+  (progress-mouse-options-track-camera #x129c)
+  (progress-mouse-options-horz-sens #x129d)
+  (progress-mouse-options-vert-sens #x129e)
+  (progress-mouse-options-player-movement #x129f)
+  (progress-input-options-auto-hide-cursor #x1300)
+  (progress-menu-reassign-binds #x1301)
+  (progress-reassign-binds-controller #x1302)
+  (progress-reassign-binds-keyboard #x1303)
+  (progress-reassign-binds-mouse #x1304)
+  (progress-multiselect-no-items-found #x1305)
+  (progress-keybinds-waiting-for-bind #x1306)
+  (progress-keybinds-unset #x1307)
+  (progress-unknown-option #x1308)
+  (progress-hires-sky #x1309)
+  (progress-fast-airlock #x130a)
+  (progress-fast-elevator #x130b)
 )
 ;; ---text-id-h:text-id
 
@@ -13131,6 +13157,45 @@
 ;; game-info-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum pickup-type
+  :bitfield #f
+  :type int32
+  (none            0)
+  (eco-yellow      1)
+  (eco-red         2)
+  (eco-blue        3)
+  (eco-dark        4)
+  (eco-green       5)
+  (eco-pill-green  6)
+  (eco-pill-dark   7)
+  (eco-pill-random 8)
+  (money           9)
+  (fuel-cell      10)
+  (buzzer         11)
+  (darkjak        12)
+  (ammo-yellow    13)
+  (ammo-red       14)
+  (ammo-blue      15)
+  (ammo-dark      16)
+  (shield         17)
+  (health         18)
+  (trick-point    19)
+  (trick-judge    20)
+  (gem            21)
+  (skill          22)
+  (karma          23)
+  (gun-red        24)
+  (gun-yellow     25)
+  (gun-blue       26)
+  (gun-dark       27)
+  (board          28)
+  (pass-red       29)
+  (pass-green     30)
+  (pass-yellow    31)
+  (pass-blue      32)
+  (ammo-random    33)
+  )
+
 (deftype game-bank (basic)
   ((life-max-default   float  :offset-assert 4)
    (life-start-default float  :offset-assert 8)
@@ -13343,7 +13408,7 @@
    (unknown-pad1           uint32)
    (purchase-secrets       game-secrets         :offset-assert 152)
    (unknown-pad2           uint32               :offset-assert 156)
-   (gun-type               int32                :offset-assert 160)
+   (gun-type               pickup-type          :offset-assert 160)
    (gun-ammo               float            4   :offset-assert 164)
    (shield                 float                :offset-assert 180)
    (score                  float                :offset-assert 184)
@@ -14939,7 +15004,7 @@
   (deadly      1)
   (endlessfall 2)
   (burn        3)
-  (deadlup     4)
+  (deadlyup    4)
   (burnup      5)
   (melt        6)
   (slide       7)
@@ -15002,45 +15067,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fact-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defenum pickup-type
-  :bitfield #f
-  :type int32
-  (none            0)
-  (eco-yellow      1)
-  (eco-red         2)
-  (eco-blue        3)
-  (eco-dark        4)
-  (eco-green       5)
-  (eco-pill-green  6)
-  (eco-pill-dark   7)
-  (eco-pill-random 8)
-  (money           9)
-  (fuel-cell      10)
-  (buzzer         11)
-  (darkjak        12)
-  (ammo-yellow    13)
-  (ammo-red       14)
-  (ammo-blue      15)
-  (ammo-dark      16)
-  (shield         17)
-  (health         18)
-  (trick-point    19)
-  (trick-judge    20)
-  (gem            21)
-  (skill          22)
-  (karma          23)
-  (gun-red        24)
-  (gun-yellow     25)
-  (gun-blue       26)
-  (gun-dark       27)
-  (board          28)
-  (pass-red       29)
-  (pass-green     30)
-  (pass-yellow    31)
-  (pass-blue      32)
-  (ammo-random    33)
-  )
 
 (deftype fact-bank (basic)
   ((eco-level-max              float    :offset-assert 4)
@@ -18755,7 +18781,7 @@
     (target-board-jump meters meters symbol)
     target-board-jump-kick
     (target-board-pegasus handle)
-    (target-board-ride-edge symbol object object float)
+    (target-board-ride-edge symbol)
     target-board-stance
     (target-board-start object)
     (target-board-trickx float float symbol)
@@ -23966,7 +23992,7 @@
 (define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
 (define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
 (define-extern joint-control-copy! (function joint-control joint-control joint-control))
-(define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
+(define-extern joint-control-remap! (function joint-control art-group art-group pair int string symbol))
 (define-extern flatten-joint-control-to-spr (function joint-control int))
 (define-extern matrix-from-joint-anim-frame (function joint-anim-compressed-control int int matrix))
 (define-extern matrix-from-control-channel!  (function matrix joint joint-control-channel matrix))
@@ -25179,7 +25205,7 @@
   )
 
 (define-extern gen-font-12 (function string none))
-(define-extern draw-string-asm (function string dma-buffer font-context uint))
+(define-extern draw-string-asm (function string dma-buffer font-context draw-string-result))
 (define-extern draw-string (function string dma-buffer font-context draw-string-result))
 (define-extern get-string-length (function string font-context draw-string-result))
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
@@ -27733,7 +27759,7 @@
 (define-extern cam-slave-init-vars (function none :behavior camera-slave))
 (define-extern cam-slave-go (function (state camera-slave) none :behavior camera-slave))
 (define-extern cam-slave-init (function (state camera-slave) entity none :behavior camera-slave))
-(define-extern cam-standard-event-handler (function process int symbol event-message-block none :behavior camera-slave))
+(define-extern cam-standard-event-handler (function process int symbol event-message-block object :behavior camera-slave))
 (define-extern cam-curve-pos (function vector vector curve symbol vector :behavior camera-slave))
 (define-extern cam-curve-setup (function vector none :behavior camera-slave))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
@@ -28409,7 +28435,7 @@
 (define-extern ja-eval (function int :behavior process-drawable))
 (define-extern ja-blend-eval (function int :behavior process-drawable))
 (define-extern ja-post (function none :behavior process-drawable))
-(define-extern sleep-code (function symbol :behavior process-drawable))
+(define-extern sleep-code (function symbol :behavior process))
 (define-extern transform-and-sleep (function none :behavior process-drawable))
 (define-extern transform-and-sleep-code (function none :behavior process-drawable))
 (define-extern transform-post (function int :behavior process-drawable))
@@ -29572,7 +29598,7 @@
 (define-extern projectile-update-velocity-space-wars (function projectile none))
 (define-extern projectile-init-by-other (function projectile-init-by-other-params projectile :behavior projectile))
 (define-extern projectile-bounce-update-velocity (function projectile-bounce none :behavior projectile))
-(define-extern projectile-bounce-falling-post (function projectile-bounce none :behavior projectile-bounce))
+(define-extern projectile-bounce-falling-post (function none :behavior projectile-bounce))
 (define-extern projectile-bounce-move (function projectile-bounce none))
 (define-extern projectile-bounce-reaction (function control-info collide-query vector vector collide-status))
 
@@ -29705,12 +29731,12 @@
 (define-extern *gun-walk-mods* surface)
 (define-extern target-gun-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-gun-setup (function symbol none :behavior target))
-(define-extern target-gun-init (function int none :behavior target))
+(define-extern target-gun-init (function pickup-type none :behavior target))
 (define-extern target-gun-exit (function symbol))
 (define-extern target-gun-end-mode (function symbol symbol :behavior target))
 (define-extern quat<-gun! (function quaternion quaternion quaternion))
 (define-extern target-gun-ammo-out-pick (function int :behavior target))
-(define-extern target-gun-type-set! (function int none :behavior target))
+(define-extern target-gun-type-set! (function pickup-type none :behavior target))
 (define-extern target-gun-marking-menu (function target none))
 (define-extern target-gun-build-track-list (function none :behavior target))
 (define-extern target-gun-find-track (function none :behavior target))
@@ -33297,15 +33323,15 @@
     (enemy-method-63 (_type_ process-focusable enemy-aware) symbol 63)
     (enemy-method-64 (_type_) none 64)
     (enemy-method-65 (_type_) none 65)
-    (go-ambush (_type_) none 66)
-    (go-stare (_type_) none 67)
-    (go-stare2 (_type_) none 68)
-    (go-directed (_type_) none 69)
-    (go-hostile (_type_) none 70)
-    (go-flee (_type_) none 71)
+    (go-ambush (_type_) object 66)
+    (go-stare (_type_) object 67)
+    (go-stare2 (_type_) object 68)
+    (go-directed (_type_) object 69)
+    (go-hostile (_type_) object 70)
+    (go-flee (_type_) object 71)
     (react-to-focus
       "@TODO - flesh out docs"
-      (_type_) none 72)
+      (_type_) object 72)
     (kill-prefer-falling
       "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
       (_type_) object 73)
@@ -34627,7 +34653,7 @@
     )
   )
 
-(define-extern simple-nav-sphere-event-handler (function process int symbol event-message-block none :behavior simple-nav-sphere))
+(define-extern simple-nav-sphere-event-handler (function process int symbol event-message-block object :behavior simple-nav-sphere))
 (define-extern simple-nav-sphere-init-by-other (function float vector nav-mesh int none :behavior simple-nav-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36247,7 +36273,7 @@
   :flag-assert         #x13003000a8
   (:methods
     (idle () _type_ :state 14)
-    (spawning (object object process pointer) _type_ :state 15)
+    (spawning () _type_ :state 15)
     (die () _type_ :state 16)
     (hover-enemy-manager-init! "Initialize this [[hover-enemy-manager]]." (_type_ (array hover-enemy-battle-command)) none 17)
     (spawn-enemy (_type_ uint) none 18)
@@ -46506,27 +46532,17 @@
 (defenum simon-block-flags
   :type uint16
   :bitfield #t
-  (sbf0)
-  (sbf1)
-  (sbf2)
+  (blink)
+  (blink-on)
+  (ridden)
   (sbf3)
-  (sbf4)
-  (sbf5)
-  (sbf6)
-  (sbf7)
-  (sbf8)
-  (sbf9)
-  (sbf10)
-  (sbf11)
-  (sbf12)
-  (sbf13)
-  (sbf14)
-  (sbf15)
+  (dangerous)
+  (up-sound-played)
   )
 ;; ---tomb-water:simon-block-flags
 
 (deftype tomb-simon-block (base-plat)
-  ((sound-show  uint128         :offset-assert 272)
+  ((sound-show  sound-name      :offset-assert 272)
    (color       vector  :inline :offset-assert 288)
    (my-idx      int32           :offset-assert 304)
    (next-idx    int32           :offset-assert 308)
@@ -47044,8 +47060,8 @@
   )
 
 (define-extern tomb-boss-catwalk-init-by-other (function vector int none :behavior tomb-boss-catwalk))
-(define-extern widow-bomb-handler (function process int symbol event-message-block none :behavior widow-bomb))
-(define-extern widow-bomb-back-handler (function process int symbol event-message-block none :behavior widow-bomb))
+(define-extern widow-bomb-handler (function process int symbol event-message-block object :behavior widow-bomb))
+(define-extern widow-bomb-back-handler (function process int symbol event-message-block object :behavior widow-bomb))
 (define-extern widow-bomb-reaction (function control-info collide-query vector vector collide-status :behavior widow))
 (define-extern widow-bomb-init-by-other (function vector vector float float vector none :behavior widow-bomb))
 (define-extern heart-mar-init-by-other (function vector none :behavior heart-mar))
@@ -50342,7 +50358,7 @@
     )
   )
 
-(define-extern vehicle-rider-event-handler (function process int symbol event-message-block none :behavior vehicle-rider))
+(define-extern vehicle-rider-event-handler (function process int symbol event-message-block object :behavior vehicle-rider))
 (define-extern vehicle-rider-init-by-other (function traffic-object-spawn-params none :behavior vehicle-rider))
 (define-extern vehicle-rider-spawn (function vehicle type traffic-object-spawn-params process))
 
@@ -50496,7 +50512,7 @@
 ;; vehicle-states                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern vehicle-event-handler (function process int symbol event-message-block none :behavior vehicle))
+(define-extern vehicle-event-handler (function process int symbol event-message-block object :behavior vehicle))
 (define-extern vehicle-explode-post (function none :behavior vehicle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51751,7 +51767,7 @@
     (move-to-vehicle () _type_ :state 209)
     (board-vehicle () _type_ :state 210)
     (ride () _type_ :state 211)
-    (exit-vehicle (object object int symbol event-message-block) _type_ :state 212)
+    (exit-vehicle () _type_ :state 212)
     (wait-at-dest () _type_ :state 213)
     (civilian-method-214 (_type_ nav-branch int vector float) float 214)
     (civilian-method-215 (_type_ vector) none 215)

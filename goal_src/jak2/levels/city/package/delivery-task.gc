@@ -29,25 +29,25 @@
   )
 
 
-(defmethod krew-package-method-22 krew-package ((obj krew-package))
-  (set! (-> obj root) (new 'process 'trsqv))
+(defmethod krew-package-method-22 krew-package ((this krew-package))
+  (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
 
-(defmethod krew-package-method-23 krew-package ((obj krew-package))
+(defmethod krew-package-method-23 krew-package ((this krew-package))
   (with-pp
     (set! (-> pp level) (level-get *level* 'lpackage))
     (initialize-skeleton
-      obj
+      this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-krew-package" (the-as (pointer uint32) #f)))
       (the-as pair 0)
       )
-    (set! (-> obj scale) 1.0)
-    (set! (-> obj draw lod-set lod 0 dist) 81920.0)
-    (set! (-> obj draw lod-set lod 1 dist) 204800.0)
-    (set! (-> obj draw lod-set lod 1 dist) 327680.0)
-    (logior! (-> obj skel status) (joint-control-status sync-math))
+    (set! (-> this scale) 1.0)
+    (set! (-> this draw lod-set lod 0 dist) 81920.0)
+    (set! (-> this draw lod-set lod 1 dist) 204800.0)
+    (set! (-> this draw lod-set lod 1 dist) 327680.0)
+    (logior! (-> this skel status) (joint-control-status sync-math))
     0
     (none)
     )
@@ -55,7 +55,7 @@
 
 (defstate idle (krew-package)
   :virtual #t
-  :code (the-as (function none :behavior krew-package) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((gp-0 (handle->process (-> self attach-object))))
       (cond
@@ -78,7 +78,6 @@
       (set-vector! (-> self root scale) f0-5 f0-5 f0-5 1.0)
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -86,19 +85,18 @@
   :virtual #t
   :code (behavior ()
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! krew-package ((obj krew-package) (arg0 entity-actor))
+(defmethod init-from-entity! krew-package ((this krew-package) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (process-entity-status! obj (entity-perm-status dead) #t)
+  (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
 
@@ -521,8 +519,8 @@ This commonly includes things such as:
         (send-event *target* 'change-mode 'normal)
         )
     (set-setting! 'pilot #f 0.0 0)
-    (set! (-> self state-time) (current-time))
-    (while (< (- (current-time) (-> self state-time)) (seconds 2))
+    (set-time! (-> self state-time))
+    (while (not (time-elapsed? (-> self state-time) (seconds 2)))
       (suspend)
       )
     (none)

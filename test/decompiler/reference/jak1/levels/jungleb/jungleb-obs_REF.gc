@@ -18,13 +18,13 @@
   )
 
 ;; definition for method 3 of type eggtop
-(defmethod inspect eggtop ((obj eggtop))
+(defmethod inspect eggtop ((this eggtop))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tcam-tracker: ~D~%" (-> obj cam-tracker))
-  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
-  obj
+  (format #t "~T~Tcam-tracker: ~D~%" (-> this cam-tracker))
+  (format #t "~T~Tsound-id: ~D~%" (-> this sound-id))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -190,23 +190,21 @@
 
 ;; failed to figure out what this is:
 (defstate eggtop-idle (eggtop)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('notify)
-                      (case (-> event param 0)
-                        (('pickup)
-                         (if (type-type? (-> proc type) fuel-cell)
-                             (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
-                             )
-                         )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (if (type-type? (-> proc type) fuel-cell)
+              (save-reminder (get-task-control (-> self entity extra perm task)) 1 0)
+              )
+          )
+         )
+       )
+      )
     )
   :exit (behavior ()
     (sound-stop (-> self sound-id))
-    (none)
     )
   :trans (behavior ()
     (if (and (not (-> self child)) (task-complete? *game-info* (-> self entity extra perm task)))
@@ -214,15 +212,13 @@
         )
     (spawn (-> self part) (-> self root-override trans))
     (sound-play "electric-loop" :id (-> self sound-id))
-    (none)
     )
   :code (behavior ()
     (suspend)
     (update-transforms! (-> self root-override))
     (anim-loop)
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) ja-post)
+  :post ja-post
   )
 
 ;; failed to figure out what this is:
@@ -230,7 +226,6 @@
   :trans (behavior ()
     (rider-trans)
     (hide-hud-quick)
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (when (not arg0)
@@ -255,16 +250,16 @@
                                   (while (not (process-grab? *target*))
                                     (suspend)
                                     )
-                                  (let ((gp-0 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-0) (seconds 1))
+                                  (let ((gp-0 (current-time)))
+                                    (until (time-elapsed? gp-0 (seconds 1))
                                       (suspend)
                                       )
                                     )
                                   (send-event *camera* 'blend-from-as-fixed)
                                   (camera-look-at (the-as pair "ecovent-171") (the-as uint 0))
                                   (camera-change-to "camera-223" 0 #f)
-                                  (let ((gp-1 (-> *display* base-frame-counter)))
-                                    (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 3))
+                                  (let ((gp-1 (current-time)))
+                                    (until (time-elapsed? gp-1 (seconds 3))
                                       (suspend)
                                       )
                                     )
@@ -307,15 +302,14 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
-  :post (the-as (function none :behavior eggtop) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type eggtop
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! eggtop ((obj eggtop) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! eggtop ((this eggtop) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -333,25 +327,25 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *eggtop-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (update-transforms! (-> obj root-override))
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 189) obj))
-  (set! (-> obj sound-id) (new-sound-id))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *eggtop-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (update-transforms! (-> this root-override))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 189) this))
+  (set! (-> this sound-id) (new-sound-id))
   (cond
-    ((task-complete? *game-info* (-> obj entity extra perm task))
+    ((task-complete? *game-info* (-> this entity extra perm task))
      (go eggtop-close #t)
      )
     (else
       (birth-pickup-at-point
-        (vector+! (new 'stack-no-clear 'vector) (-> obj root-override trans) (new 'static 'vector :y 6144.0 :w 1.0))
+        (vector+! (new 'stack-no-clear 'vector) (-> this root-override trans) (new 'static 'vector :y 6144.0 :w 1.0))
         (pickup-type fuel-cell)
-        (the float (-> obj entity extra perm task))
+        (the float (-> this entity extra perm task))
         #f
-        obj
+        this
         (the-as fact-info #f)
         )
       (go eggtop-idle)
@@ -370,11 +364,11 @@
   )
 
 ;; definition for method 3 of type jng-iris-door
-(defmethod inspect jng-iris-door ((obj jng-iris-door))
+(defmethod inspect jng-iris-door ((this jng-iris-door))
   (let ((t9-0 (method-of-type eco-door inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -385,8 +379,8 @@
 
 ;; definition for method 24 of type jng-iris-door
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-24 jng-iris-door ((obj jng-iris-door))
-  (let ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
+(defmethod eco-door-method-24 jng-iris-door ((this jng-iris-door))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s4-0 collide-with) (collide-kind target))
@@ -398,7 +392,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> obj root-override) s5-0)
+    (set! (-> this root-override) s5-0)
     )
   0
   (none)
@@ -406,11 +400,11 @@
 
 ;; definition for method 25 of type jng-iris-door
 ;; INFO: Return type mismatch int vs none.
-(defmethod eco-door-method-25 jng-iris-door ((obj jng-iris-door))
-  (initialize-skeleton obj *jng-iris-door-sg* '())
-  (set! (-> obj open-distance) 32768.0)
-  (set! (-> obj close-distance) 49152.0)
-  (update-transforms! (-> obj root-override))
+(defmethod eco-door-method-25 jng-iris-door ((this jng-iris-door))
+  (initialize-skeleton this *jng-iris-door-sg* '())
+  (set! (-> this open-distance) 32768.0)
+  (set! (-> this close-distance) 49152.0)
+  (update-transforms! (-> this root-override))
   0
   (none)
   )

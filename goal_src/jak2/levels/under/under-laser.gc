@@ -163,10 +163,9 @@
     (let ((f0-3 (vector-vector-distance (math-camera-pos) (-> self root trans))))
       (set! (-> self root scale x) (lerp-scale 0.5 3.5 f0-3 32768.0 245760.0))
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser-shadow) sleep-code)
-  :post (the-as (function none :behavior under-laser-shadow) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -211,10 +210,9 @@
       (set! (-> a0-1 trans quad) (-> (the-as under-laser v1-0) root trans quad))
       (vector+! (-> a0-1 trans) (-> a0-1 trans) (-> (the-as under-laser v1-0) slave-trans-offset))
       )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser-slave) sleep-code)
-  :post (the-as (function none :behavior under-laser-slave) ja-post)
+  :code sleep-code
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -240,14 +238,14 @@
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod under-laser-method-22 under-laser ((obj under-laser))
+(defmethod under-laser-method-22 under-laser ((this under-laser))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> s5-0 start-pos quad) (-> obj root trans quad))
-    (set! (-> s5-0 move-dist quad) (-> obj slave-trans-offset quad))
+    (set! (-> s5-0 start-pos quad) (-> this root trans quad))
+    (set! (-> s5-0 move-dist quad) (-> this slave-trans-offset quad))
     (let ((v1-2 s5-0))
       (set! (-> v1-2 radius) 409.6)
       (set! (-> v1-2 collide-with) (collide-spec jak bot player-list))
-      (set! (-> v1-2 ignore-process0) obj)
+      (set! (-> v1-2 ignore-process0) this)
       (set! (-> v1-2 ignore-process1) #f)
       (set! (-> v1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1))
       (set! (-> v1-2 action-mask) (collide-action solid))
@@ -261,10 +259,10 @@
              )
         (when s5-1
           (let ((s4-1 (new 'stack-no-clear 'vector)))
-            (vector-rotate-around-y! s4-1 (-> obj slave-trans-offset) (if (logtest? (-> obj info options) 1)
-                                                                          16384.0
-                                                                          -16384.0
-                                                                          )
+            (vector-rotate-around-y! s4-1 (-> this slave-trans-offset) (if (logtest? (-> this info options) 1)
+                                                                           16384.0
+                                                                           -16384.0
+                                                                           )
                                      )
             (vector-normalize! s4-1 1.0)
             (if (send-event
@@ -289,19 +287,16 @@
   :virtual #t
   :enter (behavior ()
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :exit (behavior ()
     (logclear! (-> self draw status) (draw-control-status no-draw))
-    (none)
     )
   :trans (behavior ()
     (if (not (script-eval (the-as pair (-> self draw-test-script))))
         (go-virtual idle)
         )
-    (none)
     )
-  :code (the-as (function none :behavior under-laser) sleep-code)
+  :code sleep-code
   )
 
 (defstate idle (under-laser)
@@ -326,9 +321,8 @@
       (process-spawn under-laser-shadow (-> self info) gp-1 s5-0 :to self)
       )
     (update-vol! (-> self sound) 1.0)
-    (none)
     )
-  :code (the-as (function none :behavior under-laser) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (let ((f30-0 (get-norm! (-> self sync) 0)))
       (vector-lerp! (-> self root trans) (-> self zero-pos) (-> self one-pos) f30-0)
@@ -365,20 +359,19 @@
     (update! (-> self sound))
     (under-laser-method-22 self)
     (ja-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch process-drawable vs under-laser.
-(defmethod relocate under-laser ((obj under-laser) (arg0 int))
-  (if (nonzero? (-> obj lightning))
-      (&+! (-> obj lightning) arg0)
+(defmethod relocate under-laser ((this under-laser) (arg0 int))
+  (if (nonzero? (-> this lightning))
+      (&+! (-> this lightning) arg0)
       )
-  (the-as under-laser ((method-of-type process-drawable relocate) obj arg0))
+  (the-as under-laser ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-laser ((obj under-laser) (arg0 entity-actor))
+(defmethod init-from-entity! under-laser ((this under-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -386,17 +379,17 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (sv-64 res-tag))
-  (set! (-> obj root) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-under-laser" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (let ((v1-7 (res-lump-value (-> obj entity) 'extra-id uint128 :time -1000000000.0)))
-    (set! (-> obj id) (the-as int v1-7))
-    (set! (-> obj info) (-> *under-laser-infos* v1-7))
+  (let ((v1-7 (res-lump-value (-> this entity) 'extra-id uint128 :time -1000000000.0)))
+    (set! (-> this id) (the-as int v1-7))
+    (set! (-> this info) (-> *under-laser-infos* v1-7))
     )
   (let ((a1-6 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-11 0))
@@ -413,10 +406,10 @@ This commonly includes things such as:
     (set! (-> a1-6 ease-out) 0.15)
     (set! (-> a1-6 pause-in) 0.0)
     (set! (-> a1-6 pause-out) 0.0)
-    (initialize! (-> obj sync) a1-6)
+    (initialize! (-> this sync) a1-6)
     )
-  (set! (-> obj clock) (-> *display* user0-clock))
-  (let ((s5-1 (-> obj root)))
+  (set! (-> this clock) (-> *display* user0-clock))
+  (let ((s5-1 (-> this root)))
     (set-vector! (-> s5-1 scale) 1.25 1.25 1.25 1.0)
     (set! sv-64 (new 'static 'res-tag))
     (let ((v1-22 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-64))))
@@ -431,39 +424,39 @@ This commonly includes things such as:
           (quaternion-rotate-y! (-> s5-1 quat) (-> s5-1 quat) f0-15)
           )
       )
-    (vector-z-quaternion! (-> obj laser-dir) (-> s5-1 quat))
-    (vector-normalize! (-> obj laser-dir) 1.0)
+    (vector-z-quaternion! (-> this laser-dir) (-> s5-1 quat))
+    (vector-normalize! (-> this laser-dir) 1.0)
     (quaternion-rotate-y! (-> s5-1 quat) (-> s5-1 quat) -16384.0)
-    (when (logtest? (-> obj info options) 1)
+    (when (logtest? (-> this info options) 1)
       (let ((s4-1 (new 'stack-no-clear 'quaternion)))
-        (quaternion-vector-angle! s4-1 (-> obj laser-dir) 16384.0)
+        (quaternion-vector-angle! s4-1 (-> this laser-dir) 16384.0)
         (quaternion*! (-> s5-1 quat) s4-1 (-> s5-1 quat))
         )
       )
-    (let ((f30-0 (-> obj info laser-radius)))
+    (let ((f30-0 (-> this info laser-radius)))
       (let ((s4-2 (new 'stack-no-clear 'vector)))
-        (vector-normalize-copy! s4-2 (-> obj laser-dir) (- f30-0))
+        (vector-normalize-copy! s4-2 (-> this laser-dir) (- f30-0))
         (vector+! (-> s5-1 trans) (-> s5-1 trans) s4-2)
         )
-      (vector-normalize-copy! (-> obj slave-trans-offset) (-> obj laser-dir) (* 2.0 f30-0))
+      (vector-normalize-copy! (-> this slave-trans-offset) (-> this laser-dir) (* 2.0 f30-0))
       )
-    (set! (-> obj zero-pos quad) (-> s5-1 trans quad))
-    (let ((f30-1 (-> obj info laser-move-dist)))
+    (set! (-> this zero-pos quad) (-> s5-1 trans quad))
+    (let ((f30-1 (-> this info laser-move-dist)))
       (cond
-        ((logtest? (-> obj info options) 1)
-         (set! (-> obj one-pos quad) (-> obj zero-pos quad))
-         (+! (-> obj one-pos y) f30-1)
+        ((logtest? (-> this info options) 1)
+         (set! (-> this one-pos quad) (-> this zero-pos quad))
+         (+! (-> this one-pos y) f30-1)
          )
         (else
           (let ((s4-3 (new 'stack-no-clear 'vector)))
-            (vector-rotate-around-y! s4-3 (-> obj laser-dir) 16384.0)
+            (vector-rotate-around-y! s4-3 (-> this laser-dir) 16384.0)
             (vector-normalize! s4-3 f30-1)
-            (vector+! (-> obj one-pos) (-> obj zero-pos) s4-3)
+            (vector+! (-> this one-pos) (-> this zero-pos) s4-3)
             )
           )
         )
       )
-    (vector-lerp! (-> s5-1 trans) (-> obj zero-pos) (-> obj one-pos) (get-norm! (-> obj sync) 0))
+    (vector-lerp! (-> s5-1 trans) (-> this zero-pos) (-> this one-pos) (get-norm! (-> this sync) 0))
     )
   (let ((a2-13 (new 'static 'lightning-spec
                  :name #f
@@ -485,24 +478,24 @@ This commonly includes things such as:
                  )
                )
         )
-    (set! (-> obj lightning) (new 'process 'lightning-control a2-13 obj 0.0))
+    (set! (-> this lightning) (new 'process 'lightning-control a2-13 this 0.0))
     )
   (let ((a3-5 (new 'stack-no-clear 'vector)))
-    (vector-float*! a3-5 (-> obj slave-trans-offset) 0.5)
-    (vector+! a3-5 a3-5 (-> obj root trans))
-    (if (zero? (-> obj id))
-        (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-near" :fo-max 40) a3-5))
-        (set! (-> obj sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-beam" :fo-max 40) a3-5))
+    (vector-float*! a3-5 (-> this slave-trans-offset) 0.5)
+    (vector+! a3-5 a3-5 (-> this root trans))
+    (if (zero? (-> this id))
+        (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-near" :fo-max 40) a3-5))
+        (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "und-laser-beam" :fo-max 40) a3-5))
         )
     )
-  (set! (-> obj draw-test-script) (res-lump-struct (-> obj entity) 'on-activate script-context))
+  (set! (-> this draw-test-script) (res-lump-struct (-> this entity) 'on-activate script-context))
   (cond
-    ((and (script-eval (the-as pair (-> obj draw-test-script))) (= *bot-record-path* -1))
-     (update-vol! (-> obj sound) 0.0)
-     (go (method-of-object obj dormant))
+    ((and (script-eval (the-as pair (-> this draw-test-script))) (= *bot-record-path* -1))
+     (update-vol! (-> this sound) 0.0)
+     (go (method-of-object this dormant))
      )
     (else
-      (go (method-of-object obj idle))
+      (go (method-of-object this idle))
       )
     )
   (none)

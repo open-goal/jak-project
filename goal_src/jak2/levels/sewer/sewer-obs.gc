@@ -25,30 +25,30 @@
   )
 
 
-(defmethod update-sound! sew-blade ((obj sew-blade))
+(defmethod update-sound! sew-blade ((this sew-blade))
   "Updates the sound of the [[sew-blade]] based on if it's under or above the water"
-  (when (nonzero? (-> obj sound))
-    (let ((f30-0 (+ (-> obj root trans y) (-> obj y-max)))
-          (f28-0 (+ (-> obj root trans y) (-> obj y-min)))
+  (when (nonzero? (-> this sound))
+    (let ((f30-0 (+ (-> this root trans y) (-> this y-max)))
+          (f28-0 (+ (-> this root trans y) (-> this y-min)))
           (ocean-base-height (get-base-height *ocean-map-sewer*))
           )
       (cond
         ((< f30-0 ocean-base-height)
-         (stop! (-> obj sound))
+         (stop! (-> this sound))
          )
         ((< ocean-base-height f28-0)
-         (when (!= (-> obj last-sound) 1)
-           (change-sound! (-> obj sound) (-> obj snd-no-water))
-           (set! (-> obj last-sound) 1)
+         (when (!= (-> this last-sound) 1)
+           (change-sound! (-> this sound) (-> this snd-no-water))
+           (set! (-> this last-sound) 1)
            )
-         (update! (-> obj sound))
+         (update! (-> this sound))
          )
         (else
-          (when (!= (-> obj last-sound) 2)
-            (change-sound! (-> obj sound) (-> obj snd-water))
-            (set! (-> obj last-sound) 2)
+          (when (!= (-> this last-sound) 2)
+            (change-sound! (-> this sound) (-> this snd-water))
+            (set! (-> this last-sound) 2)
             )
-          (update! (-> obj sound))
+          (update! (-> this sound))
           )
         )
       )
@@ -77,8 +77,8 @@
 
 (defstate idle (sew-single-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -96,7 +96,7 @@
              (send-event
                hit-proc
                'attack-or-shove
-               (-> event param 0)
+               (-> block param 0)
                (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 5)) (shove-up (meters 3))))
                )
              )
@@ -107,35 +107,30 @@
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-single-blade ((obj sew-single-blade) (arg0 entity-actor))
+(defmethod init-from-entity! sew-single-blade ((this sew-single-blade) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (logior! (-> this mask) (process-mask ambient))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -156,30 +151,30 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-single-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (quaternion-copy! (-> obj quat) (-> obj root quat))
-  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
-  (set-falloff-far! (-> obj sound) 286720.0)
-  (set! (-> obj y-min) -16384.0)
-  (set! (-> obj y-max) 16384.0)
-  (set! (-> obj snd-water) (static-sound-name "single-blade-w"))
-  (set! (-> obj snd-no-water) (static-sound-name "single-blade"))
+  (quaternion-copy! (-> this quat) (-> this root quat))
+  (set! (-> this sound) (new 'process 'ambient-sound "none" (-> this root trans)))
+  (set-falloff-far! (-> this sound) 286720.0)
+  (set! (-> this y-min) -16384.0)
+  (set! (-> this y-max) 16384.0)
+  (set! (-> this snd-water) (static-sound-name "single-blade-w"))
+  (set! (-> this snd-no-water) (static-sound-name "single-blade"))
   (let* ((game-info *game-info*)
          (id (+ (-> game-info attack-id) 1))
          )
     (set! (-> game-info attack-id) id)
-    (set! (-> obj attack-id) id)
+    (set! (-> this attack-id) id)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -230,8 +225,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-tri-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -243,7 +238,7 @@ This commonly includes things such as:
              (send-event
                hit-proc
                'attack-or-shove
-               (-> event param 0)
+               (-> block param 0)
                (static-attack-info ((id (-> self attack-id)) (shove-back (meters 5)) (shove-up (meters 2))))
                )
              )
@@ -306,25 +301,23 @@ This commonly includes things such as:
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-tri-blade ((obj sew-tri-blade) (entity entity-actor))
+(defmethod init-from-entity! sew-tri-blade ((this sew-tri-blade) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (logior! (-> this mask) (process-mask ambient))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -365,36 +358,36 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> v1-23 prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> v1-23 prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-tri-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj state-time) (current-time))
-  (set! (-> obj anim-time) 0.0)
-  (set! (-> obj anim-offset) 0.0)
-  (set! (-> obj skel postbind-function) sew-tri-blade-joint-callback)
+  (set-time! (-> this state-time))
+  (set! (-> this anim-time) 0.0)
+  (set! (-> this anim-offset) 0.0)
+  (set! (-> this skel postbind-function) sew-tri-blade-joint-callback)
   (let* ((v1-33 *game-info*)
          (a0-33 (+ (-> v1-33 attack-id) 1))
          )
     (set! (-> v1-33 attack-id) a0-33)
-    (set! (-> obj attack-id) a0-33)
+    (set! (-> this attack-id) a0-33)
     )
   (if (>= (res-lump-value entity 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
-      (set! (-> obj anim-offset) 3.0)
+      (set! (-> this anim-offset) 3.0)
       )
-  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
-  (set-falloff-far! (-> obj sound) 286720.0)
-  (set! (-> obj y-min) 0.0)
-  (set! (-> obj y-max) 48332.8)
-  (set! (-> obj snd-water) (static-sound-name "tri-blade-w"))
-  (set! (-> obj snd-no-water) (static-sound-name "tri-blade"))
+  (set! (-> this sound) (new 'process 'ambient-sound "none" (-> this root trans)))
+  (set-falloff-far! (-> this sound) 286720.0)
+  (set! (-> this y-min) 0.0)
+  (set! (-> this y-max) 48332.8)
+  (set! (-> this snd-water) (static-sound-name "tri-blade-w"))
+  (set! (-> this snd-no-water) (static-sound-name "tri-blade"))
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -417,8 +410,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-arm-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((s5-0 proc)
               (a0-2 (if (type? s5-0 process-focusable)
@@ -430,7 +423,7 @@ This commonly includes things such as:
              (send-event
                a0-2
                'attack-or-shove
-               (-> event param 0)
+               (-> block param 0)
                (static-attack-info ((id (-> self attack-id)) (shove-back (meters 5)) (shove-up (meters 2))))
                )
              )
@@ -440,35 +433,30 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-arm-blade ((obj sew-arm-blade) (entity entity-actor))
+(defmethod init-from-entity! sew-arm-blade ((this sew-arm-blade) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (logior! (-> this mask) (process-mask ambient))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -489,29 +477,29 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-arm-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
-  (set-falloff-far! (-> obj sound) 286720.0)
-  (set! (-> obj y-min) -43008.0)
-  (set! (-> obj y-max) -4096.0)
-  (set! (-> obj snd-water) (static-sound-name "arm-blade-w"))
-  (set! (-> obj snd-no-water) (static-sound-name "arm-blade"))
+  (set! (-> this sound) (new 'process 'ambient-sound "none" (-> this root trans)))
+  (set-falloff-far! (-> this sound) 286720.0)
+  (set! (-> this y-min) -43008.0)
+  (set! (-> this y-max) -4096.0)
+  (set! (-> this snd-water) (static-sound-name "arm-blade-w"))
+  (set! (-> this snd-no-water) (static-sound-name "arm-blade"))
   (let* ((game-info *game-info*)
          (id (+ (-> game-info attack-id) 1))
          )
     (set! (-> game-info attack-id) id)
-    (set! (-> obj attack-id) id)
+    (set! (-> this attack-id) id)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -534,8 +522,8 @@ This commonly includes things such as:
 
 (defstate idle (sew-multi-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touch 'attack)
        (let* ((_proc proc)
               (hit-proc (if (type? _proc process-focusable)
@@ -553,7 +541,7 @@ This commonly includes things such as:
              (send-event
                hit-proc
                'attack-or-shove
-               (-> event param 0)
+               (-> block param 0)
                (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 7)) (shove-up (meters 4))))
                )
              )
@@ -564,35 +552,30 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-multi-blade ((obj sew-multi-blade) (entity entity-actor))
+(defmethod init-from-entity! sew-multi-blade ((this sew-multi-blade) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (logior! (-> this mask) (process-mask ambient))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -613,29 +596,29 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-multi-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root trans)))
-  (set-falloff-far! (-> obj sound) 368640.0)
-  (set! (-> obj y-min) -16384.0)
-  (set! (-> obj y-max) 16384.0)
-  (set! (-> obj snd-water) (static-sound-name "multi-blade-w"))
-  (set! (-> obj snd-no-water) (static-sound-name "multi-blade"))
+  (set! (-> this sound) (new 'process 'ambient-sound "none" (-> this root trans)))
+  (set-falloff-far! (-> this sound) 368640.0)
+  (set! (-> this y-min) -16384.0)
+  (set! (-> this y-max) 16384.0)
+  (set! (-> this snd-water) (static-sound-name "multi-blade-w"))
+  (set! (-> this snd-no-water) (static-sound-name "multi-blade"))
   (let* ((game-info *game-info*)
          (id (+ (-> game-info attack-id) 1))
          )
     (set! (-> game-info attack-id) id)
-    (set! (-> obj attack-id) id)
+    (set! (-> this attack-id) id)
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -660,48 +643,46 @@ This commonly includes things such as:
 
 (defstate idle (sew-twist-blade)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as
-      object
-      (case event-type
-        (('touch 'attack)
-         (let* ((_proc proc)
-                (hit-proc (if (type? _proc process-focusable)
-                              (the-as process-focusable _proc)
-                              )
-                          )
-                )
-           (when hit-proc
-             (let ((hit-direction (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root trans) (-> self root-overide trans)))
-                   (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-overide quat)))
-                   )
-               (if (< (vector-dot v1-5 hit-direction) 0.0)
-                   (vector-float*! v1-5 v1-5 -1.0)
-                   )
-               (send-event
-                 hit-proc
-                 'attack-or-shove
-                 (-> event param 0)
-                 (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 4)) (shove-up (meters 2))))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (let* ((_proc proc)
+              (hit-proc (if (type? _proc process-focusable)
+                            (the-as process-focusable _proc)
+                            )
+                        )
+              )
+         (when hit-proc
+           (let ((hit-direction (vector-! (new 'stack-no-clear 'vector) (-> hit-proc root trans) (-> self root-overide trans)))
+                 (v1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root-overide quat)))
                  )
+             (if (< (vector-dot v1-5 hit-direction) 0.0)
+                 (vector-float*! v1-5 v1-5 -1.0)
+                 )
+             (send-event
+               hit-proc
+               'attack-or-shove
+               (-> block param 0)
+               (static-attack-info ((id (-> self attack-id)) (vector v1-5) (shove-back (meters 4)) (shove-up (meters 2))))
                )
-             (set! (-> self no-collision-timer) (the-as uint (current-time)))
-             (let ((root-prim (-> self root-overide root-prim)))
-               (set! (-> root-prim prim-core collide-as) (collide-spec))
-               (set! (-> root-prim prim-core collide-with) (collide-spec))
-               )
-             0
              )
+           (set! (-> self no-collision-timer) (the-as uint (current-time)))
+           (let ((root-prim (-> self root-overide root-prim)))
+             (set! (-> root-prim prim-core collide-as) (collide-spec))
+             (set! (-> root-prim prim-core collide-with) (collide-spec))
+             )
+           0
            )
          )
-        )
+       )
       )
     )
   :trans (behavior ()
     (when (and (nonzero? (-> self no-collision-timer))
-               (>= (- (current-time) (the-as int (-> self no-collision-timer)))
-                   (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
-                   )
+               (time-elapsed?
+                 (the-as int (-> self no-collision-timer))
+                 (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout))
+                 )
                )
       (let ((root-prim (-> self root-overide root-prim)))
         (set! (-> root-prim prim-core collide-as) (-> self root-overide backup-collide-as))
@@ -716,39 +697,33 @@ This commonly includes things such as:
       (set! (-> overlap-params tlist) *touching-list*)
       (find-overlapping-shapes (-> self root-overide) overlap-params)
       )
-    (none)
     )
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)) 0.02)
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.02) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.02))
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (update-sound! self)
     (transform-post)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-twist-blade ((obj sew-twist-blade) (entity entity-actor))
+(defmethod init-from-entity! sew-twist-blade ((this sew-twist-blade) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (logior! (-> obj mask) (process-mask ambient))
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (logior! (-> this mask) (process-mask ambient))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -769,29 +744,29 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root-overide) cshape)
+    (set! (-> this root-overide) cshape)
     )
-  (process-drawable-from-entity! obj entity)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (process-drawable-from-entity! this entity)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-twist-blade" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
   (transform-post)
-  (set! (-> obj sound) (new 'process 'ambient-sound "none" (-> obj root-overide trans)))
-  (set-falloff-far! (-> obj sound) 245760.0)
-  (set! (-> obj y-min) -4096.0)
-  (set! (-> obj y-max) 4096.0)
-  (set! (-> obj snd-water) (static-sound-name "twist-blade-w"))
-  (set! (-> obj snd-no-water) (static-sound-name "twist-blade"))
+  (set! (-> this sound) (new 'process 'ambient-sound "none" (-> this root-overide trans)))
+  (set-falloff-far! (-> this sound) 245760.0)
+  (set! (-> this y-min) -4096.0)
+  (set! (-> this y-max) 4096.0)
+  (set! (-> this snd-water) (static-sound-name "twist-blade-w"))
+  (set! (-> this snd-no-water) (static-sound-name "twist-blade"))
   (let* ((game-info *game-info*)
          (id (+ (-> game-info attack-id) 1))
          )
     (set! (-> game-info attack-id) id)
-    (set! (-> obj attack-id) id)
+    (set! (-> this attack-id) id)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -831,21 +806,21 @@ This commonly includes things such as:
   )
 
 
-(defskelgroup skel-sew-light-switch sew-light-switch 0 2
-              ((1 (meters 999999)))
+(defskelgroup skel-sew-light-switch sew-light-switch sew-light-switch-lod0-jg sew-light-switch-idle-ja
+              ((sew-light-switch-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 1.5)
               )
 
 (defstate idle (sew-light-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (broadcast-to-actors self 'cue-chase)
        (go-virtual pressed)
        )
       (('touch 'attack)
-       (let* ((gp-0 (-> event param 0))
+       (let* ((gp-0 (-> block param 0))
               (_proc proc)
               (target-proc (if (type? _proc target)
                                _proc
@@ -862,26 +837,23 @@ This commonly includes things such as:
     )
   :enter (behavior ()
     (set! (-> self light-state) #f)
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! (-> self draw art-group data 2) :num! min)
     (transform-post)
     (sleep-code)
-    (none)
     )
   :post (behavior ()
     (launch-particles (-> *part-id-table* 1442) (-> self root trans))
     (ja-post)
-    (none)
     )
   )
 
 (defstate pressed (sew-light-switch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -890,27 +862,22 @@ This commonly includes things such as:
   :enter (behavior ()
     (set! (-> self light-state) #t)
     (sound-play "sew-light-switc")
-    (none)
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 2)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 2)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (transform-post)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-switch-collision! sew-light-switch ((obj sew-light-switch))
+(defmethod init-switch-collision! sew-light-switch ((this sew-light-switch))
   "Initializes the collision on the switch"
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction) cshape-reaction-default)
     (set! (-> cshape no-reaction)
@@ -930,18 +897,18 @@ This commonly includes things such as:
       (set! (-> cshape backup-collide-as) (-> root-prim prim-core collide-as))
       (set! (-> cshape backup-collide-with) (-> root-prim prim-core collide-with))
       )
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod broadcast-to-actors sew-light-switch ((obj sew-light-switch) (event-type symbol))
+(defmethod broadcast-to-actors sew-light-switch ((this sew-light-switch) (event-type symbol))
   "Broadcast event to all associated [[entity]]s via the `actor-group`s
 @param `event-type` the symbol to broadcast"
   (with-pp
-    (dotimes (group-idx (-> obj actor-group-count))
-      (let ((group (-> obj actor-group group-idx)))
+    (dotimes (group-idx (-> this actor-group-count))
+      (let ((group (-> this actor-group group-idx)))
         (dotimes (actor-idx (-> group length))
           (let ((evt (new 'stack-no-clear 'event-message-block)))
             (set! (-> evt from) (process->ppointer pp))
@@ -969,7 +936,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! sew-light-switch ((obj sew-light-switch) (entity entity-actor))
+(defmethod init-from-entity! sew-light-switch ((this sew-light-switch) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -977,33 +944,34 @@ This commonly includes things such as:
 - loading the skeleton group / bones
 - sounds"
   (local-vars (tag res-tag))
-  (init-switch-collision! obj)
-  (process-drawable-from-entity! obj entity)
+  (init-switch-collision! this)
+  (process-drawable-from-entity! this entity)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-light-switch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (process-entity-status! obj (entity-perm-status no-kill) #t)
+  (process-entity-status! this (entity-perm-status no-kill) #t)
   (set! tag (new 'static 'res-tag))
-  (let ((data (res-lump-data (-> obj entity) 'actor-groups pointer :tag-ptr (& tag))))
+  (let ((data (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& tag))))
     (cond
       ((and data (nonzero? (-> tag elt-count)))
-       (set! (-> obj actor-group) (the-as (pointer actor-group) data))
-       (set! (-> obj actor-group-count) (the-as int (-> tag elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) data))
+       (set! (-> this actor-group-count) (the-as int (-> tag elt-count)))
        )
       (else
-        (set! (-> obj actor-group) (the-as (pointer actor-group) #f))
-        (set! (-> obj actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
         0
         )
       )
     )
-  (set! (-> obj light-state) #f)
-  (go (method-of-object obj idle))
+  (set! (-> this light-state) #f)
+  (go (method-of-object this idle))
   (none)
   )
 
+;; ERROR: failed type prop at 53: Could not figure out load: (set! v1 (l.w s4))
 (defmethod sew-light-control-method-16 sew-light-control ((a0-0 sew-light-control) (a1-0 object) (a2-0 vector) (a3-0 float))
   ;; og:preserve-this
   (format 0 "SEWER - FIX ME!~%")
@@ -1012,28 +980,26 @@ This commonly includes things such as:
 
 (defstate idle (sew-light-control)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (local-vars (actor entity))
-    (the-as object (case event-type
-                     (('use-switch)
-                      (set! actor (entity-by-name (the-as string (-> event param 0))))
-                      (set! (-> self switch-ent) (the-as entity-actor actor))
-                      actor
-                      )
-                     (('use-turret)
-                      (set! actor (entity-by-name (the-as string (-> event param 0))))
-                      (set! (-> self turret-ent) (the-as entity-actor actor))
-                      actor
-                      )
-                     )
-            )
+    (case message
+      (('use-switch)
+       (set! actor (entity-by-name (the-as string (-> block param 0))))
+       (set! (-> self switch-ent) (the-as entity-actor actor))
+       actor
+       )
+      (('use-turret)
+       (set! actor (entity-by-name (the-as string (-> block param 0))))
+       (set! (-> self turret-ent) (the-as entity-actor actor))
+       actor
+       )
+      )
     )
   :code (behavior ()
     (until #f
       (suspend)
       )
     #f
-    (none)
     )
   :post (behavior ()
     (let* ((target *target*)
@@ -1076,11 +1042,10 @@ This commonly includes things such as:
           )
         )
       )
-    (none)
     )
   )
 
-(defmethod press! sew-light-control ((obj sew-light-control) (switched-on? symbol) (should-turret-flash? symbol))
+(defmethod press! sew-light-control ((this sew-light-control) (switched-on? symbol) (should-turret-flash? symbol))
   "Turns the lights on (or off)
 @param switched-on? Should the sewer lights be turned on or off?
 @param should-turret-flash? Should the turret have it's `flash` set as well"

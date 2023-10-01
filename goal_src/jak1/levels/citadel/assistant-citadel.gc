@@ -7,7 +7,6 @@
 
 ;; DECOMP BEGINS
 
-
 (deftype assistant-lavatube-end (process-taskable)
   ()
   :heap-base #x110
@@ -23,14 +22,14 @@
               :shadow assistant-lavatube-end-shadow-mg
               )
 
-(defmethod play-anim! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 symbol))
-  (case (current-status (-> obj tasks))
+(defmethod play-anim! assistant-lavatube-end ((this assistant-lavatube-end) (arg0 symbol))
+  (case (current-status (-> this tasks))
     (((task-status unknown) (task-status need-hint))
      (new 'static 'spool-anim :name "assistant-lavatube-end-resolution" :index 4 :parts 11 :command-list '())
      )
     (((task-status need-reward-speech))
      (if arg0
-         (close-current! (-> obj tasks))
+         (close-current! (-> this tasks))
          )
      (new 'static 'spool-anim
        :name "assistant-lavatube-end-resolution"
@@ -57,17 +56,17 @@
           (format
             0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> obj name)
-            (task-status->string (current-status (-> obj tasks)))
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))
             )
           )
-      (get-art-elem obj)
+      (get-art-elem this)
       )
     )
   )
 
-(defmethod get-art-elem assistant-lavatube-end ((obj assistant-lavatube-end))
-  (-> obj draw art-group data 3)
+(defmethod get-art-elem assistant-lavatube-end ((this assistant-lavatube-end))
+  (-> this draw art-group data 3)
   )
 
 (defstate hidden (assistant-lavatube-end)
@@ -79,7 +78,6 @@
                (not (closed? (-> self tasks) (game-task village4-button) (task-status need-reward-speech)))
                )
       )
-    (none)
     )
   )
 
@@ -92,7 +90,6 @@
        (send-event self 'play-anim)
        )
       )
-    (none)
     )
   :code (behavior ()
     (loop
@@ -106,23 +103,22 @@
         (ja :num! (seek!))
         )
       )
-    (none)
     )
   )
 
-(defmethod should-display? assistant-lavatube-end ((obj assistant-lavatube-end))
-  (first-any (-> obj tasks) #t)
-  (let ((v1-3 (current-status (-> obj tasks))))
+(defmethod should-display? assistant-lavatube-end ((this assistant-lavatube-end))
+  (first-any (-> this tasks) #t)
+  (let ((v1-3 (current-status (-> this tasks))))
     (and (or (= v1-3 (task-status need-reward-speech)) (= v1-3 (task-status invalid)))
          (not (task-closed? (game-task citadel-sage-green) (task-status need-hint)))
          )
     )
   )
 
-(defmethod init-from-entity! assistant-lavatube-end ((obj assistant-lavatube-end) (arg0 entity-actor))
-  (process-taskable-method-40 obj arg0 *assistant-lavatube-end-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> obj tasks) (get-task-control (game-task village4-button)))
-  (first-any (-> obj tasks) #t)
-  (process-taskable-method-42 obj)
+(defmethod init-from-entity! assistant-lavatube-end ((this assistant-lavatube-end) (arg0 entity-actor))
+  (process-taskable-method-40 this arg0 *assistant-lavatube-end-sg* 3 29 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> this tasks) (get-task-control (game-task village4-button)))
+  (first-any (-> this tasks) #t)
+  (process-taskable-method-42 this)
   (none)
   )

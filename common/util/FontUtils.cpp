@@ -1876,6 +1876,18 @@ const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
 }
 
+const GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
+  // Jak 1 has been patched to use V2
+  switch (version) {
+    case GameVersion::Jak1:
+      return get_font_bank(GameTextVersion::JAK1_V2);
+    case GameVersion::Jak2:
+      return get_font_bank(GameTextVersion::JAK2);
+    default:
+      ASSERT_MSG(false, "Unsupported game for get_font_bank_from_game_version");
+  }
+}
+
 const GameTextFontBank* get_font_bank(const std::string& name) {
   if (auto it = sTextVerEnumMap.find(name); it == sTextVerEnumMap.end()) {
     throw std::runtime_error(fmt::format("unknown text version {}", name));

@@ -18,20 +18,20 @@
 (define *vis-actors* #t)
 
 ;; WARN: Return type mismatch int vs drawable-actor.
-(defmethod mem-usage drawable-actor ((obj drawable-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage drawable-actor ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 44 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
   (+! (-> arg0 data 43 count) 1)
-  (let ((v1-6 (asize-of obj)))
+  (let ((v1-6 (asize-of this)))
     (+! (-> arg0 data 43 used) v1-6)
     (+! (-> arg0 data 43 total) (logand -16 (+ v1-6 15)))
     )
-  (mem-usage (-> obj actor) arg0 (logior arg1 64))
+  (mem-usage (-> this actor) arg0 (logior arg1 64))
   (the-as drawable-actor 0)
   )
 
 ;; WARN: Return type mismatch int vs drawable-inline-array-actor.
-(defmethod mem-usage drawable-inline-array-actor ((obj drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage drawable-inline-array-actor ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -39,61 +39,61 @@
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  (dotimes (s3-0 (-> obj length))
-    (mem-usage (-> obj data s3-0) arg0 arg1)
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) arg0 arg1)
     )
   (the-as drawable-inline-array-actor 0)
   )
 
-(defmethod print entity-links ((obj entity-links))
-  (format #t "#<entity-links :process ~A @ #x~X>" (-> obj process) obj)
-  obj
+(defmethod print entity-links ((this entity-links))
+  (format #t "#<entity-links :process ~A @ #x~X>" (-> this process) this)
+  this
   )
 
-(defmethod print entity-perm ((obj entity-perm))
+(defmethod print entity-perm ((this entity-perm))
   (format
     #t
     "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
-    (-> obj aid)
-    (-> obj task)
-    (-> obj status)
-    (-> obj user-uint64)
-    obj
+    (-> this aid)
+    (-> this task)
+    (-> this status)
+    (-> this user-uint64)
+    this
     )
-  obj
+  this
   )
 
-(defmethod print actor-group ((obj actor-group))
+(defmethod print actor-group ((this actor-group))
   (format #t "#<actor-group")
-  (dotimes (s5-0 (-> obj length))
-    (format #t " ~A" (-> obj data s5-0 actor))
+  (dotimes (s5-0 (-> this length))
+    (format #t " ~A" (-> this data s5-0 actor))
     )
-  (format #t " @ #x~X>" obj)
-  obj
+  (format #t " @ #x~X>" this)
+  this
   )
 
 
-(defmethod birth! entity ((obj entity))
-  (format #t "birth ~A~%" obj)
-  obj
+(defmethod birth! entity ((this entity))
+  (format #t "birth ~A~%" this)
+  this
   )
 
-(defmethod kill! entity ((obj entity))
-  (format #t "kill ~A~%" obj)
-  obj
+(defmethod kill! entity ((this entity))
+  (format #t "kill ~A~%" this)
+  this
   )
 
-(defmethod print entity ((obj entity))
-  (format #t "#<~A :name ~S @ #x~X>" (-> obj type) (res-lump-struct obj 'name structure) obj)
-  obj
+(defmethod print entity ((this entity))
+  (format #t "#<~A :name ~S @ #x~X>" (-> this type) (res-lump-struct this 'name structure) this)
+  this
   )
 
-(defmethod get-level entity ((obj entity))
+(defmethod get-level entity ((this entity))
   (dotimes (v1-0 (-> *level* length))
     (let ((a1-3 (-> *level* level v1-0)))
       (when (= (-> a1-3 status) 'active)
-        (if (and (>= (the-as int obj) (the-as int (-> a1-3 heap base)))
-                 (< (the-as int obj) (the-as int (-> a1-3 heap top-base)))
+        (if (and (>= (the-as int this) (the-as int (-> a1-3 heap base)))
+                 (< (the-as int this) (the-as int (-> a1-3 heap top-base)))
                  )
             (return a1-3)
             )
@@ -238,11 +238,11 @@
     )
   )
 
-(defmethod update-nav-meshes-method level-group ((obj level-group))
+(defmethod update-nav-meshes-method level-group ((this level-group))
   "Clashes with a function name"
   (when (not (paused?))
-    (dotimes (s5-0 (-> obj length))
-      (let ((v1-4 (-> obj level s5-0)))
+    (dotimes (s5-0 (-> this length))
+      (let ((v1-4 (-> this level s5-0)))
         (when (= (-> v1-4 status) 'active)
           (let ((s4-0 (-> v1-4 bsp nav-meshes)))
             (when (nonzero? s4-0)
@@ -498,55 +498,55 @@
   (-> arg0 level task-mask)
   )
 
-(defmethod print process ((obj process))
+(defmethod print process ((this process))
   (cond
-    ((and (-> obj top-thread) (!= (-> obj status) 'dead))
-     (format #t "#<~A ~S ~A :state ~S :flags " (-> obj type) (-> obj name) (-> obj status) (if (-> obj state)
-                                                                                               (-> obj state name)
+    ((and (-> this top-thread) (!= (-> this status) 'dead))
+     (format #t "#<~A ~S ~A :state ~S :flags " (-> this type) (-> this name) (-> this status) (if (-> this state)
+                                                                                               (-> this state name)
                                                                                                )
              )
-     (process-status-bits obj #t)
+     (process-status-bits this #t)
      (format
        #t
        " :stack ~D/~D :heap ~D/~D @ #x~X>"
-       (&- (-> obj top-thread stack-top) (the-as uint (-> obj top-thread sp)))
-       (-> obj main-thread stack-size)
-       (- (-> obj allocated-length) (&- (-> obj heap-top) (the-as uint (-> obj heap-cur))))
-       (-> obj allocated-length)
-       obj
+       (&- (-> this top-thread stack-top) (the-as uint (-> this top-thread sp)))
+       (-> this main-thread stack-size)
+       (- (-> this allocated-length) (&- (-> this heap-top) (the-as uint (-> this heap-cur))))
+       (-> this allocated-length)
+       this
        )
      )
     (else
       (format
         #t
         "#<~A ~S ~A :state ~S @ #x~X"
-        (-> obj type)
-        (-> obj name)
-        (-> obj status)
-        (if (-> obj state)
-            (-> obj state name)
+        (-> this type)
+        (-> this name)
+        (-> this status)
+        (if (-> this state)
+            (-> this state name)
             )
-        obj
+        this
         )
       )
     )
-  obj
+  this
   )
 
 
 
 
 ;; WARN: Return type mismatch entity-actor vs none.
-(defmethod debug-print entity-actor ((obj entity-actor) (arg0 symbol) (arg1 type))
-  (let ((s4-0 (-> obj etype)))
+(defmethod debug-print entity-actor ((this entity-actor) (arg0 symbol) (arg1 type))
+  (let ((s4-0 (-> this etype)))
     (when (or (not arg1) (and s4-0 (valid? s4-0 type (the-as string #f) #f 0) (type-type? s4-0 arg1)))
-      (format #t "~5D  #x~8X  ~-26S" (-> obj extra vis-id) obj (res-lump-struct obj 'name structure))
+      (format #t "~5D  #x~8X  ~-26S" (-> this extra vis-id) this (res-lump-struct this 'name structure))
       (let ((t9-4 format)
             (a0-5 #t)
             (a1-5 "~8D ~3D ~-8S #x~4X")
-            (a2-4 (-> obj extra perm aid))
-            (a3-3 (-> obj extra perm task))
-            (t0-3 (-> obj extra level nickname))
+            (a2-4 (-> this extra perm aid))
+            (a3-3 (-> this extra perm task))
+            (t0-3 (-> this extra level nickname))
             )
         (set! t0-3 (cond
                      (t0-3
@@ -554,17 +554,17 @@
                        t0-3
                        )
                      (else
-                       (-> obj extra level name)
+                       (-> this extra level name)
                        )
                      )
               )
-        (t9-4 a0-5 a1-5 a2-4 a3-3 t0-3 (-> obj extra perm status))
+        (t9-4 a0-5 a1-5 a2-4 a3-3 t0-3 (-> this extra perm status))
         )
       (if (= arg0 'entity-meters)
-          (format #t " :trans ~14m ~14m ~14m  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
-          (format #t " :trans ~14f ~14f ~14f  " (-> obj extra trans x) (-> obj extra trans y) (-> obj extra trans z))
+          (format #t " :trans ~14m ~14m ~14m  " (-> this extra trans x) (-> this extra trans y) (-> this extra trans z))
+          (format #t " :trans ~14f ~14f ~14f  " (-> this extra trans x) (-> this extra trans y) (-> this extra trans z))
           )
-      (let* ((s3-2 (-> obj extra process))
+      (let* ((s3-2 (-> this extra process))
              (s4-2 (if (type? s3-2 process-drawable)
                        s3-2
                        )
@@ -573,28 +573,28 @@
         (format
           #t
           ":pr #x~8X ~-12S ~-21S ~-5S/~-5S "
-          (if (-> obj extra process)
-              (-> obj extra process)
+          (if (-> this extra process)
+              (-> this extra process)
               0
               )
-          (if (-> obj extra process)
-              (-> obj extra process name)
+          (if (-> this extra process)
+              (-> this extra process name)
               ""
               )
-          (if (and (-> obj extra process) (-> obj extra process state))
-              (-> obj extra process state name)
+          (if (and (-> this extra process) (-> this extra process state))
+              (-> this extra process state name)
               ""
               )
-          (if (-> obj extra process)
-              (* (- (-> obj extra process allocated-length)
-                    (&- (-> obj extra process heap-top) (the-as uint (-> obj extra process heap-cur)))
+          (if (-> this extra process)
+              (* (- (-> this extra process allocated-length)
+                    (&- (-> this extra process heap-top) (the-as uint (-> this extra process heap-cur)))
                     )
                  8
                  )
               ""
               )
-          (if (-> obj extra process)
-              (* (-> obj extra process allocated-length) 8)
+          (if (-> this extra process)
+              (* (-> this extra process allocated-length) 8)
               ""
               )
           )
@@ -602,14 +602,14 @@
         )
       (format #t "~%")
       (if (= arg0 'entity-perm)
-          (format #t "     ~`entity-perm`P~%" (-> obj extra perm))
+          (format #t "     ~`entity-perm`P~%" (-> this extra perm))
           )
       )
     )
   (none)
   )
 
-(defmethod debug-print-entities level-group ((obj level-group) (arg0 symbol) (arg1 type))
+(defmethod debug-print-entities level-group ((this level-group) (arg0 symbol) (arg1 type))
   (let ((t9-0 format)
         (a0-1 #t)
         (a1-1
@@ -621,8 +621,8 @@
     0
     (t9-0 a0-1 a1-1)
     )
-  (dotimes (s3-0 (-> obj length))
-    (let ((s2-0 (-> obj level s3-0)))
+  (dotimes (s3-0 (-> this length))
+    (let ((s2-0 (-> this level s3-0)))
       (when (= (-> s2-0 status) 'active)
         (case arg0
           (('art-group)
@@ -647,12 +647,12 @@
   )
 
 ;; WARN: Return type mismatch entity-actor vs none.
-(defmethod add-to-level! entity-actor ((obj entity-actor) (arg0 level-group) (arg1 level) (arg2 actor-id))
+(defmethod add-to-level! entity-actor ((this entity-actor) (arg0 level-group) (arg1 level) (arg2 actor-id))
   (let ((v1-4 (-> arg1 entity data (-> arg1 entity length))))
     (+! (-> arg1 entity length) 1)
     (set! (-> v1-4 process) #f)
-    (set! (-> v1-4 entity) obj)
-    (set! (-> obj extra) v1-4)
+    (set! (-> v1-4 entity) this)
+    (set! (-> this extra) v1-4)
     (cond
       ((-> arg0 entity-link)
        (let* ((a0-6 (-> arg0 entity-link))
@@ -670,12 +670,12 @@
         )
       )
     (set! (-> arg0 entity-link) v1-4)
-    (set! (-> v1-4 trans quad) (-> obj trans quad))
+    (set! (-> v1-4 trans quad) (-> this trans quad))
     )
-  (set! (-> obj extra perm aid) arg2)
-  (set! (-> obj extra level) arg1)
-  (set! (-> obj extra kill-mask)
-        (logior (logand (-> obj kill-mask)
+  (set! (-> this extra perm aid) arg2)
+  (set! (-> this extra level) arg1)
+  (set! (-> this extra kill-mask)
+        (logior (logand (-> this kill-mask)
                         (task-mask
                           task0
                           task1
@@ -697,29 +697,29 @@
                         )
                 (logclear
                   (task-mask movie0 movie1 movie2 tm19 tm20 tm21 tm22 tm23 tm24 tm25 tm26 tm27 tm28 tm29 tm30 tm31)
-                  (-> obj kill-mask)
+                  (-> this kill-mask)
                   )
                 )
         )
   (if (not (-> arg1 vis-info 0))
-      (set! (-> obj extra vis-dist) (res-lump-float obj 'vis-dist :default 40960000.0))
+      (set! (-> this extra vis-dist) (res-lump-float this 'vis-dist :default 40960000.0))
       )
   (cond
-    ((= (-> obj type) entity-actor)
-     (set! (-> obj extra perm task) (-> obj task))
-     (set! (-> obj extra vis-id) (-> obj vis-id))
+    ((= (-> this type) entity-actor)
+     (set! (-> this extra perm task) (-> this task))
+     (set! (-> this extra vis-id) (-> this vis-id))
      )
     (else
-      (set! (-> obj extra perm task) (game-task none))
-      (set! (-> obj extra vis-id) 0)
+      (set! (-> this extra perm task) (game-task none))
+      (set! (-> this extra vis-id) 0)
       0
       )
     )
   (none)
   )
 
-(defmethod remove-from-level! entity ((obj entity) (arg0 level-group))
-  (let ((v1-0 (-> obj extra)))
+(defmethod remove-from-level! entity ((this entity) (arg0 level-group))
+  (let ((v1-0 (-> this extra)))
     (cond
       ((= (-> v1-0 next-link) v1-0)
        (set! (-> arg0 entity-link) #f)
@@ -733,7 +733,7 @@
         )
       )
     )
-  obj
+  this
   )
 
 (defun update-actor-vis-box ((arg0 process-drawable) (arg1 vector) (arg2 vector))
@@ -753,10 +753,10 @@
   (none)
   )
 
-(defmethod update-vis-volumes level-group ((obj level-group))
+(defmethod update-vis-volumes level-group ((this level-group))
   (local-vars (sv-16 pointer) (sv-20 pointer) (sv-24 pointer) (sv-28 process))
-  (dotimes (s5-0 (-> obj length))
-    (let ((v1-3 (-> obj level s5-0)))
+  (dotimes (s5-0 (-> this length))
+    (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
@@ -811,7 +811,7 @@
   (none)
   )
 
-(defmethod update-vis-volumes-from-nav-mesh level-group ((obj level-group))
+(defmethod update-vis-volumes-from-nav-mesh level-group ((this level-group))
   (local-vars
     (sv-16 pointer)
     (sv-20 vector)
@@ -824,8 +824,8 @@
     (sv-96 vector)
     (sv-112 vector)
     )
-  (dotimes (s5-0 (-> obj length))
-    (let ((v1-3 (-> obj level s5-0)))
+  (dotimes (s5-0 (-> this length))
+    (let ((v1-3 (-> this level s5-0)))
       (when (= (-> v1-3 status) 'active)
         (let ((s4-0 (-> v1-3 bsp level entity)))
           (dotimes (s3-0 (-> s4-0 length))
@@ -908,7 +908,7 @@
   (none)
   )
 
-(defmethod print-volume-sizes level-group ((obj level-group))
+(defmethod print-volume-sizes level-group ((this level-group))
   (local-vars
     (sv-16 pointer)
     (sv-20 float)
@@ -921,8 +921,8 @@
     (sv-80 structure)
     )
   (let ((s5-0 0))
-    (dotimes (v1-0 (-> obj length))
-      (let ((a0-4 (-> obj level v1-0)))
+    (dotimes (v1-0 (-> this length))
+      (let ((a0-4 (-> this level v1-0)))
         (if (= (-> a0-4 status) 'active)
             (+! s5-0 (-> a0-4 entity length))
             )
@@ -934,8 +934,8 @@
         (let ((s2-0 (the-as structure #f))
               (s3-0 (the-as entity #f))
               )
-          (dotimes (s1-0 (-> obj length))
-            (let ((v1-7 (-> obj level s1-0)))
+          (dotimes (s1-0 (-> this length))
+            (let ((v1-7 (-> this level s1-0)))
               (when (= (-> v1-7 status) 'active)
                 (let ((s0-0 (-> v1-7 entity)))
                   (set! sv-48 (-> s0-0 length))
@@ -1036,18 +1036,19 @@
            (set! (-> gp-0 pid) (string->int *pid-string*))
            )
          )
-       (let ((gp-1 (lambda ((arg0 process))
-                     (let ((v1-0 *debug-actor-info*))
-                       (if (= (-> arg0 pid) (-> v1-0 pid))
-                           (set! (-> v1-0 handle) (process->handle arg0))
+       (let ((gp-1 (lambda ((arg0 process)) (let ((v1-0 *debug-actor-info*))
+                                              (when (= (-> arg0 pid) (-> v1-0 pid))
+                                                (let ((v0-0 (process->handle arg0)))
+                                                  (set! (-> v1-0 handle) (the-as handle v0-0))
+                                                  v0-0
+                                                  )
+                                                )
+                                              )
                            )
-                       )
-                     (none)
-                     )
                    )
              )
-         (iterate-process-tree *pusher-pool* (the-as (function object object) gp-1) *null-kernel-context*)
-         (iterate-process-tree *entity-pool* (the-as (function object object) gp-1) *null-kernel-context*)
+         (iterate-process-tree *pusher-pool* gp-1 *null-kernel-context*)
+         (iterate-process-tree *entity-pool* gp-1 *null-kernel-context*)
          )
        )
       (else
@@ -1192,7 +1193,7 @@
   (none)
   )
 
-(defmethod debug-draw-actors level-group ((obj level-group) (arg0 symbol))
+(defmethod debug-draw-actors level-group ((this level-group) (arg0 symbol))
   (local-vars
     (sv-16 symbol)
     (sv-20 vector)
@@ -1226,13 +1227,13 @@
     (cond
       ((= sv-16 'process)
        (let ((s5-1 draw-actor-marks))
-         (iterate-process-tree *pusher-pool* (the-as (function object object) s5-1) *null-kernel-context*)
-         (iterate-process-tree *entity-pool* (the-as (function object object) s5-1) *null-kernel-context*)
+         (iterate-process-tree *pusher-pool* s5-1 *null-kernel-context*)
+         (iterate-process-tree *entity-pool* s5-1 *null-kernel-context*)
          )
        )
       (else
-        (dotimes (s5-2 (-> obj length))
-          (let ((v1-25 (-> obj level s5-2)))
+        (dotimes (s5-2 (-> this length))
+          (let ((v1-25 (-> this level s5-2)))
             (when (= (-> v1-25 status) 'active)
               (let ((s4-1 (-> v1-25 bsp level entity)))
                 (dotimes (s3-0 (-> s4-1 length))
@@ -1272,8 +1273,8 @@
     )
   (when (and *display-actor-vis* (not *debug-actor*))
     (let ((s5-3 *display-actor-vis*))
-      (dotimes (s4-2 (-> obj length))
-        (let ((s3-1 (-> obj level s4-2)))
+      (dotimes (s4-2 (-> this length))
+        (let ((s3-1 (-> this level s4-2)))
           (when (= (-> s3-1 status) 'active)
             (let ((s2-1 (-> s3-1 bsp level entity)))
               (dotimes (s1-1 (-> s2-1 length))
@@ -1327,7 +1328,7 @@
       )
     )
   (if *generate-actor-vis*
-      (update-vis-volumes obj)
+      (update-vis-volumes this)
       )
   (cond
     (*debug-actor*
@@ -1406,8 +1407,8 @@
         )
       )
     (*display-nav-mesh*
-      (dotimes (s5-5 (-> obj length))
-        (let ((v1-145 (-> obj level s5-5)))
+      (dotimes (s5-5 (-> this length))
+        (let ((v1-145 (-> this level s5-5)))
           (when (= (-> v1-145 status) 'active)
             (let ((s4-5 (-> v1-145 bsp nav-meshes)))
               (when (nonzero? s4-5)
@@ -1426,8 +1427,8 @@
       )
     (else
       (when *display-nav-marks*
-        (dotimes (s5-6 (-> obj length))
-          (let ((v1-163 (-> obj level s5-6)))
+        (dotimes (s5-6 (-> this length))
+          (let ((v1-163 (-> this level s5-6)))
             (when (= (-> v1-163 status) 'active)
               (let ((s4-6 (-> v1-163 bsp nav-meshes)))
                 (when (nonzero? s4-6)
@@ -1443,17 +1444,14 @@
       (if (or *display-path-marks* *display-vol-marks*)
           (iterate-process-tree
             *active-pool*
-            (the-as (function object object) (lambda ((arg0 process-drawable))
-                                               (when (type? arg0 process-drawable)
-                                                 (if (nonzero? (-> arg0 path))
-                                                     (debug-draw (-> arg0 path))
-                                                     )
-                                                 (if (nonzero? (-> arg0 vol))
-                                                     (debug-draw (-> arg0 vol))
-                                                     )
-                                                 )
-                                               (none)
-                                               )
+            (lambda ((arg0 process-drawable)) (when (type? arg0 process-drawable)
+                                                (if (nonzero? (-> arg0 path))
+                                                    (debug-draw (-> arg0 path))
+                                                    )
+                                                (if (nonzero? (-> arg0 vol))
+                                                    (debug-draw (-> arg0 vol))
+                                                    )
+                                                )
                     )
             *null-kernel-context*
             )
@@ -1510,8 +1508,8 @@
       )
     )
   (when *display-split-boxes*
-    (dotimes (s5-7 (-> obj length))
-      (let ((v1-193 (-> obj level s5-7)))
+    (dotimes (s5-7 (-> this length))
+      (let ((v1-193 (-> this level s5-7)))
         (when (= (-> v1-193 status) 'active)
           (let ((s4-7 (-> v1-193 bsp region-tree)))
             (when (nonzero? s4-7)
@@ -1534,8 +1532,8 @@
       )
     )
   (when *display-region-marks*
-    (dotimes (s5-8 (-> obj length))
-      (let ((s4-8 (-> obj level s5-8)))
+    (dotimes (s5-8 (-> this length))
+      (let ((s4-8 (-> this level s5-8)))
         (when (= (-> s4-8 status) 'active)
           (when (nonzero? (-> s4-8 bsp region-trees))
             (let* ((s3-5 (-> s4-8 bsp region-trees length))
@@ -1543,8 +1541,9 @@
                    (s1-3 (-> s4-8 bsp region-trees s2-4))
                    )
               (while (< s2-4 s3-5)
-                ;; og:preserve-this pc port note: added this name check
+                ;; og:preserve-this pc port note: added this name and water check
                 (let ((tree-name (-> s1-3 name)))
+                (when (or (!= tree-name 'water) (not *debug-region-hide-water*))
                 (set! *debug-region-color-alt* (= tree-name 'camera))
 
                 (let ((s0-4 (-> s1-3 data2 (+ (-> s1-3 length) -1) length)))
@@ -1559,7 +1558,7 @@
                       )
                     )
                   )
-                  )
+                  ))
                 (+! s2-4 1)
                 (set! s1-3 (-> s4-8 bsp region-trees s2-4))
                 )
@@ -1573,14 +1572,14 @@
   (none)
   )
 
-(defmethod birth! entity-camera ((obj entity-camera))
-  (add-connection *camera-engine* *camera* nothing obj #f #f)
-  obj
+(defmethod birth! entity-camera ((this entity-camera))
+  (add-connection *camera-engine* *camera* nothing this #f #f)
+  this
   )
 
-(defmethod kill! entity-camera ((obj entity-camera))
-  (remove-by-param1 *camera-engine* (the-as int obj))
-  obj
+(defmethod kill! entity-camera ((this entity-camera))
+  (remove-by-param1 *camera-engine* (the-as int this))
+  this
   )
 
 ;; WARN: Return type mismatch process vs none.
@@ -1593,8 +1592,8 @@
   (none)
   )
 
-(defmethod birth! entity-actor ((obj entity-actor))
-  (let* ((s5-0 (-> obj etype))
+(defmethod birth! entity-actor ((this entity-actor))
+  (let* ((s5-0 (-> this etype))
          (v1-0 (entity-info-lookup s5-0))
          (s4-0 (get-process *default-dead-pool* s5-0 (if v1-0
                                                          (-> v1-0 heap-size)
@@ -1613,17 +1612,17 @@
               (valid? (method-of-object s4-0 init-from-entity!) function (the-as string #f) #f 0)
               )
          )
-       (init-entity s4-0 obj s5-0)
+       (init-entity s4-0 this s5-0)
        )
       (else
-        (when (not (birth-viewer s4-0 obj))
-          (format 0 "ERROR: no proper process type named ~A exists in the code, could not start ~A~%" s5-0 obj)
-          (logior! (-> obj extra perm status) (entity-perm-status bit-0))
+        (when (not (birth-viewer s4-0 this))
+          (format 0 "ERROR: no proper process type named ~A exists in the code, could not start ~A~%" s5-0 this)
+          (logior! (-> this extra perm status) (entity-perm-status bit-0))
           )
         )
       )
     )
-  obj
+  this
   )
 
 ;; WARN: Return type mismatch symbol vs none.
@@ -1635,63 +1634,63 @@
   (none)
   )
 
-(defmethod kill! entity-actor ((obj entity-actor))
-  (let ((a0-1 (-> obj extra process)))
+(defmethod kill! entity-actor ((this entity-actor))
+  (let ((a0-1 (-> this extra process)))
     (if a0-1
         (deactivate a0-1)
-        (entity-deactivate-handler a0-1 obj)
+        (entity-deactivate-handler a0-1 this)
         )
     )
-  obj
+  this
   )
 
 ;; WARN: Return type mismatch bsp-header vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defmethod birth bsp-header ((obj bsp-header))
+(defmethod birth bsp-header ((this bsp-header))
   (local-vars (v1-74 int) (s5-0 int) (sv-16 int))
   (.mfc0 s5-0 Count)
-  (let ((a2-0 (if (nonzero? (-> obj actors))
-                  (-> obj actors length)
+  (let ((a2-0 (if (nonzero? (-> this actors))
+                  (-> this actors length)
                   0
                   )
               )
         )
     (cond
-      ((not (-> obj level entity))
-       (set! (-> obj level entity) (new 'loading-level 'entity-links-array a2-0))
+      ((not (-> this level entity))
+       (set! (-> this level entity) (new 'loading-level 'entity-links-array a2-0))
        )
-      ((< (-> obj level entity allocated-length) a2-0)
+      ((< (-> this level entity allocated-length) a2-0)
        (format
          0
          "ERROR: Attempting to rebirth level ~A with incorrect entity table size ~D/~D~%"
-         (-> obj level)
+         (-> this level)
          a2-0
-         (-> obj level entity allocated-length)
+         (-> this level entity allocated-length)
          )
        )
       )
     )
-  (set! (-> obj level entity length) 0)
+  (set! (-> this level entity length) 0)
   0
-  (when (nonzero? (-> obj actors))
-    (dotimes (s4-0 (-> obj actors length))
-      (let* ((a0-4 (-> obj actor-birth-order s4-0))
-             (v1-23 (-> obj actors data (logand a0-4 #xffff) actor))
+  (when (nonzero? (-> this actors))
+    (dotimes (s4-0 (-> this actors length))
+      (let* ((a0-4 (-> this actor-birth-order s4-0))
+             (v1-23 (-> this actors data (logand a0-4 #xffff) actor))
              )
-        (add-to-level! v1-23 *level* (-> obj level) (the-as actor-id (-> v1-23 aid)))
+        (add-to-level! v1-23 *level* (-> this level) (the-as actor-id (-> v1-23 aid)))
         )
       )
     )
-  (let ((s4-1 (-> obj cameras)))
+  (let ((s4-1 (-> this cameras)))
     (when (nonzero? s4-1)
       (dotimes (s3-0 (-> s4-1 length))
         (birth! (-> s4-1 s3-0))
         )
       )
     )
-  (let ((s4-2 (-> obj level status)))
-    (set! (-> obj level status) 'active)
+  (let ((s4-2 (-> this level status)))
+    (set! (-> this level status) 'active)
     (dotimes (s3-1 (-> *level* length))
       (let ((s2-0 (-> *level* level s3-1)))
         (when (= (-> s2-0 status) 'active)
@@ -1711,7 +1710,7 @@
           )
         )
       )
-    (set! (-> obj level status) s4-2)
+    (set! (-> this level status) s4-2)
     )
   (.mfc0 v1-74 Count)
   (let ((a3-2 (- v1-74 s5-0)))
@@ -1825,13 +1824,13 @@
   )
 
 ;; WARN: Return type mismatch bsp-header vs none.
-(defmethod deactivate-entities bsp-header ((obj bsp-header))
-  (let ((v1-1 (-> obj level heap base))
-        (a0-2 (-> obj level heap top-base))
+(defmethod deactivate-entities bsp-header ((this bsp-header))
+  (let ((v1-1 (-> this level heap base))
+        (a0-2 (-> this level heap top-base))
         )
-    (when (nonzero? (-> obj actor-groups))
-      (dotimes (a1-2 (-> obj actor-groups length))
-        (let ((a2-2 (-> obj actor-groups a1-2)))
+    (when (nonzero? (-> this actor-groups))
+      (dotimes (a1-2 (-> this actor-groups length))
+        (let ((a2-2 (-> this actor-groups a1-2)))
           (dotimes (a3-1 (-> a2-2 length))
             (let ((t0-2 (-> a2-2 data a3-1 actor)))
               (if (and t0-2 (not (and (>= (the-as int t0-2) (the-as int v1-1)) (< (the-as int t0-2) (the-as int a0-2)))))
@@ -1845,7 +1844,7 @@
     (dotimes (a1-5 (-> *level* length))
       (let ((a2-10 (-> *level* level a1-5)))
         (when (= (-> a2-10 status) 'active)
-          (when (!= a2-10 (-> obj level))
+          (when (!= a2-10 (-> this level))
             (when (nonzero? (-> a2-10 bsp actor-groups))
               (dotimes (a3-10 (-> a2-10 bsp actor-groups length))
                 (let ((t0-13 (-> a2-10 bsp actor-groups a3-10)))
@@ -1864,7 +1863,7 @@
         )
       )
     )
-  (let ((s5-0 (-> obj actors)))
+  (let ((s5-0 (-> this actors)))
     (when (nonzero? s5-0)
       (dotimes (s4-0 (-> s5-0 length))
         (let ((s3-0 (-> s5-0 data s4-0 actor)))
@@ -1874,34 +1873,32 @@
         )
       )
     )
-  (let ((s5-1 (-> obj cameras)))
+  (let ((s5-1 (-> this cameras)))
     (when (nonzero? s5-1)
       (dotimes (s4-1 (-> s5-1 length))
         (kill! (-> s5-1 s4-1))
         )
       )
     )
-  (let ((v1-23 (-> obj level heap base))
-        (a0-7 (-> obj level heap top-base))
-        (s5-2 (lambda ((arg0 process))
-                (check-for-rougue-process
-                  arg0
-                  (-> *kernel-context* relocating-min)
-                  (-> *kernel-context* relocating-max)
-                  (-> *kernel-context* relocating-level)
-                  )
-                (none)
-                )
+  (let ((v1-23 (-> this level heap base))
+        (a0-7 (-> this level heap top-base))
+        (s5-2 (lambda ((arg0 process)) (check-for-rougue-process
+                                         arg0
+                                         (-> *kernel-context* relocating-min)
+                                         (-> *kernel-context* relocating-max)
+                                         (-> *kernel-context* relocating-level)
+                                         )
+                      )
               )
         )
     (set! (-> *kernel-context* relocating-min) (the-as int v1-23))
     (set! (-> *kernel-context* relocating-max) (the-as int a0-7))
-    (set! (-> *kernel-context* relocating-level) (-> obj level))
-    (iterate-process-tree *pusher-pool* (the-as (function object object) s5-2) *null-kernel-context*)
-    (iterate-process-tree *entity-pool* (the-as (function object object) s5-2) *null-kernel-context*)
-    (iterate-process-tree *default-pool* (the-as (function object object) s5-2) *null-kernel-context*)
+    (set! (-> *kernel-context* relocating-level) (-> this level))
+    (iterate-process-tree *pusher-pool* s5-2 *null-kernel-context*)
+    (iterate-process-tree *entity-pool* s5-2 *null-kernel-context*)
+    (iterate-process-tree *default-pool* s5-2 *null-kernel-context*)
     )
-  (let ((s5-3 (-> obj nav-meshes)))
+  (let ((s5-3 (-> this nav-meshes)))
     (when (nonzero? s5-3)
       (dotimes (s4-2 (-> s5-3 length))
         (kill! (-> s5-3 s4-2))
@@ -1931,13 +1928,13 @@
   (none)
   )
 
-(defmethod update entity-perm ((obj entity-perm) (arg0 symbol) (arg1 entity-perm-status))
+(defmethod update entity-perm ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
   (cond
     ((= arg0 'game)
-     (logclear! (-> obj status) arg1)
+     (logclear! (-> this status) arg1)
      )
-    ((task-complete? *game-info* (-> obj task))
-     (logclear! (-> obj status) (logior (if (logtest? (-> obj status) (entity-perm-status bit-4))
+    ((task-complete? *game-info* (-> this task))
+     (logclear! (-> this status) (logior (if (logtest? (-> this status) (entity-perm-status bit-4))
                                             524
                                             0
                                             )
@@ -1946,7 +1943,7 @@
                 )
      )
     (else
-      (logclear! (-> obj status) (logior arg1 (if (logtest? (-> obj status) (entity-perm-status bit-4))
+      (logclear! (-> this status) (logior arg1 (if (logtest? (-> this status) (entity-perm-status bit-4))
                                                   524
                                                   0
                                                   )
@@ -1954,11 +1951,11 @@
                  )
       )
     )
-  (when (not (logtest? (-> obj status) (entity-perm-status bit-5)))
-    (set! (-> obj user-uint64) (the-as uint 0))
+  (when (not (logtest? (-> this status) (entity-perm-status bit-5)))
+    (set! (-> this user-uint64) (the-as uint 0))
     0
     )
-  obj
+  this
   )
 
 (defun reset-actors ((arg0 symbol))
@@ -2012,16 +2009,14 @@
         )
       )
     )
-  (let ((s5-1 (lambda ((arg0 process))
-                (if (not (logtest? (-> arg0 mask) (process-mask no-kill)))
-                    (deactivate arg0)
-                    )
-                (none)
-                )
+  (let ((s5-1 (lambda ((arg0 process)) (if (not (logtest? (-> arg0 mask) (process-mask no-kill)))
+                                           (deactivate arg0)
+                                           )
+                      )
               )
         )
-    (iterate-process-tree *pusher-pool* (the-as (function object object) s5-1) *null-kernel-context*)
-    (iterate-process-tree *entity-pool* (the-as (function object object) s5-1) *null-kernel-context*)
+    (iterate-process-tree *pusher-pool* s5-1 *null-kernel-context*)
+    (iterate-process-tree *entity-pool* s5-1 *null-kernel-context*)
     )
   (if #t
       (task-node-reset arg0)
@@ -2064,20 +2059,20 @@
   (none)
   )
 
-(defmethod run-logic? process-drawable ((obj process-drawable))
-  (or (not (logtest? (-> obj mask) (process-mask actor-pause)))
-      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
-              (vector-vector-distance (-> obj root trans) (math-camera-pos))
+(defmethod run-logic? process-drawable ((this process-drawable))
+  (or (not (logtest? (-> this mask) (process-mask actor-pause)))
+      (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+              (vector-vector-distance (-> this root trans) (math-camera-pos))
               )
-          (and (nonzero? (-> obj skel)) (!= (-> obj skel root-channel 0) (-> obj skel channel)))
-          (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) (draw-control-status uninited)))
+          (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
+          (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-control-status uninited)))
           )
       )
   )
 
-(defmethod birth? entity-links ((obj entity-links) (arg0 vector))
-  (and (not (logtest? (-> obj perm status) (entity-perm-status bit-0 dead)))
-       (< (vector-vector-distance (-> obj trans) arg0) (-> *ACTOR-bank* birth-dist))
+(defmethod birth? entity-links ((this entity-links) (arg0 vector))
+  (and (not (logtest? (-> this perm status) (entity-perm-status bit-0 dead)))
+       (< (vector-vector-distance (-> this trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
   )
 
@@ -2086,7 +2081,7 @@
 ;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
 ;; WARN: Function (method 17 level-group) has a return type of none, but the expression builder found a return statement.
-(defmethod actors-update level-group ((obj level-group))
+(defmethod actors-update level-group ((this level-group))
   (local-vars
     (sv-16 vector)
     (sv-24 int)
@@ -2132,8 +2127,8 @@
                     )
           )
     (set! sv-24 0)
-    (dotimes (s5-2 (-> obj length))
-      (let ((s4-1 (-> obj level s5-2)))
+    (dotimes (s5-2 (-> this length))
+      (let ((s4-1 (-> this level s5-2)))
         (when (= (-> s4-1 status) 'active)
           (set! sv-32 (-> s4-1 task-mask))
           (cond
@@ -2337,8 +2332,8 @@
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod toggle-status entity-actor ((obj entity-actor) (arg0 entity-perm-status) (arg1 symbol))
-  (let ((v1-0 (-> obj extra)))
+(defmethod toggle-status entity-actor ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
+  (let ((v1-0 (-> this extra)))
     (if arg1
         (logior! (-> v1-0 perm status) arg0)
         (logclear! (-> v1-0 perm status) arg0)

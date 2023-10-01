@@ -10,35 +10,35 @@
   )
 
 ;; definition for method 3 of type fin-door
-(defmethod inspect fin-door ((obj fin-door))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tmask: ~D~%" (-> obj mask))
-  (format #t "~Tparent: #x~X~%" (-> obj parent))
-  (format #t "~Tbrother: #x~X~%" (-> obj brother))
-  (format #t "~Tchild: #x~X~%" (-> obj child))
-  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
-  (format #t "~Tself: ~A~%" (-> obj self))
-  (format #t "~Tpool: ~A~%" (-> obj pool))
-  (format #t "~Tstatus: ~A~%" (-> obj status))
-  (format #t "~Tpid: ~D~%" (-> obj pid))
-  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
-  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
-  (format #t "~Tentity: ~A~%" (-> obj entity))
-  (format #t "~Tstate: ~A~%" (-> obj state))
-  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
-  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
-  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
-  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
-  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
-  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
-  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
-  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> obj heap-base))
-  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> obj connection-list))
-  (format #t "~Tstack[0] @ #x~X~%" (-> obj stack))
-  obj
+(defmethod inspect fin-door ((this fin-door))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tmask: ~D~%" (-> this mask))
+  (format #t "~Tparent: #x~X~%" (-> this parent))
+  (format #t "~Tbrother: #x~X~%" (-> this brother))
+  (format #t "~Tchild: #x~X~%" (-> this child))
+  (format #t "~Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~Tself: ~A~%" (-> this self))
+  (format #t "~Tpool: ~A~%" (-> this pool))
+  (format #t "~Tstatus: ~A~%" (-> this status))
+  (format #t "~Tpid: ~D~%" (-> this pid))
+  (format #t "~Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~Tentity: ~A~%" (-> this entity))
+  (format #t "~Tstate: ~A~%" (-> this state))
+  (format #t "~Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~Tconnection-list: ~`'connectable`P~%" (-> this connection-list))
+  (format #t "~Tstack[0] @ #x~X~%" (-> this stack))
+  this
   )
 
 ;; definition of type final-door
@@ -56,11 +56,11 @@
   )
 
 ;; definition for method 3 of type final-door
-(defmethod inspect final-door ((obj final-door))
+(defmethod inspect final-door ((this final-door))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -84,8 +84,8 @@
 ;; failed to figure out what this is:
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
        (go-virtual open #f)
        )
@@ -96,31 +96,29 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('brightness)
-                      (let ((f0-0 (the-as float (-> event param 0)))
-                            (f1-0 (the-as float (-> event param 1)))
-                            )
-                        (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
-                        (let ((v0-0 (-> self draw color-emissive)))
-                          (set! (-> v0-0 x) f1-0)
-                          (set! (-> v0-0 y) f1-0)
-                          (set! (-> v0-0 z) f1-0)
-                          (set! (-> v0-0 w) f1-0)
-                          v0-0
-                          )
-                        )
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('brightness)
+       (let ((f0-0 (the-as float (-> block param 0)))
+             (f1-0 (the-as float (-> block param 1)))
+             )
+         (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
+         (let ((v0-0 (-> self draw color-emissive)))
+           (set! (-> v0-0 x) f1-0)
+           (set! (-> v0-0 y) f1-0)
+           (set! (-> v0-0 z) f1-0)
+           (set! (-> v0-0 w) f1-0)
+           v0-0
+           )
+         )
+       )
+      )
     )
   :code (behavior ((arg0 symbol))
     (case (-> self type)
@@ -145,14 +143,13 @@
     (logior! (-> self mask) (process-mask sleep))
     (suspend)
     0
-    (none)
     )
   )
 
 ;; definition for method 11 of type final-door
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! final-door ((obj final-door) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-others))))
+(defmethod init-from-entity! final-door ((this final-door) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -169,11 +166,11 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root) s4-0)
+    (set! (-> this root) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (final-door-method-21 obj)
-  (go (method-of-object obj idle))
+  (process-drawable-from-entity! this arg0)
+  (final-door-method-21 this)
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -187,11 +184,11 @@
   )
 
 ;; definition for method 3 of type power-left
-(defmethod inspect power-left ((obj power-left))
+(defmethod inspect power-left ((this power-left))
   (let ((t9-0 (method-of-type final-door inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; definition of type power-right
@@ -204,11 +201,11 @@
   )
 
 ;; definition for method 3 of type power-right
-(defmethod inspect power-right ((obj power-right))
+(defmethod inspect power-right ((this power-right))
   (let ((t9-0 (method-of-type final-door inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -236,22 +233,21 @@
           )
       (suspend)
       )
-    (none)
     )
   )
 
 ;; definition for method 21 of type power-left
 ;; INFO: Return type mismatch int vs none.
-(defmethod final-door-method-21 power-left ((obj power-left))
-  (initialize-skeleton obj *power-left-sg* '())
+(defmethod final-door-method-21 power-left ((this power-left))
+  (initialize-skeleton this *power-left-sg* '())
   0
   (none)
   )
 
 ;; definition for method 21 of type power-right
 ;; INFO: Return type mismatch int vs none.
-(defmethod final-door-method-21 power-right ((obj power-right))
-  (initialize-skeleton obj *power-right-sg* '())
+(defmethod final-door-method-21 power-right ((this power-right))
+  (initialize-skeleton this *power-right-sg* '())
   0
   (none)
   )
@@ -275,14 +271,14 @@
   )
 
 ;; definition for method 3 of type powercellalt
-(defmethod inspect powercellalt ((obj powercellalt))
+(defmethod inspect powercellalt ((this powercellalt))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tjump-pos: ~`vector`P~%" (-> obj jump-pos))
-  (format #t "~T~Tbase: ~`vector`P~%" (-> obj base))
-  (format #t "~T~Tindex: ~D~%" (-> obj index))
-  obj
+  (format #t "~T~Tjump-pos: ~`vector`P~%" (-> this jump-pos))
+  (format #t "~T~Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~T~Tindex: ~D~%" (-> this index))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -293,9 +289,9 @@
     (let ((gp-1 (new 'stack 'trajectory)))
       (set! (-> self base y) (-> self jump-pos y))
       (setup-from-to-duration! gp-1 (-> self root-override trans) (-> self jump-pos) 300.0 -2.2755556)
-      (set! (-> self state-time) (-> *display* base-frame-counter))
-      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 1))
-        (let ((f0-2 (the float (- (-> *display* base-frame-counter) (-> self state-time)))))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
+        (let ((f0-2 (the float (- (current-time) (-> self state-time)))))
           (eval-position! gp-1 f0-2 (-> self root-override trans))
           )
         (transform-post)
@@ -322,7 +318,6 @@
       :to *entity-pool*
       )
     (go-virtual idle)
-    (none)
     )
   )
 
@@ -338,7 +333,6 @@
       (transform-post)
       (suspend)
       )
-    (none)
     )
   )
 
@@ -378,26 +372,23 @@
 
 ;; failed to figure out what this is:
 (defstate target-final-door (target)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    ((-> target-grab event) proc arg1 event-type event)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    ((-> target-grab event) proc argc message block)
     )
   :enter (behavior ((arg0 basic) (arg1 handle))
     (send-event *camera* 'change-to-entity-by-name "camera-403")
     (set! (-> self control unknown-surface00) *empty-mods*)
     (logior! (-> self state-flags) (state-flags invulnerable grabbed))
     (set-setting! 'allow-progress #f 0.0 0)
-    (none)
     )
   :exit (behavior ()
     (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
     (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
     (target-exit)
     (remove-setting! 'allow-progress)
-    (none)
     )
   :trans (behavior ()
     (set-letterbox-frames (seconds 0.017))
-    (none)
     )
   :code (behavior ((arg0 basic) (arg1 handle))
     (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
@@ -435,8 +426,8 @@
               )
             )
           )
-        (let ((s1-1 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s1-1) (seconds 0.1))
+        (let ((s1-1 (current-time)))
+          (until (time-elapsed? s1-1 (seconds 0.1))
             (suspend)
             )
           )
@@ -457,15 +448,15 @@
               )
             )
           )
-        (let ((s1-3 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) s1-3) (seconds 0.1))
+        (let ((s1-3 (current-time)))
+          (until (time-elapsed? s1-3 (seconds 0.1))
             (suspend)
             )
           )
         )
       )
-    (let ((gp-1 (-> *display* base-frame-counter)))
-      (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 2))
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 2))
         (suspend)
         )
       )
@@ -485,7 +476,6 @@
         )
       )
     (go target-stance)
-    (none)
     )
   :post target-no-stick-post
   )

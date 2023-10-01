@@ -30,18 +30,17 @@
 
 (defstate idle (stdmb-race-hatch)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('open)
-                      (set! (-> self tt-target) 1.0)
-                      )
-                     (('close)
-                      (set! (-> self tt-target) 0.0)
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('open)
+       (set! (-> self tt-target) 1.0)
+       )
+      (('close)
+       (set! (-> self tt-target) 0.0)
+       )
+      )
     )
-  :code (the-as (function none :behavior stdmb-race-hatch) sleep-code)
+  :code sleep-code
   :post (behavior ()
     (cond
       ((!= (-> self tt) (-> self tt-target))
@@ -53,12 +52,11 @@
         (ja-post)
         )
       )
-    (none)
     )
   )
 
-(defmethod stdmb-race-hatch-method-21 stdmb-race-hatch ((obj stdmb-race-hatch))
-  (let ((s5-0 (new 'process 'collide-shape-moving obj (collide-list-enum usually-hit-by-player))))
+(defmethod stdmb-race-hatch-method-21 stdmb-race-hatch ((this stdmb-race-hatch))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
     (set! (-> s5-0 no-reaction)
@@ -92,42 +90,42 @@
       (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
       (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
       )
-    (set! (-> obj root) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod stdmb-race-hatch-method-22 stdmb-race-hatch ((obj stdmb-race-hatch))
+(defmethod stdmb-race-hatch-method-22 stdmb-race-hatch ((this stdmb-race-hatch))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stdmb-race-hatch" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> obj draw shadow-mask) (the-as uint 30))
-  (set! (-> obj draw shadow-values) (the-as uint #x22220))
-  (set! (-> obj tt) 0.0)
-  (set! (-> obj tt-target) 0.0)
+  (set! (-> this draw shadow-mask) (the-as uint 30))
+  (set! (-> this draw shadow-values) (the-as uint #x22220))
+  (set! (-> this tt) 0.0)
+  (set! (-> this tt-target) 0.0)
   (ja-channel-push! 1 0)
-  (let ((v1-7 (-> obj skel root-channel 0)))
-    (set! (-> v1-7 frame-group) (the-as art-joint-anim (-> obj draw art-group data 3)))
+  (let ((v1-7 (-> this skel root-channel 0)))
+    (set! (-> v1-7 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
     )
   (transform-post)
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   0
   (none)
   )
 
-(defmethod init-from-entity! stdmb-race-hatch ((obj stdmb-race-hatch) (arg0 entity-actor))
+(defmethod init-from-entity! stdmb-race-hatch ((this stdmb-race-hatch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stdmb-race-hatch-method-21 obj)
-  (process-drawable-from-entity! obj arg0)
-  (stdmb-race-hatch-method-22 obj)
+  (stdmb-race-hatch-method-21 this)
+  (process-drawable-from-entity! this arg0)
+  (stdmb-race-hatch-method-22 this)
   (none)
   )
 

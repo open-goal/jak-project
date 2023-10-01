@@ -78,8 +78,7 @@
 (defstate zap (canyon-lightning-thingy)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
-    (none)
+    (set-time! (-> self state-time))
     )
   :exit (behavior ()
     (dotimes (v1-0 5)
@@ -102,11 +101,10 @@
         (set! (-> control state mode) (the-as lightning-mode mode))
         )
       )
-    (none)
     )
   :trans (behavior ()
     (cond
-      ((>= (- (current-time) (-> self state-time)) (seconds 0.125))
+      ((time-elapsed? (-> self state-time) (seconds 0.125))
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (set! (-> gp-0 quad) (-> self root trans quad))
          (let ((v1-7 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
@@ -166,19 +164,18 @@
         (spawn (-> self part) (-> self root trans))
         )
       )
-    (none)
     )
-  :code (the-as (function none :behavior canyon-lightning-thingy) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch process-drawable vs canyon-lightning-thingy.
-(defmethod relocate canyon-lightning-thingy ((obj canyon-lightning-thingy) (arg0 int))
+(defmethod relocate canyon-lightning-thingy ((this canyon-lightning-thingy) (arg0 int))
   (dotimes (index 5)
-    (if (nonzero? (-> obj lightning index))
-        (&+! (-> obj lightning index) arg0)
+    (if (nonzero? (-> this lightning index))
+        (&+! (-> this lightning index) arg0)
         )
     )
-  (the-as canyon-lightning-thingy ((method-of-type process-drawable relocate) obj arg0))
+  (the-as canyon-lightning-thingy ((method-of-type process-drawable relocate) this arg0))
   )
 
 ;; WARN: Return type mismatch object vs none.

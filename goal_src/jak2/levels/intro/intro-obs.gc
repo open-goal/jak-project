@@ -41,8 +41,8 @@
 
 (defstate idle (intro-flamer)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('die)
        (go-virtual die)
        )
@@ -52,7 +52,7 @@
     (if (= (-> self path-u) 1.0)
         (go-virtual die)
         )
-    (when (>= (- (current-time) (the-as int (-> self flit-timer))) (the-as time-frame (-> self flit-interval)))
+    (when (time-elapsed? (the-as int (-> self flit-timer)) (the-as time-frame (-> self flit-interval)))
       (let ((f28-0 (rand-vu-float-range -1.0 1.0))
             (f30-0 (rand-vu-float-range -1.0 1.0))
             (f0-1 (rand-vu-float-range 0.2 0.6))
@@ -64,19 +64,12 @@
         )
       (set! (-> self flit-timer) (the-as uint (current-time)))
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 1)
     (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
       (until #f
-        (ja-no-eval :group! (-> self draw art-group data 5)
-                    :num! (seek!
-                      (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 5)) frames num-frames) -1))
-                      f30-0
-                      )
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 5) :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max f30-0))
@@ -84,7 +77,6 @@
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (seek! (-> self path-u) 1.0 (* (-> self path-du) (seconds-per-frame)))
@@ -192,7 +184,6 @@
         )
       )
     (ja-post)
-    (none)
     )
   )
 
@@ -201,31 +192,30 @@
   :code (behavior ()
     (suspend)
     (cleanup-for-death self)
-    (none)
     )
   )
 
 ;; WARN: Return type mismatch object vs path-control.
-(defmethod intro-flamer-method-22 intro-flamer ((obj intro-flamer))
-  (the-as path-control (send-event (ppointer->process (-> obj parent)) 'path (-> obj id)))
+(defmethod intro-flamer-method-22 intro-flamer ((this intro-flamer))
+  (the-as path-control (send-event (ppointer->process (-> this parent)) 'path (-> this id)))
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! intro-flamer ((obj intro-flamer) (arg0 entity-actor))
+(defmethod init-from-entity! intro-flamer ((this intro-flamer) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-intro-flamer" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -282,23 +272,23 @@ This commonly includes things such as:
 
 (defstate idle (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go-virtual active)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
-  :code (the-as (function none :behavior metalhead-spawner) sleep-code)
+  :code sleep-code
   )
 
 (defstate active (metalhead-spawner)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go-virtual idle)
        )
@@ -306,7 +296,7 @@ This commonly includes things such as:
        (go-virtual die)
        )
       (('path)
-       (-> self path-tbl (-> event param 0))
+       (-> self path-tbl (-> block param 0))
        )
       )
     )
@@ -326,20 +316,18 @@ This commonly includes things such as:
         (let ((s5-1 (the int (* 300.0 (rand-vu-float-range 0.03 0.08))))
               (s4-0 (current-time))
               )
-          (until (>= (- (current-time) s4-0) s5-1)
+          (until (time-elapsed? s4-0 s5-1)
             (suspend)
             )
           )
         )
       )
     #f
-    (none)
     )
   :post (behavior ()
     (dotimes (gp-0 19)
       (debug-draw (-> self path-tbl gp-0))
       )
-    (none)
     )
   )
 
@@ -356,48 +344,43 @@ This commonly includes things such as:
       (suspend)
       )
     (process-entity-status! self (entity-perm-status dead) #t)
-    (none)
     )
   )
 
-;; WARN: Return type mismatch process vs metalhead-spawner.
-(defmethod relocate metalhead-spawner ((obj metalhead-spawner) (arg0 int))
+(defmethod relocate metalhead-spawner ((this metalhead-spawner) (arg0 int))
   (dotimes (v1-0 19)
-    (if (nonzero? (-> obj path-tbl v1-0))
-        (&+! (-> obj path-tbl v1-0) arg0)
+    (if (nonzero? (-> this path-tbl v1-0))
+        (&+! (-> this path-tbl v1-0) arg0)
         )
     )
-  (the-as
-    metalhead-spawner
-    ((the-as (function process int process) (find-parent-method metalhead-spawner 7)) obj arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! metalhead-spawner ((obj metalhead-spawner) (arg0 entity-actor))
+(defmethod init-from-entity! metalhead-spawner ((this metalhead-spawner) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj init-pos quad) (-> arg0 extra trans quad))
-  (vector-reset! (-> obj average-dir))
+  (set! (-> this init-pos quad) (-> arg0 extra trans quad))
+  (vector-reset! (-> this average-dir))
   (dotimes (s5-0 19)
-    (let ((s4-0 (new 'process 'curve-control obj 'path (the float (+ s5-0 1)))))
-      (set! (-> obj path-tbl s5-0) s4-0)
+    (let ((s4-0 (new 'process 'curve-control this 'path (the float (+ s5-0 1)))))
+      (set! (-> this path-tbl s5-0) s4-0)
       (logior! (-> s4-0 flags) (path-control-flag display draw-line draw-point draw-text))
       (let* ((s3-0 (get-point-at-percent-along-path! s4-0 (new 'stack-no-clear 'vector) 0.0 'interp))
              (v1-10 (get-point-at-percent-along-path! s4-0 (new 'stack-no-clear 'vector) 1.0 'interp))
              (s4-2 (vector-! (new 'stack-no-clear 'vector) v1-10 s3-0))
              )
         (vector-normalize! s4-2 1.0)
-        (vector+! (-> obj average-dir) (-> obj average-dir) s4-2)
+        (vector+! (-> this average-dir) (-> this average-dir) s4-2)
         )
       )
     )
-  (vector-normalize! (-> obj average-dir) 1.0)
-  (go (method-of-object obj idle))
+  (vector-normalize! (-> this average-dir) 1.0)
+  (go (method-of-object this idle))
   (none)
   )
 
@@ -422,36 +405,32 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (until #f
-      (ja-no-eval :group! (ja-group)
-                  :num! (seek! (the float (+ (-> (ja-group) frames num-frames) -1)))
-                  :frame-num 0.0
-                  )
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
         )
       )
     #f
-    (none)
     )
-  :post (the-as (function none :behavior vil-windmill-sail) ja-post)
+  :post ja-post
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! vil-windmill-sail ((obj vil-windmill-sail) (arg0 entity-actor))
+(defmethod init-from-entity! vil-windmill-sail ((this vil-windmill-sail) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vil-windmill-sail" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (go (method-of-object obj idle))
+  (go (method-of-object this idle))
   (none)
   )

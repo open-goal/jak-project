@@ -40,21 +40,21 @@
   )
 
 
-(defmethod run-logic? fma-sphere ((obj fma-sphere))
+(defmethod run-logic? fma-sphere ((this fma-sphere))
   (or (logtest? *display-scene-control* (scene-controls display-controls))
-      (and *display-nav-marks* (logtest? (-> obj mode) (fma-sphere-mode nav)))
-      (logtest? (-> obj mode) (fma-sphere-mode deadly-overlap))
-      (>= (-> obj track-joint) 0)
-      (-> obj first-time?)
+      (and *display-nav-marks* (logtest? (-> this mode) (fma-sphere-mode nav)))
+      (logtest? (-> this mode) (fma-sphere-mode deadly-overlap))
+      (>= (-> this track-joint) 0)
+      (-> this first-time?)
       )
   )
 
 (defstate idle (fma-sphere)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
-       (let ((v1-1 (-> event param 0)))
+       (let ((v1-1 (-> block param 0)))
          (if v1-1
              (send-event proc 'attack v1-1 (static-attack-info ((id (-> self attack-id))
                                                                 (mode 'eco-red)
@@ -70,12 +70,11 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self first-time?) #f)
     (if (logtest? (-> self mode) (fma-sphere-mode kill-once))
         (send-event *traffic-manager* 'kill-traffic-sphere (-> self sphere))
         )
-    (none)
     )
   :trans (behavior ()
     (local-vars (at-0 int))
@@ -85,7 +84,7 @@
            )
       (init-vf0-vector)
       (let ((v1-0 (-> self duration)))
-        (if (and (nonzero? v1-0) (>= (- (current-time) (-> self state-time)) v1-0))
+        (if (and (nonzero? v1-0) (time-elapsed? (-> self state-time) v1-0))
             (go empty-state)
             )
         )
@@ -141,10 +140,9 @@
             (new 'static 'rgba :r #x80 :g #x40 :a #x80)
             )
           )
-      (none)
       )
     )
-  :code (the-as (function none :behavior fma-sphere) sleep-code)
+  :code sleep-code
   )
 
 ;; WARN: Return type mismatch object vs none.

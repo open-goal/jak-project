@@ -214,14 +214,14 @@ void Compiler::for_each_in_list(const goos::Object& list,
 /*!
  * Convert a goos::Object that's a string to a std::string. Must be a string.
  */
-std::string Compiler::as_string(const goos::Object& o) {
+const std::string& Compiler::as_string(const goos::Object& o) {
   return o.as_string()->data;
 }
 
 /*!
  * Convert a goos::Object that's a symbol to a std::string. Must be a string.
  */
-std::string Compiler::symbol_string(const goos::Object& o) {
+const std::string& Compiler::symbol_string(const goos::Object& o) {
   return o.as_symbol()->name;
 }
 
@@ -290,6 +290,11 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
       src.as_pair()->cdr.is_empty_list()) {
     return env->function_env()->method_of_type_name;
   }
+  if (src.is_pair() && src.as_pair()->car.is_symbol("current-method-function-type") &&
+      src.as_pair()->cdr.is_empty_list()) {
+    return env->function_env()->method_function_type.substitute_for_method_call(
+        env->function_env()->method_of_type_name);
+  }
   return ::parse_typespec(&m_ts, src);
 }
 
@@ -314,17 +319,6 @@ bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   }
 
   return false;
-}
-
-emitter::HWRegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
-  switch (m_ts.lookup_type(ts)->get_preferred_reg_class()) {
-    case RegClass::GPR_64:
-      return emitter::HWRegKind::GPR;
-    case RegClass::FLOAT:
-      return emitter::HWRegKind::XMM;
-    default:
-      throw std::runtime_error("Unknown preferred register kind");
-  }
 }
 
 bool Compiler::is_none(Val* in) {

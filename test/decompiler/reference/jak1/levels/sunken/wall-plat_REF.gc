@@ -24,16 +24,16 @@
   )
 
 ;; definition for method 3 of type wall-plat
-(defmethod inspect wall-plat ((obj wall-plat))
+(defmethod inspect wall-plat ((this wall-plat))
   (let ((t9-0 (method-of-type process-drawable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~T~Tuse-sync?: ~A~%" (-> obj use-sync?))
-  (format #t "~T~Textended-amount: ~f~%" (-> obj extended-amount))
-  (format #t "~T~Tin-trans: #<vector @ #x~X>~%" (-> obj in-trans))
-  (format #t "~T~Tout-trans: #<vector @ #x~X>~%" (-> obj out-trans))
-  (format #t "~T~Tsync: #<sync-info-paused @ #x~X>~%" (-> obj sync))
-  obj
+  (format #t "~T~Tuse-sync?: ~A~%" (-> this use-sync?))
+  (format #t "~T~Textended-amount: ~f~%" (-> this extended-amount))
+  (format #t "~T~Tin-trans: #<vector @ #x~X>~%" (-> this in-trans))
+  (format #t "~T~Tout-trans: #<vector @ #x~X>~%" (-> this out-trans))
+  (format #t "~T~Tsync: #<sync-info-paused @ #x~X>~%" (-> this sync))
+  this
   )
 
 ;; failed to figure out what this is:
@@ -44,8 +44,8 @@
 
 ;; failed to figure out what this is:
 (defstate wall-plat-retracted (wall-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('trigger)
        (go wall-plat-extending)
        )
@@ -60,31 +60,28 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-extending (wall-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (sound-play "wall-plat")
-    (none)
     )
-  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (restore-collide-with-as (-> self root-override))
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (loop
-      (seek! (-> self extended-amount) 1.0 (* 2.5 (-> *display* seconds-per-frame)))
+      (seek! (-> self extended-amount) 1.0 (* 2.5 (seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
         (move-to-point! (-> self root-override) gp-0)
@@ -94,15 +91,14 @@
           (go wall-plat-extended)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior wall-plat) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-extended (wall-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('untrigger)
        (go wall-plat-retracting)
        )
@@ -116,30 +112,27 @@
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       )
-    (none)
     )
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-retracting (wall-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (sound-play "wall-plat")
-    (none)
     )
-  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (loop
-      (seek! (-> self extended-amount) 0.0 (* 2.5 (-> *display* seconds-per-frame)))
+      (seek! (-> self extended-amount) 0.0 (* 2.5 (seconds-per-frame)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
         (move-to-point! (-> self root-override) gp-0)
@@ -149,31 +142,27 @@
           (go wall-plat-retracted)
           )
       )
-    (none)
     )
-  :post (the-as (function none :behavior wall-plat) rider-post)
+  :post rider-post
   )
 
 ;; failed to figure out what this is:
 (defstate wall-plat-sync-idle (wall-plat)
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (the-as object (case event-type
-                     (('touch)
-                      (send-event proc 'no-look-around (seconds 1.5))
-                      #f
-                      )
-                     )
-            )
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (send-event proc 'no-look-around (seconds 1.5))
+       #f
+       )
+      )
     )
   :enter (behavior ()
     (logclear! (-> self mask) (process-mask actor-pause))
-    (none)
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (none)
     )
-  :trans (the-as (function none :behavior wall-plat) rider-trans)
+  :trans rider-trans
   :code (behavior ()
     (let ((gp-0 #f))
       (loop
@@ -203,17 +192,16 @@
         (suspend)
         )
       )
-    (none)
     )
-  :post (the-as (function none :behavior wall-plat) rider-post)
+  :post rider-post
   )
 
 ;; definition for method 11 of type wall-plat
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! wall-plat ((obj wall-plat) (arg0 entity-actor))
-  (set! (-> obj extended-amount) 0.0)
-  (logior! (-> obj mask) (process-mask platform))
-  (let ((s4-0 (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+(defmethod init-from-entity! wall-plat ((this wall-plat) (arg0 entity-actor))
+  (set! (-> this extended-amount) 0.0)
+  (logior! (-> this mask) (process-mask platform))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
     (set! (-> s4-0 no-reaction)
@@ -231,36 +219,36 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> obj root-override) s4-0)
+    (set! (-> this root-override) s4-0)
     )
-  (process-drawable-from-entity! obj arg0)
-  (initialize-skeleton obj *wall-plat-sg* '())
-  (logior! (-> obj skel status) (janim-status inited))
-  (set! (-> obj use-sync?) (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.2 0.2))
-  (let ((f30-0 (quaternion-y-angle (-> obj root-override quat)))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this *wall-plat-sg* '())
+  (logior! (-> this skel status) (janim-status inited))
+  (set! (-> this use-sync?) (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.2 0.2))
+  (let ((f30-0 (quaternion-y-angle (-> this root-override quat)))
         (s4-1 (new 'stack-no-clear 'vector))
         )
     (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float arg0 'tunemeters)) 1.0)
     (vector-rotate-around-y! s4-1 s4-1 f30-0)
-    (vector+! (-> obj out-trans) (-> obj root-override trans) s4-1)
+    (vector+! (-> this out-trans) (-> this root-override trans) s4-1)
     (set-vector! s4-1 0.0 0.0 20480.0 1.0)
     (vector-rotate-around-y! s4-1 s4-1 f30-0)
-    (vector+! (-> obj in-trans) (-> obj out-trans) s4-1)
+    (vector+! (-> this in-trans) (-> this out-trans) s4-1)
     )
   (ja-channel-push! 1 0)
-  (let ((s5-1 (-> obj skel root-channel 0)))
+  (let ((s5-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval!
       s5-1
-      (the-as art-joint-anim (-> obj draw art-group data 2))
+      (the-as art-joint-anim (-> this draw art-group data 2))
       num-func-identity
       )
     (set! (-> s5-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> obj root-override))
+  (update-transforms! (-> this root-override))
   (cond
-    ((-> obj use-sync?)
-     (logclear! (-> obj mask) (process-mask actor-pause))
+    ((-> this use-sync?)
+     (logclear! (-> this mask) (process-mask actor-pause))
      (go wall-plat-sync-idle)
      )
     (else

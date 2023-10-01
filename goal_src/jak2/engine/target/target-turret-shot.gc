@@ -196,8 +196,8 @@
 
 (defstate impact (turret-shot)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('touched)
        (let* ((toucher-proc proc)
               (toucher (if (type? toucher-proc process-drawable)
@@ -210,14 +210,14 @@
            (send-event
              proc
              'attack
-             (-> event param 0)
+             (-> block param 0)
              (static-attack-info ((id (-> self attack-id)) (mode 'explode) (damage (-> self damage))))
              )
            )
          )
        )
       (else
-        (projectile-event-handler proc arg1 event-type event)
+        (projectile-event-handler proc argc message block)
         )
       )
     )
@@ -233,11 +233,10 @@
       )
     (suspend)
     (go-virtual die)
-    (none)
     )
   )
 
-(defmethod spawn-impact-particles turret-shot ((obj turret-shot))
+(defmethod spawn-impact-particles turret-shot ((this turret-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -247,8 +246,8 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((gp-0 (-> obj root trans))
-           (a1-0 (-> obj tail-pos))
+    (let* ((gp-0 (-> this root trans))
+           (a1-0 (-> this tail-pos))
            (s5-1 (vector-! (new 'stack-no-clear 'vector) gp-0 a1-0))
            (f30-0 (vector-length s5-1))
            )
@@ -294,10 +293,10 @@
     )
   )
 
-(defmethod spawn-shell-particles turret-shot ((obj turret-shot))
+(defmethod spawn-shell-particles turret-shot ((this turret-shot))
   "TODO - confirm"
-  (let* ((root (-> obj root))
-         (v1-2 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> obj tail-pos) (-> root trans)) 2048.0))
+  (let* ((root (-> this root))
+         (v1-2 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> root trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
     (set! (-> gp-0 quad) (-> root trans quad))
@@ -342,7 +341,7 @@
   (none)
   )
 
-(defmethod play-impact-sound turret-shot ((obj turret-shot) (proj-options projectile-options))
+(defmethod play-impact-sound turret-shot ((this turret-shot) (proj-options projectile-options))
   (let ((options proj-options))
     (cond
       ((zero? options)
@@ -358,21 +357,21 @@
   )
 
 ;; WARN: Return type mismatch projectile-options vs none.
-(defmethod init-proj-settings! turret-shot ((obj turret-shot))
+(defmethod init-proj-settings! turret-shot ((this turret-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (set! (-> obj tail-pos quad) (-> obj root trans quad))
+  (set! (-> this tail-pos quad) (-> this root trans quad))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
-  (set! (-> obj attack-mode) 'turret)
-  (set! (-> obj max-speed) 1228800.0)
-  (set! (-> obj move) guard-shot-move)
-  (set! (-> obj damage) 1.0)
-  (logior! (-> obj options) (projectile-options deal-damage))
+  (set! (-> this attack-mode) 'turret)
+  (set! (-> this max-speed) 1228800.0)
+  (set! (-> this move) guard-shot-move)
+  (set! (-> this damage) 1.0)
+  (logior! (-> this options) (projectile-options deal-damage))
   (none)
   )
 
-(defmethod init-proj-collision! turret-shot ((obj turret-shot))
+(defmethod init-proj-collision! turret-shot ((this turret-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
-  (let ((cshape (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))))
+  (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
     (set! (-> cshape reaction)
           (the-as (function control-info collide-query vector vector collide-status) cshape-reaction-just-move)
@@ -438,9 +437,9 @@
       )
     (set! (-> cshape max-iteration-count) (the-as uint 1))
     (set! (-> cshape event-self) 'touched)
-    (set! (-> obj root) cshape)
+    (set! (-> this root) cshape)
     )
-  (set! (-> obj root pat-ignore-mask)
+  (set! (-> this root pat-ignore-mask)
         (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1)
         )
   0

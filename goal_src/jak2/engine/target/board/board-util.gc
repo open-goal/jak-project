@@ -14,11 +14,11 @@
 ;; DECOMP BEGINS
 
 ;; WARN: Return type mismatch process-drawable vs board.
-(defmethod relocate board ((obj board) (arg0 int))
-  (if (nonzero? (-> obj main))
-      (&+! (-> obj main) arg0)
+(defmethod relocate board ((this board) (arg0 int))
+  (if (nonzero? (-> this main))
+      (&+! (-> this main) arg0)
       )
-  (the-as board ((method-of-type process-drawable relocate) obj arg0))
+  (the-as board ((method-of-type process-drawable relocate) this arg0))
   )
 
 (defbehavior board-post board ()
@@ -80,7 +80,6 @@
           (go-virtual idle #f)
           )
       )
-    (none)
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -88,14 +87,13 @@
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
     0
-    (none)
     )
   )
 
 (defstate idle (board)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('open)
        (go-virtual use)
        )
@@ -113,21 +111,15 @@
           (go-virtual hidden)
           )
       )
-    (none)
     )
   :code (behavior ((arg0 symbol))
     (ja-channel-push! 1 (seconds 0.1))
     (cond
       (arg0
-        (ja :group! (-> self draw art-group data 4)
-            :num! (identity (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-            )
+        (ja :group! (-> self draw art-group data 4) :num! max)
         )
       (else
-        (ja-no-eval :group! (-> self draw art-group data 4)
-                    :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 4)) frames num-frames) -1)))
-                    :frame-num 0.0
-                    )
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!))
@@ -136,15 +128,14 @@
       )
     (set! (-> self draw shadow) #f)
     (sleep-code)
-    (none)
     )
   :post board-post
   )
 
 (defstate use (board)
   :virtual #t
-  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
-    (case event-type
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
       (('close)
        (go-virtual idle #f)
        )
@@ -183,21 +174,16 @@
          )
         )
       )
-    (none)
     )
   :code (behavior ()
     (set! (-> self draw shadow) (-> self shadow-backup))
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 3)
-                :num! (seek! (the float (+ (-> (the-as art-joint-anim (-> self draw art-group data 3)) frames num-frames) -1)))
-                :frame-num 0.0
-                )
+    (ja-no-eval :group! (-> self draw art-group data 3) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
       )
     (sleep-code)
-    (none)
     )
   :post board-post
   )
