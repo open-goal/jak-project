@@ -1,0 +1,376 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+An input display written in GOAL
+
+Controller joystick locations have text coordinates and a grid display
+
+Face buttons were added to game_custom_text so they could be displayed with lookup-text!
+Other buttons are displayed using text: "R3" "Select"
+
+Sections of the input display are anchored by an -origin vector
+Individual buttons have an -offset vector relative to the origin
+  ie: the face buttons center is (90, 208) on-screen, and the Triangle button is 12 units to the left, and 18 units above
+  try (set-vector! stick-origin 60 20 0 0)
+
+Use L2 + L3 + Dpad to start editing the input display
+The dpad press displays text and changes the edit mode
+Down lets you edit buttons, left lets you edit the sticks, right for dpad, up to stop editing
+|#
+
+;; *show-input-display* is the on/off switch controlling whether this is displayed
+
+;
+;Button stuff
+;
+;Button center coordinates
+(define button-origin (new 'static 'vector4w :x 90 :y 380 :z 0 :w 0))
+;Face buttons
+(define triangle-offset (new 'static 'vector4w :x -12 :y -36 :z 0 :w 0))
+(define x-offset        (new 'static 'vector4w :x -12 :y 4 :z 0 :w 0))
+(define circle-offset   (new 'static 'vector4w :x 6   :y -16 :z 0 :w 0))
+(define square-offset   (new 'static 'vector4w :x -30 :y -16 :z 0 :w 0))
+
+(defun draw-face-buttons ((arg0 dma-buffer))
+    ;Face buttons. Each button needed added to text-h.gc and english texts
+    (when (cpad-hold? 0 triangle)
+        (draw-string-xy (lookup-text! *common-text* (text-id pad-triangle) #f) arg0 (+ (-> button-origin x) (-> triangle-offset x)) (+ (-> button-origin y) (-> triangle-offset y)) (font-color green) (font-flags shadow kerning large)) )
+    (when (cpad-hold? 0 circle)
+        (draw-string-xy (lookup-text! *common-text* (text-id pad-circle) #f) arg0 (+ (-> button-origin x) (-> circle-offset x)) (+ (-> button-origin y) (-> circle-offset y)) (font-color green) (font-flags shadow kerning large)) )
+    (when (cpad-hold? 0 x)
+        (draw-string-xy (lookup-text! *common-text* (text-id pad-x) #f) arg0 (+ (-> button-origin x) (-> x-offset x)) (+ (-> button-origin y) (-> x-offset y)) (font-color green) (font-flags shadow kerning large)) )
+    (when (cpad-hold? 0 square)
+        (draw-string-xy (lookup-text! *common-text* (text-id pad-square) #f) arg0 (+ (-> button-origin x) (-> square-offset x)) (+ (-> button-origin y) (-> square-offset y)) (font-color green) (font-flags shadow kerning large)) )
+)
+
+;
+;Other buttons (LRs, select, start)
+;
+;(define R-x-offset 13)
+;(define L-x-offset (- 28)) ;use a minus for negative numbers
+;(define RL1-y-offset (- 16))
+;(define RL2-y-offset (- 23))
+;(define RL3-y-offset 8)
+
+(define r1-offset (new 'static 'vector4w :x 13 :y -32 :z 0 :w 0))
+(define r2-offset (new 'static 'vector4w :x 13 :y -46 :z 0 :w 0))
+(define r3-offset (new 'static 'vector4w :x 13 :y 16 :z 0 :w 0))
+(define l1-offset (new 'static 'vector4w :x -28 :y -32 :z 0 :w 0))
+(define l2-offset (new 'static 'vector4w :x -28 :y -46 :z 0 :w 0))
+(define l3-offset (new 'static 'vector4w :x -28 :y 16 :z 0 :w 0))
+; select uses l3 offset
+; start uses r3 offset
+
+(defun draw-other-buttons ((arg0 dma-buffer))
+    ;LR/Shoulder buttons
+    (when (cpad-hold? 0 r1)
+        (draw-string-xy "R1" arg0 (+ (-> button-origin x) (-> r1-offset x)) (+ (-> button-origin y) (-> r1-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 r2)
+        (draw-string-xy "R2" arg0 (+ (-> button-origin x) (-> r2-offset x)) (+ (-> button-origin y) (-> r2-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 r3)
+        (draw-string-xy "R3" arg0 (+ (-> button-origin x) (-> r3-offset x)) (+ (-> button-origin y) (-> r3-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 l1)
+        (draw-string-xy "L1" arg0 (+ (-> button-origin x) (-> l1-offset x)) (+ (-> button-origin y) (-> l1-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 l2)
+        (draw-string-xy "L2" arg0 (+ (-> button-origin x) (-> l2-offset x)) (+ (-> button-origin y) (-> l2-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 l3)
+        (draw-string-xy "L3" arg0 (+ (-> button-origin x) (-> l3-offset x)) (+ (-> button-origin y) (-> l3-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+
+    ;Select/Start, aligned with L3/R3
+    (when (cpad-hold? 0 start)
+        (draw-string-xy "Start" arg0 (+ (-> button-origin x) (-> r3-offset x)) (+ (-> button-origin y) (-> r3-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 select)
+        (draw-string-xy "Select" arg0 (+ (-> button-origin x) (-> l3-offset x)) (+ (-> button-origin y) (-> l3-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+
+)
+
+
+
+;
+;D-Pad inputs
+;
+(define dpad-origin (new 'static 'vector4w :x 90 :y 380 :z 0 :w 0))
+(define up-offset (new 'static 'vector4w :x -12 :y -36 :z 0 :w 0))
+(define down-offset (new 'static 'vector4w :x -12 :y 4 :z 0 :w 0))
+(define left-offset (new 'static 'vector4w :x -30   :y -16 :z 0 :w 0))
+(define right-offset (new 'static 'vector4w :x 6 :y -16 :z 0 :w 0))
+    
+(defun draw-dpad ((arg0 dma-buffer))
+    (when (cpad-hold? 0 up)
+        (draw-string-xy "up" arg0 (+ (-> dpad-origin x) (-> up-offset x)) (+ (-> dpad-origin y) (-> up-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 down)
+        (draw-string-xy "down" arg0 (+ (-> dpad-origin x) (-> down-offset x)) (+ (-> dpad-origin y) (-> down-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 left)
+        (draw-string-xy "left" arg0 (+ (-> dpad-origin x) (-> left-offset x)) (+ (-> dpad-origin y) (-> left-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+    (when (cpad-hold? 0 right)
+        (draw-string-xy "right" arg0 (+ (-> dpad-origin x) (-> right-offset x)) (+ (-> dpad-origin y) (-> right-offset y)) (the font-color 13) (font-flags shadow kerning)) )
+)
+
+
+
+;
+;Joystick stuff
+;
+(define show-stick1? #t)
+(define stick-origin (new 'static 'vector4w :x 30 :y 380 :z 0 :w 0))
+(define stick-text-offset (new 'static 'vector4w :x -20 :y -40 :z 0 :w 0))
+
+;no idea how the draw scaling works, this seems good enough
+;length of axes lines, started with 128 and adjusted until it looked good
+(define height-idk (/ 256 5))
+(define width-idk (/ 128 3))
+
+(defun draw-stick ((arg0 dma-buffer))
+    (when show-stick1?
+    ;up/down axis
+      (draw-sprite2d-xy arg0 
+        (-> stick-origin x)       ;the vertical line's x coordinate = stick center x coordinate
+        (- (-> stick-origin y) (/ height-idk 2))  ;we shift the line up, by half its height, so that the line midpoint = center y coordinate
+        2
+        height-idk
+        *color-black*)
+      ;left/right axis
+      (draw-sprite2d-xy arg0 
+        (- (-> stick-origin x) (/ width-idk 2))
+        (-> stick-origin y)
+        width-idk 
+        1 
+        *color-gray*)
+  
+      ;Text for stick values
+      (draw-string-xy-scaled (string-format "~d  ~d" (-> *cpad-list* cpads 0 leftx) (-> *cpad-list* cpads 0 lefty)) arg0 
+        (+ (-> stick-origin x) (-> stick-text-offset x))
+        (+ (-> stick-origin y) (-> stick-text-offset y))
+        (font-color green) (font-flags shadow kerning ) 0.75)
+      
+      ;raw stick location, nice for locating screen coordinates
+      ;(draw-sprite2d-xy testbuf (the int (-> *cpad-list* cpads 0 leftx)) (the int(-> *cpad-list* cpads 0 lefty)) 5 3 *color-red*)
+  
+      ;stick location scaled to picture
+      (draw-sprite2d-xy arg0 
+        ;analog-input takes left stick x int value and maps its min/max to negative/positive of the last argument 
+        ;in our case we scale to half of the picture's width, so the stick can go full + (right) or full - (left)
+        (+ (-> stick-origin x)
+          (analog-input (the int (-> *cpad-list* cpads 0 leftx)) 128.0 0.0 128.0 (the float (/ width-idk 2))))
+        ;repeat for y coordinate
+        (+ (-> stick-origin y)
+          (analog-input (the int (-> *cpad-list* cpads 0 lefty)) 128.0 0.0 128.0 (the float (/ height-idk 2))))
+        3 
+        2 
+        *color-cyan*)
+    )
+)
+
+;
+;Second stick
+;
+(define show-stick2? #f)
+(define stick2-origin (new 'static 'vector4w :x 150 :y 380 :z 0 :w 0))
+(define stick2-text-offset (new 'static 'vector4w :x -20 :y -40 :z 0 :w 0))
+
+(defun draw-stick2 ((arg0 dma-buffer))
+    (when show-stick2?
+      ;up/down axis
+      (draw-sprite2d-xy arg0 
+        (-> stick2-origin x)       
+        (- (-> stick2-origin y) (/ height-idk 2))  
+        2
+        height-idk
+        *color-black*)
+      ;left/right axis
+      (draw-sprite2d-xy arg0 
+        (- (-> stick2-origin x) (/ width-idk 2))
+        (-> stick2-origin y)
+        width-idk 
+        1 
+        *color-gray*)
+      
+      ;Text for stick values
+      (draw-string-xy-scaled (string-format "~d  ~d" (-> *cpad-list* cpads 0 rightx) (-> *cpad-list* cpads 0 righty)) arg0 
+        (+ (-> stick2-origin x) (-> stick2-text-offset x))
+        (+ (-> stick2-origin y) (-> stick2-text-offset y))
+        (font-color cyan) (font-flags shadow kerning ) 0.75)
+
+      ;stick location scaled to picture
+      (draw-sprite2d-xy arg0 
+        (+ (-> stick2-origin x)
+          (analog-input (the int (-> *cpad-list* cpads 0 rightx)) 128.0 0.0 128.0 (the float (/ width-idk 2))))
+        (+ (-> stick2-origin y)
+          (analog-input (the int (-> *cpad-list* cpads 0 righty)) 128.0 0.0 128.0 (the float (/ height-idk 2))))
+        3 
+        2 
+        *color-green*)
+    )
+)
+
+;
+;edit mode
+;
+(define button-edit-mode 0)
+(define button-edit-strings (new 'static 'boxed-array :type string
+    ""
+    "Hold a button and use dpad to move"
+    "Editing Sticks"
+    "Editing Dpad"
+    ))
+
+(defun edit-mode-controls ()
+    ;Hold L2 + L3 + dpad to change the edit mode
+    (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l3))
+      (when (cpad-pressed? 0 up) (set! button-edit-mode 0))
+      (when (cpad-pressed? 0 down) (set! button-edit-mode 1))
+      (when (cpad-pressed? 0 left) (set! button-edit-mode 2))
+      (when (cpad-pressed? 0 right) (set! button-edit-mode 3))
+    )
+    
+    ;moves individual face buttons with dpad
+    (when (= button-edit-mode 1)
+      (when (cpad-hold? 0 triangle) ;when you hold triangle, you can move triangle's offset vector with the dpad
+        (when (cpad-hold? 0 up) (+! (-> triangle-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> triangle-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> triangle-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> triangle-offset x) 1))          
+      )
+      (when (cpad-hold? 0 circle)
+        (when (cpad-hold? 0 up) (+! (-> circle-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> circle-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> circle-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> circle-offset x) 1))          
+      )
+      (when (cpad-hold? 0 x)
+        (when (cpad-hold? 0 up) (+! (-> x-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> x-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (->  x-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (->  x-offset x) 1))          
+      )
+      (when (cpad-hold? 0 square)
+        (when (cpad-hold? 0 up) (+! (-> square-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> square-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> square-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> square-offset x) 1))
+      )
+      ;LR buttons
+      (when (cpad-hold? 0 r1)
+        (when (cpad-hold? 0 up) (+! (-> r1-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> r1-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> r1-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> r1-offset x) 1))          
+      )
+      (when (cpad-hold? 0 r2)
+        (when (cpad-hold? 0 up) (+! (-> r2-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> r2-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> r2-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> r2-offset x) 1))          
+      )
+      (when (or (cpad-hold? 0 r3) (cpad-hold? 0 start)) ;use an or here since start/r3 share coords
+        (when (cpad-hold? 0 up) (+! (-> r3-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> r3-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> r3-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> r3-offset x) 1))          
+      )
+      (when (cpad-hold? 0 l1)
+        (when (cpad-hold? 0 up) (+! (-> l1-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> l1-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (->  l1-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (->  l1-offset x) 1))          
+      )
+      (when (cpad-hold? 0 l2)
+        (when (cpad-hold? 0 up) (+! (-> l2-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> l2-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> l2-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> l2-offset x) 1))          
+      )
+      (when (or (cpad-hold? 0 l3) (cpad-hold? 0 select)) ;use an or here since select/l3 share coords
+        (when (cpad-hold? 0 up) (+! (-> l3-offset y) -1))
+        (when (cpad-hold? 0 down) (+! (-> l3-offset y) 1))
+        (when (cpad-hold? 0 left) (+! (-> l3-offset x) -1))
+        (when (cpad-hold? 0 right) (+! (-> l3-offset x) 1))          
+      )
+    )
+    ;moves joysticks
+    (when (= button-edit-mode 2)
+      ;stick1 with dpad
+      (when (cpad-hold? 0 up) (+! (-> stick-origin y) -1))
+      (when (cpad-hold? 0 down) (+! (-> stick-origin y) 1))
+      (when (cpad-hold? 0 left) (+! (-> stick-origin x) -1))
+      (when (cpad-hold? 0 right) (+! (-> stick-origin x) 1))
+      (when (cpad-pressed? 0 l3) (not! show-stick1?))
+      ;stick2 with face buttons
+      (when (cpad-hold? 0 triangle) (+! (-> stick2-origin y) -1))
+      (when (cpad-hold? 0 x) (+! (-> stick2-origin y) 1))
+      (when (cpad-hold? 0 square) (+! (-> stick2-origin x) -1))
+      (when (cpad-hold? 0 circle) (+! (-> stick2-origin x) 1))
+      (when (cpad-pressed? 0 r3) (not! show-stick2?))
+    )
+    ;moves dpad
+    (when (= button-edit-mode 3)
+      ;dpad-origin with dpad
+      (when (cpad-hold? 0 up) (+! (-> dpad-origin y) -1))
+      (when (cpad-hold? 0 down) (+! (-> dpad-origin y) 1))
+      (when (cpad-hold? 0 left) (+! (-> dpad-origin x) -1))
+      (when (cpad-hold? 0 right) (+! (-> dpad-origin x) 1))
+    )
+)
+
+
+
+;
+;
+;this is the main function/process
+;
+;
+
+(defun input-display-on ()
+  (when (not (process-by-name "button-proc" *active-pool*))
+    ;process-spawn-function, spawns a process that runs the function you give it
+    (process-spawn-function process :name "button-proc"
+      ;This lambda is our function
+      (lambda :behavior process ()
+        ;Code before the loop runs once on process spawn
+        ;
+        ;Loop runs once per frame while process is active
+        (loop
+          
+          ;function that checks input to turn on editing
+          (edit-mode-controls)
+
+          ;Start a bucket thing block so we can use draw functions
+          (with-dma-buffer-add-bucket ((testbuf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+            ;Edit mode string draws
+            (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l3))
+                (draw-string-xy-scaled "L2+L3+Dpad to start editing input display" testbuf 5 170 (the font-color 12) (font-flags shadow kerning) 0.7) )
+            (when (!= button-edit-mode 0)
+                (draw-string-xy-scaled (string-format "~s" (-> button-edit-strings button-edit-mode)) testbuf 5 177 (the font-color 12) (font-flags shadow kerning) 0.7) )
+
+            ;Other draw stuff
+            (draw-face-buttons testbuf)
+
+            (draw-other-buttons testbuf)
+
+            (draw-dpad testbuf)
+
+            (draw-stick testbuf)
+            
+            (draw-stick2 testbuf)
+            )
+
+          ;Processes should suspend themselves, the loop will resume next frame
+          (suspend)
+          )
+        )
+      )
+    )
+    
+  ;Lisp returns the last form as the function return
+  (none)
+  )
+
+
+(defun input-display-off ()
+  "Kill the button process"
+  (when (process-by-name "button-proc" *active-pool*)
+    (kill-by-name "button-proc" *active-pool*)
+    )
+  (none)
+  )

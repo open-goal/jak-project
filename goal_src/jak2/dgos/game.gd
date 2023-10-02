@@ -240,6 +240,7 @@
   "autosplit.o" ;; added
   "popup-menu-h.o" ;; added
   "speedruns-h.o" ;; added
+  "input-display.o" ;;added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
