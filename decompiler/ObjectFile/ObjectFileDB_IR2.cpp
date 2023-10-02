@@ -548,20 +548,18 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
 
-        if (config.art_groups_by_function.find(func_name) != config.art_groups_by_function.end()) {
-          func.ir2.env.set_art_group(config.art_groups_by_function.at(func_name));
-        } else if (config.art_groups_by_file.find(obj_name) != config.art_groups_by_file.end()) {
-          func.ir2.env.set_art_group(config.art_groups_by_file.at(obj_name));
-        } else if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
-          func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
+        if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+          if (config.art_group_type_remap.find(func.guessed_name.type_name) !=
+              config.art_group_type_remap.end()) {
+            func.ir2.env.set_art_group(config.art_group_type_remap.at(func.guessed_name.type_name));
+          } else {
+            func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
+          }
         } else if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
                    func.type.try_get_tag("behavior").has_value()) {
           std::string type = func.type.get_tag("behavior");
-          if (type == "target") {
-            if (func.ir2.env.version == GameVersion::Jak1)
-              func.ir2.env.set_art_group("eichar-ag");
-            else if (func.ir2.env.version == GameVersion::Jak2)
-              func.ir2.env.set_art_group("jakb-ag");
+          if (config.art_group_type_remap.find(type) != config.art_group_type_remap.end()) {
+            func.ir2.env.set_art_group(config.art_group_type_remap.at(type));
           } else {
             func.ir2.env.set_art_group(type + "-ag");
           }
