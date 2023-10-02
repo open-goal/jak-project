@@ -299,6 +299,8 @@ Config make_config_via_json(nlohmann::json& json) {
       art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
   config.art_groups_by_function =
       art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
+  config.joint_node_hacks =
+      art_info_json.at("joint_node_hacks").get<std::unordered_map<std::string, std::string>>();
 
   auto import_deps = read_json_file_from_config(json, "import_deps_file");
   config.import_deps_by_file =

@@ -158,7 +158,11 @@ class Env {
   const std::string& art_group() const { return m_art_group; }
   std::optional<std::string> get_art_elt_name(int idx) const;
   void set_jg(const std::string& art_group) {
-    m_joint_geo = art_group.substr(0, art_group.size() - 3) + "-lod0-jg";
+    if (art_group.substr(art_group.size() - 3) == "-ag") {
+      m_joint_geo = art_group.substr(0, art_group.size() - 3) + "-lod0-jg";
+    } else {
+      m_joint_geo = art_group + "-lod0-jg";
+    }
   }
   const std::string& joint_geo() const { return m_joint_geo; }
   std::optional<std::string> get_joint_node_name(int idx) const;

@@ -174,6 +174,7 @@ struct Config {
   std::unordered_map<std::string, std::string> art_groups_by_function;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info_dump;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info_dump;
+  std::unordered_map<std::string, std::string> joint_node_hacks;
 
   std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
 };

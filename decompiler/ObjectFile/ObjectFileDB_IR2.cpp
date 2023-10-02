@@ -550,13 +550,30 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
 
         if (config.art_groups_by_function.find(func_name) != config.art_groups_by_function.end()) {
           func.ir2.env.set_art_group(config.art_groups_by_function.at(func_name));
-          func.ir2.env.set_jg(func.ir2.env.art_group());
         } else if (config.art_groups_by_file.find(obj_name) != config.art_groups_by_file.end()) {
           func.ir2.env.set_art_group(config.art_groups_by_file.at(obj_name));
-          func.ir2.env.set_jg(func.ir2.env.art_group());
+        } else if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+          func.ir2.env.set_art_group(func.guessed_name.type_name + "-ag");
+        } else if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+                   func.type.try_get_tag("behavior").has_value()) {
+          std::string type = func.type.get_tag("behavior");
+          if (type == "target") {
+            if (func.ir2.env.version == GameVersion::Jak1)
+              func.ir2.env.set_art_group("eichar-ag");
+            else if (func.ir2.env.version == GameVersion::Jak2)
+              func.ir2.env.set_art_group("jakb-ag");
+          } else {
+            func.ir2.env.set_art_group(type + "-ag");
+          }
         } else {
           func.ir2.env.set_art_group(obj_name + "-ag");
-          func.ir2.env.set_jg(func.ir2.env.art_group());
+        }
+
+        func.ir2.env.set_jg(func.ir2.env.art_group());
+
+        if (config.joint_node_hacks.find(func.ir2.env.art_group()) !=
+            config.joint_node_hacks.end()) {
+          func.ir2.env.set_jg(config.joint_node_hacks.at(func.ir2.env.art_group()));
         }
 
         constexpr bool kForceNewTypes = false;
