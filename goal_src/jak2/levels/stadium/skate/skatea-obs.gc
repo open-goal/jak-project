@@ -945,11 +945,11 @@
     (hoverboard-training-manager-method-29 self)
     (when (not (-> self challenge-done))
       (when (and (not (-> self combo-done?))
-                 (>= (- (current-time) (-> self hint-time)) (seconds 30))
+                 (time-elapsed? (-> self hint-time) (seconds 30))
                  (not (task-node-closed? (game-task-node stadium-board1-resolution)))
                  )
         (add-process *gui-control* self (gui-channel sig) (gui-action play) "kei018" -99.0 0)
-        (set! (-> self hint-time) (current-time))
+        (set-time! (-> self hint-time))
         )
       )
     )
@@ -1029,7 +1029,7 @@
         (set! (-> self score) 0.0)
         (set! (-> self challenge-done) #f)
         (set! (-> self combo-done?) #f)
-        (set! (-> self hint-time) (current-time))
+        (set-time! (-> self hint-time))
         (while (and (not (-> self challenge-done)) (logtest? (-> *game-info* features) (game-feature board)))
           (suspend)
           )
@@ -1084,7 +1084,7 @@
                   )
                 )
               (let ((s5-2 (current-time)))
-                (until (>= (- (current-time) s5-2) (seconds 1))
+                (until (time-elapsed? s5-2 (seconds 1))
                   (suspend)
                   )
                 )
@@ -1292,7 +1292,7 @@
                 )
               )
             (let ((s5-2 (current-time)))
-              (until (>= (- (current-time) s5-2) (seconds 1))
+              (until (time-elapsed? s5-2 (seconds 1))
                 (suspend)
                 )
               )
@@ -1325,7 +1325,8 @@ This commonly includes things such as:
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (stack-size-set! (-> this main-thread) 1024) ;; added
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 1024)
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -1722,7 +1723,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (sound-play "dig-air-lifter")
-    (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+    (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index skatea-jump-pad-lod0-jg main)))
           (gp-1 (get-process *default-dead-pool* part-tracker #x4000))
           )
       (when gp-1

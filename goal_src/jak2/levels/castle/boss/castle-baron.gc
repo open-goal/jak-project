@@ -878,7 +878,7 @@ For example for an elevator pre-compute the distance between the first and last 
       )
     )
   :code (behavior ()
-    (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek!) :frame-num 0.0)
+    (ja-no-eval :group! krew-clone-birth-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -923,7 +923,9 @@ For example for an elevator pre-compute the distance between the first and last 
     (cond
       ((<= (-> this hit-points) 0)
        (let ((a0-2 (-> this skel root-channel 0)))
-         (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim))))
+         (set! (-> a0-2 frame-group)
+               (the-as art-joint-anim (-> this draw art-group data (-> this enemy-info die-anim)))
+               )
          (set! (-> a0-2 param 0) 0.0)
          (set! (-> a0-2 param 1) (* 2.0 (-> pp clock time-adjust-ratio)))
          (set! (-> a0-2 frame-num)
@@ -1107,8 +1109,8 @@ For example for an elevator pre-compute the distance between the first and last 
     (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
       (until #f
         (ja :num! (loop! f30-0))
-        (when (>= (- (current-time) (-> self wiggle-time)) (seconds 1))
-          (set! (-> self wiggle-time) (current-time))
+        (when (time-elapsed? (-> self wiggle-time) (seconds 1))
+          (set-time! (-> self wiggle-time))
           (krew-boss-clone-method-180 self)
           )
         (suspend)
@@ -1269,28 +1271,28 @@ For example for an elevator pre-compute the distance between the first and last 
   (init-enemy-behaviour-and-stats! this *krew-boss-clone-nav-enemy-info*)
   (dotimes (s5-1 4)
     (set! (-> this lightning s5-1) (new
-                                    'process
-                                    'lightning-control
-                                    (new 'static 'lightning-spec
-                                      :name #f
-                                      :flags (lightning-spec-flags lsf0)
-                                      :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                                      :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-                                      :fade-start-factor 0.2
-                                      :texture (new 'static 'texture-id :page #xd82)
-                                      :reduction 0.42
-                                      :num-points 16
-                                      :box-size 8192.0
-                                      :merge-factor 0.5
-                                      :merge-count 2
-                                      :radius 512.0
-                                      :duration 30.0
-                                      :sound #f
-                                      )
-                                    this
-                                    0.0
-                                    )
+                                     'process
+                                     'lightning-control
+                                     (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf0)
+                                       :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :texture (new 'static 'texture-id :page #xd82)
+                                       :reduction 0.42
+                                       :num-points 16
+                                       :box-size 8192.0
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 512.0
+                                       :duration 30.0
+                                       :sound #f
+                                       )
+                                     this
+                                     0.0
+                                     )
           )
     (let ((v1-17 (-> this lightning s5-1))
           (a0-8 0)
@@ -2254,6 +2256,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :trans (behavior ()
     (local-vars
+      ;; og:preserve-this array -> pointer
       (sv-752 (pointer collide-shape))
       (sv-756 sphere)
       (sv-760 (pointer uint32))
@@ -2303,7 +2306,7 @@ For example for an elevator pre-compute the distance between the first and last 
         0
         (set! (-> self root trans y) 1449984.0)
         (set! (-> self num-clones-to-spawn) 20)
-        (set! (-> self state-time) (current-time))
+        (set-time! (-> self state-time))
         )
       (when (< (vector-vector-xz-distance (-> self root trans) (-> *krew-boss-idle-path* (-> self next-path-point)))
                20480.0
@@ -2347,10 +2350,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 (go-virtual hostile)
                 )
             )
-          (when (and (> gp-2 0)
-                     (> (-> self num-clones-to-spawn) 0)
-                     (>= (- (current-time) (-> self state-time)) (seconds 0.6))
-                     )
+          (when (and (> gp-2 0) (> (-> self num-clones-to-spawn) 0) (time-elapsed? (-> self state-time) (seconds 0.6)))
             (let ((s3-0 (-> self root))
                   (a1-26 (new 'stack-no-clear 'collide-query))
                   (s2-0 #t)
@@ -2368,7 +2368,7 @@ For example for an elevator pre-compute the distance between the first and last 
                 ((not s2-0)
                  (set! (-> s5-1 quad) (-> s3-0 trans quad))
                  (set! s4-1 #t)
-                 (set! (-> self state-time) (current-time))
+                 (set-time! (-> self state-time))
                  )
                 (else
                   (let ((s2-1 0)
@@ -2442,6 +2442,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
                   )
                 )
+              ;; og:preserve-this array -> pointer
               (set! sv-752 (the-as (pointer collide-shape) (new 'stack-no-clear 'array 'collide-shape 10)))
               (let ((v1-121 (new 'stack-no-clear 'sphere)))
                 (set! (-> v1-121 quad) (-> s5-1 quad))
@@ -2516,6 +2517,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
               (set! sv-768 0)
               (set! (-> sv-756 r) 10240.0)
+              ;; og:preserve-this
               (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 sv-752 10))
               (if s4-1
                   (set! sv-768 (+ sv-768 -1))
@@ -2569,8 +2571,8 @@ For example for an elevator pre-compute the distance between the first and last 
     (cond
       ((or (logtest? (penetrate jak-blue-shot) v1-0) (logtest? (penetrate jak-dark-shot) v1-0))
        (cond
-         ((>= (- (current-time) (-> this last-damage-time)) (seconds 5))
-          (set! (-> this last-damage-time) (current-time))
+         ((time-elapsed? (-> this last-damage-time) (seconds 5))
+          (set-time! (-> this last-damage-time))
           5
           )
          (else
@@ -2722,7 +2724,7 @@ For example for an elevator pre-compute the distance between the first and last 
     (set! (-> self spawn-charge) #t)
     (set! (-> self enemy-flags) (the-as enemy-flag (logxor (shl 256 32) (the-as int (-> self enemy-flags)))))
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag enemy-flag41))))
-    (set! (-> self starting-time) (current-time))
+    (set-time! (-> self starting-time))
     (when (not (handle->process (-> self hud-handle)))
       (set! (-> self hud-handle) (ppointer->handle (process-spawn hud-krew-boss :init hud-init-by-other :to self)))
       (krew-comes-in-speech self)
@@ -2744,7 +2746,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
       )
     (if (or (!= (-> self focus aware) 3) (not (get-enemy-target self)))
-        (set! (-> self starting-time) (current-time))
+        (set-time! (-> self starting-time))
         )
     (when (= (-> self next-shooting-frame) 200)
       (cond
@@ -2783,7 +2785,7 @@ For example for an elevator pre-compute the distance between the first and last 
            )
          )
         (else
-          (set! (-> self state-time) (current-time))
+          (set-time! (-> self state-time))
           )
         )
       )
@@ -2848,7 +2850,7 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       )
     (let ((gp-2 (the int (* 300.0 (- 3.0 (* 0.5 (+ -1.0 (the float (-> self gameplay-pass)))))))))
-      (when (and (-> self spawn-charge) (>= (- (current-time) (-> self state-time)) (+ gp-2 -300)))
+      (when (and (-> self spawn-charge) (time-elapsed? (-> self state-time) (+ gp-2 -300)))
         (process-spawn
           part-tracker
           :init part-tracker-init
@@ -2862,7 +2864,7 @@ For example for an elevator pre-compute the distance between the first and last 
           )
         (set! (-> self spawn-charge) #f)
         )
-      (when (and (= (-> self next-shooting-frame) 100) (>= (- (current-time) (-> self state-time)) gp-2))
+      (when (and (= (-> self next-shooting-frame) 100) (time-elapsed? (-> self state-time) gp-2))
         (set! (-> self next-shooting-frame) 0)
         (ja :chan 1 :num-func num-func-identity :frame-num 0.0)
         )
@@ -2878,7 +2880,7 @@ For example for an elevator pre-compute the distance between the first and last 
         ((= (-> self next-shooting-frame) 20)
          (set! (-> self next-shooting-frame) 100)
          (set! (-> self spawn-charge) #t)
-         (set! (-> self state-time) (current-time))
+         (set-time! (-> self state-time))
          )
         (else
           (+! (-> self next-shooting-frame) 5)
@@ -2894,8 +2896,8 @@ For example for an elevator pre-compute the distance between the first and last 
           (let ((gp-6 (new 'stack-no-clear 'projectile-init-by-other-params)))
             (let ((s4-0 (new 'stack-no-clear 'vector)))
               (set! (-> s4-0 quad) (-> (get-trans a0-40 0) quad))
-              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 32)))
-                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 33)))
+              (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index krew-lowres-lod0-jg lightC)))
+                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index krew-lowres-lod0-jg lightEnd)))
                     )
                 (let ((s3-0 (new 'stack-no-clear 'vector)))
                   0.0
@@ -3049,7 +3051,7 @@ For example for an elevator pre-compute the distance between the first and last 
       (suspend)
       )
     (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! (-> self draw art-group data 15)
+    (ja-no-eval :group! krew-lowres-death-land-ja
                 :num! (seek! max (-> self clock time-adjust-ratio))
                 :frame-num 0.0
                 )
