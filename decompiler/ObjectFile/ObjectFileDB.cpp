@@ -993,7 +993,7 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
     file_util::write_text_file(filename, result);
   }
 
-  std::string jg_fpath = output_dir / "import" / "joint-nodes.gc";
+  auto jg_fpath = output_dir / "import" / "joint-nodes.gc";
   std::string jg_result;
 
   for (const auto& [jg_name, info] : dts.jg_info) {
