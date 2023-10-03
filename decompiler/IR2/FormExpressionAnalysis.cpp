@@ -3985,7 +3985,7 @@ GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& 
             this);
 
   if (mr.matched) {
-    lg::print("func {} joint-geo: {}\n", env.func->name(), env.joint_geo());
+    // lg::print("func {} joint-geo: {}\n", env.func->name(), env.joint_geo());
     auto info = env.dts->jg_info;
     std::vector<Form*> args;
     auto joint_name = env.get_joint_node_name(mr.maps.ints.at(0));
