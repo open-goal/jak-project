@@ -220,11 +220,16 @@ int main(int argc, char** argv) {
       file_util::write_text_file(jg_file_name, jg_json.dump(-1));
       lg::info("[DUMP] Dumped joint node info to {}", jg_file_name.string());
     }
-  } else if (!config.art_group_info_dump.empty()) {
+  } else if (!config.art_group_info_dump.empty() || !config.jg_info_dump.empty()) {
     // process art groups (used in decompilation)
     // - if the config has a path to the art info dump, just use that
     // - otherwise (or if we want to dump it fresh) extract it
-    db.dts.art_group_info = config.art_group_info_dump;
+    if (!config.art_group_info_dump.empty()) {
+      db.dts.art_group_info = config.art_group_info_dump;
+    }
+    if (!config.jg_info_dump.empty()) {
+      db.dts.jg_info = config.jg_info_dump;
+    }
   } else {
     lg::error("`process_art_groups` was false and no art-group-info dump was provided!");
     return 1;
