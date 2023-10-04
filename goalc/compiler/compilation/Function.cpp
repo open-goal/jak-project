@@ -17,7 +17,7 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
   auto* iter = &def;
   while (true) {
     auto car = iter->as_pair()->car;
-    if (car.is_symbol() && car.as_symbol()->name.at(0) == ':') {
+    if (car.is_symbol() && car.as_symbol().name_ptr[0] == ':') {
       iter = &iter->as_pair()->cdr;
       iter = &iter->as_pair()->cdr;
     } else {
@@ -40,7 +40,7 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto kv = m_inlineable_functions.find(args.unnamed.at(0).as_symbol());
+  auto kv = m_inlineable_functions.find(args.unnamed.at(0).as_symbol().name_ptr);
   if (kv == m_inlineable_functions.end()) {
     throw_compiler_error(form, "Cannot inline {} because the function's code could not be found.",
                          args.unnamed.at(0).print());
@@ -324,7 +324,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   if (uneval_head.is_symbol()) {
     // we can only auto-inline the function if its name is explicitly given.
     // look it up:
-    auto kv = m_inlineable_functions.find(uneval_head.as_symbol());
+    auto kv = m_inlineable_functions.find(uneval_head.as_symbol().name_ptr);
     if (kv != m_inlineable_functions.end()) {
       // it's inlinable.  However, we do not always inline an inlinable function by default
       if (kv->second.inline_by_default) {  // inline when possible, so we should inline
@@ -340,7 +340,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   if (!auto_inline) {
     // if auto-inlining failed, we must get the thing to call in a different way.
     if (uneval_head.is_symbol()) {
-      if (uneval_head.as_symbol()->name == "inspect" || uneval_head.as_symbol()->name == "print") {
+      if (uneval_head.as_symbol() == "inspect" || uneval_head.as_symbol() == "print") {
         is_method_call = true;
       } else {
         if (is_local_symbol(uneval_head, env) ||
@@ -668,21 +668,21 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
           first.print());
     }
 
-    if (first.as_symbol()->name == "inline") {
+    if (first.as_symbol() == "inline") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid inline declare, no options were expected.");
       }
       settings.allow_inline = true;
       settings.inline_by_default = true;
       settings.save_code = true;
-    } else if (first.as_symbol()->name == "allow-inline") {
+    } else if (first.as_symbol() == "allow-inline") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-inline declare");
       }
       settings.allow_inline = true;
       settings.inline_by_default = false;
       settings.save_code = true;
-    } else if (first.as_symbol()->name == "asm-func") {
+    } else if (first.as_symbol() == "asm-func") {
       auto fe = env->function_env();
       fe->is_asm_func = true;
       if (!rrest->is_pair()) {
@@ -693,13 +693,13 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       if (!rrest->as_pair()->cdr.is_empty_list()) {
         throw_compiler_error(first, "Invalid asm-func declare");
       }
-    } else if (first.as_symbol()->name == "print-asm") {
+    } else if (first.as_symbol() == "print-asm") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid print-asm declare");
       }
       settings.print_asm = true;
 
-    } else if (first.as_symbol()->name == "allow-saved-regs") {
+    } else if (first.as_symbol() == "allow-saved-regs") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-saved-regs declare");
       }
@@ -730,7 +730,7 @@ Val* Compiler::compile_declare_file(const goos::Object& /*form*/,
           first.print());
     }
 
-    if (first.as_symbol()->name == "debug") {
+    if (first.as_symbol() == "debug") {
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid debug declare");
       }

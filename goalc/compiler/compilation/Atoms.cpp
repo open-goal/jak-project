@@ -323,14 +323,14 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
     }
 
     // next try as a goal compiler form
-    auto kv_gfs = g_goal_forms.find(head_sym->name);
+    auto kv_gfs = g_goal_forms.find(head_sym.name_ptr);
     if (kv_gfs != g_goal_forms.end()) {
       auto& [docstring, func] = kv_gfs->second;
       return ((*this).*(func))(code, rest, env);
     }
 
     // next try as an enum
-    auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+    auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
     if (enum_type) {
       return compile_enum_lookup(code, enum_type, rest, env);
     }
@@ -418,7 +418,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
   auto mlet_env = env->symbol_macro_env();
   while (mlet_env) {
-    auto mlkv = mlet_env->macros.find(form.as_symbol());
+    auto mlkv = mlet_env->macros.find(form.as_symbol().name_ptr);
     if (mlkv != mlet_env->macros.end()) {
       return compile_error_guard(mlkv->second, env);
     }
@@ -431,8 +431,8 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     return lexical;
   }
 
-  auto global_constant = m_global_constants.find(form.as_symbol());
-  auto existing_symbol = m_symbol_types.find(form.as_symbol()->name);
+  auto global_constant = m_global_constants.find(form.as_symbol().name_ptr);
+  auto existing_symbol = m_symbol_types.find(form.as_symbol().name_ptr);
 
   // see if it's a constant
   if (global_constant != m_global_constants.end()) {

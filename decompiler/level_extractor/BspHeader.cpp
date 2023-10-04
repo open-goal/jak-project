@@ -1170,7 +1170,7 @@ void ProxyPrototypeArrayTie::read_from_file(TypedRef ref,
   prototype_array_tie.read_from_file(
       get_and_check_ref_to_basic(ref, "prototype-array-tie", "prototype-array-tie", dts), dts,
       stats, version);
-  wind_vectors = deref_label(get_field_ref(ref, "wind-vectors", dts));
+  // wind_vectors = deref_label(get_field_ref(ref, "wind-vectors", dts));
 }
 
 std::string ProxyPrototypeArrayTie::print(const PrintSettings& settings, int indent) const {

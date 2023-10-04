@@ -450,20 +450,20 @@ TEST(GoosEval, GlobalAndGoalEnv) {
   EXPECT_TRUE(i.get_global_variable_by_name("*global-env*", &goos_env));
   EXPECT_TRUE(i.get_global_variable_by_name("*goal-env*", &goal_env));
 
-  auto& goal_vars = goal_env.as_env()->vars;
-  auto& goos_vars = goos_env.as_env()->vars;
+  auto& goal_vars = goal_env.as_env()->vars_by_st_string;
+  auto& goos_vars = goos_env.as_env()->vars_by_st_string;
 
-  EXPECT_TRUE(goal_vars.find(i.intern("*global-env*").as_symbol()) != goal_vars.end());
-  EXPECT_TRUE(goal_vars.find(i.intern("*goal-env*").as_symbol()) != goal_vars.end());
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol()) != goos_vars.end());
-  EXPECT_TRUE(goos_vars.find(i.intern("*goal-env*").as_symbol()) != goos_vars.end());
+  EXPECT_TRUE(goal_vars.lookup(i.intern_ptr("*global-env*")));
+  EXPECT_TRUE(goal_vars.lookup(i.intern_ptr("*goal-env*")));
+  EXPECT_TRUE(goos_vars.lookup(i.intern_ptr("*global-env*")));
+  EXPECT_TRUE(goos_vars.lookup(i.intern_ptr("*goal-env*")));
 
-  EXPECT_TRUE(goos_vars.find(i.intern("*goal-env*").as_symbol())->second ==
-              goal_vars.find(i.intern("*goal-env*").as_symbol())->second);
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol())->second ==
-              goal_vars.find(i.intern("*global-env*").as_symbol())->second);
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol())->second !=
-              goos_vars.find(i.intern("*goal-env*").as_symbol())->second);
+  EXPECT_TRUE(goos_vars.lookup(i.intern_ptr("*goal-env*")) ==
+              goal_vars.lookup(i.intern_ptr("*goal-env*")));
+  EXPECT_TRUE(goos_vars.lookup(i.intern_ptr("*global-env*")) ==
+              goal_vars.lookup(i.intern_ptr("*global-env*")));
+  EXPECT_TRUE(goos_vars.lookup(i.intern_ptr("*global-env*")) !=
+              goos_vars.lookup(i.intern_ptr("*goal-env*")));
 }
 
 /*!
@@ -1047,10 +1047,10 @@ TEST(GoosObject, Char) {
  */
 TEST(GoosObject, Symbol) {
   SymbolTable st, st2;
-  Object obj = SymbolObject::make_new(st, "test1");
-  Object obj2 = SymbolObject::make_new(st, "test2");
-  Object obj3 = SymbolObject::make_new(st, "test1");
-  Object obj4 = SymbolObject::make_new(st2, "test1");
+  Object obj = Object::make_symbol(&st, "test1");
+  Object obj2 = Object::make_symbol(&st, "test2");
+  Object obj3 = Object::make_symbol(&st, "test1");
+  Object obj4 = Object::make_symbol(&st2, "test1");
 
   // check type
   EXPECT_TRUE(obj.is_symbol());
@@ -1173,9 +1173,9 @@ TEST(GoosSpecialForms, Define) {
   Object goal_env;
   EXPECT_TRUE(i.get_global_variable_by_name("*goal-env*", &goal_env));
 
-  auto x_in_goal_env = goal_env.as_env()->vars.find(i.intern("x").as_symbol());
-  EXPECT_TRUE(x_in_goal_env != goal_env.as_env()->vars.end());
-  EXPECT_EQ(x_in_goal_env->second.print(), "20");
+  auto x_in_goal_env = goal_env.as_env()->vars_by_st_string.lookup(i.intern_ptr("x"));
+  EXPECT_TRUE(x_in_goal_env);
+  EXPECT_EQ(x_in_goal_env->print(), "20");
 
   // test automatic environment of define
   e(i, "(begin (desfun test-define () (define x 500)) (test-define))");

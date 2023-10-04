@@ -98,7 +98,7 @@ void add_to_token_list(const goos::Object& obj, std::vector<FormToken>* tokens) 
       // look for a (quote x) to print as 'x
 
       auto& first = obj.as_pair()->car;
-      if (first.is_symbol() && first.as_symbol()->name == "quote") {
+      if (first.is_symbol() && first.as_symbol() == "quote") {
         auto& second = obj.as_pair()->cdr;
         if (second.is_pair() && second.as_pair()->cdr.is_empty_list()) {
           tokens->emplace_back(FormToken::TokenKind::QUOTE);

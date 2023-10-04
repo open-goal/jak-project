@@ -54,7 +54,7 @@ std::string deftype_parent_list(const goos::Object& list) {
     throw std::runtime_error("invalid parent in deftype parent list");
   }
 
-  return parent.as_symbol()->name;
+  return parent.as_symbol().name_ptr;
 }
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
@@ -63,7 +63,7 @@ bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSyst
 
 std::string symbol_string(const goos::Object& obj) {
   if (obj.is_symbol()) {
-    return obj.as_symbol()->name;
+    return obj.as_symbol().name_ptr;
   }
   throw std::runtime_error(obj.print() + " was supposed to be a symbol, but isn't");
 }
@@ -87,7 +87,7 @@ double get_float(const goos::Object& obj) {
 void add_field(StructureType* structure,
                TypeSystem* ts,
                const goos::Object& def,
-               std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
+               std::unordered_map<const char*, goos::Object>& constants) {
   auto rest = &def;
 
   auto name = symbol_string(car(rest));
@@ -112,8 +112,8 @@ void add_field(StructureType* structure,
       array_size = car(rest).integer_obj.value;
       rest = cdr(rest);
     } else if (car(rest).is_symbol() &&
-               constants.find((car(rest)).as_symbol()) != constants.end()) {
-      array_size = get_int(constants[(car(rest)).as_symbol()]);
+               constants.find((car(rest)).as_symbol().name_ptr) != constants.end()) {
+      array_size = get_int(constants[(car(rest)).as_symbol().name_ptr]);
       rest = cdr(rest);
     }
 
@@ -317,7 +317,7 @@ void declare_method(Type* type,
       //
       // Doing it like this makes the ordering not critical
       while (!obj->is_empty_list() && car(obj).is_symbol()) {
-        const auto& keyword = car(obj).as_symbol()->name;
+        const auto keyword = car(obj).as_symbol();
         if (keyword == ":no-virtual") {
           no_virtual = true;
         } else if (keyword == ":replace") {
@@ -334,7 +334,7 @@ void declare_method(Type* type,
             auto docstring_list = &car(obj);
             auto elem = docstring_list;
             while (!elem->is_empty_list() && car(elem).is_symbol()) {
-              const auto& handler = car(elem).as_symbol()->name;
+              std::string handler = car(elem).as_symbol().name_ptr;
               const auto handler_kind = handler_keyword_to_kind(handler);
 
               // Get the docstring
@@ -419,7 +419,7 @@ void declare_state(Type* type,
         auto docstring_list = &car(obj);
         auto elem = docstring_list;
         while (!elem->is_empty_list() && car(elem).is_symbol()) {
-          const auto& handler = car(elem).as_symbol()->name;
+          std::string handler = car(elem).as_symbol().name_ptr;
           const auto handler_kind = handler_keyword_to_kind(handler);
 
           // Get the docstring
@@ -458,12 +458,11 @@ void declare_state(Type* type,
   });
 }
 
-StructureDefResult parse_structure_def(
-    StructureType* type,
-    TypeSystem* ts,
-    const goos::Object& fields,
-    const goos::Object& options,
-    std::unordered_map<goos::HeapObject*, goos::Object>& constants) {
+StructureDefResult parse_structure_def(StructureType* type,
+                                       TypeSystem* ts,
+                                       const goos::Object& fields,
+                                       const goos::Object& options,
+                                       std::unordered_map<const char*, goos::Object>& constants) {
   StructureDefResult result;
   for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o, constants); });
   TypeFlags flags;
@@ -686,8 +685,8 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
     while (rest->is_pair()) {
       auto& it = rest->as_pair()->car;
 
-      if (it.is_symbol() && it.as_symbol()->name.at(0) == ':') {
-        auto tag_name = it.as_symbol()->name.substr(1);
+      if (it.is_symbol() && it.as_symbol().name_ptr[0] == ':') {
+        auto tag_name = it.as_symbol().name_ptr + 1;
         rest = &rest->as_pair()->cdr;
 
         if (!rest->is_pair()) {
@@ -696,13 +695,13 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 
         auto& tag_val = rest->as_pair()->car;
 
-        if (tag_name == "behavior") {
-          if (!type_system->fully_defined_type_exists(tag_val.as_symbol()->name) &&
-              !type_system->partially_defined_type_exists(tag_val.as_symbol()->name)) {
+        if (std::string_view(tag_name) == "behavior") {
+          if (!type_system->fully_defined_type_exists(tag_val.as_symbol().name_ptr) &&
+              !type_system->partially_defined_type_exists(tag_val.as_symbol().name_ptr)) {
             throw std::runtime_error(
-                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol()->name));
+                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol().name_ptr));
           }
-          ts.add_new_tag(tag_name, tag_val.as_symbol()->name);
+          ts.add_new_tag(tag_name, tag_val.as_symbol().name_ptr);
         } else {
           throw std::runtime_error(fmt::format("Type tag {} is unknown", tag_name));
         }
@@ -725,9 +724,9 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 
 DeftypeResult parse_deftype(const goos::Object& deftype,
                             TypeSystem* ts,
-                            std::unordered_map<goos::HeapObject*, goos::Object>* constants) {
+                            std::unordered_map<const char*, goos::Object>* constants) {
   DefinitionMetadata symbol_metadata;
-  std::unordered_map<goos::HeapObject*, goos::Object> no_consts;
+  std::unordered_map<const char*, goos::Object> no_consts;
   auto& constants_to_use = no_consts;
   if (constants != nullptr) {
     constants_to_use = *constants;
@@ -752,7 +751,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype,
     throw std::runtime_error("deftype must be given a symbol as the type name");
   }
 
-  auto& name = type_name_obj.as_symbol()->name;
+  std::string name = type_name_obj.as_symbol().name_ptr;
   auto parent_type_name = deftype_parent_list(parent_list_obj);
   auto parent_type = ts->make_typespec(parent_type_name);
   DeftypeResult result;

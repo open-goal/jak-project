@@ -377,7 +377,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
     case SymbolInfo::Kind::CONSTANT:
       return fmt::format(
           "[Constant] Name: {} Value: {} Defined: {}", info.name(),
-          m_global_constants.at(m_goos.reader.symbolTable.intern_ptr(info.name())).print(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name().c_str())).print(),
           m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::FUNCTION:
       return fmt::format("[Function] Name: {} Defined: {}", info.name(),
@@ -396,7 +396,7 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
+  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol().name_ptr);
   if (!result) {
     lg::print("No results found.\n");
   } else {
@@ -548,7 +548,7 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
   Timer timer;
-  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol()->name);
+  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol().name_ptr);
   auto time = timer.getMs();
 
   for (auto& x : result) {
@@ -575,7 +575,7 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
     throw_compiler_error(form, "Invalid arguments provided to `update-macro-metadata");
   }
 
-  auto& name = args.unnamed.at(0).as_symbol()->name;
+  auto& name = args.unnamed.at(0).as_symbol().name_ptr;
 
   auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
   m_macro_specs[name] = arg_spec;

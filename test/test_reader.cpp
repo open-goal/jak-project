@@ -26,7 +26,7 @@ bool check_first_float(Object o, double x) {
 }
 
 bool check_first_symbol(Object o, const std::string& sym) {
-  return o.as_pair()->cdr.as_pair()->car.as_symbol()->name == sym;
+  return o.as_pair()->cdr.as_pair()->car.as_symbol() == sym;
 }
 
 bool check_first_string(Object o, const std::string& str) {

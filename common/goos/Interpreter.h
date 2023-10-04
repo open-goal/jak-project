@@ -25,7 +25,7 @@ class Interpreter {
   void set_global_variable_to_int(const std::string& name, int value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
-  HeapObject* intern_ptr(const std::string& name);
+  const char* intern_ptr(const std::string& name);
   void disable_printfs();
   Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
   bool eval_symbol(const Object& sym,
@@ -55,7 +55,7 @@ class Interpreter {
  private:
   friend class Goal;
   void load_goos_library();
-  void define_var_in_env(Object& env, Object& var, const std::string& name);
+  void define_var_in_env(Object& env, const Object& var, const std::string& name);
   void expect_env(const Object& form, const Object& o);
   void vararg_check(
       const Object& form,
@@ -293,5 +293,9 @@ class Interpreter {
   int64_t gensym_id = 0;
 
   std::unordered_map<std::string, ObjectType> string_to_type;
+
+  const char* m_false_sym = nullptr;
+  const char* m_true_sym = nullptr;
+  Object m_false_obj, m_true_obj;
 };
 }  // namespace goos

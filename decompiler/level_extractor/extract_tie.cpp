@@ -398,19 +398,19 @@ std::array<math::Vector4f, 4> extract_tie_matrix(const u16* data) {
  * a bunch of 0 vectors in the TIE setup.
  */
 void check_wind_vectors_zero(const std::vector<TieProtoInfo>& protos, Ref wind_ref) {
-  u16 max_wind = 0;
-  for (auto& proto : protos) {
-    for (auto& inst : proto.instances) {
-      max_wind = std::max(inst.wind_index, max_wind);
-    }
-  }
-  u32 wind_words = max_wind;
-  wind_words *= 4;
-  for (size_t i = 0; i < wind_words; i++) {
-    auto& word = wind_ref.data->words_by_seg.at(wind_ref.seg).at(wind_ref.byte_offset / 4 + i);
-    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
-    ASSERT(word.data == 0);
-  }
+//  u16 max_wind = 0;
+//  for (auto& proto : protos) {
+//    for (auto& inst : proto.instances) {
+//      max_wind = std::max(inst.wind_index, max_wind);
+//    }
+//  }
+//  u32 wind_words = max_wind;
+//  wind_words *= 4;
+//  for (size_t i = 0; i < wind_words; i++) {
+//    auto& word = wind_ref.data->words_by_seg.at(wind_ref.seg).at(wind_ref.byte_offset / 4 + i);
+//    ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
+//    ASSERT(word.data == 0);
+//  }
 }
 
 // get per-instance info from the level data

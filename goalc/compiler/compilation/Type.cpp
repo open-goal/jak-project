@@ -975,7 +975,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
                                 const goos::Object& type,
                                 const goos::Object* rest,
                                 Env* env) {
-  bool making_boxed_array = unquote(type).as_symbol()->name == "boxed-array";
+  bool making_boxed_array = unquote(type).as_symbol() == "boxed-array";
   TypeSpec main_type;
   if (!making_boxed_array) {
     main_type = parse_typespec(unquote(type), env);
@@ -1042,7 +1042,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       if (making_boxed_array && !got_content_type) {
         got_content_type = true;
         if (o.is_symbol()) {
-          content_type = o.as_symbol()->name;
+          content_type = o.as_symbol().name_ptr;
           args.push_back(compile_get_symbol_value(form, content_type, env)->to_reg(form, env));
         } else {
           throw_compiler_error(form, "Invalid boxed-array type {}", o.print());
@@ -1070,7 +1070,7 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object* rest,
                                   Env* env) {
   auto unquoted_type = unquote(type);
-  const auto& sym_name = unquoted_type.as_symbol()->name;
+  const auto& sym_name = unquoted_type.as_symbol();
   // Check if the type is an array or a subtype of 'array'
   bool is_array = sym_name == "boxed-array" || sym_name == "array" || sym_name == "inline-array";
   if (!is_array) {
@@ -1473,15 +1473,15 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto type_to_look_for = args.unnamed.at(0).as_symbol()->name;
+  auto type_to_look_for = args.unnamed.at(0).as_symbol();
 
-  if (!m_ts.fully_defined_type_exists(type_to_look_for)) {
+  if (!m_ts.fully_defined_type_exists(type_to_look_for.name_ptr)) {
     throw_compiler_error(
         form, "The type or enum {} given to size-of could not be found, or was not fully defined",
         args.unnamed.at(0).print());
   }
 
-  auto type = m_ts.lookup_type(type_to_look_for);
+  auto type = m_ts.lookup_type(type_to_look_for.name_ptr);
   auto as_value = dynamic_cast<ValueType*>(type);
   auto as_structure = dynamic_cast<StructureType*>(type);
 

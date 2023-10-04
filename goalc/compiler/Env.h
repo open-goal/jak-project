@@ -306,14 +306,14 @@ class SymbolMacroEnv : public Env {
  public:
   explicit SymbolMacroEnv(Env* parent) : Env(EnvKind::SYMBOL_MACRO_ENV, parent) {}
   // key is goos symbols.
-  std::unordered_map<goos::HeapObject*, goos::Object> macros;
+  std::unordered_map<const char*, goos::Object> macros;
   std::string print() override { return "symbol-macro-env"; }
 };
 
 class MacroExpandEnv : public Env {
  public:
   MacroExpandEnv(Env* parent,
-                 const goos::HeapObject* macro_name,
+                 const char* macro_name,
                  const goos::Object& macro_body,
                  const goos::Object& macro_use)
       : Env(EnvKind::MACRO_EXPAND_ENV, parent),
@@ -333,13 +333,13 @@ class MacroExpandEnv : public Env {
 
   std::string print() override { return "macro-env"; }
 
-  const goos::HeapObject* name() const { return m_macro_name; }
+  const char* name() const { return m_macro_name; }
   const goos::Object& macro_body() const { return m_macro_body; }
   const goos::Object& macro_use_location() const { return m_macro_use_location; }
   const goos::Object& root_form() const { return m_root_form; }
 
  private:
-  const goos::HeapObject* m_macro_name = nullptr;
+  const char* m_macro_name = nullptr;
   goos::Object m_macro_body;
   goos::Object m_macro_use_location;
   goos::Object m_root_form;

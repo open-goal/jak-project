@@ -24,7 +24,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   auto& val = args.unnamed.at(1);
 
   // check we aren't duplicated a name as both a symbol and global constant
-  auto global_constant = m_global_constants.find(sym.as_symbol());
+  auto global_constant = m_global_constants.find(sym.as_symbol().name_ptr);
   if (global_constant != m_global_constants.end()) {
     throw_compiler_error(
         form, "Cannot define a symbol named {}, it already exists as a global constant (value {}).",
@@ -42,7 +42,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     // The third case - immediate lambdas - don't get passed to a define,
     //   so this won't cause those to live for longer than they should
     if ((as_lambda->func && as_lambda->func->settings.allow_inline) || !as_lambda->func) {
-      auto& f = m_inlineable_functions[sym.as_symbol()];
+      auto& f = m_inlineable_functions[sym.as_symbol().name_ptr];
       // default inline if we have to (because no code), or if that's the option.
       f.inline_by_default = (!as_lambda->func) || as_lambda->func->settings.inline_by_default;
       f.lambda = as_lambda->lambda;
@@ -63,9 +63,9 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   }
 
   auto in_gpr = compiled_val->to_gpr(form, fe);
-  auto existing_type = m_symbol_types.find(sym.as_symbol()->name);
+  auto existing_type = m_symbol_types.find(sym.as_symbol().name_ptr);
   if (existing_type == m_symbol_types.end()) {
-    m_symbol_types[sym.as_symbol()->name] = in_gpr->type();
+    m_symbol_types[sym.as_symbol().name_ptr] = in_gpr->type();
   } else {
     bool do_typecheck = true;
     if (args.has_named("no-typecheck")) {
@@ -73,7 +73,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
     if (do_typecheck) {
       typecheck(form, existing_type->second, in_gpr->type(),
-                fmt::format("define on existing symbol {}", sym.as_symbol()->name));
+                fmt::format("define on existing symbol {}", sym.as_symbol().name_ptr));
     }
   }
 

@@ -41,8 +41,8 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
   // make the macro expanded form point to the source where the macro was used for error messages.
   // m_goos.reader.db.inherit_info(o, goos_result);
 
-  auto compile_env_for_macro =
-      env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
+  auto compile_env_for_macro = env->function_env()->alloc_env<MacroExpandEnv>(
+      env, name.as_symbol().name_ptr, macro->body, o);
   try {
     const auto& compile_result = compile(goos_result, compile_env_for_macro);
     m_macro_specs.emplace(macro->name, macro->args);
@@ -151,7 +151,7 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   auto& thing = args.unnamed.front();
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
-      return compile_get_sym_obj(thing.as_symbol()->name, env);
+      return compile_get_sym_obj(thing.as_symbol().name_ptr, env);
     case goos::ObjectType::EMPTY_LIST: {
       auto empty_pair = compile_get_sym_obj("_empty_", env);
       empty_pair->set_type(m_ts.make_typespec("pair"));
@@ -196,29 +196,29 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   // GOAL constant
   if (goal) {
-    if (m_symbol_types.find(sym->name) != m_symbol_types.end()) {
+    if (m_symbol_types.find(sym.name_ptr) != m_symbol_types.end()) {
       throw_compiler_error(form,
                            "Cannot define {} as a constant because "
                            "it is already the name of a symbol of type {}",
-                           sym->name, m_symbol_types.at(sym->name).print());
+                           sym.name_ptr, m_symbol_types.at(sym.name_ptr).print());
     }
 
-    auto existing = m_global_constants.find(sym);
+    auto existing = m_global_constants.find(sym.name_ptr);
     if (existing != m_global_constants.end() && existing->second != value) {
-      print_compiler_warning("Constant {} has been redefined {} -> {}", sym->print(),
+      print_compiler_warning("Constant {} has been redefined {} -> {}", sym.name_ptr,
                              existing->second.print(), value.print());
     }
-    m_global_constants[sym] = value;
+    m_global_constants[sym.name_ptr] = value;
   }
 
   // GOOS constant
   if (goos) {
-    m_goos.global_environment.as_env()->vars[sym] = value;
+    m_goos.global_environment.as_env()->vars_by_st_string.set(sym.name_ptr, value);
   }
 
   // TODO - eventually, it'd be nice if global constants were properly typed
   // and this information was propagated
-  m_symbol_info.add_constant(sym->name, form, sym_meta);
+  m_symbol_info.add_constant(sym.name_ptr, form, sym_meta);
 
   return get_none();
 }
@@ -252,7 +252,7 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   for_each_in_list(defs, [&](const goos::Object& o) {
     auto def_args = get_va(form, o);
     va_check(form, def_args, {goos::ObjectType::SYMBOL, {}}, {});
-    menv->macros[def_args.unnamed.at(0).as_symbol()] = def_args.unnamed.at(1);
+    menv->macros[def_args.unnamed.at(0).as_symbol().name_ptr] = def_args.unnamed.at(1);
   });
 
   Val* result = get_none();

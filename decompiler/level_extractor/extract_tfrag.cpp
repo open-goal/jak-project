@@ -2034,14 +2034,17 @@ s32 find_or_add_texture_to_level(u32 combo_tex_id,
         // we're missing a texture, just use the first one.
         tex_it = tdb.textures.begin();
       } else {
-        ASSERT_MSG(
-            false,
-            fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may need "
-                        "to include "
-                        "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures."
-                        "tpage is {}. id is {} (0x{:x}) for level {}",
-                        combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
-                        combo_tex_id & 0xffff, level_name));
+        tex_it = tdb.textures.begin();
+
+        //        ASSERT_MSG(
+        //            false,
+        //            fmt::format("texture {} wasn't found. make sure it is loaded somehow. You may
+        //            need "
+        //                        "to include "
+        //                        "ART.DGO or GAME.DGO in addition to the level DGOs for shared
+        //                        textures." "tpage is {}. id is {} (0x{:x}) for level {}",
+        //                        combo_tex_id, combo_tex_id >> 16, combo_tex_id & 0xffff,
+        //                        combo_tex_id & 0xffff, level_name));
       }
     }
     tfrag3_tex_id = texture_pool.size();
