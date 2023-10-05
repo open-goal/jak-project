@@ -39,10 +39,10 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
     auto rec =
         m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
     for (auto& x : f->code_source()) {
-      rec.debug->code_sources.push_back(x.heap_obj);
+      rec.debug->code_sources.push_back(nullptr);
     }
     for (auto& x : f->code()) {
-      rec.debug->ir_strings.push_back(x->print());
+      rec.debug->ir_strings.push_back("");
     }
   }
 
