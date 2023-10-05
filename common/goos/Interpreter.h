@@ -272,23 +272,37 @@ class Interpreter {
                              Arguments& args,
                              const std::shared_ptr<EnvironmentObject>& env);
 
+  void init_special_forms(
+      const std::unordered_map<std::string,
+                               Object (Interpreter::*)(const Object&,
+                                                       const Object&,
+                                                       const std::shared_ptr<EnvironmentObject>&)>&
+          forms);
+
+  void init_builtin_forms(
+      const std::unordered_map<std::string,
+                               Object (Interpreter::*)(const Object&,
+                                                       Arguments&,
+                                                       const std::shared_ptr<EnvironmentObject>&)>&
+          forms);
+
   bool want_exit = false;
   bool disable_printing = false;
 
-  std::unordered_map<std::string,
-                     Object (Interpreter::*)(const Object& form,
-                                             Arguments& args,
-                                             const std::shared_ptr<EnvironmentObject>& env)>
+  std::unordered_map<
+      void*,
+      Object (Interpreter::*)(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>
       builtin_forms;
 
-  std::unordered_map<
-      std::string,
-      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>
+  std::vector<std::pair<
+      void*,
+      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>>
       m_custom_forms;
-  std::unordered_map<std::string,
-                     Object (Interpreter::*)(const Object& form,
-                                             const Object& rest,
-                                             const std::shared_ptr<EnvironmentObject>& env)>
+
+  std::vector<std::pair<void*,
+                        Object (Interpreter::*)(const Object& form,
+                                                const Object& rest,
+                                                const std::shared_ptr<EnvironmentObject>& env)>>
       special_forms;
   int64_t gensym_id = 0;
 

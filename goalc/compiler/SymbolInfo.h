@@ -168,11 +168,11 @@ class SymbolInfoMap {
   void add_global(const std::string& name,
                   const goos::Object& defining_form,
                   const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_global(name, defining_form, meta));
+    // m_map[name]->push_back(SymbolInfo::make_global(name, defining_form, meta));
   }
 
   void add_fwd_dec(const std::string& name, const goos::Object& defining_form) {
-    m_map[name]->push_back(SymbolInfo::make_fwd_declared_sym(name, defining_form));
+    // m_map[name]->push_back(SymbolInfo::make_fwd_declared_sym(name, defining_form));
   }
 
   // The m_symbol_types container stores TypeSpecs -- this does have argument information but not
@@ -181,29 +181,29 @@ class SymbolInfoMap {
                     const std::vector<GoalArg> args,
                     const goos::Object& defining_form,
                     const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_function(name, args, defining_form, meta));
+    // m_map[name]->push_back(SymbolInfo::make_function(name, args, defining_form, meta));
   }
 
   void add_type(const std::string& name,
                 const goos::Object& defining_form,
                 const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_type(name, defining_form, meta));
+    // m_map[name]->push_back(SymbolInfo::make_type(name, defining_form, meta));
   }
 
   void add_constant(const std::string& name,
                     const goos::Object& defining_form,
                     const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_constant(name, defining_form, meta));
+    // m_map[name]->push_back(SymbolInfo::make_constant(name, defining_form, meta));
   }
 
   void add_macro(const std::string& name,
                  const goos::Object& defining_form,
                  const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_macro(name, defining_form, meta));
+    // m_map[name]->push_back(SymbolInfo::make_macro(name, defining_form, meta));
   }
 
   void add_builtin(const std::string& name, const std::optional<SymbolInfo::Metadata> meta = {}) {
-    m_map[name]->push_back(SymbolInfo::make_builtin(name, meta));
+    // m_map[name]->push_back(SymbolInfo::make_builtin(name, meta));
   }
 
   // The m_symbol_types container stores TypeSpecs -- this does have argument information but not
@@ -212,8 +212,8 @@ class SymbolInfoMap {
                   const std::vector<GoalArg> args,
                   const MethodInfo& method_info,
                   const goos::Object& defining_form) {
-    m_map[method_name]->push_back(
-        SymbolInfo::make_method(method_name, args, method_info, defining_form));
+    // m_map[method_name]->push_back(
+    //        SymbolInfo::make_method(method_name, args, method_info, defining_form));
   }
 
   std::vector<SymbolInfo>* lookup_exact_name(const std::string& name) const {
