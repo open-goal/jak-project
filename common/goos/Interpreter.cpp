@@ -866,7 +866,7 @@ Object build_list_with_spliced_tail(std::vector<Object>&& objects, const Object&
     return tail;
   }
 
-  std::shared_ptr<PairObject> head = std::make_shared<PairObject>(objects.back(), tail);
+  std::shared_ptr<PairObject> head = pair_pool_hack().make_shared(objects.back(), tail);
 
   s64 idx = ((s64)objects.size()) - 2;
   while (idx >= 0) {

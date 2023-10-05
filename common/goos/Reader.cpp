@@ -459,139 +459,6 @@ bool Reader::read_array(TextStream& stream, Object& o) {
   return true;
 }
 
-struct PairPool;
-
-struct PairPoolBlock {
-  static constexpr size_t kStride = (~size_t(7) & (sizeof(PairObject) + 7)) + sizeof(u64);
-  static constexpr size_t kMemSize = kStride * 64;
-
-  PairPoolBlock() {
-    for (int i = 0; i < 64; i++) {
-      mem[(i * kStride) / sizeof(u64)] = i;
-    }
-  }
-
-  PairPool* parent = nullptr;
-  PairPoolBlock* next = nullptr;
-  PairPoolBlock* prev = nullptr;
-  u64 mask = 0;
-
-  u64 mem[kMemSize / sizeof(u64)];
-
-  u8* get_slot(int i) {
-    u8* addr = (u8*)mem;
-    return addr + sizeof(u64) + kStride * i;
-  }
-};
-
-struct PairPool {
-  int num_allocated = 0;
-  PairPoolBlock* full_blocks = nullptr;
-  PairPoolBlock* partial_blocks = nullptr;
-
-  PairObject* allocate() {
-    num_allocated++;
-    if (!partial_blocks) {
-      partial_blocks = new PairPoolBlock;
-      partial_blocks->parent = this;
-    }
-
-    u64 slot = 0;
-    u64 mask = partial_blocks->mask;
-    while (mask & 1) {
-      mask >>= 1;
-      slot++;
-    }
-
-    auto* mem = partial_blocks->get_slot(slot);
-    auto* ret = new (mem) PairObject;
-
-    partial_blocks->mask |= (1ULL << slot);
-    if (partial_blocks->mask == UINT64_MAX) {
-      auto* block = partial_blocks;
-
-      // splice out
-      partial_blocks = partial_blocks->next;
-      if (partial_blocks) {
-        partial_blocks->prev = nullptr;
-      }
-
-      ASSERT(block->prev == nullptr);
-
-      block->next = full_blocks;
-      if (block->next) {
-        block->next->prev = block;
-      }
-      full_blocks = block;
-    }
-
-    return ret;
-  }
-
-  std::shared_ptr<PairObject> make_shared(const Object& a, const Object& b);
-};
-
-struct PairObjectDeleter {
-  void operator()(PairObject* obj) {
-    obj->~PairObject();
-    // cursed.
-    u64 idx = ((const u64*)obj)[-1];
-    ASSERT(idx < 64);
-    u8* start_of_mem = ((u8*)obj) - (sizeof(u64) + PairPoolBlock::kStride * idx);
-    u8* start_of_obj = start_of_mem - offsetof(PairPoolBlock, mem);
-    auto* block = (PairPoolBlock*)start_of_obj;
-    block->parent->num_allocated--;
-
-    if (block->mask == UINT64_MAX) {
-      // full -> partial
-      auto* next = block->next;
-      auto* prev = block->prev;
-      if (next) {
-        next->prev = prev;
-      }
-      if (prev) {
-        prev->next = next;
-      } else {
-        // must have been head
-        block->parent->full_blocks = next;
-      }
-
-      if (block->parent->partial_blocks) {
-        block->parent->partial_blocks->prev = block;
-      }
-      block->next = block->parent->partial_blocks;
-      block->prev = nullptr;
-      block->parent->partial_blocks = block;
-    }
-
-    block->mask &= (~(1ULL << idx));
-
-    if (block->mask == 0) {
-      // partial -> gone
-      auto* next = block->next;
-      auto* prev = block->prev;
-      if (next) {
-        next->prev = prev;
-      }
-      if (prev) {
-        prev->next = next;
-      } else {
-        block->parent->partial_blocks = next;
-      }
-
-      delete block;
-    }
-  }
-};
-
-inline std::shared_ptr<PairObject> PairPool::make_shared(const Object& a, const Object& b) {
-  auto obj = allocate();
-  obj->car = a;
-  obj->cdr = b;
-  return std::shared_ptr<PairObject>(obj, PairObjectDeleter{});
-}
-
-PairPool pp;
 
 struct ListBuilder {
   Object head;
@@ -604,11 +471,11 @@ struct ListBuilder {
   void push_back(Object&& o) {
     size++;
     if (!tail) {
-      tail = pp.make_shared(o, Object{});
+      tail = pair_pool_hack().make_shared(o, Object{});
       head.type = ObjectType::PAIR;
       head.heap_obj = tail;
     } else {
-      auto next = pp.make_shared(o, Object{});
+      auto next = pair_pool_hack().make_shared(o, Object{});
       tail->cdr.type = ObjectType::PAIR;
       tail->cdr.heap_obj = next;
       prev_tail = std::move(tail);

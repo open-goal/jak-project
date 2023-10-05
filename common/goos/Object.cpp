@@ -331,7 +331,7 @@ Object build_list(const std::vector<Object>& objects) {
   // this is by far the most expensive part of parsing, so this is done a bit carefully.
   // we maintain a std::shared_ptr<PairObject> that represents the list, built from back to front.
   std::shared_ptr<PairObject> head =
-      std::make_shared<PairObject>(objects.back(), Object::make_empty_list());
+      pair_pool_hack().make_shared(objects.back(), Object::make_empty_list());
 
   s64 idx = ((s64)objects.size()) - 2;
   while (idx >= 0) {
@@ -339,9 +339,7 @@ Object build_list(const std::vector<Object>& objects) {
     next.type = ObjectType::PAIR;
     next.heap_obj = std::move(head);
 
-    head = std::make_shared<PairObject>();
-    head->car = objects[idx];
-    head->cdr = std::move(next);
+    head = pair_pool_hack().make_shared(objects[idx], std::move(next));;
 
     idx--;
   }
@@ -368,9 +366,7 @@ Object build_list(std::vector<Object>&& objects) {
     next.type = ObjectType::PAIR;
     next.heap_obj = std::move(head);
 
-    head = std::make_shared<PairObject>();
-    head->car = std::move(objects[idx]);
-    head->cdr = std::move(next);
+    head = pair_pool_hack().make_shared(std::move(objects[idx]), std::move(next));
 
     idx--;
   }
@@ -563,6 +559,11 @@ std::string StringObject::print() const {
 
 std::string StringObject::inspect() const {
   return "[string] \"" + escape_string(data) + "\"\n";
+}
+
+PairPool& pair_pool_hack() {
+  static PairPool pp;
+  return pp;
 }
 
 }  // namespace goos

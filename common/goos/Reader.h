@@ -76,6 +76,7 @@ class Reader {
   std::optional<Object> read_from_stdin(const std::string& prompt, REPL::Wrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
   bool check_string_is_valid(const std::string& str) const;
+  std::shared_ptr<PairObject> make_pair_obj(const Object& a, const Object& b);
 
   SymbolTable symbolTable;
   TextDb db;
