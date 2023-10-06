@@ -873,6 +873,24 @@ std::string ObjectFileDB::process_game_count_file() {
 }
 
 namespace {
+struct JointGeo {
+  u32 offset{};
+  std::string name;
+  u32 length{};
+};
+
+void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
+  const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
+  for (size_t i = 0; i < jg.length; ++i) {
+    const auto& label = words.at((jg.offset / 4) + 7 + i).label_id();
+    const auto& joint = obj.linked_data.labels.at(label);
+    const auto& name =
+        obj.linked_data.get_goal_string_by_label(words.at(joint.offset / 4).label_id());
+    // lg::print("{} joint idx {}/{}: {}\n", jg.name, i + 1, jg.length, name);
+    db.dts.add_joint_node(jg.name, name, i + 1);
+  }
+}
+
 void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
   if (obj.obj_version == 4) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
@@ -908,6 +926,11 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
         if (elt_type == "art-joint-geo") {
           // the skeleton!
           unique_name += "-jg";
+          JointGeo jg;
+          jg.offset = label.offset;
+          jg.name = unique_name;
+          jg.length = words.at(label.offset / 4 + 2).data;
+          get_joint_info(db, obj, jg);
         } else if (elt_type == "merc-ctrl" || elt_type == "shadow-geo") {
           // (maybe mesh-geo as well but that doesnt exist)
           // the skin!
@@ -953,7 +976,7 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
   lg::info("Writing art group info...");
   Timer timer;
 
-  if (!dts.art_group_info.empty()) {
+  if (!dts.art_group_info.empty() || !dts.jg_info.empty()) {
     file_util::create_dir_if_needed(output_dir / "import");
   }
   for (const auto& [ag_name, info] : dts.art_group_info) {
@@ -969,6 +992,18 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
     result += "\n";
     file_util::write_text_file(filename, result);
   }
+
+  auto jg_fpath = output_dir / "import" / "joint-nodes.gc";
+  std::string jg_result;
+
+  for (const auto& [jg_name, info] : dts.jg_info) {
+    for (const auto& [idx, joint] : info) {
+      jg_result += print_jg_for_dump(jg_name, joint, idx);
+    }
+    jg_result += "\n";
+  }
+
+  file_util::write_text_file(jg_fpath, jg_result);
 
   lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
@@ -987,5 +1022,8 @@ std::string print_art_elt_for_dump(const std::string& group_name,
                                    const std::string& name,
                                    int idx) {
   return fmt::format("(def-art-elt {} {} {})\n", group_name, name, idx);
+}
+std::string print_jg_for_dump(const std::string& jg_name, const std::string& joint_name, int idx) {
+  return fmt::format("(def-joint-node {} \"{}\" {})\n", jg_name, joint_name, idx);
 }
 }  // namespace decompiler

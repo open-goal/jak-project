@@ -69,16 +69,13 @@
     (ja-channel-set! 1)
     (send-event self 'do-effect 'death-warp-in -1.0)
     (sound-play "warpgate-tele")
-    (ja-no-eval :group! (-> self draw art-group data 41)
-                :num! (seek! (ja-aframe 50.0 0))
-                :frame-num (ja-aframe 40.0 0)
-                )
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 50.0 0)) :frame-num (ja-aframe 40.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek! (ja-aframe 50.0 0)))
       )
     (restore-collide-with-as (-> self control))
-    (ja-no-eval :group! (-> self draw art-group data 41) :num! (seek!) :frame-num (ja-aframe 50.0 0))
+    (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek!) :frame-num (ja-aframe 50.0 0))
     (until (ja-done? 0)
       (suspend)
       (ja :num! (seek!))
@@ -617,15 +614,11 @@
     ;; og:preserve-this
     ;; note: they appear to be calling this on the wrong object.
     ;; this doesn't actually cause any problems but corrupts the type of `float` in the symbol
-    ;; table because they they write to some field of arg0, which is actually #t and not a
+    ;; table because they write to some field of arg0, which is actually #t and not a
     ;; basebutton.  The corruption is completely harmless but is annoying because it looks like
     ;; a more severe memory corruption problem. So we fix it.
-    (the-as int ((the-as (function basebutton symbol none) (find-parent-method warp-gate-switch 31))
-                 ;;(the-as basebutton arg0)
-                 this
-                 arg0
-                 )
-            )
+    ;; (call-parent-method (the-as warp-gate-switch arg0) arg0)
+    (call-parent-method this arg0)
     )
   )
 

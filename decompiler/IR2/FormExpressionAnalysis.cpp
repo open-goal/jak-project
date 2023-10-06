@@ -3977,6 +3977,33 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
   return nullptr;
 }
 
+GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
+  auto mr =
+      match(Matcher::deref(Matcher::s6(), false,
+                           {DerefTokenMatcher::string("node-list"),
+                            DerefTokenMatcher::string("data"), DerefTokenMatcher::any_integer(0)}),
+            this);
+
+  if (mr.matched) {
+    // lg::print("func {} joint-geo: {}\n", env.func->name(), env.joint_geo());
+    auto info = env.dts->jg_info;
+    std::vector<Form*> args;
+    auto joint_name = env.get_joint_node_name(mr.maps.ints.at(0));
+    args.push_back(pool.form<ConstantTokenElement>(env.joint_geo()));
+    if (joint_name) {
+      args.push_back(pool.form<ConstantTokenElement>(joint_name.value()));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("joint-node-index")),
+          args);
+    } else {
+      lg::error("function `{}`: did not find joint node {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.joint_geo());
+    }
+  }
+
+  return nullptr;
+}
+
 GenericElement* DerefElement::try_as_curtime(const Env& env, FormPool& pool) {
   if (env.version == GameVersion::Jak1) {
     auto mr = match(Matcher::deref(Matcher::symbol("*display*"), false,
@@ -4045,6 +4072,12 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_art = try_as_art_const(env, pool);
   if (as_art) {
     result->push_back(as_art);
+    return;
+  }
+
+  auto as_jnode = try_as_joint_node_index(env, pool);
+  if (as_jnode) {
+    result->push_back(as_jnode);
     return;
   }
 

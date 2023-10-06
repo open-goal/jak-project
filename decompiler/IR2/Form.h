@@ -1299,6 +1299,7 @@ class DerefElement : public FormElement {
 
  private:
   ConstantTokenElement* try_as_art_const(const Env& env, FormPool& pool);
+  GenericElement* try_as_joint_node_index(const Env& env, FormPool& pool);
   GenericElement* try_as_curtime(const Env& env, FormPool& pool);
   GenericElement* try_as_seconds_per_frame(const Env& env, FormPool& pool);
 

@@ -91,6 +91,7 @@ Interpreter::Interpreter(const std::string& username) {
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
                    {"string->symbol", &Interpreter::eval_string_to_symbol},
+                   {"int->string", &Interpreter::eval_int_to_string},
                    {"get-environment-variable", &Interpreter::eval_get_env},
                    {"make-string-hash-table", &Interpreter::eval_make_string_hash_table},
                    {"hash-table-set!", &Interpreter::eval_hash_table_set},
@@ -1799,6 +1800,13 @@ Object Interpreter::eval_string_to_symbol(const Object& form,
                                           const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::STRING}, {});
   return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
+}
+
+Object Interpreter::eval_int_to_string(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::INTEGER}, {});
+  return StringObject::make_new(std::to_string(args.unnamed.at(0).as_int()));
 }
 
 Object Interpreter::eval_get_env(const Object& form,

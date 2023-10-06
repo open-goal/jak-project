@@ -421,6 +421,22 @@
       )
   )
 
+(defmacro joint-name->index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node-index (jg name)
+  `(-> self node-list data (joint-name->index ,jg ,name))
+  )
 
 (defmacro defskelgroup (name ag-name joint-geom joint-anim lods
                         &key (shadow 0)
@@ -470,9 +486,5 @@
         )
   )
 
-0
-
-
-
-
 (import "goal_src/jak2/engine/data/art-elts.gc")
+(import "goal_src/jak2/engine/data/joint-nodes.gc")
