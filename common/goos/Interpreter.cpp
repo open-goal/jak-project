@@ -46,6 +46,8 @@ Interpreter::Interpreter(const std::string& username) {
       {"define", &Interpreter::eval_define},
       {"quote", &Interpreter::eval_quote},
       {"set!", &Interpreter::eval_set},
+      {"let", &Interpreter::eval_let},
+      {"let*", &Interpreter::eval_let_star},
       {"lambda", &Interpreter::eval_lambda},
       {"cond", &Interpreter::eval_cond},
       {"or", &Interpreter::eval_or},
@@ -787,6 +789,94 @@ Object Interpreter::eval_set(const Object& form,
       throw_eval_error(to_define, "symbol is not defined");
     }
   }
+}
+
+Object Interpreter::eval_let(const goos::Object& form,
+                             const goos::Object& rest,
+                             const std::shared_ptr<EnvironmentObject>& env) {
+  // (let ((name1 expr1)
+  //       (name2 expr2))
+  //   body
+  //   body
+  //   ret
+  //  )
+
+  if (!rest.is_pair()) {
+    throw_eval_error(form, "first argument to let must be bindings");
+  }
+
+  const auto* bindings_iter = &rest.as_pair()->car;
+  const auto* body_iter = &rest.as_pair()->cdr;
+
+  if (!bindings_iter->is_pair()) {
+    throw_eval_error(form, "let cannot have empty bindings");
+  }
+
+  std::shared_ptr<EnvironmentObject> new_env = std::make_shared<EnvironmentObject>();
+  new_env->parent_env = env;
+
+  while (!bindings_iter->is_empty_list()) {
+    const auto* binding = &bindings_iter->as_pair()->car;
+    if (!binding->is_pair()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+    const auto& name = binding->as_pair()->car;
+    if (!name.is_symbol()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    binding = &binding->as_pair()->cdr;
+    if (!binding->is_pair() || !binding->as_pair()->cdr.is_empty_list()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    new_env->vars_by_st_string.set(name.as_symbol().name_ptr, eval(binding->as_pair()->car, env));
+
+    bindings_iter = &bindings_iter->as_pair()->cdr;
+  }
+
+  return eval_list_return_last(*body_iter, *body_iter, new_env);
+}
+
+Object Interpreter::eval_let_star(const goos::Object& form,
+                                  const goos::Object& rest,
+                                  const std::shared_ptr<EnvironmentObject>& env) {
+  if (!rest.is_pair()) {
+    throw_eval_error(form, "first argument to let must be bindings");
+  }
+
+  const auto* bindings_iter = &rest.as_pair()->car;
+  const auto* body_iter = &rest.as_pair()->cdr;
+
+  if (!bindings_iter->is_pair()) {
+    throw_eval_error(form, "let cannot have empty bindings");
+  }
+
+  std::shared_ptr<EnvironmentObject> new_env = std::make_shared<EnvironmentObject>();
+  new_env->parent_env = env;
+
+  while (!bindings_iter->is_empty_list()) {
+    const auto* binding = &bindings_iter->as_pair()->car;
+    if (!binding->is_pair()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+    const auto& name = binding->as_pair()->car;
+    if (!name.is_symbol()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    binding = &binding->as_pair()->cdr;
+    if (!binding->is_pair() || !binding->as_pair()->cdr.is_empty_list()) {
+      throw_eval_error(form, "let binding invalid");
+    }
+
+    new_env->vars_by_st_string.set(name.as_symbol().name_ptr,
+                                   eval(binding->as_pair()->car, new_env));
+
+    bindings_iter = &bindings_iter->as_pair()->cdr;
+  }
+
+  return eval_list_return_last(*body_iter, *body_iter, new_env);
 }
 
 /*!

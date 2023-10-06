@@ -230,6 +230,16 @@ class Interpreter {
                       Arguments& args,
                       const std::shared_ptr<EnvironmentObject>& env);
 
+  Object eval_make_string_hash_table(const Object& form,
+                                     Arguments& args,
+                                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_try_ref(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_hash_table_set(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env);
+
   // specials
   Object eval_define(const Object& form,
                      const Object& rest,
@@ -261,16 +271,12 @@ class Interpreter {
   Object eval_while(const Object& form,
                     const Object& rest,
                     const std::shared_ptr<EnvironmentObject>& env);
-
-  Object eval_make_string_hash_table(const Object& form,
-                                     Arguments& args,
-                                     const std::shared_ptr<EnvironmentObject>& env);
-  Object eval_hash_table_try_ref(const Object& form,
-                                 Arguments& args,
-                                 const std::shared_ptr<EnvironmentObject>& env);
-  Object eval_hash_table_set(const Object& form,
-                             Arguments& args,
-                             const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_let(const Object& form,
+                  const Object& rest,
+                  const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_let_star(const Object& form,
+                       const Object& rest,
+                       const std::shared_ptr<EnvironmentObject>& env);
 
   void init_special_forms(
       const std::unordered_map<std::string,
