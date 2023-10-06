@@ -25,7 +25,7 @@ class Interpreter {
   void set_global_variable_to_int(const std::string& name, int value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
-  HeapObject* intern_ptr(const std::string& name);
+  InternedSymbolPtr intern_ptr(const std::string& name);
   void disable_printfs();
   Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
   bool eval_symbol(const Object& sym,

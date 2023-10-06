@@ -286,7 +286,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
   try {
     auto objs = read_list(ts, false);
     if (add_top_level) {
-      return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+      return PairObject::make_new(Object::make_symbol(&symbolTable, "top-level"), objs);
     } else {
       return objs;
     }
@@ -516,9 +516,9 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
       } else {
         Object to_push_back = o;
         while (!reader_macro_string_stack.empty()) {
-          to_push_back =
-              build_list({SymbolObject::make_new(symbolTable, reader_macro_string_stack.back()),
-                          to_push_back});
+          to_push_back = build_list(
+              {Object::make_symbol(&symbolTable, reader_macro_string_stack.back().c_str()),
+               to_push_back});
           reader_macro_string_stack.pop_back();
         }
         objects.push_back(to_push_back);
@@ -607,7 +607,7 @@ bool Reader::try_token_as_symbol(const Token& tok, Object& obj) {
   ASSERT(!tok.text.empty());
   char start = tok.text[0];
   if (m_valid_symbols_chars[(int)start]) {
-    obj = SymbolObject::make_new(symbolTable, tok.text);
+    obj = Object::make_symbol(&symbolTable, tok.text.c_str());
     return true;
   } else {
     return false;

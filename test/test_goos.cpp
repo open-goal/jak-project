@@ -1047,10 +1047,10 @@ TEST(GoosObject, Char) {
  */
 TEST(GoosObject, Symbol) {
   SymbolTable st, st2;
-  Object obj = SymbolObject::make_new(st, "test1");
-  Object obj2 = SymbolObject::make_new(st, "test2");
-  Object obj3 = SymbolObject::make_new(st, "test1");
-  Object obj4 = SymbolObject::make_new(st2, "test1");
+  Object obj = Object::make_symbol(&st, "test1");
+  Object obj2 = Object::make_symbol(&st, "test2");
+  Object obj3 = Object::make_symbol(&st, "test1");
+  Object obj4 = Object::make_symbol(&st2, "test1");
 
   // check type
   EXPECT_TRUE(obj.is_symbol());

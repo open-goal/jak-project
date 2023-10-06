@@ -13,20 +13,20 @@ void open_subtitle_project(const std::string& project_kind,
   goos::Reader reader;
   auto& proj = reader.read_from_file({file_path}).as_pair()->cdr.as_pair()->car;
   if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
-      proj.as_pair()->car.as_symbol()->name != project_kind) {
+      proj.as_pair()->car.as_symbol() != project_kind) {
     throw std::runtime_error(fmt::format("invalid project '{}'", project_kind));
   }
 
   goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
     if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
       auto args = o.as_pair();
-      auto& action = args->car.as_symbol()->name;
+      auto& action = args->car.as_symbol();
       args = args->cdr.as_pair();
 
       if (action == "file-json") {
         auto new_file = GameSubtitleDefinitionFile();
         while (true) {
-          const auto& kwarg = args->car.as_symbol()->name;
+          const auto& kwarg = args->car.as_symbol();
           args = args->cdr.as_pair();
           if (kwarg == ":language-id") {
             new_file.language_id = args->car.as_int();
@@ -49,7 +49,7 @@ void open_subtitle_project(const std::string& project_kind,
         subtitle_files.push_back(new_file);
       } else {
         throw std::runtime_error(
-            fmt::format("unknown action {} in {} project", action, project_kind));
+            fmt::format("unknown action {} in {} project", action.name_ptr, project_kind));
       }
     } else {
       throw std::runtime_error(fmt::format("invalid entry in {} project", project_kind));

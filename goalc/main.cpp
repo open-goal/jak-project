@@ -16,6 +16,7 @@
 #include "third-party/CLI11.hpp"
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
+#include <malloc.h>
 
 void setup_logging(const bool disable_ansi_colors) {
   lg::set_file("compiler");
@@ -27,6 +28,43 @@ void setup_logging(const bool disable_ansi_colors) {
   }
   lg::initialize();
 }
+
+int number_of_allocs = 0;
+
+void* operator new(std::size_t size) {
+  ++number_of_allocs;
+  void* p = malloc(size);
+  return p;
+}
+
+void* operator new[](std::size_t size) {
+  ++number_of_allocs;
+  void* p = malloc(size);
+  return p;
+}
+
+void* operator new[](std::size_t size, const std::nothrow_t&) throw() {
+  ++number_of_allocs;
+  return malloc(size);
+}
+void* operator new(std::size_t size, const std::nothrow_t&) throw() {
+  ++number_of_allocs;
+  return malloc(size);
+}
+
+void operator delete(void* ptr) throw() {
+  free(ptr);
+}
+void operator delete(void* ptr, const std::nothrow_t&) throw() {
+  free(ptr);
+}
+void operator delete[](void* ptr) throw() {
+  free(ptr);
+}
+void operator delete[](void* ptr, const std::nothrow_t&) throw() {
+  free(ptr);
+}
+
 
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
@@ -107,6 +145,7 @@ int main(int argc, char** argv) {
     if (!cmd.empty()) {
       compiler = std::make_unique<Compiler>(game_version);
       compiler->run_front_end_on_string(cmd);
+      printf("total alloc count is %d or %d", number_of_allocs, alloc_count2);
       return 0;
     }
   } catch (std::exception& e) {
@@ -184,5 +223,6 @@ int main(int argc, char** argv) {
     repl_server.shutdown_server();
     nrepl_thread.join();
   }
+
   return 0;
 }

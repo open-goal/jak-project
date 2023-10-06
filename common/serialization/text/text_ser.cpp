@@ -147,7 +147,7 @@ void parse_text_goal(const goos::Object& data,
           throw std::runtime_error("invalid text version entry");
         }
 
-        font = get_font_bank(ver_name.as_symbol()->name);
+        font = get_font_bank(ver_name.as_symbol().name_ptr);
       }
 
       else if (head.is_int()) {
@@ -278,7 +278,7 @@ GameTextVersion parse_text_only_version(const goos::Object& data) {
           throw std::runtime_error("invalid text version entry");
         }
 
-        font = get_font_bank(ver_name.as_symbol()->name);
+        font = get_font_bank(ver_name.as_symbol().name_ptr);
       }
     }
   });
@@ -294,14 +294,14 @@ void open_text_project(const std::string& kind,
   goos::Reader reader;
   auto& proj = reader.read_from_file({filename}).as_pair()->cdr.as_pair()->car;
   if (!proj.is_pair() || !proj.as_pair()->car.is_symbol() ||
-      proj.as_pair()->car.as_symbol()->name != kind) {
+      proj.as_pair()->car.as_symbol() != kind) {
     throw std::runtime_error(fmt::format("invalid {} project", kind));
   }
 
   goos::for_each_in_list(proj.as_pair()->cdr, [&](const goos::Object& o) {
     if (o.is_pair() && o.as_pair()->cdr.is_pair()) {
       auto args = o.as_pair();
-      auto& action = args->car.as_symbol()->name;
+      auto& action = args->car.as_symbol();
       args = args->cdr.as_pair();
 
       if (action == "file") {
@@ -313,17 +313,18 @@ void open_text_project(const std::string& kind,
       } else if (action == "file-json") {
         auto& language_id = args->car.as_int();
         args = args->cdr.as_pair();
-        auto& text_version = args->car.as_symbol()->name;
+        auto& text_version = args->car.as_symbol();
         args = args->cdr.as_pair();
         std::optional<std::string> group_name = std::nullopt;
         group_name = args->car.as_string()->data;
         args = args->cdr.as_pair()->car.as_pair();
         goos::for_each_in_list(args->cdr.as_pair()->car, [&](const goos::Object& o) {
           text_files.push_back({GameTextDefinitionFile::Format::JSON, o.as_string()->data,
-                                (int)language_id, text_version, group_name});
+                                (int)language_id, text_version.name_ptr, group_name});
         });
       } else {
-        throw std::runtime_error(fmt::format("unknown action {} in {} project", action, kind));
+        throw std::runtime_error(
+            fmt::format("unknown action {} in {} project", action.name_ptr, kind));
       }
     } else {
       throw std::runtime_error(fmt::format("invalid entry in {} project", kind));

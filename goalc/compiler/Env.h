@@ -247,7 +247,7 @@ class FunctionEnv : public DeclareEnv {
   TypeSpec asm_func_return_type;
   std::vector<UnresolvedGoto> unresolved_gotos;
   std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
-  std::unordered_map<std::string, RegVal*> params;
+  std::unordered_map<goos::InternedSymbolPtr, RegVal*, goos::InternedSymbolPtr::hash> params;
 
  protected:
   void resolve_gotos();
@@ -288,7 +288,7 @@ class LexicalEnv : public DeclareEnv {
   explicit LexicalEnv(Env* parent) : DeclareEnv(EnvKind::OTHER_ENV, parent) {}
   RegVal* lexical_lookup(goos::Object sym) override;
   std::string print() override;
-  std::unordered_map<std::string, RegVal*> vars;
+  std::unordered_map<goos::InternedSymbolPtr, RegVal*, goos::InternedSymbolPtr::hash> vars;
 };
 
 class LabelEnv : public Env {
@@ -306,7 +306,7 @@ class SymbolMacroEnv : public Env {
  public:
   explicit SymbolMacroEnv(Env* parent) : Env(EnvKind::SYMBOL_MACRO_ENV, parent) {}
   // key is goos symbols.
-  std::unordered_map<goos::HeapObject*, goos::Object> macros;
+  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash> macros;
   std::string print() override { return "symbol-macro-env"; }
 };
 

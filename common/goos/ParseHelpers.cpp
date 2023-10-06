@@ -12,12 +12,12 @@ bool get_va(const goos::Object& rest, std::string* err_string, goos::Arguments* 
     auto arg = current.as_pair()->car;
 
     // did we get a ":keyword"
-    if (arg.is_symbol() && arg.as_symbol()->name.at(0) == ':') {
-      auto key_name = arg.as_symbol()->name.substr(1);
+    if (arg.is_symbol() && arg.as_symbol().name_ptr[0] == ':') {
+      auto key_name = arg.as_symbol().name_ptr + 1;
 
       // check for multiple definition of key
       if (args.named.find(key_name) != args.named.end()) {
-        *err_string = "Key argument " + key_name + " multiply defined";
+        *err_string = fmt::format("Key argument {} multiply defined", key_name);
         return false;
       }
 

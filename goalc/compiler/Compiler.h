@@ -110,9 +110,12 @@ class Compiler {
   goos::Interpreter m_goos;
   Debugger m_debugger;
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
-  std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
-  std::unordered_map<goos::HeapObject*, InlineableFunction> m_inlineable_functions;
+  std::unordered_map<goos::InternedSymbolPtr, TypeSpec, goos::InternedSymbolPtr::hash>
+      m_symbol_types;
+  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
+      m_global_constants;
+  std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
+      m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
