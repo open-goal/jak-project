@@ -266,10 +266,6 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
     for (auto& dgo : dgo_names) {
       auto kv = dgo_obj_name_map[dgo].find(game_name_with_ag);
       if (kv != dgo_obj_name_map[dgo].end()) {
-        if (version() == GameVersion::Jak3 &&
-            (game_name_with_ag == "collectables" || game_name_with_ag == "blocking-plane")) {
-          continue;
-        }
         lg::error("Object {} in dgo {} occurs more than one time.", game_name_with_ag, dgo);
         ASSERT(false);
       }
