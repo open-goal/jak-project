@@ -19,20 +19,20 @@
   )
 
 ;; definition for method 3 of type jinx-bomb
-(defmethod inspect jinx-bomb ((obj jinx-bomb))
-  (when (not obj)
-    (set! obj obj)
+(defmethod inspect jinx-bomb ((this jinx-bomb))
+  (when (not this)
+    (set! this this)
     (goto cfg-4)
     )
   (let ((t9-0 (method-of-type process-focusable inspect)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (format #t "~2Tfuse-delay: ~D~%" (-> obj fuse-delay))
-  (format #t "~2Tattack-id: ~D~%" (-> obj attack-id))
-  (format #t "~2Tshake-screen?: ~A~%" (-> obj shake-screen?))
-  (format #t "~2Texplode-func: ~A~%" (-> obj explode-func))
+  (format #t "~2Tfuse-delay: ~D~%" (-> this fuse-delay))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tshake-screen?: ~A~%" (-> this shake-screen?))
+  (format #t "~2Texplode-func: ~A~%" (-> this explode-func))
   (label cfg-4)
-  obj
+  this
   )
 
 ;; failed to figure out what this is:
@@ -55,11 +55,11 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (if (and (nonzero? (-> self fuse-delay))
-             (>= (- (current-time) (-> self state-time)) (the-as time-frame (-> self fuse-delay)))
+             (time-elapsed? (-> self state-time) (the-as time-frame (-> self fuse-delay)))
              )
         (go-virtual explode)
         )
@@ -78,7 +78,7 @@
 (defstate explode (jinx-bomb)
   :virtual #t
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (logior! (-> self draw status) (draw-control-status no-draw))
     (let ((v1-6 (-> self root root-prim)))
       (set! (-> v1-6 prim-core collide-as) (collide-spec))

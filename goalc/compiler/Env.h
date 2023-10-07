@@ -240,12 +240,14 @@ class FunctionEnv : public DeclareEnv {
 
   int segment = -1;
   std::string method_of_type_name = "#f";
+  TypeSpec method_function_type;
+  std::optional<int> method_id;
   bool is_asm_func = false;
   bool asm_func_saved_regs = false;
   TypeSpec asm_func_return_type;
   std::vector<UnresolvedGoto> unresolved_gotos;
   std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
-  std::unordered_map<std::string, RegVal*> params;
+  std::unordered_map<goos::InternedSymbolPtr, RegVal*, goos::InternedSymbolPtr::hash> params;
 
  protected:
   void resolve_gotos();
@@ -286,7 +288,7 @@ class LexicalEnv : public DeclareEnv {
   explicit LexicalEnv(Env* parent) : DeclareEnv(EnvKind::OTHER_ENV, parent) {}
   RegVal* lexical_lookup(goos::Object sym) override;
   std::string print() override;
-  std::unordered_map<std::string, RegVal*> vars;
+  std::unordered_map<goos::InternedSymbolPtr, RegVal*, goos::InternedSymbolPtr::hash> vars;
 };
 
 class LabelEnv : public Env {
@@ -304,14 +306,14 @@ class SymbolMacroEnv : public Env {
  public:
   explicit SymbolMacroEnv(Env* parent) : Env(EnvKind::SYMBOL_MACRO_ENV, parent) {}
   // key is goos symbols.
-  std::unordered_map<goos::HeapObject*, goos::Object> macros;
+  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash> macros;
   std::string print() override { return "symbol-macro-env"; }
 };
 
 class MacroExpandEnv : public Env {
  public:
   MacroExpandEnv(Env* parent,
-                 const goos::HeapObject* macro_name,
+                 const goos::InternedSymbolPtr macro_name,
                  const goos::Object& macro_body,
                  const goos::Object& macro_use)
       : Env(EnvKind::MACRO_EXPAND_ENV, parent),
@@ -331,13 +333,13 @@ class MacroExpandEnv : public Env {
 
   std::string print() override { return "macro-env"; }
 
-  const goos::HeapObject* name() const { return m_macro_name; }
+  const goos::InternedSymbolPtr name() const { return m_macro_name; }
   const goos::Object& macro_body() const { return m_macro_body; }
   const goos::Object& macro_use_location() const { return m_macro_use_location; }
   const goos::Object& root_form() const { return m_root_form; }
 
  private:
-  const goos::HeapObject* m_macro_name = nullptr;
+  const goos::InternedSymbolPtr m_macro_name = {nullptr};
   goos::Object m_macro_body;
   goos::Object m_macro_use_location;
   goos::Object m_root_form;

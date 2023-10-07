@@ -110,6 +110,7 @@ s32 sceOpen(const char* filename, s32 flag) {
 
     default: {
       // either append or truncate
+      file_util::create_dir_if_needed_for_file(name);
       if (flag & SCE_TRUNC) {
         fp = file_util::open_file(name.c_str(), "w");
       } else {

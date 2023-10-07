@@ -133,7 +133,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch)
-       (set! (-> self state-time) (current-time))
+       (set-time! (-> self state-time))
        #f
        )
       (else
@@ -142,10 +142,10 @@
       )
     )
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (set! (-> self smush) 0.0)
     (until #f
-      (if (>= (- (current-time) (-> self state-time)) (seconds 0.2))
+      (if (time-elapsed? (-> self state-time) (seconds 0.2))
           (ja :num! (seek! 0.0 0.1))
           (ja :num! (seek!
                       (lerp-scale
@@ -186,9 +186,9 @@
   :post transform-post
   )
 
-(defmethod init-skeleton! bouncer ((obj bouncer))
+(defmethod init-skeleton! bouncer ((this bouncer))
   (initialize-skeleton
-    obj
+    this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-bouncer" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
@@ -196,9 +196,9 @@
   (none)
   )
 
-(defmethod bouncer-method-24 bouncer ((obj bouncer))
+(defmethod bouncer-method-24 bouncer ((this bouncer))
   "TODO - collision stuff"
-  (let ((collision-shape (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
+  (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
       (set! (-> collision-mesh prim-core collide-as) (collide-spec crate))
       (set! (-> collision-mesh prim-core collide-with) (collide-spec jak player-list))
@@ -213,26 +213,26 @@
       (set! (-> collision-shape backup-collide-as) (-> prim prim-core collide-as))
       (set! (-> collision-shape backup-collide-with) (-> prim prim-core collide-with))
       )
-    (set! (-> obj root) collision-shape)
+    (set! (-> this root) collision-shape)
     )
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! bouncer ((obj bouncer) (arg0 entity-actor))
+(defmethod init-from-entity! bouncer ((this bouncer) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj mods) #f)
-  (bouncer-method-24 obj)
-  (process-drawable-from-entity! obj arg0)
-  (init-skeleton! obj)
-  (nav-mesh-connect-from-ent obj)
-  (set! (-> obj spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
-  (go (method-of-object obj idle))
+  (set! (-> this mods) #f)
+  (bouncer-method-24 this)
+  (process-drawable-from-entity! this arg0)
+  (init-skeleton! this)
+  (nav-mesh-connect-from-ent this)
+  (set! (-> this spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
+  (go (method-of-object this idle))
   (none)
   )

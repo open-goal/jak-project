@@ -10,6 +10,8 @@
 ;; the double buffered rendering system.
 ;; The *display* global will hold the main display state, including the DMA buffers for each of the two frames
 
+;; DECOMP BEGINS
+
 ;; display-env stores the GS settings for displaying a framebuffer on screen.
 ;; this is identical to the Sony sceGsDispEnv struct.
 ;; you can set one of these up with set-display-env, then use it with
@@ -92,16 +94,16 @@
 
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
   "Allocate a new display frame"
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj calc-buf) (the-as dma-buffer 0))
-    (set! (-> obj global-buf) (the-as dma-buffer 0))
-    (set! (-> obj debug-buf) (the-as dma-buffer 0))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this calc-buf) (the-as dma-buffer 0))
+    (set! (-> this global-buf) (the-as dma-buffer 0))
+    (set! (-> this debug-buf) (the-as dma-buffer 0))
     ;; allocate profile-bars in the debug heap, if we're debugging.
     (when *debug-segment*
-      (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
-      (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
+      (set! (-> this profile-bar 0) (new 'debug 'profile-bar))
+      (set! (-> this profile-bar 1) (new 'debug 'profile-bar))
       )
-    obj
+    this
     )
   )
 
@@ -184,49 +186,49 @@
 (define-extern set-display (function display int int int int int display))
 
 (defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; set the display size, texture format, zbuffer format, etc.
-    (set-display obj psm w h ztest zpsm)
+    (set-display this psm w h ztest zpsm)
     ;; set up frames. for the most part only the first 2 make sense, and
     ;; the rest have repeats.
-    (set! (-> obj frames 0 display) (-> obj display-env0))
-    (set! (-> obj frames 1 display) (-> obj display-env1))
-    (set! (-> obj frames 2 display) (-> obj display-env2))
-    (set! (-> obj frames 3 display) (-> obj display-env0))
-    (set! (-> obj frames 4 display) (-> obj display-env1))
-    (set! (-> obj frames 5 display) (-> obj display-env2))
-    (set! (-> obj frames 0 display-last) (-> obj display-env2))
-    (set! (-> obj frames 1 display-last) (-> obj display-env0))
-    (set! (-> obj frames 2 display-last) (-> obj display-env1))
-    (set! (-> obj frames 3 display-last) (-> obj display-env2))
-    (set! (-> obj frames 4 display-last) (-> obj display-env0))
-    (set! (-> obj frames 5 display-last) (-> obj display-env1))
-    (set! (-> obj frames 0 gif) (&-> obj gif-tag0 qword))
-    (set! (-> obj frames 1 gif) (&-> obj gif-tag1 qword))
-    (set! (-> obj frames 2 gif) (&-> obj gif-tag2 qword))
-    (set! (-> obj frames 3 gif) (&-> obj gif-tag0 qword))
-    (set! (-> obj frames 4 gif) (&-> obj gif-tag1 qword))
-    (set! (-> obj frames 5 gif) (&-> obj gif-tag2 qword))
-    (set! (-> obj frames 0 draw) (-> obj draw0))
-    (set! (-> obj frames 1 draw) (-> obj draw1))
-    (set! (-> obj frames 2 draw) (-> obj draw2))
-    (set! (-> obj frames 3 draw) (-> obj draw0))
-    (set! (-> obj frames 4 draw) (-> obj draw1))
-    (set! (-> obj frames 5 draw) (-> obj draw2))
-    (set! (-> obj frames 0 frame) (new 'global 'display-frame))
-    (set! (-> obj frames 1 frame) (new 'global 'display-frame))
-    (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
-    (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
-    (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
-    (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
+    (set! (-> this frames 0 display) (-> this display-env0))
+    (set! (-> this frames 1 display) (-> this display-env1))
+    (set! (-> this frames 2 display) (-> this display-env2))
+    (set! (-> this frames 3 display) (-> this display-env0))
+    (set! (-> this frames 4 display) (-> this display-env1))
+    (set! (-> this frames 5 display) (-> this display-env2))
+    (set! (-> this frames 0 display-last) (-> this display-env2))
+    (set! (-> this frames 1 display-last) (-> this display-env0))
+    (set! (-> this frames 2 display-last) (-> this display-env1))
+    (set! (-> this frames 3 display-last) (-> this display-env2))
+    (set! (-> this frames 4 display-last) (-> this display-env0))
+    (set! (-> this frames 5 display-last) (-> this display-env1))
+    (set! (-> this frames 0 gif) (&-> this gif-tag0 qword))
+    (set! (-> this frames 1 gif) (&-> this gif-tag1 qword))
+    (set! (-> this frames 2 gif) (&-> this gif-tag2 qword))
+    (set! (-> this frames 3 gif) (&-> this gif-tag0 qword))
+    (set! (-> this frames 4 gif) (&-> this gif-tag1 qword))
+    (set! (-> this frames 5 gif) (&-> this gif-tag2 qword))
+    (set! (-> this frames 0 draw) (-> this draw0))
+    (set! (-> this frames 1 draw) (-> this draw1))
+    (set! (-> this frames 2 draw) (-> this draw2))
+    (set! (-> this frames 3 draw) (-> this draw0))
+    (set! (-> this frames 4 draw) (-> this draw1))
+    (set! (-> this frames 5 draw) (-> this draw2))
+    (set! (-> this frames 0 frame) (new 'global 'display-frame))
+    (set! (-> this frames 1 frame) (new 'global 'display-frame))
+    (set! (-> this frames 2 frame) (-> this frames 0 frame))
+    (set! (-> this frames 3 frame) (-> this frames 1 frame))
+    (set! (-> this frames 4 frame) (-> this frames 0 frame))
+    (set! (-> this frames 5 frame) (-> this frames 1 frame))
     ;; do this again. just in case.
     (default-buffer-init *default-regs-buffer*)
     ;; set the default gray color.
-    (set! (-> obj bg-clear-color 0) (static-rgba #x80 #x80 #x80 #x80))
-    (set! (-> obj bg-clear-color 1) (static-rgba #x80 #x80 #x80 #x80))
-    (set! (-> obj bg-clear-color 2) (static-rgba #x80 #x80 #x80 #x80))
-    (set! (-> obj bg-clear-color 3) (static-rgba #x80 #x80 #x80 #x80))
-    obj
+    (set! (-> this bg-clear-color 0) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> this bg-clear-color 1) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> this bg-clear-color 2) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> this bg-clear-color 3) (static-rgba #x80 #x80 #x80 #x80))
+    this
     )
   )
 
@@ -250,6 +252,17 @@
   `(-> *display* real-frame-counter)
   )
 
+(defmacro seconds-per-frame ()
+  `(-> *display* seconds-per-frame)
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )
 
 ;; debug stuff really
 (defmacro get-screen-x (frac)

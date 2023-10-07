@@ -29,7 +29,7 @@ std::optional<LSPSpec::Color> color_hexstring_to_lsp_color(const std::string& co
   return LSPSpec::Color{red, green, blue, 1.0};
 }
 
-std::optional<json> document_color_handler(Workspace& workspace, int id, json raw_params) {
+std::optional<json> document_color_handler(Workspace& /*workspace*/, int /*id*/, json raw_params) {
   auto params = raw_params.get<LSPSpec::DocumentColorParams>();
   json colors = json::array();
 

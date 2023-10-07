@@ -40,25 +40,29 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       {">", ConditionKind::GT},           {"<", ConditionKind::LT},
       {">=", ConditionKind::GEQ},         {"<=", ConditionKind::LEQ}};
 
+  // we may have gotten a macro as a condition, expand it first.
+  // note : use the `condition` arg for errors still so that the user can actually tell what code
+  // went wrong!
+  auto new_c = expand_macro_completely(condition, env);
+
   // possibly a form with an optimizable condition?
-  if (condition.is_pair()) {
-    auto first = pair_car(condition);
-    auto rest = pair_cdr(condition);
+  if (new_c.is_pair()) {
+    auto& first = pair_car(new_c);
+    auto& rest = pair_cdr(new_c);
 
     if (first.is_symbol()) {
       auto fas = first.as_symbol();
 
       // if there's a not, we can just try again to get an optimization with the invert flipped.
-      if (fas->name == "not") {
-        auto arg = pair_car(rest);
+      if (fas == "not") {
         if (!pair_cdr(rest).is_empty_list()) {
           throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
-        return compile_condition(arg, env, !invert);
+        return compile_condition(pair_car(rest), env, !invert);
       }
 
       auto& conditions = invert ? conditions_inverted : conditions_normal;
-      auto nc_kv = conditions.find(fas->name);
+      auto nc_kv = conditions.find(fas.name_ptr);
 
       if (nc_kv != conditions.end()) {
         // it is an optimizable condition!
@@ -194,7 +198,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       throw_compiler_error(form, "Cond from cannot have any cases after else.");
     }
 
-    if (test.is_symbol() && symbol_string(test) == "else") {
+    if (test.is_symbol("else")) {
       got_else = true;
     }
 
@@ -286,7 +290,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
 }
 
 Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env) {
-  std::string op_name = form.as_pair()->car.as_symbol()->name;
+  std::string op_name = form.as_pair()->car.as_symbol().name_ptr;
   bool is_and = false;
   if (op_name == "and") {
     is_and = true;

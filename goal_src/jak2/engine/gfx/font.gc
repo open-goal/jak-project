@@ -5,9 +5,9 @@
 ;; name in dgo: font
 ;; dgos: ENGINE, GAME
 
-(def-mips2c draw-string-asm (function string dma-buffer font-context uint))
-(def-mips2c draw-string (function string dma-buffer font-context draw-string-result))
-(def-mips2c get-string-length (function string font-context draw-string-result))
+(def-mips2c draw-string-asm (function string dma-buffer font-context draw-string-result))
+; (def-mips2c get-string-length (function string font-context draw-string-result))
+(def-mips2c get-string-length-asm (function string font-context draw-string-result))
 
 ;; DECOMP BEGINS
 
@@ -146,8 +146,53 @@
 
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun draw-string ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
+  ;; og:preserve-this modified a bit for debug font scaling.
+  (let  ((result (the draw-string-result #f))
+         (orig-scale (-> arg2 scale)))
+  (#when PC_PORT
+    ;; debug font scaling.
+    (unless (logtest? (-> arg2 flags) (font-flags large pc-hack))
+      (*! (-> arg2 scale) (get-debug-font-scale-factor))))
 
+  (let ((v1-1 (the int (* 128.0 (-> arg2 alpha)))))
+    (-> arg2 origin quad)
+    (dotimes (a0-2 40)
+      (dotimes (a1-1 4)
+        (set! (-> *font-work* color-table a0-2 color a1-1 a) v1-1)
+        )
+      )
+    (set! (-> *font-work* color-shadow w) v1-1)
+    )
+  (if (< (the-as uint (dma-buffer-free arg1)) (the-as uint (* (length arg0) 32)))
+      (set! result (the-as draw-string-result (-> arg2 origin quad)))
+      (set! result (draw-string-asm arg0 arg1 arg2))
+      )
+  (dotimes (v1-7 40)
+    (dotimes (a0-9 4)
+      (set! (-> *font-work* color-table v1-7 color a0-9 a) #x80)
+      )
+    )
+  (set! (-> *font-work* color-shadow w) 128)
+  (set! (-> arg2 scale) orig-scale)
+
+  result
+  ))
+
+(#when PC_PORT
+;; og:preserve-this get-string-length is an asm function, but for PC port we use a trampoline in order to inject hacks more easily
+(defun get-string-length ((text string) (ctx font-context))
+  "return the length of a string, in gs framebuffer units"
+  (let ((orig-scale (-> ctx scale))
+        (result (begin (#when PC_PORT ;; debug font scaling.
+                                      (unless (logtest? (-> ctx flags) (font-flags large pc-hack))
+                                        (*! (-> ctx scale) (get-debug-font-scale-factor))))
+                       (get-string-length-asm text ctx))))
+    (set! (-> ctx scale) orig-scale)
+    result)
+  )
+
+)
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 (defun draw-string-xy ((arg0 string) (arg1 dma-buffer) (arg2 int) (arg3 int) (arg4 font-color) (arg5 font-flags))

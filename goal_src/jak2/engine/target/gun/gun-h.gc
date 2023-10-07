@@ -143,7 +143,7 @@
 (defbehavior want-to-gun? process ((arg0 target) (arg1 symbol))
   (local-vars (v1-36 symbol))
   (and (logtest? (-> arg0 game features) (game-feature gun))
-       (>= (- (current-time) (-> arg0 gun gun-time)) (seconds 0.1))
+       (time-elapsed? (-> arg0 gun gun-time) (seconds 0.1))
        (not (focus-test? arg0 dead hit board mech dark teleporting))
        (not (logtest? (surface-flag gun-inactive gun-hide gun-off) (-> arg0 control current-surface flags)))
        (not (logtest? (state-flags prevent-gun) (-> arg0 state-flags)))
@@ -165,7 +165,7 @@
            (-> arg0 gun latch?)
            )
        (not (-> arg0 skel top-anim frame-group))
-       (>= (- (current-time) (-> arg0 control time-of-last-debug-float)) (seconds 0.1))
+       (time-elapsed? (-> arg0 control time-of-last-debug-float) (seconds 0.1))
        )
   )
 
@@ -197,11 +197,11 @@
     )
   )
 
-(defmethod get-gun-ammo fact-info-target ((obj fact-info-target))
-  (let ((current-gun (gun->ammo (-> (the-as target (-> obj process)) gun gun-type))))
+(defmethod get-gun-ammo fact-info-target ((this fact-info-target))
+  (let ((current-gun (gun->ammo (-> (the-as target (-> this process)) gun gun-type))))
     (if (zero? current-gun)
         0.0
-        (-> (the-as target (-> obj process)) game gun-ammo (+ current-gun -13))
+        (-> (the-as target (-> this process)) game gun-ammo (+ current-gun -13))
         )
     )
   )

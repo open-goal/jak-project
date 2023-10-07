@@ -188,7 +188,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
 
       // it can either be a global or symbol
       const auto& global_constant = m_global_constants.find(expanded.as_symbol());
-      const auto& existing_symbol = m_symbol_types.find(expanded.as_symbol()->name);
+      const auto& existing_symbol = m_symbol_types.find(expanded.as_symbol());
 
       // see if it's a constant
       if (global_constant != m_global_constants.end()) {
@@ -225,12 +225,12 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
         // all are expanded, so we don't need to do it again.
 
         // first try as a goal compiler form
-        auto kv_gfs = g_const_prop_forms.find(head_sym->name);
+        auto kv_gfs = g_const_prop_forms.find(head_sym.name_ptr);
         if (kv_gfs != g_const_prop_forms.end()) {
           return ((*this).*(kv_gfs->second))(expanded, rest, env);
         }
 
-        const auto& kv_goal = g_goal_forms.find(head_sym->name);
+        const auto& kv_goal = g_goal_forms.find(head_sym.name_ptr);
         if (kv_goal != g_goal_forms.end()) {
           // it's a compiler form that we can't constant propagate.
           return {expanded, true};
@@ -250,7 +250,7 @@ s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
     auto head = prop.value.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
-      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
       if (enum_type) {
         bool success;
         u64 as_enum =
@@ -281,7 +281,7 @@ ValOrConstInt Compiler::get_constant_integer_or_variable(const goos::Object& in,
     auto head = prop.value.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
-      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
       if (enum_type) {
         bool success;
         u64 as_enum =

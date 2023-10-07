@@ -74,18 +74,18 @@
   (set! (-> self string-max target z) (-> self stringMaxLength))
   (set! (-> self string-push-z) (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z)))
   (cond
-    ((>= (- (-> *display* base-frame-counter) (the-as time-frame (if *target*
-                                                                     (the-as int (-> *target* neck notice-time))
-                                                                     0
-                                                                     )
-                                                      )
-            )
-         (-> *CAMERA-bank* attack-timeout)
-         )
+    ((time-elapsed?
+       (the-as time-frame (if *target*
+                              (the-as int (-> *target* neck notice-time))
+                              0
+                              )
+               )
+       (-> *CAMERA-bank* attack-timeout)
+       )
      (set! (-> self being-attacked) #f)
      )
     (else
-      (set! (-> self attack-start) (-> *display* base-frame-counter))
+      (set-time! (-> self attack-start))
       (set! (-> self being-attacked) #t)
       (when (and (not (logtest? (-> self master-options) 64))
                  (or (!= (-> last-try-to-look-at-data horz) 0.0) (!= (-> last-try-to-look-at-data vert) 0.0))
@@ -294,19 +294,19 @@
            (return (the-as symbol #f))
            )
        (cond
-         ((>= (- (-> *display* base-frame-counter) (the-as time-frame (if *target*
-                                                                          (the-as int (-> *target* neck notice-time))
-                                                                          0
-                                                                          )
-                                                           )
-                 )
-              (-> *CAMERA-bank* attack-timeout)
-              )
+         ((time-elapsed?
+            (the-as time-frame (if *target*
+                                   (the-as int (-> *target* neck notice-time))
+                                   0
+                                   )
+                    )
+            (-> *CAMERA-bank* attack-timeout)
+            )
           (set! (-> self being-attacked) #f)
           )
          (else
            (if (not (-> self being-attacked))
-               (set! (-> self attack-start) (-> *display* base-frame-counter))
+               (set-time! (-> self attack-start))
                )
            (set! (-> self being-attacked) #t)
            (when (and (not (logtest? (-> self master-options) 64))
@@ -1507,7 +1507,7 @@
                        )
                      )
                     ((= v1-0 'part-water-drip)
-                     (set! (-> self water-drip-time) (-> *display* base-frame-counter))
+                     (set-time! (-> self water-drip-time))
                      (set! (-> self water-drip-mult) (the-as float (-> block param 0)))
                      (set! (-> self water-drip-speed) (the-as float (-> block param 1)))
                      )

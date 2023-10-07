@@ -2023,8 +2023,8 @@ void DrawableInlineArrayActor::read_from_file(TypedRef ref,
 
 void CollideHash::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
-                                 level_tools::DrawStats* stats,
-                                 GameVersion version) {
+                                 level_tools::DrawStats* /*stats*/,
+                                 GameVersion /*version*/) {
   num_items = read_plain_data_field<uint32_t>(ref, "num-items", dts);
   item_array = deref_label(get_field_ref(ref, "item-array", dts));
 }

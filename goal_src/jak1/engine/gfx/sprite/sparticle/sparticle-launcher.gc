@@ -6,8 +6,10 @@
 ;; dgos: GAME, ENGINE
 
 ;; og:preserve-this added macro
+;; the rate was defaulted to DISPLAY_FPS_RATIO before, but sp-launch-particles-var checks
+;; if the rate is not 1.0 and crashes the game.
 (defmacro launch-particles (&key (system *sp-particle-system-2d*) particle origin &key (launch-state (the-as sparticle-launch-state #f)) &key (launch-control (the-as sparticle-launch-control #f))
-                            &key (rate DISPLAY_FPS_RATIO))
+                            &key (rate 1.0 #|DISPLAY_FPS_RATIO|#))
   `(sp-launch-particles-var ,system ,particle ,origin ,launch-state ,launch-control ,rate)
   )
 
@@ -32,12 +34,12 @@
   )
 
 
-(defmethod inspect sparticle-launcher ((obj sparticle-launcher))
+(defmethod inspect sparticle-launcher ((this sparticle-launcher))
   "Print out a sparticle-laucher, including its fields"
-  (format #t "~X: sparticle-launcher~%" obj)
+  (format #t "~X: sparticle-launcher~%" this)
   (let ((s5-0 0))
-    (while (!= (-> obj init-specs s5-0 field) (sp-field-id spt-end))
-      (let ((init-spec (-> obj init-specs s5-0)))
+    (while (!= (-> this init-specs s5-0 field) (sp-field-id spt-end))
+      (let ((init-spec (-> this init-specs s5-0)))
         (format #t "~T~S : ~F / #x~X / ~D~%" 
                 (enum->string sp-field-id (-> init-spec field))
                 (-> init-spec initial-valuef)
@@ -810,24 +812,24 @@
 ;; the launch-controls are always associated with a process. this allows the memory to be reclaimed once the 
 ;; particles are despawned.
 
-(defmethod initialize sparticle-launch-control ((obj sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
+(defmethod initialize sparticle-launch-control ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
   "start a particle effect."
   (let ((s5-0 0))
     ;; init
-    (set! (-> obj group) arg0)
-    (set! (-> obj proc) arg1)
-    (set! (-> obj local-clock) 0)
-    (set! (-> obj fade) 1.0)
-    (set! (-> obj matrix) 0)
-    (set! (-> obj last-spawn-frame) (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.007))))
-    (set! (-> obj last-spawn-time) 0)
+    (set! (-> this group) arg0)
+    (set! (-> this proc) arg1)
+    (set! (-> this local-clock) 0)
+    (set! (-> this fade) 1.0)
+    (set! (-> this matrix) 0)
+    (set! (-> this last-spawn-frame) (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.007))))
+    (set! (-> this last-spawn-time) 0)
     
     ;; iterate through the effects in the group
     (dotimes (s3-0 (-> arg0 length))
       
       (let* ((a0-2 (-> arg0 launcher s3-0)) ;; the group-item (definition of the effect)
              (a1-2 (-> *part-id-table* (-> a0-2 launcher))) ;; the actual effect for the group item
-             (v1-9 (-> obj data s5-0)) ;; our state for this particular instance of this effect within the group.
+             (v1-9 (-> this data s5-0)) ;; our state for this particular instance of this effect within the group.
              )
         (when (nonzero? a1-2)
           (set! (-> v1-9 group-item) a0-2)
@@ -849,7 +851,7 @@
                (else
                  (logior! (-> v1-9 flags) (sp-launch-state-flags launcher-active))
                  ;; set the position now.
-                 (set! (-> v1-9 origin) (-> obj center))
+                 (set! (-> v1-9 origin) (-> this center))
                  (set! (-> v1-9 sprite3d) #f)
                  (set! (-> v1-9 sprite) #f)
                  )
@@ -863,63 +865,63 @@
           )
         )
       )
-    (set! (-> obj length) s5-0)
+    (set! (-> this length) s5-0)
     )
   0
   (none)
   )
 
-(defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
+(defmethod create-launch-control sparticle-launch-group ((this sparticle-launch-group) (arg0 process))
   "create a launch-control to hold the state of the particles. stored on the process heap."
-  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> obj length)))))
+  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> this length)))))
     (when (zero? gp-0)
       (go process-drawable-art-error "memory")
       (return (the-as sparticle-launch-control 0))
       )
-    (initialize gp-0 obj arg0)
+    (initialize gp-0 this arg0)
     gp-0
     )
   )
 
-(defmethod kill-and-free-particles sparticle-launch-control ((obj sparticle-launch-control))
+(defmethod kill-and-free-particles sparticle-launch-control ((this sparticle-launch-control))
   "kill all the particles"
   
   ;; clear the flag.
-  (countdown (v1-0 (-> obj length))
-    (let ((a0-3 (-> obj data v1-0)))
+  (countdown (v1-0 (-> this length))
+    (let ((a0-3 (-> this data v1-0)))
       (logclear! (-> a0-3 flags) (sp-launch-state-flags particles-active))
       )
     )
-  (set! (-> obj local-clock) 0)
-  (set! (-> obj fade) 1.0)
+  (set! (-> this local-clock) 0)
+  (set! (-> this fade) 1.0)
   
   ;; kill the particles (let them go back to the sparticle system.)
-  (kill-all-particles-with-key obj)
+  (kill-all-particles-with-key this)
   ;; release matrices
-  (if (> (-> obj matrix) 0)
-      (sprite-release-user-hvdf (-> obj matrix))
+  (if (> (-> this matrix) 0)
+      (sprite-release-user-hvdf (-> this matrix))
       )
   0
   (none)
   )
 
-(defmethod kill-particles sparticle-launch-control ((obj sparticle-launch-control))
+(defmethod kill-particles sparticle-launch-control ((this sparticle-launch-control))
   "kill the particles, but don't clear flags or free hvdfs."
-  (kill-all-particles-with-key obj)
+  (kill-all-particles-with-key this)
   0
   (none)
   )
 
-(defmethod is-visible? sparticle-launch-control ((obj sparticle-launch-control) (arg0 vector))
+(defmethod is-visible? sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
   "Is the effect visible?. arg0 is the offset of the effect"
-  (let* ((v1-0 (-> obj group))
+  (let* ((v1-0 (-> this group))
          (f0-0 (-> v1-0 bounds w))
          )
    (cond
     ((= f0-0 0.0) ;; visibility sphere has 0 size, just say yes always
      #t
      )
-    ((nonzero? (-> obj matrix)) ;; I guess if we have an extra matrix, we can't figure it out?
+    ((nonzero? (-> this matrix)) ;; I guess if we have an extra matrix, we can't figure it out?
      #t
      )
     (else
@@ -930,7 +932,7 @@
       ;; debug draw sphere
       (if (and *display-actor-vis*
                (or (not *display-actor-anim*)
-                   (name= *display-actor-anim* (-> obj proc name))
+                   (name= *display-actor-anim* (-> this proc name))
                    )
                )
           (add-debug-sphere
@@ -958,33 +960,33 @@
   )
 
 
-(defmethod spawn sparticle-launch-control ((obj sparticle-launch-control) (arg0 vector))
-  (set! (-> obj center quad) (-> arg0 quad))
+(defmethod spawn sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+  (set! (-> this center quad) (-> arg0 quad))
   
   ;; og:preserve-this
   ;; check if we are visible (remove this check to force particles to be drawn.)
-  (if (not (or (is-visible? obj arg0)
-               (logtest? (-> obj group flags) (sp-group-flag always-draw screen-space))
+  (if (not (or (is-visible? this arg0)
+               (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))
                )
            )
       (return (the-as object 0))
       )
   (let ((s4-0 *particle-300hz-timer*)
-        (s5-0 (-> obj last-spawn-time))
+        (s5-0 (-> this last-spawn-time))
         )
     
     ;; weird stuff for frame counting
     (let ((v1-8 (-> *display* real-actual-frame-counter)))
-      (if (!= v1-8 (+ (-> obj last-spawn-frame) 1))
+      (if (!= v1-8 (+ (-> this last-spawn-frame) 1))
           (set! s5-0 (- s4-0 (logand (the-as int (-> *sp-frame-time* x)) 255)))
           )
       )
-    (set! (-> obj last-spawn-frame) (the-as int (-> *display* real-actual-frame-counter)))
-    (set! (-> obj last-spawn-time) s4-0)
-    (when (logtest? (-> obj group flags) (sp-group-flag use-local-clock))
-      (set! s5-0 (-> obj local-clock))
-      (+! (-> obj local-clock) (logand (the-as int (-> *sp-frame-time* x)) 255))
-      (set! s4-0 (-> obj local-clock))
+    (set! (-> this last-spawn-frame) (the-as int (-> *display* real-actual-frame-counter)))
+    (set! (-> this last-spawn-time) s4-0)
+    (when (logtest? (-> this group flags) (sp-group-flag use-local-clock))
+      (set! s5-0 (-> this local-clock))
+      (+! (-> this local-clock) (logand (the-as int (-> *sp-frame-time* x)) 255))
+      (set! s4-0 (-> this local-clock))
       )
     
     (let ((f30-0 (vector-vector-distance arg0 (math-camera-pos)))
@@ -996,7 +998,7 @@
                      )
                 )
           )
-      (if (nonzero? (-> obj matrix)) ;; if we have an additional matrix, say we're at the camera so we always draw.
+      (if (nonzero? (-> this matrix)) ;; if we have an additional matrix, say we're at the camera so we always draw.
           (set! f30-0 0.0)
           )
       
@@ -1006,10 +1008,10 @@
             (set! f30-0 0.0)))
       
       ;; loop over particles in the group.
-      (let ((s2-1 (-> obj length)))
+      (let ((s2-1 (-> this length)))
         (while (begin (label cfg-79) (nonzero? s2-1))
           (+! s2-1 -1)
-          (let* ((a3-0 (-> obj data s2-1))
+          (let* ((a3-0 (-> this data s2-1))
                  (v1-29 (-> a3-0 group-item))
                  (a1-4 (-> *part-id-table* (-> v1-29 launcher)))
                  )
@@ -1049,7 +1051,7 @@
                         a1-4
                         (-> a3-0 origin)
                         :launch-state a3-0
-                        :launch-control obj
+                        :launch-control this
                         :rate f0-2
                         )
                       )
@@ -1073,8 +1075,8 @@
                 (let ((f0-4 (* 0.2 (the float (- s4-0 s5-0)) f0-2)))
                   (b! #t cfg-72 :delay (nop!))
                   (label cfg-50)
-                  (let ((a2-5 (mod (+ s5-0 (-> obj data s2-1 offset)) (the-as int (-> v1-29 period))))
-                        (a0-56 (mod (the-as uint (+ s4-0 (-> obj data s2-1 offset))) (-> v1-29 period)))
+                  (let ((a2-5 (mod (+ s5-0 (-> this data s2-1 offset)) (the-as int (-> v1-29 period))))
+                        (a0-56 (mod (the-as uint (+ s4-0 (-> this data s2-1 offset))) (-> v1-29 period)))
                         (t0-2 (-> v1-29 length))
                         )
                     (set! f0-4 (cond
@@ -1092,11 +1094,11 @@
                                      0
                                      (goto cfg-77)
                                      )
-                                   (when (< (the-as uint (- s4-0 (the-as int (-> obj data s2-1 spawn-time)))) (-> v1-29 period))
+                                   (when (< (the-as uint (- s4-0 (the-as int (-> this data s2-1 spawn-time)))) (-> v1-29 period))
                                      0
                                      (goto cfg-77)
                                      )
-                                   (set! (-> obj data s2-1 offset) (- (-> v1-29 period) a0-56))
+                                   (set! (-> this data s2-1 offset) (- (-> v1-29 period) a0-56))
                                    (* 0.2 (the float (- s4-0 s5-0)) f0-2)
                                    )
                                  )
@@ -1114,7 +1116,7 @@
                         a1-4
                         (-> a3-0 origin)
                         :launch-state a3-0
-                        :launch-control obj
+                        :launch-control this
                         :rate f0-4
                         )
                       )

@@ -70,11 +70,12 @@ std::string game_arg_documentation() {
   output += "  -level [name]  Used to inform the game to boot a specific level the default level is `#f`\n";
   // Jak 1 Related
   output += fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::orange), "Jak 1:\n");
-  output += "  -demo          Used to pass the message `demo` to the gkernel in the DebugBootMessage (instead of play)\n";
+  output += "  -demo          Boot the game in demo mode\n";
   // Jak 2 only
   output += fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::purple), "Jak 2:\n");
-  output += "  -kiosk         A demo mode, TODO on specifics\n";
-  output += "  -preview       A demo mode, TODO on specifics\n";
+  output += "  -demo          Boot the game in demo mode\n";
+  output += "  -kiosk         Boot the game in kiosk demo mode\n";
+  output += "  -preview       Boot the game in preview demo mode\n";
   output += "  -debug-boot    Used to boot the game in retail mode, but with debug segments\n";
   output += "  -user [name]   Specify the debugging username, the default is `unknown`\n";
   output += "  -art [name]    Specify the art-group name to set `DebugBootArtGroup`, there is no default\n";

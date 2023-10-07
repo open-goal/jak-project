@@ -55,7 +55,7 @@ std::string apply_formatting(
   }
   // TODO - might want to make some kind of per-form config struct, simplify the passing around of
   // info below
-  for (int i = 0; i < curr_node.refs.size(); i++) {
+  for (int i = 0; i < (int)curr_node.refs.size(); i++) {
     const auto& ref = curr_node.refs.at(i);
     // Figure out if the element should be inlined or not
     bool inline_element = inline_form;

@@ -5,6 +5,8 @@
 ;; name in dgo: art-h
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joint animation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -380,9 +382,9 @@
     )
   )
 
-(defmethod get-skeleton-origin draw-control ((obj draw-control))
+(defmethod get-skeleton-origin draw-control ((this draw-control))
   "Get the origin of the skeleton. Must have up-to-date bones."
-  (-> obj skeleton bones 0 position)
+  (-> this skeleton bones 0 position)
   )
 
 ;; look up the index of an art element in an art group.
@@ -400,6 +402,23 @@
               )
           )
       )
+  )
+
+(defmacro joint-name->index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node-index (jg name)
+  `(-> self node-list data (joint-name->index ,jg ,name))
   )
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
@@ -443,3 +462,4 @@
 
 
 (import "goal_src/jak1/engine/data/art-elts.gc")
+(import "goal_src/jak1/engine/data/joint-nodes.gc")

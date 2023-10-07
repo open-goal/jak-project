@@ -453,7 +453,7 @@
 (defstate idle (cave-in-master)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
     (spawn (-> self part) (-> self root trans))
@@ -482,25 +482,25 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! cave-in-master ((obj cave-in-master) (arg0 entity-actor))
+(defmethod init-from-entity! cave-in-master ((this cave-in-master) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (set! (-> obj path) (new 'process 'path-control obj 'path 0.0 (the-as entity #f) #f))
-  (if (-> obj path)
-      (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (the-as entity #f) #f))
+  (if (-> this path)
+      (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
       )
-  (+! (-> obj root trans y) 327680.0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
+  (+! (-> this root trans y) 327680.0)
+  (logclear! (-> this mask) (process-mask actor-pause))
   (dotimes (v1-12 100)
-    (set! (-> obj prev-points v1-12) 0)
+    (set! (-> this prev-points v1-12) 0)
     )
-  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 737) obj))
-  (go (method-of-object obj wait))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 737) this))
+  (go (method-of-object this wait))
   (none)
   )

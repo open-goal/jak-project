@@ -58,15 +58,19 @@ class WorkspaceIRFile {
 
 class WorkspaceAllTypesFile {
  public:
-  WorkspaceAllTypesFile() : m_dts(GameVersion::Jak1){};
+  WorkspaceAllTypesFile()
+      : m_dts(std::make_unique<decompiler::DecompilerTypeSystem>(GameVersion::Jak1)){};
   WorkspaceAllTypesFile(const LSPSpec::DocumentUri& uri,
                         const GameVersion version,
                         const fs::path file_path)
-      : m_game_version(version), m_uri(uri), m_dts(m_game_version), m_file_path(file_path){};
+      : m_game_version(version),
+        m_uri(uri),
+        m_dts(std::make_unique<decompiler::DecompilerTypeSystem>(m_game_version)),
+        m_file_path(file_path){};
 
   GameVersion m_game_version;
   LSPSpec::DocumentUri m_uri;
-  decompiler::DecompilerTypeSystem m_dts;
+  std::unique_ptr<decompiler::DecompilerTypeSystem> m_dts;
   fs::path m_file_path;
 
   void parse_type_system();
@@ -110,7 +114,8 @@ class Workspace {
   bool m_initialized = false;
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceOGFile> m_tracked_og_files = {};
   std::unordered_map<LSPSpec::DocumentUri, WorkspaceIRFile> m_tracked_ir_files = {};
-  std::unordered_map<LSPSpec::DocumentUri, WorkspaceAllTypesFile> m_tracked_all_types_files = {};
+  std::unordered_map<LSPSpec::DocumentUri, std::unique_ptr<WorkspaceAllTypesFile>>
+      m_tracked_all_types_files = {};
 
   // TODO:
   // OpenGOAL is still incredibly tightly coupled to the jak projects as a language

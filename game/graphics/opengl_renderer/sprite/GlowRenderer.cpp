@@ -192,7 +192,7 @@ GlowRenderer::GlowRenderer() {
 
   glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
-               GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+               GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                          m_ogl.probe_fbo_depth_tex, 0);
 

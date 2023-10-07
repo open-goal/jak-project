@@ -48,6 +48,9 @@
   (busclk/256 2)
   (hblank 3)
   )
+
+;; DECOMP BEGINS
+
 ;; this matches the Tn_MODE register structure of the ps2 EE timers.
 ;; Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero
 (deftype timer-mode (uint32)
@@ -142,14 +145,14 @@
   :flag-assert         #x90000000c
   )
 
-(defmethod inspect profile-frame ((obj profile-frame))
-  (let ((this-frame obj))
+(defmethod inspect profile-frame ((this profile-frame))
+  (let ((this-frame this))
     (format #t "[~8x] profile-frame~%" this-frame)
     (format #t "~Tname: ~A~%" (-> this-frame name))
     (format #t "~Ttime-stamp: ~D~%" (-> this-frame time-stamp))
     (format #t "~Tcolor: ~D ~D ~D~%" (-> this-frame color r) (-> this-frame color g) (-> this-frame color b))
     )
-  obj
+  this
   )
 
 ;; A "bar" to display all the timed events
@@ -183,8 +186,7 @@
   )
 
 ;; tentative name
-(defmethod get-last-frame-time-stamp profile-bar ((obj profile-bar))
+(defmethod get-last-frame-time-stamp profile-bar ((this profile-bar))
   "Returns the timestamp of the last (non-remaining) frame on the profiler bar."
-  (-> obj data (+ (-> obj profile-frame-count) -2) time-stamp)
+  (-> this data (+ (-> this profile-frame-count) -2) time-stamp)
   )
-

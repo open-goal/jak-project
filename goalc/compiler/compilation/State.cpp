@@ -17,7 +17,7 @@ void Compiler::compile_state_handler_set(StructureType* state_type_info,
   // we don't use #f here because you might want to actually set the state to #f
   // (see crate-buzzer wait)
   auto& arg = args.named.at(name);
-  if (!(arg.is_symbol() && arg.as_symbol()->name == "*no-state*")) {
+  if (!(arg.is_symbol() && arg.as_symbol() == "*no-state*")) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(arg, env);
     // we need to save these for typechecking later
@@ -60,8 +60,8 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   Val* enter_value = NULL;
 
   // check parent
-  auto& state_parent = args.unnamed.at(1).as_symbol()->name;
-  auto state_parent_type = m_ts.make_typespec(state_parent);
+  auto& state_parent = args.unnamed.at(1).as_symbol();
+  auto state_parent_type = m_ts.make_typespec(state_parent.name_ptr);
   if (!m_ts.tc(TypeSpec("process"), state_parent_type)) {
     throw_compiler_error(form, "define-state got a type {} which is not a child of process",
                          state_parent_type.print());
@@ -97,7 +97,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                                           state_parent_type);
   }
 
-  auto& state_name = args.unnamed.at(0).as_symbol()->name;
+  auto& state_name = args.unnamed.at(0).as_symbol();
   auto existing_var = m_symbol_types.find(state_name);
 
   TypeSpec type_to_use;
@@ -107,7 +107,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
       throw_compiler_error(form,
                            "define-state doesn't have enough information to determine the type of "
                            "state {}, and it was not forward declared.",
-                           state_name);
+                           state_name.name_ptr);
     }
     type_to_use = *state_type;
     m_symbol_types[state_name] = *state_type;
@@ -115,11 +115,11 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
     type_to_use = existing_var->second;
     if (state_type) {
       typecheck(form, existing_var->second, *state_type,
-                fmt::format("type of state {}", state_name));
+                fmt::format("type of state {}", state_name.name_ptr));
     }
   }
 
-  auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name, type_to_use);
+  auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name.name_ptr, type_to_use);
 
   env->emit_ir<IR_SetSymbolValue>(form, sym_val, state_object);
 
@@ -158,8 +158,8 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   Val* enter_value = NULL;
 
   // check parent
-  auto& state_parent = args.unnamed.at(1).as_symbol()->name;
-  auto state_parent_type = m_ts.make_typespec(state_parent);
+  auto& state_parent = args.unnamed.at(1).as_symbol();
+  auto state_parent_type = m_ts.make_typespec(state_parent.name_ptr);
   if (!m_ts.tc(TypeSpec("process"), state_parent_type)) {
     throw_compiler_error(form, "define-state got a type {} which is not a child of process",
                          state_parent_type.print());
@@ -172,24 +172,24 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
                          state_object->type().print());
   }
 
-  auto& state_name = args.unnamed.at(0).as_symbol()->name;
+  auto& state_name = args.unnamed.at(0).as_symbol();
 
   MethodInfo child_method_info;
-  if (!m_ts.try_lookup_method(state_parent, state_name, &child_method_info)) {
+  if (!m_ts.try_lookup_method(state_parent.name_ptr, state_name.name_ptr, &child_method_info)) {
     throw_compiler_error(
         form, "Tried to define a virtual state {} for type {}, but the state was not declared.",
-        state_name, state_parent);
+        state_name.name_ptr, state_parent.name_ptr);
   }
 
   MethodInfo parent_method_info;
-  auto parent_of_parent_type = m_ts.lookup_type(state_parent)->get_parent();
-  if (m_ts.try_lookup_method(parent_of_parent_type, state_name, &parent_method_info) &&
-      args.unnamed.at(3).as_symbol()->name == "#f") {
+  auto parent_of_parent_type = m_ts.lookup_type(state_parent.name_ptr)->get_parent();
+  if (m_ts.try_lookup_method(parent_of_parent_type, state_name.name_ptr, &parent_method_info) &&
+      args.unnamed.at(3).as_symbol() == "#f") {
     // need to call inherit state TODO
     auto inherit_state_func =
         compile_get_symbol_value(form, "inherit-state", env)->to_gpr(form, env);
     auto parents_state =
-        compile_get_method_of_type(form, TypeSpec(parent_of_parent_type), state_name, env)
+        compile_get_method_of_type(form, TypeSpec(parent_of_parent_type), state_name.name_ptr, env)
             ->to_gpr(form, env);
     compile_real_function_call(form, inherit_state_func, {state_object, parents_state}, env);
   }
@@ -197,7 +197,7 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   // call method set.
   // (method-set! sunken-elevator 22 (the-as function gp-0))
   auto method_set_func = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
-  auto type_obj = compile_get_symbol_value(form, state_parent, env)->to_gpr(form, env);
+  auto type_obj = compile_get_symbol_value(form, state_parent.name_ptr, env)->to_gpr(form, env);
   auto method_id = compile_integer(child_method_info.id, env)->to_gpr(form, env);
   compile_real_function_call(form, method_set_func, {type_obj, method_id, state_object}, env);
 
@@ -229,8 +229,8 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
         child_method_info.type.substitute_for_method_call(state_parent_type.base_type())) {
       throw_compiler_error(
           form, "Virtual state {} of {} was declared as {}, but got {}. First declared in type {}.",
-          state_name, state_parent, child_method_info.type.print(), state_type->print(),
-          child_method_info.defined_in_type);
+          state_name.name_ptr, state_parent.name_ptr, child_method_info.type.print(),
+          state_type->print(), child_method_info.defined_in_type);
     }
   }
 

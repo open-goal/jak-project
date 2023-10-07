@@ -97,7 +97,7 @@ class Compiler {
   MakeSystem& make_system() { return m_make; }
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
-  std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name) const;
+  std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
 
  private:
   GameVersion m_version;
@@ -110,9 +110,12 @@ class Compiler {
   goos::Interpreter m_goos;
   Debugger m_debugger;
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
-  std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
-  std::unordered_map<goos::HeapObject*, InlineableFunction> m_inlineable_functions;
+  std::unordered_map<goos::InternedSymbolPtr, TypeSpec, goos::InternedSymbolPtr::hash>
+      m_symbol_types;
+  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
+      m_global_constants;
+  std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
+      m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
@@ -219,7 +222,7 @@ class Compiler {
                 const std::vector<std::optional<goos::ObjectType>>& unnamed,
                 const std::unordered_map<std::string,
                                          std::pair<bool, std::optional<goos::ObjectType>>>& named);
-  std::string as_string(const goos::Object& o);
+  const std::string& as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
   goos::Object unquote(const goos::Object& o);
@@ -246,7 +249,6 @@ class Compiler {
 
   TypeSpec parse_typespec(const goos::Object& src, Env* env);
   bool is_local_symbol(const goos::Object& obj, Env* env);
-  emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
@@ -697,6 +699,7 @@ class Compiler {
   Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method_of_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_method_id_of_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method_of_object(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -705,6 +708,9 @@ class Compiler {
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   ConstPropResult const_prop_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_current_method_id(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_current_method_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cast_to_method_type(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // State
   Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);

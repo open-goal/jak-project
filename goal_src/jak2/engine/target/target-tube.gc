@@ -583,7 +583,7 @@
           (set! (-> self tube entity) (-> a0-4 entity))
           )
       )
-    (set! (-> self tube start-time) (current-time))
+    (set-time! (-> self tube start-time))
     (set! (-> self tube tube-sound-id) (new-sound-id))
     (set! (-> self tube tube-sound-vol) 0.0)
     (set! (-> self tube tube-sound-pitch) 0.0)
@@ -732,7 +732,7 @@
 (defstate target-tube-jump (target)
   :event (-> target-tube-start event)
   :enter (behavior ((arg0 float) (arg1 float))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (init-var-jump arg0 arg1 #t #f (-> self control transv) 2.0)
     (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
     (set! (-> self control mod-surface) *tube-jump-mods*)
@@ -806,9 +806,9 @@
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
     (let ((gp-0 (-> self attack-info)))
-      (set! (-> self state-time) (current-time))
+      (set-time! (-> self state-time))
       (logior! (-> self focus-status) (focus-status hit))
-      (set! (-> self game hit-time) (current-time))
+      (set-time! (-> self game hit-time))
       (when (not (logtest? (-> arg1 mask) (attack-mask vector)))
         (vector-!
           (-> arg1 vector)
@@ -857,7 +857,7 @@
       (when (= arg0 'attack)
         (send-event (handle->process (-> self notify)) 'notify 'hit (-> gp-0 mode))
         (logior! (-> self focus-status) (focus-status hit))
-        (set! (-> self game hit-time) (current-time))
+        (set-time! (-> self game hit-time))
         (case (-> gp-0 mode)
           (('bot)
            (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
@@ -939,10 +939,10 @@
       )
     (set! (-> self control transv quad) (the-as uint128 0))
     (initialize! (-> self game) 'life (the-as game-save #f) (the-as string #f))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until v1-42
       (suspend)
-      (set! v1-42 (and (>= (- (current-time) (-> self state-time)) (seconds 1)) (not (movie?))))
+      (set! v1-42 (and (time-elapsed? (-> self state-time) (seconds 1)) (not (movie?))))
       )
     (go target-tube)
     )
@@ -1100,19 +1100,19 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! slide-control ((obj slide-control) (arg0 entity-actor))
+(defmethod init-from-entity! slide-control ((this slide-control) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
 - collision information
 - loading the skeleton group / bones
 - sounds"
-  (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
-  (logclear! (-> obj mask) (process-mask actor-pause))
-  (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
-  (logior! (-> obj path flags) (path-control-flag display draw-line draw-point draw-text))
-  (set! (-> obj target) (the-as handle #f))
-  (go (method-of-object obj slide-control-watch))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this target) (the-as handle #f))
+  (go (method-of-object this slide-control-watch))
   (none)
   )

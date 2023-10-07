@@ -32,11 +32,11 @@
   )
 
 
-(defmethod relocate logo ((obj logo) (arg0 int))
-  (if (nonzero? (-> obj main-joint))
-      (&+! (-> obj main-joint) arg0)
+(defmethod relocate logo ((this logo) (arg0 int))
+  (if (nonzero? (-> this main-joint))
+      (&+! (-> this main-joint) arg0)
       )
-  (the-as logo ((method-of-type process-drawable relocate) obj arg0))
+  (the-as logo ((method-of-type process-drawable relocate) this arg0))
   )
 
 (deftype logo-slave (process-drawable)
@@ -53,11 +53,11 @@
   )
 
 
-(defmethod relocate logo-slave ((obj logo-slave) (arg0 int))
-  (if (nonzero? (-> obj main-joint))
-      (&+! (-> obj main-joint) arg0)
+(defmethod relocate logo-slave ((this logo-slave) (arg0 int))
+  (if (nonzero? (-> this main-joint))
+      (&+! (-> this main-joint) arg0)
       )
-  (the-as logo-slave ((method-of-type process-drawable relocate) obj arg0))
+  (the-as logo-slave ((method-of-type process-drawable relocate) this arg0))
   )
 
 (defskelgroup *logo-sg* logo logo-english-lod0-jg logo-idle-ja
@@ -226,7 +226,7 @@
             )
           )
     (send-event (handle->process (-> self camera)) 'mask 0)
-    ;; check language instead of territory here
+    ;; og:preserve-this check language instead of territory here
     (#if PC_PORT
       (if (= (-> *setting-control* default language) (language-enum japanese))
           (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-japan-sg* :to self)))
@@ -429,8 +429,8 @@
       )
     (loop
       (when (and (none-reserved? *art-control*) (not (paused?)))
-        (let ((gp-1 (-> *display* base-frame-counter)))
-          (until (>= (- (-> *display* base-frame-counter) gp-1) (seconds 0.1))
+        (let ((gp-1 (current-time)))
+          (until (time-elapsed? gp-1 (seconds 0.1))
             (set! *camera-look-through-other* 2)
             (suspend)
             )
@@ -455,7 +455,7 @@
   :enter (behavior ()
     (set-setting! 'bg-a 'abs 0.0 0)
     (apply-settings *setting-control*)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (if *time-of-day-proc*
         (set! (-> *time-of-day-proc* 0 hour) 12)
         )
@@ -467,6 +467,7 @@
     )
   :trans (behavior ()
     ((-> (method-of-type logo startup) trans))
+    ;; og:preserve-this
     (if (and (or *debug-segment* PC_PORT)
               (cpad-pressed? 0 start circle x)
               (member (level-status *level* 'village1) '(loaded active))
@@ -475,7 +476,7 @@
         )
     (when (and (= (-> *setting-control* current bg-a) 1.0)
                (and (member (level-status *level* 'village1) '(active loaded))
-                    ;; i think we can forgo the time check here...
+                    ;; og:preserve-this i think we can forgo the time check here...
                     (#if PC_PORT #t (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3)))
                     (let ((gp-2 (level-get *level* 'village1)))
                       (when gp-2
@@ -533,6 +534,7 @@
     (send-event (handle->process (-> self sidekick)) 'origin-joint-index 6)
     (set! (-> self anim) (-> self next-anim))
     (set! (-> self next-anim) (new 'static 'spool-anim :name "logo-intro" :index 5 :parts 3 :command-list '()))
+    ;; og:preserve-this
     (#cond
       (PC_PORT
         (cond
@@ -573,7 +575,7 @@
     (('logo)
      (set! (-> *time-of-day-context* title-light-group dir1 levels x) 0.0)
      (set! (-> *time-of-day-context* title-light-group ambi levels x) 0.444)
-     ;; check language instead of territory here
+     ;; og:preserve-this check language instead of territory here
      (#if PC_PORT
        (if (= (-> *setting-control* default language) (language-enum japanese))
            (initialize-skeleton self *logo-japan-sg* '())
@@ -663,7 +665,7 @@
     (set-setting! 'allow-progress #f 0.0 0)
     (set-setting! 'border-mode #f 0.0 0)
     (apply-settings *setting-control*)
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set-time! (-> self state-time))
     (set! (-> self manipy) (the-as (pointer manipy) #f))
     (ja-channel-set! 0)
     (ja-post)
@@ -707,8 +709,8 @@
             (set-blackout-frames (seconds 0.05))
             (suspend)
             )
-          (let ((s5-1 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) s5-1) (seconds 0.25))
+          (let ((s5-1 (current-time)))
+            (until (time-elapsed? s5-1 (seconds 0.25))
               (set-blackout-frames (seconds 0.05))
               (suspend)
               )
@@ -748,8 +750,8 @@
           (while *progress-process*
             (suspend)
             )
-          (let ((gp-2 (-> *display* base-frame-counter)))
-            (until (>= (- (-> *display* base-frame-counter) gp-2) (seconds 0.01))
+          (let ((gp-2 (current-time)))
+            (until (time-elapsed? gp-2 (seconds 0.01))
               (suspend)
               )
             )

@@ -5,6 +5,8 @@
 ;; name in dgo: main
 ;; dgos: GAME, ENGINE
 
+;; DECOMP BEGINS
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Letterbox and blackout
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -343,9 +345,9 @@
          )
   )
 
-(defmethod draw screen-filter ((obj screen-filter))
+(defmethod draw screen-filter ((this screen-filter))
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf))
-    (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> obj color))
+    (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> this color))
     )
   (none)
   )
@@ -683,9 +685,9 @@
 
       (with-profiler "post-sync-draw"
       ;; add letterbox effect
-      (when (or (movie?) (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time)))
-        (if (< (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
-            (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
+      (when (or (movie?) (< (current-time) (-> *game-info* letterbox-time)))
+        (if (< (-> *game-info* letterbox-time) (current-time))
+            (set! (-> *game-info* letterbox-time) (current-time))
             )
         (if (#if (not PC_PORT)
                  (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
@@ -695,7 +697,7 @@
         )
 
       ;; add blackout effect
-      (if (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+      (if (< (current-time) (-> *game-info* blackout-time))
           (set! (-> *setting-control* default bg-a-force) 1.0)
           (set! (-> *setting-control* default bg-a-force) 0.0)
           )

@@ -82,6 +82,8 @@ std::string TP_Type::print() const {
       return "<run-function-in-process-func>";
     case Kind::GET_ART_BY_NAME_METHOD:
       return "<get-art-by-name-method>";
+    case Kind::FIND_PARENT_METHOD_FUNCTION:
+      return "<find-parent-method-func>";
     case Kind::SYMBOL:
       return fmt::format("<sym {}>", m_str);
     case Kind::INVALID:
@@ -146,6 +148,7 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION:
     case Kind::SET_TO_RUN_FUNCTION:
     case Kind::GET_ART_BY_NAME_METHOD:
+    case Kind::FIND_PARENT_METHOD_FUNCTION:
       return true;
     case Kind::INVALID:
     default:
@@ -215,6 +218,9 @@ TypeSpec TP_Type::typespec() const {
     case Kind::SET_TO_RUN_FUNCTION:
       // give a general function so we can't call it normally.
       return TypeSpec("function");
+    case Kind::FIND_PARENT_METHOD_FUNCTION:
+      // hard-coded here. Needed so that we can properly analyze reg use for the call.
+      return TypeSpec("function", {TypeSpec("type"), TypeSpec("int"), TypeSpec("function")});
     case Kind::GET_ART_BY_NAME_METHOD:
       return m_ts;
     case Kind::SYMBOL:

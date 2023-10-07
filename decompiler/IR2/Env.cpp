@@ -66,7 +66,7 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
 
 void Env::set_remap_for_method(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
-  m_var_remap["a0-0"] = "obj";
+  m_var_remap["a0-0"] = "this";
   for (int i = 1; i < nargs; i++) {
     m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 1));
   }
@@ -610,6 +610,22 @@ std::optional<std::string> Env::get_art_elt_name(int idx) const {
     const auto& art_group = it->second;
     auto it2 = art_group.find(idx);
     if (it2 == art_group.end()) {
+      return {};
+    } else {
+      return it2->second;
+    }
+  }
+}
+
+std::optional<std::string> Env::get_joint_node_name(int idx) const {
+  ASSERT(dts);
+  auto it = dts->jg_info.find(joint_geo());
+  if (it == dts->jg_info.end()) {
+    return {};
+  } else {
+    const auto& jg = it->second;
+    auto it2 = jg.find(idx);
+    if (it2 == jg.end()) {
       return {};
     } else {
       return it2->second;
