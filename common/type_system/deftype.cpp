@@ -699,7 +699,7 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
 
         auto& tag_val = rest->as_pair()->car;
 
-        if (tag_name == "behavior") {
+        if (std::string_view(tag_name) == "behavior") {
           if (!type_system->fully_defined_type_exists(tag_val.as_symbol().name_ptr) &&
               !type_system->partially_defined_type_exists(tag_val.as_symbol().name_ptr)) {
             throw std::runtime_error(

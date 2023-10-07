@@ -3537,7 +3537,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
             Form* so_group_f = nullptr;
             if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
               so_group_f = pool.form<ConstantTokenElement>(
-                  elt_group->elts().at(0)->to_form(env).as_symbol()->name);
+                  elt_group->elts().at(0)->to_form(env).as_symbol().name_ptr);
             }
             auto so_positional_f = arg_forms.at(6);
             if (so_positional_f->to_form(env).is_symbol("#t")) {

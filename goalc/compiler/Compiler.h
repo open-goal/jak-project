@@ -97,7 +97,7 @@ class Compiler {
   MakeSystem& make_system() { return m_make; }
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
-  std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name) const;
+  std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
 
  private:
   GameVersion m_version;
@@ -223,7 +223,7 @@ class Compiler {
                 const std::unordered_map<std::string,
                                          std::pair<bool, std::optional<goos::ObjectType>>>& named);
   const std::string& as_string(const goos::Object& o);
-  const std::string& symbol_string(const goos::Object& o);
+  std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
   goos::Object unquote(const goos::Object& o);
   bool is_quoted_sym(const goos::Object& o);

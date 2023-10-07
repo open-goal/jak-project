@@ -239,7 +239,7 @@ Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object
     throw_compiler_error(form, "Cannot .load-sym this. Got a {}.", dest->print());
   }
 
-  env->emit_ir<IR_GetSymbolValueAsm>(form, color, dest, sym_name, sext);
+  env->emit_ir<IR_GetSymbolValueAsm>(form, color, dest, sym_name.name_ptr, sext);
   return get_none();
 }
 

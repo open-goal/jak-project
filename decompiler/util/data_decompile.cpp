@@ -343,7 +343,7 @@ s32 word_as_s32(const LinkedWord& w) {
 
 std::string print_def(const goos::Object& obj) {
   if (obj.is_pair() && obj.as_pair()->car.is_symbol() &&
-      obj.as_pair()->car.as_symbol()->name == "quote") {
+      obj.as_pair()->car.as_symbol() == "quote") {
     auto& rest = obj.as_pair()->cdr;
     if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list()) {
       return fmt::format("'{}", rest.as_pair()->car.print());

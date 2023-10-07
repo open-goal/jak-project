@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
     if (!cmd.empty()) {
       compiler = std::make_unique<Compiler>(game_version);
       compiler->run_front_end_on_string(cmd);
-      printf("total alloc count is %d or %d", number_of_allocs, alloc_count2);
+      printf("total alloc count is %d", number_of_allocs);
       return 0;
     }
   } catch (std::exception& e) {

@@ -43,6 +43,7 @@
  *
  */
 
+#include <cstring>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -51,7 +52,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <cstring>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
@@ -456,14 +456,41 @@ class PairObject : public HeapObject {
   ~PairObject() = default;
 };
 
+class EnvironmentMap {
+ public:
+  EnvironmentMap(const EnvironmentMap&) = delete;
+  EnvironmentMap& operator=(const EnvironmentMap&) = delete;
+  EnvironmentMap();
+  Object* lookup(InternedSymbolPtr ptr);
+  void set(InternedSymbolPtr ptr, const Object& obj);
+  void clear();
+
+ private:
+  struct Entry {
+    const char* key = nullptr;
+    Object value;
+  };
+  std::vector<Entry> m_entries;
+
+  void resize();
+  int m_power_of_two_size = 0;
+  int m_used_entries = 0;
+  int m_next_resize = 0;
+  u32 m_mask = 0;
+  static constexpr float kMaxUsed = 0.7;
+};
+
 class EnvironmentObject : public HeapObject {
  public:
   std::string name;
   std::shared_ptr<EnvironmentObject> parent_env;
 
-  // the symbols will be stored in the symbol table and never removed, so we don't need shared
-  // pointers here.
-  std::unordered_map<InternedSymbolPtr, Object, InternedSymbolPtr::hash> vars;
+  // note: this is keyed on the address in the symbol table.
+  EnvironmentMap vars;
+
+  // this find work by any name string
+  Object* find(const char* n, SymbolTable* st) { return vars.lookup(st->intern(n)); }
+  Object* find(InternedSymbolPtr ptr) { return vars.lookup(ptr); }
 
   EnvironmentObject() = default;
 
@@ -495,11 +522,8 @@ class EnvironmentObject : public HeapObject {
 
   std::string inspect() const override {
     std::string result = "[environment]\n  name: " + name +
-                         "\n  parent: " + (parent_env ? parent_env->print() : "NONE") +
-                         "\n  vars:\n";
-    for (const auto& kv : vars) {
-      result += std::string("    ") + kv.first.name_ptr + ": " + kv.second.print() + "\n";
-    }
+                         "\n  parent: " + (parent_env ? parent_env->print() : "NONE") + "\n";
+
     return result;
   }
 };

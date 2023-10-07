@@ -369,18 +369,19 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   auto result = parse_deftype(rest, &m_ts, &m_global_constants);
 
   // look up the type name
-  auto kv = m_symbol_types.find(result.type.base_type());
+  auto kv = m_symbol_types.find(m_goos.intern_ptr(result.type.base_type()));
   if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
     // we already have something that's not a type with the same name, this is bad.
     lg::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
               kv->second.print());
   }
   // remember that this is a type
-  m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
+  m_symbol_types[m_goos.intern_ptr(result.type.base_type())] = m_ts.make_typespec("type");
 
   // add declared states
   for (auto& state : result.type_info->get_states_declared_for_type()) {
-    auto existing_type = m_symbol_types.find(state.first);
+    auto interned_state_first = m_goos.intern_ptr(state.first);
+    auto existing_type = m_symbol_types.find(interned_state_first);
     if (existing_type != m_symbol_types.end() && existing_type->second != state.second) {
       if (m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form, "deftype would redefine the type of state {} from {} to {}.",
@@ -394,7 +395,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
       }
     }
 
-    m_symbol_types[state.first] = state.second;
+    m_symbol_types[interned_state_first] = state.second;
     m_symbol_info.add_fwd_dec(state.first, form);
   }
 
@@ -530,10 +531,10 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     self_var->set_rlet_constraint(constr.desired_register);
     new_func_env->constrain(constr);
 
-    if (new_func_env->params.find("self") != new_func_env->params.end()) {
+    if (new_func_env->params.find(m_goos.intern_ptr("self")) != new_func_env->params.end()) {
       throw_compiler_error(form, "Cannot have an argument named self in a behavior");
     }
-    new_func_env->params["self"] = self_var;
+    new_func_env->params[m_goos.intern_ptr("self")] = self_var;
     reset_args_for_coloring.push_back(self_var);
     lambda_ts.add_new_tag("behavior", *behavior);
   }
@@ -551,7 +552,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     auto ireg = new_func_env->make_ireg(
         lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
     ireg->mark_as_settable();
-    if (!new_func_env->params.insert({lambda.params.at(i).name, ireg}).second) {
+    if (!new_func_env->params.insert({m_goos.intern_ptr(lambda.params.at(i).name), ireg}).second) {
       throw_compiler_error(form, "defmethod has multiple arguments named {}",
                            lambda.params.at(i).name);
     }
@@ -975,7 +976,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
                                 const goos::Object& type,
                                 const goos::Object* rest,
                                 Env* env) {
-  bool making_boxed_array = unquote(type).as_symbol()->name == "boxed-array";
+  bool making_boxed_array = unquote(type).as_symbol() == "boxed-array";
   TypeSpec main_type;
   if (!making_boxed_array) {
     main_type = parse_typespec(unquote(type), env);
@@ -1042,7 +1043,7 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
       if (making_boxed_array && !got_content_type) {
         got_content_type = true;
         if (o.is_symbol()) {
-          content_type = o.as_symbol()->name;
+          content_type = o.as_symbol().name_ptr;
           args.push_back(compile_get_symbol_value(form, content_type, env)->to_reg(form, env));
         } else {
           throw_compiler_error(form, "Invalid boxed-array type {}", o.print());
@@ -1070,7 +1071,7 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object* rest,
                                   Env* env) {
   auto unquoted_type = unquote(type);
-  const auto& sym_name = unquoted_type.as_symbol()->name;
+  const auto& sym_name = unquoted_type.as_symbol();
   // Check if the type is an array or a subtype of 'array'
   bool is_array = sym_name == "boxed-array" || sym_name == "array" || sym_name == "inline-array";
   if (!is_array) {
@@ -1369,14 +1370,14 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
   va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
 
   auto kind = symbol_string(args.unnamed.at(1));
-  auto type_name = symbol_string(args.unnamed.at(0));
+  auto type_name = args.unnamed.at(0).as_symbol();
 
-  m_ts.forward_declare_type_as(type_name, kind);
+  m_ts.forward_declare_type_as(type_name.name_ptr, kind);
 
   auto existing_type = m_symbol_types.find(type_name);
   if (existing_type != m_symbol_types.end() && existing_type->second != TypeSpec("type")) {
-    throw_compiler_error(form, "Cannot forward declare {} as a type: it is already a {}", type_name,
-                         existing_type->second.print());
+    throw_compiler_error(form, "Cannot forward declare {} as a type: it is already a {}",
+                         type_name.name_ptr, existing_type->second.print());
   }
   m_symbol_types[type_name] = TypeSpec("type");
 
@@ -1473,15 +1474,15 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto type_to_look_for = args.unnamed.at(0).as_symbol()->name;
+  auto type_to_look_for = args.unnamed.at(0).as_symbol();
 
-  if (!m_ts.fully_defined_type_exists(type_to_look_for)) {
+  if (!m_ts.fully_defined_type_exists(type_to_look_for.name_ptr)) {
     throw_compiler_error(
         form, "The type or enum {} given to size-of could not be found, or was not fully defined",
         args.unnamed.at(0).print());
   }
 
-  auto type = m_ts.lookup_type(type_to_look_for);
+  auto type = m_ts.lookup_type(type_to_look_for.name_ptr);
   auto as_value = dynamic_cast<ValueType*>(type);
   auto as_structure = dynamic_cast<StructureType*>(type);
 

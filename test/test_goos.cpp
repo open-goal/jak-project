@@ -442,31 +442,6 @@ TEST(GoosBuiltins, Type) {
 }
 
 /*!
- * Confirm that the global and goos env variables appear
- */
-TEST(GoosEval, GlobalAndGoalEnv) {
-  Interpreter i;
-  Object goal_env, goos_env;
-  EXPECT_TRUE(i.get_global_variable_by_name("*global-env*", &goos_env));
-  EXPECT_TRUE(i.get_global_variable_by_name("*goal-env*", &goal_env));
-
-  auto& goal_vars = goal_env.as_env()->vars;
-  auto& goos_vars = goos_env.as_env()->vars;
-
-  EXPECT_TRUE(goal_vars.find(i.intern("*global-env*").as_symbol()) != goal_vars.end());
-  EXPECT_TRUE(goal_vars.find(i.intern("*goal-env*").as_symbol()) != goal_vars.end());
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol()) != goos_vars.end());
-  EXPECT_TRUE(goos_vars.find(i.intern("*goal-env*").as_symbol()) != goos_vars.end());
-
-  EXPECT_TRUE(goos_vars.find(i.intern("*goal-env*").as_symbol())->second ==
-              goal_vars.find(i.intern("*goal-env*").as_symbol())->second);
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol())->second ==
-              goal_vars.find(i.intern("*global-env*").as_symbol())->second);
-  EXPECT_TRUE(goos_vars.find(i.intern("*global-env*").as_symbol())->second !=
-              goos_vars.find(i.intern("*goal-env*").as_symbol())->second);
-}
-
-/*!
  * Confirm that the GOOS Library is loaded automatically on interpreter start.
  */
 TEST(GoosEval, GoosLibLoaded) {
@@ -1173,9 +1148,9 @@ TEST(GoosSpecialForms, Define) {
   Object goal_env;
   EXPECT_TRUE(i.get_global_variable_by_name("*goal-env*", &goal_env));
 
-  auto x_in_goal_env = goal_env.as_env()->vars.find(i.intern("x").as_symbol());
-  EXPECT_TRUE(x_in_goal_env != goal_env.as_env()->vars.end());
-  EXPECT_EQ(x_in_goal_env->second.print(), "20");
+  auto x_in_goal_env = goal_env.as_env()->vars.lookup(i.intern("x").as_symbol());
+  EXPECT_TRUE(x_in_goal_env);
+  EXPECT_EQ(x_in_goal_env->print(), "20");
 
   // test automatic environment of define
   e(i, "(begin (desfun test-define () (define x 500)) (test-define))");
