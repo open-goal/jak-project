@@ -323,14 +323,14 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
     }
 
     // next try as a goal compiler form
-    auto kv_gfs = g_goal_forms.find(head_sym->name);
+    auto kv_gfs = g_goal_forms.find(head_sym.name_ptr);
     if (kv_gfs != g_goal_forms.end()) {
       auto& [docstring, func] = kv_gfs->second;
       return ((*this).*(func))(code, rest, env);
     }
 
     // next try as an enum
-    auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+    auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
     if (enum_type) {
       return compile_enum_lookup(code, enum_type, rest, env);
     }
@@ -388,7 +388,7 @@ SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
 Val* Compiler::compile_get_symbol_value(const goos::Object& form,
                                         const std::string& name,
                                         Env* env) {
-  auto existing_symbol = m_symbol_types.find(name);
+  auto existing_symbol = m_symbol_types.find(m_goos.intern_ptr(name));
   if (existing_symbol == m_symbol_types.end()) {
     throw_compiler_error(
         form, "The symbol {} was looked up as a global variable, but it does not exist.", name);
@@ -432,7 +432,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   }
 
   auto global_constant = m_global_constants.find(form.as_symbol());
-  auto existing_symbol = m_symbol_types.find(form.as_symbol()->name);
+  auto existing_symbol = m_symbol_types.find(form.as_symbol());
 
   // see if it's a constant
   if (global_constant != m_global_constants.end()) {

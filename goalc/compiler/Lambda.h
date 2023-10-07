@@ -6,7 +6,7 @@
 // note - we cannot easily reuse the GOOS argument system because GOAL's is slightly different.
 // there's no rest or keyword support.
 struct GoalArg {
-  std::string name;
+  std::string name;  // todo intern
   TypeSpec type;
 };
 
