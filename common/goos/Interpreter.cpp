@@ -90,6 +90,7 @@ Interpreter::Interpreter(const std::string& username) {
                       {"error", &Interpreter::eval_error},
                       {"string-ref", &Interpreter::eval_string_ref},
                       {"string-length", &Interpreter::eval_string_length},
+                      {"int->string", &Interpreter::eval_int_to_string},
                       {"string-append", &Interpreter::eval_string_append},
                       {"string-starts-with?", &Interpreter::eval_string_starts_with},
                       {"string-ends-with?", &Interpreter::eval_string_ends_with},
