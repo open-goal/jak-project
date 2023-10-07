@@ -160,6 +160,11 @@ void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::
 }
 
 std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string& child) const {
+  if (child == "process-tree")
+    return "basic";
+  if (child == "process")
+    return "process-tree";
+
   auto kv_tp = type_parents.find(child);
   if (kv_tp != type_parents.end()) {
     return kv_tp->second;
@@ -169,6 +174,15 @@ std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string&
 }
 
 bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) const {
+  if (type == "process-tree") {
+    *dest = ((u64)0xe << 32) + (0 << 16) + 0x24;
+    return true;
+  }
+  if (type == "process") {
+    *dest = ((u64)0xe << 32) + (0 << 16) + 0x80;
+    return true;
+  }
+
   auto kv = type_flags.find(type);
   if (kv != type_flags.end()) {
     *dest = kv->second;

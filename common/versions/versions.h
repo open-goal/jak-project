@@ -29,8 +29,11 @@ constexpr u32 ART_FILE_VERSION = 7;
 constexpr u32 LEVEL_FILE_VERSION = 36;
 constexpr u32 DGO_FILE_VERSION = 1;
 constexpr u32 TX_PAGE_VERSION = 8;
-
 }  // namespace jak2
+
+namespace jak3 {
+constexpr u32 ART_FILE_VERSION = 8;
+}
 
 }  // namespace versions
 
@@ -42,7 +45,7 @@ constexpr int KERNEL_VERSION_MINOR = 0;
 constexpr int IRX_VERSION_MAJOR = 2;
 constexpr int IRX_VERSION_MINOR = 0;
 
-enum class GameVersion { Jak1 = 1, Jak2 = 2 };
+enum class GameVersion { Jak1 = 1, Jak2 = 2, Jak3 = 3 };
 
 template <typename T>
 struct PerGameVersion {

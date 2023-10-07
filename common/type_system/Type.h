@@ -238,6 +238,9 @@ class Field {
   int offset() const { return m_offset; }
   bool skip_in_decomp() const { return m_skip_in_static_decomp; }
   bool user_placed() const { return m_placed_by_user; }
+  void set_comment(const std::string& comment) { m_comment = comment; }
+  const std::string& comment() const { return m_comment; }
+  bool has_comment() const { return !m_comment.empty(); }
   bool operator==(const Field& other) const;
   bool operator!=(const Field& other) const { return !((*this) == other); }
   std::string diff(const Field& other) const;
@@ -274,6 +277,7 @@ class Field {
   int m_alignment = -1;
   bool m_skip_in_static_decomp = false;
   bool m_placed_by_user = false;  // was this field placed manually by the user?
+  std::string m_comment;          // optional comment placed next to the field
 
   double m_field_score = 0.;
 

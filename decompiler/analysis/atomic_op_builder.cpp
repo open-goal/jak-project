@@ -1795,6 +1795,7 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
       process_offset = 44;
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       process_offset = 48;
       break;
     default:
