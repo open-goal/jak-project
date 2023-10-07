@@ -111,7 +111,7 @@ target_link_libraries(decompiler
 
 
 add_executable(extractor
-        extractor/main.cpp extractor/extractor_util.cpp)
+        extractor/main.cpp)
 
 target_link_libraries(extractor
         decomp

@@ -34,10 +34,18 @@ void IsoFile::Entry::print(std::string* result, const std::string& prefix) const
 namespace {
 constexpr int SECTOR_SIZE = 0x800;
 
+int fseek_64(FILE* fp, u64 offset, int origin) {
+#ifdef _WIN32
+  return _fseeki64(fp, offset, origin);
+#else
+  return fseek(fp, offset, origin);
+#endif
+}
+
 template <typename T>
 T read_file(FILE* fp, u32 sector, u32 offset_in_sector) {
   T result;
-  if (fseek(fp, sector * SECTOR_SIZE + offset_in_sector, SEEK_SET)) {
+  if (fseek_64(fp, u64(sector) * SECTOR_SIZE + offset_in_sector, SEEK_SET)) {
     ASSERT_MSG(false, "Failed to fseek iso");
   }
   if (fread(&result, sizeof(T), 1, fp) != 1) {
@@ -95,7 +103,7 @@ void unpack_entry(FILE* fp,
       lg::info("Extracting {}...", entry.name);
     }
     std::vector<u8> buffer(entry.size);
-    if (fseek(fp, entry.offset_in_file, SEEK_SET)) {
+    if (fseek_64(fp, entry.offset_in_file, SEEK_SET)) {
       ASSERT_MSG(false, "Failed to fseek iso when unpacking");
     }
     if (fread(buffer.data(), buffer.size(), 1, fp) != 1) {

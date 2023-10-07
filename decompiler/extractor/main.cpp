@@ -1,23 +1,21 @@
-#include <map>
-#include <regex>
-#include <unordered_map>
-
-#include "extractor_util.h"
-
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
 #include "common/util/read_iso_file.h"
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
-#include "decompiler/Disasm/OpcodeInfo.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "decompiler/config.h"
+#include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
+
+// used for - decompiler_out/<jak1> and iso_data/<jak1>
+const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
+                                                                      {"jak2", "jak2"}};
 
 IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
   lg::info(
@@ -52,6 +50,7 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   }
 
   // Find the game in our tracking database
+  const auto& iso_database = extractor_iso_database();
   auto dbEntry = iso_database.find(serial.value());
   if (dbEntry == iso_database.end()) {
     lg::error("Serial '{}' not found in the validation database", serial.value());
@@ -87,9 +86,13 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     return {std::nullopt, ExtractorErrorCode::VALIDATION_INCORRECT_EXTRACTION_COUNT};
   }
   // Check the ISO Hash
-  if (version_info.contents_hash != expected_hash) {
-    lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'",
-              version_info.contents_hash, expected_hash);
+  if (version_info.contents_hash.count(expected_hash) == 0) {
+    std::string all_expected;
+    for (const auto& hash : version_info.contents_hash) {
+      all_expected += fmt::format("{}, ", hash);
+    }
+    lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'", all_expected,
+              expected_hash);
     return {std::nullopt, ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
   }
 
@@ -193,6 +196,9 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   }
 }
 
+const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
+    {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
+
 ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& data_subfolder) {
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
@@ -226,8 +232,10 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   return ExtractorErrorCode::SUCCESS;
 }
 
-void launch_game() {
-  system(fmt::format("\"{}\"", (file_util::get_jak_project_dir() / "../gk").string()).c_str());
+void launch_game(const std::string& game_version) {
+  system(fmt::format("\"{}\" -g {}", (file_util::get_jak_project_dir() / "../gk").string(),
+                     game_version)
+             .c_str());
 }
 
 int main(int argc, char** argv) {
@@ -252,7 +260,7 @@ int main(int argc, char** argv) {
       ->required();
   app.add_option("--proj-path", project_path_override,
                  "Explicitly set the location of the 'data/' folder");
-  app.add_flag("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
+  app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
   app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
   app.add_flag("-v,--validate", flag_fail_on_validation,
@@ -413,7 +421,7 @@ int main(int argc, char** argv) {
   }
 
   if (flag_play) {
-    launch_game();
+    launch_game(game_name);
   }
 
   return 0;
