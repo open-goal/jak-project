@@ -36,9 +36,11 @@
   )
 
 (defmethod update-values hud-race-timer ((this hud-race-timer))
-  (set! (-> this values 0 target) (/ (the-as int (-> *game-info* race-timer)) #x4650))
-  (set! (-> this values 1 target) (/ (mod (the-as int (-> *game-info* race-timer)) #x4650) 300))
-  (set! (-> this values 2 target) (/ (mod (mod (the-as int (-> *game-info* race-timer)) #x4650) 300) 5))
+  (set! (-> this values 0 target) (/ (the-as int (-> *game-info* race-timer)) (seconds 60)))
+  (set! (-> this values 1 target) (/ (mod (the-as int (-> *game-info* race-timer)) (seconds 60)) (seconds 1)))
+  ;(set! (-> this values 2 target) (/ (mod (mod (the-as int (-> *game-info* race-timer)) (seconds 60)) (seconds 1)) (/ (seconds 1) 60)))
+  ;; og:preserve-this fix wrong hundredths counter...
+  (set! (-> this values 2 target) (/ (mod (mod (the-as int (-> *game-info* race-timer)) (seconds 60)) (seconds 1)) (seconds 0.01)))
   (logclear! (-> this flags) (hud-flags disable))
   ((method-of-type hud update-values) this)
   0
