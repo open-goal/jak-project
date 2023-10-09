@@ -527,7 +527,7 @@ void GlowRenderer::blit_depth(SharedRenderState* render_state) {
 
     glBindTexture(GL_TEXTURE_2D, m_ogl.probe_fbo_depth_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, m_ogl.probe_fbo_w, m_ogl.probe_fbo_h, 0,
-                 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+                 GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
