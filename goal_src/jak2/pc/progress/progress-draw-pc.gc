@@ -141,11 +141,9 @@
                                                                              (-> highscore-row place)) #f)) font-ctx #f 44 (bucket-id progress)))
       ;; draw cup icon if we're not the previous page
       (cond
-        ;; For speedruns, we can just draw the cup based on the index, it's not that complicated
+        ;; Just draw the cup based on the index if we're involving external times, it's not that complicated
         ((and (-> *pc-settings* speedrunner-mode?)
-              (= (-> *progress-pc-generic-store* current-highscore-page-index) 0)
-              (or (= (get-highscore-type (-> highscore-row index)) 'speedrun)
-                  (= (get-highscore-type (-> highscore-row index)) 'race)))
+              (= (-> *progress-pc-generic-store* current-highscore-page-index) 0))
           ;; TODO - enum
           (let ((place (case (-> highscore-row place)
                       ((0) 3)
@@ -309,6 +307,11 @@
 
 (defun progress-pc-get-external-time ((highscore-index int) (row-index int))
   (case highscore-index
+    ((0) (pc-get-external-highscore "scatter" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((1) (pc-get-external-highscore "blaster" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((2) (pc-get-external-highscore "vulcan" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((3) (pc-get-external-highscore "peacemaker" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((4) (pc-get-external-highscore "jetboard" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((5) (pc-get-external-race-time "class3" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((6) (pc-get-external-race-time "class2" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((7) (pc-get-external-race-time "class1" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
@@ -317,6 +320,8 @@
     ((10) (pc-get-external-race-time "class3rev" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((11) (pc-get-external-race-time "class2rev" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((12) (pc-get-external-race-time "class1rev" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((13) (pc-get-external-highscore "onin" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
+    ((14) (pc-get-external-highscore "mash" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((15) (pc-get-external-speedrun-time "any" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((16) (pc-get-external-speedrun-time "anyhoverless" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
     ((17) (pc-get-external-speedrun-time "allmissions" row-index *pc-cpp-temp-string* (&-> *progress-pc-generic-store* custom-highscore-score)))
@@ -354,16 +359,29 @@
     (set! (-> font-ctx scale) old-scale))
   (none))
 
-(defun progress-pc-get-next-race-time ((highscore-index int) (rows-already-printed int))
-  "Fetches the next value race time, merges with local times.  Score will be returned, name will be in [[*pc-cpp-temp-string*]]
+(defun progress-pc-is-higher-score-preferred? ((highscore-index int))
+  (case highscore-index
+    ((0) #t)
+    ((1) #t)
+    ((2) #t)
+    ((3) #t)
+    ((4) #t)
+    ((5) #t)
+    ((13) #t)
+    ((14) #t)
+    (else #f)))
+
+(defun progress-pc-get-next-external-score ((highscore-index int) (rows-already-printed int))
+  "Fetches the next valid score, merges with local scores.  Score will be returned, name will be in [[*pc-cpp-temp-string*]]
    this is a bit inefficient, but it lets us avoid keeping track of state"
   (let ((return-next-value? #f)
         (local-index 0)
         (external-index 0)
         (max-local-times (progress-pc-get-num-nonzero-local-scores highscore-index))
-        (max-external-times (progress-pc-max-external-race-times highscore-index))
+        (max-external-times (progress-pc-max-external-scores highscore-index))
         (times-enumerated 0)
-        (local-score-ptr (get-game-score-ref *game-info* (get-highscore-score highscore-index))))
+        (local-score-ptr (get-game-score-ref *game-info* (get-highscore-score highscore-index)))
+        (higher-score-preferred? (progress-pc-is-higher-score-preferred? highscore-index)))
     ;; first check if we should return the next value
     (while (< times-enumerated (progress-pc-max-highscore-rows highscore-index))
       (when (>= times-enumerated rows-already-printed)
@@ -373,7 +391,7 @@
         ((and (< local-index max-local-times) (< external-index max-external-times))
          (progress-pc-get-external-time highscore-index external-index)
          (cond
-           ((< (-> local-score-ptr local-index) (-> *progress-pc-generic-store* custom-highscore-score))
+           ((and (not higher-score-preferred?) (< (-> local-score-ptr local-index) (-> *progress-pc-generic-store* custom-highscore-score)))
             (inc! times-enumerated)
             (if return-next-value?
               (begin
@@ -534,21 +552,16 @@
                  (set! (-> highscore-row score) (-> *progress-pc-generic-store* custom-highscore-score))
                  (when (> (-> *progress-pc-generic-store* custom-highscore-score) 0)
                    (print-highscore-pc highscore-row *pc-cpp-temp-string*)))))
-            ((= (get-highscore-type (-> this page-index)) 'race)
-             ;; races are a bit more tricky, as we merge local times with external times
+            (else
+             ;; races and highscores are a bit more tricky as they may have local times
+             ;; so we merge them so you can see how you locally stack up against the competition
              (dotimes (row-index 8)
                (let* ((num-rows-already-printed (+ row-index (* (-> *progress-pc-generic-store* current-highscore-page-index) 8)))
-                      (score (progress-pc-get-next-race-time (-> this page-index) num-rows-already-printed)))
+                      (score (progress-pc-get-next-external-score (-> this page-index) num-rows-already-printed)))
                  (set! (-> highscore-row place) row-index)
                  (set! (-> highscore-row score) score)
                  (when (> score 0)
-                   (print-highscore-pc highscore-row *pc-cpp-temp-string*)))))
-            (else
-             (dotimes (row-index 8)
-               (set! (-> highscore-row place) row-index)
-               (set! (-> highscore-row score) (-> score-ptr row-index))
-               (print-highscore-pc highscore-row (the-as string #f))))
-            )
+                   (print-highscore-pc highscore-row *pc-cpp-temp-string*))))))
           (dotimes (row-index 8)
             (set! (-> highscore-row place) row-index)
             (set! (-> highscore-row score) (-> score-ptr row-index))
