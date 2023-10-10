@@ -5,215 +5,6 @@
 #include "game/kernel/jak2/kscheme.h"
 using ::jak2::intern_from_c;
 namespace Mips2C::jak2 {
-namespace draw_string {
-struct Cache {
-  void* font_work; // *font-work*
-  void* dma_buffer_free; // dma-buffer-free
-  void* draw_string_asm; // draw-string-asm
-  void* string; // string
-} cache;
-
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
-  u32 call_addr = 0;
-  c->daddiu(sp, sp, -80);                           // daddiu sp, sp, -80
-  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
-  c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
-  c->mov64(fp, t9);                                 // or fp, t9, r0
-  c->sq(s3, 16, sp);                                // sq s3, 16(sp)
-  c->sq(s4, 32, sp);                                // sq s4, 32(sp)
-  c->sq(s5, 48, sp);                                // sq s5, 48(sp)
-  c->sq(gp, 64, sp);                                // sq gp, 64(sp)
-  c->mov64(gp, a0);                                 // or gp, a0, r0
-  c->mov64(s5, a1);                                 // or s5, a1, r0
-  c->mov64(s4, a2);                                 // or s4, a2, r0
-  c->lui(v1, 17152);                                // lui v1, 17152
-  c->mtc1(f0, v1);                                  // mtc1 f0, v1
-  c->lwc1(f1, 76, s4);                              // lwc1 f1, 76(s4)
-  c->muls(f0, f0, f1);                              // mul.s f0, f0, f1
-  c->cvtws(f0, f0);                                 // cvt.w.s f0, f0
-  c->mfc1(v1, f0);                                  // mfc1 v1, f0
-  c->lq(a0, 12, s4);                                // lq a0, 12(s4)
-  c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  //beq r0, r0, L27                                 // beq r0, r0, L27
-  // nop                                            // sll r0, r0, 0
-  goto block_5;                                     // branch always
-
-
-  block_1:
-  c->addiu(a1, r0, 0);                              // addiu a1, r0, 0
-  //beq r0, r0, L26                                 // beq r0, r0, L26
-  // nop                                            // sll r0, r0, 0
-  goto block_3;                                     // branch always
-
-
-  block_2:
-  c->dsll(a2, a1, 2);                               // dsll a2, a1, 2
-  c->dsll(a3, a0, 4);                               // dsll a3, a0, 4
-  c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
-  c->load_symbol2(a3, cache.font_work);              // lw a3, *font-work*(s7)
-  c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
-  c->lwu(a2, 2160, a2);                             // lwu a2, 2160(a2)
-  // Unknown instr: ld a3, L164(fp)
-  c->gprs[a3].du64[0] = 0xffffffff'00ffffff;
-  c->and_(a2, a2, a3);                              // and a2, a2, a3
-  c->dsll32(a3, v1, 24);                            // dsll32 a3, v1, 24
-  c->dsrl32(a3, a3, 0);                             // dsrl32 a3, a3, 0
-  c->or_(a2, a2, a3);                               // or a2, a2, a3
-  c->dsll(a3, a1, 2);                               // dsll a3, a1, 2
-  c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
-  c->daddu(a3, a3, t0);                             // daddu a3, a3, t0
-  c->load_symbol2(t0, cache.font_work);              // lw t0, *font-work*(s7)
-  c->daddu(a3, a3, t0);                             // daddu a3, a3, t0
-  c->sw(a2, 2160, a3);                              // sw a2, 2160(a3)
-  c->daddiu(a1, a1, 1);                             // daddiu a1, a1, 1
-
-  block_3:
-  c->slti(a2, a1, 4);                               // slti a2, a1, 4
-  bc = c->sgpr64(a2) != 0;                          // bne a2, r0, L25
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_2;}                           // branch non-likely
-
-  c->mov64(a1, s7);                                 // or a1, s7, r0
-  c->mov64(a1, s7);                                 // or a1, s7, r0
-  c->daddiu(a0, a0, 1);                             // daddiu a0, a0, 1
-
-  block_5:
-  c->slti(a1, a0, 40);                              // slti a1, a0, 40
-  bc = c->sgpr64(a1) != 0;                          // bne a1, r0, L24
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_1;}                           // branch non-likely
-
-  c->mov64(a0, s7);                                 // or a0, s7, r0
-  c->mov64(a0, s7);                                 // or a0, s7, r0
-  c->load_symbol2(a0, cache.font_work);              // lw a0, *font-work*(s7)
-  c->sw(v1, 2156, a0);                              // sw v1, 2156(a0)
-  c->load_symbol2(t9, cache.dma_buffer_free);        // lw t9, dma-buffer-free(s7)
-  c->mov64(a0, s5);                                 // or a0, s5, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->mov64(s3, v0);                                 // or s3, v0, r0
-  c->mov64(a0, gp);                                 // or a0, gp, r0
-  c->load_symbol2(v1, cache.string);                 // lw v1, string(s7)
-  c->lwu(t9, 32, v1);                               // lwu t9, 32(v1)
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->mov64(v1, v0);                                 // or v1, v0, r0
-  c->dsll(v1, v1, 5);                               // dsll v1, v1, 5
-  c->sltu(v1, s3, v1);                              // sltu v1, s3, v1
-  bc = c->sgpr64(v1) == 0;                          // beq v1, r0, L28
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_8;}                           // branch non-likely
-
-  c->lq(v0, 12, s4);                                // lq v0, 12(s4)
-  c->mov128_gpr_gpr(v1, v0);                        // por v1, v0, r0
-  //beq r0, r0, L29                                 // beq r0, r0, L29
-  // nop                                            // sll r0, r0, 0
-  goto block_9;                                     // branch always
-
-
-  block_8:
-  c->load_symbol2(t9, cache.draw_string_asm);        // lw t9, draw-string-asm(s7)
-  c->mov64(a0, gp);                                 // or a0, gp, r0
-  c->mov64(a1, s5);                                 // or a1, s5, r0
-  c->mov64(a2, s4);                                 // or a2, s4, r0
-  call_addr = c->gprs[t9].du32[0];                  // function call:
-  c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  c->jalr(call_addr);                               // jalr ra, t9
-  c->mov128_gpr_gpr(v1, v0);                        // por v1, v0, r0
-
-  block_9:
-  c->addiu(v1, r0, 0);                              // addiu v1, r0, 0
-  //beq r0, r0, L33                                 // beq r0, r0, L33
-  // nop                                            // sll r0, r0, 0
-  goto block_14;                                    // branch always
-
-
-  block_10:
-  c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
-  //beq r0, r0, L32                                 // beq r0, r0, L32
-  // nop                                            // sll r0, r0, 0
-  goto block_12;                                    // branch always
-
-
-  block_11:
-  c->dsll(a1, a0, 2);                               // dsll a1, a0, 2
-  c->dsll(a2, v1, 4);                               // dsll a2, v1, 4
-  c->daddu(a1, a1, a2);                             // daddu a1, a1, a2
-  c->load_symbol2(a2, cache.font_work);              // lw a2, *font-work*(s7)
-  c->daddu(a1, a1, a2);                             // daddu a1, a1, a2
-  c->lwu(a1, 2160, a1);                             // lwu a1, 2160(a1)
-  // Unknown instr: ld a2, L164(fp)
-  c->gprs[a2].du64[0] = 0xffffffff'00ffffff;
-  c->and_(a1, a1, a2);                              // and a1, a1, a2
-  c->ori(a2, r0, 32768);                            // ori a2, r0, 32768
-  c->dsll(a2, a2, 16);                              // dsll a2, a2, 16
-  c->or_(a1, a1, a2);                               // or a1, a1, a2
-  c->dsll(a2, a0, 2);                               // dsll a2, a0, 2
-  c->dsll(a3, v1, 4);                               // dsll a3, v1, 4
-  c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
-  c->load_symbol2(a3, cache.font_work);              // lw a3, *font-work*(s7)
-  c->daddu(a2, a2, a3);                             // daddu a2, a2, a3
-  c->sw(a1, 2160, a2);                              // sw a1, 2160(a2)
-  c->daddiu(a0, a0, 1);                             // daddiu a0, a0, 1
-
-  block_12:
-  c->slti(a1, a0, 4);                               // slti a1, a0, 4
-  bc = c->sgpr64(a1) != 0;                          // bne a1, r0, L31
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_11;}                          // branch non-likely
-
-  c->mov64(a0, s7);                                 // or a0, s7, r0
-  c->mov64(a0, s7);                                 // or a0, s7, r0
-  c->daddiu(v1, v1, 1);                             // daddiu v1, v1, 1
-
-  block_14:
-  c->slti(a0, v1, 40);                              // slti a0, v1, 40
-  bc = c->sgpr64(a0) != 0;                          // bne a0, r0, L30
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_10;}                          // branch non-likely
-
-  c->mov64(v1, s7);                                 // or v1, s7, r0
-  c->mov64(v1, s7);                                 // or v1, s7, r0
-  c->addiu(v1, r0, 128);                            // addiu v1, r0, 128
-  c->load_symbol2(a0, cache.font_work);              // lw a0, *font-work*(s7)
-  c->sw(v1, 2156, a0);                              // sw v1, 2156(a0)
-  c->ld(ra, 0, sp);                                 // ld ra, 0(sp)
-  c->ld(fp, 8, sp);                                 // ld fp, 8(sp)
-  c->lq(gp, 64, sp);                                // lq gp, 64(sp)
-  c->lq(s5, 48, sp);                                // lq s5, 48(sp)
-  c->lq(s4, 32, sp);                                // lq s4, 32(sp)
-  c->lq(s3, 16, sp);                                // lq s3, 16(sp)
-  //jr ra                                           // jr ra
-  c->daddiu(sp, sp, 80);                            // daddiu sp, sp, 80
-  goto end_of_function;                             // return
-
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  end_of_function:
-  return c->gprs[v0].du64[0];
-}
-
-void link() {
-  cache.font_work = intern_from_c("*font-work*").c();
-  cache.dma_buffer_free = intern_from_c("dma-buffer-free").c();
-  cache.draw_string_asm = intern_from_c("draw-string-asm").c();
-  cache.string = intern_from_c("string").c();
-  gLinkedFunctionTable.reg("draw-string", execute, 512);
-}
-
-} // namespace draw_string
-} // namespace Mips2C
-
-//--------------------------MIPS2C---------------------
-// clang-format off
-#include "game/mips2c/mips2c_private.h"
-#include "game/kernel/jak2/kscheme.h"
-using ::jak2::intern_from_c;
-namespace Mips2C::jak2 {
 namespace get_string_length {
 struct Cache {
   void* font_work; // *font-work*
@@ -614,10 +405,16 @@ u64 execute(void* ctxt) {
 
   block_60:
   c->vsub(DEST::xyzw, vf23, vf23, vf24);            // vsub.xyzw vf23, vf23, vf24
-  c->load_symbol2(v1, cache.video_params);           // lw v1, *video-params*(s7)
-  c->mov64(v1, v1);                                 // or v1, v1, r0
-  c->lqc2(vf1, 16, v1);                             // lqc2 vf1, 16(v1)
-  c->vmul(DEST::x, vf23, vf23, vf1);                // vmul.x vf23, vf23, vf1
+  // pc-hack
+  c->lw(v1, 64, a1);                                // lw v1, 64(a1)
+  if (!(c->gprs[v1].du32[0] & (1 << 6))) {
+    // pc-hack flag
+    c->load_symbol2(v1, cache.video_params);           // lw v1, *video-params*(s7)
+    c->mov64(v1, v1);                                 // or v1, v1, r0
+    c->lqc2(vf1, 16, v1);                             // lqc2 vf1, 16(v1)
+    c->vmul(DEST::x, vf23, vf23, vf1);                // vmul.x vf23, vf23, vf1
+  }
+  // pc-hack end
   c->lqc2(vf1, 44, a1);                             // lqc2 vf1, 44(a1)
   c->vmul_bc(DEST::x, BC::w, vf23, vf23, vf1);      // vmulw.x vf23, vf23, vf1
   c->mov128_gpr_vf(v0, vf23);                       // qmfc2.i v0, vf23
@@ -636,7 +433,8 @@ void link() {
   cache.font12_table = intern_from_c("*font12-table*").c();
   cache.font24_table = intern_from_c("*font24-table*").c();
   cache.video_params = intern_from_c("*video-params*").c();
-  gLinkedFunctionTable.reg("get-string-length", execute, 512);
+  // gLinkedFunctionTable.reg("get-string-length", execute, 512);
+  gLinkedFunctionTable.reg("get-string-length-asm", execute, 512);
 }
 
 } // namespace get_string_length
@@ -666,10 +464,6 @@ u64 execute(void* ctxt) {
   c->lqc2(vf26, 812, v1);                           // lqc2 vf26, 812(v1)
   c->lqc2(vf27, 812, v1);                           // lqc2 vf27, 812(v1)
   // shadow hack begin
-  c->load_symbol2(v1, cache.video_params);
-  c->lw(t0, 16, v1);
-  c->vfs[vf26].f[0] += c->gprs[t0].f[0] * 2;
-  c->vfs[vf26].f[1] += 1;
   // c->vadd_bc(DEST::xy, BC::w, vf26, vf26, vf0);     // vaddw.xy vf26, vf26, vf0
   // c->vadd_bc(DEST::x, BC::w, vf26, vf26, vf0);      // vaddw.x vf26, vf26, vf0
   // shadow hack end
@@ -683,12 +477,29 @@ u64 execute(void* ctxt) {
   c->lqc2(vf31, 48, v1);                            // lqc2 vf31, 48(v1)
   c->load_symbol2(v1, cache.video_params);           // lw v1, *video-params*(s7)
   c->mov64(v1, v1);                                 // or v1, v1, r0
+  // shadow hack begin
+  c->lw(t0, 16, v1);    // lw t0, 16(v1)
+  // mmultiply shadow offset by font scale and screen x scale
+  c->vfs[vf26].f[0] += c->gprs[t0].f[0] * 2;
+  c->vfs[vf26].f[1] += 1;
+  // shadow hack end
   c->lqc2(vf1, 32, v1);                             // lqc2 vf1, 32(v1)
   c->vdiv(vf0, BC::w, vf25, BC::w);                 // vdiv Q, vf0.w, vf25.w
   c->lqc2(vf2, 16, v1);                             // lqc2 vf2, 16(v1)
   c->vmul(DEST::x, vf25, vf25, vf1);                // vmul.x vf25, vf25, vf1
   c->vmul(DEST::x, vf23, vf23, vf1);                // vmul.x vf23, vf23, vf1
-  c->vmul(DEST::x, vf24, vf24, vf1);                // vmul.x vf24, vf24, vf1
+  // pc-hack
+  c->lw(v1, 64, a2);                                // lw v1, 64(a2)
+  if (!(c->gprs[v1].du32[0] & (1 << 6))) {
+    // pc-hack flag
+    c->vmul(DEST::x, vf24, vf24, vf1);                // vmul.x vf24, vf24, vf1
+  }
+  if (!(c->gprs[v1].du32[0] & (1 << 5))) {
+    // small font, readjust shadow
+    c->vfs[vf26].f[0] -= (c->gprs[t0].f[0] * 2) - (c->vfs[vf25].f[3] * c->gprs[t0].f[0] * 2);
+    c->vfs[vf26].f[1] -= 1 - (c->vfs[vf25].f[3] * 1);
+  }
+  // pc-hack end
   c->vwaitq();                                      // vwaitq
   c->vmulq(DEST::xy, vf25, vf25);                   // vmulq.xy vf25, vf25, Q
   c->vmulq(DEST::xy, vf23, vf23);                   // vmulq.xy vf23, vf23, Q

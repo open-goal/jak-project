@@ -113,7 +113,7 @@
                                  )
                                )
               )
-        (ja :group! (-> self draw art-group data 4))
+        (ja :group! gondola-idle-up-ja)
         )
       (else
         (set! (-> self anim) (new 'static 'spool-anim
@@ -130,34 +130,35 @@
                                  )
                                )
               )
-        (ja :group! (-> self draw art-group data 3))
+        (ja :group! gondola-idle-down-ja)
         )
       )
     (transform-post)
     (loop
-      (when (and *target* (and (< (vector-vector-distance
-                                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
-                                    (target-pos 0)
-                                    )
-                                  81920.0
-                                  )
-                               (not (movie?))
-                               (not (level-hint-displayed?))
-                               (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3))
-                               ;; og:preserve-this fix gondola spool not loading because it's "too far away" (technically)
-                               (#if (not PC_PORT)
-                                    (file-status *art-control* (-> self anim name) 0)
-                                    (begin
-                                      (spool-push *art-control* (-> self anim name) 0 self (vector-vector-distance
-                                                                                                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
-                                                                                                  (target-pos 0)))
-                                      (file-status *art-control* (-> self anim name) 0))
-                                    )
-                               )
+      (when (and *target*
+                 (and (< (vector-vector-distance
+                           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index gondola-lod0-jg main))
+                           (target-pos 0)
+                           )
+                         81920.0
+                         )
+                      (not (movie?))
+                      (not (level-hint-displayed?))
+                      (time-elapsed? (-> self state-time) (seconds 3))
+                      ;; og:preserve-this fix gondola spool not loading because it's "too far away" (technically)
+                      (#if (not PC_PORT)
+                          (file-status *art-control* (-> self anim name) 0)
+                          (begin
+                            (spool-push *art-control* (-> self anim name) 0 self (vector-vector-distance
+                                                                                        (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3))
+                                                                                        (target-pos 0)))
+                            (file-status *art-control* (-> self anim name) 0))
+                          )
+                      )
                  )
         (let ((s3-0 (get-reminder (get-task-control (game-task village3-button)) 2))
               (s4-1 (and *cheat-mode* (cpad-hold? 0 l3)))
-              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+              (s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index gondola-lod0-jg main)))
               )
           (cond
             ((not (or s4-1 (task-closed? (game-task village3-button) (task-status need-hint))))
@@ -255,8 +256,8 @@
       (process-spawn othercam self 4 #f #t :to self)
       (ja-play-spooled-anim
         (-> self anim)
-        (the-as art-joint-anim (-> self draw art-group data 3))
-        (the-as art-joint-anim (-> self draw art-group data 4))
+        (the-as art-joint-anim gondola-idle-down-ja)
+        (the-as art-joint-anim gondola-idle-up-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (remove-setting! 'sound-flava)
@@ -296,8 +297,8 @@
       (process-spawn othercam self 4 #f #t :to self)
       (ja-play-spooled-anim
         (-> self anim)
-        (the-as art-joint-anim (-> self draw art-group data 4))
-        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as art-joint-anim gondola-idle-up-ja)
+        (the-as art-joint-anim gondola-idle-down-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (remove-setting! 'sound-flava)

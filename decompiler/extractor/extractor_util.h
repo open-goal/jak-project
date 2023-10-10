@@ -1,19 +1,13 @@
 #pragma once
 
 #include <optional>
-#include <regex>
+#include <set>
 #include <unordered_map>
 
-#include "common/log/log.h"
-#include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include "common/util/json_util.h"
 #include "common/util/read_iso_file.h"
 
-#include "game/kernel/common/kboot.h"
-
 #include "third-party/json.hpp"
-#include "third-party/zstd/lib/common/xxhash.h"
 
 enum class ExtractorErrorCode {
   SUCCESS = 0,
@@ -33,30 +27,21 @@ enum class ExtractorErrorCode {
 
 enum GameIsoFlags { FLAG_JAK1_BLACK_LABEL = (1 << 0) };
 
-extern const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names;
-
-extern const std::unordered_map<int, std::string> game_iso_territory_map;
-
-// used for - decompiler_out/<jak1> and iso_data/<jak1>
-extern const std::unordered_map<std::string, std::string> data_subfolders;
-
 std::string get_territory_name(int territory);
 
 struct ISOMetadata {
   std::string canonical_name;
   int region;  // territory code
   int num_files;
-  uint64_t contents_hash;
+  std::set<uint64_t> contents_hash;
   std::string decomp_config_version;
   std::string game_name;
   std::vector<std::string> flags;
 };
 
-extern const ISOMetadata jak1_ntsc_black_label_info;
-
 // { SERIAL : { ELF_HASH : ISOMetadataDatabase } }
-extern const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>
-    iso_database;
+const std::unordered_map<std::string, std::unordered_map<uint64_t, ISOMetadata>>&
+extractor_iso_database();
 
 // This is all we need to re-fetch info from the database
 // - if this changes such that we have a collision in the future,

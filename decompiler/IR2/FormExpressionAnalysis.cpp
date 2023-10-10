@@ -2621,7 +2621,9 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
-FormElement* SetFormFormElement::make_set_time(const Env& env, FormPool& pool, FormStack& stack) {
+FormElement* SetFormFormElement::make_set_time(const Env& /*env*/,
+                                               FormPool& pool,
+                                               FormStack& /*stack*/) {
   auto matcher = match(
       Matcher::op(GenericOpMatcher::func(Matcher::constant_token("current-time")), {}), m_src);
   if (matcher.matched) {
@@ -3535,7 +3537,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
             Form* so_group_f = nullptr;
             if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
               so_group_f = pool.form<ConstantTokenElement>(
-                  elt_group->elts().at(0)->to_form(env).as_symbol()->name);
+                  elt_group->elts().at(0)->to_form(env).as_symbol().name_ptr);
             }
             auto so_positional_f = arg_forms.at(6);
             if (so_positional_f->to_form(env).is_symbol("#t")) {
@@ -3908,6 +3910,39 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
+  // detect call-parent-method
+  {
+    const auto& guessed_name = env.func->guessed_name;
+    if (guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+      // detect stuff like: ((find-parent-method...) arg...)
+      auto mr_find_parent =
+          match(Matcher::func(Matcher::symbol("find-parent-method"),
+                              {Matcher::symbol(env.func->method_of_type),
+                               Matcher::integer(env.func->guessed_name.method_id)}),
+                unstacked.at(0)
+
+          );
+      if (mr_find_parent.matched) {
+        new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("call-parent-method")),
+            arg_forms);
+      }
+    } else if (guessed_name.kind == FunctionName::FunctionKind::V_STATE && arg_forms.size() == 2) {
+      // here, simply detect (find-parent-method...)
+      //
+      auto mr_find_parent = match(Matcher::symbol("find-parent-method"), unstacked.at(0));
+      if (mr_find_parent.matched) {
+        auto state_info =
+            env.dts->ts.lookup_method(guessed_name.type_name, guessed_name.state_name);
+        if (arg_forms.at(0)->to_string(env) == guessed_name.type_name &&
+            arg_forms.at(1)->to_string(env) == std::to_string(state_info.id)) {
+          new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("find-parent-state")));
+        }
+      }
+    }
+  }
+
   result->push_back(new_form);
 }
 
@@ -3936,6 +3971,33 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
     } else {
       lg::error("function `{}`: did not find art element {} in {}", env.func->name(),
                 mr.maps.ints.at(0), env.art_group());
+    }
+  }
+
+  return nullptr;
+}
+
+GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
+  auto mr =
+      match(Matcher::deref(Matcher::s6(), false,
+                           {DerefTokenMatcher::string("node-list"),
+                            DerefTokenMatcher::string("data"), DerefTokenMatcher::any_integer(0)}),
+            this);
+
+  if (mr.matched) {
+    // lg::print("func {} joint-geo: {}\n", env.func->name(), env.joint_geo());
+    auto info = env.dts->jg_info;
+    std::vector<Form*> args;
+    auto joint_name = env.get_joint_node_name(mr.maps.ints.at(0));
+    args.push_back(pool.form<ConstantTokenElement>(env.joint_geo()));
+    if (joint_name) {
+      args.push_back(pool.form<ConstantTokenElement>(joint_name.value()));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("joint-node-index")),
+          args);
+    } else {
+      lg::error("function `{}`: did not find joint node {} in {}", env.func->name(),
+                mr.maps.ints.at(0), env.joint_geo());
     }
   }
 
@@ -4010,6 +4072,12 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_art = try_as_art_const(env, pool);
   if (as_art) {
     result->push_back(as_art);
+    return;
+  }
+
+  auto as_jnode = try_as_joint_node_index(env, pool);
+  if (as_jnode) {
+    result->push_back(as_jnode);
     return;
   }
 

@@ -147,7 +147,7 @@ void set_file(const std::string& filename,
     existing_log_files = file_util::sort_filepaths(existing_log_files, true);
     if (existing_log_files.size() > (LOG_ROTATE_MAX - 1)) {
       lg::info("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
-      for (int i = 0; i < existing_log_files.size() - (LOG_ROTATE_MAX - 1); i++) {
+      for (int i = 0; i < (int)existing_log_files.size() - (LOG_ROTATE_MAX - 1); i++) {
         lg::info("removing {}", existing_log_files.at(i).string());
         fs::remove(existing_log_files.at(i));
       }

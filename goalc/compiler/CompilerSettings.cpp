@@ -19,7 +19,7 @@ void CompilerSettings::set(const std::string& name, const goos::Object& value) {
 
   kv->second.value = value;
   if (kv->second.boolp) {
-    *kv->second.boolp = !(value.is_symbol() && value.as_symbol()->name == "#f");
+    *kv->second.boolp = !(value.is_symbol() && value.as_symbol() == "#f");
   }
 }
 

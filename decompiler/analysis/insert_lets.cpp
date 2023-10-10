@@ -1281,7 +1281,7 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       }
 
       auto group_lisp = strip_cast("art-joint-anim", arg_group)->to_form(env);
-      if (group_lisp.is_symbol() && group_lisp.as_symbol()->name == "#f") {
+      if (group_lisp.is_symbol() && group_lisp.as_symbol() == "#f") {
         arg_group = nullptr;
       }
 

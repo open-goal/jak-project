@@ -44,6 +44,7 @@ class TP_Type {
     SET_TO_RUN_FUNCTION,
     GET_ART_BY_NAME_METHOD,
     SYMBOL,
+    FIND_PARENT_METHOD_FUNCTION,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -78,6 +79,7 @@ class TP_Type {
       case Kind::SET_TO_RUN_FUNCTION:
       case Kind::GET_ART_BY_NAME_METHOD:
       case Kind::NON_OBJECT_NEW_METHOD:
+      case Kind::FIND_PARENT_METHOD_FUNCTION:
       case Kind::SYMBOL:
         return false;
       case Kind::UNINITIALIZED:
@@ -320,6 +322,12 @@ class TP_Type {
     result.m_ts = method_ts;
     result.m_method_from_type = obj_ts;
     result.m_method_id = method_id;
+    return result;
+  }
+
+  static TP_Type make_find_parent_method_function() {
+    TP_Type result;
+    result.kind = Kind::FIND_PARENT_METHOD_FUNCTION;
     return result;
   }
 

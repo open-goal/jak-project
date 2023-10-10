@@ -286,7 +286,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
   try {
     auto objs = read_list(ts, false);
     if (add_top_level) {
-      return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+      return PairObject::make_new(Object::make_symbol(&symbolTable, "top-level"), objs);
     } else {
       return objs;
     }
@@ -459,12 +459,51 @@ bool Reader::read_array(TextStream& stream, Object& o) {
   return true;
 }
 
+struct ListBuilder {
+  Object head;
+  std::shared_ptr<PairObject> prev_tail;
+  std::shared_ptr<PairObject> tail;
+  int size = 0;
+
+  ListBuilder() { head = Object::make_empty_list(); }
+
+  void push_back(Object&& o) {
+    size++;
+    if (!tail) {
+      tail = std::make_shared<PairObject>(o, Object{});
+      head.type = ObjectType::PAIR;
+      head.heap_obj = tail;
+    } else {
+      auto next = std::make_shared<PairObject>(o, Object{});
+      tail->cdr.type = ObjectType::PAIR;
+      tail->cdr.heap_obj = next;
+      prev_tail = std::move(tail);
+      tail = std::move(next);
+    }
+  }
+
+  Object pop_back() {
+    auto obj = tail->car;
+    tail = std::move(prev_tail);
+    return obj;
+  }
+
+  void finalize() {
+    if (tail) {
+      tail->cdr = Object::make_empty_list();
+    } else {
+      head = Object::make_empty_list();
+    }
+  }
+};
+
 /*!
  * Call this on the character after the open paren.
  */
 Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
   ts.seek_past_whitespace_and_comments();
-  std::vector<Object> objects;
+  // std::vector<Object> objects;
+  ListBuilder list_builder;
 
   bool got_close_paren = false;      // does this list end?
   bool got_dot = false;              // did we get a . ?
@@ -506,22 +545,23 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     }
 
     // inserter function, used to properly insert a next object
-    auto insert_object = [&](const Object& o) {
+    auto insert_object = [&](Object&& o) {
       if (got_thing_after_dot) {
         throw_reader_error(ts, "A list cannot have multiple entries after the dot", -1);
       }
 
       if (reader_macro_string_stack.empty()) {
-        objects.push_back(o);
+        list_builder.push_back(std::move(o));
+        // objects.push_back(o);
       } else {
-        Object to_push_back = o;
+        Object to_push_back = std::move(o);
         while (!reader_macro_string_stack.empty()) {
-          to_push_back =
-              build_list({SymbolObject::make_new(symbolTable, reader_macro_string_stack.back()),
-                          to_push_back});
+          to_push_back = build_list(
+              {Object::make_symbol(&symbolTable, reader_macro_string_stack.back().c_str()),
+               to_push_back});
           reader_macro_string_stack.pop_back();
         }
-        objects.push_back(to_push_back);
+        list_builder.push_back(std::move(to_push_back));
       }
 
       // remember if we got an object after the dot
@@ -551,7 +591,7 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
 
       if (read_object(tok, ts, obj)) {
         ts.seek_past_whitespace_and_comments();
-        insert_object(obj);
+        insert_object(std::move(obj));
       } else {
         throw_reader_error(ts, "invalid token encountered in reader: " + tok.text,
                            -int(tok.text.size()));
@@ -574,12 +614,12 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
 
   // build up list or improper list, link it, and return!
   if (got_thing_after_dot) {
-    if (objects.size() < 2) {
+    if (list_builder.size < 2) {
       throw_reader_error(ts, "A list with a dot must have at least one thing before the dot", -1);
     }
-    auto back = objects.back();
-    objects.pop_back();
-    auto rv = build_list(objects);
+    auto back = list_builder.pop_back();
+    list_builder.finalize();
+    auto rv = list_builder.head;
 
     auto lst = rv;
     while (true) {
@@ -593,7 +633,8 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     db.link(rv, ts.text, start_offset);
     return rv;
   } else {
-    auto rv = build_list(std::move(objects));
+    list_builder.finalize();
+    auto rv = list_builder.head;
     db.link(rv, ts.text, start_offset);
     return rv;
   }
@@ -607,7 +648,7 @@ bool Reader::try_token_as_symbol(const Token& tok, Object& obj) {
   ASSERT(!tok.text.empty());
   char start = tok.text[0];
   if (m_valid_symbols_chars[(int)start]) {
-    obj = SymbolObject::make_new(symbolTable, tok.text);
+    obj = Object::make_symbol(&symbolTable, tok.text.c_str());
     return true;
   } else {
     return false;

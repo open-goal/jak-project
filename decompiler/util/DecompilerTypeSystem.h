@@ -37,6 +37,7 @@ class DecompilerTypeSystem {
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {
@@ -75,6 +76,15 @@ class DecompilerTypeSystem {
     }
     if (art_group_info.at(ag_name).count(elt_index) == 0) {
       art_group_info.at(ag_name)[elt_index] = elt_name;
+    }
+  }
+
+  void add_joint_node(const std::string& jg_name, const std::string& joint_name, int joint_idx) {
+    if (jg_info.count(jg_name) == 0) {
+      jg_info[jg_name] = {};
+    }
+    if (jg_info.at(jg_name).count(joint_idx) == 0) {
+      jg_info.at(jg_name)[joint_idx] = joint_name;
     }
   }
 

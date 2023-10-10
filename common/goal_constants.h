@@ -68,6 +68,8 @@ constexpr s32 max_symbols(GameVersion version) {
       return jak1::GOAL_MAX_SYMBOLS;
     case GameVersion::Jak2:
       return jak2::GOAL_MAX_SYMBOLS;
+    case GameVersion::Jak3:
+      return jak2::GOAL_MAX_SYMBOLS;
   }
 }
 

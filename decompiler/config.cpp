@@ -25,7 +25,7 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& json, const std:
 Config make_config_via_json(nlohmann::json& json) {
   Config config;
   int version_int = json.at("game_version").get<int>();
-  ASSERT(version_int == 1 || version_int == 2);
+  ASSERT(version_int == 1 || version_int == 2 || version_int == 3);
   config.game_version = (GameVersion)version_int;
   config.text_version = json.at("text_version").get<GameTextVersion>();
   config.game_name = json.at("game_name").get<std::string>();
@@ -56,6 +56,14 @@ Config make_config_via_json(nlohmann::json& json) {
     config.art_group_info_dump = serialized;
   }
 
+  if (json.contains("joint_node_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({json.at("joint_node_dump_file").get<std::string>()}));
+    std::unordered_map<std::string, std::unordered_map<int, std::string>> serialized =
+        parse_commented_json(json_data, "joint_node_dump_file");
+    config.jg_info_dump = serialized;
+  }
+
   if (json.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
   }
@@ -75,6 +83,7 @@ Config make_config_via_json(nlohmann::json& json) {
     config.process_subtitle_images = json.at("process_subtitle_images").get<bool>();
   }
   config.dump_art_group_info = json.at("dump_art_group_info").get<bool>();
+  config.dump_joint_geo_info = json.at("dump_joint_geo_info").get<bool>();
   config.hexdump_code = json.at("hexdump_code").get<bool>();
   config.hexdump_data = json.at("hexdump_data").get<bool>();
   config.find_functions = json.at("find_functions").get<bool>();
@@ -286,10 +295,10 @@ Config make_config_via_json(nlohmann::json& json) {
   }
 
   auto art_info_json = read_json_file_from_config(json, "art_info_file");
-  config.art_groups_by_file =
-      art_info_json.at("files").get<std::unordered_map<std::string, std::string>>();
-  config.art_groups_by_function =
-      art_info_json.at("functions").get<std::unordered_map<std::string, std::string>>();
+  config.art_group_type_remap =
+      art_info_json.at("type_remap").get<std::unordered_map<std::string, std::string>>();
+  config.joint_node_hacks =
+      art_info_json.at("joint_node_hacks").get<std::unordered_map<std::string, std::string>>();
 
   auto import_deps = read_json_file_from_config(json, "import_deps_file");
   config.import_deps_by_file =

@@ -64,13 +64,13 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
             "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
       }
 
-      if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+      if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol() != "new") {
         throw_compiler_error(
             field_value,
             "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
       }
 
-      if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol()->name != "static") {
+      if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol() != "static") {
         throw_compiler_error(
             field_value,
             "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
@@ -169,13 +169,12 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                "Inline field must be defined with (new 'static 'type-name ...)");
         }
 
-        if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+        if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol() != "new") {
           throw_compiler_error(field_value,
                                "Inline field must be defined with (new 'static 'type-name ...)");
         }
 
-        if (!is_quoted_sym(new_form.at(1)) ||
-            unquote(new_form.at(1)).as_symbol()->name != "static") {
+        if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol() != "static") {
           throw_compiler_error(field_value,
                                "Inline field must be defined with (new 'static 'type-name ...)");
         }
@@ -615,7 +614,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
         (can_macro && form.as_pair()->car.is_symbol("lambda"))) {
       return compile_static(form, env);
     }
-    if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol()->name == "unquote") {
+    if (form.as_pair()->car.is_symbol() && form.as_pair()->car.as_symbol() == "unquote") {
       // ,(macro-name args...) is actually (unquote (macro-name args...))
       // decompile the arg as macro if possible.
       // ,(lambda ...) is also a special case.
@@ -658,7 +657,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     }
     return StaticResult::make_constant_data(bint_val, TypeSpec("int32"));
   } else if (form.is_symbol()) {
-    return StaticResult::make_symbol(form.as_symbol()->name);
+    return StaticResult::make_symbol(form.as_symbol().name_ptr);
   } else if (form.is_empty_list()) {
     return StaticResult::make_symbol("_empty_");
   } else if (form.is_string()) {
@@ -695,9 +694,9 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
 
   if (form.is_symbol()) {
     // constant, #t, or #f
-    auto& name = form.as_symbol()->name;
+    auto& name = form.as_symbol();
     if (name == "#t" || name == "#f") {
-      return StaticResult::make_symbol(name);
+      return StaticResult::make_symbol(name.name_ptr);
     }
 
     // as a constant
@@ -715,7 +714,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
   } else if (form.is_int()) {
     return StaticResult::make_constant_data(form.as_int(), TypeSpec("integer"));
   } else if (is_quoted_sym(form)) {
-    return StaticResult::make_symbol(unquote(form).as_symbol()->name);
+    return StaticResult::make_symbol(unquote(form).as_symbol().name_ptr);
   } else if (form.is_string()) {
     // todo string pool
     auto obj = std::make_unique<StaticString>(form.as_string()->data, segment);
@@ -725,7 +724,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
   } else if (form.is_pair()) {
     auto first = form.as_pair()->car;
     auto rest = form.as_pair()->cdr;
-    if (first.is_symbol() && first.as_symbol()->name == "quote") {
+    if (first.is_symbol() && first.as_symbol() == "quote") {
       if (rest.is_pair()) {
         auto second = rest.as_pair()->car;
         if (!rest.as_pair()->cdr.is_empty_list()) {
@@ -739,14 +738,14 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
         }
       }
       throw_compiler_error(form, "The quoted form {} has no argument.", form.print());
-    } else if (first.is_symbol() && first.as_symbol()->name == "new") {
+    } else if (first.is_symbol() && first.as_symbol() == "new") {
       goos::Object constructor_args;
       auto args = get_list_as_vector(rest, &constructor_args, 2);
       if (args.size() < 2) {
         throw_compiler_error(form,
                              "New form evaluated at compile must specify (new 'static <type> ...)");
       }
-      if (!is_quoted_sym(args.at(0)) || unquote(args.at(0)).as_symbol()->name != "static") {
+      if (!is_quoted_sym(args.at(0)) || unquote(args.at(0)).as_symbol() != "static") {
         throw_compiler_error(form, "New form evaluated at compile time must use 'static. Got {}.",
                              args.at(0).print());
       }
@@ -757,11 +756,11 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       }
 
       auto unquoted_type = unquote(args.at(1));
-      if (unquoted_type.as_symbol()->name == "boxed-array") {
+      if (unquoted_type.as_symbol() == "boxed-array") {
         return fill_static_boxed_array(form, rest, env, segment, "array");
-      } else if (unquoted_type.as_symbol()->name == "array") {
+      } else if (unquoted_type.as_symbol() == "array") {
         return fill_static_array(form, rest, env, segment);
-      } else if (unquoted_type.as_symbol()->name == "inline-array") {
+      } else if (unquoted_type.as_symbol() == "inline-array") {
         return fill_static_inline_array(form, rest, env, segment);
       } else {
         auto ts = parse_typespec(unquoted_type, env);
@@ -792,7 +791,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           throw_compiler_error(form, "Cannot construct a static {}.", ts.print());
         }
       }
-    } else if (first.is_symbol() && first.as_symbol()->name == "the-as") {
+    } else if (first.is_symbol() && first.as_symbol() == "the-as") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
       auto type = parse_typespec(args.unnamed.at(0), env);
@@ -802,7 +801,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           return StaticResult::make_constant_data(value, TypeSpec("float"));
         }
       }
-    } else if (first.is_symbol() && first.as_symbol()->name == "the") {
+    } else if (first.is_symbol() && first.as_symbol() == "the") {
       auto args = get_va(form, rest);
       va_check(form, args, {{}, {}}, {});
       auto type = parse_typespec(args.unnamed.at(0), env);
@@ -817,7 +816,7 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       va_check(form, args, {goos::ObjectType::SYMBOL},
                {{{"method-count", {false, goos::ObjectType::INTEGER}}}});
 
-      auto type_name = args.unnamed.at(0).as_symbol()->name;
+      std::string type_name = args.unnamed.at(0).as_symbol().name_ptr;
 
       std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
       int method_count = -1;
@@ -878,7 +877,7 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
     // Special case for symbols that refer to types
     StaticResult sr;
     if (content_type == TypeSpec("type") && arg.is_symbol()) {
-      const auto& type_name = arg.as_symbol()->name;
+      std::string type_name = arg.as_symbol().name_ptr;
       std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
       if (!expected_method_count) {
         throw_compiler_error(form, "Undeclared type used in inline-array - {}", type_name);
@@ -1076,12 +1075,12 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
           elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
     }
 
-    if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+    if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol() != "new") {
       throw_compiler_error(
           elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
     }
 
-    if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol()->name != "static") {
+    if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol() != "static") {
       throw_compiler_error(
           elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
     }

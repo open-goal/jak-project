@@ -225,20 +225,22 @@
     )
   )
 
-(defsmacro let (bindings &rest body)
-  `((lambda ,(apply first bindings) ,@body)
-    ,@(apply second bindings)))
+;; These are now implemented in Interpreter.cpp for speed.
+;; But I leave these here because it was cool to implement them in GOOS itself.
+; (defsmacro let (bindings &rest body)
+;   `((lambda ,(apply first bindings) ,@body)
+;     ,@(apply second bindings)))
 
-(defsmacro let* (bindings &rest body)
-  (if (null? bindings)
-      `(begin ,@body)
-      `((lambda (,(caar bindings))
-	  (let* ,(cdr bindings) ,@body))
-	;;(begin ,@(cdar bindings))
-	,(car (cdar bindings))
-	)
-      )
-  )
+; (defsmacro let* (bindings &rest body)
+;   (if (null? bindings)
+;     `(begin ,@body)
+;     `((lambda (,(caar bindings))
+;      (let* ,(cdr bindings) ,@body))
+; 	;;(begin ,@(cdar bindings))
+; 	,(car (cdar bindings))
+; 	)
+;     )
+;   )
 
 (defsmacro dotimes (var &rest body)
   `(let (( ,(first var) 0))
@@ -490,6 +492,9 @@
 
 ;; a map for art definitions used by art loading code.
 (define *art-info* (make-string-hash-table))
+
+;; a map for joint node names used by art loading code.
+(define *jg-info* (make-string-hash-table))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;

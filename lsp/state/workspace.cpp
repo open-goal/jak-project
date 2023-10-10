@@ -131,11 +131,11 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
   if (m_tracked_all_types_files.count(all_types_uri) == 0) {
     return {};
   }
-  const auto& dts = m_tracked_all_types_files[all_types_uri].m_dts;
-  if (dts.symbol_metadata_map.count(symbol_name) == 0) {
+  const auto& dts = m_tracked_all_types_files[all_types_uri]->m_dts;
+  if (dts->symbol_metadata_map.count(symbol_name) == 0) {
     return {};
   }
-  return dts.symbol_metadata_map.at(symbol_name);
+  return dts->symbol_metadata_map.at(symbol_name);
 }
 
 // TODO - a gross hack that should go away when the language isn't so tightly coupled to the jak
@@ -219,9 +219,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
     if (!file.m_all_types_uri.empty()) {
       if (m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
         lg::debug("new all-types file - {}", file.m_all_types_uri);
-        m_tracked_all_types_files[file.m_all_types_uri] = WorkspaceAllTypesFile(
+        m_tracked_all_types_files[file.m_all_types_uri] = std::make_unique<WorkspaceAllTypesFile>(
             file.m_all_types_uri, file.m_game_version, file.m_all_types_file_path);
-        m_tracked_all_types_files[file.m_all_types_uri].parse_type_system();
+        m_tracked_all_types_files[file.m_all_types_uri]->parse_type_system();
       }
     }
   } else if (language_id == "opengoal") {
@@ -269,10 +269,10 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
     if (!file.m_all_types_uri.empty() &&
         m_tracked_all_types_files.count(file.m_all_types_uri) == 0) {
       auto& all_types_file = m_tracked_all_types_files[file.m_all_types_uri];
-      all_types_file.m_file_path = file.m_all_types_file_path;
-      all_types_file.m_uri = file.m_all_types_uri;
-      all_types_file.m_game_version = file.m_game_version;
-      all_types_file.update_type_system();
+      all_types_file->m_file_path = file.m_all_types_file_path;
+      all_types_file->m_uri = file.m_all_types_uri;
+      all_types_file->m_game_version = file.m_game_version;
+      all_types_file->update_type_system();
     }
   }
 
@@ -280,7 +280,7 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
     lg::debug("updating tracked all types file - {}", file_uri);
     // If the all-types file has changed, re-parse it
     // NOTE - this assumes its still for the same game version!
-    m_tracked_all_types_files[file_uri].update_type_system();
+    m_tracked_all_types_files[file_uri]->update_type_system();
   }
 };
 
@@ -504,11 +504,11 @@ std::optional<std::string> WorkspaceIRFile::get_symbol_at_position(
 
 void WorkspaceAllTypesFile::parse_type_system() {
   lg::debug("DTS Loading - '{}'", m_file_path.string());
-  m_dts.parse_type_defs({m_file_path.string()});
+  m_dts->parse_type_defs({m_file_path.string()});
   lg::debug("DTS Loaded At - '{}'", m_file_path.string());
 }
 
 void WorkspaceAllTypesFile::update_type_system() {
-  m_dts = decompiler::DecompilerTypeSystem(m_game_version);
+  m_dts = std::make_unique<decompiler::DecompilerTypeSystem>(m_game_version);
   parse_type_system();
 }

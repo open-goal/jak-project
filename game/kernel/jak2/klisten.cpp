@@ -178,7 +178,7 @@ int sql_query_sync(Ptr<String> string_in) {
       auto new_result_ptr = call_method_of_type_arg2(intern_from_c("debug").offset, type,
                                                      GOAL_NEW_METHOD, type.offset, results.size());
       SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
-      for (int i = 0; i < results.size(); i++) {
+      for (int i = 0; i < (int)results.size(); i++) {
         new_result->data[i] = Ptr<String>(make_debug_string_from_c(results.at(i).data()));
       }
       new_result->len = results.size();

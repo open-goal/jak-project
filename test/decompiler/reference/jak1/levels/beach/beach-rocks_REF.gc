@@ -267,7 +267,6 @@
   )
 
 ;; definition for method 7 of type beach-rock
-;; INFO: Return type mismatch none vs beach-rock.
 (defmethod relocate beach-rock ((this beach-rock) (arg0 int))
   (if (nonzero? (-> this part-falling))
       (set! (-> this part-falling) (the-as sparticle-launch-control (+ (the-as int (-> this part-falling)) arg0)))
@@ -275,10 +274,7 @@
   (if (nonzero? (-> this part-landing))
       (set! (-> this part-landing) (the-as sparticle-launch-control (+ (the-as int (-> this part-landing)) arg0)))
       )
-  (the-as
-    beach-rock
-    ((the-as (function process-drawable int none) (find-parent-method beach-rock 7)) this arg0)
-    )
+  (call-parent-method this arg0)
   )
 
 ;; definition for method 10 of type beach-rock
@@ -289,7 +285,7 @@
   (if (nonzero? (-> this part-landing))
       (kill-and-free-particles (-> this part-landing))
       )
-  ((the-as (function process-drawable none) (find-parent-method beach-rock 10)) this)
+  (call-parent-method this)
   (none)
   )
 
@@ -348,19 +344,34 @@
           )
         )
       (if (and (< 200.0 f30-0) (< f30-0 275.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 3)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg Lrocklrg))
+            )
           )
       (if (and (< 270.0 f30-0) (< f30-0 333.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg platformrock))
+            )
           )
       (if (and (< (-> self prev-frame) 333.0) (>= f30-0 333.0))
-          (spawn (-> self part-landing) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 4)))
+          (spawn
+            (-> self part-landing)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg platformrock))
+            )
           )
       (if (and (< 169.0 f30-0) (< f30-0 202.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 5)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg Rrocklrg))
+            )
           )
       (if (and (< 240.0 f30-0) (< f30-0 270.0))
-          (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 6)))
+          (spawn
+            (-> self part-falling)
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node-index lrocklrg-lod0-jg smlrock))
+            )
           )
       (set! (-> self prev-frame) f30-0)
       )
@@ -374,7 +385,7 @@
       )
     (logclear! (-> self draw status) (draw-status hidden))
     (ja-channel-set! 1)
-    (ja :group! (-> self draw art-group data 2) :num! min)
+    (ja :group! lrocklrg-idle-ja :num! min)
     (let ((gp-2 (ppointer->handle (process-spawn othercam self 7 #f #t :to self)))
           (s5-1 (ppointer->handle (process-spawn
                                     fuel-cell
@@ -396,8 +407,8 @@
           :parts 4
           :command-list '((-150 blackout 100) (-116 blackout 0))
           )
-        (the-as art-joint-anim (-> self draw art-group data 2))
-        (the-as art-joint-anim (-> self draw art-group data 3))
+        (the-as art-joint-anim lrocklrg-idle-ja)
+        (the-as art-joint-anim lrocklrg-fallen-ja)
         (the-as (function process-drawable symbol) false-func)
         )
       (process-entity-status! self (entity-perm-status complete) #t)
@@ -435,7 +446,7 @@
       *entity-pool*
       (game-task none)
       )
-    (ja :group! (-> self draw art-group data 3))
+    (ja :group! lrocklrg-fallen-ja)
     (compute-alignment! (-> self align))
     (let ((v1-6 (first-transform (-> self align))))
       (set! (-> self root-override trans quad) (-> self entity extra trans quad))
