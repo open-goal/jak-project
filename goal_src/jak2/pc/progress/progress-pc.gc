@@ -159,6 +159,30 @@
   (set! (-> *progress-state-pc* music-player-track) #f)
   )
 
+(defun progress-pc-fetch-external-times ((highscore-index int))
+  (when (-> *pc-settings* speedrunner-mode?)
+    (case highscore-index
+      ((0) (pc-fetch-external-highscores "scatter"))
+      ((1) (pc-fetch-external-highscores "blaster"))
+      ((2) (pc-fetch-external-highscores "vulcan"))
+      ((3) (pc-fetch-external-highscores "peacemaker"))
+      ((4) (pc-fetch-external-highscores "jetboard"))
+      ((5) (pc-fetch-external-race-times "class3"))
+      ((6) (pc-fetch-external-race-times "class2"))
+      ((7) (pc-fetch-external-race-times "class1"))
+      ((8) (pc-fetch-external-race-times "port"))
+      ((9) (pc-fetch-external-race-times "erol"))
+      ((10) (pc-fetch-external-race-times "class3rev"))
+      ((11) (pc-fetch-external-race-times "class2rev"))
+      ((12) (pc-fetch-external-race-times "class1rev"))
+      ((13) (pc-fetch-external-highscores "onin"))
+      ((14) (pc-fetch-external-highscores "mash"))
+      ((15) (pc-fetch-external-speedrun-times "any"))
+      ((16) (pc-fetch-external-speedrun-times "anyhoverless"))
+      ((17) (pc-fetch-external-speedrun-times "allmissions"))
+      ((18) (pc-fetch-external-speedrun-times "100"))
+      ((19) (pc-fetch-external-speedrun-times "anyorbs"))
+      ((20) (pc-fetch-external-speedrun-times "anyhero")))))
 
 (defmethod set-menu-options progress ((obj progress) (arg0 symbol))
   "Set the menu options for the menu state specified by arg0."
@@ -329,6 +353,9 @@
            0
            )
      (set! (-> obj current-options) *highscores-options*)
+     ;; ensure external data is fetched if applicable
+     (progress-pc-fetch-external-times 0)
+     (set! (-> *progress-pc-generic-store* current-highscore-page-index) 0)
      )
     (('secret)
      (set! (-> obj secret-buying) #f)
@@ -755,31 +782,6 @@
   0
   (none)
   )
-
-(defun progress-pc-fetch-external-times ((highscore-index int))
-  (when (-> *pc-settings* speedrunner-mode?)
-    (case highscore-index
-      ((0) (pc-fetch-external-highscores "scatter"))
-      ((1) (pc-fetch-external-highscores "blaster"))
-      ((2) (pc-fetch-external-highscores "vulcan"))
-      ((3) (pc-fetch-external-highscores "peacemaker"))
-      ((4) (pc-fetch-external-highscores "jetboard"))
-      ((5) (pc-fetch-external-race-times "class3"))
-      ((6) (pc-fetch-external-race-times "class2"))
-      ((7) (pc-fetch-external-race-times "class1"))
-      ((8) (pc-fetch-external-race-times "port"))
-      ((9) (pc-fetch-external-race-times "erol"))
-      ((10) (pc-fetch-external-race-times "class3rev"))
-      ((11) (pc-fetch-external-race-times "class2rev"))
-      ((12) (pc-fetch-external-race-times "class1rev"))
-      ((13) (pc-fetch-external-highscores "onin"))
-      ((14) (pc-fetch-external-highscores "mash"))
-      ((15) (pc-fetch-external-speedrun-times "any"))
-      ((16) (pc-fetch-external-speedrun-times "anyhoverless"))
-      ((17) (pc-fetch-external-speedrun-times "allmissions"))
-      ((18) (pc-fetch-external-speedrun-times "100"))
-      ((19) (pc-fetch-external-speedrun-times "anyorbs"))
-      ((20) (pc-fetch-external-speedrun-times "anyhero")))))
 
 ;; NOTE - this technically includes the gold/silver/bronze times
 ;; maybe figure out how to omit them eventually, (not sure if there is anything that differentiates them)
