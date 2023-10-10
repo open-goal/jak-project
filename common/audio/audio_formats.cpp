@@ -43,7 +43,7 @@ void write_wave_file(const std::vector<s16>& left_samples,
       writer.add(sample);
     }
   } else {
-    for (int i = 0; i < left_samples.size(); i++) {
+    for (size_t i = 0; i < left_samples.size(); i++) {
       writer.add(left_samples.at(i));
       if (i < right_samples.size()) {
         writer.add(right_samples.at(i));
@@ -86,8 +86,9 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
     u8 shift = shift_filter & 0b1111;
     u8 filter = shift_filter >> 4;
     u8 flags = reader.read<u8>();
+    (void)flags;
 
-    // removed assertions here
+    // removed assertions here (and that's probably why the audio doesn't sound right)
 
     u8 input_buffer[14];
 

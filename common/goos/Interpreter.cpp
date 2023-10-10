@@ -521,7 +521,7 @@ void Interpreter::vararg_check(
 /*!
  * Evaluate a list and return the result of the last evaluation.
  */
-Object Interpreter::eval_list_return_last(const Object& form,
+Object Interpreter::eval_list_return_last(const Object& /*form*/,
                                           Object rest,
                                           const std::shared_ptr<EnvironmentObject>& env) {
   if (rest.is_empty_list()) {

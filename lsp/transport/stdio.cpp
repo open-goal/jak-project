@@ -61,7 +61,7 @@ void MessageBuffer::handle_char(char c) {
     // we reach the length of the body as provided in the Content-Length
     // header.
     auto content_length = std::stoi(m_headers["Content-Length"]);
-    if (m_raw_message.length() == content_length) {
+    if (m_raw_message.length() == (size_t)content_length) {
       m_body = json::parse(m_raw_message);
       m_reading_content = false;
     }
