@@ -34,11 +34,12 @@ if args.info:
   print(file)
   sys.exit(0)
 
-valid_games = ["jak1", "jak2"]
+valid_games = ["jak1", "jak2", "jak3"]
 
 decomp_config_map = {
   "jak1": "jak1/jak1_config.jsonc",
   "jak2": "jak2/jak2_config.jsonc",
+  "jak3": "jak3/jak3_config.jsonc"
 }
 
 decomp_config_version_map = {
@@ -54,12 +55,17 @@ decomp_config_version_map = {
     "pal": "pal",
     "ntscjp": "jp",
     "ntscko": "kor"
+  },
+  # TODO other versions
+  "jak3": {
+    "ntscv1": "ntsc_v1"
   }
 }
 
 default_config_version_map = {
   "jak1": "ntsc_v1",
-  "jak2": "ntsc_v1"
+  "jak2": "ntsc_v1",
+  "jak3": "ntsc_v1"
 }
 
 if args.game:
