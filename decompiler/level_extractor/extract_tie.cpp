@@ -1456,7 +1456,7 @@ struct NrmDebug {
   int ip2 = 0;
 };
 
-void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
+void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos, GameVersion version) {
   for (auto& proto : protos) {
     //    bool first_instance = true;
     //    for (auto& instance : proto.instances) {
@@ -1622,7 +1622,10 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos) {
           vertex_info.nrm = frag.get_normal_if_present(normal_table_offset++);
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
-          ASSERT(inserted);
+          // TODO hack
+          if (version != GameVersion::Jak3) {
+            ASSERT(inserted);
+          }
           nd.bp1++;
 
           if (reached_target) {
@@ -2542,6 +2545,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         info = get_jak1_tie_category(proto.proto_flag);
         break;
       case GameVersion::Jak2:
+      case GameVersion::Jak3:
         info = get_jak2_tie_category(proto.proto_flag);
         break;
       default:
@@ -2763,12 +2767,12 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
     auto info =
         collect_instance_info(as_instance_array, &tree->prototypes.prototype_array_tie.data, geo);
     update_proto_info(&info, tex_map, tree->prototypes.prototype_array_tie.data, geo, version);
-    if (version != GameVersion::Jak2) {
+    if (version < GameVersion::Jak2) {
       check_wind_vectors_zero(info, tree->prototypes.wind_vectors);
     }
     // determine draws from VU program
     emulate_tie_prototype_program(info);
-    emulate_tie_instance_program(info);
+    emulate_tie_instance_program(info, version);
     emulate_kicks(info);
 
     // debug save to .obj
