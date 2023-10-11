@@ -12,8 +12,8 @@ namespace decompiler {
  */
 bool allowable_base_type_for_symbol_to_string(const TypeSpec& ts);
 
-constexpr PerGameVersion<int> SYMBOL_TO_STRING_MEM_OFFSET_DECOMP = {8167 * 8,
-                                                                    jak2::SYM_TO_STRING_OFFSET};
+constexpr PerGameVersion<int> SYMBOL_TO_STRING_MEM_OFFSET_DECOMP = {
+    8167 * 8, jak2::SYM_TO_STRING_OFFSET, jak3::SYM_TO_STRING_OFFSET};
 
-constexpr PerGameVersion<int> OFFSET_OF_NEXT_STATE_STORE = {72, 64};
+constexpr PerGameVersion<int> OFFSET_OF_NEXT_STATE_STORE = {72, 64, 68};
 }  // namespace decompiler

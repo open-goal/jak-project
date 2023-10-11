@@ -617,4 +617,20 @@ std::optional<std::string> Env::get_art_elt_name(int idx) const {
   }
 }
 
+std::optional<std::string> Env::get_joint_node_name(int idx) const {
+  ASSERT(dts);
+  auto it = dts->jg_info.find(joint_geo());
+  if (it == dts->jg_info.end()) {
+    return {};
+  } else {
+    const auto& jg = it->second;
+    auto it2 = jg.find(idx);
+    if (it2 == jg.end()) {
+      return {};
+    } else {
+      return it2->second;
+    }
+  }
+}
+
 }  // namespace decompiler

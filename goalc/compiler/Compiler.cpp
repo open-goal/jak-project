@@ -166,10 +166,10 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
     // the compiler doesn't waste much time.
     // the actual source code is (top-level ...) right now though so we need some tricks.
     code.as_pair()->cdr = PairObject::make_new(
-        PairObject::make_new(SymbolObject::make_new(m_goos.reader.symbolTable, "when"),
-                             PairObject::make_new(SymbolObject::make_new(m_goos.reader.symbolTable,
-                                                                         "*debug-segment*"),
-                                                  code.as_pair()->cdr)),
+        PairObject::make_new(
+            Object::make_symbol(&m_goos.reader.symbolTable, "when"),
+            PairObject::make_new(Object::make_symbol(&m_goos.reader.symbolTable, "*debug-segment*"),
+                                 code.as_pair()->cdr)),
         Object::make_empty_list());
     result = compile_error_guard(code, fe.get());
   }
@@ -252,7 +252,7 @@ void Compiler::color_object_file(FileEnv* env) {
     input.is_asm_function = f->is_asm_func;
     for (auto& i : f->code()) {
       input.instructions.push_back(i->to_rai());
-      input.debug_instruction_names.push_back(i->print());
+      // input.debug_instruction_names.push_back(i->print());
     }
 
     for (auto& reg_val : f->reg_vals()) {
@@ -385,7 +385,7 @@ void Compiler::setup_goos_forms() {
     va_check(form, args, {goos::ObjectType::SYMBOL}, {});
     std::vector<Object> enum_vals;
 
-    const auto& enum_name = args.unnamed.at(0).as_symbol()->name;
+    const auto& enum_name = args.unnamed.at(0).as_symbol().name_ptr;
     auto enum_type = m_ts.try_enum_lookup(enum_name);
     if (!enum_type) {
       throw_compiler_error(form, "Unknown enum {} in get-enum-vals", enum_name);

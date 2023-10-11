@@ -1569,6 +1569,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx, Ga
     case GameVersion::Jak1:
       return try_sc_as_type_of_jak1(pool, f, vtx);
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       return try_sc_as_type_of_jak2(pool, f, vtx);
     default:
       ASSERT(false);

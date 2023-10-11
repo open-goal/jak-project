@@ -25,7 +25,7 @@ class Interpreter {
   void set_global_variable_to_int(const std::string& name, int value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
-  HeapObject* intern_ptr(const std::string& name);
+  InternedSymbolPtr intern_ptr(const std::string& name);
   void disable_printfs();
   Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
   bool eval_symbol(const Object& sym,
@@ -55,7 +55,7 @@ class Interpreter {
  private:
   friend class Goal;
   void load_goos_library();
-  void define_var_in_env(Object& env, Object& var, const std::string& name);
+  void define_var_in_env(Object& env, const Object& var, const std::string& name);
   void expect_env(const Object& form, const Object& o);
   void vararg_check(
       const Object& form,
@@ -226,6 +226,9 @@ class Interpreter {
   Object eval_string_to_symbol(const Object& form,
                                Arguments& args,
                                const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_int_to_string(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
   Object eval_get_env(const Object& form,
                       Arguments& args,
                       const std::shared_ptr<EnvironmentObject>& env);
@@ -261,6 +264,16 @@ class Interpreter {
   Object eval_while(const Object& form,
                     const Object& rest,
                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_let(const Object& form,
+                  const Object& rest,
+                  const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_let_star(const Object& form,
+                       const Object& rest,
+                       const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_let_common(const Object& form,
+                         const Object& rest,
+                         const std::shared_ptr<EnvironmentObject>& env,
+                         bool star);
 
   Object eval_make_string_hash_table(const Object& form,
                                      Arguments& args,
@@ -272,26 +285,46 @@ class Interpreter {
                              Arguments& args,
                              const std::shared_ptr<EnvironmentObject>& env);
 
+  const Object& true_or_false(bool val);
+
+  void init_special_forms(
+      const std::unordered_map<std::string,
+                               Object (Interpreter::*)(const Object&,
+                                                       const Object&,
+                                                       const std::shared_ptr<EnvironmentObject>&)>&
+          forms);
+
+  void init_builtin_forms(
+      const std::unordered_map<std::string,
+                               Object (Interpreter::*)(const Object&,
+                                                       Arguments&,
+                                                       const std::shared_ptr<EnvironmentObject>&)>&
+          forms);
+
   bool want_exit = false;
   bool disable_printing = false;
 
-  std::unordered_map<std::string,
-                     Object (Interpreter::*)(const Object& form,
-                                             Arguments& args,
-                                             const std::shared_ptr<EnvironmentObject>& env)>
+  std::unordered_map<
+      void*,
+      Object (Interpreter::*)(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>
       builtin_forms;
 
-  std::unordered_map<
-      std::string,
-      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>
+  std::vector<std::pair<
+      void*,
+      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>>
       m_custom_forms;
-  std::unordered_map<std::string,
-                     Object (Interpreter::*)(const Object& form,
-                                             const Object& rest,
-                                             const std::shared_ptr<EnvironmentObject>& env)>
+
+  std::vector<std::pair<void*,
+                        Object (Interpreter::*)(const Object& form,
+                                                const Object& rest,
+                                                const std::shared_ptr<EnvironmentObject>& env)>>
       special_forms;
   int64_t gensym_id = 0;
 
   std::unordered_map<std::string, ObjectType> string_to_type;
+
+  const char* m_false_sym = nullptr;
+  const char* m_true_sym = nullptr;
+  Object m_false_object, m_true_object;
 };
 }  // namespace goos

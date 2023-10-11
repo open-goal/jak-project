@@ -219,10 +219,10 @@ const std::string& Compiler::as_string(const goos::Object& o) {
 }
 
 /*!
- * Convert a goos::Object that's a symbol to a std::string. Must be a string.
+ * Convert a goos::Object that's a symbol to a std::string. Must be a symbol.
  */
-const std::string& Compiler::symbol_string(const goos::Object& o) {
-  return o.as_symbol()->name;
+std::string Compiler::symbol_string(const goos::Object& o) {
+  return o.as_symbol().name_ptr;
 }
 
 /*!
@@ -257,7 +257,7 @@ bool Compiler::is_quoted_sym(const goos::Object& o) {
   if (o.is_pair()) {
     auto car = pair_car(o);
     auto cdr = pair_cdr(o);
-    if (car.is_symbol() && car.as_symbol()->name == "quote") {
+    if (car.is_symbol() && car.as_symbol() == "quote") {
       if (cdr.is_pair()) {
         auto thing = pair_car(cdr);
         if (thing.is_symbol()) {
@@ -348,10 +348,10 @@ bool Compiler::is_symbol(const TypeSpec& ts) {
 bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& boolean) {
   // todo try other things.
   if (boolean.is_symbol()) {
-    if (boolean.as_symbol()->name == "#t") {
+    if (boolean.as_symbol() == "#t") {
       return true;
     }
-    if (boolean.as_symbol()->name == "#f") {
+    if (boolean.as_symbol() == "#f") {
       return false;
     }
   }

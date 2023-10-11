@@ -54,7 +54,7 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       auto fas = first.as_symbol();
 
       // if there's a not, we can just try again to get an optimization with the invert flipped.
-      if (fas->name == "not") {
+      if (fas == "not") {
         if (!pair_cdr(rest).is_empty_list()) {
           throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
@@ -62,7 +62,7 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       }
 
       auto& conditions = invert ? conditions_inverted : conditions_normal;
-      auto nc_kv = conditions.find(fas->name);
+      auto nc_kv = conditions.find(fas.name_ptr);
 
       if (nc_kv != conditions.end()) {
         // it is an optimizable condition!
@@ -290,7 +290,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
 }
 
 Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env) {
-  std::string op_name = form.as_pair()->car.as_symbol()->name;
+  std::string op_name = form.as_pair()->car.as_symbol().name_ptr;
   bool is_and = false;
   if (op_name == "and") {
     is_and = true;
