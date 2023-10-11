@@ -113,7 +113,7 @@ Function* LinkedObjectFile::try_get_function_at_label(int label_id) {
 
 Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) {
   for (auto& func : functions_by_seg.at(label.target_segment)) {
-    // + 4 to skip past type tag to the first word, which is were the label points.
+    // + 4 to skip past type tag to the first word, which is where the label points.
     if (func.start_word * 4 + 4 == label.offset) {
       return &func;
     }
@@ -128,7 +128,7 @@ const Function* LinkedObjectFile::try_get_function_at_label(int label_id) const 
 
 const Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) const {
   for (auto& func : functions_by_seg.at(label.target_segment)) {
-    // + 4 to skip past type tag to the first word, which is were the label points.
+    // + 4 to skip past type tag to the first word, which is where the label points.
     if (func.start_word * 4 + 4 == label.offset) {
       return &func;
     }
@@ -156,7 +156,8 @@ bool LinkedObjectFile::pointer_link_word(int source_segment,
   ASSERT(word.kind() == LinkedWord::PLAIN_DATA);
 
   if (dest_offset / 4 > (int)words_by_seg.at(dest_segment).size()) {
-    //    printf("HACK bad link ignored!\n");
+    //    printf("HACK bad link ignored src %d, %d vs %d!\n", source_offset, dest_offset / 4,
+    //           int(words_by_seg.at(dest_segment).size()));
     return false;
   }
   ASSERT(dest_offset / 4 <= (int)words_by_seg.at(dest_segment).size());
