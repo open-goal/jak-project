@@ -465,7 +465,8 @@ void TieFragment::read_from_file(TypedRef ref,
       num_tris = read_plain_data_field<u16>(ref, "num-tris", dts);
       num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
       break;
-    case GameVersion::Jak2: {
+    case GameVersion::Jak2:
+    case GameVersion::Jak3: {
       auto debug_data_ref = TypedRef(deref_label(get_field_ref(ref, "debug", dts)),
                                      dts.ts.lookup_type("tie-fragment-debug"));
       num_tris = read_plain_data_field<u16>(debug_data_ref, "num-tris", dts);
@@ -950,6 +951,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       ASSERT(flags == 0 || flags == 2);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -1629,6 +1631,7 @@ void PrototypeBucketShrub::read_from_file(TypedRef ref,
       ASSERT(flags == 0 || flags == 2);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -2066,6 +2069,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       visible_list_length = read_plain_data_field<s32>(ref, "visible-list-length", dts);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
       break;
     default:
