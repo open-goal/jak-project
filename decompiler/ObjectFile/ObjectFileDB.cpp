@@ -884,7 +884,12 @@ struct JointGeo {
 void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
   const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
   for (size_t i = 0; i < jg.length; ++i) {
-    const auto& label = words.at((jg.offset / 4) + 7 + i).label_id();
+    u32 label = 0x0;
+    if (db.version() == GameVersion::Jak3) {
+      label = words.at((jg.offset / 4) + 11 + i).label_id();
+    } else {
+      label = words.at((jg.offset / 4) + 7 + i).label_id();
+    }
     const auto& joint = obj.linked_data.labels.at(label);
     const auto& name =
         obj.linked_data.get_goal_string_by_label(words.at(joint.offset / 4).label_id());
@@ -894,7 +899,7 @@ void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
 }
 
 void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
-  if (obj.obj_version == 4) {
+  if (obj.obj_version == 4 || (obj.obj_version == 5 && obj.linked_data.segments == 1)) {
     const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
     if (words.at(0).kind() == LinkedWord::Kind::TYPE_PTR &&
         words.at(0).symbol_name() == "art-group") {
@@ -940,6 +945,9 @@ void get_art_info(ObjectFileDB& db, ObjectFileData& obj) {
         } else if (elt_type == "art-joint-anim") {
           // the animations!
           unique_name += "-ja";
+        } else if (elt_type == "art-cloth-geo") {
+          // cloth geometry (jak 3)
+          unique_name += "-cg";
         } else {
           // the something idk!
           throw std::runtime_error(
