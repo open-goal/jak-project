@@ -732,6 +732,9 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
     case GameVersion::Jak2:
       animated_slots = jak2_animated_texture_slots();
       break;
+    case GameVersion::Jak3:
+      animated_slots = jak3_animated_texture_slots();
+      break;
     default:
       ASSERT_NOT_REACHED();
   }
