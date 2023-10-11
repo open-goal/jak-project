@@ -11,8 +11,9 @@
 
 void kmemcard_init_globals();
 
-constexpr PerGameVersion<s32> SAVE_SIZE(692, 1204);  // 691 for jak 1 v1
-constexpr PerGameVersion<s32> BANK_SIZE(0x10000, 0x20000);
+// TODO: jak 3 stubs
+constexpr PerGameVersion<s32> SAVE_SIZE(692, 1204, 0);  // 691 for jak 1 v1
+constexpr PerGameVersion<s32> BANK_SIZE(0x10000, 0x20000, 0x0);
 
 // each card can be in one of these states:
 enum class MemoryCardState : u32 {

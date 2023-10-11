@@ -856,7 +856,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         u32 tidx = (env >> 8) & 0b1111'1111'1111;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
-      case GameVersion::Jak2: {
+      case GameVersion::Jak2:
+      case GameVersion::Jak3: {
         u32 tpage = 0x1f;
         u32 tidx = 2;
         tex_combo = (((u32)tpage) << 16) | tidx;
@@ -891,7 +892,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
   bool use_alpha_blend = false;
   bool depth_write = true;
-  if (version == GameVersion::Jak2) {
+  // TODO check jak 3
+  if (version >= GameVersion::Jak2) {
     constexpr int kWaterTexture = 4;
     constexpr int kAlphaTexture = 3;
     if (input_effect.texture_index == kAlphaTexture) {
