@@ -482,6 +482,14 @@ struct ExecutionContext {
     gprs[dst].du32[3] = s.du32[3];
   }
 
+  void pexcw(int dst, int src) {
+    auto s = gpr_src(src);
+    gprs[dst].du32[0] = s.du32[0];
+    gprs[dst].du32[1] = s.du32[2];
+    gprs[dst].du32[2] = s.du32[1];
+    gprs[dst].du32[3] = s.du32[3];
+  }
+
   void pcgtw(int rd, int rs, int rt) {
     auto s = gpr_src(rs);
     auto t = gpr_src(rt);
