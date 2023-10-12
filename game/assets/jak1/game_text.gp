@@ -19,7 +19,8 @@
   (file-json 5 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_ja-JP.json"))
   (file-json 6 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_en-GB.json"))
   (file-json 7 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_pt-PT.json"))
-  (file-json 8 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_fi-FI.json"))
+  (file-json 8 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_fi-FI.json"
+                                  "game/assets/jak1/text/game_base_text_fi-FI.json"))
   (file-json 9 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_sv-SE.json"))
   (file-json 10 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_da-DK.json"))
   (file-json 11 jak1-v2 "common" '("game/assets/jak1/text/game_custom_text_no-NO.json"))
