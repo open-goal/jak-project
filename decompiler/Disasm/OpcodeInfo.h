@@ -182,6 +182,7 @@ enum class InstructionKind {
   PNOR,
   PCPYH,
   PINTEH,
+  PEXCW,
 
   // COP1 / FPU
   ADDS,
