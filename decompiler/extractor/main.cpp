@@ -172,6 +172,15 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   file_util::create_dir_if_needed(textures_out);
   file_util::write_text_file(textures_out / "tpage-dir.txt",
                              db.process_tpages(tex_db, textures_out, config));
+
+  // texture merges
+  // TODO - put all this stuff in somewhere common
+  auto texture_merge_path = file_util::get_jak_project_dir() / "game" / "assets" /
+                            game_version_names[config.game_version] / "texture_merges";
+  if (fs::exists(texture_merge_path)) {
+    tex_db.merge_textures(texture_merge_path);
+  }
+
   // texture replacements
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
