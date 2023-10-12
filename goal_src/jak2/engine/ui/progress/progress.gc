@@ -3082,39 +3082,37 @@
   0
   )
 
-(defmethod respond-progress menu-highscores-option ((this menu-highscores-option) (arg0 progress) (arg1 symbol))
+(defmethod respond-progress menu-highscores-option ((this menu-highscores-option) (progress progress) (selected? symbol))
   "Handle progress menu navigation logic."
-  (set! (-> arg0 sliding) (seek-ease
-                            (-> arg0 sliding)
-                            0.0
-                            (* 0.1 (-> self clock time-adjust-ratio))
-                            0.3
-                            (* 0.001 (-> self clock time-adjust-ratio))
-                            )
-        )
-  (set! (-> arg0 sliding-off) (seek-ease
-                                (-> arg0 sliding-off)
-                                1.0
+  (set! (-> progress sliding) (seek-ease
+                                (-> progress sliding)
+                                0.0
                                 (* 0.1 (-> self clock time-adjust-ratio))
-                                -0.3
+                                0.3
                                 (* 0.001 (-> self clock time-adjust-ratio))
                                 )
         )
+  (set! (-> progress sliding-off) (seek-ease
+                                    (-> progress sliding-off)
+                                    1.0
+                                    (* 0.1 (-> self clock time-adjust-ratio))
+                                    -0.3
+                                    (* 0.001 (-> self clock time-adjust-ratio))
+                                    )
+        )
   (when (-> *bigmap* progress-minimap)
-    (let ((s5-0 #f))
+    (let ((play-sound? #f))
       (cond
         ((or (cpad-pressed? 0 right l-analog-right)
-             (and (cpad-hold? 0 right l-analog-right)
-                  (>= (- (current-time) (-> this last-move)) (seconds 0.2))
-                  )
+             (and (cpad-hold? 0 right l-analog-right) (>= (- (current-time) (-> this last-move)) (seconds 0.2)))
              )
          (when (< 1 (get-num-highscores))
            (set! (-> this last-move) (current-time))
-           (set! s5-0 #t)
+           (set! play-sound? #t)
            (set! (-> this prev-page-index) (-> this page-index))
            (set! (-> this page-index) (get-next-highscore (-> this page-index)))
-           (set! (-> arg0 sliding) 1.0)
-           (set! (-> arg0 sliding-off) 0.0)
+           (set! (-> progress sliding) 1.0)
+           (set! (-> progress sliding-off) 0.0)
            (set! (-> this slide-dir) -1.0)
            )
          )
@@ -3125,25 +3123,25 @@
            (set! (-> this last-move) (current-time))
            (set! (-> this prev-page-index) (-> this page-index))
            (set! (-> this page-index) (get-prev-highscore (-> this page-index)))
-           (set! s5-0 #t)
-           (set! (-> arg0 sliding) -1.0)
-           (set! (-> arg0 sliding-off) 0.0)
+           (set! play-sound? #t)
+           (set! (-> progress sliding) -1.0)
+           (set! (-> progress sliding-off) 0.0)
            (set! (-> this slide-dir) 1.0)
            )
          )
         ((cpad-pressed? 0 triangle confirm)
          (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle confirm))
          (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle confirm))
-         (set! (-> arg0 sliding) 0.0)
-         (set! (-> arg0 sliding-off) 1.0)
+         (set! (-> progress sliding) 0.0)
+         (set! (-> progress sliding-off) 1.0)
          (if (!= (-> *progress-state* starting-state) 'title)
              (sound-play "window-contract")
              (sound-play "generic-beep")
              )
-         (pop-state arg0)
+         (pop-state progress)
          )
         )
-      (if s5-0
+      (if play-sound?
           (sound-play "score-slide")
           )
       )

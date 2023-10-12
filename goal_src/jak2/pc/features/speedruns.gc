@@ -60,6 +60,7 @@
   (when (and (-> *pc-settings* speedrunner-mode?)
              (-> this display-run-info?))
     (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
     (format *temp-string* "<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
             (the-as int (-> *pc-settings* cheats))
             (-> *pc-settings* target-fps)
@@ -67,6 +68,9 @@
             *pc-settings-built-sha*)
     (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
     (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
       (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 375 0.0 (font-color default) (font-flags right shadow kerning large))))
         (set! (-> font-ctx scale) 0.325)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))

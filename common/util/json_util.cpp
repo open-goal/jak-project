@@ -73,6 +73,15 @@ std::string strip_cpp_style_comments(const std::string& input) {
   return output;
 }
 
+std::optional<nlohmann::json> safe_parse_json(const std::string& input) {
+  json j = json::parse(input, nullptr, false);
+  if (j.is_discarded()) {
+    lg::error("Failed to parse json");
+    return {};
+  }
+  return j;
+}
+
 /*!
  * Parse JSON file with comments stripped. Unlike the default comment stripping feature
  * of nlohmann::json, this allows you to have multiple comments in a row!
