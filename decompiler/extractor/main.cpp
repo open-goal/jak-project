@@ -227,7 +227,7 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   if (version_info.game_name == "jak1") {
     compiler.make_system().set_constant("*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL));
     compiler.get_goos().set_global_variable_to_symbol(
-        "*jak1-full-game*", (flags & FLAG_JAK1_BLACK_LABEL) ? "#t" : "#f");
+        "*jak1-full-game*", !(flags & FLAG_JAK1_BLACK_LABEL) ? "#t" : "#f");
   }
 
   auto project_path = file_util::get_jak_project_dir() / "goal_src" / data_subfolder / "game.gp";
