@@ -421,3 +421,15 @@ u8 deref_u8(const Ref& ref, int byte) {
   memcpy(vals, &word.data, 4);
   return vals[total_offset & 3];
 }
+
+std::vector<int> find_objects_with_type(const decompiler::LinkedObjectFile& file,
+                                        const std::string& name) {
+  std::vector<int> result;
+  for (size_t i = 0; i < file.words_by_seg.at(0).size(); i++) {
+    const auto& word = file.words_by_seg[0][i];
+    if (word.kind() == decompiler::LinkedWord::TYPE_PTR && word.symbol_name() == name) {
+      result.push_back(i);
+    }
+  }
+  return result;
+}

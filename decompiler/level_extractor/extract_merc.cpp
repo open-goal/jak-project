@@ -181,20 +181,6 @@ MercCtrl extract_merc_ctrl(const LinkedObjectFile& file,
   return ctrl;
 }
 
-/*!
- * Find the word indices for the merc ctrls (the type tags)
- */
-std::vector<int> find_merc_ctrls(const LinkedObjectFile& file) {
-  std::vector<int> result;
-  for (size_t i = 0; i < file.words_by_seg.at(0).size(); i++) {
-    const auto& word = file.words_by_seg[0][i];
-    if (word.kind() == LinkedWord::TYPE_PTR && word.symbol_name() == "merc-ctrl") {
-      result.push_back(i);
-    }
-  }
-  return result;
-}
-
 namespace {
 /*!
  * Merc models tend to have strange texture ids. I don't really understand why.
@@ -1616,7 +1602,7 @@ void extract_merc(const ObjectFileData& ag_data,
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
   // find all merc-ctrls in the object file
-  auto ctrl_locations = find_merc_ctrls(ag_data.linked_data);
+  auto ctrl_locations = find_objects_with_type(ag_data.linked_data, "merc-ctrl");
 
   // extract them. this does very basic unpacking of data, as done by the VIF/DMA on PS2.
   std::vector<MercCtrl> ctrls;
