@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/util/FileUtil.h"
 
