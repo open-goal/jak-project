@@ -58,7 +58,8 @@ decomp_config_version_map = {
   },
   # TODO other versions
   "jak3": {
-    "ntscv1": "ntsc_v1"
+    "ntscv1": "ntsc_v1",
+    "pal": "pal"
   }
 }
 
