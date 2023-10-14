@@ -339,7 +339,7 @@ void extract_from_level(const ObjectFileDB& db,
                         const fs::path& output_folder,
                         const fs::path& entities_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
-    // lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
+    lg::warn("Skipping extract for {} because the DGO was not part of the input", dgo_name);
     return;
   }
   tfrag3::Level level_data;

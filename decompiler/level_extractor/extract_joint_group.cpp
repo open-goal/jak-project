@@ -8,9 +8,8 @@ namespace decompiler {
 
 void extract_joint_group(const ObjectFileData& ag_data,
                          const DecompilerTypeSystem& dts,
-                         GameVersion version,
+                         GameVersion /*version*/,
                          std::map<std::string, level_tools::ArtData>& out) {
-  fmt::print("extract joint group for {}\n", ag_data.name_in_dgo);
   auto locations = find_objects_with_type(ag_data.linked_data, "art-joint-geo");
   for (auto loc : locations) {
     TypedRef ref(Ref{&ag_data.linked_data, 0, loc * 4}, dts.ts.lookup_type("art-joint-geo"));
