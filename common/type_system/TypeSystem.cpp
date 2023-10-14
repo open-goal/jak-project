@@ -516,14 +516,13 @@ int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
 }
 
 MethodInfo TypeSystem::override_method(Type* type,
-                                       const std::string& /*type_name*/,
-                                       const int method_id,
+                                       const std::string& method_name,
                                        const std::optional<std::string>& docstring) {
   // Lookup the method from the parent type
   MethodInfo existing_info;
-  bool exists = try_lookup_method(type->get_parent(), method_id, &existing_info);
+  bool exists = try_lookup_method(type->get_parent(), method_name, &existing_info);
   if (!exists) {
-    throw_typesystem_error("Trying to use override a method that has no parent declaration");
+    throw_typesystem_error("Trying to override a method that has no parent declaration");
   }
   // use the existing ID.
   return type->add_method({existing_info.id, existing_info.name, existing_info.type,
@@ -554,8 +553,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                       const std::optional<std::string>& docstring,
                                       bool no_virtual,
                                       const TypeSpec& ts,
-                                      bool override_type,
-                                      int id) {
+                                      bool override_type) {
   if (method_name == "new") {
     if (override_type) {
       throw_typesystem_error("Cannot use :replace option with a new method.");
@@ -569,7 +567,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
 
   if (override_type) {
     if (!got_existing) {
-      if (id != -1 && try_lookup_method(type->get_parent(), id, &existing_info)) {
+      if (try_lookup_method(type->get_parent(), method_name, &existing_info)) {
       } else {
         throw_typesystem_error(
             "Cannot use :replace on method {} of {} because this method was not previously "
@@ -614,6 +612,34 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                no_virtual, false, false, docstring});
     }
   }
+}
+
+/*!
+ * Adds a new method that is overlayed on top of a different, existing method.
+ * This should be used basically never (happens once in Jak 1).
+ */
+MethodInfo TypeSystem::overlay_method(Type* type,
+                                      const std::string& method_name,
+                                      const std::string& method_overlay_name,
+                                      const std::optional<std::string>& docstring,
+                                      const TypeSpec& ts) {
+  // look up the method
+  MethodInfo existing_info;
+  bool got_existing = try_lookup_method(type, method_overlay_name, &existing_info);
+
+  if (!got_existing) {
+    if (try_lookup_method(type->get_parent(), method_overlay_name, &existing_info)) {
+    } else {
+      throw_typesystem_error(
+          "Cannot use :overlay-at on method {} of {} because this method was not previously "
+          "declared in a parent.",
+          method_overlay_name, type->get_name());
+    }
+  }
+
+  // use the existing ID.
+  return type->add_method(
+      {existing_info.id, method_name, ts, type->get_name(), false, true, false, docstring});
 }
 
 MethodInfo TypeSystem::define_method(const std::string& type_name,
@@ -1890,15 +1916,15 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   }
 
   auto method_count = get_next_method_id(type);
-  result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
-  result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
+  // result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
+  // result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
   TypeFlags flags;
   flags.heap_base = type->heap_base();
   flags.size = type->get_size_in_memory();
   flags.pad = 0;
   flags.methods = method_count;
 
-  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+  // result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
   if (!type->gen_inspect()) {
     result.append(":no-inspect\n  ");
   }
@@ -2007,7 +2033,6 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
 
   const std::string inline_string = ":inline";
   const std::string dynamic_string = ":dynamic";
-  bool has_offset_assert = false;
 
   // calculate longest strings needed, for basic linting
 
@@ -2044,9 +2069,6 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
       mods += dynamic_string.size();
     }
 
-    if (!field.user_placed()) {
-      has_offset_assert = true;
-    }
     longest_mods = std::max(longest_mods, mods);
   }
 
@@ -2071,38 +2093,31 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
     result += field.name();
     result.append(1 + (longest_field_name - int(field.name().size())), ' ');
     result += field.type().print();
-    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+    result.append(longest_type_name - int(field.type().print().size()), ' ');
 
     std::string mods;
     if (field.is_array() && !field.is_dynamic()) {
-      mods += std::to_string(field.array_size());
       mods += " ";
+      mods += std::to_string(field.array_size());
     }
 
     if (field.is_inline()) {
-      mods += inline_string;
       mods += " ";
+      mods += inline_string;
     }
 
     if (field.is_dynamic()) {
-      mods += dynamic_string;
       mods += " ";
+      mods += dynamic_string;
     }
 
     result.append(mods);
-    result.append(longest_mods - int(mods.size() - 1), ' ');
+    result.append(1 + (longest_mods - int(mods.size())), ' ');
 
-    if (!field.user_placed()) {
-      result.append(":offset-assert ");
-    } else {
-      if (has_offset_assert) {
-        result.append(":offset        ");
-      } else {
-        result.append(":offset ");
-      }
+    if (field.user_placed()) {
+      result.append(fmt::format(" :offset {:3d}", field.offset()));
     }
 
-    result.append(fmt::format("{:3d}", field.offset()));
     result.append(")\n   ");
   }
 

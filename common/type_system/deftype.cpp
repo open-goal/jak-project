@@ -276,13 +276,19 @@ void declare_method(Type* type,
     // - this effectively does a :replace without having to re-define the name and signature and
     // keep that in-sync
     std::string method_name;
+    std::string method_overlay_name;
     TypeSpec function_typespec("function");
     std::optional<std::string> docstring;
     goos::Object args;
     goos::Object return_type;
     bool no_virtual = false;
     bool replace_method = false;
+    bool overlay_method = false;
     bool overriding_doc = false;
+
+    // name
+    method_name = symbol_string(car(obj));
+    obj = cdr(obj);
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":override-doc")) {
       obj = cdr(obj);
@@ -296,10 +302,6 @@ void declare_method(Type* type,
     }
 
     if (!overriding_doc) {
-      // name
-      method_name = symbol_string(car(obj));
-      obj = cdr(obj);
-
       // docstring
       if (obj->is_pair() && car(obj).is_string()) {
         docstring = str_util::trim_newline_indents(car(obj).as_string()->data);
@@ -325,13 +327,9 @@ void declare_method(Type* type,
         } else if (keyword == ":replace") {
           replace_method = true;
         } else if (keyword == ":state") {
-          auto behavior_tag = function_typespec.try_get_tag("behavior");
           function_typespec = TypeSpec("state");
-          if (behavior_tag) {
-            function_typespec.add_new_tag("behavior", behavior_tag.value());
-          }
           // parse state docstrings if available
-          if (car(cdr(obj)).is_list()) {
+          if (!cdr(obj)->is_empty_list() && car(cdr(obj)).is_list()) {
             obj = cdr(obj);
             auto docstring_list = &car(obj);
             auto elem = docstring_list;
@@ -362,6 +360,13 @@ void declare_method(Type* type,
             throw std::runtime_error("Bad usage of :behavior in a method declaration");
           }
           function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
+        } else if (keyword == ":overlay-at") {
+          obj = cdr(obj);
+          if (!car(obj).is_symbol()) {
+            throw std::runtime_error("Invalid parameter to method overlay-at");
+          }
+          method_overlay_name = symbol_string(car(obj));
+          overlay_method = true;
         }
         obj = cdr(obj);
       }
@@ -373,36 +378,62 @@ void declare_method(Type* type,
       function_typespec.add_arg(parse_typespec(type_system, return_type));
     }
 
-    // determine the method id, it should be the last in the list
-    int id = -1;
-    if (!obj->is_empty_list() && car(obj).is_int()) {
-      auto& id_obj = car(obj);
-      id = get_int(id_obj);
-      obj = cdr(obj);
+    if (!obj->is_empty_list()) {
+      throw std::runtime_error(fmt::format("found unknown data in a method declaration:\n{}\n\n{}",
+                                           obj->print(), _obj.print()));
     }
 
-    if (!obj->is_empty_list()) {
-      throw std::runtime_error("found symbols after the `id` in a method defintion: " +
-                               def.print());
+    if (overlay_method && (no_virtual || replace_method)) {
+      throw std::runtime_error(
+          fmt::format("method {} in type {} has invalid combination of keywords", method_name,
+                      type->get_name()));
     }
 
     MethodInfo info;
     if (overriding_doc) {
-      info = type_system->override_method(type, method_name, id, docstring);
+      info = type_system->override_method(type, method_name, docstring);
+    } else if (overlay_method) {
+      info = type_system->overlay_method(type, method_name, method_overlay_name, docstring,
+                                         function_typespec);
     } else {
       info = type_system->declare_method(type, method_name, docstring, no_virtual,
-                                         function_typespec, replace_method, id);
+                                         function_typespec, replace_method);
     }
+  });
+}
 
-    // check the method assert
-    if (id != -1) {
-      // method id assert!
-      if (id != info.id) {
-        lg::print("WARNING - ID assert failed on method {} of type {} (wanted {} got {})\n",
-                  method_name.c_str(), type->get_name().c_str(), id, info.id);
-        throw std::runtime_error("Method ID assert failed");
+void declare_state_methods(Type* type,
+                           TypeSystem* type_system,
+                           const goos::Object& def,
+                           StructureDefResult& struct_def) {
+  for_each_in_list(def, [&](const goos::Object& _obj) {
+    auto obj = &_obj;
+    // either state-name or (state-name args...) or (state-name "docstring" args...)
+    std::string method_name;
+    TypeSpec function_typespec("state");
+    std::optional<std::string> docstring;
+
+    if (obj->is_symbol()) {
+      method_name = obj->as_symbol().name_ptr;
+    } else if (obj->is_list()) {
+      if (!car(obj).is_symbol()) {
+        throw std::runtime_error(
+            fmt::format("{} is not a valid name for a state-method", obj->print()));
       }
+      method_name = car(obj).as_symbol().name_ptr;
+      auto& args = *cdr(obj);
+      if (car(obj).is_string()) {
+        // docstring first
+        docstring = car(obj).as_string()->data;
+        obj = cdr(obj);
+      }
+      for_each_in_list(args, [&](const goos::Object& o) {
+        function_typespec.add_arg(parse_typespec(type_system, o));
+      });
     }
+    function_typespec.add_arg(TypeSpec(type->get_name()));
+
+    type_system->declare_method(type, method_name, docstring, false, function_typespec, false);
   });
 }
 
@@ -492,6 +523,8 @@ StructureDefResult parse_structure_def(
         declare_method(type, ts, *opt_list, result);
       } else if (list_name == ":states") {
         declare_state(type, ts, *opt_list, result);
+      } else if (list_name == ":state-methods") {
+        declare_state_methods(type, ts, *opt_list, result);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
