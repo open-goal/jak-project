@@ -32,11 +32,11 @@ void extract_joint_group(const ObjectFileData& ag_data,
       ASSERT(tjoint.type->get_name() == "joint");
       ASSERT(read_plain_data_field<int32_t>(tjoint, "number", dts) == i);
       njoint.name = read_string_field(tjoint, "name", dts, true);
+      memcpy_from_plain_data((u8*)njoint.bind_pose_T_w.data(),
+                             get_field_ref(tjoint, "bind-pose", dts), 4 * 4 * sizeof(float));
       if (get_word_kind_for_field(tjoint, "parent", dts) == LinkedWord::PTR) {
         auto pjoint = deref_label(get_field_ref(tjoint, "parent", dts));
         njoint.parent_idx = offset_to_joint.at(pjoint.byte_offset - 4);
-        memcpy_from_plain_data((u8*)njoint.bind_pose_T_w.data(),
-                               get_field_ref(tjoint, "bind-pose", dts), 4 * 4 * sizeof(float));
       } else {
         ASSERT(i == 0 || i == 1);
       }
