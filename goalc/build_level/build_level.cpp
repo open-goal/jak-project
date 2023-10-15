@@ -199,7 +199,6 @@ bool run_build_level(const std::string& input_file,
     db.process_tpages(tex_db, textures_out, config);
 
     std::vector<std::string> processed_art_groups;
-    std::vector<std::string> processed_textures;
 
     // find all art groups used by the custom level in other dgos
     if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
@@ -224,6 +223,7 @@ bool run_build_level(const std::string& input_file,
 
     // add textures
     if (level_json.contains("textures") && !level_json.at("textures").empty()) {
+      std::vector<std::string> processed_textures;
       std::vector<std::string> wanted_texs =
           level_json.at("textures").get<std::vector<std::string>>();
       // first check the texture is not already in the level
