@@ -172,7 +172,7 @@ bool run_build_level(const std::string& input_file,
       config = decompiler::read_config_file(
           file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc",
           version_info.decomp_config_version,
-          R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": []})");
+          R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": [], "save_texture_pngs": false})");
     } catch (const std::exception& e) {
       lg::error("Failed to parse config: {}", e.what());
       return false;
