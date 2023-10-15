@@ -144,7 +144,8 @@ bool run_build_level(const std::string& input_file,
 
   // Add textures and models
   // TODO remove hardcoded config settings
-  if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
+  if ((level_json.contains("art_groups") && !level_json.at("art_groups").empty()) ||
+      (level_json.contains("textures") && !level_json.at("textures").empty())) {
     fs::path iso_folder = "";
     lg::info("Looking for ISO path...");
     // TODO - add to file_util
@@ -171,7 +172,7 @@ bool run_build_level(const std::string& input_file,
       config = decompiler::read_config_file(
           file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc",
           version_info.decomp_config_version,
-          R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": []})");
+          R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": [], "save_texture_pngs": false})");
     } catch (const std::exception& e) {
       lg::error("Failed to parse config: {}", e.what());
       return false;
@@ -200,22 +201,53 @@ bool run_build_level(const std::string& input_file,
     std::vector<std::string> processed_art_groups;
 
     // find all art groups used by the custom level in other dgos
-    for (auto& dgo : config.dgo_names) {
-      // remove "DGO/" prefix
-      const auto& dgo_name = dgo.substr(4);
-      const auto& files = db.obj_files_by_dgo.at(dgo_name);
-      auto art_groups = find_art_groups(
-          processed_art_groups, level_json.at("art_groups").get<std::vector<std::string>>(), files);
-      if (art_groups.empty()) {
-        continue;
+    if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
+      for (auto& dgo : config.dgo_names) {
+        // remove "DGO/" prefix
+        const auto& dgo_name = dgo.substr(4);
+        const auto& files = db.obj_files_by_dgo.at(dgo_name);
+        auto art_groups =
+            find_art_groups(processed_art_groups,
+                            level_json.at("art_groups").get<std::vector<std::string>>(), files);
+        auto tex_remap = decompiler::extract_tex_remap(db, dgo_name);
+        for (const auto& ag : art_groups) {
+          if (ag.name.length() > 3 && !ag.name.compare(ag.name.length() - 3, 3, "-ag")) {
+            const auto& ag_file = db.lookup_record(ag);
+            lg::print("custom level: extracting art group {}\n", ag_file.name_in_dgo);
+            decompiler::extract_merc(ag_file, tex_db, db.dts, tex_remap, pc_level, false,
+                                     db.version());
+          }
+        }
       }
-      auto tex_remap = decompiler::extract_tex_remap(db, dgo_name);
-      for (const auto& ag : art_groups) {
-        if (ag.name.length() > 3 && !ag.name.compare(ag.name.length() - 3, 3, "-ag")) {
-          const auto& ag_file = db.lookup_record(ag);
-          lg::print("custom level: extracting art group {}\n", ag_file.name_in_dgo);
-          decompiler::extract_merc(ag_file, tex_db, db.dts, tex_remap, pc_level, false,
-                                   db.version());
+    }
+
+    // add textures
+    if (level_json.contains("textures") && !level_json.at("textures").empty()) {
+      std::vector<std::string> processed_textures;
+      std::vector<std::string> wanted_texs =
+          level_json.at("textures").get<std::vector<std::string>>();
+      // first check the texture is not already in the level
+      for (auto& level_tex : pc_level.textures) {
+        if (std::find(wanted_texs.begin(), wanted_texs.end(), level_tex.debug_name) !=
+            wanted_texs.end()) {
+          processed_textures.push_back(level_tex.debug_name);
+        }
+      }
+
+      // then add
+      for (auto& [id, tex] : tex_db.textures) {
+        for (auto& tex0 : wanted_texs) {
+          if (std::find(processed_textures.begin(), processed_textures.end(), tex.name) !=
+              processed_textures.end()) {
+            continue;
+          }
+          if (tex.name == tex0) {
+            lg::info("custom level: adding texture {} from tpage {} ({})", tex.name, tex.page,
+                     tex_db.tpage_names.at(tex.page));
+            pc_level.textures.push_back(
+                make_texture(id, tex, tex_db.tpage_names.at(tex.page), true));
+            processed_textures.push_back(tex.name);
+          }
         }
       }
     }
