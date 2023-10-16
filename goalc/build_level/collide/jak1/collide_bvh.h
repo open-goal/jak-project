@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "goalc/build_level/collide_common.h"
+#include "goalc/build_level/collide/common/collide_common.h"
 
 // requirements:
 // max depth of 3 (maybe?)
@@ -19,7 +19,7 @@ struct DrawNode {
 
 struct CollideFrag {
   math::Vector4f bsphere;
-  std::vector<CollideFace> faces;
+  std::vector<jak1::CollideFace> faces;
 };
 
 struct DrawableInlineArrayNode {
@@ -36,5 +36,5 @@ struct CollideTree {
   DrawableInlineArrayCollideFrag frags;
 };
 
-CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris);
+CollideTree construct_collide_bvh(const std::vector<jak1::CollideFace>& tris);
 }  // namespace collide

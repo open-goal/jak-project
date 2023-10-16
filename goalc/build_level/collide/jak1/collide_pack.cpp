@@ -91,7 +91,7 @@ PackedU16Verts pack_verts_to_u16(const std::vector<math::Vector3f>& input) {
 }
 
 struct PatSurfaceHash {
-  size_t operator()(const PatSurface& in) const { return std::hash<u32>()(in.val); }
+  size_t operator()(const jak1::PatSurface& in) const { return std::hash<u32>()(in.val); }
 };
 
 /*!
@@ -99,10 +99,10 @@ struct PatSurfaceHash {
  * There's a pat "palette" with up 255 unique pats.
  */
 struct PatMap {
-  std::unordered_map<PatSurface, u32, PatSurfaceHash> map;
-  std::vector<PatSurface> pats;
+  std::unordered_map<jak1::PatSurface, u32, PatSurfaceHash> map;
+  std::vector<jak1::PatSurface> pats;
 
-  u32 add_pat(PatSurface pat) {
+  u32 add_pat(jak1::PatSurface pat) {
     const auto& lookup = map.find(pat);
     if (lookup == map.end()) {
       u32 new_idx = pats.size();

@@ -24,5 +24,3 @@ struct FileInfo {
 
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
-
-FileInfo make_file_info_for_level(const std::string& file_name);

@@ -2,8 +2,7 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-static size_t ambient_arr_slot;
-
+namespace jak2 {
 size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   /*
    (deftype drawable-tree-array (drawable-group)
@@ -26,7 +25,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   int num_trees = 0;
   num_trees += tfrags.size();
   num_trees += collides.size();
-  num_trees += ambients.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -53,10 +51,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
 
     for (auto& collide : collides) {
       gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
-    }
-
-    for (auto& ambient : ambients) {
-      gen.link_word_to_byte(tree_word++, ambient.add_to_object_file(gen, ambient_arr_slot));
     }
   }
 
@@ -85,8 +79,6 @@ std::vector<u8> LevelFile::save_object_file() const {
   auto file_info_slot = info.add_to_object_file(gen);
   gen.link_word_to_byte(1, file_info_slot);
 
-  ambient_arr_slot = generate_inline_array_ambients(gen, ambients);
-
   //(bsphere                vector :inline                   :offset-assert  16)
   //(all-visible-list       (pointer uint16)                 :offset-assert  32)
   //(visible-list-length    int32                            :offset-assert  36)
@@ -98,7 +90,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(texture-remap-table-len int32                           :offset-assert  56)
   //(texture-ids            (pointer texture-id)             :offset-assert  60)
   //(texture-page-count     int32                            :offset-assert  64)
-  //(unk-zero-0             basic                            :offset-assert  68)
+  //(unknown-basic          basic                            :offset-assert  68)
   //(name                   symbol                           :offset-assert  72)
   gen.link_word_to_symbol(name, 72 / 4);
   //(nickname               symbol                           :offset-assert  76)
@@ -110,18 +102,43 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(nodes                  (inline-array bsp-node)          :offset-assert 120)
   //(level                  level                            :offset-assert 124)
   //(current-leaf-idx       uint16                           :offset-assert 128)
-  //(unk-data-2             uint16                        9  :offset-assert 130)
-  //(boxes                  box8s-array                      :offset-assert 148)
-  //(current-bsp-back-flags uint32                           :offset-assert 152)
-  //(ambients               drawable-inline-array-ambient    :offset-assert 156)
-  gen.link_word_to_byte(156 / 4, ambient_arr_slot);
-  //(unk-data-4             float                            :offset-assert 160)
-  //(unk-data-5             float                            :offset-assert 164)
-  //(adgifs                 adgif-shader-array               :offset-assert 168)
+  //(cam-outside-bsp        uint8                            :offset        152)
+  //(cam-using-back         uint8                            :offset-assert 153)
+  //(cam-box-idx            uint16                           :offset-assert 154)
+  //(ambients               symbol                           :offset-assert 156)
+  //(subdivide-close        float                            :offset-assert 160)
+  //(subdivide-far          float                            :offset-assert 160)
+  //(race-meshes            (array entity-race-mesh)         :offset-assert 168)
   //(actor-birth-order      (pointer uint32)                 :offset-assert 172)
   gen.link_word_to_byte(172 / 4, generate_u32_array(actor_birth_order, gen));
-  //(split-box-indices      (pointer uint16)                 :offset-assert 176)
-  //(unk-data-8             uint32                        55 :offset-assert 180)
+  //(light-hash             light-hash                       :offset-assert 176)
+  //(nav-meshes             (array entity-nav-mesh)          :offset-assert 180)
+  //(actor-groups           (array actor-group)              :offset-assert 184)
+  //(region-trees           (array drawable-tree-region-prim) :offset-assert 188)
+  //(region-array           region-array                     :offset-assert 192)
+  //(collide-hash           collide-hash                     :offset-assert 196)
+  //(wind-array             uint32                           :offset        200)
+  //(wind-array-length      int32                            :offset        204)
+  //(city-level-info        city-level-info                  :offset        208)
+  //(vis-spheres            vector-array                     :offset        216)
+  //(vis-spheres-length     uint32                           :offset        248)
+  //(region-tree            drawable-tree-region-prim        :offset        252)
+  //(tfrag-masks            texture-masks-array              :offset-assert 256)
+  //(tfrag-closest          (pointer float)                  :offset-assert 260)
+  //(tfrag-mask-count       uint32                           :offset        260)
+  //(shrub-masks            texture-masks-array              :offset-assert 264)
+  //(shrub-closest          (pointer float)                  :offset-assert 268)
+  //(shrub-mask-count       uint32                           :offset        268)
+  //(alpha-masks            texture-masks-array              :offset-assert 272)
+  //(alpha-closest          (pointer float)                  :offset-assert 276)
+  //(alpha-mask-count       uint32                           :offset        276)
+  //(water-masks            texture-masks-array              :offset-assert 280)
+  //(water-closest          (pointer float)                  :offset-assert 284)
+  //(water-mask-count       uint32                           :offset        284)
+  //(bsp-scale              vector :inline                   :offset-assert 288)
+  //(bsp-offset             vector :inline                   :offset-assert 304)
+  //(end                    uint8                            :offset        399)
 
   return gen.generate_v2();
 }
+}  // namespace jak2

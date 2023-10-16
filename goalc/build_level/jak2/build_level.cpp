@@ -1,66 +1,15 @@
 #include "build_level.h"
 
-#include "common/custom_data/Tfrag3Data.h"
-#include "common/log/log.h"
-#include "common/util/FileUtil.h"
-#include "common/util/compress.h"
-#include "common/util/json_util.h"
-#include "common/util/string_util.h"
-
 #include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_merc.h"
-#include "goalc/build_level/Entity.h"
-#include "goalc/build_level/FileInfo.h"
-#include "goalc/build_level/LevelFile.h"
-#include "goalc/build_level/Tfrag.h"
-#include "goalc/build_level/collide_bvh.h"
-#include "goalc/build_level/collide_pack.h"
-#include "goalc/build_level/gltf_mesh_extract.h"
+#include "goalc/build_level/collide/jak1/collide_bvh.h"
+#include "goalc/build_level/collide/jak1/collide_pack.h"
+#include "goalc/build_level/common/Tfrag.h"
+#include "goalc/build_level/jak2/Entity.h"
+#include "goalc/build_level/jak2/FileInfo.h"
+#include "goalc/build_level/jak2/LevelFile.h"
 
-#include "third-party/fmt/core.h"
-
-void save_pc_data(const std::string& nickname,
-                  tfrag3::Level& data,
-                  const fs::path& fr3_output_dir) {
-  Serializer ser;
-  data.serialize(ser);
-  auto compressed =
-      compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  lg::print("stats for {}\n", data.level_name);
-  print_memory_usage(data, ser.get_save_result().second);
-  lg::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
-            100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", str_util::to_upper(nickname)),
-                               compressed.data(), compressed.size());
-}
-
-std::vector<std::string> get_build_level_deps(const std::string& input_file) {
-  auto level_json = parse_commented_json(
-      file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
-  return {level_json.at("gltf_file").get<std::string>()};
-}
-
-// Find all art groups the custom level needs in a list of object files,
-// skipping any that we already found in other dgos before
-std::vector<decompiler::ObjectFileRecord> find_art_groups(
-    std::vector<std::string>& processed_ags,
-    const std::vector<std::string>& custom_level_ag,
-    const std::vector<decompiler::ObjectFileRecord>& dgo_files) {
-  std::vector<decompiler::ObjectFileRecord> art_groups;
-  for (const auto& file : dgo_files) {
-    // skip any art groups we already added from other dgos
-    if (std::find(processed_ags.begin(), processed_ags.end(), file.name) != processed_ags.end()) {
-      continue;
-    }
-    if (std::find(custom_level_ag.begin(), custom_level_ag.end(), file.name) !=
-        custom_level_ag.end()) {
-      art_groups.push_back(file);
-      processed_ags.push_back(file.name);
-    }
-  }
-  return art_groups;
-}
-
+namespace jak2 {
 bool run_build_level(const std::string& input_file,
                      const std::string& bsp_output_file,
                      const std::string& output_prefix) {
@@ -98,23 +47,14 @@ bool run_build_level(const std::string& input_file,
   std::vector<EntityActor> actors;
   add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
   file.actors = std::move(actors);
-  // ambients
-  std::vector<EntityAmbient> ambients;
-  add_ambients_from_json(level_json.at("ambients"), ambients, level_json.value("base_id", 12345));
-  file.ambients = std::move(ambients);
-  auto& ambient_drawable_tree = file.drawable_trees.ambients.emplace_back();
-  (void)ambient_drawable_tree;
   // cameras
   // nodes
-  // boxes
-  // ambients
+  // regions
   // subdivs
-  // adgifs
   // actor birth
   for (size_t i = 0; i < file.actors.size(); i++) {
     file.actor_birth_order.push_back(i);
   }
-  // split box
 
   // add stuff to the PC level structure
   pc_level.level_name = file.name;
@@ -151,9 +91,9 @@ bool run_build_level(const std::string& input_file,
     // TODO - add to file_util
     for (const auto& entry :
          fs::directory_iterator(file_util::get_jak_project_dir() / "iso_data")) {
-      // TODO - hard-coded to jak 1
+      // TODO - hard-coded to jak 2
       if (entry.is_directory() &&
-          entry.path().filename().string().find("jak1") != std::string::npos) {
+          entry.path().filename().string().find("jak2") != std::string::npos) {
         lg::info("Found ISO path: {}", entry.path().string());
         iso_folder = entry.path();
       }
@@ -170,7 +110,7 @@ bool run_build_level(const std::string& input_file,
     decompiler::Config config;
     try {
       config = decompiler::read_config_file(
-          file_util::get_jak_project_dir() / "decompiler/config/jak1/jak1_config.jsonc",
+          file_util::get_jak_project_dir() / "decompiler/config/jak2/jak2_config.jsonc",
           version_info.decomp_config_version,
           R"({"decompile_code": false, "find_functions": false, "levels_extract": true, "allowed_objects": [], "save_texture_pngs": false})");
     } catch (const std::exception& e) {
@@ -194,7 +134,7 @@ bool run_build_level(const std::string& input_file,
     db.process_link_data(config);
 
     decompiler::TextureDB tex_db;
-    auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak1/textures";
+    auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak2/textures";
     file_util::create_dir_if_needed(textures_out);
     db.process_tpages(tex_db, textures_out, config);
 
@@ -259,3 +199,4 @@ bool run_build_level(const std::string& input_file,
 
   return true;
 }
+}  // namespace jak2

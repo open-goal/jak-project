@@ -77,6 +77,17 @@ class ResUint8 : public Res {
   std::vector<u8> m_values;
 };
 
+class ResUint32 : public Res {
+ public:
+  ResUint32(const std::string& name, const std::vector<u32>& values, float key_frame);
+  TagInfo get_tag_info() const override;
+  void write_data(DataObjectGenerator& gen) const override;
+  int get_alignment() const override;
+
+ private:
+  std::vector<u32> m_values;
+};
+
 class ResVector : public Res {
  public:
   ResVector(const std::string& name, const std::vector<math::Vector4f>& values, float key_frame);

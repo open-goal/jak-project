@@ -24,6 +24,7 @@
   )
 */
 
+namespace jak1 {
 size_t DrawableTreeAmbient::add_to_object_file(DataObjectGenerator& gen, size_t ambient_array) {
   gen.align_to_basic();
   gen.add_type_tag("drawable-tree-ambient");
@@ -38,3 +39,4 @@ size_t DrawableTreeAmbient::add_to_object_file(DataObjectGenerator& gen, size_t 
   gen.link_word_to_byte(gen.add_word(0), ambient_array);
   return result;
 }
+}  // namespace jak1

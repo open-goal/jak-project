@@ -1,6 +1,6 @@
 #pragma once
 
-#include "goalc/build_level/collide_bvh.h"
+#include "collide_bvh.h"
 
 struct CollideFragMeshData {
   math::Vector4f bsphere;  // not part of the collide frag, but is part of the drawable wrapping it
@@ -15,7 +15,7 @@ struct CollideFragMeshData {
 
 struct CollideFragMeshDataArray {
   std::vector<CollideFragMeshData> packed_frag_data;
-  std::vector<PatSurface> pats;
+  std::vector<jak1::PatSurface> pats;
 };
 
 CollideFragMeshDataArray pack_collide_frags(const std::vector<collide::CollideFrag>& frag_data);

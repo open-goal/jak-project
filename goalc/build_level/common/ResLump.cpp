@@ -117,6 +117,28 @@ int ResUint8::get_alignment() const {
   return 16;
 }
 
+ResUint32::ResUint32(const std::string& name, const std::vector<u32>& values, float key_frame)
+    : Res(name, key_frame), m_values(values) {}
+
+TagInfo ResUint32::get_tag_info() const {
+  TagInfo result;
+  result.elt_type = "uint32";
+  result.elt_count = m_values.size();
+  result.inlined = true;
+  result.data_size = m_values.size() * sizeof(u32);
+  return result;
+}
+
+void ResUint32::write_data(DataObjectGenerator& gen) const {
+  for (auto& val : m_values) {
+    gen.add_word(val);
+  }
+}
+
+int ResUint32::get_alignment() const {
+  return 16;
+}
+
 ResVector::ResVector(const std::string& name,
                      const std::vector<math::Vector4f>& values,
                      float key_frame)

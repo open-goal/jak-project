@@ -4,17 +4,19 @@
 #include <string>
 #include <vector>
 
+#include "Entity.h"
+#include "FileInfo.h"
+#include "ambient.h"
+
 #include "common/common_types.h"
 
-#include "goalc/build_level/Entity.h"
-#include "goalc/build_level/FileInfo.h"
-#include "goalc/build_level/Tfrag.h"
-#include "goalc/build_level/ambient.h"
-#include "goalc/build_level/collide_bvh.h"
-#include "goalc/build_level/collide_common.h"
-#include "goalc/build_level/collide_drawable.h"
-#include "goalc/build_level/collide_pack.h"
+#include "goalc/build_level/collide/common/collide_common.h"
+#include "goalc/build_level/collide/jak1/collide_bvh.h"
+#include "goalc/build_level/collide/jak1/collide_drawable.h"
+#include "goalc/build_level/collide/jak1/collide_pack.h"
+#include "goalc/build_level/common/Tfrag.h"
 
+namespace jak1 {
 struct VisibilityString {
   std::vector<u8> bytes;
 };
@@ -135,3 +137,4 @@ struct LevelFile {
 
   std::vector<u8> save_object_file() const;
 };
+}  // namespace jak1

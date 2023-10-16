@@ -6,11 +6,11 @@
 
 #include <optional>
 
+#include "color_quantization.h"
+
 #include "common/log/log.h"
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
-
-#include "goalc/build_level/color_quantization.h"
 
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
@@ -609,7 +609,7 @@ void extract(const Input& in,
   dedup_vertices(out);
 }
 
-std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace face_in) {
+std::optional<std::vector<jak1::CollideFace>> subdivide_face_if_needed(jak1::CollideFace face_in) {
   math::Vector3f v_min = face_in.v[0];
   v_min.min_in_place(face_in.v[1]);
   v_min.min_in_place(face_in.v[2]);
@@ -629,7 +629,7 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
     math::Vector3f v0 = face_in.v[0];
     math::Vector3f v1 = face_in.v[1];
     math::Vector3f v2 = face_in.v[2];
-    CollideFace fs[4];
+    jak1::CollideFace fs[4];
     fs[0].v[0] = v0;
     fs[0].v[1] = a;
     fs[0].v[2] = c;
@@ -653,7 +653,7 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
     fs[3].bsphere = math::bsphere_of_triangle(fs[3].v);
     fs[3].pat = face_in.pat;
 
-    std::vector<CollideFace> result;
+    std::vector<jak1::CollideFace> result;
     for (auto f : fs) {
       auto next_faces = subdivide_face_if_needed(f);
       if (next_faces) {
@@ -671,7 +671,7 @@ std::optional<std::vector<CollideFace>> subdivide_face_if_needed(CollideFace fac
 struct PatResult {
   bool set = false;
   bool ignore = false;
-  PatSurface pat;
+  jak1::PatSurface pat;
 };
 
 PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
@@ -691,12 +691,12 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
   result.ignore = false;
 
   int mat = val.Get("collide_material").Get<int>();
-  ASSERT(mat < (int)PatSurface::Material::MAX_MATERIAL);
-  result.pat.set_material(PatSurface::Material(mat));
+  ASSERT(mat < (int)jak1::PatSurface::Material::MAX_MATERIAL);
+  result.pat.set_material(jak1::PatSurface::Material(mat));
 
   int evt = val.Get("collide_event").Get<int>();
-  ASSERT(evt < (int)PatSurface::Event::MAX_EVENT);
-  result.pat.set_event(PatSurface::Event(evt));
+  ASSERT(evt < (int)jak1::PatSurface::Event::MAX_EVENT);
+  result.pat.set_event(jak1::PatSurface::Event(evt));
 
   if (val.Get("nolineofsight").Get<int>()) {
     result.pat.set_nolineofsight(true);
@@ -708,8 +708,8 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
 
   if (val.Has("collide_mode")) {
     int mode = val.Get("collide_mode").Get<int>();
-    ASSERT(mode < (int)PatSurface::Mode::MAX_MODE);
-    result.pat.set_mode(PatSurface::Mode(mode));
+    ASSERT(mode < (int)jak1::PatSurface::Mode::MAX_MODE);
+    result.pat.set_mode(jak1::PatSurface::Mode(mode));
   }
 
   if (val.Get("nocamera").Get<int>()) {
@@ -760,7 +760,7 @@ void extract(const Input& in,
         auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, false, true, mesh.name);
 
         for (size_t iidx = 0; iidx < prim_indices.size(); iidx += 3) {
-          CollideFace face;
+          jak1::CollideFace face;
 
           // get the positions
           for (int j = 0; j < 3; j++) {
@@ -804,7 +804,7 @@ void extract(const Input& in,
     }
   }
 
-  std::vector<CollideFace> fixed_faces;
+  std::vector<jak1::CollideFace> fixed_faces;
   int fix_count = 0;
   for (auto& face : out.faces) {
     auto try_fix = subdivide_face_if_needed(face);
@@ -835,7 +835,7 @@ void extract(const Input& in,
       math::Vector3f face_normal =
           (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
       if (face_normal[1] < wall_cos) {
-        face.pat.set_mode(PatSurface::Mode::WALL);
+        face.pat.set_mode(jak1::PatSurface::Mode::WALL);
         wall_count++;
       }
     }

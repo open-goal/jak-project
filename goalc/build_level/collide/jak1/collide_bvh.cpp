@@ -27,7 +27,7 @@ constexpr int MAX_UNIQUE_VERTS_IN_FRAG = 128;
  */
 struct CNode {
   std::vector<CNode> child_nodes;
-  std::vector<CollideFace> faces;
+  std::vector<jak1::CollideFace> faces;
   math::Vector4f bsphere;
 };
 
@@ -101,13 +101,14 @@ void compute_my_bsphere_ritters(CNode& node) {
  * Split faces in two along a coordinate plane.
  * Will clear the input faces
  */
-void split_along_dim(std::vector<CollideFace>& faces,
+void split_along_dim(std::vector<jak1::CollideFace>& faces,
                      int dim,
-                     std::vector<CollideFace>* out0,
-                     std::vector<CollideFace>* out1) {
-  std::sort(faces.begin(), faces.end(), [=](const CollideFace& a, const CollideFace& b) {
-    return a.bsphere[dim] < b.bsphere[dim];
-  });
+                     std::vector<jak1::CollideFace>* out0,
+                     std::vector<jak1::CollideFace>* out1) {
+  std::sort(faces.begin(), faces.end(),
+            [=](const jak1::CollideFace& a, const jak1::CollideFace& b) {
+              return a.bsphere[dim] < b.bsphere[dim];
+            });
   lg::print("splitting with size: {}\n", faces.size());
   size_t split_idx = faces.size() / 2;
   out0->insert(out0->end(), faces.begin(), faces.begin() + split_idx);
@@ -278,7 +279,7 @@ void debug_stats(const CollideTree& tree) {
 
 }  // namespace
 
-CollideTree construct_collide_bvh(const std::vector<CollideFace>& tris) {
+CollideTree construct_collide_bvh(const std::vector<jak1::CollideFace>& tris) {
   // part 1: build the tree
   Timer bvh_timer;
   lg::info("Building collide bvh from {} triangles", tris.size());

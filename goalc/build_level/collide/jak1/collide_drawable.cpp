@@ -68,7 +68,7 @@
   :size-assert         #x44
  */
 
-size_t generate_pat_array(DataObjectGenerator& gen, const std::vector<PatSurface>& pats) {
+size_t generate_pat_array(DataObjectGenerator& gen, const std::vector<jak1::PatSurface>& pats) {
   gen.align_to_basic();
   size_t result = gen.current_offset_bytes();
   for (auto& pat : pats) {
