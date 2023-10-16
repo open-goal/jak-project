@@ -83,6 +83,17 @@
     )
   )
 
+(defun custom-level-cgo (output-name desc-file-name)
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_levels/jak2/)"
+  (let ((out-name (string-append "$OUT/iso/" output-name)))
+    (defstep :in (string-append "custom_levels/jak2/" desc-file-name)
+      :tool 'dgo
+      :out `(,out-name)
+      )
+    (set! *all-cgos* (cons out-name *all-cgos*))
+    )
+  )
+
 (defun cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in $OUT/iso) and input name (in goal_src/jak2/dgos)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
@@ -123,6 +134,12 @@
     ,@(apply (lambda (x) `(copy-go ,x)) gos)
     )
   )
+
+(defmacro build-custom-level (name)
+  (let* ((path (string-append "custom_levels/jak2/" name "/" name ".jsonc")))
+    `(defstep :in ,path
+              :tool 'build-level2
+              :out '(,(string-append "$OUT/obj/" name ".go")))))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""
