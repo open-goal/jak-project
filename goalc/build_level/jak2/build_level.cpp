@@ -138,11 +138,10 @@ bool run_build_level(const std::string& input_file,
     file_util::create_dir_if_needed(textures_out);
     db.process_tpages(tex_db, textures_out, config);
 
-    std::vector<std::string> processed_art_groups;
-
     // find all art groups used by the custom level in other dgos
     if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {
       for (auto& dgo : config.dgo_names) {
+        std::vector<std::string> processed_art_groups;
         // remove "DGO/" prefix
         const auto& dgo_name = dgo.substr(4);
         const auto& files = db.obj_files_by_dgo.at(dgo_name);
