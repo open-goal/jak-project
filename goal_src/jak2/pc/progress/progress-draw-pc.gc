@@ -2408,6 +2408,58 @@
   (none)
   )
 
+(defmethod draw-option menu-frame-rate-disclaimer-option ((obj menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+  (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
+  (set-color! arg1 (font-color red))
+  (set-scale! arg1 0.4)
+  (set-flags! arg1 (font-flags kerning middle middle-vert large))
+  (set! (-> arg1 origin x) 90.0)
+  (set! (-> arg1 origin y) 55.0)
+  (set-width! arg1 330)
+  (set-height! arg1 85)
+  (when (not (-> *pc-settings* use-vis?))
+    (set! (-> arg1 origin x) (the float (adjust-game-x (-> arg1 origin x))))
+    (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
+    )
+  (when (< (mod (-> *display* real-clock frame-counter) (seconds 1.2)) (seconds 1.0))
+    (print-game-text (lookup-text! *common-text* (text-id progress-fps-disclaimer-warning) #f) arg1 #f 44 (bucket-id progress))
+    )
+  (+! (-> arg1 origin y) 60.0)
+  (set-color! arg1 (font-color progress))
+  (print-game-text
+    (lookup-text! *common-text* (text-id progress-fps-disclaimer) #f)
+    arg1
+    #f
+    44
+    (bucket-id progress)
+    )
+  (+! (-> arg1 origin y) 80.0)
+  (set-height! arg1 95)
+  (print-game-text
+    (lookup-text! *common-text* (text-id progress-fps-disclaimer-1) #f)
+    arg1
+    #f
+    44
+    (bucket-id progress)
+    )
+  (+! (-> arg1 origin y) 95.0)
+  (set-height! arg1 50)
+  (set-color! arg1 (progress-selected 0))
+  (draw-highlight (the int (+ 13.0 (-> arg1 origin y))) 18 (-> arg1 alpha))
+  (print-game-text
+    (if (time-elapsed? (-> *progress-state-pc* frame-rate-disclaimer-time) (seconds 5))
+      (lookup-text! *common-text* (text-id progress-fps-disclaimer-confirm) #f)
+      (string-format "~Ds" (inc (/ (- (seconds 5) (- (current-time) (-> *progress-state-pc* frame-rate-disclaimer-time))) TICKS_PER_SECOND)))
+      )
+    arg1
+    #f
+    44
+    (bucket-id progress)
+    )
+  0
+  (none)
+  )
+
 
 
 (defun begin-scissor-music-player ((box hud-box))
