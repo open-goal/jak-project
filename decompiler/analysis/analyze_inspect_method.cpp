@@ -1660,11 +1660,12 @@ std::string TypeInspectorResult::print_as_deftype(
           print_as_state_method = true;
           state_methods_list.append(fmt::format("    {}", method_states.at(i)));
         } else {
-          methods_list.append(fmt::format("    ({} () _type_ :state)", method_states.at(i)));
+          methods_list.append(
+              fmt::format("    ({} () _type_ :state) ;; {}", method_states.at(i), i));
         }
       } else {
         done_with_state_methods = true;
-        methods_list.append(fmt::format("    ({}-method-{} () none)", type_name, i));
+        methods_list.append(fmt::format("    ({}-method-{} () none) ;; {}", type_name, i, i));
       }
       if (old_game_type) {
         MethodInfo info;

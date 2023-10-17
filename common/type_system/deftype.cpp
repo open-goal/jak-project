@@ -136,14 +136,58 @@ void add_field(
           throw std::runtime_error(fmt::format("Field {} not found to override", name));
         }
       } else if (opt_name == ":overlay-at") {
-        auto field_name = symbol_string(car(rest));
-        Field overlay_field;
-        if (!structure->lookup_field(field_name, &overlay_field)) {
-          throw std::runtime_error(
-              fmt::format("Field {} not found to overlay for {}", field_name, name));
-        }
-        offset_override = overlay_field.offset();
+        auto param = car(rest);
         rest = cdr(rest);
+        Field overlay_field;
+        if (param.is_symbol()) {
+          auto field_name = symbol_string(param);
+          if (!structure->lookup_field(field_name, &overlay_field)) {
+            throw std::runtime_error(
+                fmt::format("Field {} not found to overlay for {}", field_name, name));
+          }
+          offset_override = overlay_field.offset();
+        } else if (param.is_pair() && car(&param).is_symbol("->")) {
+          fmt::print("  :overlay-at {}\n", param.print());
+          auto name_it = cdr(&param);
+          if (name_it->is_empty_list()) {
+            throw std::runtime_error(
+                fmt::format("Field list for overlay-at in {} was empty", name));
+          }
+          auto type_to_use = structure;
+          offset_override = 0;
+          while (!name_it->is_empty_list()) {
+            auto deref_field = car(name_it);
+            if (deref_field.is_int()) {
+              auto type_to_deref = type_to_use && overlay_field.is_inline()
+                                       ? TypeSpec("inline-array")
+                                       : TypeSpec("pointer");
+              type_to_deref.add_arg(overlay_field.type());
+              auto deref_info = ts->get_deref_info(type_to_deref);
+              if (!deref_info.can_deref) {
+                throw std::runtime_error(
+                    fmt::format("Array could not be dereferenced for overlay-at in {}", name));
+              }
+              // overlay_field.type() = deref_info.result_type;
+              offset_override += deref_info.stride * deref_field.as_int();
+            } else {
+              if (!type_to_use) {
+                throw std::runtime_error(
+                    fmt::format("Field {} not inside a structure for overlay-at in {}",
+                                overlay_field.name(), name));
+              }
+              auto field_name = symbol_string(car(name_it));
+              if (!type_to_use->lookup_field(field_name, &overlay_field)) {
+                throw std::runtime_error(
+                    fmt::format("Field {} not found to overlay for {}", field_name, name));
+              }
+              type_to_use = dynamic_cast<StructureType*>(ts->lookup_type(overlay_field.type()));
+              offset_override += overlay_field.offset();
+            }
+            name_it = cdr(name_it);
+          }
+        } else {
+          throw std::runtime_error(fmt::format("Unknown parameter for overlay-at in {}", name));
+        }
       } else if (opt_name == ":score") {
         score = get_float(car(rest));
         rest = cdr(rest);
@@ -431,7 +475,7 @@ void declare_state_methods(Type* type,
         function_typespec.add_arg(parse_typespec(type_system, o));
       });
     }
-    function_typespec.add_arg(TypeSpec(type->get_name()));
+    function_typespec.add_arg(TypeSpec("_type_"));
 
     type_system->declare_method(type, method_name, docstring, false, function_typespec, false);
   });
