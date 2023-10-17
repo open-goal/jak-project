@@ -19,7 +19,8 @@
    (aspect-ratio-ratio-index    int8)
 
    (frame-rate-choice-index     int8)
-   (frame-rate-disclaimer-seen?  symbol)
+   (frame-rate-disclaimer-time  time-frame)
+   (frame-rate-disclaimer-seen? symbol)
 
    (music-player-track      music-player-track-info)
    (music-player-flava      int8)
@@ -568,6 +569,7 @@
         (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
         (commit-to-file *pc-settings*)
         (when (and (not (-> *progress-state-pc* frame-rate-disclaimer-seen?)) (> (-> *pc-settings* target-fps) 60))
+          (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
           (push-and-set-state arg0 'fps-disclaimer)
           )
         )
@@ -593,7 +595,7 @@
 
 (defmethod respond-progress menu-frame-rate-disclaimer-option ((this menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 symbol))
   "Handle progress menu navigation logic."
-  (when (cpad-pressed? 0 confirm)
+  (when (and (time-elapsed? (-> *progress-state-pc* frame-rate-disclaimer-time) (seconds 5)) (cpad-pressed? 0 confirm))
     (cpad-clear! 0 confirm)
     (sound-play "generic-beep")
     (true! (-> *progress-state-pc* frame-rate-disclaimer-seen?))
