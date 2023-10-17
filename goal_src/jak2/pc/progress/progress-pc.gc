@@ -560,27 +560,25 @@
 
   (when arg1
     (cond
-      ((not (-> *pc-settings* fps-disclaimer-seen?))
-       (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
-       (push-and-set-state arg0 'fps-disclaimer)
-       )
       ((cpad-pressed? 0 triangle)
         (set-progress-frame-rate-index))
       ((cpad-pressed? 0 confirm)
         (sound-play "generic-beep")
         (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
+        (when (and (not (-> *pc-settings* fps-disclaimer-seen?)) (> (-> *pc-settings* target-fps) 60))
+          (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
+          (push-and-set-state arg0 'fps-disclaimer)
+          )
         )
       (else
         (let ((sound-beep? #f))
           (when (cpad-pressed? 0 left l-analog-left)
             (true! sound-beep?)
             (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) -1 0 (1- (-> *frame-rate-options* length)))
-            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
             )
           (when (cpad-pressed? 0 right l-analog-right)
             (true! sound-beep?)
             (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) 1 0 (1- (-> *frame-rate-options* length)))
-            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
             )
           (if sound-beep?
             (sound-play "generic-beep")
