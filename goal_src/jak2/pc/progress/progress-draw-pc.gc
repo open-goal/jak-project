@@ -2410,7 +2410,33 @@
 
 (defmethod draw-option menu-frame-rate-disclaimer-option ((obj menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
   (set! (-> arg1 alpha) (- 1.0 (-> arg0 menu-transition)))
-  (set-color! arg1 (font-color progress))
+  (set-color! arg1
+    (let ((color (font-color red))
+          (interval-flash (case (-> *pc-settings* target-fps) ((75) 15) ((120) 15) ((144) 40) ((165) 55) ((240) 62) (else 4)))
+          (interval-red (case (-> *pc-settings* target-fps) ((75) 40) ((120) 65) ((144) 65) ((165) 80) ((240) 132) (else 7)))
+          (red #xee)
+          (flash #x70))
+      (cond
+        ((< interval-flash (the int (logand (-> *display* clock 0 integral-frame-counter) interval-red)))
+         (set! (-> *progress-state* color-flash-counter) 1)
+         )
+        ((< (the int (logand (-> *display* clock 0 integral-frame-counter) interval-red)) interval-flash)
+         (set! (-> *progress-state* color-flash-counter) 0)
+         )
+        )
+      (cond
+        ((zero? (-> *progress-state* color-flash-counter))
+         (set-font-color (the font-color color) 0 (static-rgba red 0 0 0) (the rgba #x0) (the rgba #x0))
+         (set-font-color (the font-color color) 1 (static-rgba red 0 0 0) (the rgba #x0) (the rgba #x0))
+         )
+        (else
+          (set-font-color (the font-color color) 0 (static-rgba flash #x0 #x0 #x0) (static-rgba flash #x0 #x0 #x0) (static-rgba flash #x0 #x0 #x0))
+          (set-font-color (the font-color color) 1 (static-rgba flash #x0 #x0 #x0) (static-rgba flash #x0 #x0 #x0) (static-rgba flash #x0 #x0 #x0))
+          )
+        )
+      (the font-color color)
+      )
+    )
   (set-scale! arg1 0.4)
   (set-flags! arg1 (font-flags kerning middle middle-vert large))
   (set! (-> arg1 origin x) 90.0)
@@ -2442,10 +2468,7 @@
   (set-color! arg1 (progress-selected 0))
   (draw-highlight (the int (+ 13.0 (-> arg1 origin y))) 18 (-> arg1 alpha))
   (print-game-text
-    (if (time-elapsed? (-> *progress-state-pc* frame-rate-disclaimer-time) (seconds 10))
-      (lookup-text! *common-text* (text-id progress-fps-disclaimer-confirm) #f)
-      (string-format "~Ds" (inc (/ (- (seconds 10) (- (current-time) (-> *progress-state-pc* frame-rate-disclaimer-time))) TICKS_PER_SECOND)))
-      )
+    (lookup-text! *common-text* (text-id progress-fps-disclaimer-confirm) #f)
     arg1
     #f
     44
