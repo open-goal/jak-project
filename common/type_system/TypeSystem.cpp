@@ -2290,8 +2290,7 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
       // we also check for array offsets. we ALSO do bounds-checking!
       // non-fixed offset fields get priority! dynamic fields are IGNORED.
       // if all else fails, print as fixed offset.
-      auto best_match = find_best_field_in_structure(*this, st, field.offset(), field, false,
-                                                     st->first_unique_field_idx(), i);
+      auto best_match = find_best_field_in_structure(*this, st, field.offset(), field, false, 0, i);
       if (!best_match) {
         result.append(fmt::format(" :offset {:3d}", field.offset()));
       } else if (best_match->find(' ') == std::string::npos) {

@@ -147,7 +147,6 @@ void add_field(
           }
           offset_override = overlay_field.offset();
         } else if (param.is_pair() && car(&param).is_symbol("->")) {
-          fmt::print("  :overlay-at {}\n", param.print());
           auto name_it = cdr(&param);
           if (name_it->is_empty_list()) {
             throw std::runtime_error(
