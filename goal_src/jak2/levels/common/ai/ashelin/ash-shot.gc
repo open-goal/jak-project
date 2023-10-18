@@ -245,24 +245,20 @@
   )
 
 (deftype ashelin-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 480)
-   (hit-pos  vector :inline :offset-assert 496)
+  ((tail-pos  vector  :inline)
+   (hit-pos   vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 
-(defmethod draw-laser-sight ashelin-shot ((this ashelin-shot))
+(defmethod draw-laser-sight ((this ashelin-shot))
   "TODO - confirm If applicable, draw the laser sight particles"
   (draw-beam (-> *part-id-table* 675) (-> this tail-pos) (-> this starting-dir) #f #t)
   0
   (none)
   )
 
-(defmethod spawn-impact-particles ashelin-shot ((this ashelin-shot))
+(defmethod spawn-impact-particles ((this ashelin-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -317,7 +313,7 @@
     )
   )
 
-(defmethod spawn-shell-particles ashelin-shot ((this ashelin-shot))
+(defmethod spawn-shell-particles ((this ashelin-shot))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -359,7 +355,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod play-impact-sound ashelin-shot ((this ashelin-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this ashelin-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -376,7 +372,7 @@
   (none)
   )
 
-(defmethod made-impact? ashelin-shot ((this ashelin-shot))
+(defmethod made-impact? ((this ashelin-shot))
   "TODO - queries the collision cache, return true/false"
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
@@ -421,7 +417,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod init-proj-collision! ashelin-shot ((this ashelin-shot))
+(defmethod init-proj-collision! ((this ashelin-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -492,7 +488,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! ashelin-shot ((this ashelin-shot))
+(defmethod init-proj-settings! ((this ashelin-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'eco-yellow)

@@ -495,20 +495,16 @@
   )
 
 (deftype spydroid (nav-enemy)
-  ((old-y-deg    float                      :offset-assert 604)
-   (diff-angle   float                      :offset-assert 608)
-   (desire-turn  symbol                     :offset-assert 612)
-   (hit-target   basic                      :offset-assert 616)
-   (lightning    lightning-control        4 :offset-assert 620)
-   (floor        float                      :offset-assert 636)
-   (explode-part sparticle-launch-control   :offset-assert 640)
+  ((old-y-deg     float)
+   (diff-angle    float)
+   (desire-turn   symbol)
+   (hit-target    basic)
+   (lightning     lightning-control  4)
+   (floor         float)
+   (explode-part  sparticle-launch-control)
    )
-  :heap-base #x210
-  :method-count-assert 179
-  :size-assert         #x284
-  :flag-assert         #xb302100284
-  (:methods
-    (attack () _type_ :state 178)
+  (:state-methods
+    attack
     )
   )
 
@@ -624,7 +620,7 @@
 
 (set! (-> *spydroid-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod track-target! spydroid ((this spydroid))
+(defmethod track-target! ((this spydroid))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -722,7 +718,7 @@
   (none)
   )
 
-(defmethod general-event-handler spydroid ((this spydroid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this spydroid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v1-6 vector) (sv-144 vector))
@@ -1249,7 +1245,7 @@
     )
   )
 
-(defmethod init-enemy-collision! spydroid ((this spydroid))
+(defmethod init-enemy-collision! ((this spydroid))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1295,12 +1291,12 @@
   (none)
   )
 
-(defmethod coin-flip? spydroid ((this spydroid))
+(defmethod coin-flip? ((this spydroid))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod deactivate spydroid ((this spydroid))
+(defmethod deactivate ((this spydroid))
   (if (nonzero? (-> this explode-part))
       (kill-and-free-particles (-> this explode-part))
       )
@@ -1309,7 +1305,7 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs spydroid.
-(defmethod relocate spydroid ((this spydroid) (arg0 int))
+(defmethod relocate ((this spydroid) (arg0 int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this lightning v1-0))
         (&+! (-> this lightning v1-0) arg0)
@@ -1323,7 +1319,7 @@
   (the-as spydroid ((method-of-type nav-enemy relocate) this arg0))
   )
 
-(defmethod init-enemy! spydroid ((this spydroid))
+(defmethod init-enemy! ((this spydroid))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

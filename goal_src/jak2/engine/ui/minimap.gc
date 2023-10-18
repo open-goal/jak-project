@@ -11,20 +11,14 @@
 ;; DECOMP BEGINS
 
 (deftype minimap-texture-name-array (structure)
-  ((data string 35 :offset-assert   0)
+  ((data  string  35)
    )
-  :method-count-assert 9
-  :size-assert         #x8c
-  :flag-assert         #x90000008c
   )
 
 
 (deftype minimap-corner-array (structure)
-  ((data vector 35 :inline :offset-assert   0)
+  ((data  vector  35 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x230
-  :flag-assert         #x900000230
   )
 
 
@@ -847,13 +841,13 @@
     )
   )
 
-(defmethod debug-draw minimap ((this minimap))
+(defmethod debug-draw ((this minimap))
   (when *trail-graph*
     (dotimes (s5-0 6)
       (let ((s4-0 (-> this trail s5-0)))
         (when (and (-> s4-0 used-by)
                    (>= (-> s4-0 node-count) 0)
-                   (< (- (current-time) (the-as int (-> s4-0 last-updated))) (seconds 5))
+                   (not (time-elapsed? (the-as int (-> s4-0 last-updated)) (seconds 5)))
                    )
           (let* ((a3-0 (target-pos 0))
                  (v1-12 s5-0)
@@ -895,7 +889,7 @@
   )
 
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defmethod update-trails minimap ((this minimap))
+(defmethod update-trails ((this minimap))
   "Main function to do trail search per-frame"
   (let ((s5-0 *trail-graph*))
     (when s5-0
@@ -1007,7 +1001,7 @@
   (none)
   )
 
-(defmethod get-trail-for-connection minimap ((this minimap) (arg0 connection-minimap) (arg1 symbol))
+(defmethod get-trail-for-connection ((this minimap) (arg0 connection-minimap) (arg1 symbol))
   "Get a trail for connection. If arg1 is set, allow allocating a new one."
   (local-vars (gp-0 minimap-trail))
   (countdown (v1-0 6)
@@ -1038,7 +1032,7 @@
   )
 
 ;; WARN: Function (method 13 minimap) has a return type of none, but the expression builder found a return statement.
-(defmethod free-trail-by-connection minimap ((this minimap) (arg0 connection-minimap))
+(defmethod free-trail-by-connection ((this minimap) (arg0 connection-minimap))
   "Free the trail associated with this connection."
   (countdown (v1-0 6)
     (let ((a2-3 (-> this trail v1-0)))
@@ -1053,7 +1047,7 @@
   (none)
   )
 
-(defmethod reset minimap-trail ((this minimap-trail))
+(defmethod reset ((this minimap-trail))
   (set! (-> this node-count) -1)
   (set! (-> this search-id) (the-as uint 0))
   (set! (-> this last-updated) (the-as uint 0))
@@ -1061,7 +1055,7 @@
   (none)
   )
 
-(defmethod get-icon-draw-pos minimap ((this minimap) (arg0 connection-minimap) (arg1 minimap-trail) (arg2 vector) (arg3 float) (arg4 vector))
+(defmethod get-icon-draw-pos ((this minimap) (arg0 connection-minimap) (arg1 minimap-trail) (arg2 vector) (arg3 float) (arg4 vector))
   "Follow the path from the start until it reaches the border of the map, then get this position."
   (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 4)))
     (vector-reset! (-> s5-0 2))
@@ -1103,7 +1097,7 @@
   #f
   )
 
-(defmethod get-distance-with-path minimap-trail ((this minimap-trail) (arg0 vector) (arg1 vector))
+(defmethod get-distance-with-path ((this minimap-trail) (arg0 vector) (arg1 vector))
   "Assuming we go from a to b, using this path in the middle, how long is it?"
   0.0
   (let ((s4-0 *trail-graph*))
@@ -1126,7 +1120,7 @@
     )
   )
 
-(defmethod print connection-minimap ((this connection-minimap))
+(defmethod print ((this connection-minimap))
   (format
     #t
     "#<connection-minimap ~16S #x~4X ~A @ #x~X>"
@@ -1139,7 +1133,7 @@
   )
 
 
-(defmethod run-pending-updates! engine-minimap ((this engine-minimap) (arg0 time-frame))
+(defmethod run-pending-updates! ((this engine-minimap) (arg0 time-frame))
   (let ((s2-0 (the-as (pointer connection-pers) (&-> this alive-list)))
         (s3-0 (-> this alive-list))
         )
@@ -1161,7 +1155,7 @@
              (let ((f30-0 1.0))
                (when (logtest? (-> s3-0 class flags) (minimap-flag trail))
                  (let ((v1-26 (get-trail-for-connection *minimap* s3-0 #f)))
-                   (if (or (not v1-26) (>= (- (current-time) (the-as int (-> v1-26 last-updated))) (seconds 5)))
+                   (if (or (not v1-26) (time-elapsed? (the-as int (-> v1-26 last-updated)) (seconds 5)))
                        (set! f30-0 0.0001)
                        )
                    )
@@ -1209,7 +1203,7 @@
   (none)
   )
 
-(defmethod add-icon! minimap ((this minimap) (arg0 process) (arg1 uint) (arg2 int) (arg3 vector) (arg4 int))
+(defmethod add-icon! ((this minimap) (arg0 process) (arg1 uint) (arg2 int) (arg3 vector) (arg4 int))
   "Add an icon to the map!"
   (when (not arg2)
     (let ((v1-3 (+ (-> *minimap* engine-key) 1)))
@@ -1247,7 +1241,7 @@
   )
 
 ;; WARN: Function (method 10 engine-minimap) has a return type of none, but the expression builder found a return statement.
-(defmethod kill-callback engine-minimap ((this engine-minimap) (arg0 connection-pers))
+(defmethod kill-callback ((this engine-minimap) (arg0 connection-pers))
   (if (not arg0)
       (return #f)
       )
@@ -1285,7 +1279,7 @@
   (the-as texture #f)
   )
 
-(defmethod update! minimap ((this minimap))
+(defmethod update! ((this minimap))
   (set! (-> this ctywide) (level-get *level* 'ctywide))
   (set! (-> this map-bits) (the-as uint 0))
   (dotimes (v1-2 (-> *level* length))
@@ -1365,7 +1359,7 @@
   )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod draw-racer-2 minimap ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+(defmethod draw-racer-2 ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
     (sv-16 process)
     (sv-20 dma-buffer)
@@ -1484,7 +1478,7 @@
   )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod draw-racer-1 minimap ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap) (arg2 float) (arg3 float) (arg4 float))
+(defmethod draw-racer-1 ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap) (arg2 float) (arg3 float) (arg4 float))
   (local-vars
     (sv-16 process)
     (sv-20 float)
@@ -1607,7 +1601,7 @@
   )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod draw-frustum-1 minimap ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+(defmethod draw-frustum-1 ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
     (sv-16 process)
     (sv-20 dma-buffer)
@@ -1762,7 +1756,7 @@
   )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod draw-frustum-2 minimap ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+(defmethod draw-frustum-2 ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (local-vars
     (sv-16 process)
     (sv-20 dma-buffer)
@@ -1894,7 +1888,7 @@
   (none)
   )
 
-(defmethod sub-draw-1-1 minimap ((this minimap) (arg0 minimap-draw-work))
+(defmethod sub-draw-1-1 ((this minimap) (arg0 minimap-draw-work))
   (let ((s5-0 (-> arg0 buf)))
     (set-display-gs-state s5-0 (the-as int (-> *map-texture-base* vram-page)) 128 128 0 0)
     (let ((s3-0 (-> s5-0 base)))
@@ -2057,7 +2051,7 @@
   (none)
   )
 
-(defmethod sub-draw-1-2 minimap ((this minimap) (arg0 minimap-draw-work))
+(defmethod sub-draw-1-2 ((this minimap) (arg0 minimap-draw-work))
   (local-vars (a3-4 int) (t0-4 int) (sv-48 vector) (sv-52 matrix) (sv-56 vector))
   (let ((s5-0 (-> arg0 buf)))
     (reset-display-gs-state *display* s5-0)
@@ -2254,7 +2248,7 @@
   )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod draw-connection minimap ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
+(defmethod draw-connection ((this minimap) (arg0 minimap-draw-work) (arg1 connection-minimap))
   (let ((s1-0 (target-pos 0)))
     (cond
       ((= (-> arg1 position) #t)
@@ -2337,7 +2331,7 @@
                       (set! s2-0 #t)
                       (set! (-> arg1 edge-ry) -131072.0)
                       )
-                     ((>= (- (current-time) (the-as int (-> a2-2 last-updated))) (seconds 5))
+                     ((time-elapsed? (the-as int (-> a2-2 last-updated)) (seconds 5))
                       (set! s2-0 #t)
                       (set! (-> arg1 edge-ry) -131072.0)
                       )
@@ -2515,7 +2509,7 @@
   (none)
   )
 
-(defmethod draw-1 minimap ((this minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
+(defmethod draw-1 ((this minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
   (local-vars (v1-19 uint128))
   (when (= (level-status *level* 'ctywide) 'active)
     (let ((s5-1 (new 'stack-no-clear 'minimap-draw-work)))
@@ -2564,7 +2558,7 @@
   (none)
   )
 
-(defmethod draw-sprite2 minimap ((this minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
+(defmethod draw-sprite2 ((this minimap) (arg0 dma-buffer) (arg1 vector4w) (arg2 symbol))
   (local-vars (v1-24 uint128) (a0-8 uint128) (a3-5 int) (t0-4 int))
   (when (-> this race-tex)
     (let ((s5-0 (new 'stack-no-clear 'minimap-draw-work)))
@@ -2676,7 +2670,7 @@
   (none)
   )
 
-(defmethod set-race-texture minimap ((this minimap) (arg0 texture) (arg1 float) (arg2 level))
+(defmethod set-race-texture ((this minimap) (arg0 texture) (arg1 float) (arg2 level))
   (set! (-> this race-tex) arg0)
   (set! (-> this race-scale) arg1)
   (set! (-> this race-level) arg2)
@@ -2684,14 +2678,14 @@
   (none)
   )
 
-(defmethod set-race-corner minimap ((this minimap) (arg0 float) (arg1 float))
+(defmethod set-race-corner ((this minimap) (arg0 float) (arg1 float))
   (set! (-> this race-corner x) arg0)
   (set! (-> this race-corner z) arg1)
   0
   (none)
   )
 
-(defmethod set-color minimap ((this minimap) (arg0 vector))
+(defmethod set-color ((this minimap) (arg0 vector))
   (set! (-> this color quad) (-> arg0 quad))
   0
   (none)

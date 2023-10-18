@@ -9,15 +9,11 @@
 
 (deftype metalhead-predator-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound metalhead-predator-shot ((this metalhead-predator-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this metalhead-predator-shot) (arg0 projectile-options))
   (case arg0
     (((projectile-options lose-altitude))
      (sound-play "pred-shot-hit")
@@ -35,7 +31,7 @@
   (none)
   )
 
-(defmethod init-proj-collision! metalhead-predator-shot ((this metalhead-predator-shot))
+(defmethod init-proj-collision! ((this metalhead-predator-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -87,7 +83,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! metalhead-predator-shot ((this metalhead-predator-shot))
+(defmethod init-proj-settings! ((this metalhead-predator-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'predator-shot)
@@ -280,31 +276,29 @@
 (set! (-> *metalhead-predator-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype metalhead-predator (citizen-enemy)
-  ((los               los-control :inline :offset-assert 992)
-   (want-stop         symbol              :offset-assert 1140)
-   (target-pos        vector      :inline :offset-assert 1152)
-   (curr-node         int32               :offset-assert 1168)
-   (hide-pos          vector      :inline :offset-assert 1184)
-   (next-change       int64               :offset-assert 1200)
-   (shoot-angle       degrees             :offset-assert 1208)
-   (miss-amount       float               :offset-assert 1212)
-   (ambient-sound-id  sound-id            :offset-assert 1216)
-   (shock-effect-time time-frame          :offset-assert 1224)
-   (shock-effect-end  int64               :offset-assert 1232)
-   (fade              float               :offset-assert 1240)
-   (dest-fade         float               :offset-assert 1244)
+  ((los                los-control  :inline)
+   (want-stop          symbol)
+   (target-pos         vector       :inline)
+   (curr-node          int32)
+   (hide-pos           vector       :inline)
+   (next-change        int64)
+   (shoot-angle        degrees)
+   (miss-amount        float)
+   (ambient-sound-id   sound-id)
+   (shock-effect-time  time-frame)
+   (shock-effect-end   int64)
+   (fade               float)
+   (dest-fade          float)
    )
-  :heap-base #x460
-  :method-count-assert 209
-  :size-assert         #x4e0
-  :flag-assert         #xd1046004e0
+  (:state-methods
+    fire
+    close-attack
+    )
   (:methods
-    (fire () _type_ :state 203)
-    (close-attack () _type_ :state 204)
-    (metalhead-predator-method-205 (_type_ symbol) none 205)
-    (metalhead-predator-method-206 (_type_ int float) none 206)
-    (metalhead-predator-method-207 (_type_ vector vector vector) symbol 207)
-    (metalhead-predator-method-208 (_type_) none 208)
+    (metalhead-predator-method-205 (_type_ symbol) none)
+    (metalhead-predator-method-206 (_type_ int float) none)
+    (metalhead-predator-method-207 (_type_ vector vector vector) symbol)
+    (metalhead-predator-method-208 (_type_) none)
     )
   )
 
@@ -330,7 +324,7 @@
                                           )
       )
 
-(defmethod metalhead-predator-method-208 metalhead-predator ((this metalhead-predator))
+(defmethod metalhead-predator-method-208 ((this metalhead-predator))
   (cond
     ((< (-> this hit-points) 2)
      (when (!= (-> this dest-fade) 128.0)
@@ -384,7 +378,7 @@
   (none)
   )
 
-(defmethod track-target! metalhead-predator ((this metalhead-predator))
+(defmethod track-target! ((this metalhead-predator))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -399,7 +393,7 @@
   )
 
 ;; WARN: disable def twice: 21. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod general-event-handler metalhead-predator ((this metalhead-predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this metalhead-predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -418,7 +412,7 @@
     )
   )
 
-(defmethod enemy-method-77 metalhead-predator ((this metalhead-predator) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalhead-predator) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -510,7 +504,7 @@
     )
   )
 
-(defmethod enemy-method-78 metalhead-predator ((this metalhead-predator) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalhead-predator) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -585,11 +579,11 @@
     )
   )
 
-(defmethod get-inv-mass metalhead-predator ((this metalhead-predator))
+(defmethod get-inv-mass ((this metalhead-predator))
   0.5
   )
 
-(defmethod metalhead-predator-method-207 metalhead-predator ((this metalhead-predator) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod metalhead-predator-method-207 ((this metalhead-predator) (arg0 vector) (arg1 vector) (arg2 vector))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (let ((f0-0 1228.8)
           (f30-0 6144.0)
@@ -659,7 +653,7 @@
     )
   )
 
-(defmethod metalhead-predator-method-206 metalhead-predator ((this metalhead-predator) (arg0 int) (arg1 float))
+(defmethod metalhead-predator-method-206 ((this metalhead-predator) (arg0 int) (arg1 float))
   (local-vars (sv-240 vector) (sv-256 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1001,7 +995,7 @@
   :post nav-enemy-chase-post
   )
 
-(defmethod metalhead-predator-method-205 metalhead-predator ((this metalhead-predator) (arg0 symbol))
+(defmethod metalhead-predator-method-205 ((this metalhead-predator) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 (the-as int (+ (-> v1-1 specific 0) -2)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child (+ a0-1 2))))
@@ -1016,7 +1010,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! metalhead-predator ((this metalhead-predator))
+(defmethod init-enemy-collision! ((this metalhead-predator))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1096,11 +1090,11 @@
   (none)
   )
 
-(defmethod relocate metalhead-predator ((this metalhead-predator) (arg0 int))
+(defmethod relocate ((this metalhead-predator) (arg0 int))
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! metalhead-predator ((this metalhead-predator))
+(defmethod init-enemy! ((this metalhead-predator))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1137,7 +1131,7 @@
   (none)
   )
 
-(defmethod citizen-init! metalhead-predator ((this metalhead-predator))
+(defmethod citizen-init! ((this metalhead-predator))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen-enemy citizen-init!)))
     (t9-0 this)

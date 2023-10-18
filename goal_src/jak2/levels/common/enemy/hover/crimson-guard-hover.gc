@@ -422,14 +422,10 @@
 
 (deftype crimson-guard-hover-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod play-impact-sound crimson-guard-hover-shot ((this crimson-guard-hover-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this crimson-guard-hover-shot) (arg0 projectile-options))
   (cond
     ((zero? arg0)
      )
@@ -442,40 +438,38 @@
   )
 
 (deftype crimson-guard-hover (hover-enemy)
-  ((gun-jmod              joint-mod                        :offset-assert 784)
-   (hips-jmod             joint-mod                        :offset-assert 788)
-   (entity-group          actor-group                      :offset-assert 792)
-   (los                   los-control              :inline :offset-assert 800)
-   (smoke-part            sparticle-launch-control         :offset-assert 948)
-   (engine-part           sparticle-launch-control         :offset-assert 952)
-   (last-fire-time        time-frame                       :offset-assert 960)
-   (gun-x-angle           float                            :offset-assert 968)
-   (gun-x-angle-final     float                            :offset-assert 972)
-   (path-u                float                            :offset-assert 976)
-   (path-du               float                            :offset-assert 980)
-   (path-du-final         float                            :offset-assert 984)
-   (path-dest             float                            :offset-assert 988)
-   (sound-id              sound-id                         :offset-assert 992)
-   (knocked-recover-anim  int32                            :offset-assert 996)
-   (attack-wait-min       float                            :offset-assert 1000)
-   (attack-wait-max       float                            :offset-assert 1004)
-   (attack-miss-dist-min  float                            :offset-assert 1008)
-   (attack-miss-dist-max  float                            :offset-assert 1012)
-   (attack-miss-dist-curr float                            :offset-assert 1016)
-   (shots-fired           int32                            :offset-assert 1020)
+  ((gun-jmod               joint-mod)
+   (hips-jmod              joint-mod)
+   (entity-group           actor-group)
+   (los                    los-control  :inline)
+   (smoke-part             sparticle-launch-control)
+   (engine-part            sparticle-launch-control)
+   (last-fire-time         time-frame)
+   (gun-x-angle            float)
+   (gun-x-angle-final      float)
+   (path-u                 float)
+   (path-du                float)
+   (path-du-final          float)
+   (path-dest              float)
+   (sound-id               sound-id)
+   (knocked-recover-anim   int32)
+   (attack-wait-min        float)
+   (attack-wait-max        float)
+   (attack-miss-dist-min   float)
+   (attack-miss-dist-max   float)
+   (attack-miss-dist-curr  float)
+   (shots-fired            int32)
    )
-  :heap-base #x380
-  :method-count-assert 163
-  :size-assert         #x400
-  :flag-assert         #xa303800400
+  (:state-methods
+    ambush-fly
+    ambush-attack
+    kick-attack
+    attack
+    die-now
+    )
   (:methods
-    (ambush-fly () _type_ :state 156)
-    (ambush-attack () _type_ :state 157)
-    (kick-attack () _type_ :state 158)
-    (attack () _type_ :state 159)
-    (die-now () _type_ :state 160)
-    (shoot (_type_ vector projectile-init-by-other-params int int float) none 161)
-    (crimson-guard-hover-method-162 (_type_ process-focusable) symbol 162)
+    (shoot (_type_ vector projectile-init-by-other-params int int float) none)
+    (crimson-guard-hover-method-162 (_type_ process-focusable) symbol)
     )
   )
 
@@ -590,7 +584,7 @@
   )
 
 ;; WARN: Return type mismatch int vs sound-id.
-(defmethod enemy-method-135 crimson-guard-hover ((this crimson-guard-hover) (arg0 int))
+(defmethod enemy-method-135 ((this crimson-guard-hover) (arg0 int))
   (if (and (zero? arg0) (logtest? #x4000000 (-> this incoming penetrate-using)))
       (sound-play "hover-take-hit")
       (call-parent-method this arg0)
@@ -1098,7 +1092,7 @@
     )
   )
 
-(defmethod general-event-handler crimson-guard-hover ((this crimson-guard-hover) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this crimson-guard-hover) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v1-15 enemy-flag))
@@ -1173,7 +1167,7 @@
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod crimson-guard-hover-method-162 crimson-guard-hover ((this crimson-guard-hover) (arg0 process-focusable))
+(defmethod crimson-guard-hover-method-162 ((this crimson-guard-hover) (arg0 process-focusable))
   (let* ((v1-1 (vector+! (new 'stack-no-clear 'vector) (-> this root trans) (-> this root transv)))
          (s5-1 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> this focus-pos)))
          (f30-0 (vector-length s5-1))
@@ -1208,7 +1202,7 @@
     )
   )
 
-(defmethod hover-enemy-method-145 crimson-guard-hover ((this crimson-guard-hover) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
+(defmethod hover-enemy-method-145 ((this crimson-guard-hover) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
   (local-vars (v1-1 int))
   0
   (if (< 0.0 arg1)
@@ -1232,7 +1226,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-52 crimson-guard-hover ((this crimson-guard-hover) (arg0 vector))
+(defmethod enemy-method-52 ((this crimson-guard-hover) (arg0 vector))
   (let ((s4-0 (-> this root)))
     (case (-> this incoming knocked-type)
       (((knocked-type knocked-type-2))
@@ -1269,7 +1263,7 @@
   (none)
   )
 
-(defmethod enemy-method-77 crimson-guard-hover ((this crimson-guard-hover) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard-hover) (arg0 (pointer float)))
   (ja-channel-push! 1 0)
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-5))
@@ -1300,7 +1294,7 @@
   #t
   )
 
-(defmethod enemy-method-78 crimson-guard-hover ((this crimson-guard-hover) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard-hover) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.4))
@@ -1321,7 +1315,7 @@
     )
   )
 
-(defmethod track-target! crimson-guard-hover ((this crimson-guard-hover))
+(defmethod track-target! ((this crimson-guard-hover))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1360,7 +1354,7 @@
   (none)
   )
 
-(defmethod hover-enemy-method-142 crimson-guard-hover ((this crimson-guard-hover))
+(defmethod hover-enemy-method-142 ((this crimson-guard-hover))
   (let ((s5-0 (-> this main-joint-acc))
         (s4-0 (-> this main-joint-vel))
         (gp-0
@@ -1467,7 +1461,7 @@
   (none)
   )
 
-(defmethod hover-enemy-method-143 crimson-guard-hover ((this crimson-guard-hover) (arg0 int) (arg1 float))
+(defmethod hover-enemy-method-143 ((this crimson-guard-hover) (arg0 int) (arg1 float))
   (let* ((s2-0 (-> this node-list data arg0))
          (s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) s2-0))
          (s5-0 (new 'stack-no-clear 'matrix))
@@ -1505,13 +1499,13 @@
   (none)
   )
 
-(defmethod shoot crimson-guard-hover ((this crimson-guard-hover)
-                                    (arg0 vector)
-                                    (arg1 projectile-init-by-other-params)
-                                    (arg2 int)
-                                    (arg3 int)
-                                    (arg4 float)
-                                    )
+(defmethod shoot ((this crimson-guard-hover)
+                 (arg0 vector)
+                 (arg1 projectile-init-by-other-params)
+                 (arg2 int)
+                 (arg3 int)
+                 (arg4 float)
+                 )
   (vector<-cspace! (-> arg1 pos) (-> this node-list data arg2))
   (let ((s2-1 (quaternion-vector-angle!
                 (new 'stack-no-clear 'quaternion)
@@ -1538,7 +1532,7 @@
   (none)
   )
 
-(defmethod kill-prefer-falling crimson-guard-hover ((this crimson-guard-hover))
+(defmethod kill-prefer-falling ((this crimson-guard-hover))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   (cond
     ((and (-> this next-state) (= (-> this next-state name) 'knocked))
@@ -1554,7 +1548,7 @@
   )
 
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 crimson-guard-hover ((this crimson-guard-hover) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this crimson-guard-hover) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 (the-as nav-enemy this) arg0 arg1)
                        (set-dst-proc! (-> this los) (-> this focus handle))
@@ -1563,7 +1557,7 @@
     )
   )
 
-(defmethod hover-enemy-method-149 crimson-guard-hover ((this crimson-guard-hover))
+(defmethod hover-enemy-method-149 ((this crimson-guard-hover))
   (initialize-skeleton
     this
     (the-as
@@ -1576,7 +1570,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! crimson-guard-hover ((this crimson-guard-hover))
+(defmethod init-enemy-collision! ((this crimson-guard-hover))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1674,11 +1668,11 @@
   (none)
   )
 
-(defmethod hover-enemy-method-150 crimson-guard-hover ((this crimson-guard-hover))
+(defmethod hover-enemy-method-150 ((this crimson-guard-hover))
   *crimson-guard-hover-enemy-info*
   )
 
-(defmethod hover-enemy-method-151 crimson-guard-hover ((this crimson-guard-hover))
+(defmethod hover-enemy-method-151 ((this crimson-guard-hover))
   (new 'static 'hover-enemy-info
     :fly-forward-anim 7
     :fly-backward-anim 8
@@ -1694,12 +1688,12 @@
     )
   )
 
-(defmethod hover-enemy-method-152 crimson-guard-hover ((this crimson-guard-hover))
+(defmethod hover-enemy-method-152 ((this crimson-guard-hover))
   (new 'static 'hover-nav-params :max-speed 102400.0 :max-acceleration 143360.0 :friction 0.05)
   )
 
 ;; WARN: Return type mismatch hover-enemy vs crimson-guard-hover.
-(defmethod relocate crimson-guard-hover ((this crimson-guard-hover) (arg0 int))
+(defmethod relocate ((this crimson-guard-hover) (arg0 int))
   (if (nonzero? (-> this gun-jmod))
       (&+! (-> this gun-jmod) arg0)
       )
@@ -1715,7 +1709,7 @@
   (the-as crimson-guard-hover ((method-of-type hover-enemy relocate) this arg0))
   )
 
-(defmethod deactivate crimson-guard-hover ((this crimson-guard-hover))
+(defmethod deactivate ((this crimson-guard-hover))
   (if (nonzero? (-> this smoke-part))
       (kill-and-free-particles (-> this smoke-part))
       )
@@ -1727,7 +1721,7 @@
   (none)
   )
 
-(defmethod init-enemy! crimson-guard-hover ((this crimson-guard-hover))
+(defmethod init-enemy! ((this crimson-guard-hover))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag) (sv-64 res-tag))
   (hover-enemy-method-149 this)

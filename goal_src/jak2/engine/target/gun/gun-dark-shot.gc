@@ -89,26 +89,22 @@
   )
 
 (deftype gun-dark-shot (projectile)
-  ((blast-radius  float            :offset-assert 472)
-   (core-position vector   :inline :offset-assert 480)
-   (core-velocity vector   :inline :offset-assert 496)
-   (spin-vector   vector   :inline :offset-assert 512)
-   (track-target  handle           :offset-assert 528)
-   (size-t        float            :offset-assert 536)
-   (result-array  handle   16      :offset-assert 544)
-   (charge-sound  sound-id         :offset-assert 672)
-   (fire-sound    sound-id         :offset-assert 676)
-   (trail-sound   sound-id         :offset-assert 680)
-   (explode-sound sound-id         :offset-assert 684)
-   (start-pilot?  basic            :offset-assert 688)
+  ((blast-radius   float)
+   (core-position  vector  :inline)
+   (core-velocity  vector  :inline)
+   (spin-vector    vector  :inline)
+   (track-target   handle)
+   (size-t         float)
+   (result-array   handle  16)
+   (charge-sound   sound-id)
+   (fire-sound     sound-id)
+   (trail-sound    sound-id)
+   (explode-sound  sound-id)
+   (start-pilot?   basic)
    )
-  :heap-base #x240
-  :method-count-assert 42
-  :size-assert         #x2b4
-  :flag-assert         #x2a024002b4
-  (:methods
-    (startup () _type_ :state 40)
-    (fizzle () _type_ :state 41)
+  (:state-methods
+    startup
+    fizzle
     )
   )
 
@@ -142,7 +138,7 @@
     )
   )
 
-(defmethod init-proj-settings! gun-dark-shot ((this gun-dark-shot))
+(defmethod init-proj-settings! ((this gun-dark-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this attack-mode) 'eco-dark)
   (vector-normalize! (-> this root transv) (+ 225280.0 (* 225280.0 (-> this charge-level))))
@@ -162,7 +158,7 @@
   (none)
   )
 
-(defmethod spawn-impact-particles gun-dark-shot ((this gun-dark-shot))
+(defmethod spawn-impact-particles ((this gun-dark-shot))
   "Spawns associated particles with the projectile if applicable"
   (cond
     ((and (and (-> this next-state) (= (-> this next-state name) 'startup))
@@ -185,7 +181,7 @@
   (none)
   )
 
-(defmethod go-moving! gun-dark-shot ((this gun-dark-shot))
+(defmethod go-moving! ((this gun-dark-shot))
   (go (method-of-object this startup))
   0
   (none)
@@ -207,7 +203,7 @@
       )
     )
   :code (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (until #f
       (cond
         ((or (and *target*
@@ -218,7 +214,7 @@
              )
          (go-virtual dissipate)
          )
-        ((or (< (- (current-time) (-> self state-time)) (seconds 0.3)) (cpad-hold? 0 r1))
+        ((or (not (time-elapsed? (-> self state-time) (seconds 0.3))) (cpad-hold? 0 r1))
          (set! (-> self size-t) (fmin 1.0 (* 0.016666668 (the float (- (current-time) (-> self state-time))))))
          (let ((t9-1 vector<-cspace!)
                (a0-13 (-> self root trans))
@@ -290,7 +286,7 @@
           (vector-float*! (-> self spin-vector) (-> self spin-vector) (/ 1.0 f0-5))
           )
       )
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000)))
       (when gp-2
         (let ((t9-4 (method-of-type part-tracker activate)))
@@ -511,10 +507,10 @@
 (defstate fizzle (gun-dark-shot)
   :virtual #t
   :enter (behavior ()
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (>= (- (current-time) (-> self state-time)) (seconds 1))
+    (if (time-elapsed? (-> self state-time) (seconds 1))
         (deactivate self)
         )
     (process-drawable-shock-effect
@@ -597,7 +593,7 @@
       (sv-320 process-drawable)
       (sv-336 process-drawable)
       )
-    (if (< (- (current-time) (-> self spawn-time)) (seconds 0.1))
+    (if (not (time-elapsed? (-> self spawn-time) (seconds 0.1)))
         (send-event (ppointer->process (-> self parent)) 'release)
         )
     (sound-stop (-> self trail-sound))
@@ -779,17 +775,17 @@
                                                            )
                                                         )
                                                       )
-                                                 (< (- (current-time) s3-0) (seconds 0.1))
+                                                 (not (time-elapsed? s3-0 (seconds 0.1)))
                                                  )
                                              )
                                            )
-                                       (< (- (current-time) s3-0) (seconds 5))
+                                       (not (time-elapsed? s3-0 (seconds 5)))
                                        (not (logtest? (-> (the-as process-drawable (-> s5-0 0)) draw status) (draw-control-status no-draw no-draw-temp))
                                             )
                                        )
                                   )
                                 )
-                      (when (>= (- (current-time) (the-as time-frame s4-0)) (seconds 0.05))
+                      (when (time-elapsed? (the-as time-frame s4-0) (seconds 0.05))
                         (set! s4-0 (the-as int (current-time)))
                         (if (handle->process arg0)
                             (process-drawable-shock-effect-bullseye
@@ -821,7 +817,7 @@
                 :to s4-1
                 )
               (let ((s4-2 (current-time)))
-                (until (>= (- (current-time) s4-2) (seconds 0.1))
+                (until (time-elapsed? s4-2 (seconds 0.1))
                   (suspend)
                   )
                 )
@@ -832,7 +828,7 @@
       )
     (let ((gp-3 (current-time)))
       (while (or (-> self child)
-                 (and (nonzero? (get-status *gui-control* (-> self explode-sound))) (< (- (current-time) gp-3) (seconds 10)))
+                 (and (nonzero? (get-status *gui-control* (-> self explode-sound))) (not (time-elapsed? gp-3 (seconds 10))))
                  )
         (suspend)
         )

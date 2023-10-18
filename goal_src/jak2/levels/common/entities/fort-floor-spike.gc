@@ -8,44 +8,36 @@
 ;; DECOMP BEGINS
 
 (deftype spike-row-info (structure)
-  ((sync      sync-linear           :inline :offset-assert   0)
-   (table-ptr (inline-array vector)         :offset-assert  16)
-   (on-ratio  float                         :offset-assert  20)
-   (state     int32                         :offset-assert  24)
+  ((sync       sync-linear  :inline)
+   (table-ptr  (inline-array vector))
+   (on-ratio   float)
+   (state      int32)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 
 (deftype spike-row-info-array (inline-array-class)
-  ((data spike-row-info :inline :dynamic :offset-assert  16)
+  ((data  spike-row-info  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> spike-row-info-array heap-base) (the-as uint 32))
 
 (deftype fort-floor-spike (process-drawable)
-  ((pos-table        (inline-array vector)   :offset-assert 200)
-   (spike-row        spike-row-info-array    :offset-assert 204)
-   (spike-dim        int32                 2 :offset-assert 208)
-   (attack-id        int32                   :offset-assert 216)
-   (no-overlap-timer uint64                  :offset-assert 224)
+  ((pos-table         (inline-array vector))
+   (spike-row         spike-row-info-array)
+   (spike-dim         int32  2)
+   (attack-id         int32)
+   (no-overlap-timer  uint64)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (init-spike-joints! (_type_) none 21)
-    (init-spike-collision! (_type_) collide-shape-moving 22)
-    (init-periodic-animation! (_type_) symbol 23)
+    (init-spike-joints! (_type_) none)
+    (init-spike-collision! (_type_) collide-shape-moving)
+    (init-periodic-animation! (_type_) symbol)
     )
   )
 
@@ -65,20 +57,20 @@
   (none)
   )
 
-(defmethod init-spike-joints! fort-floor-spike ((this fort-floor-spike))
+(defmethod init-spike-joints! ((this fort-floor-spike))
   "Initializes the skeleton and joints for the spike"
   0
   (none)
   )
 
 ;; WARN: Return type mismatch int vs collide-shape-moving.
-(defmethod init-spike-collision! fort-floor-spike ((this fort-floor-spike))
+(defmethod init-spike-collision! ((this fort-floor-spike))
   "Initializes the collision for the particular spike"
   (the-as collide-shape-moving 0)
   )
 
 ;; WARN: Return type mismatch int vs symbol.
-(defmethod init-periodic-animation! fort-floor-spike ((this fort-floor-spike))
+(defmethod init-periodic-animation! ((this fort-floor-spike))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (the-as symbol 0)
   )
@@ -168,7 +160,7 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-floor-spike.
-(defmethod relocate fort-floor-spike ((this fort-floor-spike) (arg0 int))
+(defmethod relocate ((this fort-floor-spike) (arg0 int))
   (if (nonzero? (-> this spike-row))
       (&+! (-> this spike-row) arg0)
       )
@@ -176,7 +168,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! fort-floor-spike ((this fort-floor-spike) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fort-floor-spike) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -220,14 +212,10 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-a (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-a ((this fort-floor-spike-a))
+(defmethod init-spike-joints! ((this fort-floor-spike-a))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
     this
@@ -247,7 +235,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-a ((this fort-floor-spike-a))
+(defmethod init-spike-collision! ((this fort-floor-spike-a))
   "Initializes the collision for the particular spike"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -301,7 +289,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-a ((this fort-floor-spike-a))
+(defmethod init-periodic-animation! ((this fort-floor-spike-a))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 2)
@@ -362,14 +350,10 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-b (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-b ((this fort-floor-spike-b))
+(defmethod init-spike-joints! ((this fort-floor-spike-b))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
     this
@@ -389,7 +373,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-b ((this fort-floor-spike-b))
+(defmethod init-spike-collision! ((this fort-floor-spike-b))
   "Initializes the collision for the particular spike"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -454,7 +438,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-b ((this fort-floor-spike-b))
+(defmethod init-periodic-animation! ((this fort-floor-spike-b))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 2)
@@ -517,14 +501,10 @@ This commonly includes things such as:
 
 (deftype fort-floor-spike-c (fort-floor-spike)
   ()
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe8
-  :flag-assert         #x18007000e8
   )
 
 
-(defmethod init-spike-joints! fort-floor-spike-c ((this fort-floor-spike-c))
+(defmethod init-spike-joints! ((this fort-floor-spike-c))
   "Initializes the skeleton and joints for the spike"
   (initialize-skeleton
     this
@@ -544,7 +524,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-spike-collision! fort-floor-spike-c ((this fort-floor-spike-c))
+(defmethod init-spike-collision! ((this fort-floor-spike-c))
   "Initializes the collision for the particular spike"
   (local-vars (prim-mesh collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
   (let ((cshape-moving (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -614,7 +594,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init-periodic-animation! fort-floor-spike-c ((this fort-floor-spike-c))
+(defmethod init-periodic-animation! ((this fort-floor-spike-c))
   "Initialzes the periodic animation of the spikes (exit and re-entry)"
   (local-vars (sv-64 cspace))
   (let ((s5-0 3)

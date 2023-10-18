@@ -8,44 +8,34 @@
 ;; DECOMP BEGINS
 
 (deftype pal-fan-ring (structure)
-  ((lightning      lightning-control  :offset-assert   0)
-   (radius         float              :offset-assert   4)
-   (dist           float              :offset-assert   8)
-   (local-z-rotate float              :offset-assert  12)
+  ((lightning       lightning-control)
+   (radius          float)
+   (dist            float)
+   (local-z-rotate  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (deftype pal-fan-pole (structure)
-  ((rings    pal-fan-ring 6 :inline :offset-assert   0)
-   (z-rotate float                  :offset         96)
+  ((rings     pal-fan-ring  6 :inline)
+   (z-rotate  float         :offset  96)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x64
-  :flag-assert         #x900000064
   )
 
 
 (deftype pal-electric-fan (process-drawable)
-  ((root               collide-shape-moving           :override)
-   (poles              pal-fan-pole         3 :inline :offset-assert 200)
-   (no-collision-timer time-frame                     :offset        536)
-   (sound-timer        time-frame                     :offset-assert 544)
-   (rotate-speed       float                          :offset-assert 552)
-   (attack-id          uint32                         :offset-assert 556)
-   (sound-id           sound-id                       :offset-assert 560)
+  ((root                collide-shape-moving :override)
+   (poles               pal-fan-pole          3 :inline)
+   (no-collision-timer  time-frame            :offset 536)
+   (sound-timer         time-frame)
+   (rotate-speed        float)
+   (attack-id           uint32)
+   (sound-id            sound-id)
    )
-  :heap-base #x1c0
-  :method-count-assert 21
-  :size-assert         #x234
-  :flag-assert         #x1501c00234
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -199,7 +189,7 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs pal-electric-fan.
-(defmethod relocate pal-electric-fan ((this pal-electric-fan) (arg0 int))
+(defmethod relocate ((this pal-electric-fan) (arg0 int))
   (dotimes (v1-0 3)
     (dotimes (a2-0 6)
       (if (nonzero? (-> (the-as pal-electric-fan (&+ this (* 112 v1-0))) poles 0 rings a2-0 lightning))
@@ -211,7 +201,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-electric-fan ((this pal-electric-fan) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-electric-fan) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -370,19 +360,15 @@ This commonly includes things such as:
   )
 
 (deftype pal-cable-nut (process-drawable)
-  ((root              collide-shape-moving         :override)
-   (sync              sync-linear          :inline :offset-assert 200)
-   (init-quat         quaternion           :inline :offset-assert 224)
-   (sound-played?     symbol               2       :offset-assert 240)
-   (hold-percentage   float                        :offset-assert 248)
-   (wiggle-percentage float                        :offset-assert 252)
+  ((root               collide-shape-moving :override)
+   (sync               sync-linear           :inline)
+   (init-quat          quaternion            :inline)
+   (sound-played?      symbol                2)
+   (hold-percentage    float)
+   (wiggle-percentage  float)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #x100
-  :flag-assert         #x1500800100
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -443,7 +429,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-cable-nut ((this pal-cable-nut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-cable-nut) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -531,14 +517,10 @@ This commonly includes things such as:
 
 (deftype pal-rot-gun-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod spawn-impact-particles pal-rot-gun-shot ((this pal-rot-gun-shot))
+(defmethod spawn-impact-particles ((this pal-rot-gun-shot))
   "Spawns associated particles with the projectile if applicable"
   (let* ((gp-0 (-> this root trans))
          (a1-0 (-> this tail-pos))
@@ -586,7 +568,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod spawn-shell-particles pal-rot-gun-shot ((this pal-rot-gun-shot))
+(defmethod spawn-shell-particles ((this pal-rot-gun-shot))
   "TODO - confirm"
   (let* ((s3-0 (-> this root))
          (s5-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> s3-0 trans)) 2048.0))
@@ -647,7 +629,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod play-impact-sound pal-rot-gun-shot ((this pal-rot-gun-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this pal-rot-gun-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -689,7 +671,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-proj-collision! pal-rot-gun-shot ((this pal-rot-gun-shot))
+(defmethod init-proj-collision! ((this pal-rot-gun-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -723,7 +705,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-proj-settings! pal-rot-gun-shot ((this pal-rot-gun-shot))
+(defmethod init-proj-settings! ((this pal-rot-gun-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'pal-rot-gun-shot)
@@ -735,24 +717,22 @@ This commonly includes things such as:
   )
 
 (deftype pal-rot-gun (process-drawable)
-  ((init-quat       quaternion :inline :offset-assert 208)
-   (fire-timer      time-frame         :offset-assert 224)
-   (gun-index       int32              :offset-assert 232)
-   (spin-rate       float              :offset-assert 236)
-   (spin-rate-final float              :offset-assert 240)
-   (sound-id        sound-id           :offset-assert 244)
-   (shot-sound-id   sound-id           :offset-assert 248)
-   (prev-z-rot      float              :offset-assert 252)
+  ((init-quat        quaternion  :inline)
+   (fire-timer       time-frame)
+   (gun-index        int32)
+   (spin-rate        float)
+   (spin-rate-final  float)
+   (sound-id         sound-id)
+   (shot-sound-id    sound-id)
+   (prev-z-rot       float)
    )
-  :heap-base #x80
-  :method-count-assert 24
-  :size-assert         #x100
-  :flag-assert         #x1800800100
+  (:state-methods
+    idle
+    spin
+    spin-down
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (spin () _type_ :state 21)
-    (spin-down () _type_ :state 22)
-    (pal-rot-gun-method-23 (_type_ matrix) none 23)
+    (pal-rot-gun-method-23 (_type_ matrix) none)
     )
   )
 
@@ -884,7 +864,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod pal-rot-gun-method-23 pal-rot-gun ((this pal-rot-gun) (arg0 matrix))
+(defmethod pal-rot-gun-method-23 ((this pal-rot-gun) (arg0 matrix))
   (let ((v1-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
     (let ((a2-0 (-> arg0 vector))
           (a1-1 (-> arg0 vector 1))
@@ -910,7 +890,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate pal-rot-gun ((this pal-rot-gun))
+(defmethod deactivate ((this pal-rot-gun))
   (sound-stop (-> this sound-id))
   (sound-stop (-> this shot-sound-id))
   (call-parent-method this)
@@ -918,7 +898,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-rot-gun ((this pal-rot-gun) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-rot-gun) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -955,12 +935,8 @@ This commonly includes things such as:
 
 (deftype pal-windmill (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -987,7 +963,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-windmill ((this pal-windmill) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-windmill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1008,16 +984,12 @@ This commonly includes things such as:
   )
 
 (deftype pal-flip-step (process-drawable)
-  ((task-node game-task-node-info  :offset-assert 200)
+  ((task-node  game-task-node-info)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (fall () _type_ :state 21)
-    (fallen () _type_ :state 22)
+  (:state-methods
+    idle
+    fall
+    fallen
     )
   )
 
@@ -1066,7 +1038,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! pal-flip-step ((this pal-flip-step) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pal-flip-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

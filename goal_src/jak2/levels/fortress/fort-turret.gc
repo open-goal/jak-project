@@ -389,36 +389,34 @@
   )
 
 (deftype fort-turret (enemy)
-  ((gun-tilt-jm     joint-mod           :offset-assert 532)
-   (gun-shadow-jm   joint-mod           :offset-assert 536)
-   (aim-pos         vector      :inline :offset-assert 544)
-   (target-bullseye vector      :inline :offset-assert 560)
-   (gun-twist       float               :offset-assert 576)
-   (gun-tilt        float               :offset-assert 580)
-   (desired-twist   float               :offset-assert 584)
-   (desired-tilt    float               :offset-assert 588)
-   (los-clear       symbol              :offset-assert 592)
-   (flash-state     basic               :offset-assert 596)
-   (flash-index     uint32              :offset-assert 600)
-   (can-shoot       symbol              :offset-assert 604)
-   (last-hit-time   time-frame          :offset-assert 608)
-   (init-mat        matrix      :inline :offset-assert 624)
-   (target-timeout  uint64              :offset-assert 688)
-   (beam-intersect  basic               :offset-assert 696)
-   (sync            sync-linear :inline :offset-assert 704)
-   (invincible      symbol              :offset-assert 720)
+  ((gun-tilt-jm      joint-mod)
+   (gun-shadow-jm    joint-mod)
+   (aim-pos          vector       :inline)
+   (target-bullseye  vector       :inline)
+   (gun-twist        float)
+   (gun-tilt         float)
+   (desired-twist    float)
+   (desired-tilt     float)
+   (los-clear        symbol)
+   (flash-state      basic)
+   (flash-index      uint32)
+   (can-shoot        symbol)
+   (last-hit-time    time-frame)
+   (init-mat         matrix       :inline)
+   (target-timeout   uint64)
+   (beam-intersect   basic)
+   (sync             sync-linear  :inline)
+   (invincible       symbol)
    )
-  :heap-base #x260
-  :method-count-assert 143
-  :size-assert         #x2d4
-  :flag-assert         #x8f026002d4
+  (:state-methods
+    attack
+    sweep
+    )
   (:methods
-    (attack () _type_ :state 137)
-    (sweep () _type_ :state 138)
-    (fort-turret-method-139 (_type_) none 139)
-    (fort-turret-method-140 (_type_ float float) quaternion 140)
-    (fort-turret-method-141 (_type_) vector 141)
-    (fort-turret-method-142 (_type_ symbol int) symbol 142)
+    (fort-turret-method-139 (_type_) none)
+    (fort-turret-method-140 (_type_ float float) quaternion)
+    (fort-turret-method-141 (_type_) vector)
+    (fort-turret-method-142 (_type_ symbol int) symbol)
     )
   )
 
@@ -505,7 +503,7 @@
 
 (set! (-> *fort-turret-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod track-target! fort-turret ((this fort-turret))
+(defmethod track-target! ((this fort-turret))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -535,7 +533,7 @@
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod fort-turret-method-139 fort-turret ((this fort-turret))
+(defmethod fort-turret-method-139 ((this fort-turret))
   (let ((a0-2 (handle->process (-> this focus handle))))
     (if a0-2
         (set! (-> this aim-pos quad) (-> (get-trans (the-as process-focusable a0-2) 3) quad))
@@ -585,7 +583,7 @@
   (none)
   )
 
-(defmethod fort-turret-method-140 fort-turret ((this fort-turret) (arg0 float) (arg1 float))
+(defmethod fort-turret-method-140 ((this fort-turret) (arg0 float) (arg1 float))
   (rider-trans)
   (let ((s3-0 (new 'stack-no-clear 'matrix)))
     (+! (-> this gun-twist) (fmax (- arg1) (fmin arg1 (* arg0 (- (-> this desired-twist) (-> this gun-twist))))))
@@ -597,7 +595,7 @@
   (quaternion-axis-angle! (-> this gun-tilt-jm quat) 1.0 0.0 0.0 (-> this gun-tilt))
   )
 
-(defmethod fort-turret-method-141 fort-turret ((this fort-turret))
+(defmethod fort-turret-method-141 ((this fort-turret))
   (let* ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 12)))
          (v1-3
            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data 12 bone transform vector 2) 1.0)
@@ -659,7 +657,7 @@
     )
   )
 
-(defmethod fort-turret-method-142 fort-turret ((this fort-turret) (arg0 symbol) (arg1 int))
+(defmethod fort-turret-method-142 ((this fort-turret) (arg0 symbol) (arg1 int))
   (let ((v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data arg1)))
         (s4-0 (new 'stack-no-clear 'projectile-init-by-other-params))
         )
@@ -855,7 +853,7 @@
     )
   )
 
-(defmethod general-event-handler fort-turret ((this fort-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this fort-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (if (and (= arg2 'notify) (< 1 arg1) (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
@@ -942,19 +940,19 @@
     )
   )
 
-(defmethod coin-flip? fort-turret ((this fort-turret))
+(defmethod coin-flip? ((this fort-turret))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; WARN: Return type mismatch int vs penetrate.
-(defmethod get-penetrate-info fort-turret ((this fort-turret))
+(defmethod get-penetrate-info ((this fort-turret))
   "@returns the allowed way(s) this enemy can take damage
 @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
-(defmethod init-enemy-collision! fort-turret ((this fort-turret))
+(defmethod init-enemy-collision! ((this fort-turret))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (stack-size-set! (-> this main-thread) 512)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -1006,8 +1004,14 @@
   (none)
   )
 
+;; og:preserve-this
+;; (defmethod coin-flip? ((this fort-turret))
+;;   "@returns The result of a 50/50 RNG roll"
+;;   #f
+;;   )
+
 ;; WARN: Return type mismatch enemy vs fort-turret.
-(defmethod relocate fort-turret ((this fort-turret) (arg0 int))
+(defmethod relocate ((this fort-turret) (arg0 int))
   (if (nonzero? (-> this gun-tilt-jm))
       (&+! (-> this gun-tilt-jm) arg0)
       )
@@ -1017,7 +1021,7 @@
   (the-as fort-turret ((method-of-type enemy relocate) this arg0))
   )
 
-(defmethod init-enemy! fort-turret ((this fort-turret))
+(defmethod init-enemy! ((this fort-turret))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

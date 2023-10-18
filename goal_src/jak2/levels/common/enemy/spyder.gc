@@ -21,14 +21,10 @@
 
 (deftype spyder-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod play-impact-sound spyder-shot ((this spyder-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this spyder-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -43,7 +39,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! spyder-shot ((this spyder-shot))
+(defmethod init-proj-settings! ((this spyder-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (call-parent-method this)
   (set! (-> this max-speed) 307200.0)
@@ -59,35 +55,33 @@
               )
 
 (deftype spyder (nav-enemy)
-  ((los               los-control  :inline   :offset-assert 608)
-   (joint             joint-mod              :offset-assert 756)
-   (start-pos         vector       :inline   :offset-assert 768)
-   (face-pos          vector       :inline   :offset        800)
-   (my-up-vector      vector       :inline   :offset-assert 816)
-   (status-flags      spyder-flags           :offset-assert 832)
-   (change-dir-timer  time-frame             :offset-assert 840)
-   (fire-info         vector       2 :inline :offset-assert 848)
-   (joint-ik          joint-mod-ik 4         :offset        880)
-   (delta-y-ik        float        4         :offset-assert 896)
-   (predator-effect?  symbol                 :offset-assert 912)
-   (shock-effect-time time-frame             :offset-assert 920)
-   (shock-effect-end  time-frame             :offset-assert 928)
-   (fade              float                  :offset-assert 936)
-   (dest-fade         float                  :offset-assert 940)
+  ((los                los-control   :inline)
+   (joint              joint-mod)
+   (start-pos          vector        :inline)
+   (face-pos           vector        :inline :offset 800)
+   (my-up-vector       vector        :inline)
+   (status-flags       spyder-flags)
+   (change-dir-timer   time-frame)
+   (fire-info          vector        2 :inline)
+   (joint-ik           joint-mod-ik  4       :offset 880)
+   (delta-y-ik         float         4)
+   (predator-effect?   symbol)
+   (shock-effect-time  time-frame)
+   (shock-effect-end   time-frame)
+   (fade               float)
+   (dest-fade          float)
    )
-  :heap-base #x330
-  :method-count-assert 186
-  :size-assert         #x3b0
-  :flag-assert         #xba033003b0
+  (:state-methods
+    attack
+    backup
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (backup () _type_ :state 179)
-    (spyder-method-180 (_type_) none 180)
-    (spyder-method-181 (_type_) none 181)
-    (spyder-method-182 (_type_) none 182)
-    (spyder-method-183 (_type_ matrix float) none 183)
-    (spyder-method-184 (_type_ vector) none 184)
-    (spyder-method-185 (_type_) none 185)
+    (spyder-method-180 (_type_) none)
+    (spyder-method-181 (_type_) none)
+    (spyder-method-182 (_type_) none)
+    (spyder-method-183 (_type_ matrix float) none)
+    (spyder-method-184 (_type_ vector) none)
+    (spyder-method-185 (_type_) none)
     )
   )
 
@@ -271,7 +265,7 @@
 
 (set! (-> *spyder-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod general-event-handler spyder ((this spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -348,7 +342,7 @@
     )
   )
 
-(defmethod spyder-method-180 spyder ((this spyder))
+(defmethod spyder-method-180 ((this spyder))
   (seek! (-> this fade) (-> this dest-fade) (* 500.0 (seconds-per-frame)))
   (set! (-> this draw force-fade) (the-as uint (the int (-> this fade))))
   (cond
@@ -389,7 +383,7 @@
   (none)
   )
 
-(defmethod spyder-method-181 spyder ((this spyder))
+(defmethod spyder-method-181 ((this spyder))
   (let ((a0-2 (handle->process (-> this focus handle))))
     (when a0-2
       (let* ((s5-0 (-> this root trans))
@@ -433,7 +427,7 @@
   )
 
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 spyder ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this spyder) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -502,7 +496,7 @@
     )
   )
 
-(defmethod enemy-method-78 spyder ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this spyder) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (cond
@@ -535,7 +529,7 @@
     )
   )
 
-(defmethod enemy-method-87 spyder ((this spyder) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this spyder) (arg0 enemy-jump-info))
   (let ((s5-0 (-> this draw art-group data (-> this enemy-info jump-in-air-anim))))
     (let ((v1-6 (if (> (-> this skel active-channels) 0)
                     (-> this skel root-channel 0 frame-group)
@@ -598,7 +592,7 @@
   (none)
   )
 
-(defmethod spyder-method-182 spyder ((this spyder))
+(defmethod spyder-method-182 ((this spyder))
   (cond
     ((and (logtest? (-> this status-flags) (spyder-flags spflags-2)) (!= (-> this joint scale z) 1.0))
      (seek! (-> this joint scale z) 1.0 (* 0.8 (seconds-per-frame)))
@@ -645,7 +639,7 @@
   (none)
   )
 
-(defmethod spyder-method-184 spyder ((this spyder) (arg0 vector))
+(defmethod spyder-method-184 ((this spyder) (arg0 vector))
   (when (not (logtest? (-> this status-flags) (spyder-flags spflags-0)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (set! (-> s4-0 quad) (-> *up-vector* quad))
@@ -665,7 +659,7 @@
   (none)
   )
 
-(defmethod track-target! spyder ((this spyder))
+(defmethod track-target! ((this spyder))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -689,12 +683,9 @@
   )
 
 (deftype ik-setup (structure)
-  ((elbow-index int32  :offset-assert   0)
-   (hand-dist   float  :offset-assert   4)
+  ((elbow-index  int32)
+   (hand-dist    float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -735,7 +726,7 @@
     )
   )
 
-(defmethod spyder-method-185 spyder ((this spyder))
+(defmethod spyder-method-185 ((this spyder))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -961,7 +952,7 @@
   )
 
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod spyder-method-183 spyder ((this spyder) (arg0 matrix) (arg1 float))
+(defmethod spyder-method-183 ((this spyder) (arg0 matrix) (arg1 float))
   (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
     (let ((v1-0 (-> arg0 vector))
           (a1-1 (-> arg0 vector 1))
@@ -1127,7 +1118,7 @@
     )
   )
 
-(defmethod go-hostile spyder ((this spyder))
+(defmethod go-hostile ((this spyder))
   (if (and (not (logtest? (-> this status-flags) (spyder-flags spflags-1)))
            (-> this next-state)
            (let ((v1-5 (-> this next-state name)))
@@ -1177,7 +1168,7 @@
     )
   )
 
-(defmethod nav-enemy-method-142 spyder ((this spyder) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this spyder) (arg0 nav-control))
   (let ((t9-0 (method-of-object this spyder-method-184))
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
@@ -1189,13 +1180,13 @@
   (none)
   )
 
-(defmethod coin-flip? spyder ((this spyder))
+(defmethod coin-flip? ((this spyder))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 spyder ((this spyder) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this spyder) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 this arg0 arg1)
                        (set-dst-proc! (-> this los) (-> this focus handle))
@@ -1204,7 +1195,7 @@
     )
   )
 
-(defmethod init-enemy-collision! spyder ((this spyder))
+(defmethod init-enemy-collision! ((this spyder))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1304,7 +1295,7 @@
   (none)
   )
 
-(defmethod relocate spyder ((this spyder) (arg0 int))
+(defmethod relocate ((this spyder) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -1316,7 +1307,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! spyder ((this spyder))
+(defmethod init-enemy! ((this spyder))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

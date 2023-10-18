@@ -11,30 +11,26 @@
 ;; DECOMP BEGINS
 
 (deftype demo-control (process)
-  ((selected    int32                         :offset-assert 128)
-   (sprites     hud-sprite          2 :inline :offset-assert 144)
-   (sprite-pos  vector              :inline   :offset-assert 272)
-   (sprite-draw uint32                        :offset-assert 288)
-   (buffer      external-art-buffer 2         :offset-assert 292)
-   (want        int32               2         :offset-assert 300)
-   (have        int32               2         :offset-assert 308)
-   (draw        int32                         :offset-assert 316)
-   (active      symbol                        :offset-assert 320)
-   (spark-time  time-frame                    :offset-assert 328)
-   (gui-id      sound-id                      :offset-assert 336)
+  ((selected     int32)
+   (sprites      hud-sprite           2 :inline)
+   (sprite-pos   vector               :inline)
+   (sprite-draw  uint32)
+   (buffer       external-art-buffer  2)
+   (want         int32                2)
+   (have         int32                2)
+   (draw         int32)
+   (active       symbol)
+   (spark-time   time-frame)
+   (gui-id       sound-id)
    )
-  :heap-base #xe0
-  :method-count-assert 15
-  :size-assert         #x154
-  :flag-assert         #xf00e00154
-  (:methods
-    (idle () _type_ :state 14)
+  (:state-methods
+    idle
     )
   )
 
 
 ;; WARN: Return type mismatch process vs demo-control.
-(defmethod relocate demo-control ((this demo-control) (arg0 int))
+(defmethod relocate ((this demo-control) (arg0 int))
   (dotimes (v1-0 2)
     (if (nonzero? (-> this buffer v1-0))
         (&+! (-> this buffer v1-0) arg0)
@@ -43,7 +39,7 @@
   (the-as demo-control ((method-of-type process relocate) this arg0))
   )
 
-(defmethod deactivate demo-control ((this demo-control))
+(defmethod deactivate ((this demo-control))
   (dotimes (s5-0 2)
     (set-pending-file (-> this buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
     )

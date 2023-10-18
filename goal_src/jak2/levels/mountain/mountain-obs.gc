@@ -59,14 +59,10 @@
 
 (deftype mtn-dice-button (basebutton)
   ()
-  :heap-base #xa0
-  :method-count-assert 39
-  :size-assert         #x120
-  :flag-assert         #x2700a00120
   )
 
 
-(defmethod basebutton-method-33 mtn-dice-button ((this mtn-dice-button))
+(defmethod basebutton-method-33 ((this mtn-dice-button))
   "TODO - joint stuff"
   (initialize-skeleton
     this
@@ -102,7 +98,7 @@
   (none)
   )
 
-(defmethod basebutton-method-34 mtn-dice-button ((this mtn-dice-button))
+(defmethod basebutton-method-34 ((this mtn-dice-button))
   "TODO - collision stuff"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -126,7 +122,7 @@
   (none)
   )
 
-(defmethod prepare-trigger-event! mtn-dice-button ((this mtn-dice-button))
+(defmethod prepare-trigger-event! ((this mtn-dice-button))
   "Sets `event-going-down` to `'trigger`"
   (logior! (-> this button-status) (button-status button-status-4))
   (logior! (-> this button-status) (button-status pressed))
@@ -278,38 +274,36 @@
   )
 
 (deftype mtn-dice (process-drawable)
-  ((root               collide-shape-moving           :override)
-   (incoming-attack-id uint32                         :offset-assert 200)
-   (watervol           entity-actor                   :offset-assert 204)
-   (face-matrix        matrix               6 :inline :offset-assert 208)
-   (face-matrix-back   matrix               6 :inline :offset-assert 592)
-   (face-status        int32                6         :offset-assert 976)
-   (time-anim          float                          :offset-assert 1000)
-   (speed-anim         float                          :offset-assert 1004)
-   (rot-axis           vector               :inline   :offset-assert 1008)
-   (rot-org            vector               :inline   :offset-assert 1024)
-   (first              uint32                         :offset-assert 1040)
-   (active             uint32                         :offset-assert 1044)
-   (free-face          uint32                         :offset-assert 1048)
-   (color              vector               :inline   :offset-assert 1056)
-   (punch-anim         symbol                         :offset-assert 1072)
-   (first-touch-time   time-frame                     :offset-assert 1080)
-   (curtime            time-frame                     :offset-assert 1088)
-   (hint-count         float                          :offset-assert 1096)
+  ((root                collide-shape-moving :override)
+   (incoming-attack-id  uint32)
+   (watervol            entity-actor)
+   (face-matrix         matrix                6 :inline)
+   (face-matrix-back    matrix                6 :inline)
+   (face-status         int32                 6)
+   (time-anim           float)
+   (speed-anim          float)
+   (rot-axis            vector                :inline)
+   (rot-org             vector                :inline)
+   (first               uint32)
+   (active              uint32)
+   (free-face           uint32)
+   (color               vector                :inline)
+   (punch-anim          symbol)
+   (first-touch-time    time-frame)
+   (curtime             time-frame)
+   (hint-count          float)
    )
-  :heap-base #x3d0
-  :method-count-assert 28
-  :size-assert         #x44c
-  :flag-assert         #x1c03d0044c
+  (:state-methods
+    idle
+    idle-done
+    animate
+    fall
+    restart
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (idle-done () _type_ :state 21)
-    (animate () _type_ :state 22)
-    (fall () _type_ :state 23)
-    (restart () _type_ :state 24)
-    (mtn-dice-method-25 (_type_ int) none 25)
-    (mtn-dice-method-26 (_type_ process-focusable touching-shapes-entry) touching-prims-entry 26)
-    (mtn-dice-method-27 (_type_ collide-shape process-focusable touching-shapes-entry) none 27)
+    (mtn-dice-method-25 (_type_ int) none)
+    (mtn-dice-method-26 (_type_ process-focusable touching-shapes-entry) touching-prims-entry)
+    (mtn-dice-method-27 (_type_ collide-shape process-focusable touching-shapes-entry) none)
     )
   )
 
@@ -319,7 +313,7 @@
               :bounds (static-spherem 0 0 0 100)
               )
 
-(defmethod mtn-dice-method-25 mtn-dice ((this mtn-dice) (arg0 int))
+(defmethod mtn-dice-method-25 ((this mtn-dice) (arg0 int))
   (let ((s4-0 (-> this face-matrix arg0)))
     (dotimes (s3-0 6)
       (let* ((v1-4 (-> this face-matrix s3-0))
@@ -414,7 +408,7 @@
   :post transform-post
   )
 
-(defmethod mtn-dice-method-26 mtn-dice ((this mtn-dice) (arg0 process-focusable) (arg1 touching-shapes-entry))
+(defmethod mtn-dice-method-26 ((this mtn-dice) (arg0 process-focusable) (arg1 touching-shapes-entry))
   (local-vars (sv-96 vector) (sv-112 vector) (sv-128 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -537,7 +531,7 @@
     )
   )
 
-(defmethod mtn-dice-method-27 mtn-dice ((this mtn-dice) (arg0 collide-shape) (arg1 process-focusable) (arg2 touching-shapes-entry))
+(defmethod mtn-dice-method-27 ((this mtn-dice) (arg0 collide-shape) (arg1 process-focusable) (arg2 touching-shapes-entry))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -607,11 +601,8 @@
   )
 
 (deftype mtn-dice-info (structure)
-  ((mat float 12 :offset-assert   0)
+  ((mat  float  12)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
@@ -1294,7 +1285,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-dice ((this mtn-dice) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-dice) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1442,10 +1433,6 @@ This commonly includes things such as:
 
 (deftype mtn-plat-elevator (elevator)
   ()
-  :heap-base #xf0
-  :method-count-assert 49
-  :size-assert         #x170
-  :flag-assert         #x3100f00170
   )
 
 
@@ -1454,12 +1441,12 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 7)
               )
 
-(defmethod get-art-group mtn-plat-elevator ((this mtn-plat-elevator))
+(defmethod get-art-group ((this mtn-plat-elevator))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-mtn-plat-elevator" (the-as (pointer uint32) #f))
   )
 
-(defmethod set-ambient-sound! mtn-plat-elevator ((this mtn-plat-elevator))
+(defmethod set-ambient-sound! ((this mtn-plat-elevator))
   "Sets the elevator's [[ambient-sound]] up"
   (set! (-> this sound)
         (new 'process 'ambient-sound (static-sound-spec "mtn-elevator-lp" :fo-max 70) (-> this root trans))
@@ -1468,7 +1455,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod move-between-points mtn-plat-elevator ((this mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this mtn-plat-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -1484,7 +1471,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init-plat-collision! mtn-plat-elevator ((this mtn-plat-elevator))
+(defmethod init-plat-collision! ((this mtn-plat-elevator))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1509,16 +1496,12 @@ This commonly includes things such as:
   )
 
 (deftype mtn-plat-updown (base-plat)
-  ((sync     sync-eased :inline :offset-assert 272)
-   (path-pos float              :offset-assert 316)
+  ((sync      sync-eased  :inline)
+   (path-pos  float)
    )
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
-  (:methods
-    (idle () _type_ :state 34)
-    (active () _type_ :state 35)
+  (:state-methods
+    idle
+    active
     )
   )
 
@@ -1555,7 +1538,7 @@ This commonly includes things such as:
   :post plat-post
   )
 
-(defmethod init-plat-collision! mtn-plat-updown ((this mtn-plat-updown))
+(defmethod init-plat-collision! ((this mtn-plat-updown))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1580,7 +1563,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-updown ((this mtn-plat-updown) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-plat-updown) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1647,16 +1630,14 @@ This commonly includes things such as:
   )
 
 (deftype mtn-plat-eject (process-drawable)
-  ((dest-pos vector :inline :offset-assert 208)
+  ((dest-pos  vector  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xe0
-  :flag-assert         #x17006000e0
+  (:state-methods
+    wait
+    eject
+    )
   (:methods
-    (wait () _type_ :state 20)
-    (eject () _type_ :state 21)
-    (mtn-plat-eject-method-22 (_type_) none 22)
+    (mtn-plat-eject-method-22 (_type_) none)
     )
   )
 
@@ -1695,7 +1676,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod mtn-plat-eject-method-22 mtn-plat-eject ((this mtn-plat-eject))
+(defmethod mtn-plat-eject-method-22 ((this mtn-plat-eject))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -1718,7 +1699,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-eject ((this mtn-plat-eject) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-plat-eject) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1749,14 +1730,10 @@ This commonly includes things such as:
   )
 
 (deftype mtn-plat-long (base-plat)
-  ((sync sync-linear :inline :offset-assert 272)
+  ((sync  sync-linear  :inline)
    )
-  :heap-base #xa0
-  :method-count-assert 35
-  :size-assert         #x120
-  :flag-assert         #x2300a00120
-  (:methods
-    (idle () _type_ :state 34)
+  (:state-methods
+    idle
     )
   )
 
@@ -1789,7 +1766,7 @@ This commonly includes things such as:
   :post plat-post
   )
 
-(defmethod init-plat-collision! mtn-plat-long ((this mtn-plat-long))
+(defmethod init-plat-collision! ((this mtn-plat-long))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1814,7 +1791,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-plat-long ((this mtn-plat-long) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-plat-long) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1853,13 +1830,9 @@ This commonly includes things such as:
 
 (deftype mtn-gate (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (open () _type_ :state 21)
+  (:state-methods
+    idle
+    open
     )
   )
 
@@ -1912,7 +1885,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-gate ((this mtn-gate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1969,25 +1942,21 @@ This commonly includes things such as:
   )
 
 (deftype mtn-aval-rocks (process-drawable)
-  ((art-name  symbol        :offset-assert 200)
-   (anim      spool-anim    :offset-assert 204)
-   (rock-data vector-array  :offset-assert 208)
-   (loop-id   sound-id      :offset-assert 212)
-   (volume    float         :offset-assert 216)
+  ((art-name   symbol)
+   (anim       spool-anim)
+   (rock-data  vector-array)
+   (loop-id    sound-id)
+   (volume     float)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xdc
-  :flag-assert         #x16006000dc
-  (:methods
-    (fall () _type_ :state 20)
-    (idle () _type_ :state 21)
+  (:state-methods
+    fall
+    idle
     )
   )
 
 
 ;; WARN: Return type mismatch process-drawable vs mtn-aval-rocks.
-(defmethod relocate mtn-aval-rocks ((this mtn-aval-rocks) (arg0 int))
+(defmethod relocate ((this mtn-aval-rocks) (arg0 int))
   (if (nonzero? (-> this rock-data))
       (&+! (-> this rock-data) arg0)
       )
@@ -1995,16 +1964,12 @@ This commonly includes things such as:
   )
 
 (deftype mtn-aval-rocks-shadow (process-drawable)
-  ((parent-ptr   (pointer mtn-aval-rocks)  :offset         16)
-   (parent-joint int32                     :offset-assert 200)
-   (update-time  time-frame                :offset-assert 208)
+  ((parent-ptr    (pointer mtn-aval-rocks)  :overlay-at parent)
+   (parent-joint  int32)
+   (update-time   time-frame)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15006000d8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -2371,7 +2336,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-aval-rocks ((this mtn-aval-rocks) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-aval-rocks) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2510,21 +2475,19 @@ This commonly includes things such as:
   )
 
 (deftype mtn-plat-return (base-plat)
-  ((ride-timer time-frame      :offset-assert 272)
-   (flags      mtn-plat-flags  :offset-assert 280)
-   (path-pos   float           :offset-assert 284)
-   (dest-pos   float           :offset-assert 288)
-   (path-speed float           :offset-assert 292)
+  ((ride-timer  time-frame)
+   (flags       mtn-plat-flags)
+   (path-pos    float)
+   (dest-pos    float)
+   (path-speed  float)
    )
-  :heap-base #xb0
-  :method-count-assert 38
-  :size-assert         #x128
-  :flag-assert         #x2600b00128
+  (:state-methods
+    waiting
+    running
+    waiting-for-no-player
+    )
   (:methods
-    (waiting () _type_ :state 34)
-    (running () _type_ :state 35)
-    (waiting-for-no-player () _type_ :state 36)
-    (mtn-plat-return-method-37 (_type_) none 37)
+    (mtn-plat-return-method-37 (_type_) none)
     )
   )
 
@@ -2649,12 +2612,12 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod mtn-plat-return-method-37 mtn-plat-return ((this mtn-plat-return))
+(defmethod mtn-plat-return-method-37 ((this mtn-plat-return))
   (go (method-of-object this waiting))
   (none)
   )
 
-(defmethod init-plat-collision! mtn-plat-return ((this mtn-plat-return))
+(defmethod init-plat-collision! ((this mtn-plat-return))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -2678,7 +2641,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-from-entity! mtn-plat-return ((this mtn-plat-return) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-plat-return) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2714,10 +2677,6 @@ This commonly includes things such as:
 
 (deftype mtn-plat-gap (mtn-plat-return)
   ()
-  :heap-base #xb0
-  :method-count-assert 38
-  :size-assert         #x128
-  :flag-assert         #x2600b00128
   )
 
 
@@ -2767,17 +2726,13 @@ This commonly includes things such as:
   )
 
 (deftype mtn-button (process-drawable)
-  ((on-activate symbol  :offset-assert 200)
+  ((on-activate  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 24
-  :size-assert         #xcc
-  :flag-assert         #x18005000cc
-  (:methods
-    (idle () _type_ :state 20)
-    (open () _type_ :state 21)
-    (waiting () _type_ :state 22)
-    (pressed (symbol) _type_ :state 23)
+  (:state-methods
+    idle
+    open
+    waiting
+    (pressed symbol)
     )
   )
 
@@ -2853,7 +2808,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-button ((this mtn-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-button) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2914,13 +2869,9 @@ This commonly includes things such as:
 
 (deftype mtn-gear-device (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (idle-collapsed () _type_ :state 21)
+  (:state-methods
+    idle
+    idle-collapsed
     )
   )
 
@@ -2960,7 +2911,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! mtn-gear-device ((this mtn-gear-device) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mtn-gear-device) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -3106,10 +3057,6 @@ This commonly includes things such as:
 
 (deftype water-anim-mountain (water-anim)
   ()
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
   )
 
 
@@ -3126,7 +3073,7 @@ This commonly includes things such as:
                                          )
         )
 
-(defmethod init-water! water-anim-mountain ((this water-anim-mountain))
+(defmethod init-water! ((this water-anim-mountain))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((t9-0 (method-of-type water-anim init-water!)))
     (t9-0 this)
@@ -3145,12 +3092,8 @@ This commonly includes things such as:
 
 (deftype trans-plat (mtn-plat-return)
   ()
-  :heap-base #xb0
-  :method-count-assert 39
-  :size-assert         #x128
-  :flag-assert         #x2700b00128
-  (:methods
-    (rising () _type_ :state 38)
+  (:state-methods
+    rising
     )
   )
 
@@ -3258,13 +3201,13 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod mtn-plat-return-method-37 trans-plat ((this trans-plat))
+(defmethod mtn-plat-return-method-37 ((this trans-plat))
   (go (method-of-object this rising))
   (none)
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod init-plat! trans-plat ((this trans-plat))
+(defmethod init-plat! ((this trans-plat))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (logior! (-> this flags) (mtn-plat-flags mtpflags-1))

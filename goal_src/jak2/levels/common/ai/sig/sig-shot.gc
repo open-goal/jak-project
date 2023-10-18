@@ -245,24 +245,20 @@
   )
 
 (deftype sig-shot (projectile)
-  ((tail-pos vector :inline :offset-assert 480)
-   (hit-pos  vector :inline :offset-assert 496)
+  ((tail-pos  vector  :inline)
+   (hit-pos   vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 
-(defmethod draw-laser-sight sig-shot ((this sig-shot))
+(defmethod draw-laser-sight ((this sig-shot))
   "TODO - confirm If applicable, draw the laser sight particles"
   (draw-beam (-> *part-id-table* 655) (-> this tail-pos) (-> this starting-dir) #f #t)
   0
   (none)
   )
 
-(defmethod spawn-impact-particles sig-shot ((this sig-shot))
+(defmethod spawn-impact-particles ((this sig-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -317,7 +313,7 @@
     )
   )
 
-(defmethod spawn-shell-particles sig-shot ((this sig-shot))
+(defmethod spawn-shell-particles ((this sig-shot))
   "TODO - confirm"
   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
@@ -358,7 +354,7 @@
   (none)
   )
 
-(defmethod play-impact-sound sig-shot ((this sig-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this sig-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -373,7 +369,7 @@
   (none)
   )
 
-(defmethod made-impact? sig-shot ((this sig-shot))
+(defmethod made-impact? ((this sig-shot))
   "TODO - queries the collision cache, return true/false"
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
@@ -417,7 +413,7 @@
   (none)
   )
 
-(defmethod init-proj-collision! sig-shot ((this sig-shot))
+(defmethod init-proj-collision! ((this sig-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -488,7 +484,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! sig-shot ((this sig-shot))
+(defmethod init-proj-settings! ((this sig-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this tail-pos quad) (-> this root trans quad))
   (set! (-> this attack-mode) 'eco-yellow)

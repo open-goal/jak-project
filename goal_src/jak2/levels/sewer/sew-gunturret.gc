@@ -396,49 +396,42 @@
   )
 
 (deftype gun-turret-params (structure)
-  ((normal-sg    skeleton-group   :offset-assert   0)
-   (explode-sg   skeleton-group   :offset-assert   4)
-   (enemy-info   enemy-info       :offset-assert   8)
-   (idle-anim    int32            :offset-assert  12)
-   (shoot-anim   int32            :offset-assert  16)
-   (track-joint  int32            :offset-assert  20)
-   (barrel-joint int32            :offset-assert  24)
-   (gun-joint    int32            :offset-assert  28)
-   (hole-joints  int32          8 :offset-assert  32)
+  ((normal-sg     skeleton-group)
+   (explode-sg    skeleton-group)
+   (enemy-info    enemy-info)
+   (idle-anim     int32)
+   (shoot-anim    int32)
+   (track-joint   int32)
+   (barrel-joint  int32)
+   (gun-joint     int32)
+   (hole-joints   int32  8)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype sew-gunturret (enemy)
-  ((gun-tilt-jm       joint-mod                        :offset-assert 532)
-   (params            gun-turret-params                :offset-assert 536)
-   (aim-pos           vector                   :inline :offset-assert 544)
-   (gun-twist         float                            :offset-assert 560)
-   (gun-tilt          float                            :offset-assert 564)
-   (desired-twist     float                            :offset-assert 568)
-   (desired-tilt      float                            :offset-assert 572)
-   (los-clear         symbol                           :offset-assert 576)
-   (smoke-part        sparticle-launch-control         :offset-assert 580)
-   (casing-part       sparticle-launch-control         :offset-assert 584)
-   (flash-state       symbol                           :offset-assert 588)
-   (can-shoot         symbol                           :offset-assert 592)
-   (last-hit-time     time-frame                       :offset-assert 600)
-   (init-mat          matrix                   :inline :offset-assert 608)
-   (activate-distance float                            :offset-assert 672)
+  ((gun-tilt-jm        joint-mod)
+   (params             gun-turret-params)
+   (aim-pos            vector  :inline)
+   (gun-twist          float)
+   (gun-tilt           float)
+   (desired-twist      float)
+   (desired-tilt       float)
+   (los-clear          symbol)
+   (smoke-part         sparticle-launch-control)
+   (casing-part        sparticle-launch-control)
+   (flash-state        symbol)
+   (can-shoot          symbol)
+   (last-hit-time      time-frame)
+   (init-mat           matrix  :inline)
+   (activate-distance  float)
    )
-  :heap-base #x230
-  :method-count-assert 142
-  :size-assert         #x2a4
-  :flag-assert         #x8e023002a4
   (:methods
-    (aim-turret! (_type_ symbol) none 137)
-    (update-collision! (_type_) none 138)
-    (set-aim-at-default! (_type_) none 139)
-    (fire-turret! (_type_ symbol) none 140)
-    (init-turret-params! (_type_) none 141)
+    (aim-turret! (_type_ symbol) none)
+    (update-collision! (_type_) none)
+    (set-aim-at-default! (_type_) none)
+    (fire-turret! (_type_ symbol) none)
+    (init-turret-params! (_type_) none)
     )
   )
 
@@ -525,7 +518,7 @@
 
 (set! (-> *sew-gunturret-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod aim-turret! sew-gunturret ((this sew-gunturret) (aim-at-target? symbol))
+(defmethod aim-turret! ((this sew-gunturret) (aim-at-target? symbol))
   "Calculates the angle and tilt for the turret to either aim at the target, or it's default direction
 @param aim-at-target? Whether or not the turret should aim at the target, will ignore the target if #f"
   (cond
@@ -601,7 +594,7 @@
   (none)
   )
 
-(defmethod update-collision! sew-gunturret ((this sew-gunturret))
+(defmethod update-collision! ((this sew-gunturret))
   "Updates the collision for the turret based on it's aiming direction"
   (let ((target-proc (handle->process (-> this focus handle))))
     (if target-proc
@@ -640,14 +633,14 @@
   (none)
   )
 
-(defmethod set-aim-at-default! sew-gunturret ((this sew-gunturret))
+(defmethod set-aim-at-default! ((this sew-gunturret))
   "Aims the turret at it's default direction.  Sets `aim-pos` accordingly"
   (vector+float*! (-> this aim-pos) (-> this root trans) (-> this init-mat vector 2) 163840.0)
   0
   (none)
   )
 
-(defmethod fire-turret! sew-gunturret ((this sew-gunturret) (fire-sound? symbol))
+(defmethod fire-turret! ((this sew-gunturret) (fire-sound? symbol))
   "Actually fires the turret, sets `flash-state` to [[#t]]
 @param fire-sound? Whether to play the fire sound effect or not"
   (let ((v1-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data (-> this params gun-joint))))
@@ -794,7 +787,7 @@
     )
   )
 
-(defmethod general-event-handler sew-gunturret ((this sew-gunturret) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
+(defmethod general-event-handler ((this sew-gunturret) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (if (and (= event-type 'notify) (< 1 arg2) (= (-> event param 0) 'attack) (= (-> event param 1) *target*))
@@ -883,7 +876,7 @@
     )
   )
 
-(defmethod init-enemy-collision! sew-gunturret ((this sew-gunturret))
+(defmethod init-enemy-collision! ((this sew-gunturret))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
@@ -943,7 +936,7 @@
   (none)
   )
 
-(defmethod in-aggro-range? sew-gunturret ((this sew-gunturret) (proc process-focusable) (arg1 vector))
+(defmethod in-aggro-range? ((this sew-gunturret) (proc process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
 - otherwise, check if the provided process is close enough
@@ -967,7 +960,7 @@
   (the-as symbol 0)
   )
 
-(defmethod deactivate sew-gunturret ((this sew-gunturret))
+(defmethod deactivate ((this sew-gunturret))
   (if (nonzero? (-> this smoke-part))
       (kill-and-free-particles (-> this smoke-part))
       )
@@ -978,13 +971,13 @@
   (none)
   )
 
-(defmethod coin-flip? sew-gunturret ((this sew-gunturret))
+(defmethod coin-flip? ((this sew-gunturret))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; WARN: Return type mismatch enemy vs sew-gunturret.
-(defmethod relocate sew-gunturret ((this sew-gunturret) (arg0 int))
+(defmethod relocate ((this sew-gunturret) (arg0 int))
   (if (nonzero? (-> this gun-tilt-jm))
       (&+! (-> this gun-tilt-jm) arg0)
       )
@@ -997,7 +990,7 @@
   (the-as sew-gunturret ((method-of-type enemy relocate) this arg0))
   )
 
-(defmethod init-turret-params! sew-gunturret ((this sew-gunturret))
+(defmethod init-turret-params! ((this sew-gunturret))
   (let ((turret-params
           (new 'static 'gun-turret-params
             :idle-anim 2
@@ -1025,7 +1018,7 @@
   (none)
   )
 
-(defmethod init-enemy! sew-gunturret ((this sew-gunturret))
+(defmethod init-enemy! ((this sew-gunturret))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (init-turret-params! this)
   (initialize-skeleton this (-> this params normal-sg) (the-as pair 0))
@@ -1053,7 +1046,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle sew-gunturret ((this sew-gunturret))
+(defmethod go-idle ((this sew-gunturret))
   (cond
     ((task-node-closed? (game-task-node sewer-enemy-blow-up-turrets))
      (cleanup-for-death this)
@@ -1160,29 +1153,25 @@
 
 (deftype pal-gun-turret (sew-gunturret)
   ()
-  :heap-base #x230
-  :method-count-assert 142
-  :size-assert         #x2a4
-  :flag-assert         #x8e023002a4
   (:methods
-    (fire-turret! (_type_ symbol) float :replace 140)
+    (fire-turret! (_type_ symbol) float :replace)
     )
   )
 
 
-(defmethod fire-turret! pal-gun-turret ((this pal-gun-turret) (arg0 symbol))
+(defmethod fire-turret! ((this pal-gun-turret) (arg0 symbol))
   "@overrides Calls [[sew-gunturret::140]] but also customizes the turret flash via [[set-palcab-turret-flash!]]"
   (call-parent-method this arg0)
   (set-palcab-turret-flash! 1.0)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle pal-gun-turret ((this pal-gun-turret))
+(defmethod go-idle ((this pal-gun-turret))
   (go (method-of-object this idle))
   (none)
   )
 
-(defmethod init-turret-params! pal-gun-turret ((this pal-gun-turret))
+(defmethod init-turret-params! ((this pal-gun-turret))
   (let ((turret-params
           (new 'static 'gun-turret-params
             :idle-anim 2

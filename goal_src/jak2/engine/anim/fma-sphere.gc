@@ -20,27 +20,23 @@
 ;; DECOMP BEGINS
 
 (deftype fma-sphere (process-drawable)
-  ((root         collide-shape               :override)
-   (first-time?  symbol                      :offset-assert 200)
-   (mode         fma-sphere-mode             :offset-assert 204)
-   (track-handle handle                      :offset-assert 208)
-   (track-joint  int32                       :offset-assert 216)
-   (attack-id    uint32                      :offset-assert 220)
-   (duration     time-frame                  :offset-assert 224)
-   (sphere       sphere              :inline :offset-assert 240)
-   (danger       traffic-danger-info :inline :offset-assert 256)
+  ((root          collide-shape       :override)
+   (first-time?   symbol)
+   (mode          fma-sphere-mode)
+   (track-handle  handle)
+   (track-joint   int32)
+   (attack-id     uint32)
+   (duration      time-frame)
+   (sphere        sphere               :inline)
+   (danger        traffic-danger-info  :inline)
    )
-  :heap-base #xc0
-  :method-count-assert 21
-  :size-assert         #x136
-  :flag-assert         #x1500c00136
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
-(defmethod run-logic? fma-sphere ((this fma-sphere))
+(defmethod run-logic? ((this fma-sphere))
   (or (logtest? *display-scene-control* (scene-controls display-controls))
       (and *display-nav-marks* (logtest? (-> this mode) (fma-sphere-mode nav)))
       (logtest? (-> this mode) (fma-sphere-mode deadly-overlap))

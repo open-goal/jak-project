@@ -10,13 +10,13 @@
 
 ;; DECOMP BEGINS
 
-(defmethod login billboard ((this billboard))
+(defmethod login ((this billboard))
   "Set up the billboard adgif shader"
   (adgif-shader-login (-> this flat))
   this
   )
 
-(defmethod mem-usage billboard ((this billboard) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this billboard) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory used for the billboard."
   (set! (-> arg0 length) (max 34 (-> arg0 length)))
   (set! (-> arg0 data 33 name) "billboard")
@@ -62,7 +62,7 @@
   arg0
   )
 
-(defmethod mem-usage drawable-tree-instance-shrub ((this drawable-tree-instance-shrub) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-tree-instance-shrub) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage for an entire shrub tree"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -93,7 +93,7 @@
   this
   )
 
-(defmethod login generic-shrub-fragment ((this generic-shrub-fragment))
+(defmethod login ((this generic-shrub-fragment))
   "Set up shaders in a generic shrub fragment"
   (let ((s5-0 (/ (-> this cnt-qwc) (the-as uint 5))))
     (dotimes (s4-0 (the-as int s5-0))
@@ -103,7 +103,7 @@
   this
   )
 
-(defmethod mem-usage generic-shrub-fragment ((this generic-shrub-fragment) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this generic-shrub-fragment) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage of generic shrub fragment"
   (set! (-> arg0 length) (max 27 (-> arg0 length)))
   (set! (-> arg0 data 25 name) "generic-shrub")
@@ -124,7 +124,7 @@
   )
 
 
-(defmethod mem-usage prototype-shrubbery ((this prototype-shrubbery) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this prototype-shrubbery) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage of all prototypes in a prototype array."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
@@ -139,7 +139,7 @@
   this
   )
 
-(defmethod login prototype-shrubbery ((this prototype-shrubbery))
+(defmethod login ((this prototype-shrubbery))
   "Login all prototypes in a prototype array"
   (dotimes (s5-0 (-> this length))
     (login (-> this data s5-0))
@@ -147,12 +147,12 @@
   this
   )
 
-(defmethod asize-of prototype-shrubbery ((this prototype-shrubbery))
+(defmethod asize-of ((this prototype-shrubbery))
   "Compute the allocation size of a prototype shrubbery array (dynamically sized)"
   (the-as int (+ (-> prototype-shrubbery size) (* (+ (-> this length) -1) 32)))
   )
 
-(defmethod login prototype-generic-shrub ((this prototype-generic-shrub))
+(defmethod login ((this prototype-generic-shrub))
   "Initialize all fragments in a generic prototype."
   (dotimes (s5-0 (-> this length))
     (login (-> this data s5-0))
@@ -160,7 +160,7 @@
   this
   )
 
-(defmethod login shrubbery ((this shrubbery))
+(defmethod login ((this shrubbery))
   "Initialize a shrubbery fragment."
   (let ((s5-0 (* (-> this header data 0) 2)))
     (dotimes (s4-0 (the-as int s5-0))
@@ -186,7 +186,7 @@
   this
   )
 
-(defmethod mem-usage shrubbery ((this shrubbery) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this shrubbery) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a shrubbery fragment."
   (set! (-> arg0 length) (max 28 (-> arg0 length)))
   (set! (-> arg0 data 27 name) "shrubbery")
@@ -226,7 +226,7 @@
   this
   )
 
-(defmethod login drawable-tree-instance-shrub ((this drawable-tree-instance-shrub))
+(defmethod login ((this drawable-tree-instance-shrub))
   "Initialize a shrubbery tree."
   (if (nonzero? (-> this info prototype-inline-array-shrub))
       (login (-> this info prototype-inline-array-shrub))
@@ -543,7 +543,7 @@
   (none)
   )
 
-(defmethod draw drawable-tree-instance-shrub ((this drawable-tree-instance-shrub) (arg0 drawable-tree-instance-shrub) (arg1 display-frame))
+(defmethod draw ((this drawable-tree-instance-shrub) (arg0 drawable-tree-instance-shrub) (arg1 display-frame))
   (let ((v1-1 (-> *background-work* shrub-tree-count))
         (a1-4 (-> *level* draw-level *draw-index*))
         )
@@ -555,11 +555,11 @@
   (none)
   )
 
-(defmethod unpack-vis drawable-tree-instance-shrub ((this drawable-tree-instance-shrub) (arg0 (pointer int8)) (arg1 (pointer int8)))
+(defmethod unpack-vis ((this drawable-tree-instance-shrub) (arg0 (pointer int8)) (arg1 (pointer int8)))
   arg1
   )
 
-(defmethod collect-stats drawable-tree-instance-shrub ((this drawable-tree-instance-shrub))
+(defmethod collect-stats ((this drawable-tree-instance-shrub))
   (when (logtest? (vu1-renderer-mask shrubbery shrub-near billboard shrubbery-vanish) (-> *display* vu1-enable-user))
     (let* ((v1-4 (-> this info prototype-inline-array-shrub))
            (gp-0 (the-as object (-> v1-4 data)))
@@ -647,23 +647,17 @@
   )
 
 (deftype dma-test (structure)
-  ((data qword 101 :inline :offset-assert   0)
+  ((data qword 101 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x650
-  :flag-assert         #x900000650
   )
 
 
 (define *dma-test* (new 'global 'dma-test))
 
 (deftype dma-test-work (structure)
-  ((upload dma-packet :inline :offset-assert   0)
-   (end    dma-packet :inline :offset-assert  16)
+  ((upload dma-packet :inline)
+   (end    dma-packet :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 

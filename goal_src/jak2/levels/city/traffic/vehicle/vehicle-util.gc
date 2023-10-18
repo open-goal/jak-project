@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod rigid-body-vehicle-constants-method-9 rigid-body-vehicle-constants ((this rigid-body-vehicle-constants))
+(defmethod rigid-body-vehicle-constants-method-9 ((this rigid-body-vehicle-constants))
   (set! (-> this particle-system-2d) *sp-particle-system-2d*)
   (set! (-> this particle-system-3d) *sp-particle-system-3d*)
   (set! (-> this part-quat) *particle-quat*)
@@ -19,40 +19,34 @@
   (none)
   )
 
-(defmethod rigid-body-vehicle-constants-method-10 rigid-body-vehicle-constants ()
+(defmethod rigid-body-vehicle-constants-method-10 ((this rigid-body-vehicle-constants))
   0
   (none)
   )
 
 (deftype vehicle-hud-request (structure)
-  ((handle           handle  :offset-assert   0)
-   (hack-handle-init basic   :offset          0)
-   (priority         float   :offset-assert   8)
+  ((handle            handle)
+   (hack-handle-init  basic  :overlay-at handle)
+   (priority          float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
 (deftype vehicle-hud-requests (structure)
-  ((time     time-frame                    :offset-assert   0)
-   (requests vehicle-hud-request 4 :inline :offset-assert   8)
+  ((time      time-frame)
+   (requests  vehicle-hud-request  4 :inline)
    )
   :pack-me
-  :method-count-assert 12
-  :size-assert         #x48
-  :flag-assert         #xc00000048
   (:methods
-    (vehicle-hud-requests-method-9 (_type_) none 9)
-    (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request 10)
-    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request 11)
+    (vehicle-hud-requests-method-9 (_type_) none)
+    (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request)
+    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request)
     )
   )
 
 
-(defmethod vehicle-hud-requests-method-9 vehicle-hud-requests ((this vehicle-hud-requests))
+(defmethod vehicle-hud-requests-method-9 ((this vehicle-hud-requests))
   (dotimes (v1-0 4)
     (let ((a1-2 (-> this requests v1-0)))
       (set! (-> a1-2 handle) (the-as handle #f))
@@ -63,7 +57,7 @@
   (none)
   )
 
-(defmethod vehicle-hud-requests-method-10 vehicle-hud-requests ((this vehicle-hud-requests))
+(defmethod vehicle-hud-requests-method-10 ((this vehicle-hud-requests))
   (let ((v1-0 0))
     (let ((f0-0 0.0))
       (countdown (a1-0 4)
@@ -79,7 +73,7 @@
     )
   )
 
-(defmethod vehicle-hud-requests-method-11 vehicle-hud-requests ((this vehicle-hud-requests))
+(defmethod vehicle-hud-requests-method-11 ((this vehicle-hud-requests))
   (let ((v1-0 0))
     (let ((f0-0 (the-as float #x7f800000))
           (a1-1 4)
@@ -107,19 +101,16 @@
   )
 
 (deftype vehicle-hud-chooser (structure)
-  ((cur  vehicle-hud-requests :inline :offset-assert   0)
-   (last vehicle-hud-requests :inline :offset-assert  72)
+  ((cur   vehicle-hud-requests  :inline)
+   (last  vehicle-hud-requests  :inline)
    )
-  :method-count-assert 10
-  :size-assert         #x90
-  :flag-assert         #xa00000090
   (:methods
-    (vehicle-hud-chooser-method-9 (_type_ handle float) symbol 9)
+    (vehicle-hud-chooser-method-9 (_type_ handle float) symbol)
     )
   )
 
 
-(defmethod vehicle-hud-chooser-method-9 vehicle-hud-chooser ((this vehicle-hud-chooser) (arg0 handle) (arg1 float))
+(defmethod vehicle-hud-chooser-method-9 ((this vehicle-hud-chooser) (arg0 handle) (arg1 float))
   (let ((s3-0 (current-time)))
     (when (!= s3-0 (-> this cur time))
       (if (zero? (-> this cur time))
@@ -150,14 +141,14 @@
 
 (define *pilot-edge-grab-info* (new 'static 'pilot-edge-grab-info))
 
-(defmethod deactivate vehicle ((this vehicle))
+(defmethod deactivate ((this vehicle))
   (vehicle-method-110 this)
   (call-parent-method this)
   (none)
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! vehicle ((this vehicle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this vehicle) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -168,7 +159,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-35 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-35 ((this vehicle))
   (let ((t9-0 (method-of-type rigid-body-object rigid-body-object-method-35)))
     (t9-0 this)
     )
@@ -184,7 +175,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod check-player-get-on vehicle ((this vehicle))
+(defmethod check-player-get-on ((this vehicle))
   (with-pp
     (let ((f0-0 (-> this player-dist2))
           (f1-0 102400.0)
@@ -397,7 +388,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod vehicle-method-110 vehicle ((this vehicle))
+(defmethod vehicle-method-110 ((this vehicle))
   (sound-stop (-> this scrape-sound-id))
   (sound-stop (-> this engine-sound-id))
   (sound-stop (-> this thrust-sound-id))
@@ -407,7 +398,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-62 vehicle ((this vehicle) (arg0 float))
+(defmethod vehicle-method-62 ((this vehicle) (arg0 float))
   (if (not (logtest? (rigid-body-object-flag ai-driving measure-control-parameters) (-> this flags)))
       (set! (-> this controls steering) (fmax -1.0 (fmin 1.0 arg0)))
       )
@@ -415,7 +406,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-63 vehicle ((this vehicle) (arg0 float))
+(defmethod vehicle-method-63 ((this vehicle) (arg0 float))
   (if (not (logtest? (rigid-body-object-flag ai-driving measure-control-parameters) (-> this flags)))
       (set! (-> this controls throttle) (fmax -0.5 (fmin 1.0 arg0)))
       )
@@ -423,7 +414,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-98 vehicle ((this vehicle) (arg0 float))
+(defmethod vehicle-method-98 ((this vehicle) (arg0 float))
   (let* ((v1-1 (-> this rbody state lin-velocity))
          (f0-4 (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
          (f0-6 (/ (- arg0 f0-4) arg0))
@@ -435,7 +426,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod start-jump vehicle ((this vehicle))
+(defmethod start-jump ((this vehicle))
   (when (logtest? (-> this info flags) 16)
     (when (not (logtest? (rigid-body-object-flag jump-sound) (-> this flags)))
       (logior! (-> this flags) (rigid-body-object-flag jump-sound))
@@ -447,16 +438,16 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-66 vehicle ((this vehicle))
+(defmethod vehicle-method-66 ((this vehicle))
   0
   (none)
   )
 
-(defmethod get-seat-count vehicle ((this vehicle))
+(defmethod get-seat-count ((this vehicle))
   (-> this info seat-count)
   )
 
-(defmethod compute-seat-position vehicle ((this vehicle) (arg0 vector) (arg1 int))
+(defmethod compute-seat-position ((this vehicle) (arg0 vector) (arg1 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (set! (-> v1-0 quad) (-> this info seat-array arg1 position quad))
     (set! (-> v1-0 w) 1.0)
@@ -466,7 +457,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod get-rider-in-seat vehicle ((this vehicle) (arg0 int))
+(defmethod get-rider-in-seat ((this vehicle) (arg0 int))
   (let ((v0-0 (the-as process #f)))
     (if (< arg0 (-> this info seat-count))
         (set! v0-0 (handle->process (-> this rider-array arg0)))
@@ -475,7 +466,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod vehicle-method-70 vehicle ((this vehicle))
+(defmethod vehicle-method-70 ((this vehicle))
   (let ((gp-0 (the-as process #f)))
     (countdown (s4-0 (-> this info seat-count))
       (when (logtest? (-> this info seat-array s4-0 flags) 1)
@@ -490,7 +481,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod get-best-seat-for-vehicle vehicle ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
+(defmethod get-best-seat-for-vehicle ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
   (let ((gp-0 -1))
     (let ((f30-0 (the-as float #x7f800000))
           (s1-0 (new 'stack-no-clear 'vector))
@@ -528,7 +519,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod remove-rider vehicle ((this vehicle) (arg0 process))
+(defmethod remove-rider ((this vehicle) (arg0 process))
   (let ((v1-1 (-> this info seat-count)))
     (dotimes (a2-0 v1-1)
       (if (= arg0 (handle->process (-> this rider-array a2-0)))
@@ -540,7 +531,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod put-rider-in-seat vehicle ((this vehicle) (arg0 int) (arg1 process-focusable))
+(defmethod put-rider-in-seat ((this vehicle) (arg0 int) (arg1 process-focusable))
   (if (< arg0 (-> this info seat-count))
       (set! (-> this rider-array arg0) (process->handle arg1))
       )
@@ -548,7 +539,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-117 vehicle ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
+(defmethod vehicle-method-117 ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector+! v1-0 (-> this info seat-array arg1 position) (-> this info rider-hand-offset arg2))
     (vector-matrix*! arg0 v1-0 (-> this node-list data 0 bone transform))
@@ -557,27 +548,27 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-72 vehicle ((this vehicle))
+(defmethod vehicle-method-72 ((this vehicle))
   (-> this info rider-stance)
   )
 
-(defmethod vehicle-method-75 vehicle ((this vehicle))
+(defmethod vehicle-method-75 ((this vehicle))
   (-> this controls steering)
   )
 
-(defmethod vehicle-method-115 vehicle ((this vehicle) (arg0 vector))
+(defmethod vehicle-method-115 ((this vehicle) (arg0 vector))
   (set! (-> arg0 quad) (-> this lin-acceleration quad))
   0
   (none)
   )
 
-(defmethod vehicle-method-116 vehicle ((this vehicle) (arg0 (pointer vehicle-controls)))
+(defmethod vehicle-method-116 ((this vehicle) (arg0 (pointer vehicle-controls)))
   (mem-copy! arg0 (the-as pointer (-> this controls)) 16)
   0
   (none)
   )
 
-(defmethod apply-damage vehicle ((this vehicle) (arg0 float) (arg1 rigid-body-impact))
+(defmethod apply-damage ((this vehicle) (arg0 float) (arg1 rigid-body-impact))
   (cond
     (#f
       )
@@ -589,7 +580,7 @@ This commonly includes things such as:
          )
         )
       (#when PC_PORT
-        ;; vehicle invuln cheats
+        ;; og:preserve-this vehicle invuln cheats
         (when (and (pc-cheats? (-> *pc-settings* cheats) vehicle-invuln)
                    *target*
                    (focus-test? *target* pilot)
@@ -620,7 +611,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-118 vehicle ((this vehicle) (arg0 int))
+(defmethod vehicle-method-118 ((this vehicle) (arg0 int))
   (let* ((v1-2 (-> this section-array arg0))
          (s4-0 (-> this info section-array arg0))
          (s5-1
@@ -653,7 +644,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-82 vehicle ((this vehicle))
+(defmethod vehicle-method-82 ((this vehicle))
   (set! (-> this flags) (the-as rigid-body-object-flag (logclear (-> this flags) (rigid-body-object-flag
                                                                                    disturbed
                                                                                    damaged
@@ -719,19 +710,19 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-101 vehicle ((this vehicle))
+(defmethod vehicle-method-101 ((this vehicle))
   (set! (-> this hit-points) 1.0)
   0
   (none)
   )
 
-(defmethod vehicle-method-134 vehicle ((this vehicle) (arg0 process))
+(defmethod vehicle-method-134 ((this vehicle) (arg0 process))
   "Stubbed"
   0
   (none)
   )
 
-(defmethod vehicle-method-76 vehicle ((this vehicle) (arg0 int) (arg1 uint))
+(defmethod vehicle-method-76 ((this vehicle) (arg0 int) (arg1 uint))
   (when (< (-> this crash-level) arg0)
     (set! (-> this crash-level) arg0)
     (set! (-> this crash-duration) arg1)
@@ -752,13 +743,13 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-77 vehicle ((this vehicle))
+(defmethod vehicle-method-77 ((this vehicle))
   (set! (-> this crash-level) 0)
   0
   (none)
   )
 
-(defmethod vehicle-method-78 vehicle ((this vehicle) (arg0 int))
+(defmethod vehicle-method-78 ((this vehicle) (arg0 int))
   (set! (-> this flight-level-index-prev) (-> this flight-level-index))
   (set! (-> this flight-level-index) arg0)
   (logior! (-> this flags) (rigid-body-object-flag flight-level-transition camera-rapid-track-mode))
@@ -769,7 +760,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-79 vehicle ((this vehicle))
+(defmethod vehicle-method-79 ((this vehicle))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition))
   (logior! (-> this flags) (rigid-body-object-flag flight-level-transition-ending))
   (set-time! (-> this transition-end-time))
@@ -777,7 +768,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-131 vehicle ((this vehicle))
+(defmethod vehicle-method-131 ((this vehicle))
   (if (not (logtest? (rigid-body-object-flag lights-dead) (-> this flags)))
       (set! (-> this flags)
             (the-as rigid-body-object-flag (logior (rigid-body-object-flag lights-on lights-update) (-> this flags)))
@@ -787,7 +778,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-132 vehicle ((this vehicle))
+(defmethod vehicle-method-132 ((this vehicle))
   (set! (-> this flags)
         (the-as rigid-body-object-flag (logclear (-> this flags) (rigid-body-object-flag lights-on)))
         )
@@ -798,7 +789,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-139 vehicle ((this vehicle))
+(defmethod vehicle-method-139 ((this vehicle))
   (when (not (logtest? (rigid-body-object-flag ignition) (-> this flags)))
     (logior! (-> this flags) (rigid-body-object-flag ignition))
     (sound-play "vehicl-ignition")
@@ -835,7 +826,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-140 vehicle ((this vehicle))
+(defmethod vehicle-method-140 ((this vehicle))
   (if (logtest? (rigid-body-object-flag ignition) (-> this flags))
       (logclear! (-> this flags) (rigid-body-object-flag ignition))
       )
@@ -843,7 +834,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-141 vehicle ((this vehicle))
+(defmethod vehicle-method-141 ((this vehicle))
   (let ((a0-2 (find-nearest-nav-mesh (-> this root trans) (the-as float #x7f800000))))
     (when a0-2
       (add-process-drawable-to-navmesh a0-2 this #t)
@@ -854,7 +845,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-142 vehicle ((this vehicle))
+(defmethod vehicle-method-142 ((this vehicle))
   (let ((v1-0 (-> this nav)))
     (when v1-0
       (remove-process-drawable (-> v1-0 state mesh) this)
@@ -865,7 +856,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-143 vehicle ((this vehicle))
+(defmethod vehicle-method-143 ((this vehicle))
   (let ((v1-2 (or (logtest? (-> this flags) (rigid-body-object-flag dead waiting-for-player))
                   (and (logtest? (rigid-body-object-flag player-driving ai-driving) (-> this flags))
                        (not (logtest? (-> this flags) (rigid-body-object-flag on-flight-level)))
@@ -904,7 +895,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-87 vehicle ((this vehicle))
+(defmethod vehicle-method-87 ((this vehicle))
   (when (not (logtest? (rigid-body-object-flag camera) (-> this flags)))
     (logior! (-> this flags) (rigid-body-object-flag camera))
     (set! (-> this cam-speed-interp) 0.0)
@@ -933,7 +924,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-88 vehicle ((this vehicle))
+(defmethod vehicle-method-88 ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera) (-> this flags))
     (vehicle-method-92 this)
     (vehicle-method-90 this)
@@ -968,7 +959,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-89 vehicle ((this vehicle))
+(defmethod vehicle-method-89 ((this vehicle))
   (when (not (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags)))
     (logior! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (set-setting! 'bike-mode #f 0.0 0)
@@ -977,7 +968,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-90 vehicle ((this vehicle))
+(defmethod vehicle-method-90 ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags))
     (logclear! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (remove-setting! 'bike-mode)
@@ -986,7 +977,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-91 vehicle ((this vehicle))
+(defmethod vehicle-method-91 ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logior! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (set-setting! 'rapid-tracking #f 0.0 0)
@@ -995,7 +986,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-92 vehicle ((this vehicle))
+(defmethod vehicle-method-92 ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logclear! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (remove-setting! 'rapid-tracking)
@@ -1004,7 +995,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-40 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-40 ((this vehicle))
   (logior! (-> this flags) (rigid-body-object-flag enable-collision))
   (let ((v1-3 (-> this root root-prim)))
     (set! (-> v1-3 prim-core collide-as) (-> this root backup-collide-as))
@@ -1014,7 +1005,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-41 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-41 ((this vehicle))
   (logclear! (-> this flags) (rigid-body-object-flag enable-collision))
   (let ((v1-3 (-> this root root-prim)))
     (set! (-> v1-3 prim-core collide-as) (collide-spec))
@@ -1025,7 +1016,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-102 vehicle ((this vehicle))
+(defmethod vehicle-method-102 ((this vehicle))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (logclear! (-> v1-1 settings flags) (shadow-flags disable-draw))
     )
@@ -1034,7 +1025,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-103 vehicle ((this vehicle))
+(defmethod vehicle-method-103 ((this vehicle))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (logior! (-> v1-1 settings flags) (shadow-flags disable-draw))
     )
@@ -1043,7 +1034,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-38 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-38 ((this vehicle))
   (when (not (logtest? (-> this rbody state flags) (rigid-body-flag enable-physics)))
     (logior! (-> this rbody state flags) (rigid-body-flag enable-physics))
     (rigid-body-method-26 (-> this rbody state) (-> this root trans) (-> this root quat))
@@ -1055,7 +1046,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-39 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-39 ((this vehicle))
   (set! (-> this force-scale) 1.0)
   (logclear! (-> this rbody state flags) (rigid-body-flag enable-physics))
   (vehicle-method-110 this)
@@ -1063,7 +1054,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-111 vehicle ((this vehicle) (arg0 object) (arg1 target))
+(defmethod vehicle-method-111 ((this vehicle) (arg0 object) (arg1 target))
   (let ((a0-1 (-> this controller traffic)))
     (when (and (nonzero? a0-1) arg1)
       (if #t
@@ -1075,12 +1066,12 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod decrease-traffic-alert-level vehicle ((this vehicle) (arg0 int))
+(defmethod decrease-traffic-alert-level ((this vehicle) (arg0 int))
   (decrease-alert-level (-> this controller traffic) arg0)
   0
   )
 
-(defmethod vehicle-method-80 vehicle ((this vehicle))
+(defmethod vehicle-method-80 ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (< (-> this flight-level-index) 1))
     1
     (cond
@@ -1097,7 +1088,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-81 vehicle ((this vehicle))
+(defmethod vehicle-method-81 ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (> (-> this flight-level-index) 0))
     (sound-play "bike-down")
     (vehicle-method-78 this 0)
@@ -1106,7 +1097,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-83 vehicle ((this vehicle))
+(defmethod vehicle-method-83 ((this vehicle))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition))
   (vehicle-method-92 this)
   (set! (-> this flight-level-index) 0)
@@ -1114,7 +1105,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-108 vehicle ((this vehicle))
+(defmethod vehicle-method-108 ((this vehicle))
   (vehicle-controller-method-11 (-> this controller))
   (set! (-> this flags)
         (the-as rigid-body-object-flag (logior (rigid-body-object-flag persistent in-pursuit) (-> this flags)))
@@ -1124,7 +1115,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-109 vehicle ((this vehicle))
+(defmethod vehicle-method-109 ((this vehicle))
   (set! (-> this flags)
         (the-as rigid-body-object-flag (logclear (-> this flags) (rigid-body-object-flag in-pursuit)))
         )
@@ -1134,7 +1125,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-42 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-42 ((this vehicle))
   (if (and (not (focus-test? this inactive))
            (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
            )
@@ -1144,7 +1135,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-113 vehicle ((this vehicle))
+(defmethod vehicle-method-113 ((this vehicle))
   (vehicle-method-127 this)
   (logior! (-> this focus-status) (focus-status inactive))
   (set! (-> this event-hook) (-> (method-of-object this inactive) event))
@@ -1153,7 +1144,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-114 vehicle ((this vehicle))
+(defmethod vehicle-method-114 ((this vehicle))
   (if (focus-test? this inactive)
       (vehicle-method-128 this)
       )
@@ -1162,20 +1153,20 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod rigid-body-object-method-43 vehicle ((this vehicle))
+(defmethod rigid-body-object-method-43 ((this vehicle))
   (go (method-of-object this waiting))
   0
   (none)
   )
 
-(defmethod vehicle-method-138 vehicle ((this vehicle))
+(defmethod vehicle-method-138 ((this vehicle))
   (go (method-of-object this player-control))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod vehicle-method-130 vehicle ((this vehicle) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-method-130 ((this vehicle) (arg0 traffic-object-spawn-params))
   (let ((v1-0 (-> arg0 behavior)))
     (cond
       ((zero? v1-0)
@@ -1205,7 +1196,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-136 vehicle ((this vehicle) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-method-136 ((this vehicle) (arg0 traffic-object-spawn-params))
   (let ((v1-0 (-> arg0 behavior)))
     (cond
       ((= v1-0 1)
@@ -1227,7 +1218,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-127 vehicle ((this vehicle))
+(defmethod vehicle-method-127 ((this vehicle))
   (let ((s5-0 (-> this child)))
     (while s5-0
       (send-event (ppointer->process s5-0) 'traffic-off)
@@ -1244,7 +1235,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-128 vehicle ((this vehicle))
+(defmethod vehicle-method-128 ((this vehicle))
   (vehicle-method-82 this)
   (set! (-> this root trans y) (-> this flight-level))
   (logior! (-> this flags) (rigid-body-object-flag ignition ai-driving))
@@ -1258,7 +1249,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-129 vehicle ((this vehicle))
+(defmethod vehicle-method-129 ((this vehicle))
   (if (= this *debug-actor*)
       (format #t "hook-dead~%")
       )
@@ -1278,17 +1269,17 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-137 vehicle ((this vehicle) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-method-137 ((this vehicle) (arg0 traffic-object-spawn-params))
   (vehicle-rider-spawn this citizen-norm-rider arg0)
   0
   (none)
   )
 
-(defmethod vehicle-method-105 vehicle ((this vehicle))
+(defmethod vehicle-method-105 ((this vehicle))
   (logtest? (rigid-body-object-flag disturbed player-touching player-driving in-pursuit) (-> this flags))
   )
 
-(defmethod vehicle-method-106 vehicle ((this vehicle))
+(defmethod vehicle-method-106 ((this vehicle))
   (local-vars (v1-13 float) (v1-25 float) (v1-30 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1359,13 +1350,13 @@ This commonly includes things such as:
     )
   )
 
-(defmethod update-joint-mods vehicle ((this vehicle))
+(defmethod update-joint-mods ((this vehicle))
   0
   (none)
   )
 
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
-(defmethod vehicle-method-107 vehicle ((this vehicle))
+(defmethod vehicle-method-107 ((this vehicle))
   (logclear! (-> this controller flags) (vehicle-controller-flag ignore-others direct-mode))
   (let ((s5-0 (new 'stack-no-clear 'vehicle-control-point)))
     (set! (-> s5-0 local-pos quad) (-> this root trans quad))
@@ -1390,7 +1381,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-119 vehicle ((this vehicle))
+(defmethod vehicle-method-119 ((this vehicle))
   (dotimes (s5-0 (-> this info seat-count))
     (let ((s4-0 (handle->process (-> this rider-array s5-0))))
       (when (and s4-0 (focus-test? (the-as vehicle-rider s4-0) pilot-riding))
