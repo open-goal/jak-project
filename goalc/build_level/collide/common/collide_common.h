@@ -308,7 +308,6 @@ struct PatSurface {
 };
 
 struct CollideFace {
-  math::Vector4f bsphere;
   math::Vector3f v[3];
   PatSurface pat;
 };
