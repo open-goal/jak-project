@@ -3,20 +3,17 @@
 
 ;; definition of type under-laser-info
 (deftype under-laser-info (basic)
-  ((options              uint8  :offset-assert   4)
-   (laser-radius         float  :offset-assert   8)
-   (laser-move-dist      float  :offset-assert  12)
-   (shadow-top-y         float  :offset-assert  16)
-   (shadow-height        float  :offset-assert  20)
-   (shadow-radius-adjust float  :offset-assert  24)
+  ((options               uint8)
+   (laser-radius          float)
+   (laser-move-dist       float)
+   (shadow-top-y          float)
+   (shadow-height         float)
+   (shadow-radius-adjust  float)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; definition for method 3 of type under-laser-info
-(defmethod inspect under-laser-info ((this under-laser-info))
+(defmethod inspect ((this under-laser-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -83,21 +80,17 @@
 
 ;; definition of type under-laser-shadow
 (deftype under-laser-shadow (process-drawable)
-  ((root            collide-shape-moving         :override)
-   (info            under-laser-info             :offset-assert 200)
-   (trans-xz-offset vector               :inline :offset-assert 208)
+  ((root             collide-shape-moving :override)
+   (info             under-laser-info)
+   (trans-xz-offset  vector                :inline)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xe0
-  :flag-assert         #x15006000e0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type under-laser-shadow
-(defmethod inspect under-laser-shadow ((this under-laser-shadow))
+(defmethod inspect ((this under-laser-shadow))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -113,19 +106,15 @@
 
 ;; definition of type under-laser-slave
 (deftype under-laser-slave (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type under-laser-slave
-(defmethod inspect under-laser-slave ((this under-laser-slave))
+(defmethod inspect ((this under-laser-slave))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -139,30 +128,28 @@
 
 ;; definition of type under-laser
 (deftype under-laser (process-drawable)
-  ((root               collide-shape-moving         :override)
-   (info               under-laser-info             :offset-assert 200)
-   (id                 int8                         :offset-assert 204)
-   (lightning          lightning-control            :offset-assert 208)
-   (draw-test-script   script-context               :offset-assert 212)
-   (sync               sync-eased           :inline :offset-assert 216)
-   (laser-dir          vector               :inline :offset-assert 272)
-   (slave-trans-offset vector               :inline :offset-assert 288)
-   (zero-pos           vector               :inline :offset-assert 304)
-   (one-pos            vector               :inline :offset-assert 320)
+  ((root                collide-shape-moving :override)
+   (info                under-laser-info)
+   (id                  int8)
+   (lightning           lightning-control)
+   (draw-test-script    script-context)
+   (sync                sync-eased            :inline)
+   (laser-dir           vector                :inline)
+   (slave-trans-offset  vector                :inline)
+   (zero-pos            vector                :inline)
+   (one-pos             vector                :inline)
    )
-  :heap-base #xd0
-  :method-count-assert 23
-  :size-assert         #x150
-  :flag-assert         #x1700d00150
+  (:state-methods
+    dormant
+    idle
+    )
   (:methods
-    (dormant () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (under-laser-method-22 (_type_) none 22)
+    (under-laser-method-22 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type under-laser
-(defmethod inspect under-laser ((this under-laser))
+(defmethod inspect ((this under-laser))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -310,7 +297,7 @@
 ;; definition for method 22 of type under-laser
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod under-laser-method-22 under-laser ((this under-laser))
+(defmethod under-laser-method-22 ((this under-laser))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (set! (-> s5-0 start-pos quad) (-> this root trans quad))
     (set! (-> s5-0 move-dist quad) (-> this slave-trans-offset quad))
@@ -438,7 +425,7 @@
 
 ;; definition for method 7 of type under-laser
 ;; WARN: Return type mismatch process-drawable vs under-laser.
-(defmethod relocate under-laser ((this under-laser) (arg0 int))
+(defmethod relocate ((this under-laser) (arg0 int))
   (if (nonzero? (-> this lightning))
       (&+! (-> this lightning) arg0)
       )
@@ -448,7 +435,7 @@
 ;; definition for method 11 of type under-laser
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-laser ((this under-laser) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -3,7 +3,7 @@
 
 ;; definition for method 15 of type hud-moneybag
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-moneybag ((this hud-moneybag))
+(defmethod draw ((this hud-moneybag))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 462.0 (* 130.0 (-> this offset))))
@@ -18,7 +18,7 @@
 
 ;; definition for method 16 of type hud-moneybag
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-moneybag ((this hud-moneybag))
+(defmethod update-values ((this hud-moneybag))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
@@ -27,7 +27,7 @@
 
 ;; definition for method 17 of type hud-moneybag
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-moneybag ((this hud-moneybag))
+(defmethod init-callback ((this hud-moneybag))
   (set! (-> this level) (level-get *level* 'ctywide))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -54,19 +54,17 @@
 ;; definition of type krew-collection-item
 (deftype krew-collection-item (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc8
-  :flag-assert         #x17005000c8
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type krew-collection-item
-(defmethod inspect krew-collection-item ((this krew-collection-item))
+(defmethod inspect ((this krew-collection-item))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -80,7 +78,7 @@
 
 ;; definition for method 22 of type krew-collection-item
 ;; INFO: Used lq/sq
-(defmethod find-ground krew-collection-item ((this krew-collection-item))
+(defmethod find-ground ((this krew-collection-item))
   "TODO - understand the collision query stuff more
 @returns whether or not the [[self]] is above the ground"
   (let ((on-ground? #f))

@@ -9,29 +9,27 @@
 
 ;; definition of type traffic-manager
 (deftype traffic-manager (process)
-  ((traffic-engine   traffic-engine                      :offset-assert 128)
-   (fast-spawn       symbol                              :offset-assert 132)
-   (dark-guard-ratio int32                               :offset-assert 136)
-   (spawn-params     traffic-object-spawn-params :inline :offset-assert 144)
+  ((traffic-engine    traffic-engine)
+   (fast-spawn        symbol)
+   (dark-guard-ratio  int32)
+   (spawn-params      traffic-object-spawn-params  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xf8
-  :flag-assert         #x16008000f8
+  (:state-methods
+    idle
+    active
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (active () _type_ :state 15)
-    (update (_type_) none 16)
-    (spawn-all (_type_) none 17)
-    (kill-excess-once (_type_) none 18)
-    (kill-all-inactive (_type_) none 19)
-    (reset-and-init (_type_) none 20)
-    (init-params (_type_) none 21)
+    (update (_type_) none)
+    (spawn-all (_type_) none)
+    (kill-excess-once (_type_) none)
+    (kill-all-inactive (_type_) none)
+    (reset-and-init (_type_) none)
+    (init-params (_type_) none)
     )
   )
 
 ;; definition for method 3 of type traffic-manager
-(defmethod inspect traffic-manager ((this traffic-manager))
+(defmethod inspect ((this traffic-manager))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -71,7 +69,7 @@
 
 ;; definition for method 16 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod update traffic-manager ((this traffic-manager))
+(defmethod update ((this traffic-manager))
   (update-traffic (-> this traffic-engine))
   (kill-excess-once this)
   (spawn-all this)
@@ -94,7 +92,7 @@
 
 ;; definition for method 18 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod kill-excess-once traffic-manager ((this traffic-manager))
+(defmethod kill-excess-once ((this traffic-manager))
   (let ((type-i 0))
     (while (< (the-as uint type-i) (the-as uint 21))
       (let ((traffic (-> this traffic-engine object-type-info-array type-i)))
@@ -125,7 +123,7 @@
 
 ;; definition for method 19 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod kill-all-inactive traffic-manager ((this traffic-manager))
+(defmethod kill-all-inactive ((this traffic-manager))
   (let ((s5-0 0))
     (while (< (the-as uint s5-0) (the-as uint 21))
       (let ((s4-0 (-> this traffic-engine object-type-info-array s5-0)))
@@ -152,7 +150,7 @@
 
 ;; definition for method 17 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-all traffic-manager ((this traffic-manager))
+(defmethod spawn-all ((this traffic-manager))
   (let ((s5-0 0))
     (b! #t cfg-4 :delay (nop!))
     (label cfg-1)
@@ -389,7 +387,7 @@
 
 ;; definition for method 20 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-and-init traffic-manager ((this traffic-manager))
+(defmethod reset-and-init ((this traffic-manager))
   (set! (-> this traffic-engine) *traffic-engine*)
   (reset-and-init-from-manager (-> this traffic-engine) this)
   (restore-city-speeches)
@@ -399,7 +397,7 @@
 
 ;; definition for method 7 of type traffic-manager
 ;; WARN: Return type mismatch process vs traffic-manager.
-(defmethod relocate traffic-manager ((this traffic-manager) (arg0 int))
+(defmethod relocate ((this traffic-manager) (arg0 int))
   (set! *traffic-manager* this)
   (if *traffic-manager*
       (set! *traffic-manager* (&+ *traffic-manager* arg0))
@@ -408,7 +406,7 @@
   )
 
 ;; definition for method 10 of type traffic-manager
-(defmethod deactivate traffic-manager ((this traffic-manager))
+(defmethod deactivate ((this traffic-manager))
   (stop-alarm-sound (-> this traffic-engine))
   (set! *traffic-manager* #f)
   (remove-setting *setting-control* this 'task-mask)
@@ -420,7 +418,7 @@
 
 ;; definition for method 21 of type traffic-manager
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-params traffic-manager ((this traffic-manager))
+(defmethod init-params ((this traffic-manager))
   (let ((traffic-want-counts (new 'stack-no-clear 'array 'int8 21)))
     (set! (-> traffic-want-counts 11) 8)
     (set! (-> traffic-want-counts 12) 8)

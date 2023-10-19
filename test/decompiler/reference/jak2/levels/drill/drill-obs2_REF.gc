@@ -4,22 +4,20 @@
 ;; definition of type drill-flip-step
 (deftype drill-flip-step (base-plat)
   ()
-  :heap-base #x90
-  :method-count-assert 40
-  :size-assert         #x110
-  :flag-assert         #x2800900110
+  (:state-methods
+    down
+    up
+    swing-down
+    swing-up
+    )
   (:methods
-    (down () _type_ :state 34)
-    (up () _type_ :state 35)
-    (swing-down () _type_ :state 36)
-    (swing-up () _type_ :state 37)
-    (get-skel (_type_) art-group 38)
-    (set-flipped-state (_type_) none 39)
+    (get-skel (_type_) art-group)
+    (set-flipped-state (_type_) none)
     )
   )
 
 ;; definition for method 3 of type drill-flip-step
-(defmethod inspect drill-flip-step ((this drill-flip-step))
+(defmethod inspect ((this drill-flip-step))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -141,7 +139,7 @@
 
 ;; definition for method 31 of type drill-flip-step
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat-collision! drill-flip-step ((this drill-flip-step))
+(defmethod init-plat-collision! ((this drill-flip-step))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
@@ -188,13 +186,13 @@
   )
 
 ;; definition for method 38 of type drill-flip-step
-(defmethod get-skel drill-flip-step ((this drill-flip-step))
+(defmethod get-skel ((this drill-flip-step))
   (art-group-get-by-name *level* "skel-drill-flip-step" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 39 of type drill-flip-step
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-flipped-state drill-flip-step ((this drill-flip-step))
+(defmethod set-flipped-state ((this drill-flip-step))
   "Set the state of the platform based on the completion of the drill-mech task."
   (if (and (= (-> this entity extra perm task) (game-task drill-mech))
            (task-node-closed? (game-task-node drill-mech-smash-consoles))
@@ -210,7 +208,7 @@
   )
 
 ;; definition for method 11 of type drill-flip-step
-(defmethod init-from-entity! drill-flip-step ((this drill-flip-step) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-flip-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -231,23 +229,19 @@ This commonly includes things such as:
 
 ;; definition of type drill-falling-door
 (deftype drill-falling-door (process-drawable)
-  ((root           collide-shape-moving  :override)
-   (hit-state      int32                 :offset-assert 200)
-   (next-hit-state int32                 :offset-assert 204)
+  ((root            collide-shape-moving :override)
+   (hit-state       int32)
+   (next-hit-state  int32)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xd0
-  :flag-assert         #x17005000d0
-  (:methods
-    (idle () _type_ :state 20)
-    (hit () _type_ :state 21)
-    (fall (symbol) _type_ :state 22)
+  (:state-methods
+    idle
+    hit
+    (fall symbol)
     )
   )
 
 ;; definition for method 3 of type drill-falling-door
-(defmethod inspect drill-falling-door ((this drill-falling-door))
+(defmethod inspect ((this drill-falling-door))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -389,7 +383,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-falling-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-falling-door ((this drill-falling-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-falling-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -451,18 +445,14 @@ This commonly includes things such as:
 ;; definition of type drill-sliding-door
 (deftype drill-sliding-door (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (open () _type_ :state 21)
+  (:state-methods
+    idle
+    open
     )
   )
 
 ;; definition for method 3 of type drill-sliding-door
-(defmethod inspect drill-sliding-door ((this drill-sliding-door))
+(defmethod inspect ((this drill-sliding-door))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -514,7 +504,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-sliding-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-sliding-door ((this drill-sliding-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-sliding-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -573,14 +563,10 @@ This commonly includes things such as:
 ;; definition of type drill-accelerator-floor
 (deftype drill-accelerator-floor (conveyor)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
   )
 
 ;; definition for method 3 of type drill-accelerator-floor
-(defmethod inspect drill-accelerator-floor ((this drill-accelerator-floor))
+(defmethod inspect ((this drill-accelerator-floor))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -599,14 +585,14 @@ This commonly includes things such as:
               )
 
 ;; definition for method 22 of type drill-accelerator-floor
-(defmethod get-art-group drill-accelerator-floor ((this drill-accelerator-floor))
+(defmethod get-art-group ((this drill-accelerator-floor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-drill-accelerator-floor" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 24 of type drill-accelerator-floor
 ;; WARN: Return type mismatch int vs none.
-(defmethod init! drill-accelerator-floor ((this drill-accelerator-floor))
+(defmethod init! ((this drill-accelerator-floor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
   (set! (-> this speed) 7372.8)
   (set! (-> this belt-radius) 11878.4)
@@ -617,7 +603,7 @@ This commonly includes things such as:
 
 ;; definition for method 23 of type drill-accelerator-floor
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-root! drill-accelerator-floor ((this drill-accelerator-floor))
+(defmethod reset-root! ((this drill-accelerator-floor))
   "Re-initializes the `root` [[trsqv]]"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -667,17 +653,13 @@ This commonly includes things such as:
 ;; definition of type drill-breakable-barrel
 (deftype drill-breakable-barrel (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type drill-breakable-barrel
-(defmethod inspect drill-breakable-barrel ((this drill-breakable-barrel))
+(defmethod inspect ((this drill-breakable-barrel))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -713,7 +695,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-breakable-barrel
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-breakable-barrel ((this drill-breakable-barrel) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-breakable-barrel) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -752,25 +734,23 @@ This commonly includes things such as:
 
 ;; definition of type drill-metalhead-eggs
 (deftype drill-metalhead-eggs (process-drawable)
-  ((root         collide-shape-moving  :override)
-   (actor-group  actor-group           :offset-assert 200)
-   (notify-actor entity-actor          :offset-assert 204)
+  ((root          collide-shape-moving :override)
+   (actor-group   actor-group)
+   (notify-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xd0
-  :flag-assert         #x19005000d0
+  (:state-methods
+    idle
+    die
+    die-fast
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (die-fast () _type_ :state 22)
-    (skel-init! (_type_) none 23)
-    (init-collision! (_type_) none 24)
+    (skel-init! (_type_) none)
+    (init-collision! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type drill-metalhead-eggs
-(defmethod inspect drill-metalhead-eggs ((this drill-metalhead-eggs))
+(defmethod inspect ((this drill-metalhead-eggs))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -949,7 +929,7 @@ This commonly includes things such as:
 ;; definition for method 11 of type drill-metalhead-eggs
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-metalhead-eggs ((this drill-metalhead-eggs) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-metalhead-eggs) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -993,14 +973,10 @@ This commonly includes things such as:
 ;; definition of type drill-metalhead-eggs-a
 (deftype drill-metalhead-eggs-a (drill-metalhead-eggs)
   ()
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xd0
-  :flag-assert         #x19005000d0
   )
 
 ;; definition for method 3 of type drill-metalhead-eggs-a
-(defmethod inspect drill-metalhead-eggs-a ((this drill-metalhead-eggs-a))
+(defmethod inspect ((this drill-metalhead-eggs-a))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1015,14 +991,10 @@ This commonly includes things such as:
 ;; definition of type drill-metalhead-eggs-b
 (deftype drill-metalhead-eggs-b (drill-metalhead-eggs)
   ()
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xd0
-  :flag-assert         #x19005000d0
   )
 
 ;; definition for method 3 of type drill-metalhead-eggs-b
-(defmethod inspect drill-metalhead-eggs-b ((this drill-metalhead-eggs-b))
+(defmethod inspect ((this drill-metalhead-eggs-b))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1037,14 +1009,10 @@ This commonly includes things such as:
 ;; definition of type drill-metalhead-eggs-c
 (deftype drill-metalhead-eggs-c (drill-metalhead-eggs)
   ()
-  :heap-base #x50
-  :method-count-assert 25
-  :size-assert         #xd0
-  :flag-assert         #x19005000d0
   )
 
 ;; definition for method 3 of type drill-metalhead-eggs-c
-(defmethod inspect drill-metalhead-eggs-c ((this drill-metalhead-eggs-c))
+(defmethod inspect ((this drill-metalhead-eggs-c))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1076,7 +1044,7 @@ This commonly includes things such as:
 
 ;; definition for method 23 of type drill-metalhead-eggs-a
 ;; WARN: Return type mismatch int vs none.
-(defmethod skel-init! drill-metalhead-eggs-a ((this drill-metalhead-eggs-a))
+(defmethod skel-init! ((this drill-metalhead-eggs-a))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
     this
@@ -1097,7 +1065,7 @@ This commonly includes things such as:
 
 ;; definition for method 24 of type drill-metalhead-eggs-a
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-collision! drill-metalhead-eggs-a ((this drill-metalhead-eggs-a))
+(defmethod init-collision! ((this drill-metalhead-eggs-a))
   "Define the collision for this object."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1122,7 +1090,7 @@ This commonly includes things such as:
 
 ;; definition for method 23 of type drill-metalhead-eggs-b
 ;; WARN: Return type mismatch int vs none.
-(defmethod skel-init! drill-metalhead-eggs-b ((this drill-metalhead-eggs-b))
+(defmethod skel-init! ((this drill-metalhead-eggs-b))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
     this
@@ -1143,7 +1111,7 @@ This commonly includes things such as:
 
 ;; definition for method 24 of type drill-metalhead-eggs-b
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-collision! drill-metalhead-eggs-b ((this drill-metalhead-eggs-b))
+(defmethod init-collision! ((this drill-metalhead-eggs-b))
   "Define the collision for this object."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1168,7 +1136,7 @@ This commonly includes things such as:
 
 ;; definition for method 23 of type drill-metalhead-eggs-c
 ;; WARN: Return type mismatch int vs none.
-(defmethod skel-init! drill-metalhead-eggs-c ((this drill-metalhead-eggs-c))
+(defmethod skel-init! ((this drill-metalhead-eggs-c))
   "Initialize the skeleton and animations for this object."
   (initialize-skeleton
     this
@@ -1189,7 +1157,7 @@ This commonly includes things such as:
 
 ;; definition for method 24 of type drill-metalhead-eggs-c
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-collision! drill-metalhead-eggs-c ((this drill-metalhead-eggs-c))
+(defmethod init-collision! ((this drill-metalhead-eggs-c))
   "Define the collision for this object."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -1214,22 +1182,18 @@ This commonly includes things such as:
 
 ;; definition of type drill-bridge-shot
 (deftype drill-bridge-shot (process-drawable)
-  ((root     collide-shape-moving  :override)
-   (anim     art-joint-anim        :offset-assert 200)
-   (art-name string                :offset-assert 204)
+  ((root      collide-shape-moving :override)
+   (anim      art-joint-anim)
+   (art-name  string)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xd0
-  :flag-assert         #x16005000d0
-  (:methods
-    (idle () _type_ :state 20)
-    (die (symbol) _type_ :state 21)
+  (:state-methods
+    idle
+    (die symbol)
     )
   )
 
 ;; definition for method 3 of type drill-bridge-shot
-(defmethod inspect drill-bridge-shot ((this drill-bridge-shot))
+(defmethod inspect ((this drill-bridge-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1365,7 +1329,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-bridge-shot
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-bridge-shot ((this drill-bridge-shot) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-bridge-shot) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1427,17 +1391,13 @@ This commonly includes things such as:
 ;; definition of type drill-drill
 (deftype drill-drill (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type drill-drill
-(defmethod inspect drill-drill ((this drill-drill))
+(defmethod inspect ((this drill-drill))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1473,7 +1433,7 @@ This commonly includes things such as:
 
 ;; definition for method 11 of type drill-drill
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! drill-drill ((this drill-drill) (arg0 entity-actor))
+(defmethod init-from-entity! ((this drill-drill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1494,17 +1454,13 @@ This commonly includes things such as:
 
 ;; definition of type drill-drop-plat
 (deftype drill-drop-plat (drill-flip-step)
-  ((ridden?          symbol      :offset-assert 272)
-   (not-ridden-timer time-frame  :offset-assert 280)
+  ((ridden?           symbol)
+   (not-ridden-timer  time-frame)
    )
-  :heap-base #xa0
-  :method-count-assert 40
-  :size-assert         #x120
-  :flag-assert         #x2800a00120
   )
 
 ;; definition for method 3 of type drill-drop-plat
-(defmethod inspect drill-drop-plat ((this drill-drop-plat))
+(defmethod inspect ((this drill-drop-plat))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1579,13 +1535,13 @@ This commonly includes things such as:
   )
 
 ;; definition for method 38 of type drill-drop-plat
-(defmethod get-skel drill-drop-plat ((this drill-drop-plat))
+(defmethod get-skel ((this drill-drop-plat))
   (art-group-get-by-name *level* "skel-drill-drop-plat" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 39 of type drill-drop-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-flipped-state drill-drop-plat ((this drill-drop-plat))
+(defmethod set-flipped-state ((this drill-drop-plat))
   "Set the state of the platform."
   (set-time! (-> this not-ridden-timer))
   (go (method-of-object this up))
@@ -1595,7 +1551,7 @@ This commonly includes things such as:
 
 ;; definition for method 31 of type drill-drop-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat-collision! drill-drop-plat ((this drill-drop-plat))
+(defmethod init-plat-collision! ((this drill-drop-plat))
   "TODO - collision stuff for setting up the platform"
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))

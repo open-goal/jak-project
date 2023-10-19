@@ -3,34 +3,32 @@
 
 ;; definition of type metalhead-flitter
 (deftype metalhead-flitter (citizen-enemy)
-  ((move-angle       float              :offset-assert 980)
-   (heading          symbol             :offset-assert 984)
-   (change-dir-time  time-frame         :offset-assert 992)
-   (last-change-dir  uint64             :offset-assert 1000)
-   (off-screen-timer uint64             :offset-assert 1008)
-   (amb-sound-timer  uint64             :offset-assert 1016)
-   (attack-time      time-frame         :offset-assert 1024)
-   (target-pos       vector     :inline :offset-assert 1040)
-   (attack-pos       vector     :inline :offset-assert 1056)
-   (base-height      float              :offset-assert 1072)
+  ((move-angle        float)
+   (heading           symbol)
+   (change-dir-time   time-frame)
+   (last-change-dir   uint64)
+   (off-screen-timer  uint64)
+   (amb-sound-timer   uint64)
+   (attack-time       time-frame)
+   (target-pos        vector  :inline)
+   (attack-pos        vector  :inline)
+   (base-height       float)
    )
-  :heap-base #x3c0
-  :method-count-assert 210
-  :size-assert         #x434
-  :flag-assert         #xd203c00434
+  (:state-methods
+    attack
+    ambush-jumping
+    )
   (:methods
-    (attack () _type_ :state 203)
-    (ambush-jumping () _type_ :state 204)
-    (metalhead-flitter-method-205 (_type_) none 205)
-    (metalhead-flitter-method-206 (_type_) none 206)
-    (metalhead-flitter-method-207 (_type_ process-focusable) symbol 207)
-    (metalhead-flitter-method-208 (_type_ symbol) none 208)
-    (metalhead-flitter-method-209 (_type_) float 209)
+    (metalhead-flitter-method-205 (_type_) none)
+    (metalhead-flitter-method-206 (_type_) none)
+    (metalhead-flitter-method-207 (_type_ process-focusable) symbol)
+    (metalhead-flitter-method-208 (_type_ symbol) none)
+    (metalhead-flitter-method-209 (_type_) float)
     )
   )
 
 ;; definition for method 3 of type metalhead-flitter
-(defmethod inspect metalhead-flitter ((this metalhead-flitter))
+(defmethod inspect ((this metalhead-flitter))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -209,7 +207,7 @@
 (set! (-> *metalhead-flitter-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 207 of type metalhead-flitter
-(defmethod metalhead-flitter-method-207 metalhead-flitter ((this metalhead-flitter) (arg0 process-focusable))
+(defmethod metalhead-flitter-method-207 ((this metalhead-flitter) (arg0 process-focusable))
   (and (logtest? (-> this draw status) (draw-control-status on-screen))
        (let ((s4-0 (camera-matrix)))
          (camera-pos)
@@ -224,7 +222,7 @@
   )
 
 ;; definition for method 77 of type metalhead-flitter
-(defmethod enemy-method-77 metalhead-flitter ((this metalhead-flitter) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalhead-flitter) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -267,7 +265,7 @@
   )
 
 ;; definition for method 78 of type metalhead-flitter
-(defmethod enemy-method-78 metalhead-flitter ((this metalhead-flitter) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalhead-flitter) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -290,7 +288,7 @@
   )
 
 ;; definition for method 68 of type metalhead-flitter
-(defmethod go-stare2 metalhead-flitter ((this metalhead-flitter))
+(defmethod go-stare2 ((this metalhead-flitter))
   (if (and (= (-> this focus aware) (enemy-aware enemy-aware-2)) (not (nav-enemy-method-163 this)))
       (go (method-of-object this pacing))
       (go (method-of-object this stare))
@@ -541,14 +539,14 @@
   )
 
 ;; definition for method 99 of type metalhead-flitter
-(defmethod enemy-method-99 metalhead-flitter ((this metalhead-flitter) (arg0 process-focusable))
+(defmethod enemy-method-99 ((this metalhead-flitter) (arg0 process-focusable))
   (focus-test? arg0 mech)
   )
 
 ;; definition for method 205 of type metalhead-flitter
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod metalhead-flitter-method-205 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-205 ((this metalhead-flitter))
   (let* ((s5-0 (handle->process (-> this focus handle)))
          (s3-0 (if (type? s5-0 process-focusable)
                    s5-0
@@ -619,7 +617,7 @@
 
 ;; definition for method 206 of type metalhead-flitter
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod metalhead-flitter-method-206 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-206 ((this metalhead-flitter))
   (when (time-elapsed? (the-as int (-> this amb-sound-timer)) (the int (* 300.0 (rand-vu-float-range 1.5 3.0))))
     (sound-play "flitter-amb" :position (-> this root trans))
     (set! (-> this amb-sound-timer) (the-as uint (current-time)))
@@ -786,7 +784,7 @@
   )
 
 ;; definition for method 209 of type metalhead-flitter
-(defmethod metalhead-flitter-method-209 metalhead-flitter ((this metalhead-flitter))
+(defmethod metalhead-flitter-method-209 ((this metalhead-flitter))
   (lerp-scale 0.0 1.0 (- (-> this attack-pos y) (-> this root trans y)) 13926.4 25600.0)
   )
 
@@ -1041,7 +1039,7 @@
 
 ;; definition for method 208 of type metalhead-flitter
 ;; WARN: Return type mismatch int vs none.
-(defmethod metalhead-flitter-method-208 metalhead-flitter ((this metalhead-flitter) (arg0 symbol))
+(defmethod metalhead-flitter-method-208 ((this metalhead-flitter) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
@@ -1058,7 +1056,7 @@
 
 ;; definition for method 114 of type metalhead-flitter
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! metalhead-flitter ((this metalhead-flitter))
+(defmethod init-enemy-collision! ((this metalhead-flitter))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1113,7 +1111,7 @@
 
 ;; definition for method 115 of type metalhead-flitter
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod init-enemy! metalhead-flitter ((this metalhead-flitter))
+(defmethod init-enemy! ((this metalhead-flitter))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -1153,7 +1151,7 @@
 
 ;; definition for method 181 of type metalhead-flitter
 ;; WARN: Return type mismatch int vs none.
-(defmethod citizen-init! metalhead-flitter ((this metalhead-flitter))
+(defmethod citizen-init! ((this metalhead-flitter))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen-enemy citizen-init!)))
     (t9-0 this)

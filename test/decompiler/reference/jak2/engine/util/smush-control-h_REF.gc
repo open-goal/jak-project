@@ -3,30 +3,27 @@
 
 ;; definition of type smush-control
 (deftype smush-control (structure)
-  ((start-time  time-frame  :offset-assert   0)
-   (period      float       :offset-assert   8)
-   (duration    float       :offset-assert  12)
-   (amp         float       :offset-assert  16)
-   (damp-amp    float       :offset-assert  20)
-   (damp-period float       :offset-assert  24)
-   (ticks       float       :offset-assert  28)
+  ((start-time   time-frame)
+   (period       float)
+   (duration     float)
+   (amp          float)
+   (damp-amp     float)
+   (damp-period  float)
+   (ticks        float)
    )
   :pack-me
-  :method-count-assert 15
-  :size-assert         #x20
-  :flag-assert         #xf00000020
   (:methods
-    (set-zero! (_type_) _type_ 9)
-    (update! (_type_) float 10)
-    (get-no-update (_type_) float 11)
-    (activate! (_type_ float int int float float clock) _type_ 12)
-    (nonzero-amplitude? (_type_) symbol 13)
-    (die-on-next-update! (_type_) _type_ 14)
+    (set-zero! (_type_) _type_)
+    (update! (_type_) float)
+    (get-no-update (_type_) float)
+    (activate! (_type_ float int int float float clock) _type_)
+    (nonzero-amplitude? (_type_) symbol)
+    (die-on-next-update! (_type_) _type_)
     )
   )
 
 ;; definition for method 3 of type smush-control
-(defmethod inspect smush-control ((this smush-control))
+(defmethod inspect ((this smush-control))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -44,12 +41,12 @@
   )
 
 ;; definition for method 13 of type smush-control
-(defmethod nonzero-amplitude? smush-control ((this smush-control))
+(defmethod nonzero-amplitude? ((this smush-control))
   (!= (-> this amp) 0.0)
   )
 
 ;; definition for method 9 of type smush-control
-(defmethod set-zero! smush-control ((this smush-control))
+(defmethod set-zero! ((this smush-control))
   (set! (-> this period) 0.0)
   (set! (-> this duration) 0.0)
   (set! (-> this amp) 0.0)
@@ -60,7 +57,7 @@
   )
 
 ;; definition for method 10 of type smush-control
-(defmethod update! smush-control ((this smush-control))
+(defmethod update! ((this smush-control))
   (cond
     ((!= (-> this amp) 0.0)
      (let* ((f30-0 (the float (- (current-time) (-> this start-time))))
@@ -90,7 +87,7 @@
   )
 
 ;; definition for method 11 of type smush-control
-(defmethod get-no-update smush-control ((this smush-control))
+(defmethod get-no-update ((this smush-control))
   (cond
     ((!= (-> this amp) 0.0)
      (let* ((f30-0 (the float (- (current-time) (-> this start-time))))
@@ -109,7 +106,7 @@
   )
 
 ;; definition for method 14 of type smush-control
-(defmethod die-on-next-update! smush-control ((this smush-control))
+(defmethod die-on-next-update! ((this smush-control))
   (if (!= (-> this amp) 0.0)
       (set! (-> this damp-period) -1.0)
       )
@@ -117,7 +114,7 @@
   )
 
 ;; definition for method 12 of type smush-control
-(defmethod activate! smush-control ((this smush-control) (arg0 float) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 clock))
+(defmethod activate! ((this smush-control) (arg0 float) (arg1 int) (arg2 int) (arg3 float) (arg4 float) (arg5 clock))
   (when (>= (fabs (* 0.2 (-> this amp))) (fabs (get-no-update this)))
     (set! (-> this amp) arg0)
     (set! (-> this period) (the float arg1))

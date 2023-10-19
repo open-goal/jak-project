@@ -3,30 +3,26 @@
 
 ;; definition of type base-plat
 (deftype base-plat (process-focusable)
-  ((root         collide-shape-moving         :override)
-   (smush        smush-control        :inline :offset-assert 208)
-   (basetrans    vector               :inline :offset-assert 240)
-   (bounce-time  time-frame                   :offset-assert 256)
-   (bouncing     symbol                       :offset-assert 264)
-   (bounce-scale meters                       :offset-assert 268)
+  ((root          collide-shape-moving :override)
+   (smush         smush-control         :inline)
+   (basetrans     vector                :inline)
+   (bounce-time   time-frame)
+   (bouncing      symbol)
+   (bounce-scale  meters)
    )
-  :heap-base #x90
-  :method-count-assert 34
-  :size-assert         #x110
-  :flag-assert         #x2200900110
   (:methods
-    (execute-effects (_type_) none 27)
-    (stop-bouncing! (_type_) none 28)
-    (start-bouncing! (_type_) none :behavior base-plat 29)
-    (get-art-group (_type_) art-group 30)
-    (init-plat-collision! (_type_) none 31)
-    (base-plat-method-32 (_type_) none 32)
-    (init-plat! (_type_) none 33)
+    (execute-effects (_type_) none)
+    (stop-bouncing! (_type_) none)
+    (start-bouncing! (_type_) none :behavior base-plat)
+    (get-art-group (_type_) art-group)
+    (init-plat-collision! (_type_) none)
+    (base-plat-method-32 (_type_) none)
+    (init-plat! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type base-plat
-(defmethod inspect base-plat ((this base-plat))
+(defmethod inspect ((this base-plat))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -45,7 +41,7 @@
 
 ;; definition for method 33 of type base-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! base-plat ((this base-plat))
+(defmethod init-plat! ((this base-plat))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
@@ -55,7 +51,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 28 of type base-plat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod stop-bouncing! base-plat ((this base-plat))
+(defmethod stop-bouncing! ((this base-plat))
   "Sets `bouncing` to false and resets related settings to their defaults"
   (set! (-> this basetrans quad) (-> this root trans quad))
   (set! (-> this bouncing) #f)
@@ -66,7 +62,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 29 of type base-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod start-bouncing! base-plat ((this base-plat))
+(defmethod start-bouncing! ((this base-plat))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
 and translate the platform via the `smush`
 @see [[smush-control]]"
@@ -140,7 +136,7 @@ If we aren't bouncing however, TODO - CSHAPE"
 
 ;; definition for method 32 of type base-plat
 ;; WARN: Return type mismatch int vs none.
-(defmethod base-plat-method-32 base-plat ((this base-plat))
+(defmethod base-plat-method-32 ((this base-plat))
   0
   (none)
   )
@@ -148,7 +144,7 @@ If we aren't bouncing however, TODO - CSHAPE"
 ;; definition for method 27 of type base-plat
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod execute-effects base-plat ((this base-plat))
+(defmethod execute-effects ((this base-plat))
   "Executes various ancillary tasks with the platform, such as spawning particles or playing the associated sound"
   (if (nonzero? (-> this part))
       (spawn (-> this part) (-> this root trans))
@@ -175,37 +171,35 @@ If we aren't bouncing however, TODO - CSHAPE"
 ;; definition of type eco-door
 (deftype eco-door (process-drawable)
   "@unused - Likely a left-over from Jak 1"
-  ((root           collide-shape          :override)
-   (speed          float                  :offset-assert 200)
-   (open-distance  float                  :offset-assert 204)
-   (close-distance float                  :offset-assert 208)
-   (out-dir        vector         :inline :offset-assert 224)
-   (open-sound     sound-name             :offset-assert 240)
-   (close-sound    sound-name             :offset-assert 256)
-   (state-actor    entity-actor           :offset-assert 272)
-   (flags          eco-door-flags         :offset-assert 276)
-   (locked         symbol                 :offset-assert 280)
-   (auto-close     symbol                 :offset-assert 284)
-   (one-way        symbol                 :offset-assert 288)
+  ((root            collide-shape :override)
+   (speed           float)
+   (open-distance   float)
+   (close-distance  float)
+   (out-dir         vector         :inline)
+   (open-sound      sound-name)
+   (close-sound     sound-name)
+   (state-actor     entity-actor)
+   (flags           eco-door-flags)
+   (locked          symbol)
+   (auto-close      symbol)
+   (one-way         symbol)
    )
-  :heap-base #xb0
-  :method-count-assert 27
-  :size-assert         #x124
-  :flag-assert         #x1b00b00124
+  (:state-methods
+    door-closed
+    door-opening
+    door-open
+    door-closing
+    )
   (:methods
-    (door-closed () _type_ :state 20)
-    (door-opening () _type_ :state 21)
-    (door-open () _type_ :state 22)
-    (door-closing () _type_ :state 23)
-    (lock-according-to-task! (_type_) none 24)
-    (eco-door-method-25 (_type_) none 25)
-    (stub (_type_) none 26)
+    (lock-according-to-task! (_type_) none)
+    (eco-door-method-25 (_type_) none)
+    (stub (_type_) none)
     )
   )
 
 ;; definition for method 3 of type eco-door
 ;; INFO: Used lq/sq
-(defmethod inspect eco-door ((this eco-door))
+(defmethod inspect ((this eco-door))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -384,7 +378,7 @@ eco-door-event-handler
 
 ;; definition for method 24 of type eco-door
 ;; WARN: Return type mismatch int vs none.
-(defmethod lock-according-to-task! eco-door ((this eco-door))
+(defmethod lock-according-to-task! ((this eco-door))
   "If the associated subtask is completed, lock the door if [[eco-door-flags:0]] is set
 otherwise, lock it if [[eco-door-flags:0]] is set"
   (when (-> this state-actor)
@@ -399,7 +393,7 @@ otherwise, lock it if [[eco-door-flags:0]] is set"
 
 ;; definition for method 25 of type eco-door
 ;; WARN: Return type mismatch int vs none.
-(defmethod eco-door-method-25 eco-door ((this eco-door))
+(defmethod eco-door-method-25 ((this eco-door))
   (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
       (set! (-> collision-mesh prim-core collide-as) (collide-spec obstacle))
@@ -423,7 +417,7 @@ otherwise, lock it if [[eco-door-flags:0]] is set"
 
 ;; definition for method 26 of type eco-door
 ;; WARN: Return type mismatch int vs none.
-(defmethod stub eco-door ((this eco-door))
+(defmethod stub ((this eco-door))
   "@unused - Stub with no overrides"
   0
   (none)
@@ -431,7 +425,7 @@ otherwise, lock it if [[eco-door-flags:0]] is set"
 
 ;; definition for method 11 of type eco-door
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! eco-door ((this eco-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -22,24 +22,22 @@
 
 ;; definition of type vehicle-turret
 (deftype vehicle-turret (process-focusable)
-  ((turret-jm joint-mod              :offset-assert 204)
-   (turret    turret-control :inline :offset-assert 208)
-   (target    handle                 :offset-assert 288)
+  ((turret-jm  joint-mod)
+   (turret     turret-control  :inline)
+   (target     handle)
    )
-  :heap-base #xb0
-  :method-count-assert 31
-  :size-assert         #x128
-  :flag-assert         #x1f00b00128
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 27)
-    (vehicle-turret-method-28 (_type_) none 28)
-    (vehicle-turret-method-29 (_type_) none 29)
-    (vehicle-turret-method-30 (_type_) none 30)
+    (vehicle-turret-method-28 (_type_) none)
+    (vehicle-turret-method-29 (_type_) none)
+    (vehicle-turret-method-30 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type vehicle-turret
-(defmethod inspect vehicle-turret ((this vehicle-turret))
+(defmethod inspect ((this vehicle-turret))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -56,7 +54,7 @@
 
 ;; definition for method 29 of type vehicle-turret
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-turret-method-29 vehicle-turret ((this vehicle-turret))
+(defmethod vehicle-turret-method-29 ((this vehicle-turret))
   (let* ((s4-0 (ppointer->process (-> this parent)))
          (s5-0 (if (type? s4-0 process-focusable)
                    s4-0
@@ -104,7 +102,7 @@
 
 ;; definition for method 28 of type vehicle-turret
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-turret-method-28 vehicle-turret ((this vehicle-turret))
+(defmethod vehicle-turret-method-28 ((this vehicle-turret))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -133,7 +131,7 @@
   )
 
 ;; definition for method 7 of type vehicle-turret
-(defmethod relocate vehicle-turret ((this vehicle-turret) (arg0 int))
+(defmethod relocate ((this vehicle-turret) (arg0 int))
   (if (nonzero? (-> this turret-jm))
       (&+! (-> this turret-jm) arg0)
       )
@@ -142,7 +140,7 @@
 
 ;; definition for method 30 of type vehicle-turret
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-turret-method-30 vehicle-turret ((this vehicle-turret))
+(defmethod vehicle-turret-method-30 ((this vehicle-turret))
   (set! (-> this turret-jm)
         (the-as joint-mod (new 'process 'joint-mod-rotate-local this (-> this turret info joint-index) #t))
         )
@@ -195,21 +193,18 @@
 
 ;; definition of type transport-params
 (deftype transport-params (structure)
-  ((spawn-pos vector     :inline :offset-assert   0)
-   (quat      quaternion :inline :offset-assert  16)
-   (nav-mesh  nav-mesh           :offset-assert  32)
-   (max-guard uint32             :offset-assert  36)
-   (max-time  float              :offset-assert  40)
-   (turret?   symbol             :offset-assert  44)
-   (speeches? symbol             :offset-assert  48)
+  ((spawn-pos  vector      :inline)
+   (quat       quaternion  :inline)
+   (nav-mesh   nav-mesh)
+   (max-guard  uint32)
+   (max-time   float)
+   (turret?    symbol)
+   (speeches?  symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 ;; definition for method 3 of type transport-params
-(defmethod inspect transport-params ((this transport-params))
+(defmethod inspect ((this transport-params))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -228,37 +223,35 @@
 
 ;; definition of type transport
 (deftype transport (process-focusable)
-  ((y-dest                float       :offset-assert 204)
-   (last-guard-spawn-time time-frame  :offset-assert 208)
-   (nav-mesh              nav-mesh    :offset-assert 216)
-   (spawn-side            uint32      :offset-assert 220)
-   (spawn?                symbol      :offset-assert 224)
-   (leave-time            time-frame  :offset-assert 232)
-   (max-guard             uint32      :offset-assert 240)
-   (count-guard           uint32      :offset-assert 244)
-   (max-time              float       :offset-assert 248)
-   (ambient-sound-id      sound-id    :offset-assert 252)
-   (turret                handle      :offset-assert 256)
+  ((y-dest                 float)
+   (last-guard-spawn-time  time-frame)
+   (nav-mesh               nav-mesh)
+   (spawn-side             uint32)
+   (spawn?                 symbol)
+   (leave-time             time-frame)
+   (max-guard              uint32)
+   (count-guard            uint32)
+   (max-time               float)
+   (ambient-sound-id       sound-id)
+   (turret                 handle)
    )
-  :heap-base #x90
-  :method-count-assert 36
-  :size-assert         #x108
-  :flag-assert         #x2400900108
+  (:state-methods
+    come-down
+    idle
+    leave
+    die-fast
+    )
   (:methods
-    (come-down () _type_ :state 27)
-    (idle () _type_ :state 28)
-    (leave () _type_ :state 29)
-    (die-fast () _type_ :state 30)
-    (transport-method-31 (_type_) none 31)
-    (transport-method-32 (_type_) none 32)
-    (transport-method-33 (_type_) none 33)
-    (transport-method-34 (_type_ process) none 34)
-    (transport-method-35 (_type_) none 35)
+    (transport-method-31 (_type_) none)
+    (transport-method-32 (_type_) none)
+    (transport-method-33 (_type_) none)
+    (transport-method-34 (_type_ process) none)
+    (transport-method-35 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type transport
-(defmethod inspect transport ((this transport))
+(defmethod inspect ((this transport))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -313,13 +306,13 @@
   )
 
 ;; definition for method 12 of type transport
-(defmethod run-logic? transport ((this transport))
+(defmethod run-logic? ((this transport))
   #t
   )
 
 ;; definition for method 35 of type transport
 ;; WARN: Return type mismatch int vs none.
-(defmethod transport-method-35 transport ((this transport))
+(defmethod transport-method-35 ((this transport))
   (let ((f30-0 (lerp-scale 0.0 2.0 (fabs (-> this root transv y)) 0.0 122880.0))
         (f0-4 (lerp-scale 0.0 1.0 (- (-> this root trans y) (-> this y-dest)) 143360.0 20480.0))
         (a0-3 (static-sound-spec "transport" :volume 0.0 :mask (pitch reg0)))
@@ -333,7 +326,7 @@
   )
 
 ;; definition for method 10 of type transport
-(defmethod deactivate transport ((this transport))
+(defmethod deactivate ((this transport))
   (sound-stop (-> this ambient-sound-id))
   (call-parent-method this)
   (none)
@@ -475,7 +468,7 @@
 ;; definition for method 33 of type transport
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod transport-method-33 transport ((this transport))
+(defmethod transport-method-33 ((this transport))
   (when (>= (- (current-time) (-> this last-guard-spawn-time)) 0)
     (let ((s5-0 (new 'stack 'traffic-object-spawn-params)))
       (set! (-> s5-0 object-type) (traffic-type crimson-guard-1))
@@ -514,7 +507,7 @@
 
 ;; definition for method 34 of type transport
 ;; WARN: Return type mismatch int vs none.
-(defmethod transport-method-34 transport ((this transport) (arg0 process))
+(defmethod transport-method-34 ((this transport) (arg0 process))
   (let ((v1-1 (handle->process (-> this turret))))
     (if v1-1
         (set! (-> (the-as vehicle-turret v1-1) target) (process->handle arg0))
@@ -526,7 +519,7 @@
 
 ;; definition for method 31 of type transport
 ;; WARN: Return type mismatch int vs none.
-(defmethod transport-method-31 transport ((this transport))
+(defmethod transport-method-31 ((this transport))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -569,7 +562,7 @@
 
 ;; definition for method 32 of type transport
 ;; WARN: Return type mismatch int vs none.
-(defmethod transport-method-32 transport ((this transport))
+(defmethod transport-method-32 ((this transport))
   (set! (-> this spawn-side) (the-as uint 0))
   0
   (none)
@@ -610,7 +603,7 @@
 
 ;; definition for method 11 of type transport
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! transport ((this transport) (arg0 entity-actor))
+(defmethod init-from-entity! ((this transport) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

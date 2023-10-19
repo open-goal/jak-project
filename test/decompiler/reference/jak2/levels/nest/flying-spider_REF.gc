@@ -4,14 +4,10 @@
 ;; definition of type flying-spider-shot
 (deftype flying-spider-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type flying-spider-shot
-(defmethod inspect flying-spider-shot ((this flying-spider-shot))
+(defmethod inspect ((this flying-spider-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -25,7 +21,7 @@
 
 ;; definition for method 28 of type flying-spider-shot
 ;; WARN: Return type mismatch object vs none.
-(defmethod play-impact-sound flying-spider-shot ((this flying-spider-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this flying-spider-shot) (arg0 projectile-options))
   (if (zero? arg0)
       (sound-play "fly-spider-shot")
       (call-parent-method this arg0)
@@ -60,28 +56,26 @@
 
 ;; definition of type flying-spider
 (deftype flying-spider (nav-enemy)
-  ((my-up-vector vector     :inline :offset-assert 608)
-   (gspot-normal vector     :inline :offset-assert 624)
-   (gspot-timer  time-frame         :offset-assert 640)
-   (focus-dir    uint16             :offset-assert 648)
-   (path-u       float              :offset-assert 652)
-   (path-du      float              :offset-assert 656)
+  ((my-up-vector  vector  :inline)
+   (gspot-normal  vector  :inline)
+   (gspot-timer   time-frame)
+   (focus-dir     uint16)
+   (path-u        float)
+   (path-du       float)
    )
-  :heap-base #x220
-  :method-count-assert 183
-  :size-assert         #x294
-  :flag-assert         #xb702200294
+  (:state-methods
+    ambush-falling
+    attack
+    attack-fire
+    turn-to-focus
+    )
   (:methods
-    (ambush-falling () _type_ :state 178)
-    (attack () _type_ :state 179)
-    (attack-fire () _type_ :state 180)
-    (turn-to-focus () _type_ :state 181)
-    (flying-spider-method-182 (_type_ vector) none 182)
+    (flying-spider-method-182 (_type_ vector) none)
     )
   )
 
 ;; definition for method 3 of type flying-spider
-(defmethod inspect flying-spider ((this flying-spider))
+(defmethod inspect ((this flying-spider))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -574,7 +568,7 @@
   )
 
 ;; definition for method 74 of type flying-spider
-(defmethod general-event-handler flying-spider ((this flying-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this flying-spider) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -642,7 +636,7 @@
   )
 
 ;; definition for method 55 of type flying-spider
-(defmethod track-target! flying-spider ((this flying-spider))
+(defmethod track-target! ((this flying-spider))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -654,7 +648,7 @@
 ;; definition for method 125 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 flying-spider ((this flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod enemy-method-125 ((this flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -702,7 +696,7 @@
 ;; definition for method 182 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod flying-spider-method-182 flying-spider ((this flying-spider) (arg0 vector))
+(defmethod flying-spider-method-182 ((this flying-spider) (arg0 vector))
   (cond
     ((= (-> this root gspot-pos y) -40959590.0)
      (set! (-> arg0 y) 0.0)
@@ -735,7 +729,7 @@
 ;; definition for method 142 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 flying-spider ((this flying-spider) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this flying-spider) (arg0 nav-control))
   (let ((t9-0 (method-of-object this flying-spider-method-182))
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
@@ -749,7 +743,7 @@
 
 ;; definition for method 109 of type flying-spider
 ;; WARN: Return type mismatch int vs none.
-(defmethod look-at-target! flying-spider ((this flying-spider) (arg0 enemy-flag))
+(defmethod look-at-target! ((this flying-spider) (arg0 enemy-flag))
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
 @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   0
@@ -758,26 +752,26 @@
 
 ;; definition for method 59 of type flying-spider
 ;; WARN: Return type mismatch int vs penetrate.
-(defmethod get-penetrate-info flying-spider ((this flying-spider))
+(defmethod get-penetrate-info ((this flying-spider))
   "@returns the allowed way(s) this enemy can take damage
 @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
 ;; definition for method 51 of type flying-spider
-(defmethod enemy-method-51 flying-spider ((this flying-spider))
+(defmethod enemy-method-51 ((this flying-spider))
   (quaternion-y-angle (-> this root quat))
   )
 
 ;; definition for method 60 of type flying-spider
-(defmethod coin-flip? flying-spider ((this flying-spider))
+(defmethod coin-flip? ((this flying-spider))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 114 of type flying-spider
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! flying-spider ((this flying-spider))
+(defmethod init-enemy-collision! ((this flying-spider))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -843,7 +837,7 @@
 ;; definition for method 115 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! flying-spider ((this flying-spider))
+(defmethod init-enemy! ((this flying-spider))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

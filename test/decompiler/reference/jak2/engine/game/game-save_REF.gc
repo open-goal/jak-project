@@ -234,29 +234,26 @@
 
 ;; definition of type game-save-tag
 (deftype game-save-tag (structure)
-  ((user-object object        2 :offset          0)
-   (user-uint64 uint64          :offset          0)
-   (user-float0 float           :offset          0)
-   (user-float  float         2 :offset          0)
-   (user-int32  int32         2 :offset          0)
-   (user-uint32 uint32        2 :offset          0)
-   (user-int16  int16         4 :offset          0)
-   (user-uint16 uint16        4 :offset          0)
-   (user-int8   int8          8 :offset          0)
-   (user-int80  int8            :offset          0)
-   (user-int81  int8            :offset          1)
-   (user-uint8  uint8         8 :offset          0)
-   (elt-count   int32           :offset-assert   8)
-   (elt-size    uint16          :offset-assert  12)
-   (elt-type    game-save-elt   :offset-assert  14)
+  ((user-object  object  2 :offset   0)
+   (user-uint64  uint64    :overlay-at (-> user-object 0))
+   (user-float0  float     :overlay-at user-uint64)
+   (user-float   float   2 :overlay-at user-float0)
+   (user-int32   int32   2 :overlay-at user-float0)
+   (user-uint32  uint32  2 :overlay-at user-float0)
+   (user-int16   int16   4 :overlay-at user-uint64)
+   (user-uint16  uint16  4 :overlay-at user-uint64)
+   (user-int8    int8    8 :overlay-at user-uint64)
+   (user-int80   int8      :overlay-at user-uint64)
+   (user-int81   int8      :overlay-at (-> user-int8 1))
+   (user-uint8   uint8   8 :overlay-at user-int80)
+   (elt-count    int32)
+   (elt-size     uint16)
+   (elt-type     game-save-elt)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type game-save-tag
-(defmethod inspect game-save-tag ((this game-save-tag))
+(defmethod inspect ((this game-save-tag))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -283,41 +280,38 @@
 
 ;; definition of type game-save
 (deftype game-save (basic)
-  ((version               int32                          :offset-assert   4)
-   (allocated-length      int32                          :offset-assert   8)
-   (length                int32                          :offset-assert  12)
-   (info-int32            int32         16               :offset-assert  16)
-   (info-int8             int8          64               :offset         16)
-   (level-index           int32                          :offset         16)
-   (gem-count             float                          :offset         20)
-   (skill-count           float                          :offset         24)
-   (completion-percentage float                          :offset         28)
-   (minute                uint8                          :offset         36)
-   (hour                  uint8                          :offset         37)
-   (week                  uint8                          :offset         38)
-   (day                   uint8                          :offset         39)
-   (month                 uint8                          :offset         40)
-   (year                  uint8                          :offset         41)
-   (new-game              int32                          :offset         44)
-   (game-time             time-frame                     :offset         48)
-   (secrets               uint32                         :offset         56)
-   (features              uint32                         :offset         60)
-   (tag                   game-save-tag :inline :dynamic :offset-assert  80)
+  ((version                int32)
+   (allocated-length       int32)
+   (length                 int32)
+   (info-int32             int32          16)
+   (info-int8              int8           64 :overlay-at (-> info-int32 0))
+   (level-index            int32             :overlay-at (-> info-int32 0))
+   (gem-count              float             :overlay-at (-> info-int32 1))
+   (skill-count            float             :overlay-at (-> info-int32 2))
+   (completion-percentage  float             :overlay-at (-> info-int32 3))
+   (minute                 uint8             :overlay-at (-> info-int32 5))
+   (hour                   uint8             :overlay-at (-> info-int8 21))
+   (week                   uint8             :overlay-at (-> info-int8 22))
+   (day                    uint8             :overlay-at (-> info-int8 23))
+   (month                  uint8             :overlay-at (-> info-int32 6))
+   (year                   uint8             :overlay-at (-> info-int8 25))
+   (new-game               int32             :overlay-at (-> info-int32 7))
+   (game-time              time-frame        :overlay-at (-> info-int32 8))
+   (secrets                uint32            :overlay-at (-> info-int32 10))
+   (features               uint32            :overlay-at (-> info-int32 11))
+   (tag                    game-save-tag  :inline :dynamic)
    )
-  :method-count-assert 12
-  :size-assert         #x50
-  :flag-assert         #xc00000050
   (:methods
-    (new (symbol type int) _type_ 0)
-    (save-to-file (_type_ string) _type_ 9)
-    (load-from-file (_type_ string) _type_ 10)
-    (debug-inspect (_type_ symbol) _type_ 11)
+    (new (symbol type int) _type_)
+    (save-to-file (_type_ string) _type_)
+    (load-from-file (_type_ string) _type_)
+    (debug-inspect (_type_ symbol) _type_)
     )
   )
 
 ;; definition for method 3 of type game-save
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect game-save ((this game-save))
+(defmethod inspect ((this game-save))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -349,7 +343,7 @@
 
 ;; definition for method 5 of type game-save
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of game-save ((this game-save))
+(defmethod asize-of ((this game-save))
   (the-as int (+ (-> game-save size) (-> this allocated-length)))
   )
 
@@ -364,7 +358,7 @@
 
 ;; definition for method 11 of type game-save
 ;; INFO: Used lq/sq
-(defmethod debug-inspect game-save ((this game-save) (arg0 symbol))
+(defmethod debug-inspect ((this game-save) (arg0 symbol))
   (local-vars (sv-16 int) (sv-32 string) (sv-48 string))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tversion: ~D~%" (-> this version))
@@ -512,12 +506,12 @@
 
 ;; definition for method 3 of type game-save
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect game-save ((this game-save))
+(defmethod inspect ((this game-save))
   (debug-inspect this #f)
   )
 
 ;; definition for method 23 of type game-info
-(defmethod save-game game-info ((this game-info) (arg0 game-save) (arg1 string))
+(defmethod save-game ((this game-info) (arg0 game-save) (arg1 string))
   (with-pp
     (dotimes (s4-0 (-> *level* length))
       (let ((a1-1 (-> *level* level s4-0)))
@@ -1310,7 +1304,7 @@
   )
 
 ;; definition for method 24 of type game-info
-(defmethod load-game game-info ((this game-info) (arg0 game-save))
+(defmethod load-game ((this game-info) (arg0 game-save))
   (let ((v1-0 (the-as object (-> arg0 tag))))
     (while (< (the-as int v1-0) (the-as int (&-> arg0 tag 0 user-int8 (-> arg0 length))))
       (case (-> (the-as (inline-array game-save-tag) v1-0) 0 elt-type)
@@ -1775,7 +1769,7 @@
   )
 
 ;; definition for method 9 of type game-save
-(defmethod save-to-file game-save ((this game-save) (arg0 string))
+(defmethod save-to-file ((this game-save) (arg0 string))
   (let ((s5-0 (new 'stack 'file-stream arg0 'write)))
     (file-stream-write s5-0 (&-> this type) (+ (-> this type size) (-> this length)))
     (file-stream-close s5-0)
@@ -1784,7 +1778,7 @@
   )
 
 ;; definition for method 10 of type game-save
-(defmethod load-from-file game-save ((this game-save) (arg0 string))
+(defmethod load-from-file ((this game-save) (arg0 string))
   (let ((s5-0 (new 'stack 'file-stream arg0 'read)))
     (let ((s3-0 (file-stream-length s5-0))
           (s4-0 (-> this allocated-length))
@@ -1829,38 +1823,34 @@
 
 ;; definition of type auto-save
 (deftype auto-save (process)
-  ((card       int32                  :offset-assert 128)
-   (slot       int32                  :offset-assert 132)
-   (which      int32                  :offset-assert 136)
-   (buffer     kheap                  :offset-assert 140)
-   (mode       symbol                 :offset-assert 144)
-   (result     mc-status-code         :offset-assert 148)
-   (save       game-save              :offset-assert 152)
-   (info       mc-slot-info   :inline :offset-assert 156)
-   (notify     handle                 :offset-assert 456)
-   (force      symbol                 :offset-assert 464)
-   (state-time time-frame             :offset-assert 472)
-   (icon       hud-sprite     :inline :offset        480)
+  ((card        int32)
+   (slot        int32)
+   (which       int32)
+   (buffer      kheap)
+   (mode        symbol)
+   (result      mc-status-code)
+   (save        game-save)
+   (info        mc-slot-info  :inline)
+   (notify      handle)
+   (force       symbol)
+   (state-time  time-frame)
+   (icon        hud-sprite    :inline :offset 480)
    )
-  :heap-base #x1a0
-  :method-count-assert 23
-  :size-assert         #x214
-  :flag-assert         #x1701a00214
-  (:methods
-    (get-heap () _type_ :state 14)
-    (get-card () _type_ :state 15)
-    (format-card () _type_ :state 16)
-    (unformat-card () _type_ :state 17)
-    (create-file () _type_ :state 18)
-    (save () _type_ :state 19)
-    (restore () _type_ :state 20)
-    (error (mc-status-code) _type_ :state 21)
-    (done () _type_ :state 22)
+  (:state-methods
+    get-heap
+    get-card
+    format-card
+    unformat-card
+    create-file
+    save
+    restore
+    (error mc-status-code)
+    done
     )
   )
 
 ;; definition for method 3 of type auto-save
-(defmethod inspect auto-save ((this auto-save))
+(defmethod inspect ((this auto-save))
   (when (not this)
     (set! this this)
     (goto cfg-4)

@@ -2,7 +2,7 @@
 (in-package goal)
 
 ;; definition for method 9 of type trajectory
-(defmethod compute-trans-at-time trajectory ((this trajectory) (arg0 float) (arg1 vector))
+(defmethod compute-trans-at-time ((this trajectory) (arg0 float) (arg1 vector))
   (vector+float*! arg1 (-> this initial-position) (-> this initial-velocity) arg0)
   (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> this gravity)))
   arg1
@@ -10,21 +10,21 @@
 
 ;; definition for method 10 of type trajectory
 ;; INFO: Used lq/sq
-(defmethod compute-transv-at-time trajectory ((this trajectory) (arg0 float) (arg1 vector))
+(defmethod compute-transv-at-time ((this trajectory) (arg0 float) (arg1 vector))
   (set! (-> arg1 quad) (-> this initial-velocity quad))
   (+! (-> arg1 y) (* arg0 (-> this gravity)))
   arg1
   )
 
 ;; definition for method 11 of type trajectory
-(defmethod compute-time-until-apex trajectory ((this trajectory))
+(defmethod compute-time-until-apex ((this trajectory))
   (/ (- (-> this initial-velocity y)) (-> this gravity))
   )
 
 ;; definition for method 12 of type trajectory
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-from-to-duration! trajectory ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod setup-from-to-duration! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (set! (-> this initial-position quad) (-> arg0 quad))
   (set! (-> this gravity) arg3)
   (set! (-> this time) arg2)
@@ -39,7 +39,7 @@
 
 ;; definition for method 13 of type trajectory
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-from-to-xz-vel! trajectory ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod setup-from-to-xz-vel! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (let ((f0-1 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
     (setup-from-to-duration! this arg0 arg1 f0-1 arg3)
     )
@@ -49,7 +49,7 @@
 
 ;; definition for method 14 of type trajectory
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-from-to-y-vel! trajectory ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod setup-from-to-y-vel! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (let* ((f0-0 arg2)
          (f1-3 (- (* f0-0 f0-0) (* 2.0 (- (-> arg0 y) (-> arg1 y)) arg3)))
          (f0-3 900.0)
@@ -67,7 +67,7 @@
 
 ;; definition for method 15 of type trajectory
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-from-to-height! trajectory ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod setup-from-to-height! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (let* ((f0-1 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
          (f1-4 (* 2.0 (- (-> arg0 y) f0-1) arg3))
          (f0-4 4096.0)
@@ -84,7 +84,7 @@
 ;; definition for method 16 of type trajectory
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 16 trajectory) has a return type of none, but the expression builder found a return statement.
-(defmethod setup-from-to-duration-and-height! trajectory ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+(defmethod setup-from-to-duration-and-height! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (let ((f0-1 (- (-> arg1 y) (-> arg0 y))))
     (cond
       ((= f0-1 0.0)
@@ -119,7 +119,7 @@
 ;; definition for method 17 of type trajectory
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw trajectory ((this trajectory))
+(defmethod debug-draw ((this trajectory))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 10)
@@ -147,7 +147,7 @@
 
 ;; definition for method 9 of type impact-control
 ;; INFO: Used lq/sq
-(defmethod initialize impact-control ((this impact-control) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 collide-spec))
+(defmethod initialize ((this impact-control) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 collide-spec))
   (set-time! (-> this start-time))
   (set! (-> this process) (the-as (pointer process-drawable) (process->ppointer arg0)))
   (set! (-> this joint) arg1)
@@ -161,7 +161,7 @@
 ;; definition for method 10 of type impact-control
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-from-cspace impact-control ((this impact-control))
+(defmethod update-from-cspace ((this impact-control))
   (when (>= (-> this joint) 0)
     (set! (-> this trans 1 quad) (-> this trans 0 quad))
     (vector<-cspace! (the-as vector (-> this trans)) (-> this process 0 node-list data (-> this joint)))
@@ -173,7 +173,7 @@
 
 ;; definition for method 11 of type impact-control
 ;; INFO: Used lq/sq
-(defmethod impact-control-method-11 impact-control ((this impact-control) (arg0 collide-query) (arg1 process) (arg2 pat-surface))
+(defmethod impact-control-method-11 ((this impact-control) (arg0 collide-query) (arg1 process) (arg2 pat-surface))
   (set! (-> arg0 start-pos quad) (-> this trans 1 quad))
   (set! (-> arg0 move-dist quad) (-> this dir quad))
   (let ((v1-2 (ppointer->process (-> this process)))
@@ -222,7 +222,7 @@
 
 ;; definition for method 9 of type point-tracker
 ;; INFO: Used lq/sq
-(defmethod initialize point-tracker ((this point-tracker) (arg0 vector) (arg1 vector))
+(defmethod initialize ((this point-tracker) (arg0 vector) (arg1 vector))
   (set! (-> this trans 0 quad) (-> arg0 quad))
   (set! (-> this trans 1 quad) (-> arg1 quad))
   this
@@ -230,7 +230,7 @@
 
 ;; definition for method 10 of type point-tracker
 ;; INFO: Used lq/sq
-(defmethod point-tracker-method-10 point-tracker ((this point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod point-tracker-method-10 ((this point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (cond
     ((>= 0.0 arg3)
      (set! (-> arg0 quad) (-> arg1 quad))
@@ -248,7 +248,7 @@
   )
 
 ;; definition for method 11 of type point-tracker
-(defmethod point-tracker-method-11 point-tracker ((this point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod point-tracker-method-11 ((this point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (with-pp
     (let ((v1-1 (point-tracker-method-10 this (new 'stack-no-clear 'vector) arg1 arg2 arg3)))
       (vector-! arg0 v1-1 arg1)
@@ -259,7 +259,7 @@
   )
 
 ;; definition for method 13 of type combo-tracker
-(defmethod combo-tracker-method-13 combo-tracker ((this combo-tracker) (arg0 handle) (arg1 vector) (arg2 float) (arg3 vector) (arg4 float))
+(defmethod combo-tracker-method-13 ((this combo-tracker) (arg0 handle) (arg1 vector) (arg2 float) (arg3 vector) (arg4 float))
   (cond
     ((send-event (handle->process arg0) 'combo)
      (let ((gp-1 (handle->process arg0)))
@@ -311,7 +311,7 @@
   )
 
 ;; definition for method 12 of type combo-tracker
-(defmethod combo-tracker-method-12 combo-tracker ((this combo-tracker) (arg0 vector) (arg1 vector) (arg2 process) (arg3 time-frame))
+(defmethod combo-tracker-method-12 ((this combo-tracker) (arg0 vector) (arg1 vector) (arg2 process) (arg3 time-frame))
   (initialize this arg0 arg1)
   (set! (-> this target) (process->handle arg2))
   (set! (-> this move-start-time) arg3)
@@ -320,7 +320,7 @@
 
 ;; definition for method 11 of type combo-tracker
 ;; INFO: Used lq/sq
-(defmethod point-tracker-method-11 combo-tracker ((this combo-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod point-tracker-method-11 ((this combo-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (local-vars (at-0 int))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -431,7 +431,7 @@
 ;; definition for method 9 of type cubic-curve
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod cubic-curve-method-9 cubic-curve ((this cubic-curve) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+(defmethod cubic-curve-method-9 ((this cubic-curve) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -476,7 +476,7 @@
   )
 
 ;; definition for method 10 of type cubic-curve
-(defmethod cubic-curve-method-10 cubic-curve ((this cubic-curve) (arg0 vector) (arg1 float))
+(defmethod cubic-curve-method-10 ((this cubic-curve) (arg0 vector) (arg1 float))
   (let ((v1-0 (new 'stack-no-clear 'trajectory)))
     (let ((f0-1 (* arg1 arg1)))
       (set-vector! (-> v1-0 initial-position) 1.0 arg1 f0-1 (* f0-1 arg1))
@@ -488,7 +488,7 @@
   )
 
 ;; definition for method 11 of type cubic-curve
-(defmethod cubic-curve-method-11 cubic-curve ((this cubic-curve) (arg0 vector) (arg1 float))
+(defmethod cubic-curve-method-11 ((this cubic-curve) (arg0 vector) (arg1 float))
   (let ((v1-0 (new 'stack-no-clear 'trajectory)))
     (set-vector! (-> v1-0 initial-position) 0.0 1.0 (* 2.0 arg1) (* 3.0 arg1 arg1))
     (vector-matrix*! arg0 (-> v1-0 initial-position) (-> this mat))
@@ -498,7 +498,7 @@
   )
 
 ;; definition for method 12 of type cubic-curve
-(defmethod cubic-curve-method-12 cubic-curve ((this cubic-curve) (arg0 vector) (arg1 float))
+(defmethod cubic-curve-method-12 ((this cubic-curve) (arg0 vector) (arg1 float))
   (let ((v1-0 (new 'stack-no-clear 'trajectory)))
     (set-vector! (-> v1-0 initial-position) 0.0 0.0 2.0 (* 6.0 arg1))
     (vector-matrix*! arg0 (-> v1-0 initial-position) (-> this mat))
@@ -510,7 +510,7 @@
 ;; definition for method 13 of type cubic-curve
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod debug-draw-curve cubic-curve ((this cubic-curve))
+(defmethod debug-draw-curve ((this cubic-curve))
   (let ((s5-0 (new 'stack-no-clear 'trajectory))
         (s4-0 10)
         )

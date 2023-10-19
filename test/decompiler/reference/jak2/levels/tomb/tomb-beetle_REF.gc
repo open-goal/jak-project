@@ -10,18 +10,15 @@
 
 ;; definition of type tomb-beetle-fly-info
 (deftype tomb-beetle-fly-info (structure)
-  ((dst       vector     :inline :offset-assert   0)
-   (dst-quat  quaternion :inline :offset-assert  16)
-   (dist      meters             :offset-assert  32)
-   (threshold meters             :offset-assert  36)
+  ((dst        vector      :inline)
+   (dst-quat   quaternion  :inline)
+   (dist       meters)
+   (threshold  meters)
    )
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   )
 
 ;; definition for method 3 of type tomb-beetle-fly-info
-(defmethod inspect tomb-beetle-fly-info ((this tomb-beetle-fly-info))
+(defmethod inspect ((this tomb-beetle-fly-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -37,38 +34,36 @@
 
 ;; definition of type tomb-beetle
 (deftype tomb-beetle (nav-enemy)
-  ((src-quat          quaternion           :inline   :offset-assert 608)
-   (fly-info          tomb-beetle-fly-info 2 :inline :offset-assert 624)
-   (speed             meters                         :offset-assert 720)
-   (init-height       meters                         :offset-assert 724)
-   (flags             uint16                         :offset-assert 728)
-   (dest-index        int32                          :offset-assert 732)
-   (round             uint32                         :offset-assert 736)
-   (flying?           symbol                         :offset-assert 740)
-   (fly-away-radius   float                          :offset-assert 744)
-   (fly-away-ry       float                          :offset-assert 748)
-   (fly-away-ry-speed float                          :offset-assert 752)
-   (fly-away-acc      float                          :offset-assert 756)
-   (fly-away-dir      vector               :inline   :offset-assert 768)
+  ((src-quat           quaternion            :inline)
+   (fly-info           tomb-beetle-fly-info  2 :inline)
+   (speed              meters)
+   (init-height        meters)
+   (flags              uint16)
+   (dest-index         int32)
+   (round              uint32)
+   (flying?            symbol)
+   (fly-away-radius    float)
+   (fly-away-ry        float)
+   (fly-away-ry-speed  float)
+   (fly-away-acc       float)
+   (fly-away-dir       vector                :inline)
    )
-  :heap-base #x290
-  :method-count-assert 186
-  :size-assert         #x310
-  :flag-assert         #xba02900310
+  (:state-methods
+    tomb-beetle-state-178
+    explode
+    fly-away
+    go-to-door
+    key
+    land
+    stand
+    )
   (:methods
-    (tomb-beetle-method-178 (_type_) none 178)
-    (explode () _type_ :state 179)
-    (fly-away () _type_ :state 180)
-    (go-to-door () _type_ :state 181)
-    (key () _type_ :state 182)
-    (land () _type_ :state 183)
-    (stand () _type_ :state 184)
-    (tomb-beetle-method-185 (_type_) none 185)
+    (tomb-beetle-method-185 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type tomb-beetle
-(defmethod inspect tomb-beetle ((this tomb-beetle))
+(defmethod inspect ((this tomb-beetle))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -229,7 +224,7 @@
 (set! (-> *tomb-beetle-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type tomb-beetle
-(defmethod general-event-handler tomb-beetle ((this tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (let ((v1-0 (new 'static 'array int64 2 -1 0)))
@@ -276,7 +271,7 @@
 ;; definition for method 185 of type tomb-beetle
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod tomb-beetle-method-185 tomb-beetle ((this tomb-beetle))
+(defmethod tomb-beetle-method-185 ((this tomb-beetle))
   (cond
     ((-> this draw shadow)
      (new 'stack-no-clear 'vector)
@@ -989,7 +984,7 @@
 
 ;; definition for method 114 of type tomb-beetle
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! tomb-beetle ((this tomb-beetle))
+(defmethod init-enemy-collision! ((this tomb-beetle))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1039,7 +1034,7 @@
 
 ;; definition for method 115 of type tomb-beetle
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! tomb-beetle ((this tomb-beetle))
+(defmethod init-enemy! ((this tomb-beetle))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
