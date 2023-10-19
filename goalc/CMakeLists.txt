@@ -11,6 +11,7 @@ add_library(compiler
         build_level/collide/jak1/collide_bvh.cpp
         build_level/collide/jak1/collide_drawable.cpp
         build_level/collide/jak1/collide_pack.cpp
+        build_level/collide/jak2/collide.cpp
         build_level/common/color_quantization.cpp
         build_level/common/Entity.cpp
         build_level/jak1/Entity.cpp
@@ -72,6 +73,9 @@ endif ()
 add_executable(goalc main.cpp)
 add_executable(goalc-simple simple_main.cpp)
 
+add_executable(build_level build_level/main.cpp)
+
 target_link_libraries(goalc common Zydis compiler)
 target_link_libraries(goalc-simple common Zydis compiler)
+target_link_libraries(build_level common Zydis compiler)
 

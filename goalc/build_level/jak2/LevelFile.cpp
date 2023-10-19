@@ -24,7 +24,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
   int num_trees = 0;
   num_trees += tfrags.size();
-  num_trees += collides.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -47,10 +46,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
     for (auto& tfrag : tfrags) {
       // gen.set_word(tree_word++, tfrag.add_to_object_file(gen));
       gen.link_word_to_byte(tree_word++, tfrag.add_to_object_file(gen));
-    }
-
-    for (auto& collide : collides) {
-      gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
     }
   }
 
@@ -117,6 +112,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(region-trees           (array drawable-tree-region-prim) :offset-assert 188)
   //(region-array           region-array                     :offset-assert 192)
   //(collide-hash           collide-hash                     :offset-assert 196)
+  gen.link_word_to_byte(196 / 4, add_to_object_file(collide_hash, gen));
   //(wind-array             uint32                           :offset        200)
   //(wind-array-length      int32                            :offset        204)
   //(city-level-info        city-level-info                  :offset        208)

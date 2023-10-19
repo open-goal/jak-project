@@ -2,8 +2,7 @@
 
 #include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_merc.h"
-#include "goalc/build_level/collide/jak1/collide_bvh.h"
-#include "goalc/build_level/collide/jak1/collide_pack.h"
+#include "goalc/build_level/collide/jak2/collide.h"
 #include "goalc/build_level/common/Tfrag.h"
 #include "goalc/build_level/jak2/Entity.h"
 #include "goalc/build_level/jak2/FileInfo.h"
@@ -69,9 +68,7 @@ bool run_build_level(const std::string& input_file,
   if (mesh_extract_out.collide.faces.empty()) {
     lg::error("No collision geometry was found");
   } else {
-    auto& collide_drawable_tree = file.drawable_trees.collides.emplace_back();
-    collide_drawable_tree.bvh = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
-    collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
+    file.collide_hash = construct_collide_hash(mesh_extract_out.collide.faces);
   }
 
   // Save the GOAL level

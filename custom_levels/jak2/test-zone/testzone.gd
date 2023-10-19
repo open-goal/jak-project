@@ -3,6 +3,7 @@
 
 ;; the actual file name still needs to be 8.3
 ("TSZ.DGO"
- ("test-zone.go"
+ (
   "prison-obs.o"
+  "test-zone.go"
   ))
