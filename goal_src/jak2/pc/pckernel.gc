@@ -95,7 +95,7 @@
     )
   )
 
-(defmethod enable led-fader-state ((this led-fader-state) (start-from vector))
+(defmethod enable ((this led-fader-state) (start-from vector))
   "begin transition."
   
   (when (-> this enable?)
@@ -106,7 +106,7 @@
   (true! (-> this enable?))
   0)
 
-(defmethod disable led-fader-state ((this led-fader-state))
+(defmethod disable ((this led-fader-state))
   "disable transition."
   
   (set! (-> this amount) 0.0)
@@ -150,7 +150,7 @@
     )
   )
 
-(defmethod update led-fader-state ((this led-fader-state) (to float) (duration float))
+(defmethod update ((this led-fader-state) (to float) (duration float))
   "disable transition."
   
   (when (-> this enable?)
@@ -176,14 +176,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod initialize pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod initialize ((obj pc-settings-jak2))
   "initial initialize method to be run after allocating"
 
   (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
   ((method-of-type pc-settings initialize) obj)
   obj)
 
-(defmethod set-game-setting! pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol) (value symbol))
+(defmethod set-game-setting! ((obj pc-settings-jak2) (setting symbol) (value symbol))
   (case setting
     (('video-mode)
       (set! (-> *setting-control* user-current video-mode) #f)
@@ -197,7 +197,7 @@
     )
   )
 
-(defmethod get-game-setting pc-settings-jak2 ((obj pc-settings-jak2) (setting symbol))
+(defmethod get-game-setting ((obj pc-settings-jak2) (setting symbol))
   (case setting
     (('video-mode)
       (-> *setting-control* user-default video-mode)
@@ -211,16 +211,16 @@
     )
   )
 
-(defmethod set-game-language! pc-settings-jak2 ((obj pc-settings-jak2) (lang language-enum))
+(defmethod set-game-language! ((obj pc-settings-jak2) (lang language-enum))
   (set! (-> *setting-control* user-default language) lang)
   )
 
-(defmethod get-game-language pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod get-game-language ((obj pc-settings-jak2))
   (get-current-language)
   )
 
 
-(defmethod update pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update ((obj pc-settings-jak2))
   "Set the default misc settings"
 
   ((method-of-type pc-settings update) obj)
@@ -238,7 +238,7 @@
   "are we in an actual cutscene and should letterbox the view?"
   (and (!= #f *scene-player*) (nonzero? movie?) (movie?)))
 
-(defmethod update-discord-rpc pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-discord-rpc ((obj pc-settings-jak2))
   "update discord rpc module"
   (let ((info (new 'stack 'discord-info)))
     (set! (-> info orb-count) (-> *game-info* skill-total))
@@ -266,7 +266,7 @@
     )
   (none))
 
-(defmethod update-speedrun pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-speedrun ((obj pc-settings-jak2))
   "update speedrun module"
   ;; TODO - update to new with-profiler syntax
   ;; (with-profiler "speedrun-update"
@@ -274,7 +274,7 @@
     ;;)
   (none))
 
-(defmethod update-video-hacks pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-video-hacks ((obj pc-settings-jak2))
   "update the graphics hacks used for the progress menu. ugh."
 
   (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
@@ -282,32 +282,32 @@
   )
 
 
-(defmethod eligible-for-fast-elevator? pc-settings-jak2 ((obj pc-settings-jak2) (proc process))
+(defmethod eligible-for-fast-elevator? ((obj pc-settings-jak2) (proc process))
   "is this a valid process for a fast elevator?"
   (and (-> obj fast-elevator?) (not (or (string= (-> proc name) "drill-lift-1")
                                         (string= (-> proc name) "drill-lift-2"))))
   )
 
-(defmethod get-airlock-speed pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod get-airlock-speed ((obj pc-settings-jak2))
   "return the current speed modifier for airlocks"
   (if (-> obj fast-airlock?)
       (-> *pc-cheat-state* airlock-speed)
       1.0))
 
-(defmethod get-airlock-close-speed pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod get-airlock-close-speed ((obj pc-settings-jak2))
   "return the current closing speed modifier for airlocks"
   (if (-> obj fast-airlock?)
       (-> *pc-cheat-state* airlock-close-speed)
       1.0))
 
 
-(defmethod led-enabled? pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod led-enabled? ((obj pc-settings-jak2))
   "should the controller led be set?"
   (or (-> obj controller-led-hp?)
       (-> obj controller-led-status?)
       ))
 
-(defmethod update-led pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-led ((obj pc-settings-jak2))
   "set the controller led color by modifying the controller-led-color vector"
   
   ;; default color is just blue.
@@ -441,7 +441,7 @@
   `(-> *pc-settings* flava-unlocked ,flava))
 
 
-(defmethod update-cheats pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-cheats ((obj pc-settings-jak2))
   "run cheats."
 
   ;; run cheats here.
@@ -497,7 +497,7 @@
   0)
 
 
-(defmethod update-music-log pc-settings-jak2 ((obj pc-settings-jak2))
+(defmethod update-music-log ((obj pc-settings-jak2))
   "update the music log"
 
   (dotimes (i (-> *music-player-tracks* length))
@@ -547,7 +547,7 @@
     val)
   )
 
-(defmethod handle-input-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+(defmethod handle-input-settings ((obj pc-settings-jak2) (file file-stream))
   "handle the text parsing input for the 'settings' group"
 
   ((method-of-type pc-settings handle-input-settings) obj file)
@@ -576,7 +576,7 @@
     )
   0)
 
-(defmethod handle-output-settings pc-settings-jak2 ((obj pc-settings-jak2) (file file-stream))
+(defmethod handle-output-settings ((obj pc-settings-jak2) (file file-stream))
   "handle the text writing output for the 'settings' group"
 
   ((method-of-type pc-settings handle-output-settings) obj file)

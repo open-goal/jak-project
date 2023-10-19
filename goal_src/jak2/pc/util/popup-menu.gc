@@ -1,10 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(defmethod draw! popup-menu-entry ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer))
+(defmethod draw! ((this popup-menu-entry) (font-ctx font-context) (dma-buf dma-buffer))
   (none))
 
-(defmethod draw! popup-menu-button ((this popup-menu-button) (font-ctx font-context) (dma-buf dma-buffer))
+(defmethod draw! ((this popup-menu-button) (font-ctx font-context) (dma-buf dma-buffer))
   (let ((old-x (-> font-ctx origin x))
         (old-y (-> font-ctx origin y)))
     (pc-encode-utf8-string (-> this label) *pc-encoded-temp-string*)
@@ -13,7 +13,7 @@
     (set! (-> font-ctx origin y) old-y))
   (none))
 
-(defmethod draw! popup-menu ((this popup-menu))
+(defmethod draw! ((this popup-menu))
   (let ((font-ctx (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning large))))
     (set! (-> font-ctx scale) 0.35)
     (set! (-> font-ctx origin x) 15.0)
@@ -39,20 +39,20 @@
     )
   (none))
 
-(defmethod move-up! popup-menu ((this popup-menu))
+(defmethod move-up! ((this popup-menu))
   (set! (-> this curr-entry-index) (max 0 (dec (-> this curr-entry-index))))
   (none))
 
-(defmethod move-down! popup-menu ((this popup-menu))
+(defmethod move-down! ((this popup-menu))
   (set! (-> this curr-entry-index) (min (dec (-> this entries length)) (inc (-> this curr-entry-index))))
   (none))
 
-(defmethod press! popup-menu ((this popup-menu))
+(defmethod press! ((this popup-menu))
   (let ((entry (-> this entries (-> this curr-entry-index))))
     ((-> entry on-press)))
   (none))
 
-(defmethod get-widest-label popup-menu ((this popup-menu) (font-ctx font-context))
+(defmethod get-widest-label ((this popup-menu) (font-ctx font-context))
   (let ((max-len 0.0))
     (dotimes (i (-> this entries length))
       (let ((label-len (-> (get-string-length (-> this entries i label) font-ctx) length)))
