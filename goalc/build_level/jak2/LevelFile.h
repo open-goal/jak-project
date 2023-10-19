@@ -7,9 +7,7 @@
 #include "common/common_types.h"
 
 #include "goalc/build_level/collide/common/collide_common.h"
-#include "goalc/build_level/collide/jak1/collide_bvh.h"
-#include "goalc/build_level/collide/jak1/collide_drawable.h"
-#include "goalc/build_level/collide/jak1/collide_pack.h"
+#include "goalc/build_level/collide/jak2/collide.h"
 #include "goalc/build_level/common/Tfrag.h"
 #include "goalc/build_level/jak2/Entity.h"
 #include "goalc/build_level/jak2/FileInfo.h"
@@ -32,7 +30,6 @@ struct DrawableTreeArray {
   std::vector<DrawableTreeInstanceTie> ties;
   std::vector<DrawableTreeActor> actors;  // unused?
   std::vector<DrawableTreeRegionPrim> regions;
-  std::vector<DrawableTreeCollideFragment> collides;
   std::vector<DrawableTreeInstanceShrub> shrubs;
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
@@ -58,8 +55,6 @@ struct ActorGroup {};
 struct RegionTree {};
 
 struct RegionArray {};
-
-struct CollideHash {};
 
 struct CityLevelInfo {};
 

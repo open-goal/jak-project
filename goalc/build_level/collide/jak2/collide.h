@@ -68,6 +68,7 @@ struct CollideFragment {
   // the corners of our bounding box
   math::Vector3f bbox_min_corner;
   math::Vector3f bbox_max_corner;
+  math::Vector4f bsphere;
   math::Vector<s32, 3> bbox_min_corner_i;
   math::Vector<s32, 3> bbox_max_corner_i;
 
@@ -116,3 +117,6 @@ struct CollideHash {
 CollideHash construct_collide_hash(const std::vector<jak1::CollideFace>& tris);
 CollideHash construct_collide_hash(const std::vector<jak2::CollideFace>& tris);
 
+class DataObjectGenerator;
+
+size_t add_to_object_file(const CollideHash& hash, DataObjectGenerator& gen);

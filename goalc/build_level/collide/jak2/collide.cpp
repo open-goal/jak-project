@@ -7,6 +7,8 @@
 
 #include "common/util/Assert.h"
 
+#include "goalc/data_compiler/DataObjectGenerator.h"
+
 /*!
  * An axis-aligned bounding box
  */
@@ -658,9 +660,14 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
   // for the cell size.
   constexpr float kTargetCellSize = 10000;
 
-  const int grid_dimension[3] = {(int)(box_size[0] / kTargetCellSize),
-                                 (int)(box_size[1] / kTargetCellSize),
-                                 (int)(box_size[2] / kTargetCellSize)};
+  int grid_dimension[3] = {(int)(box_size[0] / kTargetCellSize),
+                           (int)(box_size[1] / kTargetCellSize),
+                           (int)(box_size[2] / kTargetCellSize)};
+  for (auto& x : grid_dimension) {
+    if (x >= UINT8_MAX) {
+      x = UINT8_MAX;
+    }
+  }
   const math::Vector3f grid_cell_size(box_size[0] / grid_dimension[0],
                                       box_size[1] / grid_dimension[1],
                                       box_size[2] / grid_dimension[2]);
@@ -874,6 +881,12 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
   result.bbox_min_corner_i = (bbox.box.min / 16.f).cast<s32>();
   result.bbox_max_corner_i = (bbox.box.max / 16.f).cast<s32>();
 
+  // bsphere:
+  math::Vector3f mid = (result.bbox_max_corner + result.bbox_min_corner) / 2.f;
+  math::Vector3f size = (result.bbox_max_corner - result.bbox_min_corner) / 2.f;
+  const float radius = size.length();
+  result.bsphere = math::Vector4f(mid.x(), mid.y(), mid.z(), radius);
+
   for (int i = 0; i < 3; i++) {
     result.dimension_array[i] = grid_dimension[i];
   }
@@ -893,4 +906,213 @@ CollideHash construct_collide_hash(const std::vector<jak2::CollideFace>& tris) {
   // hash frags
   // ??
   return build_grid_for_main_hash(std::move(hashed_frags));
+}
+
+size_t add_pod_to_object_file(DataObjectGenerator& gen,
+                              const u8* in,
+                              size_t size_bytes,
+                              size_t align_bytes) {
+  const size_t align_words = (align_bytes + 3) / 4;
+  gen.align(align_words);
+  const size_t ret = gen.current_offset_bytes();
+
+  const size_t full_words = size_bytes / 4;
+  size_t bytes = 0;
+  for (size_t word = 0; word < full_words; word++) {
+    u32 data = 0;
+    memcpy(&data, in + 4 * word, 4);
+    gen.add_word(data);
+    bytes += 4;
+  }
+
+  u8 remainder[4] = {0, 0, 0, 0};
+  int i = 0;
+  while (bytes < size_bytes) {
+    remainder[i++] = in[bytes++];
+  }
+  u32 last;
+  memcpy(&last, remainder, 4);
+  gen.add_word(last);
+  return ret;
+}
+
+template <typename T>
+size_t add_pod_vector_to_object_file(DataObjectGenerator& gen, const std::vector<T>& data) {
+  return add_pod_to_object_file(gen, (const u8*)data.data(), data.size() * sizeof(T), sizeof(T));
+}
+
+size_t add_to_object_file(const CollideFragment& frag, DataObjectGenerator& gen) {
+  // PAT ARRAY
+  static_assert(sizeof(jak2::PatSurface) == sizeof(u32));
+  auto pat_array = add_pod_vector_to_object_file(gen, frag.pat_array);
+
+  // Bucket ARRAY
+  static_assert(sizeof(CollideBucket) == sizeof(u32));
+  auto bucket_array = add_pod_vector_to_object_file(gen, frag.buckets);
+
+  // Poly ARRAY
+  static_assert(sizeof(CollideFragmentPoly) == sizeof(u32));
+  auto poly_array = add_pod_vector_to_object_file(gen, frag.poly_array);
+
+  // Vert ARRAY
+  static_assert(sizeof(CollideFragmentVertex) == 6);
+  auto vert_array = add_pod_vector_to_object_file(gen, frag.vert_array);
+
+  // Index ARRAY
+  auto index_array = add_pod_vector_to_object_file(gen, frag.index_array);
+
+  // collide-hash-fragment
+  gen.align_to_basic();
+  gen.add_type_tag("collide-hash-fragment");  // 0
+  size_t result = gen.current_offset_bytes();
+
+  //  ((num-buckets     uint16                              :offset 4)
+  //   (num-indices     uint16                              :offset 6)
+  const u32 bucket_index_word = (((u32)frag.index_array.size()) << 16) | ((u32)frag.buckets.size());
+  gen.add_word(bucket_index_word);  // 4
+
+  //   (pat-array       uint32 :offset 8)
+  gen.link_word_to_byte(gen.add_word(0), pat_array);  // 8
+
+  //   (bucket-array    uint32                              :offset 12)
+  gen.link_word_to_byte(gen.add_word(0), bucket_array);  // 12
+
+  // bsphere of drawable
+  gen.add_word_float(frag.bsphere.x());  // 16
+  gen.add_word_float(frag.bsphere.y());  // 20
+  gen.add_word_float(frag.bsphere.z());  // 24
+  gen.add_word_float(frag.bsphere.w());  // 28
+
+  //   (grid-step       vector                      :inline :offset-assert 32)
+  gen.add_word_float(frag.grid_step.x());  // 32
+  gen.add_word_float(frag.grid_step.y());  // 36
+  gen.add_word_float(frag.grid_step.z());  // 40
+
+  //   (dimension-array uint32                      4       :offset 44)
+  u32 dim_array = 0;
+  dim_array |= (frag.dimension_array[0]);
+  dim_array |= ((frag.dimension_array[1]) << 8);
+  dim_array |= ((frag.dimension_array[2]) << 16);
+  gen.add_word(dim_array);  // 44
+
+  //   (bbox            bounding-box                :inline :offset-assert 48)
+  gen.add_word_float(frag.bbox_min_corner.x());  // 48
+  gen.add_word_float(frag.bbox_min_corner.y());  // 52
+  gen.add_word_float(frag.bbox_min_corner.z());  // 56
+
+  //   (num-verts       uint16                              :offset 60)
+  //   (num-polys       uint8                               :offset 62)
+  //   (poly-count      uint8                               :offset 63)
+  u32 counts_word = 0;
+  ASSERT(frag.vert_array.size() < UINT16_MAX);
+  counts_word |= (frag.vert_array.size());
+  ASSERT(frag.poly_array.size() < UINT8_MAX);
+  counts_word |= (frag.poly_array.size() << 16);
+  counts_word |= (frag.poly_array.size() << 24);
+  gen.add_word(counts_word);  // 60
+
+  //   (axis-scale      vector                      :inline :offset 64)
+  gen.add_word_float(frag.axis_scale.x());  // 64
+  gen.add_word_float(frag.axis_scale.y());  // 68
+  gen.add_word_float(frag.axis_scale.z());  // 72
+
+  //   (poly-array      uint32                              :offset 76)
+  gen.link_word_to_byte(gen.add_word(0), poly_array);  // 76
+
+  //   (bbox4w          bounding-box4w              :inline :offset-assert 80)
+  gen.add_word(frag.bbox_min_corner_i.x());  // 80
+  gen.add_word(frag.bbox_min_corner_i.y());  // 84
+  gen.add_word(frag.bbox_min_corner_i.z());  // 88
+
+  //   (vert-array      uint32                              :offset 92)
+  gen.link_word_to_byte(gen.add_word(0), vert_array);  // 92
+
+  gen.add_word(frag.bbox_max_corner_i.x());  // 96
+  gen.add_word(frag.bbox_max_corner_i.y());  // 100
+  gen.add_word(frag.bbox_max_corner_i.z());  // 104
+
+  //   (index-array     uint32                              :offset 108)
+  gen.link_word_to_byte(gen.add_word(0), index_array);
+
+  //   (avg-extents     vector                      :inline :offset 80)
+  //   (stats           collide-hash-fragment-stats :inline :offset 60)
+  return result;
+}
+
+size_t add_to_object_file(const CollideHash& hash, DataObjectGenerator& gen) {
+  std::vector<size_t> frags;
+  for (auto& frag : hash.fragments) {
+    frags.push_back(add_to_object_file(frag, gen));
+  }
+
+  auto buckets = add_pod_vector_to_object_file(gen, hash.buckets);
+
+  // create the item array.
+  auto item_array = gen.current_offset_bytes();
+  for (auto& x : hash.index_array) {
+    gen.add_word(x);
+    gen.link_word_to_byte(gen.add_word(0), frags.at(x));
+  }
+
+  gen.align_to_basic();
+  gen.add_type_tag("collide-hash");  // 0
+  size_t result = gen.current_offset_bytes();
+
+  //((num-ids         uint16                 :offset 4)
+  // (id-count        uint16                 :offset 6)
+  u32 ids_word = 0;
+  ids_word |= hash.fragments.size();
+  ids_word |= (hash.fragments.size() << 16);
+  gen.add_word(ids_word);  // 4
+
+  // (num-buckets     uint32                 :offset 8)
+  gen.add_word(hash.buckets.size());  // 8
+
+  // (qwc-id-bits     uint32                 :offset 12)
+  gen.add_word(hash.qwc_id_bits);  // 12
+
+  // (grid-step       vector         :inline :offset 16)
+  gen.add_word_float(hash.grid_step.x());  // 16
+  gen.add_word_float(hash.grid_step.y());  // 20
+  gen.add_word_float(hash.grid_step.z());  // 24
+  gen.add_word_float(1.f);                 // 28
+
+  // (bbox            bounding-box   :inline :offset-assert 32)
+  gen.add_word_float(hash.bbox_min_corner.x());  // 32
+  gen.add_word_float(hash.bbox_min_corner.y());  // 36
+  gen.add_word_float(hash.bbox_min_corner.z());  // 40
+
+  // (bucket-array    uint32                 :offset 44)
+  gen.link_word_to_byte(gen.add_word(0), buckets);  // 44
+
+  // (axis-scale      vector         :inline :offset 48)
+  gen.add_word_float(hash.axis_scale.x());  // 48
+  gen.add_word_float(hash.axis_scale.y());  // 52
+  gen.add_word_float(hash.axis_scale.z());  // 56
+
+  // (item-array      (inline-array collide-hash-item)                 :offset 60 :score 1)
+  gen.link_word_to_byte(gen.add_word(0), item_array);  // 60
+
+  // (bbox4w          bounding-box4w :inline :offset-assert 64)
+  gen.add_word(hash.bbox_min_corner_i.x());  // 64
+  gen.add_word(hash.bbox_min_corner_i.y());  // 68
+  gen.add_word(hash.bbox_min_corner_i.z());  // 72
+
+  // (dimension-array uint32         3       :offset 76) ;; ?
+  u32 dim_array = 0;
+  dim_array |= (hash.dimension_array[0]);
+  dim_array |= ((hash.dimension_array[1]) << 8);
+  dim_array |= ((hash.dimension_array[2]) << 16);
+  gen.add_word(dim_array);  // 76
+
+  gen.add_word(hash.bbox_max_corner_i.x());  // 80
+  gen.add_word(hash.bbox_max_corner_i.y());  // 84
+  gen.add_word(hash.bbox_max_corner_i.z());  // 88
+
+  // (num-items       uint32                 :offset 92)
+  gen.add_word(hash.index_array.size());
+
+  // (avg-extents     vector         :inline :offset 64)
+
+  return result;
 }
