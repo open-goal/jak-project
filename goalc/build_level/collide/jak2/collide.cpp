@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
@@ -373,8 +374,8 @@ FragStats compute_frag_stats(const std::vector<jak2::CollideFace>& tris,
   for (int i = 0; i < 3; i++) {
     std::vector<float> vx;
     vx.reserve(tris.size() * 3);
-    for (const auto& tri : tris) {
-      for (const auto& vtx : tri.v) {
+    for (auto idx : indices) {
+      for (const auto& vtx : tris[idx].v) {
         vx.push_back(vtx[i]);
       }
     }
@@ -625,6 +626,7 @@ std::vector<Frag> fragment_mesh(const std::vector<jak2::CollideFace>& tris) {
   std::vector<Frag> good_frags;
 
   while (!too_big_frags.empty()) {
+    printf("sizes %ld %ld\n", too_big_frags.size(), good_frags.size());
     auto& back = too_big_frags.back();
 
     // split it!
@@ -636,6 +638,7 @@ std::vector<Frag> fragment_mesh(const std::vector<jak2::CollideFace>& tris) {
 
     // check if split frags are good or not.
     for (auto& fs : ab) {
+      fs.s = compute_frag_stats(tris, fs.f.tri_indices);
       if (frag_is_valid_for_packing(fs.f, fs.s, tris)) {
         good_frags.push_back(std::move(fs.f));
       } else {
@@ -646,7 +649,18 @@ std::vector<Frag> fragment_mesh(const std::vector<jak2::CollideFace>& tris) {
   return good_frags;
 }
 
+struct VectorIntHash {
+  size_t operator()(const std::vector<int>& in) const {
+    size_t ret = 0;
+    for (size_t i = 0; i < in.size(); i++) {
+      ret ^= std::hash<size_t>()(i ^ in[i]);
+    }
+    return ret;
+  }
+};
+
 CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
+  lg::info("Creating main hash");
   CollideHash result;
   BBoxBuilder bbox;
   for (const auto& frag : frags) {
@@ -668,6 +682,8 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
       x = UINT8_MAX;
     }
   }
+  lg::info("Size is {}x{}x{} (total {})\n", grid_dimension[0], grid_dimension[1], grid_dimension[2],
+           grid_dimension[0] * grid_dimension[1] * grid_dimension[2]);
   const math::Vector3f grid_cell_size(box_size[0] / grid_dimension[0],
                                       box_size[1] / grid_dimension[1],
                                       box_size[2] / grid_dimension[2]);
@@ -704,7 +720,31 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
     }
   }
 
-  // TODO: could dedup buckets here.
+  lg::info("Index data size is {}, deduplicating", debug_intersect_count);
+
+  std::unordered_map<std::vector<int>, size_t, VectorIntHash> index_map;
+  for (const auto& cell_list : frags_in_cells) {
+    auto& bucket = result.buckets.emplace_back();
+    bucket.count = cell_list.size();
+
+    const auto& it = index_map.find(cell_list);
+    if (it == index_map.end()) {
+      bucket.index = result.index_array.size();
+      index_map[cell_list] = bucket.index;
+      for (auto x : cell_list) {
+        result.index_array.push_back(x);
+      }
+    } else {
+      bucket.index = it->second;
+    }
+  }
+
+  lg::info("Index array size is {} in the end", result.index_array.size());
+  if (result.index_array.size() > UINT16_MAX) {
+    printf("index array is too big: %d\n", (int)result.index_array.size());
+    ASSERT_NOT_REACHED();
+  }
+
   int unique_found = 0;
   for (auto x : debug_found_flags) {
     if (x) {
@@ -714,26 +754,25 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
 
   printf("frag find counts: %d %d %d\n", unique_found, (int)debug_found_flags.size(),
          debug_intersect_count);
-  ASSERT(debug_intersect_count < INT16_MAX);  // not really sure what to do if this happens...
   if (unique_found != (int)debug_found_flags.size()) {
     printf(" --- !!! %d frags disappeared\n", (int)debug_found_flags.size() - unique_found);
   }
 
-  for (auto& list : frags_in_cells) {
-    auto& bucket = result.buckets.emplace_back();
-    bucket.index = result.index_array.size();
-    bucket.count = list.size();
-    for (auto x : list) {
-      result.index_array.push_back(x);
-    }
-  }
+  //  for (auto& list : frags_in_cells) {
+  //    auto& bucket = result.buckets.emplace_back();
+  //    bucket.index = result.index_array.size();
+  //    bucket.count = list.size();
+  //    for (auto x : list) {
+  //      result.index_array.push_back(x);
+  //    }
+  //  }
 
   result.grid_step = grid_cell_size;
   result.axis_scale =
       math::Vector3f(1.f / grid_cell_size[0], 1.f / grid_cell_size[1], 1.f / grid_cell_size[2]);
   result.bbox_min_corner = bbox.box.min;
-  result.bbox_min_corner_i = (bbox.box.min / 16.f).cast<s32>();
-  result.bbox_max_corner_i = (bbox.box.max / 16.f).cast<s32>();
+  result.bbox_min_corner_i = bbox.box.min.cast<s32>();
+  result.bbox_max_corner_i = bbox.box.max.cast<s32>();
   result.qwc_id_bits = (frags.size() + 127) / 128;
   result.fragments = std::move(frags);
 
@@ -789,7 +828,7 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
       if (it == vertex_to_vertex_array_index.end()) {
         vertex_to_vertex_array_index[vert_i] = vertex_to_vertex_array_index.size();
         ASSERT(vertex_to_vertex_array_index.size() < UINT8_MAX);
-        poly.vertex_index[i] = vertex_to_vertex_array_index.size();
+        poly.vertex_index[i] = vertices.size();
         vertices.push_back(vert_i);
       } else {
         poly.vertex_index[i] = it->second;
@@ -849,8 +888,8 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
     }
   }
 
-  printf("find counts: %d %d %d\n", unique_found, (int)debug_found_flags.size(),
-         debug_intersect_count);
+  // printf("find counts: %d %d %d\n", unique_found, (int)debug_found_flags.size(),
+  // debug_intersect_count);
   ASSERT(debug_intersect_count < INT16_MAX);  // not really sure what to do if this happens...
   if (unique_found != (int)debug_found_flags.size()) {
     printf(" --- !!! %d triangles disappeared\n", (int)debug_found_flags.size() - unique_found);
@@ -878,8 +917,8 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
       math::Vector3f(1.f / grid_cell_size[0], 1.f / grid_cell_size[1], 1.f / grid_cell_size[2]);
   result.bbox_min_corner = bbox.box.min;
   result.bbox_max_corner = bbox.box.max;
-  result.bbox_min_corner_i = (bbox.box.min / 16.f).cast<s32>();
-  result.bbox_max_corner_i = (bbox.box.max / 16.f).cast<s32>();
+  result.bbox_min_corner_i = bbox.box.min.cast<s32>();
+  result.bbox_max_corner_i = bbox.box.max.cast<s32>();
 
   // bsphere:
   math::Vector3f mid = (result.bbox_max_corner + result.bbox_min_corner) / 2.f;
@@ -956,6 +995,7 @@ size_t add_to_object_file(const CollideFragment& frag, DataObjectGenerator& gen)
 
   // Vert ARRAY
   static_assert(sizeof(CollideFragmentVertex) == 6);
+  gen.align(4);
   auto vert_array = add_pod_vector_to_object_file(gen, frag.vert_array);
 
   // Index ARRAY
