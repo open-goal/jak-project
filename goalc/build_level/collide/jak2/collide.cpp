@@ -548,12 +548,12 @@ FragSplit pick_best_frag_split(const Frag& frag,
 
   for (int i = 0; i < 3; i++) {
     splits[i].axis = i;
-    splits[i].value = stats.median_vertex_position[i];
+    splits[i].value = stats.average_vertex_position[i];
     split_stats[i] = compute_split_stats(frag, tris, splits[i]);
   }
 
   if (aspect > 25) {
-    if (split_stats[max_idx].imbalance < 10) {
+    if (split_stats[max_idx].imbalance < 4) {
       printf(
           "pick best frag split splitting a frag of size %d due to bad aspect (%f), with imbalance "
           "%f\n",
@@ -672,7 +672,7 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
 
   // grid the box. It _looks_ like the village1 level just picks dims that get you closest to 10000
   // for the cell size.
-  constexpr float kTargetCellSize = 10000;
+  constexpr float kTargetCellSize = 30000;
 
   int grid_dimension[3] = {(int)(box_size[0] / kTargetCellSize),
                            (int)(box_size[1] / kTargetCellSize),
