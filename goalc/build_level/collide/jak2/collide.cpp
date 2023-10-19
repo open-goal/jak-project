@@ -626,7 +626,7 @@ std::vector<Frag> fragment_mesh(const std::vector<jak2::CollideFace>& tris) {
   std::vector<Frag> good_frags;
 
   while (!too_big_frags.empty()) {
-    printf("sizes %ld %ld\n", too_big_frags.size(), good_frags.size());
+    printf("sizes %zu %zu\n", too_big_frags.size(), good_frags.size());
     auto& back = too_big_frags.back();
 
     // split it!
