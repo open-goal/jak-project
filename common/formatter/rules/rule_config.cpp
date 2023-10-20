@@ -1,6 +1,6 @@
 #include "rule_config.h"
 
-#include <common/formatter/formatter_tree.h>
+#include "common/formatter/formatter_tree.h"
 
 namespace formatter_rules {
 namespace config {

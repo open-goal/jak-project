@@ -234,19 +234,6 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
             line));
       }
     }
-    // Look ahead at the next element to see if we have to combine it with this line, or append to
-    // the next
-    // if ((i + 1) < curr_node.refs.size()) {
-    //  const auto& next_ref = curr_node.refs.at(i + 1);
-    //  if (next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) {
-    //    combine_with_next_element = true;
-    //  } else if (curr_node.formatting_config.has_constant_pairs &&
-    //             constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1)) {
-    //    if (next_ref.token || can_node_be_inlined(next_ref, cursor_pos)) {  // TODO - cursor pos
-    //      combine_with_next_element = true;
-    //    }
-    //  }
-    //}
     // If we are hanging forms, combine the first two forms onto the same line
     if (i == curr_node.refs.size() - 1 && form_lines.size() > 1 &&
         (curr_node.formatting_config.hang_forms ||

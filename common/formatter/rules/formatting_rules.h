@@ -115,6 +115,5 @@ const static int line_width_target = 120;
 // - forms inside the let binding are flowed
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/let.md
-namespace let {
-}  // namespace let
+namespace let {}  // namespace let
 }  // namespace formatter_rules
