@@ -1,12 +1,19 @@
 #pragma once
 
+#include <set>
 #include <string>
 
 #include "common/formatter/formatter_tree.h"
 
 namespace formatter_rules {
+
+extern const std::set<std::string> constant_types;
+namespace constant_list {
+bool is_constant_list(const FormatterTreeNode& node);
+}
+
 // The formatter will try to collapse as much space as possible in the top-level, this means
-// separating forms by a single empty  blank line
+// separating forms by a single empty blank line
 //
 // The exception are comments, top level comments will retain their following blank lines from the
 // original source
@@ -18,11 +25,10 @@ namespace formatter_rules {
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/blank.md
 namespace blank_lines {
-void separate_by_newline(std::string& curr_text,
-                         const FormatterTreeNode& containing_node,
-                         const FormatterTreeNode& node,
-                         const int index);
-}
+bool should_insert_blank_line(const FormatterTreeNode& containing_node,
+                              const FormatterTreeNode& node,
+                              const int index);
+}  // namespace blank_lines
 
 // TODO:
 // - align consecutive comment lines
@@ -93,35 +99,6 @@ bool form_should_be_constant_paired(const FormatterTreeNode& node);
 namespace indent {
 const static int line_width_target = 120;
 
-bool form_can_be_inlined(const std::string& curr_text, const FormatterTreeNode& curr_node);
-
-// TODO - right now this is very primitive in that it only checks against our hard-coded config
-// eventually make this explore both routes and determine which is best
-// Also factor in distance from the gutter (theres some zprint rationale somewhere on this)
-bool should_form_flow(const FormatterTreeNode& list_node, const bool inlining_form);
-std::optional<bool> inline_form_element(const FormatterTreeNode& list_node, const int index);
-
-void append_newline(std::string& curr_text,
-                    const FormatterTreeNode& node,
-                    const FormatterTreeNode& containing_node,
-                    const int index,
-                    const bool flowing,
-                    const bool constant_pair_form,
-                    const bool force_newline);
-void indent_line(std::string& curr_text,
-                 const FormatterTreeNode& node,
-                 const FormatterTreeNode& containing_node,
-                 const int depth,
-                 const int index,
-                 const bool flowing);
-void align_lines(std::string& text,
-                 const FormatterTreeNode& node,
-                 const FormatterTreeNode& containing_node,
-                 const bool constant_pair_form,
-                 const bool flowing,
-                 const bool force_flow,
-                 const bool inline_element);
-
 }  // namespace indent
 
 // Let forms fall into two main categories
@@ -138,8 +115,5 @@ void align_lines(std::string& text,
 // - forms inside the let binding are flowed
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/let.md
-namespace let {
-// TODO - like above, factor in current cursor position
-bool can_be_inlined(const FormatterTreeNode& form);
-}  // namespace let
+namespace let {}  // namespace let
 }  // namespace formatter_rules

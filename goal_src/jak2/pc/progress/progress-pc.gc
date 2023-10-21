@@ -19,6 +19,8 @@
    (aspect-ratio-ratio-index    int8)
 
    (frame-rate-choice-index     int8)
+   (frame-rate-disclaimer-time  time-frame)
+   (frame-rate-disclaimer-seen? symbol)
 
    (music-player-track      music-player-track-info)
    (music-player-flava      int8)
@@ -157,6 +159,7 @@
   (set-progress-frame-rate-index)
   (set! (-> (the menu-on-off-option (-> *graphic-options-pc* options 3)) value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *progress-state-pc* music-player-track) #f)
+  (false! (-> *progress-state-pc* frame-rate-disclaimer-seen?))
   )
 
 (defun progress-pc-fetch-external-times ((highscore-index int))
@@ -376,6 +379,9 @@
      (set! (-> (the-as menu-music-player-option (-> *music-player-options* options 0)) excitement) 0)
      (set! (-> obj current-options) *music-player-options*)
      )
+    (('fps-disclaimer)
+     (set! (-> obj current-options) *frame-rate-disclaimer-options*)
+     )
     (('generic-menu)
      ;; a single condition to handle all generic menu links
      (let ((curr-history-entry (-> *progress-pc-generic-store* history-stack
@@ -561,18 +567,21 @@
       ((cpad-pressed? 0 confirm)
         (sound-play "generic-beep")
         (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
+        (commit-to-file *pc-settings*)
+        (when (and (not (-> *progress-state-pc* frame-rate-disclaimer-seen?)) (> (-> *pc-settings* target-fps) 60))
+          (set-time! (-> *progress-state-pc* frame-rate-disclaimer-time))
+          (push-and-set-state arg0 'fps-disclaimer)
+          )
         )
       (else
         (let ((sound-beep? #f))
           (when (cpad-pressed? 0 left l-analog-left)
             (true! sound-beep?)
             (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) -1 0 (1- (-> *frame-rate-options* length)))
-            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
             )
           (when (cpad-pressed? 0 right l-analog-right)
             (true! sound-beep?)
             (min-max-wrap-around+! (-> *progress-state-pc* frame-rate-choice-index) 1 0 (1- (-> *frame-rate-options* length)))
-            (set-frame-rate! *pc-settings* (-> *frame-rate-options* (-> *progress-state-pc* frame-rate-choice-index)) #t)
             )
           (if sound-beep?
             (sound-play "generic-beep")
@@ -580,6 +589,17 @@
           )
         )
       )
+    )
+  0
+  )
+
+(defmethod respond-progress menu-frame-rate-disclaimer-option ((this menu-frame-rate-disclaimer-option) (arg0 progress) (arg1 symbol))
+  "Handle progress menu navigation logic."
+  (when (and (time-elapsed? (-> *progress-state-pc* frame-rate-disclaimer-time) (seconds 5)) (cpad-pressed? 0 confirm))
+    (cpad-clear! 0 confirm)
+    (sound-play "generic-beep")
+    (true! (-> *progress-state-pc* frame-rate-disclaimer-seen?))
+    (pop-state arg0)
     )
   0
   )
