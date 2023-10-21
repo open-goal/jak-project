@@ -44,6 +44,12 @@ jobs:
 
       - uses: ilammy/msvc-dev-cmd@v1
 
+      # Fixes an issue with the image causing builds to fail - https://github.com/actions/runner-images/issues/8598
+      - name: Remove Strawberry Perl from PATH
+        run: |
+          $env:PATH = $env:PATH -replace "C:\\Strawberry\\c\\bin;", ""
+          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: CMake Generation - MSVC
         shell: cmd
         run: cmake -B build --preset=${{ inputs.cmakePreset }} -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
