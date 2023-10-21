@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "rules/rule_config.h"
 #include "tree_sitter/api.h"
 
 // Treesitter is fantastic for validating and parsing our code into a structured tree format without
@@ -39,11 +40,13 @@ class FormatterTreeNode {
   // eventually token node refs
   std::optional<std::string> token;
 
+  formatter_rules::config::FormFormattingConfig formatting_config;
+
   FormatterTreeNode() = default;
   FormatterTreeNode(const std::string& source, const TSNode& node);
   FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata){};
 
-  bool is_list() const { return token.has_value(); }
+  bool is_list() const { return !token.has_value(); }
 };
 
 // A FormatterTree has a very simple and crude tree structure where:
