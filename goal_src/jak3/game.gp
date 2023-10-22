@@ -375,12 +375,10 @@
    "$OUT/iso/6COMMON.TXT"
    "$OUT/iso/7COMMON.TXT"
    "$OUT/iso/0SUBTI2.TXT"
-   "$OUT/iso/TWEAKVAL.MUS"
    "$OUT/iso/VAGDIR.AYB"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)
-   ,@(reverse *all-mus*)
    ,@(reverse *all-vag*)
    ,@(reverse *all-cgos*))
  )
