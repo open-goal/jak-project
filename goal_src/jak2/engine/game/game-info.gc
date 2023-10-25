@@ -7,6 +7,8 @@
 
 ;; initialize was manually fixed.
 
+(define-extern dark-traffic symbol)
+
 (define-extern demo? (function symbol))
 (define-extern task-resolution-close! (function game-task symbol))
 (define-extern *lightning-darkjak-pill* lightning-spec)
@@ -615,6 +617,9 @@
               (talker-spawn-func (-> *talker-speech* 79) *entity-pool* (target-pos 0) (the-as region #f))
               )
           (+! (-> this eco-pill-dark-total) arg1)
+          (when (and (rand-vu-percent? 0.03)(= dark-traffic #t))
+      (set! (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+    )
           )
          (else
            (seek! (-> this eco-pill-dark) 0.0 (- arg1))
@@ -628,7 +633,6 @@
            (set! (-> this task-deaths) 0)
            (set! (-> this task-pickup-time) (-> *display* game-clock frame-counter))
            (set! (-> this unknown-array1 task) (-> *display* game-clock frame-counter))
-           (+! (-> this fuel) 1.0)
            (logior! (-> this task-perm-list data task status) (entity-perm-status complete))
            (task-resolution-close! (the-as game-task task))
            )

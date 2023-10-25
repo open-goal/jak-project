@@ -7,6 +7,23 @@
 
 ;; DECOMP BEGINS
 
+(define-extern dark-traffic symbol)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (defmethod draw hud-map ((this hud-map))
   (set-hud-piece-position!
     (-> this sprites 1)
@@ -109,6 +126,1274 @@
   )
 
 (defmethod update-values hud-map ((this hud-map))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;WEAPON MOD SPAWNS, REWARDS, AND SAVES
+;Once a legendary is spawned it unlocks it for you. Later ill figure how to do it upon pickup, but for now I have no fucking clue. :L
+;Right now all gun mods are set towards mod-default-gun, which is the yellow gun atm, until Mod-Base updates with the updated misc menu in "game-options" then you can select it yourself.
+
+
+(when (= mod-reroll #t)
+  (when (and (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))(>= (-> *game-info* gem) 10.0))
+    (set! (-> *game-info* gem) (- (-> *game-info* gem) 10.0))
+    (set! mod-pick #t)
+    (print "[MOD] SUCCESSFULLY REROLLED :)
+")
+    (set! mod-reroll #f)
+  )
+  (when (< (-> *game-info* gem) 10.0)
+    (print "[MOD] NOT ENOUGH GEMS, REQUIRE 10 TO REROLL
+")
+    (set! mod-reroll #f)
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (print "[MOD] YOU'RE NOT ALLOWED TO RE-ROLL WHILE IN HELL-MODE }:]
+")
+    (set! mod-reroll #f)
+  )
+)
+
+
+(when (and (= (-> *game-info* fuel) 0.0)(= (pause-allowed?) #t)(= weapon-mod-toggle #t)) ;checks for if you have weapon mod toggle on, then gives you a modifier
+  (set! mod-pick #t)
+)
+
+(when (= mod-pick #t)
+  (set! mod-rand (rand-vu-int-range 1 6))
+  (when (= mod-rand 1)
+    (set! (-> *game-info* fuel) 1.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Peacemaker Ability!
+")
+  )
+  (when (and (!= (-> *game-info* buzzer-total) 2.0)(= mod-rand 2))
+    (set! (-> *game-info* fuel) 2.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Teleport to Final Boss!
+")
+  )
+  (when (= mod-rand 3)
+    (set! (-> *game-info* fuel) 3.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Hoverboard/Enemy Health!
+")
+  )
+  (when (= mod-rand 4)
+    (set! (-> *game-info* fuel) 4.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Dark Eco / Threatening Traffic
+")
+  )
+  (when (= mod-rand 5)
+    (set! (-> *game-info* fuel) 5.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Trip Jak / Metalheads!
+")
+  )
+  (when (= mod-rand 6)
+    (set! (-> *game-info* fuel) 6.0)
+    (set! mod-pick #f)
+    (print "[MOD] rolled for Target Explode / DarkJakLonger!
+")
+  )
+)
+
+
+
+(when (and (!= (-> *game-info* fuel) 0.0)(= weapon-mod-toggle #f))
+  (set! weapon-mod-toggle #t)
+)
+
+(when (= weapon-mod-toggle #t)
+  ;Legendary Weapon Mod Saves
+  (when (and (= (-> *game-info* buzzer-total) 0.0)(or (= leg-random-shot #t)(= pm-extra-shot-option #f))) ;if none
+    (set! pm-extra-shot-option #f)
+    (set! leg-random-shot #f)
+    (set! leg-got? #f)
+  )
+  (when (and (= (-> *game-info* buzzer-total) 1.0)(= pm-extra-shot-option #f)) ;if 1, legendary extra chanced peacemaker-shot
+    (set! pm-extra-shot-option #t)
+    (set! pm-extra-shot-int mod-default-gun)
+    (set! leg-got? #t)
+  )
+
+  (when (and (= (-> *game-info* buzzer-total) 2.0)(= leg-random-shot #f)) ;if 2, legendary random shot
+    (set! leg-random-shot #t)
+    (set! leg-random-int mod-default-gun)
+    (set! leg-got? #t)
+    (set! tp-fb-win #t)
+  )
+
+
+
+  ;Modifier Saves
+(when (= stored-cp? #f)
+  (when (and (= (-> *game-info* fuel) 0.0)(= all-modifiers-off? #f)) ;if none
+    (set! hell-mode-option #f)
+    (set! peacemaker-ability #f)
+    (set! hover-damage #f)
+    (set! dark-traffic #f)
+    (set! tp-fb #f)
+    (set! all-modifiers-off? #t)
+    (set! weapon-mod-toggle #f)
+    (set! trip-metalheads #f)
+    (set! target-explode #f)
+  )
+
+  (when (and (= (-> *game-info* fuel) 1.0)(= peacemaker-ability #f)) ;if 1, peacemaker ability
+    (set! hell-mode-option #f)
+    (set! peacemaker-ability #t)
+    (set! tp-fb #f)
+    (set! hover-damage #f)
+    (set! dark-traffic #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #f)
+    (set! target-explode #f)
+  )
+
+
+  (when (and (= (-> *game-info* fuel) 2.0)(= tp-fb #f)) ;if 2, tp-fb
+    (set! hell-mode-option #f)
+    (set! tp-fb #t)
+    (set! hover-damage #f)
+    (set! dark-traffic #f)
+    (set! peacemaker-ability #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #f)
+    (set! target-explode #f)
+  )
+  (when (and (= (-> *game-info* fuel) 3.0)(= hover-damage #f)) ;if 3, hover-damage
+    (set! hell-mode-option #f)
+    (set! hover-damage #t)
+    (set! dark-traffic #f)
+    (set! peacemaker-ability #f)
+    (set! tp-fb #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #f)
+    (set! target-explode #f)
+  )
+  (when (and (= (-> *game-info* fuel) 4.0)(= dark-traffic #f)) ;if 4, dark-traffic
+    (set! hell-mode-option #f)
+    (set! dark-traffic #t)
+    (set! hover-damage #f)
+    (set! peacemaker-ability #f)
+    (set! tp-fb #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #f)
+    (set! target-explode #f)
+  )
+  (when (and (= (-> *game-info* fuel) 5.0)(= trip-metalheads #f)) ;if 5, trip-metalheads
+    (set! hell-mode-option #f)
+    (set! dark-traffic #f)
+    (set! hover-damage #f)
+    (set! peacemaker-ability #f)
+    (set! tp-fb #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #t)
+    (set! target-explode #f)
+  )
+  (when (and (= (-> *game-info* fuel) 6.0)(= target-explode #f)) ;if 6, target-explode
+    (set! hell-mode-option #f)
+    (set! dark-traffic #f)
+    (set! hover-damage #f)
+    (set! peacemaker-ability #f)
+    (set! tp-fb #f)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! trip-metalheads #f)
+    (set! target-explode #t)
+  )
+  (when (and (= (-> *game-info* fuel) 10.0)(= hell-mode-option #f)) ;if 10, hell mode }:)
+    (set! hell-mode-option #t)
+    (set! trip-metalheads #t)
+    (set! dark-traffic #t)
+    (set! hover-damage #t)
+    (set! peacemaker-ability #t)
+    (set! tp-fb #t)
+    (set! all-modifiers-off? #f)
+    (set! weapon-mod-toggle #t)
+    (set! target-explode #t)
+  )
+)
+
+
+
+
+
+
+
+
+
+
+
+
+  ;Mission-Based Weapon Mod Gets
+  (when (and (task-node-closed? (game-task-node city-krew-delivery-resolution))(= mission-grab-1 #f)) ;after red gun, get rapid fire
+    (set! mission-grab-1 #t)
+    (set! rapid-fire-option #t)
+    (set! rapid-fire-int mod-default-gun)
+    (print "[GUN-MOD] Rapid Fire Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+
+  (when (and (task-node-closed? (game-task-node sewer-enemy-resolution))(= mission-grab-2 #f)) ;after yellow gun, get double tap
+    (set! mission-grab-2 #t)
+    (set! double-tap-option #t)
+    (set! double-tap-int mod-default-gun)
+    (print "[GUN-MOD] Chanced Double Tap Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+
+  (when (and (task-node-closed? (game-task-node ruins-enemy-introduction))(= mission-grab-3 #f)) ;after blue gun, get chanced guard shot
+    (set! mission-grab-3 #t)
+    (set! guard-shot-int mod-default-gun)
+    (set! guard-shot-option #t)
+    (print "[GUN-MOD] Chanced Guard Shot Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+
+  (when (and (task-node-closed? (game-task-node sewer-escort-get-gun))(= mission-grab-4 #f)) ;after dark gun, get chanced predator shot
+    (set! mission-grab-4 #t)
+    ;(set! predator-shot-int mod-default-gun)
+    (set! predator-shot-option #t)
+    (print "[GUN-MOD] Chanced Predator Shot Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+  ;looks for if their missions become un-completed after setting them, then takes away mission gun mods respectively
+  (when (and (not (task-node-closed? (game-task-node city-krew-delivery-resolution)))(= mission-grab-1 #t))
+    (set! mission-grab-1 #f)
+    (set! rapid-fire-option #f)
+  )
+
+  (when (and (not (task-node-closed? (game-task-node sewer-enemy-resolution)))(= mission-grab-2 #t))
+    (set! mission-grab-2 #f)
+    (set! double-tap-option #f)
+  )
+
+  (when (and (not (task-node-closed? (game-task-node ruins-enemy-introduction)))(= mission-grab-3 #t))
+    (set! mission-grab-3 #f)
+    (set! guard-shot-option #f)
+    (set! guard-shot-int 0)
+  )
+
+  (when (and (not (task-node-closed? (game-task-node sewer-escort-get-gun)))(= mission-grab-4 #t))
+    (set! mission-grab-4 #f)
+    (set! predator-shot-option #f)
+    (set! predator-shot-int 0)
+  )
+)
+
+
+
+
+
+;Roll for a random legenedary gun mod
+(when (= wm-roll-rand #t) ;this runs the roll for a random weapon mod to be unlocked. Super inefficient, i love it :)
+
+  (when (and (rand-vu-percent? 0.2)(= wm-roll-numb 1)) ;checks if rolled for integer 1
+    (set! wm-roll-rand #f)
+    (set! wm-roll-numb 0)
+    (set! (-> *game-info* buzzer-total) 1.0)
+    (print "[GUN-MOD] | LEGENDARY |  Chanced Peacemaker Shot Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+  (when (and (rand-vu-percent? 0.2)(= wm-roll-numb 2)) ;checks if rolled for integer 2
+    (set! wm-roll-rand #f)
+    (set! wm-roll-numb 0)
+    (set! (-> *game-info* buzzer-total) 1.0)
+    (print "[GUN-MOD] | LEGENDARY |  Chanced Peacemaker Shot Acquired! Weapon Mod set to mod-default-gun
+")
+  )
+  (when (= wm-roll-rand #t) ;rolls the integer
+    (+! wm-roll-numb 1)
+    (when (> wm-roll-numb 2)
+      (set! wm-roll-numb 0)
+    )
+  )
+
+)
+
+
+
+(when (and (logtest? (-> *game-info* secrets) (game-secrets hero-mode))(!= (-> *game-info* fuel) 10.0)) ;if you're in hero-mode, sets to have hell-mode enabled in your save.
+    (set! (-> *game-info* fuel) 10.0)
+)
+(when (= stored-cp? #f)
+  (when (and (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))(= hell-mode-option #t)) ;if you're not in hero-mode, but you have set hell-mode on prior, set all to off.
+      (set! hell-mode-option #f)
+      (set! peacemaker-ability #f)
+      (set! hover-damage #f)
+      (set! dark-traffic #f)
+      (set! tp-fb #f)
+      (set! all-modifiers-off? #t)
+      (set! weapon-mod-toggle #f)
+      (set! trip-metalheads #f)
+      (set! target-explode #f)
+  )
+)
+
+
+(when (= wm-rand-shot #t) ;this rolls through a random shot and shoots it out of jaks weapon. Activated in gun-(color)-shot.gc. Oh boy is this a list.
+        (set! wm-roll-shot (rand-vu-int-range 1 6))
+        (when (= wm-roll-shot 1)
+          (let ((s5-0 (-> *target* gun))
+          (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+          )
+      (set! (-> gp-0 ent) (-> *target* entity))
+      (set! (-> gp-0 charge) (-> s5-0 fire-charge))
+      (set! (-> gp-0 options) (projectile-options))
+      (set! (-> gp-0 pos quad) (-> s5-0 fire-point quad))
+      (set! (-> gp-0 vel quad) (-> s5-0 fire-dir-out quad))
+      (set! (-> gp-0 notify-handle) (the-as handle #f))
+      (set! (-> gp-0 owner-handle) (the-as handle #f))
+      (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+      (let* ((v1-8 *game-info*)
+            (a0-11 (+ (-> v1-8 attack-id) 1))
+            )
+        (set! (-> v1-8 attack-id) a0-11)
+        (set! (-> gp-0 attack-id) a0-11)
+        )
+      (set! (-> gp-0 timeout) (seconds 4))
+      (let ((v0-1 (spawn-projectile gun-dark-shot gp-0 (ppointer->process (-> s5-0 gun)) *default-dead-pool*)))
+        (when v0-1
+          (set! (-> (the-as gun-dark-shot (-> v0-1 0)) track-target) (-> *target* gun track-target 0 handle))
+          (set! (-> *target* gun charge-active?) (ppointer->handle v0-1))
+          )
+        v0-1
+      )
+        )
+        (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+
+    
+        (when (= wm-roll-shot 2)
+        (let ((gp-0 (-> *target* gun))
+        (s4-0 (-> *target* gun fire-dir-out))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-vector-angle! s3-0 s4-0 (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+      (vector-rotate-y! s5-0 s4-0 (* 182.04445 (rand-vu-float-range 0.0 1.1)))
+      (vector-orient-by-quat! s5-0 s5-0 s3-0)
+      )
+    (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+      (set! (-> s4-1 ent) (-> *target* entity))
+      (set! (-> s4-1 charge) 1.0)
+      (set! (-> s4-1 options) (projectile-options account-for-target-velocity deal-damage proj-options-8000))
+      (set! (-> s4-1 pos quad) (-> gp-0 fire-point quad))
+      (set! (-> s4-1 vel quad) (-> s5-0 quad))
+      (set! (-> s4-1 notify-handle) (the-as handle #f))
+      (set! (-> s4-1 owner-handle) (the-as handle #f))
+      (set! (-> s4-1 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+      (let* ((v1-13 *game-info*)
+             (a0-15 (+ (-> v1-13 attack-id) 1))
+             )
+        (set! (-> v1-13 attack-id) a0-15)
+        (set! (-> s4-1 attack-id) a0-15)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (spawn-projectile gun-blue-shot s4-1 (ppointer->process (-> gp-0 gun)) *default-dead-pool*)
+        (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+        )
+        )
+        (when (= wm-roll-shot 3)
+        (set! inv-frame-start #t)
+        (when (or (= (-> (level-get-target-inside *level*) name) 'caspad)(= (-> (level-get-target-inside *level*) name) 'castle))
+          (set! leg-dont-fire? #t)
+          (set! wm-roll-shot (rand-vu-int-range 1 6))
+        )
+        (when (= leg-dont-fire? #f)
+        (let ((s5-0 (-> *target* gun))
+          (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+          )
+          (set! (-> gp-0 ent) (-> *target* entity))
+          (set! (-> gp-0 charge) (-> s5-0 fire-charge))
+          (set! (-> gp-0 options) (projectile-options))
+          (set! (-> gp-0 pos quad) (-> *target* gun fire-point quad))
+          (set! (-> gp-0 vel quad) (-> *target* gun fire-dir-out quad))
+          (set! (-> gp-0 notify-handle) (the-as handle #f))
+          (set! (-> gp-0 owner-handle) (the-as handle #f))
+          (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+          (set! (-> gp-0 timeout) (seconds 4))
+          (set! inv-frame-start-g #t)
+          (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+            (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+          )
+          (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+            (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+          )
+          (spawn-projectile metalhead-predator-shot gp-0 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+          (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+        )
+        )
+        (when (= wm-roll-shot 4)
+          (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+            (set! (-> s4-1 ent) (-> *target* entity))
+            (set! (-> s4-1 charge) 1.0)
+            (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+            (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+            (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+            (set! (-> s4-1 notify-handle) (the-as handle #f))
+            (set! (-> s4-1 owner-handle) (the-as handle #f))
+            (set! (-> s4-1 ignore-handle) (the-as handle #f))
+            (let* ((a0-13 *game-info*)
+            (a1-12 (+ (-> a0-13 attack-id) 1))
+            )
+        (set! (-> a0-13 attack-id) a1-12)
+        (set! (-> s4-1 attack-id) a1-12)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (vector-normalize! (-> s4-1 vel) 819200.0)
+      (set! inv-frame-start-g #t)
+      (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+      (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+      (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+      )
+        )
+        (when (= wm-roll-shot 5)
+          (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (-> *target* gun)))
+      (let ((s5-0 (-> *part-id-table* 190)))
+        (get-field-spec-by-id s5-0 (sp-field-id spt-omega))
+        (let ((s5-1 (get-field-spec-by-id s5-0 (sp-field-id spt-rotate-y))))
+          (if s5-1
+              (set! (-> s5-1 initial-valuef) (y-angle (-> *target* control)))
+              )
+          )
+        )
+      (let ((t9-3 sp-launch-particles-var)
+            (a0-3 *sp-particle-system-2d*)
+            (a1-2 (-> *part-id-table* 190))
+            (a2-0 *launch-matrix*)
+            )
+        (set! (-> a2-0 trans quad) (-> gp-0 fire-point quad))
+        (t9-3 a0-3 a1-2 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (let ((s5-2 (new 'stack-no-clear 'vector)))
+        (let ((v1-10 (-> gp-0 fire-point)))
+          (let ((a0-4 (-> gp-0 fire-dir-out)))
+            (let ((a1-4 24576.0))
+              (.mov vf7 a1-4)
+              )
+            (.lvf vf5 (&-> a0-4 quad))
+            )
+          (.lvf vf4 (&-> v1-10 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> s5-2 quad) vf6)
+        (set! (-> s5-2 w) 24576.0)
+        (when (and (sphere-in-view-frustum? (the-as sphere s5-2))
+                   (< 24576.0 (vector-vector-distance s5-2 (math-camera-pos)))
+                   )
+          (let ((s5-3 (process-spawn
+                        manipy
+                        :init manipy-init
+                        (-> gp-0 fire-point)
+                        (-> *target* entity)
+                        (art-group-get-by-name *level* "skel-gun-red-cone" (the-as (pointer uint32) #f))
+                        #f
+                        0
+                        :to *target*
+                        )
+                      )
+                )
+            (when s5-3
+              (send-event (ppointer->process s5-3) 'anim-mode 'play1)
+              (send-event (ppointer->process s5-3) 'anim "idle")
+              (forward-up->quaternion
+                (-> (the-as process-drawable (-> s5-3 0)) root quat)
+                (-> gp-0 fire-dir-out)
+                *up-vector*
+                )
+              (let ((f30-1 (vector-dot
+                             (-> gp-0 fire-dir-out)
+                             (vector-! (new 'stack-no-clear 'vector) (-> gp-0 fire-point) (math-camera-pos))
+                             )
+                           )
+                    (f0-5 (vector-vector-xz-distance (-> gp-0 fire-point) (math-camera-pos)))
+                    )
+                (when (and (< f30-1 0.0) (< f0-5 32768.0))
+                  (set! (-> (the-as process-drawable (-> s5-3 0)) root scale z)
+                        (lerp-scale 0.2 1.0 (fabs f0-5) 20480.0 32768.0)
+                        )
+                  (set! (-> (the-as process-drawable (-> s5-3 0)) root scale x)
+                        (-> (the-as process-drawable (-> s5-3 0)) root scale z)
+                        )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (process-spawn gun-red-shot (-> gp-0 fire-point) (-> gp-0 fire-dir-out) :to (ppointer->process (-> gp-0 gun)))
+      (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+        )
+        )
+        (when (= wm-roll-shot 6)
+        (let ((s5-0 (-> *target* gun))
+        (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+        )
+    (set! (-> gp-0 ent) (-> *target* entity))
+    (set! (-> gp-0 charge) 1.0)
+    (set! (-> gp-0 options) (projectile-options account-for-target-velocity deal-damage proj-options-8000))
+    (set! (-> gp-0 pos quad) (-> s5-0 fire-point quad))
+    (set! (-> gp-0 notify-handle) (the-as handle #f))
+    (set! (-> gp-0 owner-handle) (the-as handle #f))
+    (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+    (let* ((v1-9 *game-info*)
+           (a0-9 (+ (-> v1-9 attack-id) 1))
+           )
+      (set! (-> v1-9 attack-id) a0-9)
+      (set! (-> gp-0 attack-id) a0-9)
+      )
+    (set! (-> gp-0 timeout) (seconds 4))
+    (vector-float*! (-> gp-0 vel) (-> s5-0 fire-dir-out) 819200.0)
+    (spawn-projectile gun-yellow-shot gp-0 (ppointer->process (-> s5-0 gun)) *default-dead-pool*)
+    (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+      )
+)
+
+
+
+;DOUBLE TAP
+;This is called from setting dt-frame-start to true, firing another projectile based on what weapon jak has it on, and whether or not guard-shot is taking its place.
+;---------------------------------------------------------------------------------------------
+
+(when (= dt-frame-start #t)
+  (+! dt-count 1)
+)
+
+(when (> dt-count 5)
+    ;-------------------------------------------YELLOW SHOT-----------------------------------------------------------
+    (when (and (!= guard-shot-int 1)(= double-tap-int 1))
+      (let ((s5-0 (-> *target* gun))
+        (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+        )
+    (set! (-> gp-0 ent) (-> *target* entity))
+    (set! (-> gp-0 options) (projectile-options account-for-target-velocity deal-damage proj-options-8000))
+    (set! (-> gp-0 pos quad) (-> s5-0 fire-point quad))
+    (set! (-> gp-0 notify-handle) (the-as handle #f))
+    (set! (-> gp-0 owner-handle) (the-as handle #f))
+    (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+    (let* ((v1-9 *game-info*)
+           (a0-9 (+ (-> v1-9 attack-id) 1))
+           )
+      (set! (-> v1-9 attack-id) a0-9)
+      (set! (-> gp-0 attack-id) a0-9)
+      )
+    (set! (-> gp-0 timeout) (seconds 4))
+    (vector-float*! (-> gp-0 vel) (-> s5-0 fire-dir-out) 819200.0)
+          (spawn-projectile gun-yellow-shot gp-0 (ppointer->process (-> s5-0 gun)) *default-dead-pool*)
+        )
+    )
+    (when (and (= double-tap-int 1)(= guard-shot-int 1))
+          (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+            (set! (-> s4-1 ent) (-> *target* entity))
+            (set! (-> s4-1 charge) 1.0)
+            (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+            (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+            (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+            (set! (-> s4-1 notify-handle) (the-as handle #f))
+            (set! (-> s4-1 owner-handle) (the-as handle #f))
+            (set! (-> s4-1 ignore-handle) (the-as handle #f))
+            (let* ((a0-13 *game-info*)
+            (a1-12 (+ (-> a0-13 attack-id) 1))
+            )
+        (set! (-> a0-13 attack-id) a1-12)
+        (set! (-> s4-1 attack-id) a1-12)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (vector-normalize! (-> s4-1 vel) 819200.0)
+      (set! (-> *game-info* secrets) (game-secrets invulnerable))
+      (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+      (set! inv-frame-start-g #t)
+      (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+      )
+        )
+        ;---------------------------------------------RED SHOT---------------------------------------------------
+    (when (and (!= guard-shot-int 2)(= double-tap-int 2))
+      (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (-> *target* gun)))
+      (let ((s5-0 (-> *part-id-table* 190)))
+        (get-field-spec-by-id s5-0 (sp-field-id spt-omega))
+        (let ((s5-1 (get-field-spec-by-id s5-0 (sp-field-id spt-rotate-y))))
+          (if s5-1
+              (set! (-> s5-1 initial-valuef) (y-angle (-> *target* control)))
+              )
+          )
+        )
+      (let ((t9-3 sp-launch-particles-var)
+            (a0-3 *sp-particle-system-2d*)
+            (a1-2 (-> *part-id-table* 190))
+            (a2-0 *launch-matrix*)
+            )
+        (set! (-> a2-0 trans quad) (-> gp-0 fire-point quad))
+        (t9-3 a0-3 a1-2 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+        )
+      (let ((s5-2 (new 'stack-no-clear 'vector)))
+        (let ((v1-10 (-> gp-0 fire-point)))
+          (let ((a0-4 (-> gp-0 fire-dir-out)))
+            (let ((a1-4 24576.0))
+              (.mov vf7 a1-4)
+              )
+            (.lvf vf5 (&-> a0-4 quad))
+            )
+          (.lvf vf4 (&-> v1-10 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> s5-2 quad) vf6)
+        (set! (-> s5-2 w) 24576.0)
+        (when (and (sphere-in-view-frustum? (the-as sphere s5-2))
+                   (< 24576.0 (vector-vector-distance s5-2 (math-camera-pos)))
+                   )
+          (let ((s5-3 (process-spawn
+                        manipy
+                        :init manipy-init
+                        (-> gp-0 fire-point)
+                        (-> *target* entity)
+                        (art-group-get-by-name *level* "skel-gun-red-cone" (the-as (pointer uint32) #f))
+                        #f
+                        0
+                        :to *target*
+                        )
+                      )
+                )
+            (when s5-3
+              (send-event (ppointer->process s5-3) 'anim-mode 'play1)
+              (send-event (ppointer->process s5-3) 'anim "idle")
+              (forward-up->quaternion
+                (-> (the-as process-drawable (-> s5-3 0)) root quat)
+                (-> gp-0 fire-dir-out)
+                *up-vector*
+                )
+              (let ((f30-1 (vector-dot
+                             (-> gp-0 fire-dir-out)
+                             (vector-! (new 'stack-no-clear 'vector) (-> gp-0 fire-point) (math-camera-pos))
+                             )
+                           )
+                    (f0-5 (vector-vector-xz-distance (-> gp-0 fire-point) (math-camera-pos)))
+                    )
+                (when (and (< f30-1 0.0) (< f0-5 32768.0))
+                  (set! (-> (the-as process-drawable (-> s5-3 0)) root scale z)
+                        (lerp-scale 0.2 1.0 (fabs f0-5) 20480.0 32768.0)
+                        )
+                  (set! (-> (the-as process-drawable (-> s5-3 0)) root scale x)
+                        (-> (the-as process-drawable (-> s5-3 0)) root scale z)
+                        )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (process-spawn gun-red-shot (-> gp-0 fire-point) (-> gp-0 fire-dir-out) :to (ppointer->process (-> gp-0 gun)))
+      (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+        )
+    )
+    (when (and (= double-tap-int 2)(= guard-shot-int 2))
+          (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+            (set! (-> s4-1 ent) (-> *target* entity))
+            (set! (-> s4-1 charge) 1.0)
+            (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+            (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+            (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+            (set! (-> s4-1 notify-handle) (the-as handle #f))
+            (set! (-> s4-1 owner-handle) (the-as handle #f))
+            (set! (-> s4-1 ignore-handle) (the-as handle #f))
+            (let* ((a0-13 *game-info*)
+            (a1-12 (+ (-> a0-13 attack-id) 1))
+            )
+        (set! (-> a0-13 attack-id) a1-12)
+        (set! (-> s4-1 attack-id) a1-12)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (vector-normalize! (-> s4-1 vel) 819200.0)
+      (set! inv-frame-start-g #t)
+      (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+      (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+      )
+
+  )
+  ;--------------------------------------------BLUE SHOT--------------------------------------------------
+  (when (and (!= double-tap-int 3)(= guard-shot-int 3))
+    (let ((gp-0 (-> *target* gun))
+        (s4-0 (-> *target* gun fire-dir-out))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+      (quaternion-vector-angle! s3-0 s4-0 (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+      (vector-rotate-y! s5-0 s4-0 (* 182.04445 (rand-vu-float-range 0.0 1.1)))
+      (vector-orient-by-quat! s5-0 s5-0 s3-0)
+      )
+    (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+      (set! (-> s4-1 ent) (-> *target* entity))
+      (set! (-> s4-1 charge) 1.0)
+      (set! (-> s4-1 options) (projectile-options account-for-target-velocity deal-damage proj-options-8000))
+      (set! (-> s4-1 pos quad) (-> gp-0 fire-point quad))
+      (set! (-> s4-1 vel quad) (-> s5-0 quad))
+      (set! (-> s4-1 notify-handle) (the-as handle #f))
+      (set! (-> s4-1 owner-handle) (the-as handle #f))
+      (set! (-> s4-1 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+      (let* ((v1-13 *game-info*)
+             (a0-15 (+ (-> v1-13 attack-id) 1))
+             )
+        (set! (-> v1-13 attack-id) a0-15)
+        (set! (-> s4-1 attack-id) a0-15)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (spawn-projectile gun-blue-shot s4-1 (ppointer->process (-> gp-0 gun)) *default-dead-pool*)
+        (set! wm-roll-shot 0)
+        (set! wm-rand-shot #f)
+        )
+        )
+  )
+  (when (and (= double-tap-int 3) (= guard-shot-int 3))
+    (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+            (set! (-> s4-1 ent) (-> *target* entity))
+            (set! (-> s4-1 charge) 1.0)
+            (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+            (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+            (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+            (set! (-> s4-1 notify-handle) (the-as handle #f))
+            (set! (-> s4-1 owner-handle) (the-as handle #f))
+            (set! (-> s4-1 ignore-handle) (the-as handle #f))
+            (let* ((a0-13 *game-info*)
+            (a1-12 (+ (-> a0-13 attack-id) 1))
+            )
+        (set! (-> a0-13 attack-id) a1-12)
+        (set! (-> s4-1 attack-id) a1-12)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (vector-normalize! (-> s4-1 vel) 819200.0)
+      (set! inv-frame-start-g #t)
+      (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+      (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+      )
+  )
+  
+  (set! dt-count 0)
+  (set! dt-frame-start #f)
+)
+
+
+
+
+
+ ;This counts invulnerable frames for when jak fires a projectile that could damage him. This is for predator shot.
+(when (= inv-frame-start #t)
+  (+! inv-frame-counter 1)
+  (when (> inv-frame-counter 2)
+    (set! (-> *game-info* secrets) (game-secrets ))
+    (set! inv-frame-counter 0)
+    (set! inv-frame-start #f)
+  )
+)
+;same thing as above, but for guard shot
+(when (= inv-frame-start-g #t)
+  (+! inv-frame-counter-g 1)
+  (when (> inv-frame-counter-g 2)
+    (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+      (set! (-> *game-info* secrets) (game-secrets ))
+      (when (and (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))(= (-> *game-info* fuel) 10.0))
+      (set! (-> *game-info* secrets) (game-secrets hero-mode))
+    )
+    )
+    (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+      (set! (-> *game-info* secrets) (game-secrets hero-mode))
+    )
+    (set! inv-frame-counter-g 0)
+    (set! inv-frame-start-g #f)
+  )
+)
+
+
+
+    (when (= mod-all-yellow #t) ;these chunks will set all gun mods to one weapon. Be careful lol         EXAMPLE:         (set! mod-all-yellow #t)
+      (set! rapid-fire-option #t)
+      (set! rapid-fire-int 1)
+      (set! double-tap-option #t)
+      (set! double-tap-int 1)
+      (set! infinite-range-option #t)
+      (set! infinite-range-int 1)
+      (set! pm-extra-shot-option #t)
+      (set! pm-extra-shot-int 1)
+      (set! predator-shot-option #t)
+      (set! predator-shot-int 1)
+      (set! guard-shot-option #t)
+      (set! guard-shot-int 1)
+      (set! mod-all-off #f)
+      (set! mod-all-blue #f)
+      (set! mod-all-red #f)
+      (set! mod-all-dark #f)
+      (set! mod-all-yellow #f)
+      (set! mod-turning-off #t)
+    )
+    (when (= mod-all-blue #t)
+      (set! rapid-fire-option #t)
+      (set! rapid-fire-int 3)
+      (set! double-tap-option #t)
+      (set! double-tap-int 3)
+      (set! infinite-range-option #t)
+      (set! infinite-range-int 3)
+      (set! pm-extra-shot-option #t)
+      (set! pm-extra-shot-int 3)
+      (set! predator-shot-option #t)
+      (set! predator-shot-int 3)
+      (set! guard-shot-option #t)
+      (set! guard-shot-int 3)
+      (set! mod-all-off #f)
+      (set! mod-all-yellow #f)
+      (set! mod-all-red #f)
+      (set! mod-all-dark #f)
+      (set! mod-all-blue #f)
+      (set! mod-turning-off #t)
+    )
+    (when (= mod-all-red #t)
+      (set! rapid-fire-option #t)
+      (set! rapid-fire-int 2)
+      (set! double-tap-option #t)
+      (set! double-tap-int 2)
+      (set! infinite-range-option #t)
+      (set! infinite-range-int 2)
+      (set! pm-extra-shot-option #t)
+      (set! pm-extra-shot-int 2)
+      (set! predator-shot-option #t)
+      (set! predator-shot-int 2)
+      (set! guard-shot-option #t)
+      (set! guard-shot-int 2)
+      (set! mod-all-off #f)
+      (set! mod-all-blue #f)
+      (set! mod-all-yellow #f)
+      (set! mod-all-dark #f)
+      (set! mod-all-red #f)
+      (set! mod-turning-off #t)
+    )
+    (when (= mod-all-dark #t)
+      (set! rapid-fire-option #t)
+      (set! rapid-fire-int 4)
+      (set! double-tap-option #t)
+      (set! double-tap-int 4)
+      (set! infinite-range-option #t)
+      (set! infinite-range-int 4)
+      (set! pm-extra-shot-option #t)
+      (set! pm-extra-shot-int 4)
+      (set! predator-shot-option #t)
+      (set! predator-shot-int 4)
+      (set! guard-shot-option #t)
+      (set! guard-shot-int 4)
+      (set! mod-all-off #f)
+      (set! mod-all-blue #f)
+      (set! mod-all-red #f)
+      (set! mod-all-yellow #f)
+      (set! mod-all-dark #f)
+      (set! mod-turning-off #t)
+    )
+    (when (and (= mod-all-off #t) (= mod-turning-off #t))
+      (set! rapid-fire-option #f)
+      (set! rapid-fire-int 0)
+      (set! double-tap-option #f)
+      (set! double-tap-int 0)
+      (set! infinite-range-option #f)
+      (set! infinite-range-int 0)
+      (set! pm-extra-shot-option #f)
+      (set! pm-extra-shot-int 0)
+      (set! predator-shot-option #f)
+      (set! predator-shot-int 0)
+      (set! guard-shot-option #t)
+      (set! guard-shot-int 0)
+      (set! mod-all-blue #f)
+      (set! mod-all-red #f)
+      (set! mod-all-dark #f)
+      (set! mod-all-yellow #f)
+      (set! mod-turning-off #f)
+    )
+
+
+    
+
+      (when (and (= test-option #t) (rand-vu-percent? 0.05)) ;debug projectile, you can enable to do absolutely nothing but have a chance to shoot a projectile every frame or so
+        (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (set! (-> s4-1 ent) (-> *target* entity))
+    (set! (-> s4-1 charge) 1.0)
+    (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+    (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+    (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+    (set! (-> s4-1 notify-handle) (the-as handle #f))
+    (set! (-> s4-1 owner-handle) (the-as handle #f))
+    (set! (-> s4-1 ignore-handle) (the-as handle #f))
+    (let* ((a0-13 *game-info*)
+           (a1-12 (+ (-> a0-13 attack-id) 1))
+           )
+      (set! (-> a0-13 attack-id) a1-12)
+      (set! (-> s4-1 attack-id) a1-12)
+      )
+    (set! (-> s4-1 timeout) (seconds 4))
+    (vector-normalize! (-> s4-1 vel) 819200.0)
+    (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+    )
+      )
+
+
+
+
+
+;                    Peacemaker Ability
+;---------------------------------------------------------
+;(vector-rotate-y! svec-pos svec-pos 3.0) ;possible line for enlarging the radius of gun-point, possible fix for invulnerability turning off game secrets.
+      
+  (when (and (and (= peacemaker-ability #t)(rand-vu-percent? 0.000006)(> (-> *target* fact health) 0.0)))
+    (set! pm-shot-trigger #t)
+  )
+
+  (if (and (and (= peacemaker-ability #t)(rand-vu-percent? 0.25)(= pm-shot-trigger #t))) ;
+    (let ((svec-pos (new-stack-vector0))
+    (tpoz (-> *target* gun fire-point)))
+    (vector-rotate-y! svec-pos svec-pos 90.0)
+      (let ((s5-0 (-> *target* gun))
+        (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+        )
+        (vector-copy! (-> gp-0 pos) (vector+! svec-pos tpoz pm-offset-y))
+        (set! (-> gp-0 ent) (-> *target* entity))
+        (set! (-> gp-0 charge) (-> s5-0 fire-charge))
+        (set! (-> gp-0 options) (projectile-options))
+        (set! (-> gp-0 pos quad) (-> svec-pos quad))
+        (set! (-> gp-0 vel quad) (-> svec-pos quad))
+        (set! (-> gp-0 notify-handle) (the-as handle #f))
+        (set! (-> gp-0 owner-handle) (the-as handle #f))
+        (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+        (set! (-> gp-0 timeout) (seconds 4))
+        (let ((v0-1 (spawn-projectile gun-dark-shot gp-0 (ppointer->process (-> s5-0 gun)) *default-dead-pool*)))
+          (when v0-1
+            (set! (-> (the-as gun-dark-shot (-> v0-1 0)) track-target) (-> *target* gun track-target 0 handle))
+            (+! pm-shot-counter 1)
+            (when (= pm-shot-counter 30)
+              (set! pm-shot-trigger #f)
+              (set! pm-shot-counter 0)
+              (if (= gun-dark-present? #t)
+                (set! (-> *game-info* features) (game-feature gun board sidekick gun-dark gun-yellow gun-red gun-blue))
+                    )
+                  
+                )
+              )
+              v0-1
+            )
+          )
+        )
+    )
+      
+;                    Teleport to final boss
+;---------------------------------------------------------
+      ;INFO
+#|tp-fb is the whole TeleportJakToFinalBoss Mod.
+All of the variables set are for time-based events based off of frames |#
+
+
+  (when (= start-frame-count #t)
+    (+! frame-count 1)
+  )
+  (when (and (and (and (= stored-cp? #f)(= tp-fb #t)(rand-vu-percent? 0.0007)(< (-> *target* fact health) 1)))) ;looks for teleport percentage upon death, if so, init new game.
+    (auto-save-user)
+    (set! start-frame-count #t)
+    (set! stored-cp? #t)
+    (set! new-game-s? #t)
+  )
+  (when (and (and (= frame-count 10)(= new-game-s? #t)(= stored-cp? #t)))
+    
+    (set! mission-grab-1 #t)
+    (set! mission-grab-2 #t)
+    (set! mission-grab-3 #t)
+    (set! mission-grab-4 #t)
+    (set! weapon-mod-toggle #f)
+    (set! rapid-fire-option #f)
+    (set! double-tap-option #f)
+    (set! guard-shot-option #f)
+    (set! predator-shot-option #f)
+    (print "[MOD] started teleporting
+")
+  )
+  (when (and (and (= frame-count 60)(= new-game-s? #t)(= stored-cp? #t)))
+    (set-setting! 'allow-progress #f 0.0 0)
+    (apply-settings *setting-control*)
+    (print "[MOD] Set 'allow-progress #f
+")
+)
+(when (and (and (= frame-count 100)(= new-game-s? #t)(= stored-cp? #t)))
+    (start 'play (get-continue-by-name *game-info* "nestb-boss-pit"))
+    (print "[MOD] Set 'play for nestb-boss-pit")
+  )
+  (when (and (and (= frame-count 200)(= new-game-s? #t)(= stored-cp? #t))) ;starts after a little bit to avoid crashes, teleports jak to final boss spawnpoint and sets the game task
+    (play-task (game-task nest-boss) 'debug #f)
+    ;(set! pause-menu-blocked? #t)
+    (when (= hell-mode-option #t)
+      (set! (-> *game-info* fuel) 10.0)
+      (print "[MOD] Hellmode #t, good luck during this fight }:)
+")
+    )
+    (when (= hell-mode-option #f)
+      (set! (-> *game-info* fuel) 2.0)
+      (print "[MOD] Hellmode #f, tp-fb by itself is set!
+")
+    )
+    (set! start-frame-count #f)
+    (set! frame-count 0)
+    (set! going-back-tp #t)
+    (set! (-> *setting-control* user-current allow-pause) #f)
+    (print "[MOD] teleport success
+")
+  )
+  
+  (when (and (= going-back-tp #t)(= tp-fb-win #f)(= start-frame-count #f)(= tp-fb #t)(< (-> *target* fact health) 1)) ;starts when jak dies again, while in the final boss stage
+    (set! start-frame-count #t)
+    (set! new-game-s? #f)
+    (print "[MOD] started frame-count for game-save load
+")
+  )
+  (when (and (= frame-count 60)(= tp-fb-win #f)(= going-back-tp #t)) ;loads the save you had after 60 frames of DEATH
+    (auto-save-command 'restore 0 0 *default-pool* #f)
+    (print "[MOD] crash?
+")
+  )
+  (when (and (= going-back-tp #t)(= tp-fb-win #f)(> frame-count 80)(= (pause-allowed?) #t)) ;resets everything back to original state AFTER the game-load, to avoid crashes.
+    (set! stored-cp? #f)
+    (set! going-back-tp #f)
+    (set! start-frame-count #f)
+    (set! pause-menu-blocked? #f)
+    (set! frame-count 0)
+    (when (= hell-mode-option #t)
+      (set! (-> *game-info* fuel) 10.0)
+    )
+    (when (= hell-mode-option #f)
+      (set! (-> *game-info* fuel) 2.0)
+    )
+    (set! weapon-mod-toggle #t)
+    (set! mission-grab-1 #f)
+    (set! mission-grab-2 #f)
+    (set! mission-grab-3 #f)
+    (set! mission-grab-4 #f)
+    (print "[MOD] It worked!! POGGERS!!! (I logged 42 hours on this problem :D)
+")
+  )
+
+  (when (and (= stored-cp? #t)(= tp-fb-win #t))
+    (set! start-frame-count #t)
+    (set! new-game-s? #f)
+    (when (and (= stored-cp? #t)(= frame-count 1))
+      (auto-save-command 'restore 0 0 *default-pool* #f)
+    )
+    (when (and (= stored-cp? #t)(= frame-count 120))
+      (set-setting! 'allow-progress #f 0.0 0)
+      (apply-settings *setting-control*)
+      (set! (-> *game-info* buzzer-total) 2.0)
+      (print "[MOD] | LEGENDARY | You beat tp-fb and recieved Weapon Mod random-shot! Congratulations!!
+")
+      (set! stored-cp? #f)
+      (set! pause-menu-blocked? #f)
+      (set! start-frame-count #f)
+      (set! frame-count 0)
+      (set! going-back-tp #f)
+      (set! weapon-mod-toggle #t)
+      (set! mission-grab-1 #f)
+      (set! mission-grab-2 #f)
+      (set! mission-grab-3 #f)
+      (set! mission-grab-4 #f)
+      (set! auto-save-delayed? #t)
+      (when (= hell-mode-option #t)
+        (set! (-> *game-info* fuel) 10.0)
+        (+! (-> *game-info* gem) 30.0)
+        (print "[MOD] Hellmode #t, good luck }:)
+")
+      )
+      (when (= hell-mode-option #f)
+        (print "[MOD] Rerolling modifier... }:)
+")
+        (+! (-> *game-info* gem) 30.0)
+        (set! mod-pick #t)
+      )
+    )
+  )
+
+;(set! (-> *setting-control* user-current allow-pause) #f)
+
+(when (= pause-menu-blocked? #t)
+  (set-master-mode 'game)
+)
+
+(when (= auto-save-delayed? #t)
+  (+! auto-save-frame 1)
+  (when (= auto-save-frame 60)
+    (auto-save-user)
+    (set! auto-save-frame 0)
+    (set! auto-save-delayed? #f)
+  )
+)
+
+
+
+
+
+;trip-metalheads function
+;--------------------------------------------
+
+  (when (and (or (cpad-pressed? 0 l1)(cpad-pressed? 0 r1)(cpad-pressed? 0 x)(cpad-pressed? 0 square)(cpad-pressed? 0 circle))(rand-vu-percent? 0.008)(= trip-metalheads #t))
+    (send-event *target* 'loading)
+    (set! trip-start #t)
+    (when (and (send-event *target* 'loading)(= trip-cooldown 0))
+      (+! (-> *game-info* gem) 10.0)
+      (set! trip-start #f)
+      (set! trip-cooldown 8000)
+    )
+  )
+
+  (when (= trip-start #t)
+    (when (> trip-cooldown 0)
+      (-! trip-cooldown 1)
+    )
+  )
+
+
+
+;target-explode
+#|
+(when (= target-explode-start #t)
+  (send-event *target* 'draw #f)
+  (set! (-> *target* fact health) 0.0)
+  (set! explode-frame-start #t)
+  (auto-save-user)
+)
+(when (= explode-frame-start #t)
+  (+! explode-frames 1)
+  (when (= explode-frames 90)
+    (auto-save-command 'restore 0 0 *default-pool* #f)
+  )
+)
+
+|#
+
+(when (= target-explode-start #t)
+  (sound-play "explosion")
+  (send-event *target* 'draw #f)
+  (send-event *target* 'attack-invinc #f (static-attack-info ((id (new-attack-id)) (mode 'big-explosion))))
+  (set! target-explode-start #f)
+)
+
+
+(when (= dark-jacked? #t)
+    (when (= target-explode #f)
+          (set! (-> (the-as fact-info-target (-> *target* fact)) darkjak-effect-time) (seconds 20))
+        )
+    (when (= target-explode #t)
+          (set! (-> (the-as fact-info-target (-> *target* fact)) darkjak-effect-time) (seconds 60))
+        )
+    (set! dark-jacked? #f)
+  )
+
+;(set! (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+;(set! dark-jacked? #t) ;added for fix
+
+;TODO need to set this so it runs when jak loads in
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   (cond
     ((update! *minimap*)
      (logior! (-> this flags) (hud-flags show))

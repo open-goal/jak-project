@@ -7,6 +7,8 @@
 
 ;; DECOMP BEGINS
 
+(define rng-wm #f)
+
 (defskelgroup skel-crimson-guard crimson-guard crimson-guard-lod0-jg -1
               ((crimson-guard-lod0-mg (meters 20)) (crimson-guard-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
@@ -3801,7 +3803,22 @@
   (set! (-> this joint-enable) #f)
   (logclear! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask guard))
-  (set! (-> this fact pickup-type) (pickup-type ammo-random))
+
+;              WEAPON MOD CHANCED SPAWN
+;-------------------------------------------------------
+
+  (when (and (= weapon-mod-toggle #t)(rand-vu-percent? 0.005)) ;real chance is 0.005 (0.05%)
+    (set! wm-drop #t)
+    )
+  (when (and (= wm-drop #t)(= leg-got? #f))
+    (set! (-> this fact pickup-type) (pickup-type board))
+  )
+  (when (= wm-drop #f)
+    (set! (-> this fact pickup-type) (pickup-type ammo-random))
+  )
+
+;-------------------------------------------------------
+
   (set! (-> this fact pickup-amount) 10.0)
   (set! (-> this fact pickup-spawn-amount) 1.0)
   (set! (-> this traffic-target-status handle) (the-as handle #f))
@@ -3832,6 +3849,7 @@
       )
     )
   (set-vector! (-> this draw color-mult) 1.0 1.0 1.0 1.0)
+  (set! wm-drop #f)
   (if (logtest? (-> this controller traffic alert-state flags) (traffic-alert-flag target-jak))
       (reset-to-collide-spec
         (-> this focus)

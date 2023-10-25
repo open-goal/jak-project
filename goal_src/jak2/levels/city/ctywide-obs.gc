@@ -1912,7 +1912,7 @@ This commonly includes things such as:
                           )
                         (quaternion-axis-angle! (-> this jm-turret quat) 0.0 1.0 0.0 (-> this angle-turret))
                         (when (= (+ (fabs (- (-> this angle-turret) (-> s4-1 y))) (fabs (- (-> this angle-guns) (-> s4-1 x)))) 0.0)
-                          (set! (-> this next-time-shot) (+ (current-time) (seconds 1)))
+                          (set! (-> this next-time-shot) (+ (current-time) (seconds 0.078)))
                           (set! (-> this num-shots) (the-as uint 0))
                           0
                           )
@@ -4050,6 +4050,27 @@ This commonly includes things such as:
     )
   )
 
+  (defbehavior cty-guard-turret-init-by-other cty-guard-turret ((vec vector))
+  (cty-guard-turret-method-32 self)
+  (vector-copy! (-> self root trans) vec)
+  (vector-identity! (-> self root scale))
+  (initialize-skeleton
+    self
+    (the skeleton-group (art-group-get-by-name *level* "skel-cty-guard-turret" (the (pointer uint32) #f)))
+    (the pair 0)
+    )
+  (cty-guard-turret-method-33 self)
+  (reset-to-collide-spec (-> self focus) (collide-spec jak player-list))
+  (set! (-> self jm-turret) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 6))
+  (set! (-> self jm-gunsL) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 7))
+  (set! (-> self jm-gunsR) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 8))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 186) self))
+  (set! (-> self id) 0)
+  (set! (-> self destroyed) #f)
+  (set! (-> self hit-points) 6)
+  (go (method-of-object self idle))
+  (none)
+  )
 
 (defstate idle (lurker-pipe-lid)
   :virtual #t

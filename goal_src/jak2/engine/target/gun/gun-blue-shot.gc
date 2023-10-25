@@ -7,6 +7,163 @@
 
 ;; DECOMP BEGINS
 
+(define pm-shot-trigger #f) ;these had to be placed here due to load order
+
+(define inv-frame-start #f)
+(define inv-frame-counter 0)
+(define inv-frame-start-g #f)
+(define inv-frame-counter-g 0)
+(define-extern leg-random-shot symbol)
+(define-extern wm-rand-shot symbol)
+(define leg-random-int 0)
+(define-extern bounce-shot symbol)
+(define-extern bounces-left int)
+(define bounce-shot-int 0)
+
+(define-extern dt-frame-start symbol)
+(define-extern stored-cp? symbol)
+
+
+(deftype gun-dark-shot (projectile)
+  ((blast-radius  float            :offset-assert 472)
+   (core-position vector   :inline :offset-assert 480)
+   (core-velocity vector   :inline :offset-assert 496)
+   (spin-vector   vector   :inline :offset-assert 512)
+   (track-target  handle           :offset-assert 528)
+   (size-t        float            :offset-assert 536)
+   (result-array  handle   16      :offset-assert 544)
+   (charge-sound  sound-id         :offset-assert 672)
+   (fire-sound    sound-id         :offset-assert 676)
+   (trail-sound   sound-id         :offset-assert 680)
+   (explode-sound sound-id         :offset-assert 684)
+   (start-pilot?  basic            :offset-assert 688)
+   )
+  :heap-base #x240
+  :method-count-assert 42
+  :size-assert         #x2b4
+  :flag-assert         #x2a024002b4
+  (:methods
+    (startup () _type_ :state 40)
+    (fizzle () _type_ :state 41)
+    )
+  )
+
+  (deftype metalhead-shot (projectile)
+  ((tail-pos vector :inline :offset-assert 480)
+
+   )
+  :heap-base #x170
+  :method-count-assert 40
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
+  )
+
+  (deftype metalhead-predator-shot (metalhead-shot)
+  ()
+  :heap-base #x170
+  :method-count-assert 40
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
+  )
+
+    (deftype guard-shot (projectile)
+  ((hit-actor? symbol         :offset-assert 472)
+   (tail-pos   vector :inline :offset-assert 480)
+   )
+  :heap-base #x170
+  :method-count-assert 40
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
+  )
+
+
+(deftype turret-shot (guard-shot)
+  ((hit-pos vector :inline :offset-assert 496)
+   )
+  :heap-base #x180
+  :method-count-assert 40
+  :size-assert         #x200
+  :flag-assert         #x2801800200
+  )
+
+  (defun guard-shot-move ((arg0 guard-shot))
+  (projectile-move-fill-line-sphere arg0)
+  (let ((s5-0 (-> arg0 root)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector-! s4-0 (-> arg0 tail-pos) (-> s5-0 trans))
+      (let ((f0-0 (vector-length s4-0)))
+        (when (< 36864.0 f0-0)
+          (vector-normalize! s4-0 36864.0)
+          (vector+! (-> arg0 tail-pos) (-> s5-0 trans) s4-0)
+          )
+        )
+      )
+    (when (logtest? (-> s5-0 status) (collide-status touch-surface))
+      (if (logtest? (-> arg0 root status) (collide-status touch-actor))
+          (set! (-> arg0 hit-actor?) #t)
+          )
+      (go (method-of-object arg0 impact))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-proj-settings! guard-shot ((this guard-shot))
+  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
+  (set! (-> this hit-actor?) #f)
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'guard-shot)
+  (set! (-> this max-speed) 819200.0)
+  (set! (-> this move) guard-shot-move)
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> this timeout) (seconds 0.5))
+  (logior! (-> this options) (projectile-options account-for-target-velocity))
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (none)
+  )
+
+
+
+  (defun metalhead-shot-move ((arg0 metalhead-shot))
+  (projectile-move-fill-line-sphere arg0)
+  (let ((s5-0 (-> arg0 root)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector-! s4-0 (-> arg0 tail-pos) (-> s5-0 trans))
+      (let ((f0-0 (vector-length s4-0)))
+        (when (< 49152.0 f0-0)
+          (vector-normalize! s4-0 49152.0)
+          (vector+! (-> arg0 tail-pos) (-> s5-0 trans) s4-0)
+          )
+        )
+      )
+    (if (logtest? (-> s5-0 status) (collide-status touch-surface))
+        (go (method-of-object arg0 impact))
+        )
+    )
+  0
+  (none)
+  )
+
+
+
+(defmethod init-proj-settings! metalhead-predator-shot ((this metalhead-predator-shot))
+  "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
+  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (set! (-> this attack-mode) 'eco-yellow)
+  (set! (-> this max-speed) 532480.0)
+  (set! (-> this move) metalhead-shot-move)
+  (set! (-> this update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> this timeout) (seconds 0.767))
+  (set! (-> this sound-id) (new-sound-id))
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (none)
+  )
+
+
+
+
+
 (defbehavior target-gun-fire-blue target ()
   (let ((gp-0 (-> self gun))
         (s4-0 (-> self gun fire-dir-out))
@@ -33,10 +190,98 @@
         (set! (-> s4-1 attack-id) a0-15)
         )
       (set! (-> s4-1 timeout) (seconds 4))
-      (spawn-projectile gun-blue-shot s4-1 (ppointer->process (-> gp-0 gun)) *default-dead-pool*)
+            (when (!= guard-shot-int 3) ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;WEAPON MOD CHANGES OCCUR HERE AND DOWN
+        (spawn-projectile gun-blue-shot s4-1 (ppointer->process (-> gp-0 gun)) *default-dead-pool*)
+      )
+
+      (when (and (= leg-random-int 3)(= leg-random-shot #t))                                    ;random shot
+        (set! wm-rand-shot #t)
+      )
+      (when (and (and (= guard-shot-option #t)(= guard-shot-int 3)))          ;guard-shot
+      (set! inv-frame-start-g #t)
+          (let ((s4-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+            (set! (-> s4-1 ent) (-> *target* entity))
+            (set! (-> s4-1 charge) 1.0)
+            (set! (-> s4-1 options) (projectile-options account-for-target-velocity proj-options-8000))
+            (set! (-> s4-1 pos quad) (-> *target* gun fire-point quad))
+            (set! (-> s4-1 vel quad) (-> *target* gun fire-dir-out quad))
+            (set! (-> s4-1 notify-handle) (the-as handle #f))
+            (set! (-> s4-1 owner-handle) (the-as handle #f))
+            (set! (-> s4-1 ignore-handle) (the-as handle #f))
+            (let* ((a0-13 *game-info*)
+            (a1-12 (+ (-> a0-13 attack-id) 1))
+            )
+        (set! (-> a0-13 attack-id) a1-12)
+        (set! (-> s4-1 attack-id) a1-12)
+        )
+      (set! (-> s4-1 timeout) (seconds 4))
+      (vector-normalize! (-> s4-1 vel) 819200.0)
+      (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+      (spawn-projectile guard-shot s4-1 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
       )
     )
+      (when (and (and (= predator-shot-option #t)(= predator-shot-int 3)))      ;predator-shot
+      (set! inv-frame-start #t)
+        (let ((s5-0 (-> *target* gun))
+          (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+          )
+          (set! (-> gp-0 ent) (-> *target* entity))
+          (set! (-> gp-0 charge) (-> s5-0 fire-charge))
+          (set! (-> gp-0 options) (projectile-options))
+          (set! (-> gp-0 pos quad) (-> *target* gun fire-point quad))
+          (set! (-> gp-0 vel quad) (-> *target* gun fire-dir-out quad))
+          (set! (-> gp-0 notify-handle) (the-as handle #f))
+          (set! (-> gp-0 owner-handle) (the-as handle #f))
+          (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
+          (set! (-> gp-0 timeout) (seconds 4))
+          (when (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
   )
+  (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+    (set! (-> *game-info* secrets) (game-secrets invulnerable hero-mode)) ;this also makes it so that theres no game secrets allowed when using predator/guard shot. I could be lazy and make it for all of them
+  )
+          (spawn-projectile metalhead-predator-shot gp-0 (ppointer->process (-> *target* gun gun)) *default-dead-pool*)
+        )
+      )
+      (when (and (and (= double-tap-option #t) (= double-tap-int 3) (rand-vu-percent? 0.2)))         ;double-tap
+        (set! dt-frame-start #t)
+      )
+      (when (and (and (= pm-extra-shot-option #t) (= pm-extra-shot-int 3)(rand-vu-percent? 0.3)))    ;chanced-extra-peacemaker-shot
+        (let ((s5-0 (-> self gun))
+          (gp-0 (new 'stack-no-clear 'projectile-init-by-other-params))
+          )
+      (set! (-> gp-0 ent) (-> self entity))
+      (set! (-> gp-0 charge) (-> s5-0 fire-charge))
+      (set! (-> gp-0 options) (projectile-options))
+      (set! (-> gp-0 pos quad) (-> s5-0 fire-point quad))
+      (set! (-> gp-0 vel quad) (-> s5-0 fire-dir-out quad))
+      (set! (-> gp-0 notify-handle) (the-as handle #f))
+      (set! (-> gp-0 owner-handle) (the-as handle #f))
+      (set! (-> gp-0 ignore-handle) (process->handle (the-as process (send-event self 'get-vehicle))))
+      (let* ((v1-8 *game-info*)
+            (a0-11 (+ (-> v1-8 attack-id) 1))
+            )
+        (set! (-> v1-8 attack-id) a0-11)
+        (set! (-> gp-0 attack-id) a0-11)
+        )
+      (set! (-> gp-0 timeout) (seconds 4))
+      (let ((v0-1 (spawn-projectile gun-dark-shot gp-0 (ppointer->process (-> s5-0 gun)) *default-dead-pool*)))
+        (when v0-1
+          (set! (-> (the-as gun-dark-shot (-> v0-1 0)) track-target) (-> self gun track-target 0 handle))
+          (set! (-> self gun charge-active?) (ppointer->handle v0-1))
+          )
+        v0-1
+      )
+        )
+      )                                                                                                    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    )
+  )
+)
 
 (deftype gun-blue-shot (projectile)
   ((init-pos       vector :inline :offset-assert 480)
@@ -308,11 +553,16 @@
     (set! (-> this timeout) 1)
     (set! (-> this move) gun-blue-shot-move)
     (vector-reset! (-> this collide-normal))
-    (set! (-> this damage) (if (logtest? (game-feature gun-upgrade-damage) (-> *game-info* features))
-                               4.0
-                               2.0
-                               )
-          )
+    (when (not (= stored-cp? #t))
+              (set! (-> this damage) (if (logtest? (game-feature gun-upgrade-damage) (-> *game-info* features))
+                            4.0
+                            2.0
+                            )
+        )
+            )
+            (when (= stored-cp? #t)
+              (set! (-> this damage) 0.5)
+            )
     0
     (none)
     )

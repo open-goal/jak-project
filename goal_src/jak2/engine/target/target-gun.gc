@@ -7,6 +7,55 @@
 
 ;; DECOMP BEGINS
 
+;gun-mod definitions (modifier definitions in mod-custom-code.gc)
+;---------------------------------------
+(define rapid-fire-option #f) ;option for if its enabled/gotten
+(define rapid-fire-int 0) ;option for weapon 1-4
+(define double-tap-option #f) ;option for if its enabled/gotten
+(define double-tap-int 0);option for weapon 1-4
+(define infinite-range-option #f) ;option for if its enabled/gotten
+(define infinite-range-int 0);option for weapon 1-4
+(define rapid-cycle-option #f) ;option for if its enabled/gotten
+(define rapid-cycle-int 0);option for weapon 1-4
+(define big-shot-option #f) ;option for if its enabled/gotten
+(define big-shot-int 0);option for weapon 1-4
+(define pm-extra-shot-option #f) ;option for if its enabled/gotten
+(define pm-extra-shot-int 0);option for weapon 1-4
+(define predator-shot-option #f) ;option for if its enabled/gotten
+(define predator-shot-int 0);option for weapon 1-4
+(define guard-shot-option #f) ;option for if its enabled/gotten
+(define guard-shot-int 0);option for weapon 1-4
+
+
+(define peacemaker-ability #f)
+
+(deftype guard-shot (projectile)
+  ((hit-actor? symbol         :offset-assert 472)
+   (tail-pos   vector :inline :offset-assert 480)
+   )
+  :heap-base #x170
+  :method-count-assert 40
+  :size-assert         #x1f0
+  :flag-assert         #x28017001f0
+  )
+
+
+(defmethod deal-damage! guard-shot ((obj guard-shot) (arg0 process) (arg1 event-message-block))
+  "Constructs an [[attack-info]] according to the projectile's `options`"
+  (let ((t9-0 (method-of-type projectile deal-damage!)))
+    (when (t9-0 obj arg0 arg1)
+      (set! (-> obj hit-actor?) #t)
+      #t
+      )
+    )
+  )
+
+
+
+
+;---------------------------------------
+
+
 (if (not (nmember "gunp" *kernel-packages*))
     (set! *kernel-packages* (cons "gunp" *kernel-packages*))
     )
@@ -651,9 +700,12 @@
       (set! (-> self gun gun-type) (the-as pickup-type arg0))
       (set! (-> self gun using-gun-type) (the-as pickup-type arg0))
       (case (the-as int arg0)
-        ((3)
+        ((3) ;blue
          (set! (-> self gun gun-control) (the-as uint 4))
          (set! (-> self gun fire-range) 327680.0)
+         (when (and (= infinite-range-option #t) (= infinite-range-int 1))
+            (set! (-> self gun fire-range) 9999999.0)
+         )
          (set! (-> self gun track-find-range) 327680.0)
          (set! (-> self gun track-turn-range) 327680.0)
          (set! (-> self gun track-turn-max) 910.2222)
@@ -662,12 +714,23 @@
          (set! (-> self gun track-require) (the-as uint 3))
          (set! (-> self gun fire-delay) (the-as uint 15))
          (set! (-> self gun combo-fire-delay) (the-as uint 30))
+         (when (and (= rapid-fire-option #t) (= rapid-fire-int 3))
+            (set! (-> self gun fire-delay) (the-as uint 5))
+            (set! (-> self gun combo-fire-delay) (the-as uint 10))
+            (print "im fast yo bleu (gross)")
+            )
          (set! (-> self gun track-beam-size) 2457.6)
+         (when (and (= big-shot-option #t) (= big-shot-int 3))
+          (set! (-> self gun track-beam-size) 6000.0)
+         )
          (remove-setting! 'gun-min-height)
          (remove-setting! 'gun-max-height)
          )
-        ((1)
+        ((1) ;yellow                                                          ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
          (set! (-> self gun fire-range) 409600.0)
+         (when (and (= infinite-range-option #t) (= infinite-range-int 1))
+            (set! (-> self gun fire-range) 9999999.0)
+         )
          (set! (-> self gun track-find-range) 286720.0)
          (set! (-> self gun track-tilt-range) 409600.0)
          (set! (-> self gun track-turn-range) 409600.0)
@@ -675,12 +738,22 @@
          (set! (-> self gun track-require) (the-as uint 3))
          (set! (-> self gun fire-delay) (the-as uint 96))
          (set! (-> self gun combo-fire-delay) (the-as uint 30))
+         (when (and (= rapid-fire-option #t) (= rapid-fire-int 1))
+            (set! (-> self gun fire-delay) (the-as uint 30))
+            (set! (-> self gun combo-fire-delay) (the-as uint 30))
+            )
          (set! (-> self gun track-beam-size) 819.2)
+         (when (and (= big-shot-option #t) (= big-shot-int 1))
+          (set! (-> self gun track-beam-size) 3000.0)
+         )
          (remove-setting! 'gun-min-height)
          (remove-setting! 'gun-max-height)
          )
-        ((2)
+        ((2) ;red
          (set! (-> self gun fire-range) 61440.0)
+         (when (and (= infinite-range-option #t) (= infinite-range-int 1))
+            (set! (-> self gun fire-range) 9999999.0)
+         )
          (set! (-> self gun track-find-range) 81920.0)
          (set! (-> self gun track-tilt-range) 61440.0)
          (set! (-> self gun track-turn-range) 61440.0)
@@ -692,25 +765,40 @@
              (set! (-> self gun fire-delay) (the-as uint 330))
              )
          (set! (-> self gun combo-fire-delay) (the-as uint 150))
+         (when (and (= rapid-fire-option #t) (= rapid-fire-int 2))
+            (set! (-> self gun fire-delay) (the-as uint 60))
+            (set! (-> self gun combo-fire-delay) (the-as uint 80))
+            (print "im fast yo red... BOIYOINYOING")
+          )
          (set! (-> self gun track-beam-size) 1228.8)
+         (when (and (= big-shot-option #t) (= big-shot-int 2))
+          (set! (-> self gun track-beam-size) 3800.0)
+         )
          (remove-setting! 'gun-min-height)
          (set-setting! 'gun-max-height 'abs (meters 6) 0)
          )
-        ((4)
+        ((4) ;purple
          (set! (-> self gun gun-control) (the-as uint 2))
          (set! (-> self gun fire-range) 1638400.0)
+         (when (and (= infinite-range-option #t) (= infinite-range-int 1))
+            (set! (-> self gun fire-range) 9999999.0)
+         )
          (set! (-> self gun track-tilt-range) 1638400.0)
          (set! (-> self gun track-turn-range) 1638400.0)
          (set! (-> self gun track-find-range) 1638400.0)
          (set! (-> self gun track-angle-mult) 1.75)
-         (set! (-> self gun fire-delay) (the-as uint 255))
          (set! (-> self gun combo-fire-delay) (the-as uint 150))
+         (when (and (= rapid-fire-option #t) (= rapid-fire-int 4))
+            (set! (-> self gun fire-delay) (the-as uint 50))
+            (set! (-> self gun combo-fire-delay) (the-as uint 50))
+            (print "im fast yo PEACEMAKER >:)")
+          )
          (set! (-> self gun track-beam-size) 1228.8)
-         (set! (-> self gun track-require) (the-as uint 2))
-         (remove-setting! 'gun-min-height)
-         (remove-setting! 'gun-max-height)
+         (when (and (= big-shot-option #t) (= big-shot-int 4))
+          (set! (-> self gun track-beam-size) 3000.0)
          )
         )
+      )
       (quat<-gun! (the-as quaternion (-> self gun top-anim-twist-targ)) (the-as quaternion arg0))
       (set! (-> self skel top-anim frame-post-blend) 0.1333333)
       (cond
