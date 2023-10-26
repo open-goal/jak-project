@@ -89,6 +89,203 @@ CURRENT BUGS:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#|
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+YOU CAN READ THIS PART YOU WANT, YOU DONT HAVE TO :) These are ideas of mine to keep track of. Note that some are dated and this is more of a refernece for me..
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+Upon loading for the first time in fortress, you will be given the option to choose one or to choose none.
+then upon choosing, it saves a value attached to the option, a 1 or 0, to the save file directly
+then an updating code block will check for a 1 or 0 and will actively set the corresponding mod a #t or #f
+It is required to choose one to gain access to the weapon mods menu. (IE if all 0, then the setting for gun mods in the secrets menu does not appear)
+
+(define traffic-nuke-option #f) ;;this is defined for if its over all chosen
+(define traffic-nuke-save 0) ;;this is defined to set the gun for the option
+
+jak does has a chance to cause 50 peacemaker shots to ring out in all directions.
+But bosses must be one hit.
+
+(define trip-metalheads-option #f)
+(define trip-metalheads-save 0)
+Any input has a very small chance for Jak to get hurt with 0 damage,
+but every time that happens you gain 50 metal head gems
+
+(define input-teleport-option #f)
+(define input-teleport-save 0)
+each time jak dies, it has a small chance to respawn jak to the final boss checkpoint.
+but the final boss fight is extremely unfair.
+the checkpoint is not stored or saved, nor is the save accessible during bossfight.
+essentially you tp to boss, have a fun time in hell, die, then come back to your original checkpoint.
+
+(define ambush-tricks-option #f)
+(define ambush-tricks-save 0)
+any input rolls between 1-600. If it's 1, ambush jak.
+you get the damage buff at this very moment
+ambush: 6 cloaked metalheads spawn in a radius around jak. (it can be a static position honestly, makes it more hilarious)
+
+(define hell-mode-option #f)
+(define hell-mode-save 0)
+once a hero mode save is made, all options listed above are active at once in that save,
+but you get legendary gun mods :) 
+
+
+
+
+
+GUNMOD Shark (legendary)
+Chance not to consume ammo
+
+GUNMOD Mehrunes (legendary)
+1/25 chance to instant kill
+
+GUNMOD Random (legendary)
+High chance to fire a random projectile alongside your gun
+
+GUNMOD Explode (legendary)
+All shots explode
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+CURRENT BUGS:
+- GE PEACEMAKER_ABILITY: peacemaker weapon has to be available for peacemaker-ability to not crash the game upon trigger, so player starts with all weapons.
+- GM PRED/GUARD SHOT: firing the guard or predator shot sets jak invulnerable for 3 frames until I can figure a way to not damage jak when firing
+- GM PRED/GUARD SHOT: making jak invulnerable in this state turns off all the other game-secrets
+- GM PREDATOR SHOT: firing the predator shot outside of ctywide and ctyport crashes the game
+- GM BOARD PICKUP: the random gunmod trigger will happen upon drop, not upon pickup, but not for things like giving gems, that will be upon pickup >:[
+  |#
+
+
+#|;;;;;;;;;;;;;;;;;;;;;;;;;;
+;      Var Definitions     ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;|#
+
+;Modifier Definitions (gun-mod definitions in target-gun.gc)
+(define tp-fb-win #f)
+(define mod-reroll #f) ;toggle on to reroll your current mod for 10 metalhead gems
+(define mod-rand 0)
+(define mod-pick #f)
+
+(define auto-save-delayed? #f)
+(define auto-save-frame 0)
+
+(define hell-mode-option #f) ;toggle on to set hell-mode on (just turn on hero-mode)
+
+(define weapon-mod-toggle #f) ;The option thats asked at the beginning, toggling this on will choose a random modifier for jak.
+(define wm-drop #f) ;Turns on weapon mods dropping off the next spawned enemy that can drop mods.
+(define wm-leg #f) ;sees if a legendary has dropped, if toggled on, the game will never drop a legendary
+(define wm-roll-rand #f)
+(define wm-roll-numb 0)
+(define wm-rand-shot #f) ;toggle on to enable random shot, a legendary gun mod
+(define wm-roll-shot 0)
+(define inv-frames? #f)
+
+
+(define test-option #f) ;test projectile
+(define mod-all-yellow #f) ;sets all gunmods to yellow gun
+(define mod-all-blue #f) ;sets all gunmods to blue gun
+(define mod-all-red #f) ;sets all gunmods to red gun
+(define mod-all-dark #f) ;sets all gunmods to peacemaker
+(define mod-all-off #t)
+(define-extern mod-turning-off symbol)
+
+(define peacemaker-ability #f)  ; Chance to encumber in peacemaker shots, bosses are 1 hit
+(define pm-shot-counter 0)
+(define-extern gun-dark-present? symbol)
+(define pm-offset-y (new 'static 'vector :x (meters 0) :y (meters 2) :z (meters 0) :w 1.0))
+
+(define tp-fb #f) ; toggle on for a chance to teleport for final boss upon death
+(define start-tp #f)
+(define new-game-s? #f)
+(define frame-count 0)
+(define start-frame-count #f)
+(define going-back-tp #f)
+(define stored-cp? #f)
+(define pause-menu-blocked? #f)
+(define-extern tp-fb-win symbol)
+
+(define tp-fb-2 #f)
+(define tp-framec 0)
+(define start-tp-framec #f)
+
+(define hover-damage #f) ;toggle on to enable hoverboard mechanics, but enemies have X5 HP
+
+(define dark-traffic #f) ;toggle on for a chance to get darkjak meter to full off any dark eco, but traffic-alert-4 is set for any illegal activity
+
+(define trip-metalheads #f) ;toggle on for a chance to trip, but jak will get 10 metalhead gems every time (on cooldown 4000 frames)
+(define trip-start #f)
+(define trip-cooldown 0)
+
+(define target-explode #f) ;toggle on for jak to explode upon taking damage, but dark-jak lasts much longer.
+(define target-explode-start #f)
+(define explode-frames 0)
+(define explode-frame-start #f)
+(define dark-jacked? #f)
+(define dark-jacked! #f)
+
+(define dt-frame-start #f)
+(define dt-count 0)
+(define dt-control #f)
+
+(define leg-got? #f)
+(define-extern leg-random-int int)
+(define leg-random-shot #f)
+(define leg-dont-fire? #f)
+
+(define mod-default-gun 1)
+
+(define all-modifiers-off? #f)
+(define mission-grab-1 #f) ;sets mission get for weapon mods
+(define mission-grab-2 #f) ;sets mission get for weapon mods
+(define mission-grab-3 #f) ;sets mission get for weapon mods
+(define mission-grab-4 #f) ;sets mission get for weapon mods
+
+(define mushroom-movies #t)
+(define movie-int 0)
+(define mushroom-movies-start #f)
+(define mushroom-var 0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(print "Runs at game start")
+
+
+
+
+
+
+
+
+
+
+
+
 (defenum pickup-type
   :bitfield #f
   :type int32
