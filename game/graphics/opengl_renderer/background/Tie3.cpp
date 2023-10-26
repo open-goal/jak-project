@@ -434,7 +434,7 @@ void Tie3::setup_tree(int idx,
     interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
   }
 #else
-  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
+  interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
 #endif
 
   glActiveTexture(GL_TEXTURE10);
