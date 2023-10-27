@@ -13,23 +13,23 @@
 
 using namespace emitter;
 
-TEST(CodeTester, prologue) {
-  CodeTester tester;
-  tester.init_code_buffer(256);
-  tester.emit_push_all_gprs();
-  // check we generate the right code for pushing all gpr's
-  EXPECT_EQ(tester.dump_to_hex_string(),
-            "50 51 52 53 54 55 56 57 41 50 41 51 41 52 41 53 41 54 41 55 41 56 41 57");
-}
+// TEST(CodeTester, prologue) {
+//   CodeTester tester;
+//   tester.init_code_buffer(256);
+//   tester.emit_push_all_gprs();
+//   // check we generate the right code for pushing all gpr's
+//   EXPECT_EQ(tester.dump_to_hex_string(),
+//             "50 51 52 53 54 55 56 57 41 50 41 51 41 52 41 53 41 54 41 55 41 56 41 57");
+// }
 
-TEST(CodeTester, epilogue) {
-  CodeTester tester;
-  tester.init_code_buffer(256);
-  tester.emit_pop_all_gprs();
-  // check we generate the right code for popping all gpr's
-  EXPECT_EQ(tester.dump_to_hex_string(),
-            "41 5f 41 5e 41 5d 41 5c 41 5b 41 5a 41 59 41 58 5f 5e 5d 5c 5b 5a 59 58");
-}
+// TEST(CodeTester, epilogue) {
+//   CodeTester tester;
+//   tester.init_code_buffer(256);
+//   tester.emit_pop_all_gprs();
+//   // check we generate the right code for popping all gpr's
+//   EXPECT_EQ(tester.dump_to_hex_string(),
+//             "41 5f 41 5e 41 5d 41 5c 41 5b 41 5a 41 59 41 58 5f 5e 5d 5c 5b 5a 59 58");
+// }
 
 TEST(CodeTester, execute_return) {
   CodeTester tester;

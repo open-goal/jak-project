@@ -862,7 +862,9 @@ RegAllocInstr IR_ConditionalBranch::to_rai() {
 void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
-  Instruction jump_instr(0);
+  Instruction jump_instr;
+  #ifndef __aarch64__
+  jump_instr = InstructionX86(0);
   ASSERT(m_resolved);
   switch (condition.kind) {
     case ConditionKind::EQUAL:
@@ -903,6 +905,9 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
     default:
       ASSERT(false);
   }
+  #else
+  // TODO - ARM64
+  #endif
 
   if (condition.is_float) {
     gen->add_instr(
