@@ -12,32 +12,28 @@
     )
 
 (deftype flutflut (process-drawable)
-  ((parent-override (pointer target)             :offset         12)
-   (root-override   collide-shape-moving         :offset        112)
-   (extra-trans     vector               :inline :offset-assert 176)
-   (condition       int32                        :offset-assert 192)
-   (auto-get-off    symbol                       :offset-assert 196)
-   (cell            handle                       :offset-assert 200)
-   (path-data       path-control         2       :offset-assert 208)
-   (path-target     path-control                 :offset        208)
-   (path-flut       path-control                 :offset        212)
-   (touch-time      time-frame                   :offset-assert 216)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer target)      :overlay-at parent)
+   (extra-trans      vector                :inline)
+   (condition        int32)
+   (auto-get-off     symbol)
+   (cell             handle)
+   (path-data        path-control          2)
+   (path-target      path-control          :overlay-at (-> path-data 0))
+   (path-flut        path-control          :overlay-at (-> path-data 1))
+   (touch-time       time-frame)
    )
   :pack-me
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe0
-  :flag-assert         #x18007000e0
-  (:methods
-    (wait-for-start () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (pickup ((state flutflut)) _type_ :state 22)
-    (wait-for-return () _type_ :state 23)
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state flutflut))
+    wait-for-return
     )
   )
 
 
-(defmethod relocate flutflut ((this flutflut) (arg0 int))
+(defmethod relocate ((this flutflut) (arg0 int))
   (countdown (v1-0 2)
     (if (-> this path-data v1-0)
         (&+! (-> this path-data v1-0) arg0)
@@ -64,7 +60,7 @@
               )
 
 (defbehavior flutflut-effect flutflut ()
-  (spawn (-> self part) (-> self root-override trans))
+  (spawn (-> self part) (-> self root trans))
   (update! (-> self sound))
   0
   (none)
@@ -75,7 +71,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('trans)
-       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('notify)
        (let ((v0-1 (the-as structure #t)))
@@ -90,8 +86,8 @@
       )
     )
   :exit (behavior ()
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
     0
     )
   :code (behavior ()
@@ -137,7 +133,7 @@
               (set! (-> self cell)
                     (ppointer->handle
                       (birth-pickup-at-point
-                        (vector+! (new 'stack-no-clear 'vector) (-> self root-override trans) (new 'static 'vector :y 8192.0 :w 1.0))
+                        (vector+! (new 'stack-no-clear 'vector) (-> self root trans) (new 'static 'vector :y 8192.0 :w 1.0))
                         (pickup-type fuel-cell)
                         (the float (-> self entity extra perm task))
                         #f
@@ -176,18 +172,18 @@
   :code (behavior ()
     (ja-channel-set! 1)
     (ja :group! flut-saddle-flut-idle-ja)
-    (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+    (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+    (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
     (loop
       (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action flut)))
           (go-virtual wait-for-return)
           )
       (when (logtest? (-> self draw status) (draw-status was-drawn))
-        (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        (if (and *target* (>= 40960.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
             (level-hint-spawn (text-id swamp-flutflut-hint) "sksp0160" (the-as entity #f) *entity-pool* (game-task none))
             )
         )
-      (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+      (when (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (not (movie?))
                  (not (level-hint-displayed?))
                  (!= (-> self condition) 4)
@@ -229,12 +225,12 @@
       (('draw)
        (ja-channel-set! 1)
        (ja :group! flut-saddle-flut-idle-ja)
-       (set! (-> self root-override root-prim prim-core action) (collide-action solid attackable-unused))
-       (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+       (set! (-> self root root-prim prim-core action) (collide-action solid attackable-unused))
+       (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
        (transform-post)
        )
       (('trans)
-       (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
        )
       (('touch 'attack)
        #f
@@ -248,9 +244,7 @@
     (ja-channel-set! 0)
     (ja-post)
     (while (zero? (ja-group-size))
-      (if (or (not *target*)
-              (< 24576.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
-              )
+      (if (or (not *target*) (< 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
           (go arg0)
           )
       (flutflut-effect)
@@ -277,7 +271,7 @@
         (go-virtual pickup (method-of-object self idle))
         )
     (if (= message 'trans)
-        (vector+! (the-as vector (-> block param 0)) (-> self root-override trans) (-> self extra-trans))
+        (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
         )
     )
   :enter (behavior ()
@@ -297,7 +291,7 @@
     )
   )
 
-(defmethod init-from-entity! flutflut ((this flutflut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this flutflut) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -312,16 +306,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (set-yaw-angle-clear-roll-pitch! (-> this root-override) (res-lump-float arg0 'rotoffset))
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float arg0 'rotoffset))
   (initialize-skeleton this *flutflut-sg* '())
   (logior! (-> this skel status) (janim-status eye))
   (set! (-> this draw shadow-ctrl) *flutflut-shadow-control*)
   (let ((v1-24 (-> this node-list data)))
     (set! (-> v1-24 0 param0) cspace<-transformq+trans!)
-    (set! (-> v1-24 0 param1) (the-as basic (-> this root-override trans)))
+    (set! (-> v1-24 0 param1) (the-as basic (-> this root trans)))
     (set! (-> v1-24 0 param2) (the-as basic (-> this extra-trans)))
     )
   (dotimes (s4-2 2)
@@ -338,7 +332,7 @@
         )
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 120) this))
   (set! (-> this auto-get-off) #f)
-  (move-to-ground (-> this root-override) 40960.0 40960.0 #t (collide-kind background))
+  (move-to-ground (-> this root) 40960.0 40960.0 #t (collide-kind background))
   (set! (-> this cell) (the-as handle #f))
   (blocking-plane-spawn
     (the-as
@@ -350,7 +344,7 @@
       )
     )
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :fo-max 30) (-> this root trans))
         )
   (go (method-of-object this wait-for-start))
   (none)

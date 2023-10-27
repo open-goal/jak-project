@@ -11,18 +11,14 @@
 ;; DECOMP BEGINS
 
 (deftype blue-eco-charger-orb (process-drawable)
-  ((parent-process  (pointer blue-eco-charger)         :offset         12)
-   (orbit-rot       vector                     :inline :offset-assert 176)
-   (orbit-rotv      vector                     :inline :offset-assert 192)
-   (targ-orbit-rotv vector                     :inline :offset-assert 208)
-   (rest-pos        vector                     :inline :offset-assert 224)
+  ((parent-process   (pointer blue-eco-charger)  :overlay-at parent)
+   (orbit-rot        vector                      :inline)
+   (orbit-rotv       vector                      :inline)
+   (targ-orbit-rotv  vector                      :inline)
+   (rest-pos         vector                      :inline)
    )
-  :heap-base #x80
-  :method-count-assert 21
-  :size-assert         #xf0
-  :flag-assert         #x15008000f0
   (:methods
-    (blue-eco-charger-orb-method-20 (_type_ float) vector 20)
+    (blue-eco-charger-orb-method-20 (_type_ float) vector)
     )
   (:states
     blue-eco-charger-orb-active
@@ -37,18 +33,14 @@
               )
 
 (deftype blue-eco-charger (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (charger-id    int32          :offset-assert 176)
-   (open-level    float          :offset-assert 180)
-   (master        entity-actor   :offset-assert 184)
+  ((root        collide-shape :override)
+   (charger-id  int32)
+   (open-level  float)
+   (master      entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xbc
-  :flag-assert         #x16005000bc
   (:methods
-    (blue-eco-charger-method-20 (_type_) object 20)
-    (blue-eco-charger-method-21 (_type_ symbol) object 21)
+    (blue-eco-charger-method-20 (_type_) object)
+    (blue-eco-charger-method-21 (_type_ symbol) object)
     )
   (:states
     blue-eco-charger-close
@@ -65,41 +57,34 @@
               )
 
 (deftype exit-chamber-items (structure)
-  ((door-pos    vector     :inline :offset-assert   0)
-   (door-quat   quaternion :inline :offset-assert  16)
-   (button-pos  vector     :inline :offset-assert  32)
-   (button-quat quaternion :inline :offset-assert  48)
-   (fcell-pos   vector     :inline :offset-assert  64)
+  ((door-pos     vector      :inline)
+   (door-quat    quaternion  :inline)
+   (button-pos   vector      :inline)
+   (button-quat  quaternion  :inline)
+   (fcell-pos    vector      :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   )
 
 
 (deftype exit-chamber (process-drawable)
-  ((root-override           collide-shape-moving                  :offset        112)
-   (chargers-active         uint32                                :offset-assert 176)
-   (move-player?            symbol                                :offset-assert 180)
-   (move-fcell?             symbol                                :offset-assert 184)
-   (play-assistant-message? symbol                                :offset-assert 188)
-   (wave-scale              float                                 :offset-assert 192)
-   (button                  (pointer exit-chamber-button)         :offset-assert 196)
-   (door                    (pointer sun-iris-door)               :offset-assert 200)
-   (fcell-handle            handle                                :offset-assert 208)
-   (orig-trans              vector                        :inline :offset-assert 224)
-   (last-pos                vector                        :inline :offset-assert 240)
+  ((root                     collide-shape-moving :override)
+   (chargers-active          uint32)
+   (move-player?             symbol)
+   (move-fcell?              symbol)
+   (play-assistant-message?  symbol)
+   (wave-scale               float)
+   (button                   (pointer exit-chamber-button))
+   (door                     (pointer sun-iris-door))
+   (fcell-handle             handle)
+   (orig-trans               vector                :inline)
+   (last-pos                 vector                :inline)
    )
-  :heap-base #x90
-  :method-count-assert 25
-  :size-assert         #x100
-  :flag-assert         #x1900900100
   (:methods
-    (exit-chamber-method-20 (_type_ float) float 20)
-    (exit-chamber-method-21 (_type_ exit-chamber-items) vector 21)
-    (exit-chamber-method-22 (_type_) none 22)
-    (exit-chamber-method-23 (_type_ symbol) object 23)
-    (exit-chamber-method-24 (_type_ float) none 24)
+    (exit-chamber-method-20 (_type_ float) float)
+    (exit-chamber-method-21 (_type_ exit-chamber-items) vector)
+    (exit-chamber-method-22 (_type_) none)
+    (exit-chamber-method-23 (_type_ symbol) object)
+    (exit-chamber-method-24 (_type_ float) none)
     )
   (:states
     exit-chamber-charger-puzzle
@@ -181,7 +166,7 @@
     )
   )
 
-(defmethod blue-eco-charger-orb-method-20 blue-eco-charger-orb ((this blue-eco-charger-orb) (arg0 float))
+(defmethod blue-eco-charger-orb-method-20 ((this blue-eco-charger-orb) (arg0 float))
   (set-vector!
     (-> this targ-orbit-rotv)
     (rand-vu-float-range 72817.78 258503.11)
@@ -274,7 +259,7 @@
           (set! (-> gp-1 y) (rand-vu-float-range -4096.0 4096.0))
           (set! (-> gp-1 z) (rand-vu-float-range -4096.0 4096.0))
           (vector+! gp-1 gp-1 (-> self root trans))
-          (vector-lerp! gp-1 gp-1 (-> self parent-process 0 root-override trans) (rand-vu-float-range 0.2 0.8))
+          (vector-lerp! gp-1 gp-1 (-> self parent-process 0 root trans) (rand-vu-float-range 0.2 0.8))
           (eco-blue-glow gp-1)
           )
         (suspend)
@@ -302,7 +287,7 @@
   (none)
   )
 
-(defmethod blue-eco-charger-method-21 blue-eco-charger ((this blue-eco-charger) (arg0 symbol))
+(defmethod blue-eco-charger-method-21 ((this blue-eco-charger) (arg0 symbol))
   (let* ((v1-0 (-> this master))
          (a0-1 (if v1-0
                    (-> v1-0 extra process)
@@ -332,8 +317,8 @@
     )
   )
 
-(defmethod blue-eco-charger-method-20 blue-eco-charger ((this blue-eco-charger))
-  (and (and *target* (>= 16384.0 (vector-vector-distance (-> this root-override trans) (-> *target* control trans))))
+(defmethod blue-eco-charger-method-20 ((this blue-eco-charger))
+  (and (and *target* (>= 16384.0 (vector-vector-distance (-> this root trans) (-> *target* control trans))))
        (send-event *target* 'query 'powerup (pickup-type eco-blue))
        )
   )
@@ -345,7 +330,7 @@
     (ja :group! blue-eco-charger-open-ja :num! min)
     (loop
       (when (logtest? (-> self draw status) (draw-status was-drawn))
-        (if (and (and *target* (>= 16384.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        (if (and (and *target* (>= 16384.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
                  )
             (level-hint-spawn
@@ -452,7 +437,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! blue-eco-charger ((this blue-eco-charger) (arg0 entity-actor))
+(defmethod init-from-entity! ((this blue-eco-charger) (arg0 entity-actor))
   (set! (-> this open-level) 0.0)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -466,13 +451,13 @@
       )
     (set! (-> s4-0 nav-radius) 6553.6)
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *blue-eco-charger-sg* '())
   (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
     (if (!= f0-6 0.0)
-        (quaternion-rotate-y! (-> this root-override quat) (-> this root-override quat) f0-6)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)
         )
     )
   (ja-channel-set! 1)
@@ -485,14 +470,14 @@
     (set! (-> s4-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
-  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  (update-transforms! (-> this root))
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (set! (-> this master) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this charger-id) (+ (actor-count-before (-> this link)) 1))
   (process-spawn blue-eco-charger-orb (-> this entity) this :to this)
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "blue-eco-charg" :fo-max 35) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "blue-eco-charg" :fo-max 35) (-> this root trans))
         )
   (if (zero? (get-reminder (get-task-control (game-task sunken-room)) 0))
       (go blue-eco-charger-idle)
@@ -503,10 +488,6 @@
 
 (deftype exit-chamber-button (basebutton)
   ()
-  :heap-base #x90
-  :method-count-assert 32
-  :size-assert         #x100
-  :flag-assert         #x2000900100
   )
 
 
@@ -515,8 +496,8 @@
   (none)
   )
 
-(defmethod exit-chamber-method-20 exit-chamber ((this exit-chamber) (arg0 float))
-  (set! (-> this root-override trans y)
+(defmethod exit-chamber-method-20 ((this exit-chamber) (arg0 float))
+  (set! (-> this root trans y)
         (+ (-> this orig-trans y) (* 2252.8 arg0 (cos (* 36.40889 (the float (mod (current-time) 1800))))))
         )
   )
@@ -540,7 +521,7 @@
     )
   )
 
-(defmethod exit-chamber-method-24 exit-chamber ((this exit-chamber) (arg0 float))
+(defmethod exit-chamber-method-24 ((this exit-chamber) (arg0 float))
   (let ((s4-0 (-> this node-list data 3 bone transform))
         (f30-0 (rand-vu-float-range 0.0 65536.0))
         (f28-0 (rand-vu-float-range 8192.0 40960.0))
@@ -555,7 +536,7 @@
   (none)
   )
 
-(defmethod exit-chamber-method-21 exit-chamber ((this exit-chamber) (arg0 exit-chamber-items))
+(defmethod exit-chamber-method-21 ((this exit-chamber) (arg0 exit-chamber-items))
   (let ((s5-0 (-> this node-list data 3 bone transform)))
     (set-vector! (-> arg0 door-pos) 0.0 13107.2 -40960.0 1.0)
     (vector-matrix*! (-> arg0 door-pos) (-> arg0 door-pos) s5-0)
@@ -571,11 +552,11 @@
   (vector-float*! (-> arg0 fcell-pos) (-> arg0 fcell-pos) (/ 1.0 (-> arg0 fcell-pos w)))
   )
 
-(defmethod exit-chamber-method-23 exit-chamber ((this exit-chamber) (arg0 symbol))
+(defmethod exit-chamber-method-23 ((this exit-chamber) (arg0 symbol))
   (new 'stack-no-clear 'vector)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (vector<-cspace! (-> this last-pos) (-> this node-list data 3))
-    (vector-! s5-0 (-> this last-pos) (-> this root-override trans))
+    (vector-! s5-0 (-> this last-pos) (-> this root trans))
     (set! (-> this draw bounds quad) (-> s5-0 quad))
     )
   (+! (-> this draw bounds y) 16384.0)
@@ -599,7 +580,7 @@
     (when arg0
       (let ((a0-12 (handle->process (-> this fcell-handle))))
         (when a0-12
-          (when (or (-> this move-fcell?) (< (-> (the-as fuel-cell a0-12) root-override trans y) (-> s5-1 fcell-pos y)))
+          (when (or (-> this move-fcell?) (< (-> (the-as fuel-cell a0-12) root trans y) (-> s5-1 fcell-pos y)))
             (when (not (-> this move-fcell?))
               (set! (-> this move-fcell?) #t)
               (let ((v1-50 (-> this entity extra perm)))
@@ -654,7 +635,7 @@
     )
   :code (behavior ()
     (loop
-      (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
+      (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root trans)))
           (logclear! (-> self draw status) (draw-status hidden))
           (logior! (-> self draw status) (draw-status hidden))
           )
@@ -666,16 +647,7 @@
 
 (defstate exit-chamber-charger-puzzle-beaten (exit-chamber)
   :code (behavior ()
-    (process-spawn
-      pov-camera
-      (-> self root-override trans)
-      *sunkencam-sg*
-      "exit-chamber-door-open"
-      0
-      #f
-      '()
-      :to self
-      )
+    (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "exit-chamber-door-open" 0 #f '() :to self)
     (set-time! (-> self state-time))
     (until (time-elapsed? (-> self state-time) (seconds 2.5))
       (suspend)
@@ -722,7 +694,7 @@
         (send-event (ppointer->process (-> self button)) 'untrigger)
         )
     (loop
-      (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root-override trans)))
+      (if (>= 214228270000.0 (vector-vector-distance-squared (camera-pos) (-> self root trans)))
           (logclear! (-> self draw status) (draw-status hidden))
           (logior! (-> self draw status) (draw-status hidden))
           )
@@ -744,7 +716,7 @@
     (aybabtu 2)
     (let ((v1-1 (handle->process (-> self fcell-handle))))
       (if v1-1
-          (clear-collide-with-as (-> (the-as fuel-cell v1-1) root-override))
+          (clear-collide-with-as (-> (the-as fuel-cell v1-1) root))
           )
       )
     (close-specific-task! (game-task sunken-room) (task-status need-reminder))
@@ -757,7 +729,7 @@
                                         (run-now-in-process
                                           gp-0
                                           pov-camera-init-by-other
-                                          (-> self root-override trans)
+                                          (-> self root trans)
                                           *sunkencam-sg*
                                           "qbert-show-door-open"
                                           0
@@ -835,7 +807,7 @@
     (send-event *target* 'dry)
     (let ((v1-143 (handle->process (-> self fcell-handle))))
       (if v1-143
-          (restore-collide-with-as (-> (the-as fuel-cell v1-143) root-override))
+          (restore-collide-with-as (-> (the-as fuel-cell v1-143) root))
           )
       )
     (set-time! (-> self state-time))
@@ -947,7 +919,7 @@
     (set! (-> self move-player?) #t)
     (let ((v1-2 (handle->process (-> self fcell-handle))))
       (if v1-2
-          (clear-collide-with-as (-> (the-as fuel-cell v1-2) root-override))
+          (clear-collide-with-as (-> (the-as fuel-cell v1-2) root))
           )
       )
     )
@@ -962,7 +934,7 @@
     (let ((v1-1 (process-spawn
                   sunkencam
                   :init pov-camera-init-by-other
-                  (-> self root-override trans)
+                  (-> self root trans)
                   *sunkencam-sg*
                   "qbert-show-door-open"
                   0
@@ -1026,7 +998,7 @@
         )
     (let ((v1-109 (handle->process (-> self fcell-handle))))
       (if v1-109
-          (restore-collide-with-as (-> (the-as fuel-cell v1-109) root-override))
+          (restore-collide-with-as (-> (the-as fuel-cell v1-109) root))
           )
       )
     (set-time! (-> self state-time))
@@ -1045,7 +1017,7 @@
     )
   )
 
-(defmethod init-from-entity! exit-chamber ((this exit-chamber) (arg0 entity-actor))
+(defmethod init-from-entity! ((this exit-chamber) (arg0 entity-actor))
   (process-entity-status! this (entity-perm-status bit-3) #t)
   (process-entity-status! this (entity-perm-status bit-7) #t)
   (set! (-> this move-player?) #f)
@@ -1071,7 +1043,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *exit-chamber-sg* '())
@@ -1126,7 +1098,7 @@
           )
         )
       (ja-post)
-      (update-transforms! (-> this root-override))
+      (update-transforms! (-> this root))
       (exit-chamber-method-21 this (the-as exit-chamber-items s3-1))
       (let ((s1-3 #t))
         (let ((v1-64 s4-1))
@@ -1146,12 +1118,8 @@
       (set! (-> this button)
             (process-spawn exit-chamber-button (-> s3-1 vector 2) (-> s3-1 vector 3) arg0 #f :to this)
             )
-      (set! (-> this sound) (new
-                              'process
-                              'ambient-sound
-                              (static-sound-spec "chamber-move" :fo-min 300 :fo-max 400)
-                              (-> this root-override trans)
-                              )
+      (set! (-> this sound)
+            (new 'process 'ambient-sound (static-sound-spec "chamber-move" :fo-min 300 :fo-max 400) (-> this root trans))
             )
       (when (not (task-complete? *game-info* (game-task sunken-room)))
         (let ((a0-40 (new 'stack-no-clear 'vector)))
@@ -1172,8 +1140,8 @@
           )
         )
       )
-    (set! (-> this orig-trans quad) (-> this root-override trans quad))
-    (set! (-> this last-pos quad) (-> this root-override trans quad))
+    (set! (-> this orig-trans quad) (-> this root trans quad))
+    (set! (-> this last-pos quad) (-> this root trans quad))
     (set! (-> this move-player?) #f)
     (exit-chamber-method-23 this #t)
     (set! (-> this move-player?) #f)

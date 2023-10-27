@@ -3,27 +3,24 @@
 
 ;; definition of type progress-global-state
 (deftype progress-global-state (basic)
-  ((aspect-ratio-choice symbol           :offset-assert   4)
-   (video-mode-choice   symbol           :offset-assert   8)
-   (yes-no-choice       symbol           :offset-assert  12)
-   (which               int32            :offset-assert  16)
-   (starting-state      progress-screen  :offset-assert  24)
-   (last-slot-saved     int32            :offset-assert  32)
-   (slider-backup       float            :offset-assert  36)
-   (language-backup     language-enum    :offset-assert  40)
-   (on-off-backup       symbol           :offset-assert  48)
-   (center-x-backup     int32            :offset-assert  52)
-   (center-y-backup     int32            :offset-assert  56)
-   (aspect-ratio-backup symbol           :offset-assert  60)
-   (last-slider-sound   time-frame       :offset-assert  64)
+  ((aspect-ratio-choice  symbol)
+   (video-mode-choice    symbol)
+   (yes-no-choice        symbol)
+   (which                int32)
+   (starting-state       progress-screen)
+   (last-slot-saved      int32)
+   (slider-backup        float)
+   (language-backup      language-enum)
+   (on-off-backup        symbol)
+   (center-x-backup      int32)
+   (center-y-backup      int32)
+   (aspect-ratio-backup  symbol)
+   (last-slider-sound    time-frame)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
 
 ;; definition for method 3 of type progress-global-state
-(defmethod inspect progress-global-state ((this progress-global-state))
+(defmethod inspect ((this progress-global-state))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Taspect-ratio-choice: ~A~%" (-> this aspect-ratio-choice))
   (format #t "~Tvideo-mode-choice: ~A~%" (-> this video-mode-choice))
@@ -342,7 +339,7 @@
 
 ;; definition for method 33 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-icons progress ((this progress))
+(defmethod initialize-icons ((this progress))
   (when (< (-> this nb-of-icons) 6)
     (let ((s5-0 (-> this nb-of-icons)))
       (set! (-> this icons s5-0) (new 'static 'hud-icon))
@@ -610,7 +607,7 @@
 
 ;; definition for method 48 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod enter! progress ((this progress) (screen progress-screen) (option int))
+(defmethod enter! ((this progress) (screen progress-screen) (option int))
   (when (!= (-> this display-state) screen)
     (set! (-> *progress-state* yes-no-choice) #f)
     (set! (-> this selected-option) #f)
@@ -650,7 +647,7 @@
 
 ;; definition for method 45 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod push! progress ((this progress))
+(defmethod push! ((this progress))
   (let ((v1-0 (-> this display-state-pos)))
     (cond
       ((< v1-0 5)
@@ -669,7 +666,7 @@
 
 ;; definition for method 46 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod pop! progress ((this progress))
+(defmethod pop! ((this progress))
   (let ((v1-0 (-> this display-state-pos)))
     (cond
       ((> v1-0 0)
@@ -689,7 +686,7 @@
 
 ;; definition for method 51 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-transition-progress! progress ((this progress) (arg0 int))
+(defmethod set-transition-progress! ((this progress) (arg0 int))
   (set! (-> this transition-offset) arg0)
   (set! (-> this transition-offset-invert) (- 512 arg0))
   (set! (-> this transition-percentage) (* 0.001953125 (the float arg0)))
@@ -700,7 +697,7 @@
 
 ;; definition for method 52 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-transition-speed! progress ((this progress))
+(defmethod set-transition-speed! ((this progress))
   (case (-> this display-state)
     (((progress-screen fuel-cell)
       (progress-screen money)
@@ -912,14 +909,14 @@
   )
 
 ;; definition for method 7 of type game-count-info
-(defmethod relocate game-count-info ((this game-count-info) (arg0 int))
+(defmethod relocate ((this game-count-info) (arg0 int))
   (set! *game-counts* this)
   this
   )
 
 ;; definition for method 7 of type progress
 ;; INFO: Return type mismatch process vs progress.
-(defmethod relocate progress ((this progress) (arg0 int))
+(defmethod relocate ((this progress) (arg0 int))
   (dotimes (v1-0 (-> this nb-of-particles))
     (when (-> this particles v1-0 part)
       (if (nonzero? (-> this particles v1-0 part))
@@ -934,7 +931,7 @@
 
 ;; definition for method 21 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod adjust-sprites progress ((this progress))
+(defmethod adjust-sprites ((this progress))
   (let ((f0-1 (* 0.00024414062 (the float (-> this in-out-position)))))
     (set! (-> this particles 2 init-pos x) (the float (+ (-> this right-x-offset) 409 (the int (* 301.5 f0-1)))))
     (set! (-> this particles 1 init-pos x) (the float (+ (-> this left-x-offset) 59)))
@@ -969,7 +966,7 @@
 
 ;; definition for method 22 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod adjust-icons progress ((this progress))
+(defmethod adjust-icons ((this progress))
   (dotimes (v1-0 (-> this nb-of-icons))
     (when (>= v1-0 4)
       (set-vector!
@@ -995,7 +992,7 @@
 
 ;; definition for method 23 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod adjust-ratios progress ((this progress) (aspect symbol) (video-mode symbol))
+(defmethod adjust-ratios ((this progress) (aspect symbol) (video-mode symbol))
   (case aspect
     (('aspect4x3)
      (set! (-> this sides-x-scale) 1.0)
@@ -1047,7 +1044,7 @@
   )
 
 ;; definition for method 32 of type progress
-(defmethod can-go-back? progress ((this progress))
+(defmethod can-go-back? ((this progress))
   (let ((v1-2 (-> *progress-process* 0 display-state))
         (a1-1 (-> *progress-state* starting-state))
         )
@@ -1077,12 +1074,12 @@
 
 ;; definition for method 19 of type progress
 ;; INFO: Return type mismatch object vs symbol.
-(defmethod visible? progress ((this progress))
+(defmethod visible? ((this progress))
   (the-as symbol (and *progress-process* (zero? (-> *progress-process* 0 in-out-position))))
   )
 
 ;; definition for method 20 of type progress
-(defmethod hidden? progress ((this progress))
+(defmethod hidden? ((this progress))
   (or (not *progress-process*) (= (-> *progress-process* 0 in-out-position) 4096))
   )
 
@@ -1124,7 +1121,7 @@
   )
 
 ;; definition for method 53 of type progress
-(defmethod set-memcard-screen progress ((this progress) (arg0 progress-screen))
+(defmethod set-memcard-screen ((this progress) (arg0 progress-screen))
   (let ((s4-0 (-> this card-info))
         (gp-0 arg0)
         )
@@ -1227,7 +1224,7 @@
 
 ;; definition for method 31 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod respond-memcard progress ((this progress))
+(defmethod respond-memcard ((this progress))
   (let ((s5-0 (-> this card-info)))
     (when (and s5-0 (not (-> this in-transition)))
       (when (or (cpad-pressed? 0 x) (cpad-pressed? 0 circle))
@@ -1418,7 +1415,7 @@
 
 ;; definition for method 29 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod respond-common progress ((this progress))
+(defmethod respond-common ((this progress))
   (mc-get-slot-info 0 *progress-save-info*)
   (set! (-> this card-info) *progress-save-info*)
   (let ((s5-0 (-> *options-remap* (-> this display-state))))
@@ -1856,7 +1853,7 @@
 
 ;; definition for method 30 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod respond-progress progress ((this progress))
+(defmethod respond-progress ((this progress))
   (when (not (-> this in-transition))
     (cond
       ((cpad-pressed? 0 up)

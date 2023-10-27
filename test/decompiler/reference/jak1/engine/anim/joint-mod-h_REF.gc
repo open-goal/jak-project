@@ -3,43 +3,40 @@
 
 ;; definition of type joint-mod
 (deftype joint-mod (basic)
-  ((mode            joint-mod-handler-mode         :offset-assert   4)
-   (process         process-drawable               :offset-assert   8)
-   (joint           cspace                         :offset-assert  12)
-   (target          vector                 :inline :offset-assert  16)
-   (twist           vector                 :inline :offset-assert  32)
-   (twist-max       vector                 :inline :offset-assert  48)
-   (trans           vector                 :inline :offset-assert  64)
-   (quat            quaternion             :inline :offset-assert  80)
-   (scale           vector                 :inline :offset-assert  96)
-   (notice-time     time-frame                     :offset-assert 112)
-   (flex-blend      float                          :offset-assert 120)
-   (blend           float                          :offset-assert 124)
-   (max-dist        meters                         :offset-assert 128)
-   (ignore-angle    degrees                        :offset-assert 132)
-   (up              uint8                          :offset-assert 136)
-   (nose            uint8                          :offset-assert 137)
-   (ear             uint8                          :offset-assert 138)
-   (shutting-down?  symbol                         :offset-assert 140)
-   (parented-scale? symbol                         :offset        128)
+  ((mode             joint-mod-handler-mode)
+   (process          process-drawable)
+   (joint            cspace)
+   (target           vector      :inline)
+   (twist            vector      :inline)
+   (twist-max        vector      :inline)
+   (trans            vector      :inline)
+   (quat             quaternion  :inline)
+   (scale            vector      :inline)
+   (notice-time      time-frame)
+   (flex-blend       float)
+   (blend            float)
+   (max-dist         meters)
+   (ignore-angle     degrees)
+   (up               uint8)
+   (nose             uint8)
+   (ear              uint8)
+   (shutting-down?   symbol)
+   (parented-scale?  symbol      :overlay-at max-dist)
    )
-  :method-count-assert 16
-  :size-assert         #x90
-  :flag-assert         #x1000000090
   (:methods
-    (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
-    (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
-    (set-target! (_type_ vector) none 10)
-    (look-at-enemy! (_type_ vector symbol process) none 11)
-    (reset-blend! (_type_) _type_ 12)
-    (set-twist! (_type_ float float float) vector 13)
-    (set-trs! (_type_ vector quaternion vector) none 14)
-    (shut-down! (_type_) none 15)
+    (new (symbol type joint-mod-handler-mode process-drawable int) _type_)
+    (set-mode! (_type_ joint-mod-handler-mode) _type_)
+    (set-target! (_type_ vector) none)
+    (look-at-enemy! (_type_ vector symbol process) none)
+    (reset-blend! (_type_) _type_)
+    (set-twist! (_type_ float float float) vector)
+    (set-trs! (_type_ vector quaternion vector) none)
+    (shut-down! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type joint-mod
-(defmethod inspect joint-mod ((this joint-mod))
+(defmethod inspect ((this joint-mod))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tmode: ~D~%" (-> this mode))
   (format #t "~Tprocess: ~A~%" (-> this process))
@@ -95,7 +92,7 @@
   )
 
 ;; definition for method 9 of type joint-mod
-(defmethod set-mode! joint-mod ((this joint-mod) (handler-mode joint-mod-handler-mode))
+(defmethod set-mode! ((this joint-mod) (handler-mode joint-mod-handler-mode))
   (set! (-> this mode) handler-mode)
   (let ((joint (-> this joint)))
     (case handler-mode
@@ -153,21 +150,21 @@
   )
 
 ;; definition for method 12 of type joint-mod
-(defmethod reset-blend! joint-mod ((this joint-mod))
+(defmethod reset-blend! ((this joint-mod))
   (set! (-> this blend) 0.0)
   this
   )
 
 ;; definition for method 15 of type joint-mod
 ;; INFO: Return type mismatch float vs none.
-(defmethod shut-down! joint-mod ((this joint-mod))
+(defmethod shut-down! ((this joint-mod))
   (set! (-> this shutting-down?) #t)
   (set! (-> this blend) 0.0)
   (none)
   )
 
 ;; definition for method 13 of type joint-mod
-(defmethod set-twist! joint-mod ((this joint-mod) (x float) (y float) (z float))
+(defmethod set-twist! ((this joint-mod) (x float) (y float) (z float))
   (if x
       (set! (-> this twist x) x)
       )
@@ -183,7 +180,7 @@
 ;; definition for method 14 of type joint-mod
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-trs! joint-mod ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
+(defmethod set-trs! ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
   (if trans
       (set! (-> this trans quad) (-> trans quad))
       )
@@ -200,7 +197,7 @@
 ;; definition for method 10 of type joint-mod
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod set-target! joint-mod ((this joint-mod) (target-trans vector))
+(defmethod set-target! ((this joint-mod) (target-trans vector))
   (if (= (-> this mode) (joint-mod-handler-mode reset))
       (set-mode! this (joint-mod-handler-mode look-at))
       )
@@ -218,17 +215,14 @@
 
 ;; definition of type try-to-look-at-info
 (deftype try-to-look-at-info (basic)
-  ((who  handle  :offset-assert   8)
-   (horz float   :offset-assert  16)
-   (vert float   :offset-assert  20)
+  ((who   handle)
+   (horz  float)
+   (vert  float)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 ;; definition for method 3 of type try-to-look-at-info
-(defmethod inspect try-to-look-at-info ((this try-to-look-at-info))
+(defmethod inspect ((this try-to-look-at-info))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Twho: ~D~%" (-> this who))
   (format #t "~Thorz: ~f~%" (-> this horz))
@@ -242,7 +236,7 @@
 ;; definition for method 11 of type joint-mod
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod look-at-enemy! joint-mod ((this joint-mod) (target-trans vector) (option symbol) (proc process))
+(defmethod look-at-enemy! ((this joint-mod) (target-trans vector) (option symbol) (proc process))
   (when (= option 'attacking)
     (let* ((s3-0 proc)
            (proc-drawable (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) process-drawable))
@@ -593,22 +587,19 @@
 
 ;; definition of type joint-mod-wheel
 (deftype joint-mod-wheel (basic)
-  ((last-position vector           :inline :offset-assert  16)
-   (angle         float                    :offset-assert  32)
-   (process       process-drawable         :offset-assert  36)
-   (wheel-radius  float                    :offset-assert  40)
-   (wheel-axis    int8                     :offset-assert  44)
+  ((last-position  vector  :inline)
+   (angle          float)
+   (process        process-drawable)
+   (wheel-radius   float)
+   (wheel-axis     int8)
    )
-  :method-count-assert 9
-  :size-assert         #x2d
-  :flag-assert         #x90000002d
   (:methods
-    (new (symbol type process-drawable int float int) _type_ 0)
+    (new (symbol type process-drawable int float int) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-wheel
-(defmethod inspect joint-mod-wheel ((this joint-mod-wheel))
+(defmethod inspect ((this joint-mod-wheel))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlast-position: #<vector @ #x~X>~%" (-> this last-position))
   (format #t "~Tangle: ~f~%" (-> this angle))
@@ -665,22 +656,19 @@
 
 ;; definition of type joint-mod-set-local
 (deftype joint-mod-set-local (basic)
-  ((transform       transformq :inline :offset-assert  16)
-   (set-rotation    symbol             :offset-assert  64)
-   (set-scale       symbol             :offset-assert  68)
-   (set-translation symbol             :offset-assert  72)
-   (enable          symbol             :offset-assert  76)
+  ((transform        transformq  :inline)
+   (set-rotation     symbol)
+   (set-scale        symbol)
+   (set-translation  symbol)
+   (enable           symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   (:methods
-    (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
+    (new (symbol type process-drawable int symbol symbol symbol) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-set-local
-(defmethod inspect joint-mod-set-local ((this joint-mod-set-local))
+(defmethod inspect ((this joint-mod-set-local))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Ttransform: #<transformq @ #x~X>~%" (-> this transform))
   (format #t "~Tset-rotation: ~A~%" (-> this set-rotation))
@@ -743,20 +731,17 @@
 
 ;; definition of type joint-mod-set-world
 (deftype joint-mod-set-world (basic)
-  ((transform  transformq :inline :offset-assert  16)
-   (node-index int32              :offset-assert  64)
-   (enable     basic              :offset-assert  68)
+  ((transform   transformq  :inline)
+   (node-index  int32)
+   (enable      basic)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   (:methods
-    (new (symbol type process-drawable int basic) _type_ 0)
+    (new (symbol type process-drawable int basic) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-set-world
-(defmethod inspect joint-mod-set-world ((this joint-mod-set-world))
+(defmethod inspect ((this joint-mod-set-world))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Ttransform: #<transformq @ #x~X>~%" (-> this transform))
   (format #t "~Tnode-index: ~D~%" (-> this node-index))
@@ -795,22 +780,19 @@
 
 ;; definition of type joint-mod-blend-local
 (deftype joint-mod-blend-local (basic)
-  ((transform       transformq :inline :offset-assert  16)
-   (blend-transform transformq :inline :offset-assert  64)
-   (node-index      int32              :offset-assert 112)
-   (blend           float              :offset-assert 116)
-   (enable          basic              :offset-assert 120)
+  ((transform        transformq  :inline)
+   (blend-transform  transformq  :inline)
+   (node-index       int32)
+   (blend            float)
+   (enable           basic)
    )
-  :method-count-assert 9
-  :size-assert         #x7c
-  :flag-assert         #x90000007c
   (:methods
-    (new (symbol type process-drawable int basic) _type_ 0)
+    (new (symbol type process-drawable int basic) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-blend-local
-(defmethod inspect joint-mod-blend-local ((this joint-mod-blend-local))
+(defmethod inspect ((this joint-mod-blend-local))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Ttransform: #<transformq @ #x~X>~%" (-> this transform))
   (format #t "~Tblend-transform: #<transformq @ #x~X>~%" (-> this blend-transform))
@@ -863,21 +845,18 @@
 
 ;; definition of type joint-mod-spinner
 (deftype joint-mod-spinner (basic)
-  ((spin-axis vector :inline :offset-assert  16)
-   (angle     float          :offset-assert  32)
-   (spin-rate float          :offset-assert  36)
-   (enable    basic          :offset-assert  40)
+  ((spin-axis  vector  :inline)
+   (angle      float)
+   (spin-rate  float)
+   (enable     basic)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   (:methods
-    (new (symbol type process-drawable int vector float) _type_ 0)
+    (new (symbol type process-drawable int vector float) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-spinner
-(defmethod inspect joint-mod-spinner ((this joint-mod-spinner))
+(defmethod inspect ((this joint-mod-spinner))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tspin-axis: #<vector @ #x~X>~%" (-> this spin-axis))
   (format #t "~Tangle: ~f~%" (-> this angle))

@@ -11,13 +11,9 @@
 ;; DECOMP BEGINS
 
 (deftype shover (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (shove-up      float          :offset-assert 176)
+  ((root      collide-shape :override)
+   (shove-up  float)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     shover-idle
     )
@@ -41,7 +37,7 @@
                 (collide-action)
                 )
            (let ((s4-0 (new 'stack 'attack-info)))
-             (calc-shove-up (-> self root-override) s4-0 (-> self shove-up))
+             (calc-shove-up (-> self root) s4-0 (-> self shove-up))
              (level-hint-spawn (text-id sunken-hotpipes) "sksp0134" (the-as entity #f) *entity-pool* (game-task none))
              (if (or (= (-> *target* control unknown-surface00 mode) 'air)
                      (>= (+ (current-time) (seconds -0.2)) (-> *target* control unknown-dword11))
@@ -75,7 +71,7 @@
   :code anim-loop
   )
 
-(defmethod init-from-entity! shover ((this shover) (arg0 entity-actor))
+(defmethod init-from-entity! ((this shover) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (set! (-> this shove-up) (res-lump-float arg0 'shove :default 12288.0))
   (let ((s3-0 (res-lump-value arg0 'collision-mesh-id uint128))
@@ -92,7 +88,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *shover-sg* '())
@@ -106,14 +102,14 @@
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-23 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
     (when v1-23
-      (+! (-> this root-override trans x) (-> v1-23 0))
-      (+! (-> this root-override trans y) (-> v1-23 1))
-      (+! (-> this root-override trans z) (-> v1-23 2))
+      (+! (-> this root trans x) (-> v1-23 0))
+      (+! (-> this root trans y) (-> v1-23 1))
+      (+! (-> this root trans z) (-> v1-23 2))
       )
     )
   (let ((f0-13 (res-lump-float arg0 'rotoffset)))
     (if (!= f0-13 0.0)
-        (quaternion-rotate-y! (-> this root-override quat) (-> this root-override quat) f0-13)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-13)
         )
     )
   (ja-channel-set! 1)
@@ -126,7 +122,7 @@
     (set! (-> s5-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! *shover* this)
   (go shover-idle)
   (none)

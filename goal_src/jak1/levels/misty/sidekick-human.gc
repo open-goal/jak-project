@@ -9,9 +9,6 @@
 
 (deftype sequenceA (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
@@ -1082,27 +1079,19 @@
   )
 
 (deftype sequenceB (process-taskable)
-  ((bonelurker  handle   :offset-assert 384)
-   (evilbro     handle   :offset-assert 392)
-   (evilsis     handle   :offset-assert 400)
-   (lurker-army handle 9 :offset-assert 408)
+  ((bonelurker   handle)
+   (evilbro      handle)
+   (evilsis      handle)
+   (lurker-army  handle  9)
    )
-  :heap-base #x170
-  :method-count-assert 53
-  :size-assert         #x1e0
-  :flag-assert         #x35017001e0
   )
 
 
 (deftype sequenceC (process-taskable)
-  ((bonelurker              handle          :offset-assert 384)
-   (darkecocan              handle          :offset-assert 392)
-   (darkecocan-glowing-look lod-set :inline :offset-assert 400)
+  ((bonelurker               handle)
+   (darkecocan               handle)
+   (darkecocan-glowing-look  lod-set  :inline)
    )
-  :heap-base #x150
-  :method-count-assert 53
-  :size-assert         #x1b1
-  :flag-assert         #x35015001b1
   )
 
 
@@ -1133,14 +1122,11 @@
               )
 
 (deftype army-info (structure)
-  ((pos         vector  :offset-assert   0)
-   (rot         float   :offset-assert   4)
-   (start-frame float   :offset-assert   8)
-   (skel        symbol  :offset-assert  12)
+  ((pos          vector)
+   (rot          float)
+   (start-frame  float)
+   (skel         symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
@@ -1224,12 +1210,12 @@
   (none)
   )
 
-(defmethod play-anim! sequenceB ((this sequenceB) (arg0 symbol))
+(defmethod play-anim! ((this sequenceB) (arg0 symbol))
   (cond
     (arg0
       (send-event *target* 'sidekick #f)
       (set! (-> this bonelurker)
-            (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *bonelurker-sg* #f :to this))
+            (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *bonelurker-sg* #f :to this))
             )
       (send-event (handle->process (-> this bonelurker)) 'anim-mode 'clone-anim)
       (send-event (handle->process (-> this bonelurker)) 'center-joint 3)
@@ -1374,7 +1360,7 @@
     )
   )
 
-(defmethod get-art-elem sequenceB ((this sequenceB))
+(defmethod get-art-elem ((this sequenceB))
   (-> this draw art-group data 3)
   )
 
@@ -1394,9 +1380,7 @@
        (when (= (level-status *level* 'intro) 'active)
          (let ((gp-2 (entity-by-name "evilbro-2")))
            (when gp-2
-             (set! (-> self evilbro)
-                   (ppointer->handle (manipy-spawn (-> self root-override trans) gp-2 *evilbro-sg* #f :to self))
-                   )
+             (set! (-> self evilbro) (ppointer->handle (manipy-spawn (-> self root trans) gp-2 *evilbro-sg* #f :to self)))
              (let ((gp-3 (handle->process (-> self evilbro))))
                (when gp-3
                  (set! (-> (the-as evilbro gp-3) draw light-index) (the-as uint 1))
@@ -1421,9 +1405,7 @@
            )
          (let ((gp-4 (entity-by-name "evilsis-2")))
            (when gp-4
-             (set! (-> self evilsis)
-                   (ppointer->handle (manipy-spawn (-> self root-override trans) gp-4 *evilsis-sg* #f :to self))
-                   )
+             (set! (-> self evilsis) (ppointer->handle (manipy-spawn (-> self root trans) gp-4 *evilsis-sg* #f :to self)))
              (let ((gp-5 (handle->process (-> self evilsis))))
                (when gp-5
                  (set! (-> (the-as evilsis gp-5) draw light-index) (the-as uint 1))
@@ -1505,11 +1487,11 @@
     )
   )
 
-(defmethod should-display? sequenceB ((this sequenceB))
+(defmethod should-display? ((this sequenceB))
   #f
   )
 
-(defmethod init-from-entity! sequenceB ((this sequenceB) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sequenceB) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *sidekick-human-sg* 3 44 (new 'static 'vector :w 4096.0) -1)
   (set! (-> this tasks) (get-task-control (game-task intro)))
   (set! (-> this bonelurker) (the-as handle #f))
@@ -1555,18 +1537,18 @@
   (none)
   )
 
-(defmethod play-anim! sequenceC ((this sequenceC) (arg0 symbol))
+(defmethod play-anim! ((this sequenceC) (arg0 symbol))
   (when arg0
     (set-setting! 'music-volume-movie 'abs 0.0 0)
     (set-setting! 'sfx-volume-movie 'abs 0.0 0)
     (set-setting! 'ambient-volume-movie 'abs 0.0 0)
     (set! (-> this bonelurker)
-          (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *bonelurker-sg* #f :to this))
+          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *bonelurker-sg* #f :to this))
           )
     (send-event (handle->process (-> this bonelurker)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> this bonelurker)) 'center-joint 3)
     (set! (-> this darkecocan)
-          (ppointer->handle (manipy-spawn (-> this root-override trans) (-> this entity) *darkecocan-sg* #f :to this))
+          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *darkecocan-sg* #f :to this))
           )
     (send-event (handle->process (-> this darkecocan)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> this darkecocan)) 'center-joint 3)
@@ -1648,7 +1630,7 @@
           )
   )
 
-(defmethod get-art-elem sequenceC ((this sequenceC))
+(defmethod get-art-elem ((this sequenceC))
   (-> this draw art-group data 3)
   )
 
@@ -1686,7 +1668,7 @@
     )
   )
 
-(defmethod should-display? sequenceC ((this sequenceC))
+(defmethod should-display? ((this sequenceC))
   #f
   )
 
@@ -1712,7 +1694,7 @@
   (none)
   )
 
-(defmethod init-from-entity! sequenceC ((this sequenceC) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sequenceC) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *sidekick-human-sg* 3 44 (new 'static 'vector :w 4096.0) -1)
   (set! (-> this tasks) (get-task-control (game-task intro)))
   (set! (-> this bonelurker) (the-as handle #f))

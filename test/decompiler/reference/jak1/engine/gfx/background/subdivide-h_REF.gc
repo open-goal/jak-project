@@ -3,21 +3,18 @@
 
 ;; definition of type subdivide-settings
 (deftype subdivide-settings (basic)
-  ((dist   float 5 :offset-assert   4)
-   (meters float 5 :offset-assert  24)
-   (close  float 4 :offset-assert  44)
-   (far    float 4 :offset-assert  60)
+  ((dist    float  5)
+   (meters  float  5)
+   (close   float  4)
+   (far     float  4)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   (:methods
-    (new (symbol type meters meters) _type_ 0)
+    (new (symbol type meters meters) _type_)
     )
   )
 
 ;; definition for method 3 of type subdivide-settings
-(defmethod inspect subdivide-settings ((this subdivide-settings))
+(defmethod inspect ((this subdivide-settings))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tdist[5] @ #x~X~%" (-> this dist))
   (format #t "~Tmeters[5] @ #x~X~%" (-> this meters))
@@ -39,18 +36,15 @@
 
 ;; definition of type subdivide-dists
 (deftype subdivide-dists (structure)
-  ((data   uint32  32        :offset   0)
-   (vector vector  8 :inline :offset   0)
-   (k0s    uint128 4         :offset   0)
-   (k1s    uint128 4         :offset  64)
+  ((data    uint32   32        :offset   0)
+   (vector  vector   8 :inline :overlay-at (-> data 0))
+   (k0s     uint128  4         :overlay-at vector)
+   (k1s     uint128  4         :overlay-at (-> data 16))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type subdivide-dists
-(defmethod inspect subdivide-dists ((this subdivide-dists))
+(defmethod inspect ((this subdivide-dists))
   (format #t "[~8x] ~A~%" this 'subdivide-dists)
   (format #t "~Tdata[32] @ #x~X~%" (-> this data))
   (format #t "~Tvector[8] @ #x~X~%" (-> this data))
@@ -61,19 +55,16 @@
 
 ;; definition of type gs-packed-rgba
 (deftype gs-packed-rgba (structure)
-  ((data  int32 4 :offset-assert   0)
-   (red   int32   :offset          0)
-   (green int32   :offset          4)
-   (blue  int32   :offset          8)
-   (alpha int32   :offset         12)
+  ((data   int32  4)
+   (red    int32  :overlay-at (-> data 0))
+   (green  int32  :overlay-at (-> data 1))
+   (blue   int32  :overlay-at (-> data 2))
+   (alpha  int32  :overlay-at (-> data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type gs-packed-rgba
-(defmethod inspect gs-packed-rgba ((this gs-packed-rgba))
+(defmethod inspect ((this gs-packed-rgba))
   (format #t "[~8x] ~A~%" this 'gs-packed-rgba)
   (format #t "~Tdata[4] @ #x~X~%" (-> this data))
   (format #t "~Tred: ~D~%" (-> this red))
@@ -85,21 +76,18 @@
 
 ;; definition of type gs-packed-xyzw
 (deftype gs-packed-xyzw (structure)
-  ((data int32   4 :offset-assert   0)
-   (x    int32     :offset          0)
-   (y    int32     :offset          4)
-   (z    int32     :offset          8)
-   (w    int32     :offset         12)
-   (quad uint128   :offset          0)
+  ((data  int32    4)
+   (x     int32    :overlay-at (-> data 0))
+   (y     int32    :overlay-at (-> data 1))
+   (z     int32    :overlay-at (-> data 2))
+   (w     int32    :overlay-at (-> data 3))
+   (quad  uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type gs-packed-xyzw
 ;; INFO: Used lq/sq
-(defmethod inspect gs-packed-xyzw ((this gs-packed-xyzw))
+(defmethod inspect ((this gs-packed-xyzw))
   (format #t "[~8x] ~A~%" this 'gs-packed-xyzw)
   (format #t "~Tdata[4] @ #x~X~%" (-> this data))
   (format #t "~Tx: ~D~%" (-> this x))
@@ -112,20 +100,17 @@
 
 ;; definition of type gs-packed-stq
 (deftype gs-packed-stq (structure)
-  ((data  float   4 :offset-assert   0)
-   (tex-s float     :offset          0)
-   (tex-t float     :offset          4)
-   (tex-q float     :offset          8)
-   (quad  uint128   :offset          0)
+  ((data   float    4)
+   (tex-s  float    :overlay-at (-> data 0))
+   (tex-t  float    :overlay-at (-> data 1))
+   (tex-q  float    :overlay-at (-> data 2))
+   (quad   uint128  :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type gs-packed-stq
 ;; INFO: Used lq/sq
-(defmethod inspect gs-packed-stq ((this gs-packed-stq))
+(defmethod inspect ((this gs-packed-stq))
   (format #t "[~8x] ~A~%" this 'gs-packed-stq)
   (format #t "~Tdata[4] @ #x~X~%" (-> this data))
   (format #t "~Ttex-s: ~f~%" (-> this tex-s))
@@ -137,17 +122,14 @@
 
 ;; definition of type gs-packed-gt
 (deftype gs-packed-gt (structure)
-  ((stq  gs-packed-stq  :inline :offset-assert   0)
-   (rgba gs-packed-rgba :inline :offset-assert  16)
-   (xyzw gs-packed-xyzw :inline :offset-assert  32)
+  ((stq   gs-packed-stq   :inline)
+   (rgba  gs-packed-rgba  :inline)
+   (xyzw  gs-packed-xyzw  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type gs-packed-gt
-(defmethod inspect gs-packed-gt ((this gs-packed-gt))
+(defmethod inspect ((this gs-packed-gt))
   (format #t "[~8x] ~A~%" this 'gs-packed-gt)
   (format #t "~Tstq: #<gs-packed-stq @ #x~X>~%" (-> this stq))
   (format #t "~Trgba: #<gs-packed-rgba @ #x~X>~%" (-> this rgba))
@@ -157,15 +139,12 @@
 
 ;; definition of type gs-packed-gt4
 (deftype gs-packed-gt4 (structure)
-  ((data gs-packed-gt 4 :inline :offset-assert   0)
+  ((data  gs-packed-gt  4 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xc0
-  :flag-assert         #x9000000c0
   )
 
 ;; definition for method 3 of type gs-packed-gt4
-(defmethod inspect gs-packed-gt4 ((this gs-packed-gt4))
+(defmethod inspect ((this gs-packed-gt4))
   (format #t "[~8x] ~A~%" this 'gs-packed-gt4)
   (format #t "~Tdata[4] @ #x~X~%" (-> this data))
   this
@@ -173,16 +152,13 @@
 
 ;; definition of type terrain-bsp
 (deftype terrain-bsp (structure)
-  ((lev-index int32  :offset-assert   0)
-   (mood      basic  :offset-assert   4)
+  ((lev-index  int32)
+   (mood       basic)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type terrain-bsp
-(defmethod inspect terrain-bsp ((this terrain-bsp))
+(defmethod inspect ((this terrain-bsp))
   (format #t "[~8x] ~A~%" this 'terrain-bsp)
   (format #t "~Tlev-index: ~D~%" (-> this lev-index))
   (format #t "~Tmood: ~A~%" (-> this mood))
@@ -191,30 +167,27 @@
 
 ;; definition of type terrain-stats
 (deftype terrain-stats (structure)
-  ((pris             tr-stat :inline :offset-assert   0)
-   (tie-generic      tr-stat :inline :offset-assert  16)
-   (tie              tr-stat :inline :offset-assert  32)
-   (tie-near         tr-stat :inline :offset-assert  48)
-   (shrub-near       tr-stat :inline :offset-assert  64)
-   (shrub            tr-stat :inline :offset-assert  80)
-   (tfrag-near       tr-stat :inline :offset-assert  96)
-   (tfrag            tr-stat :inline :offset-assert 112)
-   (billboard        tr-stat :inline :offset-assert 128)
-   (trans-tfrag      tr-stat :inline :offset-assert 144)
-   (trans-tfrag-near tr-stat :inline :offset-assert 160)
-   (trans-pris       tr-stat :inline :offset-assert 176)
-   (trans-shrub      tr-stat :inline :offset-assert 192)
-   (ocean-mid        tr-stat :inline :offset-assert 208)
-   (ocean-near       tr-stat :inline :offset-assert 224)
-   (total            tr-stat :inline :offset-assert 240)
+  ((pris              tr-stat  :inline)
+   (tie-generic       tr-stat  :inline)
+   (tie               tr-stat  :inline)
+   (tie-near          tr-stat  :inline)
+   (shrub-near        tr-stat  :inline)
+   (shrub             tr-stat  :inline)
+   (tfrag-near        tr-stat  :inline)
+   (tfrag             tr-stat  :inline)
+   (billboard         tr-stat  :inline)
+   (trans-tfrag       tr-stat  :inline)
+   (trans-tfrag-near  tr-stat  :inline)
+   (trans-pris        tr-stat  :inline)
+   (trans-shrub       tr-stat  :inline)
+   (ocean-mid         tr-stat  :inline)
+   (ocean-near        tr-stat  :inline)
+   (total             tr-stat  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x100
-  :flag-assert         #x900000100
   )
 
 ;; definition for method 3 of type terrain-stats
-(defmethod inspect terrain-stats ((this terrain-stats))
+(defmethod inspect ((this terrain-stats))
   (format #t "[~8x] ~A~%" this 'terrain-stats)
   (format #t "~Tpris: #<tr-stat @ #x~X>~%" (-> this pris))
   (format #t "~Ttie-generic: #<tr-stat @ #x~X>~%" (-> this tie-generic))
@@ -237,22 +210,19 @@
 
 ;; definition of type dma-area
 (deftype dma-area (structure)
-  ((draw-node-dma      draw-node-dma      :inline   :offset   0)
-   (tfrag-dma          tfrag-dma          :inline   :offset   0)
-   (instance-shrub-dma instance-shrub-dma :inline   :offset   0)
-   (instance-tie-dma   instance-tie-dma   :inline   :offset   0)
-   (prototype-tie-dma  prototype-tie-dma  :inline   :offset   0)
-   (time-of-day-dma    time-of-day-dma    :inline   :offset   0)
-   (decomp-work        decomp-work        :inline   :offset   0)
-   (ocean-vertex       ocean-vertex       4 :inline :offset   0)
+  ((draw-node-dma       draw-node-dma       :inline   :offset   0)
+   (tfrag-dma           tfrag-dma           :inline   :offset   0)
+   (instance-shrub-dma  instance-shrub-dma  :inline   :offset   0)
+   (instance-tie-dma    instance-tie-dma    :inline   :offset   0)
+   (prototype-tie-dma   prototype-tie-dma   :inline   :offset   0)
+   (time-of-day-dma     time-of-day-dma     :inline   :offset   0)
+   (decomp-work         decomp-work         :inline   :offset   0)
+   (ocean-vertex        ocean-vertex        4 :inline :offset   0)
    )
-  :method-count-assert 9
-  :size-assert         #x38a0
-  :flag-assert         #x9000038a0
   )
 
 ;; definition for method 3 of type dma-area
-(defmethod inspect dma-area ((this dma-area))
+(defmethod inspect ((this dma-area))
   (format #t "[~8x] ~A~%" this 'dma-area)
   (format #t "~Tdraw-node-dma: #<draw-node-dma @ #x~X>~%" (-> this draw-node-dma))
   (format #t "~Ttfrag-dma: #<tfrag-dma @ #x~X>~%" (-> this draw-node-dma))
@@ -267,16 +237,13 @@
 
 ;; definition of type background-area
 (deftype background-area (structure)
-  ((dma-area dma-area :inline :offset-assert   0)
-   (vis-list uint8    2048    :offset-assert 14496)
+  ((dma-area  dma-area  :inline)
+   (vis-list  uint8     2048)
    )
-  :method-count-assert 9
-  :size-assert         #x40a0
-  :flag-assert         #x9000040a0
   )
 
 ;; definition for method 3 of type background-area
-(defmethod inspect background-area ((this background-area))
+(defmethod inspect ((this background-area))
   (format #t "[~8x] ~A~%" this 'background-area)
   (format #t "~Tdma-area: #<dma-area @ #x~X>~%" (-> this dma-area))
   (format #t "~Tvis-list[2048] @ #x~X~%" (-> this vis-list))
@@ -285,18 +252,15 @@
 
 ;; definition of type foreground-area
 (deftype foreground-area (structure)
-  ((joint-work   joint-work   :inline :offset-assert   0)
-   (generic-work generic-work :inline :offset          0)
-   (bone-mem     bone-memory  :inline :offset          0)
-   (shadow-work  shadow-work  :inline :offset          0)
+  ((joint-work    joint-work    :inline)
+   (generic-work  generic-work  :inline :overlay-at (-> joint-work temp-mtx data 0))
+   (bone-mem      bone-memory   :inline :overlay-at (-> joint-work temp-mtx data 0))
+   (shadow-work   shadow-work   :inline :overlay-at (-> joint-work temp-mtx data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x3fd0
-  :flag-assert         #x900003fd0
   )
 
 ;; definition for method 3 of type foreground-area
-(defmethod inspect foreground-area ((this foreground-area))
+(defmethod inspect ((this foreground-area))
   (format #t "[~8x] ~A~%" this 'foreground-area)
   (format #t "~Tjoint-work: #<joint-work @ #x~X>~%" (-> this joint-work))
   (format #t "~Tgeneric-work: #<generic-work @ #x~X>~%" (-> this joint-work))
@@ -307,15 +271,12 @@
 
 ;; definition of type ambient-area
 (deftype ambient-area (structure)
-  ((ambient-list ambient-list :inline :offset-assert   0)
+  ((ambient-list  ambient-list  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2004
-  :flag-assert         #x900002004
   )
 
 ;; definition for method 3 of type ambient-area
-(defmethod inspect ambient-area ((this ambient-area))
+(defmethod inspect ((this ambient-area))
   (format #t "[~8x] ~A~%" this 'ambient-area)
   (format #t "~Tambient-list: #<ambient-list @ #x~X>~%" (-> this ambient-list))
   this
@@ -323,17 +284,14 @@
 
 ;; definition of type work-area
 (deftype work-area (structure)
-  ((background background-area :inline :offset-assert   0)
-   (foreground foreground-area :inline :offset          0)
-   (ambient    ambient-area    :inline :offset          0)
+  ((background  background-area  :inline)
+   (foreground  foreground-area  :inline :offset   0)
+   (ambient     ambient-area     :inline :offset   0)
    )
-  :method-count-assert 9
-  :size-assert         #x40a0
-  :flag-assert         #x9000040a0
   )
 
 ;; definition for method 3 of type work-area
-(defmethod inspect work-area ((this work-area))
+(defmethod inspect ((this work-area))
   (format #t "[~8x] ~A~%" this 'work-area)
   (format #t "~Tbackground: #<background-area @ #x~X>~%" (-> this background))
   (format #t "~Tforeground: #<foreground-area @ #x~X>~%" (-> this background))
@@ -343,16 +301,13 @@
 
 ;; definition of type terrain-context
 (deftype terrain-context (structure)
-  ((bsp  terrain-bsp :inline :offset-assert   0)
-   (work work-area   :inline :offset-assert  16)
+  ((bsp   terrain-bsp  :inline)
+   (work  work-area    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40b0
-  :flag-assert         #x9000040b0
   )
 
 ;; definition for method 3 of type terrain-context
-(defmethod inspect terrain-context ((this terrain-context))
+(defmethod inspect ((this terrain-context))
   (format #t "[~8x] ~A~%" this 'terrain-context)
   (format #t "~Tbsp: #<terrain-bsp @ #x~X>~%" (-> this bsp))
   (format #t "~Twork: #<work-area @ #x~X>~%" (-> this work))

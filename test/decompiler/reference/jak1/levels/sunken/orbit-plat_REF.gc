@@ -3,15 +3,11 @@
 
 ;; definition of type orbit-plat-bottom
 (deftype orbit-plat-bottom (process-drawable)
-  ((parent-override (pointer orbit-plat)      :offset         12)
-   (part2           sparticle-launch-control  :offset-assert 176)
+  ((parent-override  (pointer orbit-plat)  :overlay-at parent)
+   (part2            sparticle-launch-control)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xb4
-  :flag-assert         #x15005000b4
   (:methods
-    (orbit-plat-bottom-method-20 (_type_ vector vector) none 20)
+    (orbit-plat-bottom-method-20 (_type_ vector vector) none)
     )
   (:states
     orbit-plat-bottom-idle
@@ -19,7 +15,7 @@
   )
 
 ;; definition for method 3 of type orbit-plat-bottom
-(defmethod inspect orbit-plat-bottom ((this orbit-plat-bottom))
+(defmethod inspect ((this orbit-plat-bottom))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -35,21 +31,17 @@
 
 ;; definition of type orbit-plat
 (deftype orbit-plat (baseplat)
-  ((other        entity-actor         :offset-assert 228)
-   (rot-dir      float                :offset-assert 232)
-   (reset-trans  vector       :inline :offset-assert 240)
-   (is-reset?    symbol               :offset-assert 256)
-   (reset-length float                :offset-assert 260)
-   (timeout      float                :offset-assert 264)
-   (plat-status  uint64               :offset-assert 272)
+  ((other         entity-actor)
+   (rot-dir       float)
+   (reset-trans   vector  :inline)
+   (is-reset?     symbol)
+   (reset-length  float)
+   (timeout       float)
+   (plat-status   uint64)
    )
-  :heap-base #xb0
-  :method-count-assert 29
-  :size-assert         #x118
-  :flag-assert         #x1d00b00118
   (:methods
-    (orbit-plat-method-27 (_type_) symbol 27)
-    (orbit-plat-method-28 (_type_) symbol 28)
+    (orbit-plat-method-27 (_type_) symbol)
+    (orbit-plat-method-28 (_type_) symbol)
     )
   (:states
     orbit-plat-idle
@@ -62,7 +54,7 @@
   )
 
 ;; definition for method 3 of type orbit-plat
-(defmethod inspect orbit-plat ((this orbit-plat))
+(defmethod inspect ((this orbit-plat))
   (let ((t9-0 (method-of-type baseplat inspect)))
     (t9-0 this)
     )
@@ -161,7 +153,7 @@
 
 ;; definition for method 20 of type orbit-plat-bottom
 ;; INFO: Return type mismatch int vs none.
-(defmethod orbit-plat-bottom-method-20 orbit-plat-bottom ((this orbit-plat-bottom) (arg0 vector) (arg1 vector))
+(defmethod orbit-plat-bottom-method-20 ((this orbit-plat-bottom) (arg0 vector) (arg1 vector))
   (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
          (f30-0 (vector-length s5-1))
          )
@@ -182,7 +174,7 @@
 (defstate orbit-plat-bottom-idle (orbit-plat-bottom)
   :code (behavior ()
     (loop
-      (set! (-> self root trans quad) (-> self parent-override 0 root-override trans quad))
+      (set! (-> self root trans quad) (-> self parent-override 0 root trans quad))
       (+! (-> self root trans y) -5324.8)
       (spawn (-> self part2) (-> self root trans))
       (let* ((a0-6 (-> self parent-override 0 other))
@@ -193,8 +185,8 @@
              )
         (when v1-9
           (let ((f30-0 (atan
-                         (- (-> (the-as orbit-plat v1-9) root-override trans x) (-> self root trans x))
-                         (- (-> (the-as orbit-plat v1-9) root-override trans z) (-> self root trans z))
+                         (- (-> (the-as orbit-plat v1-9) root trans x) (-> self root trans x))
+                         (- (-> (the-as orbit-plat v1-9) root trans z) (-> self root trans z))
                          )
                        )
                 )
@@ -230,7 +222,7 @@
                         (let ((s4-0 (new 'stack-no-clear 'vector)))
                           (set! (-> gp-1 quad) (-> self root trans quad))
                           (+! (-> gp-1 y) -2048.0)
-                          (set! (-> s5-0 quad) (-> (the-as orbit-plat v1-32) root-override trans quad))
+                          (set! (-> s5-0 quad) (-> (the-as orbit-plat v1-32) root trans quad))
                           (+! (-> s5-0 y) -7372.8)
                           (vector-! s4-0 s5-0 gp-1)
                           (vector-normalize! s4-0 1.0)
@@ -255,7 +247,7 @@
 
 ;; definition for method 7 of type orbit-plat-bottom
 ;; INFO: Return type mismatch process-drawable vs orbit-plat-bottom.
-(defmethod relocate orbit-plat-bottom ((this orbit-plat-bottom) (arg0 int))
+(defmethod relocate ((this orbit-plat-bottom) (arg0 int))
   (if (nonzero? (-> this part2))
       (&+! (-> this part2) arg0)
       )
@@ -263,7 +255,7 @@
   )
 
 ;; definition for method 10 of type orbit-plat-bottom
-(defmethod deactivate orbit-plat-bottom ((this orbit-plat-bottom))
+(defmethod deactivate ((this orbit-plat-bottom))
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -278,9 +270,9 @@
   (set! (-> self entity) arg0)
   (logior! (-> self mask) (process-mask platform))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg1 root-override trans quad))
-  (quaternion-copy! (-> self root quat) (-> arg1 root-override quat))
-  (set! (-> self root scale quad) (-> arg1 root-override scale quad))
+  (set! (-> self root trans quad) (-> arg1 root trans quad))
+  (quaternion-copy! (-> self root quat) (-> arg1 root quat))
+  (set! (-> self root scale quad) (-> arg1 root scale quad))
   (+! (-> self root trans y) -5324.8)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 440) self))
   (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 107) self))
@@ -338,7 +330,7 @@
           )
       )
     (loop
-      (when (nonzero? (-> self root-override riders num-riders))
+      (when (nonzero? (-> self root riders num-riders))
         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-2 from) self)
           (set! (-> a1-2 num-params) 0)
@@ -383,13 +375,13 @@
   )
 
 ;; definition for method 28 of type orbit-plat
-(defmethod orbit-plat-method-28 orbit-plat ((this orbit-plat))
+(defmethod orbit-plat-method-28 ((this orbit-plat))
   (when (time-elapsed? (-> this state-time) (the int (* 300.0 (-> this timeout))))
     (cond
       (*target*
         (let ((s5-0 (target-pos 0)))
-          (if (or (>= (vector-vector-xz-distance s5-0 (-> this root-override trans)) 102400.0)
-                  (>= (- (-> this root-override trans y) (-> s5-0 y)) 16384.0)
+          (if (or (>= (vector-vector-xz-distance s5-0 (-> this root trans)) 102400.0)
+                  (>= (- (-> this root trans y) (-> s5-0 y)) 16384.0)
                   )
               (return #t)
               )
@@ -421,7 +413,7 @@
     (set-time! (-> self state-time))
     (ja-no-eval :num! (seek! 0.0))
     (until (orbit-plat-method-28 self)
-      (when (nonzero? (-> self root-override riders num-riders))
+      (when (nonzero? (-> self root riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
           (set! (-> a1-1 num-params) 0)
@@ -457,7 +449,7 @@
     (set! (-> self plat-status) (the-as uint 1))
     (ja-no-eval :num! (seek!))
     (loop
-      (when (zero? (-> self root-override riders num-riders))
+      (when (zero? (-> self root riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
           (set! (-> a1-1 num-params) 0)
@@ -516,9 +508,9 @@
         )
     (vector-normalize! (-> arg1 nav travel) (* f0-0 (seconds-per-frame)))
     )
-  (set! (-> arg0 x) (+ (-> arg1 root-override trans x) (-> arg1 nav travel x)))
-  (set! (-> arg0 y) (-> arg1 root-override trans x))
-  (set! (-> arg0 z) (+ (-> arg1 root-override trans z) (-> arg1 nav travel z)))
+  (set! (-> arg0 x) (+ (-> arg1 root trans x) (-> arg1 nav travel x)))
+  (set! (-> arg0 y) (-> arg1 root trans x))
+  (set! (-> arg0 z) (+ (-> arg1 root trans z) (-> arg1 nav travel z)))
   arg0
   )
 
@@ -550,7 +542,7 @@
                                                           (-> a1-0 extra process)
                                                           )
                                            )
-                                   root-override
+                                   root
                                    trans
                                    quad
                                    )
@@ -586,7 +578,7 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 132. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod orbit-plat-method-27 orbit-plat ((this orbit-plat))
+(defmethod orbit-plat-method-27 ((this orbit-plat))
   (local-vars (v0-11 object))
   (let* ((v1-0 (-> this other))
          (s5-0 (if v1-0
@@ -635,7 +627,7 @@
                                                                   (-> a1-5 extra process)
                                                                   )
                                                    )
-                                           root-override
+                                           root
                                            trans
                                            quad
                                            )
@@ -676,7 +668,7 @@
                                                                     (-> a0-19 extra process)
                                                                     )
                                                      )
-                                             root-override
+                                             root
                                              trans
                                              quad
                                              )
@@ -751,7 +743,7 @@
     (ja-no-eval :num! (seek! 0.0))
     (while (not (logtest? (nav-control-flags navcf19) (-> self nav flags)))
       (orbit-plat-method-27 self)
-      (when (nonzero? (-> self root-override riders num-riders))
+      (when (nonzero? (-> self root riders num-riders))
         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-1 from) self)
           (set! (-> a1-1 num-params) 0)
@@ -806,7 +798,7 @@
 ;; definition for method 11 of type orbit-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! orbit-plat ((this orbit-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this orbit-plat) (arg0 entity-actor))
   (set! (-> this plat-status) (the-as uint 0))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
@@ -827,7 +819,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *orbit-plat-sg* '())
@@ -842,14 +834,14 @@
     (set! (-> s4-1 frame-num) 0.0)
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
-  (set! (-> this nav) (new 'process 'nav-control (-> this root-override) 16 40960.0))
+  (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
   (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
   (set! (-> this nav gap-event) 'blocked)
   (set! (-> this other) (entity-actor-lookup arg0 'alt-actor 0))
   (let ((f0-7 (res-lump-float arg0 'scale :default 1.0)))
-    (set-vector! (-> this root-override scale) f0-7 f0-7 f0-7 1.0)
+    (set-vector! (-> this root scale) f0-7 f0-7 f0-7 1.0)
     )
   (set! (-> this timeout) (res-lump-float arg0 'timeout :default 10.0))
   (set! (-> this rot-dir) 1.0)

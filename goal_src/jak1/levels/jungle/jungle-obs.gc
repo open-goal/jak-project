@@ -20,14 +20,10 @@
               )
 
 (deftype logtrap (process-drawable)
-  ((root-override collide-shape-moving  :offset 112)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x40
-  :method-count-assert 21
-  :size-assert         #xb0
-  :flag-assert         #x15004000b0
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -59,7 +55,7 @@
             (else
               (transform-post)
               (if *target*
-                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root-override root-prim prim-core)) #f self)
+                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) #f self)
                   )
               )
             )
@@ -71,7 +67,7 @@
     )
   )
 
-(defmethod init-from-entity! logtrap ((this logtrap) (arg0 entity-actor))
+(defmethod init-from-entity! ((this logtrap) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -88,7 +84,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *logtrap-sg* '())
@@ -96,18 +92,14 @@
         (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0)
         )
   (logclear! (-> this mask) (process-mask actor-pause))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (go (method-of-object this idle))
   (none)
   )
 
 (deftype towertop (process-drawable)
-  ((root-override trsq  :offset 112)
+  ((root-override  trsq  :overlay-at root)
    )
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     towertop-idle
     )
@@ -132,7 +124,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! towertop ((this towertop) (arg0 entity-actor))
+(defmethod init-from-entity! ((this towertop) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root-override) (new 'process 'trsq))
   (process-drawable-from-entity! this arg0)
@@ -143,14 +135,10 @@
   )
 
 (deftype lurkerm-tall-sail (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (speed         float                 :offset-assert 176)
-   (alt-actor     entity-actor          :offset-assert 180)
+  ((root       collide-shape-moving :override)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     lurkerm-tall-sail-idle
     )
@@ -181,8 +169,8 @@
       (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
-          (-> self root-override quat)
-          (-> self root-override quat)
+          (-> self root quat)
+          (-> self root quat)
           (* 12743.111 (seconds-per-frame) (-> self speed))
           )
         (suspend)
@@ -193,7 +181,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! lurkerm-tall-sail ((this lurkerm-tall-sail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurkerm-tall-sail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -221,12 +209,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lurkerm-tall-sail-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
@@ -237,14 +225,10 @@
   )
 
 (deftype lurkerm-short-sail (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (speed         float                 :offset-assert 176)
-   (alt-actor     entity-actor          :offset-assert 180)
+  ((root       collide-shape-moving :override)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     lurkerm-short-sail-idle
     )
@@ -271,8 +255,8 @@
       (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
       (until (ja-done? 0)
         (quaternion-rotate-local-y!
-          (-> self root-override quat)
-          (-> self root-override quat)
+          (-> self root quat)
+          (-> self root quat)
           (* -12743.111 (seconds-per-frame) (-> self speed))
           )
         (suspend)
@@ -283,7 +267,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! lurkerm-short-sail ((this lurkerm-short-sail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurkerm-short-sail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -328,12 +312,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lurkerm-short-sail-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
@@ -344,17 +328,13 @@
   )
 
 (deftype lurkerm-piston (process-drawable)
-  ((root-override collide-shape-moving         :offset        112)
-   (sync          sync-info            :inline :offset-assert 176)
-   (base          vector               :inline :offset-assert 192)
-   (height        vector               :inline :offset-assert 208)
-   (speed         float                        :offset-assert 224)
-   (alt-actor     entity-actor                 :offset-assert 228)
+  ((root       collide-shape-moving :override)
+   (sync       sync-info             :inline)
+   (base       vector                :inline)
+   (height     vector                :inline)
+   (speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe8
-  :flag-assert         #x14008000e8
   (:states
     lurkerm-piston-idle
     )
@@ -383,7 +363,7 @@
         (let ((gp-0 (new-stack-vector0)))
           (set! (-> gp-0 quad) (-> self base quad))
           (+! (-> gp-0 y) (* (get-current-value-with-mirror (-> self sync) (-> self height y)) (-> self speed)))
-          (move-to-point! (-> self root-override) gp-0)
+          (move-to-point! (-> self root) gp-0)
           )
         (suspend)
         (ja :num! (seek! max (-> self speed)))
@@ -393,7 +373,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! lurkerm-piston ((this lurkerm-piston) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurkerm-piston) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -414,14 +394,14 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *lurkerm-piston-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
-  (set! (-> this base quad) (-> this root-override trans quad))
+  (update-transforms! (-> this root))
+  (set! (-> this base quad) (-> this root trans quad))
   (let ((f30-0 (-> this base y)))
     (set! sv-16 (new 'static 'res-tag))
     (let ((v1-32 (res-lump-data arg0 'height-info pointer :tag-ptr (& sv-16))))
@@ -457,13 +437,9 @@
   )
 
 (deftype accordian (process-drawable)
-  ((speed     float         :offset-assert 176)
-   (alt-actor entity-actor  :offset-assert 180)
+  ((speed      float)
+   (alt-actor  entity-actor)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb8
-  :flag-assert         #x14005000b8
   (:states
     accordian-idle
     )
@@ -498,7 +474,7 @@
     )
   )
 
-(defmethod init-from-entity! accordian ((this accordian) (arg0 entity-actor))
+(defmethod init-from-entity! ((this accordian) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *accordian-sg* '())
@@ -519,18 +495,11 @@
 
 (deftype junglecam (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 
 (deftype precurbridgecam (pov-camera)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -556,23 +525,16 @@
 
 (deftype precurbridge-span (structure)
   ()
-  :method-count-assert 9
-  :size-assert         #x0
-  :flag-assert         #x900000000
   )
 
 
 (deftype precurbridge (process-drawable)
-  ((root-override    collide-shape-moving         :offset        112)
-   (smush            smush-control        :inline :offset-assert 176)
-   (base             vector               :inline :offset-assert 208)
-   (activation-point vector               :inline :offset-assert 224)
-   (span-array       precurbridge-span    8       :offset-assert 240)
+  ((root              collide-shape-moving :override)
+   (smush             smush-control         :inline)
+   (base              vector                :inline)
+   (activation-point  vector                :inline)
+   (span-array        precurbridge-span     8)
    )
-  :heap-base #xa0
-  :method-count-assert 20
-  :size-assert         #x110
-  :flag-assert         #x1400a00110
   (:states
     precurbridge-activate
     (precurbridge-active symbol)
@@ -655,7 +617,7 @@
   :trans rider-trans
   :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
-    (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+    (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
     (ja-no-eval :group! precurbridge-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
     (until (ja-done? 0)
       (if (rand-vu-percent? 0.1)
@@ -675,7 +637,7 @@
       (('bonk)
        (let* ((gp-0 (the-as object (-> block param 0)))
               (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-              (s5-0 (-> self root-override))
+              (s5-0 (-> self root))
               )
          (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
          ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
@@ -692,14 +654,14 @@
       (ja :group! precurbridge-float-ja :num! min)
       )
     (ja-post)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (logior! (-> self mask) (process-mask actor-pause))
     (loop
       (if (not (movie?))
           (logior! (-> self mask) (process-mask platform))
           )
       (cond
-        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
          (when (not (ja-group? precurbridge-static-ja))
            (ja-channel-push! 1 (seconds 0.2))
            (ja :group! precurbridge-static-ja :num! min)
@@ -720,7 +682,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! precurbridge ((this precurbridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this precurbridge) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -884,16 +846,16 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (set-vector! (-> this activation-point) 1765785.6 61440.0 -1279180.8 1.0)
   (initialize-skeleton this *precurbridge-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-post)
-  (update-transforms! (-> this root-override))
-  (set! (-> this base quad) (-> this root-override trans quad))
-  (set! (-> this sound) (new 'process 'ambient-sound arg0 (-> this root-override trans)))
+  (update-transforms! (-> this root))
+  (set! (-> this base quad) (-> this root trans quad))
+  (set! (-> this sound) (new 'process 'ambient-sound arg0 (-> this root trans)))
   (cond
     ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -907,13 +869,9 @@
   )
 
 (deftype maindoor (process-drawable)
-  ((root-override collide-shape         :offset        112)
-   (thresh        vector        :inline :offset-assert 176)
+  ((root    collide-shape :override)
+   (thresh  vector         :inline)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xc0
-  :flag-assert         #x14005000c0
   (:states
     (maindoor-closed symbol)
     (maindoor-open symbol)
@@ -934,20 +892,20 @@
         (ja :num-func num-func-identity :frame-num 0.0)
         )
     (suspend)
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     (loop
       (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                 (and (and *target*
-                          (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+                          (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                           )
                      (send-event *target* 'query 'powerup (pickup-type eco-blue))
                      )
                 )
-        (sound-play "blue-eco-on" :position (the-as symbol (-> self root-override trans)))
+        (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
         (go maindoor-open #f)
         )
       (if (and *target*
-               (>= (-> self thresh w) (vector-vector-distance (-> self root-override trans) (-> *target* control trans)))
+               (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                )
           (level-hint-spawn
             (text-id sidekick-hint-rounddoor)
@@ -958,8 +916,8 @@
             )
           )
       (when (ja-min? 0)
-        (set! (-> self root-override root-prim prim-core action) (collide-action solid))
-        (set! (-> self root-override root-prim prim-core offense) (collide-offense indestructible))
+        (set! (-> self root root-prim prim-core action) (collide-action solid))
+        (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
         )
       (ja :num! (seek! 0.0))
       (ja-post)
@@ -976,8 +934,8 @@
     (if arg0
         (ja :num-func num-func-identity :frame-num max)
         )
-    (set! (-> self root-override root-prim prim-core action) (collide-action))
-    (set! (-> self root-override root-prim prim-core offense) (collide-offense no-offense))
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
     (while (not (ja-max? 0))
       (ja :num! (seek! max 2.0))
       (if (and (not arg0) (rand-vu-percent? 0.2))
@@ -993,7 +951,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! maindoor ((this maindoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this maindoor) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
@@ -1006,15 +964,15 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *maindoor-sg* '())
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! (-> this thresh w) 61440.0)
   (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
           (and (and *target*
-                    (>= (-> this thresh w) (vector-vector-distance (-> this root-override trans) (-> *target* control trans)))
+                    (>= (-> this thresh w) (vector-vector-distance (-> this root trans) (-> *target* control trans)))
                     )
                (send-event *target* 'query 'powerup (pickup-type eco-blue))
                )
@@ -1027,10 +985,6 @@
 
 (deftype sidedoor (eco-door)
   ()
-  :heap-base #xa0
-  :method-count-assert 27
-  :size-assert         #x104
-  :flag-assert         #x1b00a00104
   )
 
 
@@ -1039,7 +993,7 @@
               :bounds (static-spherem 0 0 0 8)
               )
 
-(defmethod eco-door-method-24 sidedoor ((this sidedoor))
+(defmethod eco-door-method-24 ((this sidedoor))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -1052,38 +1006,34 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod eco-door-method-25 sidedoor ((this sidedoor))
+(defmethod eco-door-method-25 ((this sidedoor))
   (initialize-skeleton this *sidedoor-sg* '())
   (set! (-> this open-distance) 22528.0)
   (set! (-> this close-distance) 61440.0)
   (set! (-> this speed) 6.0)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   0
   (none)
   )
 
 (deftype jngpusher (process-drawable)
-  ((root-override trsqv                      :offset        112)
-   (sync          sync-info          :inline :offset-assert 176)
-   (back-prim     collide-shape-prim         :offset-assert 184)
+  ((root       trsqv     :override)
+   (sync       sync-info  :inline)
+   (back-prim  collide-shape-prim)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     jngpusher-idle
     )
   )
 
 
-(defmethod relocate jngpusher ((this jngpusher) (arg0 int))
+(defmethod relocate ((this jngpusher) (arg0 int))
   (if (nonzero? (-> this back-prim))
       (&+! (-> this back-prim) arg0)
       )
@@ -1116,7 +1066,7 @@
   :post rider-post
   )
 
-(defmethod init-from-entity! jngpusher ((this jngpusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this jngpusher) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1164,10 +1114,6 @@
 
 (deftype jungle-water (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -1184,7 +1130,7 @@
                                   )
         )
 
-(defmethod water-vol-method-22 jungle-water ((this jungle-water))
+(defmethod water-vol-method-22 ((this jungle-water))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 this)
     )

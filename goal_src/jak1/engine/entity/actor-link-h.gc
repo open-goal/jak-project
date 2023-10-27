@@ -62,32 +62,29 @@
 ;; These are allocated on the process heap of the entity's process.
 
 (deftype actor-link-info (basic)
-  ((process process       :offset-assert 4)   ;; process for this entity
-   (next    entity-actor  :offset-assert 8)   ;; next entity in the list
-   (prev    entity-actor  :offset-assert 12)  ;; prev entity in the list
+  ((process  process)
+   (next     entity-actor)
+   (prev     entity-actor)
    )
-  :method-count-assert 26
-  :size-assert         #x10
-  :flag-assert         #x1a00000010
   (:methods
-    (new (symbol type process) _type_ 0)
-    (get-matching-actor-type-mask (_type_ type) int 9)
-    (actor-count-before (_type_) int 10)
-    (link-to-next-and-prev-actor (_type_) entity-actor 11)
-    (get-next (_type_) entity-actor 12)
-    (get-prev (_type_) entity-actor 13)
-    (get-next-process (_type_) process 14)
-    (get-prev-process (_type_) process 15)
-    (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
-    (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
-    (apply-all (_type_ (function entity-actor object object) object) int 18)
-    (send-to-all (_type_ symbol) none 19)
-    (send-to-all-after (_type_ symbol) object 20)
-    (send-to-all-before (_type_ symbol) object 21)
-    (send-to-next-and-prev (_type_ symbol) none 22)
-    (send-to-next (_type_ symbol) none 23)
-    (send-to-prev (_type_ symbol) none 24)
-    (actor-count (_type_) int 25)
+    (new (symbol type process) _type_)
+    (get-matching-actor-type-mask (_type_ type) int)
+    (actor-count-before (_type_) int)
+    (link-to-next-and-prev-actor (_type_) entity-actor)
+    (get-next (_type_) entity-actor)
+    (get-prev (_type_) entity-actor)
+    (get-next-process (_type_) process)
+    (get-prev-process (_type_) process)
+    (apply-function-forward (_type_ (function entity-actor object object) object) int)
+    (apply-function-reverse (_type_ (function entity-actor object object) object) int)
+    (apply-all (_type_ (function entity-actor object object) object) int)
+    (send-to-all (_type_ symbol) none)
+    (send-to-all-after (_type_ symbol) object)
+    (send-to-all-before (_type_ symbol) object)
+    (send-to-next-and-prev (_type_ symbol) none)
+    (send-to-next (_type_ symbol) none)
+    (send-to-prev (_type_ symbol) none)
+    (actor-count (_type_) int)
     )
   )
 
@@ -95,14 +92,14 @@
 ;; Link Setup
 ;;;;;;;;;;;;;;;;
 
-(defmethod next-actor entity-actor ((this entity-actor))
+(defmethod next-actor ((this entity-actor))
   "Utility function to look up the next actor in the list, assuming we don't have actor-link-info yet."
   (declare (inline))
   ;; look up reference to next-actor - this is slow.
   (entity-actor-lookup this 'next-actor 0)
   )
 
-(defmethod prev-actor entity-actor ((this entity-actor))
+(defmethod prev-actor ((this entity-actor))
   "Look up previous actor in the list"
   (declare (inline))
   (entity-actor-lookup this 'prev-actor 0)
@@ -126,26 +123,26 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ;; These methods can now be used to get next/prev more efficiently, without having to do a res lookup.
-(defmethod get-next actor-link-info ((this actor-link-info))
+(defmethod get-next ((this actor-link-info))
   (-> this next)
   )
 
-(defmethod get-prev actor-link-info ((this actor-link-info))
+(defmethod get-prev ((this actor-link-info))
   (-> this prev)
   )
 
-(defmethod get-next-process actor-link-info ((this actor-link-info))
+(defmethod get-next-process ((this actor-link-info))
   "Get the process for the next, if it exists."
   ;; we can't easily get to the actor-link-info of the next, so we have to grab it from entity-links.
   (the-as process (and (-> this next) (-> this next extra process)))
   )
 
-(defmethod get-prev-process actor-link-info ((this actor-link-info))
+(defmethod get-prev-process ((this actor-link-info))
   "Get the process for the prev, if it exists"
   (the-as process (and (-> this prev) (-> this prev extra process)))
   )
 
-(defmethod link-to-next-and-prev-actor actor-link-info ((this actor-link-info))
+(defmethod link-to-next-and-prev-actor ((this actor-link-info))
   "Redo the linking in the constructor by looking up the next/prev actor."
   (set! (-> this next) (next-actor (-> this process entity)))
   (set! (-> this prev) (prev-actor (-> this process entity)))
@@ -183,7 +180,7 @@
   0
   )
 
-(defmethod apply-all actor-link-info ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+(defmethod apply-all ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
   "Apply to all entities.  Starts at the back and hits everyone, including this object."
   ;; start at us (next may give us #f here, so can't do that.)
   (let ((s4-0 (-> this process entity)))
@@ -204,7 +201,7 @@
   0
   )
 
-(defmethod send-to-all-after actor-link-info ((this actor-link-info) (message symbol))
+(defmethod send-to-all-after ((this actor-link-info) (message symbol))
   "Send an event to all processes after this link with no parameters."
 
   (let ((iter (-> this next))
@@ -221,7 +218,7 @@
     )
   )
 
-(defmethod send-to-all-before actor-link-info ((this actor-link-info) (message symbol))
+(defmethod send-to-all-before ((this actor-link-info) (message symbol))
   "Send an event to all processes before this link with no parameters."
 
   (let ((iter (-> this prev))
@@ -238,7 +235,7 @@
     )
   )
 
-(defmethod send-to-next actor-link-info ((this actor-link-info) (message symbol))
+(defmethod send-to-next ((this actor-link-info) (message symbol))
   "Send event arg0 to the next actor's process"
 
   (let ((a0-1 (-> this next)))
@@ -256,7 +253,7 @@
   (none)
   )
 
-(defmethod send-to-prev actor-link-info ((this actor-link-info) (message symbol))
+(defmethod send-to-prev ((this actor-link-info) (message symbol))
   "Send event arg1 to the next actor's process."
 
   (let ((a0-1 (-> this prev)))
@@ -271,7 +268,7 @@
   (none)
   )
 
-(defmethod send-to-next-and-prev actor-link-info ((this actor-link-info) (msg symbol))
+(defmethod send-to-next-and-prev ((this actor-link-info) (msg symbol))
   "Send an event to both next and prev with no params."
 
   (send-to-next this msg)
@@ -279,13 +276,13 @@
   (none)
   )
 
-(defmethod send-to-all actor-link-info ((this actor-link-info) (msg symbol))
+(defmethod send-to-all ((this actor-link-info) (msg symbol))
   (send-to-all-after this msg)
   (send-to-all-before this msg)
   (none)
   )
 
-(defmethod actor-count actor-link-info ((this actor-link-info))
+(defmethod actor-count ((this actor-link-info))
   "Count the number of actors in the entire list"
   (let ((actor (-> this process entity))
         (count 0)
@@ -303,7 +300,7 @@
     )
   )
 
-(defmethod get-matching-actor-type-mask actor-link-info ((this actor-link-info) (matching-type type))
+(defmethod get-matching-actor-type-mask ((this actor-link-info) (matching-type type))
   "Iterate through _all_ actors that are part of this actor list.
    If the nth actor is type matching-type, then set the nth bit of the result."
   (let ((actor (the-as entity-actor (-> this process entity)))
@@ -332,7 +329,7 @@
     )
   )
 
-(defmethod actor-count-before actor-link-info ((this actor-link-info))
+(defmethod actor-count-before ((this actor-link-info))
   "Get the number of actors _before_ this actor in the list."
   (let* ((this-actor (-> this process entity))
          (actor this-actor)

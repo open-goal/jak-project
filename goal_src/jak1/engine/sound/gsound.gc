@@ -21,24 +21,21 @@
   )
 
 (deftype sound-iop-info (basic)
-  ((frame       uint32     :offset  16)
-   (strpos      int32      :offset-assert 20)
-   (str-id      sound-id   :offset-assert 24)
-   (str-id-sign int32      :offset  24)
-   (freemem     uint32     :offset-assert 28)
-   (chinfo      uint8  48  :offset-assert 32)
-   (freemem2    uint32     :offset-assert 80)
-   (nocd        uint32     :offset-assert 84)
-   (dirtycd     uint32     :offset-assert 88)
-   (diskspeed   uint32 2   :offset-assert 92)
-   (lastspeed   uint32     :offset-assert 100)
-   (dupseg      int32      :offset-assert 104)
-   (times       uint32 41  :offset-assert 108)
-   (times-seq   uint32     :offset-assert 272)
+  ((frame        uint32  :offset  16)
+   (strpos       int32)
+   (str-id       sound-id)
+   (str-id-sign  int32   :overlay-at str-id)
+   (freemem      uint32)
+   (chinfo       uint8   48)
+   (freemem2     uint32)
+   (nocd         uint32)
+   (dirtycd      uint32)
+   (diskspeed    uint32  2)
+   (lastspeed    uint32)
+   (dupseg       int32)
+   (times        uint32  41)
+   (times-seq    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x114
-  :flag-assert         #x900000114
   )
 
 (define *sound-iop-info* (new 'global 'sound-iop-info))
@@ -616,7 +613,7 @@
 
 
 (define-extern *debug-effect-control* symbol)
-(defmethod update! ambient-sound ((this ambient-sound))
+(defmethod update! ((this ambient-sound))
   "Called once per frame to update the sound playback"
 
   (if (not *ambient-sound-class*)
@@ -704,14 +701,14 @@
   0
   )
 
-(defmethod stop! ambient-sound ((this ambient-sound))
+(defmethod stop! ((this ambient-sound))
   "Halt playback of this ambient-sound"
 
   (sound-stop (-> this playing-id))
   0
   )
 
-(defmethod update-trans! ambient-sound ((this ambient-sound) (sound-trans vector))
+(defmethod update-trans! ((this ambient-sound) (sound-trans vector))
   "Update the position of the thing playing the sound"
 
   (set! (-> this trans quad) (-> sound-trans quad))
@@ -729,7 +726,7 @@
   0
   )
 
-(defmethod update-vol! ambient-sound ((this ambient-sound) (arg0 int))
+(defmethod update-vol! ((this ambient-sound) (arg0 int))
   "Update the volume of the sound"
 
   (when (nonzero? (-> this playing-id))
@@ -745,7 +742,7 @@
   0
   )
 
-(defmethod change-sound! ambient-sound ((this ambient-sound) (name sound-name))
+(defmethod change-sound! ((this ambient-sound) (name sound-name))
   "Change the sound being played"
   (when (not (sound-name= (-> this name) name))
     (stop! this)
@@ -832,21 +829,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype flava-table-row (structure)
-  ((music symbol   :offset-assert 0)
-   (flava uint8 50 :offset-assert 4) ;; index is some flava event, value is music variation
+  ((music  symbol)
+   (flava  uint8  50) ;; index is some flava event, value is music variation
    )
-  :allow-misaligned  :method-count-assert 9
-  :size-assert         #x36
-  :flag-assert         #x900000036
+  :allow-misaligned
   )
 
 (deftype flava-table (basic)
-  ((row   flava-table-row 20 :inline :offset-assert 4)
-   (count int32                      :offset-assert 1284)
+  ((row    flava-table-row  20 :inline)
+   (count  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x508
-  :flag-assert         #x900000508
   )
 
 ;; make a new flava table with nothing defined

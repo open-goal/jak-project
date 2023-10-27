@@ -9,10 +9,6 @@
 
 (deftype farmer (process-taskable)
   ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
   )
 
 
@@ -22,7 +18,7 @@
               :shadow farmer-shadow-mg
               )
 
-(defmethod play-anim! farmer ((this farmer) (arg0 symbol))
+(defmethod play-anim! ((this farmer) (arg0 symbol))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (if arg0
@@ -68,7 +64,7 @@
     )
   )
 
-(defmethod get-art-elem farmer ((this farmer))
+(defmethod get-art-elem ((this farmer))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction) (task-status need-resolution) (task-status invalid))
      (-> this draw art-group data 4)
@@ -79,24 +75,24 @@
     )
   )
 
-(defmethod process-taskable-method-43 farmer ((this farmer))
+(defmethod process-taskable-method-43 ((this farmer))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.8333333 f0-2)
-         (play-ambient (-> this ambient) "FAR-LO1A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "FAR-LO1A" #f (-> this root trans))
          )
         ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "FAR-AM01" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "FAR-AM01" #f (-> this root trans))
          )
         ((< 0.5 f0-2)
          #f
          )
         ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "FAR-AM2A" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "FAR-AM2A" #f (-> this root trans))
          )
         ((< 0.16666667 f0-2)
-         (play-ambient (-> this ambient) "FAR-AM02" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "FAR-AM02" #f (-> this root trans))
          )
         (else
           #f
@@ -106,7 +102,7 @@
     )
   )
 
-(defmethod initialize-collision farmer ((this farmer) (arg0 int) (arg1 vector))
+(defmethod initialize-collision ((this farmer) (arg0 int) (arg1 vector))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
@@ -134,16 +130,16 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod init-from-entity! farmer ((this farmer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this farmer) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *farmer-sg* 3 25 (new 'static 'vector :w 4096.0) 5)
-  (set! (-> this root-override nav-radius) 40960.0)
-  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  (set! (-> this root nav-radius) 40960.0)
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (set! (-> this tasks) (get-task-control (game-task village1-yakow)))
   (process-taskable-method-42 this)
   (none)

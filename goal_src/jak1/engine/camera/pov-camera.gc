@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod check-for-abort pov-camera ((this pov-camera))
+(defmethod check-for-abort ((this pov-camera))
   (when (or (and (time-elapsed? (-> this debounce-start-time) (seconds 0.2)) (cpad-pressed? 0 triangle))
             (logtest? (-> this flags) (pov-camera-flag allow-abort))
             )
@@ -20,11 +20,11 @@
     )
   )
 
-(defmethod target-grabbed? pov-camera ((this pov-camera))
+(defmethod target-grabbed? ((this pov-camera))
   (or (not *target*) (process-grab? *target*))
   )
 
-(defmethod target-released? pov-camera ()
+(defmethod target-released? ((this pov-camera))
   (or (not *target*) (process-release? *target*))
   )
 
@@ -148,7 +148,7 @@
 (defstate pov-camera-done-playing (pov-camera)
   :virtual #t
   :code (behavior ()
-    (while (begin self (not ((method-of-object self target-released?))))
+    (while (not (target-released? self))
       (suspend)
       )
     (send-event (handle->process (-> self notify-handle)) 'notify 'die)
@@ -159,12 +159,12 @@
     )
   )
 
-(defmethod pre-startup-callback pov-camera ((this pov-camera))
+(defmethod pre-startup-callback ((this pov-camera))
   0
   (none)
   )
 
-(defmethod set-stack-size! pov-camera ((this pov-camera))
+(defmethod set-stack-size! ((this pov-camera))
   (none)
   )
 

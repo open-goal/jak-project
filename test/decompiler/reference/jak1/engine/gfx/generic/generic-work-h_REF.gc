@@ -3,17 +3,14 @@
 
 ;; definition of type generic-input-buffer
 (deftype generic-input-buffer (structure)
-  ((merc generic-merc-work :inline :offset   0)
-   (tie  generic-tie-work  :inline :offset   0)
-   (data uint128           472     :offset   0)
+  ((merc  generic-merc-work  :inline :offset   0)
+   (tie   generic-tie-work   :inline :offset   0)
+   (data  uint128            472     :offset   0)
    )
-  :method-count-assert 9
-  :size-assert         #x1d80
-  :flag-assert         #x900001d80
   )
 
 ;; definition for method 3 of type generic-input-buffer
-(defmethod inspect generic-input-buffer ((this generic-input-buffer))
+(defmethod inspect ((this generic-input-buffer))
   (format #t "[~8x] ~A~%" this 'generic-input-buffer)
   (format #t "~Tdata[472] @ #x~X~%" (-> this merc))
   (format #t "~Tmerc: #<generic-merc-work @ #x~X>~%" (-> this merc))
@@ -23,21 +20,18 @@
 
 ;; definition of type generic-debug
 (deftype generic-debug (structure)
-  ((locks      uint32 4  :offset-assert   0)
-   (timer      uint32 32 :offset-assert  16)
-   (count      uint32 32 :offset-assert 144)
-   (vps        uint32 32 :offset-assert 272)
-   (buffer     int32     :offset-assert 400)
-   (start-addr int32     :offset-assert 404)
-   (lock       int32     :offset-assert 408)
+  ((locks       uint32  4)
+   (timer       uint32  32)
+   (count       uint32  32)
+   (vps         uint32  32)
+   (buffer      int32)
+   (start-addr  int32)
+   (lock        int32)
    )
-  :method-count-assert 9
-  :size-assert         #x19c
-  :flag-assert         #x90000019c
   )
 
 ;; definition for method 3 of type generic-debug
-(defmethod inspect generic-debug ((this generic-debug))
+(defmethod inspect ((this generic-debug))
   (format #t "[~8x] ~A~%" this 'generic-debug)
   (format #t "~Tlocks[4] @ #x~X~%" (-> this locks))
   (format #t "~Ttimer[32] @ #x~X~%" (-> this timer))
@@ -51,22 +45,19 @@
 
 ;; definition of type generic-vu1-header
 (deftype generic-vu1-header (structure)
-  ((matrix  matrix          :inline   :offset-assert   0)
-   (strgif  generic-gif-tag :inline   :offset-assert  64)
-   (adnop1  ad-cmd          :inline   :offset-assert  80)
-   (adnop2  ad-cmd          :inline   :offset-assert  96)
-   (adcmds  ad-cmd          2 :inline :offset         80)
-   (dps     uint16                    :offset         92)
-   (kickoff uint16                    :offset        108)
-   (strips  uint16                    :offset         76)
+  ((matrix   matrix           :inline)
+   (strgif   generic-gif-tag  :inline)
+   (adnop1   ad-cmd           :inline)
+   (adnop2   ad-cmd           :inline)
+   (adcmds   ad-cmd           2 :inline :overlay-at adnop1)
+   (dps      uint16                     :overlay-at (-> adnop1 word 3))
+   (kickoff  uint16                     :overlay-at (-> adnop2 word 3))
+   (strips   uint16                     :overlay-at (-> strgif data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; definition for method 3 of type generic-vu1-header
-(defmethod inspect generic-vu1-header ((this generic-vu1-header))
+(defmethod inspect ((this generic-vu1-header))
   (format #t "[~8x] ~A~%" this 'generic-vu1-header)
   (format #t "~Tmatrix: #<matrix @ #x~X>~%" (-> this matrix))
   (format #t "~Tstrgif: #<generic-gif-tag @ #x~X>~%" (-> this strgif))
@@ -81,16 +72,13 @@
 
 ;; definition of type generic-vu1-texbuf
 (deftype generic-vu1-texbuf (structure)
-  ((header generic-vu1-header :inline  :offset-assert   0)
-   (shader uint32             :dynamic :offset-assert 112)
+  ((header  generic-vu1-header  :inline)
+   (shader  uint32              :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x70
-  :flag-assert         #x900000070
   )
 
 ;; definition for method 3 of type generic-vu1-texbuf
-(defmethod inspect generic-vu1-texbuf ((this generic-vu1-texbuf))
+(defmethod inspect ((this generic-vu1-texbuf))
   (format #t "[~8x] ~A~%" this 'generic-vu1-texbuf)
   (format #t "~Theader: #<generic-vu1-header @ #x~X>~%" (-> this header))
   (format #t "~Tshader[0] @ #x~X~%" (-> this shader))
@@ -99,17 +87,14 @@
 
 ;; definition of type generic-texbuf
 (deftype generic-texbuf (structure)
-  ((tag    dma-packet         :inline  :offset-assert   0)
-   (header generic-vu1-header :inline  :offset-assert  16)
-   (shader uint32             :dynamic :offset-assert 128)
+  ((tag     dma-packet          :inline)
+   (header  generic-vu1-header  :inline)
+   (shader  uint32              :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type generic-texbuf
-(defmethod inspect generic-texbuf ((this generic-texbuf))
+(defmethod inspect ((this generic-texbuf))
   (format #t "[~8x] ~A~%" this 'generic-texbuf)
   (format #t "~Ttag: #<dma-packet @ #x~X>~%" (-> this tag))
   (format #t "~Theader: #<generic-vu1-header @ #x~X>~%" (-> this header))
@@ -119,18 +104,15 @@
 
 ;; definition of type generic-effect-work
 (deftype generic-effect-work (structure)
-  ((consts   generic-consts  :inline :offset-assert   0)
-   (storage  generic-storage :inline :offset-assert 432)
-   (storage2 generic-storage :inline :offset-assert 688)
-   (lights   vu-lights       :inline :offset-assert 944)
+  ((consts    generic-consts   :inline)
+   (storage   generic-storage  :inline)
+   (storage2  generic-storage  :inline)
+   (lights    vu-lights        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x420
-  :flag-assert         #x900000420
   )
 
 ;; definition for method 3 of type generic-effect-work
-(defmethod inspect generic-effect-work ((this generic-effect-work))
+(defmethod inspect ((this generic-effect-work))
   (format #t "[~8x] ~A~%" this 'generic-effect-work)
   (format #t "~Tconsts: #<generic-consts @ #x~X>~%" (-> this consts))
   (format #t "~Tstorage: #<generic-storage @ #x~X>~%" (-> this storage))
@@ -141,17 +123,14 @@
 
 ;; definition of type generic-effect-buffer
 (deftype generic-effect-buffer (structure)
-  ((outbuf-0 uint8               3552    :offset-assert   0)
-   (work     generic-effect-work :inline :offset-assert 3552)
-   (outbuf-1 uint8               3552    :offset-assert 4608)
+  ((outbuf-0  uint8                3552)
+   (work      generic-effect-work  :inline)
+   (outbuf-1  uint8                3552)
    )
-  :method-count-assert 9
-  :size-assert         #x1fe0
-  :flag-assert         #x900001fe0
   )
 
 ;; definition for method 3 of type generic-effect-buffer
-(defmethod inspect generic-effect-buffer ((this generic-effect-buffer))
+(defmethod inspect ((this generic-effect-buffer))
   (format #t "[~8x] ~A~%" this 'generic-effect-buffer)
   (format #t "~Toutbuf-0[3552] @ #x~X~%" (-> this outbuf-0))
   (format #t "~Twork: #<generic-effect-work @ #x~X>~%" (-> this work))
@@ -161,18 +140,15 @@
 
 ;; definition of type generic-work
 (deftype generic-work (structure)
-  ((saves   generic-saves         :inline :offset-assert   0)
-   (storage generic-storage       :inline :offset-assert 368)
-   (in-buf  generic-input-buffer  :inline :offset-assert 624)
-   (fx-buf  generic-effect-buffer :inline :offset-assert 8176)
+  ((saves    generic-saves          :inline)
+   (storage  generic-storage        :inline)
+   (in-buf   generic-input-buffer   :inline)
+   (fx-buf   generic-effect-buffer  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x3fd0
-  :flag-assert         #x900003fd0
   )
 
 ;; definition for method 3 of type generic-work
-(defmethod inspect generic-work ((this generic-work))
+(defmethod inspect ((this generic-work))
   (format #t "[~8x] ~A~%" this 'generic-work)
   (format #t "~Tsaves: #<generic-saves @ #x~X>~%" (-> this saves))
   (format #t "~Tstorage: #<generic-storage @ #x~X>~%" (-> this storage))

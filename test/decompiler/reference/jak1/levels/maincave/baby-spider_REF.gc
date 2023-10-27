@@ -3,26 +3,23 @@
 
 ;; definition of type baby-spider-spawn-params
 (deftype baby-spider-spawn-params (structure)
-  ((hatched?                          symbol      :offset-assert   0)
-   (fast-start?                       symbol      :offset-assert   4)
-   (hack-move-above-ground?           symbol      :offset-assert   8)
-   (die-if-not-visible?               symbol      :offset-assert  12)
-   (pickup                            int32       :offset-assert  16)
-   (pickup-amount                     int32       :offset-assert  20)
-   (event-death                       symbol      :offset-assert  24)
-   (delay-before-dying-if-not-visible time-frame  :offset-assert  32)
+  ((hatched?                           symbol)
+   (fast-start?                        symbol)
+   (hack-move-above-ground?            symbol)
+   (die-if-not-visible?                symbol)
+   (pickup                             int32)
+   (pickup-amount                      int32)
+   (event-death                        symbol)
+   (delay-before-dying-if-not-visible  time-frame)
    )
-  :method-count-assert 11
-  :size-assert         #x28
-  :flag-assert         #xb00000028
   (:methods
-    (init! (_type_ symbol symbol symbol symbol int int symbol) none 9)
-    (set-delay! (_type_ time-frame) none 10)
+    (init! (_type_ symbol symbol symbol symbol int int symbol) none)
+    (set-delay! (_type_ time-frame) none)
     )
   )
 
 ;; definition for method 3 of type baby-spider-spawn-params
-(defmethod inspect baby-spider-spawn-params ((this baby-spider-spawn-params))
+(defmethod inspect ((this baby-spider-spawn-params))
   (format #t "[~8x] ~A~%" this 'baby-spider-spawn-params)
   (format #t "~Thatched?: ~A~%" (-> this hatched?))
   (format #t "~Tfast-start?: ~A~%" (-> this fast-start?))
@@ -37,27 +34,23 @@
 
 ;; definition of type baby-spider
 (deftype baby-spider (nav-enemy)
-  ((die-if-not-visible?               symbol             :offset-assert 400)
-   (hack-move-above-ground?           symbol             :offset-assert 404)
-   (state-float                       float              :offset-assert 408)
-   (wiggle-angle                      float              :offset-assert 412)
-   (delta-wiggle-angle                float              :offset-assert 416)
-   (wiggle-factor                     float              :offset-assert 420)
-   (event-death                       symbol             :offset-assert 424)
-   (delay-before-dying-if-not-visible time-frame         :offset-assert 432)
-   (chase-rest-time                   time-frame         :offset-assert 440)
-   (target-nav-time                   time-frame         :offset-assert 448)
-   (unknown00                         basic              :offset-assert 456)
-   (unknown01                         basic              :offset-assert 460)
-   (wiggle-time                       time-frame         :offset-assert 464)
-   (last-visible-time                 time-frame         :offset-assert 472)
-   (up-vector                         vector     :inline :offset-assert 480)
-   (state-vector                      vector     :inline :offset-assert 496)
+  ((die-if-not-visible?                symbol)
+   (hack-move-above-ground?            symbol)
+   (state-float                        float)
+   (wiggle-angle                       float)
+   (delta-wiggle-angle                 float)
+   (wiggle-factor                      float)
+   (event-death                        symbol)
+   (delay-before-dying-if-not-visible  time-frame)
+   (chase-rest-time                    time-frame)
+   (target-nav-time                    time-frame)
+   (unknown00                          basic)
+   (unknown01                          basic)
+   (wiggle-time                        time-frame)
+   (last-visible-time                  time-frame)
+   (up-vector                          vector  :inline)
+   (state-vector                       vector  :inline)
    )
-  :heap-base #x190
-  :method-count-assert 76
-  :size-assert         #x200
-  :flag-assert         #x4c01900200
   (:states
     baby-spider-die-fast
     baby-spider-hatching
@@ -66,7 +59,7 @@
   )
 
 ;; definition for method 3 of type baby-spider
-(defmethod inspect baby-spider ((this baby-spider))
+(defmethod inspect ((this baby-spider))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -205,15 +198,15 @@
 
 ;; definition for method 9 of type baby-spider-spawn-params
 ;; INFO: Return type mismatch int vs none.
-(defmethod init! baby-spider-spawn-params ((this baby-spider-spawn-params)
-                                         (arg0 symbol)
-                                         (arg1 symbol)
-                                         (arg2 symbol)
-                                         (arg3 symbol)
-                                         (arg4 int)
-                                         (arg5 int)
-                                         (arg6 symbol)
-                                         )
+(defmethod init! ((this baby-spider-spawn-params)
+                 (arg0 symbol)
+                 (arg1 symbol)
+                 (arg2 symbol)
+                 (arg3 symbol)
+                 (arg4 int)
+                 (arg5 int)
+                 (arg6 symbol)
+                 )
   (set! (-> this hatched?) arg0)
   (set! (-> this fast-start?) arg1)
   (set! (-> this die-if-not-visible?) arg2)
@@ -227,13 +220,13 @@
 
 ;; definition for method 10 of type baby-spider-spawn-params
 ;; INFO: Return type mismatch time-frame vs none.
-(defmethod set-delay! baby-spider-spawn-params ((this baby-spider-spawn-params) (arg0 time-frame))
+(defmethod set-delay! ((this baby-spider-spawn-params) (arg0 time-frame))
   (set! (-> this delay-before-dying-if-not-visible) arg0)
   (none)
   )
 
 ;; definition for method 44 of type baby-spider
-(defmethod touch-handler baby-spider ((this baby-spider) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this baby-spider) (arg0 process) (arg1 event-message-block))
   (when ((method-of-type touching-shapes-entry prims-touching?)
          (the-as touching-shapes-entry (-> arg1 param 0))
          (-> this collide-info)
@@ -262,7 +255,7 @@ baby-spider-default-event-handler
 
 ;; definition for method 39 of type baby-spider
 ;; INFO: Used lq/sq
-(defmethod common-post baby-spider ((this baby-spider))
+(defmethod common-post ((this baby-spider))
   (when (logtest? (-> this collide-info status) (cshape-moving-flags onsurf))
     (vector-deg-seek (-> this up-vector) (-> this up-vector) (-> this collide-info surface-normal) 910.2222)
     (vector-normalize! (-> this up-vector) 1.0)
@@ -277,7 +270,7 @@ baby-spider-default-event-handler
   )
 
 ;; definition for method 38 of type baby-spider
-(defmethod nav-enemy-method-38 baby-spider ((this baby-spider))
+(defmethod nav-enemy-method-38 ((this baby-spider))
   (integrate-for-enemy-with-move-to-ground!
     (-> this collide-info)
     (-> this collide-info transv)
@@ -292,7 +285,7 @@ baby-spider-default-event-handler
 
 ;; definition for method 51 of type baby-spider
 ;; INFO: Return type mismatch float vs none.
-(defmethod nav-enemy-method-51 baby-spider ((this baby-spider))
+(defmethod nav-enemy-method-51 ((this baby-spider))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -309,7 +302,7 @@ baby-spider-default-event-handler
 ;; definition for method 52 of type baby-spider
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch vector vs symbol.
-(defmethod nav-enemy-method-52 baby-spider ((this baby-spider) (arg0 vector))
+(defmethod nav-enemy-method-52 ((this baby-spider) (arg0 vector))
   (+! (-> this wiggle-angle) (-> this delta-wiggle-angle))
   (if (< 65536.0 (-> this wiggle-angle))
       (+! (-> this wiggle-angle) -65536.0)
@@ -328,7 +321,7 @@ baby-spider-default-event-handler
   )
 
 ;; definition for method 53 of type baby-spider
-(defmethod nav-enemy-method-53 baby-spider ((this baby-spider))
+(defmethod nav-enemy-method-53 ((this baby-spider))
   (cond
     ((logtest? (-> this draw status) (draw-status was-drawn))
      (set-time! (-> this last-visible-time))
@@ -691,7 +684,7 @@ baby-spider-default-event-handler
 
 ;; definition for method 47 of type baby-spider
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision baby-spider ((this baby-spider))
+(defmethod initialize-collision ((this baby-spider))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -717,7 +710,7 @@ baby-spider-default-event-handler
 ;; definition for method 48 of type baby-spider
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-48 baby-spider ((this baby-spider))
+(defmethod nav-enemy-method-48 ((this baby-spider))
   (set-time! (-> this last-visible-time))
   (initialize-skeleton this *baby-spider-sg* '())
   (if (= (-> this parent 0 type) cave-trap)
@@ -784,7 +777,7 @@ baby-spider-default-event-handler
 
 ;; definition for method 11 of type baby-spider
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! baby-spider ((this baby-spider) (arg0 entity-actor))
+(defmethod init-from-entity! ((this baby-spider) (arg0 entity-actor))
   (set! (-> this die-if-not-visible?) #f)
   (set! (-> this delay-before-dying-if-not-visible) (seconds 2))
   (set! (-> this hack-move-above-ground?) #f)

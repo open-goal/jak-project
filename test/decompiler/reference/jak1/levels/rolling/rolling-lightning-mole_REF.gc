@@ -124,33 +124,30 @@
 
 ;; definition of type fleeing-nav-enemy-info
 (deftype fleeing-nav-enemy-info (structure)
-  ((min-reflect-angle       float  :offset-assert   0)
-   (max-reflect-angle       float  :offset-assert   4)
-   (max-boundary-deflection float  :offset-assert   8)
-   (deflection-min-dist     float  :offset-assert  12)
-   (deflection-max-dist     float  :offset-assert  16)
-   (reflection-time         int32  :offset-assert  20)
-   (travel-rotate-speed     float  :offset-assert  24)
-   (blend_interp_angle      float  :offset-assert  28)
-   (min-speed-adjust        float  :offset-assert  32)
-   (max-speed-adjust        float  :offset-assert  36)
-   (speed-adjust-center     float  :offset-assert  40)
-   (speed-adjust-range      float  :offset-assert  44)
-   (abort-notice-distance   float  :offset-assert  48)
-   (min-notice-dist         float  :offset-assert  52)
-   (max-notice-dist         float  :offset-assert  56)
-   (min-stop-chase-dist     float  :offset-assert  60)
-   (max-stop-chase-dist     float  :offset-assert  64)
-   (max-flee-rotation       float  :offset-assert  68)
+  ((min-reflect-angle        float)
+   (max-reflect-angle        float)
+   (max-boundary-deflection  float)
+   (deflection-min-dist      float)
+   (deflection-max-dist      float)
+   (reflection-time          int32)
+   (travel-rotate-speed      float)
+   (blend_interp_angle       float)
+   (min-speed-adjust         float)
+   (max-speed-adjust         float)
+   (speed-adjust-center      float)
+   (speed-adjust-range       float)
+   (abort-notice-distance    float)
+   (min-notice-dist          float)
+   (max-notice-dist          float)
+   (min-stop-chase-dist      float)
+   (max-stop-chase-dist      float)
+   (max-flee-rotation        float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   )
 
 ;; definition for method 3 of type fleeing-nav-enemy-info
-(defmethod inspect fleeing-nav-enemy-info ((this fleeing-nav-enemy-info))
+(defmethod inspect ((this fleeing-nav-enemy-info))
   (format #t "[~8x] ~A~%" this 'fleeing-nav-enemy-info)
   (format #t "~Tmin-reflect-angle: ~f~%" (-> this min-reflect-angle))
   (format #t "~Tmax-reflect-angle: ~f~%" (-> this max-reflect-angle))
@@ -175,24 +172,20 @@
 
 ;; definition of type fleeing-nav-enemy
 (deftype fleeing-nav-enemy (nav-enemy)
-  ((last-reflection-time time-frame                     :offset-assert 400)
-   (run-blend-interp     float                          :offset-assert 408)
-   (desired-travel       vector                 :inline :offset-assert 416)
-   (saved-travel         vector                 :inline :offset-assert 432)
-   (speed-adjust         float                          :offset-assert 448)
-   (flee-info            fleeing-nav-enemy-info :inline :offset-assert 452)
+  ((last-reflection-time  time-frame)
+   (run-blend-interp      float)
+   (desired-travel        vector                  :inline)
+   (saved-travel          vector                  :inline)
+   (speed-adjust          float)
+   (flee-info             fleeing-nav-enemy-info  :inline)
    )
-  :heap-base #x1a0
-  :method-count-assert 76
-  :size-assert         #x20c
-  :flag-assert         #x4c01a0020c
   (:states
     fleeing-nav-enemy-debug
     )
   )
 
 ;; definition for method 3 of type fleeing-nav-enemy
-(defmethod inspect fleeing-nav-enemy ((this fleeing-nav-enemy))
+(defmethod inspect ((this fleeing-nav-enemy))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -543,13 +536,9 @@
 
 ;; definition of type lightning-mole
 (deftype lightning-mole (fleeing-nav-enemy)
-  ((debug-vector vector       :inline :offset-assert 528)
-   (alt-actor    entity-actor         :offset-assert 544)
+  ((debug-vector  vector  :inline)
+   (alt-actor     entity-actor)
    )
-  :heap-base #x1c0
-  :method-count-assert 76
-  :size-assert         #x224
-  :flag-assert         #x4c01c00224
   (:states
     lightning-mole-debug-blend
     lightning-mole-debug-run
@@ -562,7 +551,7 @@
   )
 
 ;; definition for method 3 of type lightning-mole
-(defmethod inspect lightning-mole ((this lightning-mole))
+(defmethod inspect ((this lightning-mole))
   (let ((t9-0 (method-of-type fleeing-nav-enemy inspect)))
     (t9-0 this)
     )
@@ -937,7 +926,7 @@
 
 ;; definition for method 43 of type lightning-mole
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod attack-handler lightning-mole ((this lightning-mole) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this lightning-mole) (arg0 process) (arg1 event-message-block))
   (send-event arg0 'get-attack-count 1)
   (when (!= (-> this state) lightning-mole-yelp)
     (send-event arg0 'jump 32768.0 32768.0)
@@ -948,7 +937,7 @@
 
 ;; definition for method 44 of type lightning-mole
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod touch-handler lightning-mole ((this lightning-mole) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this lightning-mole) (arg0 process) (arg1 event-message-block))
   (when (!= (-> this state) lightning-mole-yelp)
     (send-event arg0 'jump 32768.0 32768.0)
     (go lightning-mole-yelp)
@@ -1012,7 +1001,7 @@
 
 ;; definition for method 11 of type lightning-mole
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! lightning-mole ((this lightning-mole) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lightning-mole) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -1239,10 +1228,6 @@
 ;; definition of type peeper
 (deftype peeper (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     peeper-down
     peeper-hide
@@ -1252,7 +1237,7 @@
   )
 
 ;; definition for method 3 of type peeper
-(defmethod inspect peeper ((this peeper))
+(defmethod inspect ((this peeper))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -1392,7 +1377,7 @@
 
 ;; definition for method 11 of type peeper
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! peeper ((this peeper) (arg0 entity-actor))
+(defmethod init-from-entity! ((this peeper) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lightning-mole-sg* '())

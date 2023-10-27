@@ -6,23 +6,20 @@
 
 ;; definition of type sparticle-birthinfo
 (deftype sparticle-birthinfo (structure)
-  ((sprite       uint32   :offset-assert   0)
-   (anim         int32    :offset-assert   4)
-   (anim-speed   float    :offset-assert   8)
-   (birth-func   basic    :offset-assert  12)
-   (joint-ppoint int32    :offset-assert  16)
-   (num-to-birth float    :offset-assert  20)
-   (sound        basic    :offset-assert  24)
-   (dataf        float  1 :offset          0)
-   (data         uint32 1 :offset          0)
+  ((sprite        uint32)
+   (anim          int32)
+   (anim-speed    float)
+   (birth-func    basic)
+   (joint-ppoint  int32)
+   (num-to-birth  float)
+   (sound         basic)
+   (dataf         float   1 :overlay-at sprite)
+   (data          uint32  1 :overlay-at sprite)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 ;; definition for method 3 of type sparticle-birthinfo
-(defmethod inspect sparticle-birthinfo ((this sparticle-birthinfo))
+(defmethod inspect ((this sparticle-birthinfo))
   (format #t "[~8x] ~A~%" this 'sparticle-birthinfo)
   (format #t "~Tsprite: ~D~%" (-> this sprite))
   (format #t "~Tanim: ~D~%" (-> this anim))
@@ -37,8 +34,9 @@
   )
 
 ;; definition for method 3 of type sparticle-launcher
+;; INFO: this function exists in multiple non-identical object files
 ;; INFO: Return type mismatch int vs sparticle-launcher.
-(defmethod inspect sparticle-launcher ((this sparticle-launcher))
+(defmethod inspect ((this sparticle-launcher))
   (format #t "~X: sparticle-launcher~%" this)
   (let ((s5-0 0))
     (while (!= (-> this init-specs s5-0 field) (sp-field-id spt-end))
@@ -343,17 +341,14 @@
 
 ;; definition of type sp-queued-launch-particles
 (deftype sp-queued-launch-particles (structure)
-  ((sp-system   sparticle-system           :offset-assert   0)
-   (sp-launcher sparticle-launcher         :offset-assert   4)
-   (pos         vector             :inline :offset-assert  16)
+  ((sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (pos          vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type sp-queued-launch-particles
-(defmethod inspect sp-queued-launch-particles ((this sp-queued-launch-particles))
+(defmethod inspect ((this sp-queued-launch-particles))
   (format #t "[~8x] ~A~%" this 'sp-queued-launch-particles)
   (format #t "~Tsp-system: ~A~%" (-> this sp-system))
   (format #t "~Tsp-launcher: ~A~%" (-> this sp-launcher))
@@ -363,16 +358,13 @@
 
 ;; definition of type sp-launch-queue
 (deftype sp-launch-queue (basic)
-  ((in-use int32                                 :offset-assert   4)
-   (queue  sp-queued-launch-particles 32 :inline :offset-assert  16)
+  ((in-use  int32)
+   (queue   sp-queued-launch-particles  32 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x410
-  :flag-assert         #x900000410
   )
 
 ;; definition for method 3 of type sp-launch-queue
-(defmethod inspect sp-launch-queue ((this sp-launch-queue))
+(defmethod inspect ((this sp-launch-queue))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tin-use: ~D~%" (-> this in-use))
   (format #t "~Tqueue[32] @ #x~X~%" (-> this queue))
@@ -411,19 +403,16 @@
 
 ;; definition of type particle-adgif-cache
 (deftype particle-adgif-cache (basic)
-  ((used    int32                   :offset-assert   4)
-   (last    uint16                  :offset-assert   8)
-   (lastgif adgif-shader            :offset-assert  12)
-   (tidhash uint16       80         :offset-assert  16)
-   (spadgif adgif-shader 80 :inline :offset-assert 176)
+  ((used     int32)
+   (last     uint16)
+   (lastgif  adgif-shader)
+   (tidhash  uint16        80)
+   (spadgif  adgif-shader  80 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x19b0
-  :flag-assert         #x9000019b0
   )
 
 ;; definition for method 3 of type particle-adgif-cache
-(defmethod inspect particle-adgif-cache ((this particle-adgif-cache))
+(defmethod inspect ((this particle-adgif-cache))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tused: ~D~%" (-> this used))
   (format #t "~Tlast: ~D~%" (-> this last))
@@ -885,7 +874,7 @@
 
 ;; definition for method 9 of type sparticle-launch-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize sparticle-launch-control ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
+(defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
   (let ((s5-0 0))
     (set! (-> this group) arg0)
     (set! (-> this proc) arg1)
@@ -938,7 +927,7 @@
 
 ;; definition for method 9 of type sparticle-launch-group
 ;; INFO: Return type mismatch object vs sparticle-launch-control.
-(defmethod create-launch-control sparticle-launch-group ((this sparticle-launch-group) (arg0 process))
+(defmethod create-launch-control ((this sparticle-launch-group) (arg0 process))
   (let ((gp-0 (the-as object (new 'process 'sparticle-launch-control (-> this length)))))
     (when (zero? (the-as sparticle-launch-control gp-0))
       (go process-drawable-art-error "memory")
@@ -953,7 +942,7 @@
 
 ;; definition for method 12 of type sparticle-launch-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod kill-and-free-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-and-free-particles ((this sparticle-launch-control))
   (countdown (v1-0 (-> this length))
     (let ((a0-3 (-> this data v1-0)))
       (logclear! (-> a0-3 flags) (sp-launch-state-flags particles-active))
@@ -971,14 +960,14 @@
 
 ;; definition for method 13 of type sparticle-launch-control
 ;; INFO: Return type mismatch int vs none.
-(defmethod kill-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-particles ((this sparticle-launch-control))
   (kill-all-particles-with-key this)
   0
   (none)
   )
 
 ;; definition for method 10 of type sparticle-launch-control
-(defmethod is-visible? sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod is-visible? ((this sparticle-launch-control) (arg0 vector))
   (let* ((v1-0 (-> this group))
          (f0-0 (-> v1-0 bounds w))
          )
@@ -1005,7 +994,7 @@
 ;; definition for method 11 of type sparticle-launch-control
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs object.
-(defmethod spawn sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (set! (-> this center quad) (-> arg0 quad))
   (if (not (or (is-visible? this arg0) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
       (return (the-as object 0))

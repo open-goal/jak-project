@@ -18,23 +18,20 @@
 (define *particle-300hz-timer* 0)
 
 (deftype sparticle-birthinfo (structure)
-  ((sprite       uint32   :offset-assert   0)
-   (anim         int32    :offset-assert   4)
-   (anim-speed   float    :offset-assert   8)
-   (birth-func   basic    :offset-assert  12)
-   (joint-ppoint int32    :offset-assert  16)
-   (num-to-birth float    :offset-assert  20)
-   (sound        basic    :offset-assert  24)
-   (dataf        float  1 :offset          0)
-   (data         uint32 1 :offset          0)
+  ((sprite        uint32)
+   (anim          int32)
+   (anim-speed    float)
+   (birth-func    basic)
+   (joint-ppoint  int32)
+   (num-to-birth  float)
+   (sound         basic)
+   (dataf         float   1 :overlay-at sprite)
+   (data          uint32  1 :overlay-at sprite)
    )
-  :method-count-assert 9
-  :size-assert         #x1c
-  :flag-assert         #x90000001c
   )
 
 
-(defmethod inspect sparticle-launcher ((this sparticle-launcher))
+(defmethod inspect ((this sparticle-launcher))
   "Print out a sparticle-laucher, including its fields"
   (format #t "~X: sparticle-launcher~%" this)
   (let ((s5-0 0))
@@ -207,23 +204,17 @@
     ;(defconstant SPARTICLE_QUEUE_SIZE 80))
 
 (deftype sp-queued-launch-particles (structure)
-  ((sp-system   sparticle-system           :offset-assert   0)
-   (sp-launcher sparticle-launcher         :offset-assert   4)
-   (pos         vector             :inline :offset-assert  16)
+  ((sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (pos          vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; og:preserve-this constant
 (deftype sp-launch-queue (basic)
-  ((in-use int32                                 :offset-assert   4)
-   (queue  sp-queued-launch-particles SPARTICLE_QUEUE_SIZE :inline :offset-assert  16)
+  ((in-use  int32)
+   (queue   sp-queued-launch-particles  SPARTICLE_QUEUE_SIZE :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x410
-  :flag-assert         #x900000410
   )
 
 
@@ -271,15 +262,12 @@
 
 ;; this is where we'll store the actual adgifs
 (deftype particle-adgif-cache (basic)
-  ((used    int32                   :offset-assert   4)
-   (last    uint16                  :offset-assert   8)
-   (lastgif adgif-shader            :offset-assert  12)
-   (tidhash uint16       80         :offset-assert  16)
-   (spadgif adgif-shader 80 :inline :offset-assert 176)
+  ((used     int32)
+   (last     uint16)
+   (lastgif  adgif-shader)
+   (tidhash  uint16        80)
+   (spadgif  adgif-shader  80 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x19b0
-  :flag-assert         #x9000019b0
   )
 
 
@@ -812,7 +800,7 @@
 ;; the launch-controls are always associated with a process. this allows the memory to be reclaimed once the 
 ;; particles are despawned.
 
-(defmethod initialize sparticle-launch-control ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
+(defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
   "start a particle effect."
   (let ((s5-0 0))
     ;; init
@@ -871,7 +859,7 @@
   (none)
   )
 
-(defmethod create-launch-control sparticle-launch-group ((this sparticle-launch-group) (arg0 process))
+(defmethod create-launch-control ((this sparticle-launch-group) (arg0 process))
   "create a launch-control to hold the state of the particles. stored on the process heap."
   (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> this length)))))
     (when (zero? gp-0)
@@ -883,7 +871,7 @@
     )
   )
 
-(defmethod kill-and-free-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-and-free-particles ((this sparticle-launch-control))
   "kill all the particles"
   
   ;; clear the flag.
@@ -905,14 +893,14 @@
   (none)
   )
 
-(defmethod kill-particles sparticle-launch-control ((this sparticle-launch-control))
+(defmethod kill-particles ((this sparticle-launch-control))
   "kill the particles, but don't clear flags or free hvdfs."
   (kill-all-particles-with-key this)
   0
   (none)
   )
 
-(defmethod is-visible? sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod is-visible? ((this sparticle-launch-control) (arg0 vector))
   "Is the effect visible?. arg0 is the offset of the effect"
   (let* ((v1-0 (-> this group))
          (f0-0 (-> v1-0 bounds w))
@@ -960,7 +948,7 @@
   )
 
 
-(defmethod spawn sparticle-launch-control ((this sparticle-launch-control) (arg0 vector))
+(defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (set! (-> this center quad) (-> arg0 quad))
   
   ;; og:preserve-this

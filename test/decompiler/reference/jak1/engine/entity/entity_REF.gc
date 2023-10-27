@@ -12,7 +12,7 @@
 
 ;; definition for method 8 of type drawable-actor
 ;; INFO: Return type mismatch int vs drawable-actor.
-(defmethod mem-usage drawable-actor ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 44 (-> arg0 length)))
   (set! (-> arg0 data 43 name) "entity")
   (+! (-> arg0 data 43 count) 1)
@@ -26,7 +26,7 @@
 
 ;; definition for method 8 of type drawable-inline-array-actor
 ;; INFO: Return type mismatch int vs drawable-inline-array-actor.
-(defmethod mem-usage drawable-inline-array-actor ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
@@ -41,13 +41,13 @@
   )
 
 ;; definition for method 2 of type entity-links
-(defmethod print entity-links ((this entity-links))
+(defmethod print ((this entity-links))
   (format #t "#<entity-links :process ~A @ #x~X>" (-> this process) this)
   this
   )
 
 ;; definition for method 2 of type entity-perm
-(defmethod print entity-perm ((this entity-perm))
+(defmethod print ((this entity-perm))
   (format
     #t
     "#<entity-perm :aid ~D :task ~D :status #x~X :data #x~X @ #x~X>"
@@ -61,25 +61,25 @@
   )
 
 ;; definition for method 22 of type entity
-(defmethod birth! entity ((this entity))
+(defmethod birth! ((this entity))
   (format #t "birth ~A~%" this)
   this
   )
 
 ;; definition for method 23 of type entity
-(defmethod kill! entity ((this entity))
+(defmethod kill! ((this entity))
   (format #t "kill ~A~%" this)
   this
   )
 
 ;; definition for method 2 of type entity
-(defmethod print entity ((this entity))
+(defmethod print ((this entity))
   (format #t "#<~A :name ~S @ #x~X>" (-> this type) (res-lump-struct this 'name structure) this)
   this
   )
 
 ;; definition for method 26 of type entity
-(defmethod get-level entity ((this entity))
+(defmethod get-level ((this entity))
   (dotimes (v1-0 (-> *level* length))
     (let ((a1-3 (-> *level* level v1-0)))
       (when (= (-> a1-3 status) 'active)
@@ -373,7 +373,8 @@
   )
 
 ;; definition for method 2 of type process
-(defmethod print process ((this process))
+;; INFO: this function exists in multiple non-identical object files
+(defmethod print ((this process))
   (format
     #t
     "#<~A ~S ~A :state ~S :flags "
@@ -398,7 +399,7 @@
   )
 
 ;; definition for method 3 of type entity
-(defmethod inspect entity ((this entity))
+(defmethod inspect ((this entity))
   ((the-as (function entity entity) (find-parent-method entity 3)) this)
   (format #t "~Ttrans: ~`vector`P~%" (-> this trans))
   (format #t "~Taid:   ~A~%" (-> this aid))
@@ -406,7 +407,7 @@
   )
 
 ;; definition for method 3 of type entity-actor
-(defmethod inspect entity-actor ((this entity-actor))
+(defmethod inspect ((this entity-actor))
   ((the-as (function entity-actor entity-actor) (find-parent-method entity-actor 3)) this)
   (format #t "~Tnav-mesh: ~A~%" (-> this nav-mesh))
   (format #t "~Tetype:    ~A~%" (-> this etype))
@@ -418,7 +419,7 @@
 
 ;; definition for method 29 of type entity-actor
 ;; INFO: Return type mismatch entity-actor vs none.
-(defmethod debug-print entity-actor ((this entity-actor) (mode symbol) (expected-type type))
+(defmethod debug-print ((this entity-actor) (mode symbol) (expected-type type))
   (let ((s4-0 (-> this etype)))
     (when (or (not expected-type) (and s4-0 (valid? s4-0 type #f #f 0) (type-type? s4-0 expected-type)))
       (format #t "~5D  #x~8X  ~-21S" (-> this extra vis-id) this (res-lump-struct this 'name structure))
@@ -492,7 +493,7 @@
 
 ;; definition for method 13 of type level-group
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-print-entities level-group ((this level-group) (mode symbol) (expected-type type))
+(defmethod debug-print-entities ((this level-group) (mode symbol) (expected-type type))
   (format
     #t
     "   id     address  name                      aid tsk lev  status              x              y              z             address    name         state                 heap         flags~%"
@@ -528,7 +529,7 @@
 ;; definition for method 24 of type entity
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch entity vs none.
-(defmethod add-to-level! entity ((this entity) (lev-group level-group) (lev level) (aid actor-id))
+(defmethod add-to-level! ((this entity) (lev-group level-group) (lev level) (aid actor-id))
   (let ((level-link (-> lev entity data (-> lev entity length))))
     (+! (-> lev entity length) 1)
     (set! (-> level-link process) #f)
@@ -570,7 +571,7 @@
   )
 
 ;; definition for method 25 of type entity
-(defmethod remove-from-level! entity ((this entity) (arg0 level-group))
+(defmethod remove-from-level! ((this entity) (arg0 level-group))
   (let ((v1-0 (-> this extra)))
     (cond
       ((= (-> v1-0 next-link) v1-0)
@@ -610,7 +611,7 @@
 ;; definition for method 22 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod update-vis-volumes level-group ((this level-group))
+(defmethod update-vis-volumes ((this level-group))
   (local-vars
     (v1-10 symbol)
     (sv-16 process)
@@ -667,7 +668,7 @@
 ;; definition for method 23 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod update-vis-volumes-from-nav-mesh level-group ((this level-group))
+(defmethod update-vis-volumes-from-nav-mesh ((this level-group))
   (local-vars (sv-16 entity) (sv-32 entity))
   (dotimes (s5-0 (-> this length))
     (let ((v1-3 (-> this level s5-0)))
@@ -724,7 +725,7 @@
 ;; definition for method 24 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod print-volume-sizes level-group ((this level-group))
+(defmethod print-volume-sizes ((this level-group))
   (local-vars (sv-16 type) (sv-32 (function _varargs_ object)) (sv-48 symbol) (sv-64 string) (sv-80 entity))
   (dotimes (s5-0 (-> this length))
     (let ((v1-3 (-> this level s5-0)))
@@ -812,7 +813,7 @@
 ;; definition for method 14 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod debug-draw-actors level-group ((this level-group) (arg0 symbol))
+(defmethod debug-draw-actors ((this level-group) (arg0 symbol))
   (local-vars
     (sv-48 (function symbol bucket-id string vector font-color vector2h symbol))
     (sv-64 symbol)
@@ -1209,13 +1210,13 @@
   )
 
 ;; definition for method 22 of type entity-camera
-(defmethod birth! entity-camera ((this entity-camera))
+(defmethod birth! ((this entity-camera))
   (add-connection *camera-engine* *camera* nothing this #f #f)
   this
   )
 
 ;; definition for method 23 of type entity-camera
-(defmethod kill! entity-camera ((this entity-camera))
+(defmethod kill! ((this entity-camera))
   (remove-by-param1 *camera-engine* this)
   this
   )
@@ -1236,7 +1237,7 @@
   )
 
 ;; definition for method 22 of type entity-actor
-(defmethod birth! entity-actor ((this entity-actor))
+(defmethod birth! ((this entity-actor))
   (let* ((entity-type (-> this etype))
          (info (entity-info-lookup entity-type))
          (entity-process (get-process *default-dead-pool* entity-type (if info
@@ -1280,7 +1281,7 @@
   )
 
 ;; definition for method 23 of type entity-actor
-(defmethod kill! entity-actor ((this entity-actor))
+(defmethod kill! ((this entity-actor))
   (let ((a0-1 (-> this extra process)))
     (if a0-1
         (deactivate a0-1)
@@ -1294,7 +1295,7 @@
 ;; INFO: Return type mismatch bsp-header vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defmethod birth bsp-header ((this bsp-header))
+(defmethod birth ((this bsp-header))
   (local-vars (v1-71 int) (s5-0 int))
   (.mfc0 s5-0 Count)
   (let ((actor-count (if (nonzero? (-> this actors))
@@ -1381,7 +1382,7 @@
 
 ;; definition for method 19 of type bsp-header
 ;; INFO: Return type mismatch bsp-header vs none.
-(defmethod deactivate-entities bsp-header ((this bsp-header))
+(defmethod deactivate-entities ((this bsp-header))
   (let ((s5-0 (-> this actors)))
     (when (nonzero? s5-0)
       (dotimes (s4-0 (-> s5-0 length))
@@ -1479,7 +1480,7 @@
   )
 
 ;; definition for method 9 of type entity-perm
-(defmethod update-perm! entity-perm ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
+(defmethod update-perm! ((this entity-perm) (arg0 symbol) (arg1 entity-perm-status))
   (cond
     ((= arg0 'game)
      (logclear! (-> this status) arg1)
@@ -1592,7 +1593,7 @@
   )
 
 ;; definition for method 12 of type process-drawable
-(defmethod run-logic? process-drawable ((this process-drawable))
+(defmethod run-logic? ((this process-drawable))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
               (vector-vector-distance (-> this root trans) (math-camera-pos))
@@ -1604,7 +1605,7 @@
   )
 
 ;; definition for method 9 of type entity-links
-(defmethod birth? entity-links ((this entity-links) (arg0 vector))
+(defmethod birth? ((this entity-links) (arg0 vector))
   (and (not (logtest? (-> this perm status) (entity-perm-status bit-0 dead)))
        (< (vector-vector-distance (-> this trans) arg0) (-> *ACTOR-bank* birth-dist))
        )
@@ -1613,7 +1614,7 @@
 ;; definition for method 15 of type level-group
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs object.
-(defmethod actors-update level-group ((this level-group))
+(defmethod actors-update ((this level-group))
   (local-vars (sv-16 vector) (sv-24 int) (sv-32 entity-links) (sv-48 int) (sv-64 string) (sv-80 int))
   (when *compact-actors*
     (if (and (= *compact-actors* 'debug) (= (-> *nk-dead-pool* alive-list prev) (-> *nk-dead-pool* first-gap)))
@@ -1843,7 +1844,7 @@
 
 ;; definition for method 30 of type entity-actor
 ;; INFO: Return type mismatch entity-perm-status vs none.
-(defmethod set-or-clear-status! entity-actor ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
+(defmethod set-or-clear-status! ((this entity-actor) (arg0 entity-perm-status) (arg1 symbol))
   (let ((v1-0 (-> this extra)))
     (if arg1
         (logior! (-> v1-0 perm status) arg0)

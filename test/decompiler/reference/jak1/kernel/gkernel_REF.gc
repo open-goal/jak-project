@@ -26,7 +26,7 @@
 (define *last-loado-debug-usage* 0)
 
 ;; definition for method 7 of type object
-(defmethod relocate object ((this object) (arg0 int))
+(defmethod relocate ((this object) (arg0 int))
   this
   )
 
@@ -75,7 +75,7 @@
 
 ;; definition for method 1 of type thread
 ;; INFO: Return type mismatch thread vs none.
-(defmethod delete thread ((this thread))
+(defmethod delete ((this thread))
   (when (= this (-> this process main-thread))
     (break!)
     0
@@ -85,7 +85,7 @@
   )
 
 ;; definition for method 2 of type thread
-(defmethod print thread ((this thread))
+(defmethod print ((this thread))
   (format
     #t
     "#<~A ~S of ~S pc: #x~X @ #x~X>"
@@ -100,7 +100,7 @@
 
 ;; definition for method 9 of type thread
 ;; INFO: Return type mismatch int vs none.
-(defmethod stack-size-set! thread ((this thread) (arg0 int))
+(defmethod stack-size-set! ((this thread) (arg0 int))
   (let ((a2-0 (-> this process)))
     (cond
       ((!= this (-> a2-0 main-thread))
@@ -154,7 +154,7 @@
 
 ;; definition for method 5 of type cpu-thread
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of cpu-thread ((this cpu-thread))
+(defmethod asize-of ((this cpu-thread))
   (the-as int (+ (-> this type size) (-> this stack-size)))
   )
 
@@ -271,7 +271,7 @@
   )
 
 ;; definition for method 3 of type process-tree
-(defmethod inspect process-tree ((this process-tree))
+(defmethod inspect ((this process-tree))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~S~%" (-> this name))
   (format #t "~Tmask: #x~X~%" (-> this mask))
@@ -333,7 +333,7 @@
   )
 
 ;; definition for method 3 of type process
-(defmethod inspect process ((this process))
+(defmethod inspect ((this process))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~S~%" (-> this name))
   (format #t "~Tmask: #x~X~%" (-> this mask))
@@ -368,13 +368,13 @@
 
 ;; definition for method 5 of type process
 ;; INFO: Return type mismatch uint vs int.
-(defmethod asize-of process ((this process))
+(defmethod asize-of ((this process))
   (the-as int (+ (-> process size) (-> this allocated-length)))
   )
 
 ;; definition for method 2 of type process
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod print process ((this process))
+(defmethod print ((this process))
   (format #t "#<~A ~S ~A :state ~S " (-> this type) (-> this name) (-> this status) (if (-> this state)
                                                                                         (-> this state name)
                                                                                         )
@@ -431,7 +431,7 @@
   )
 
 ;; definition for method 14 of type dead-pool
-(defmethod get-process dead-pool ((this dead-pool) (arg0 type) (arg1 int))
+(defmethod get-process ((this dead-pool) (arg0 type) (arg1 int))
   (let ((s4-0 (the-as object (-> this child))))
     (when (and (not (the-as (pointer process-tree) s4-0)) *debug-segment* (!= this *debug-dead-pool*))
       (set! s4-0 (get-process *debug-dead-pool* arg0 arg1))
@@ -466,7 +466,7 @@
 
 ;; definition for method 15 of type dead-pool
 ;; INFO: Return type mismatch process-tree vs none.
-(defmethod return-process dead-pool ((this dead-pool) (arg0 process))
+(defmethod return-process ((this dead-pool) (arg0 process))
   (change-parent arg0 this)
   (none)
   )
@@ -512,7 +512,7 @@
 
 ;; definition for method 22 of type dead-pool-heap
 ;; INFO: Return type mismatch object vs pointer.
-(defmethod gap-location dead-pool-heap ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
+(defmethod gap-location ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
   (the-as
     pointer
     (if (-> arg0 process)
@@ -523,7 +523,7 @@
   )
 
 ;; definition for method 21 of type dead-pool-heap
-(defmethod gap-size dead-pool-heap ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
+(defmethod gap-size ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
   (cond
     ((-> arg0 process)
      (let ((v1-3 (&+ (&+ (the-as pointer (-> arg0 process)) (-> process size)) (-> arg0 process allocated-length))))
@@ -543,7 +543,7 @@
   )
 
 ;; definition for method 23 of type dead-pool-heap
-(defmethod find-gap dead-pool-heap ((this dead-pool-heap) (rec dead-pool-heap-rec))
+(defmethod find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec))
   (while (and (-> rec next) (zero? (gap-size this rec)))
     (set! rec (-> rec next))
     )
@@ -552,7 +552,7 @@
 
 ;; definition for method 3 of type dead-pool-heap
 ;; INFO: this function exists in multiple non-identical object files
-(defmethod inspect dead-pool-heap ((this dead-pool-heap))
+(defmethod inspect ((this dead-pool-heap))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
   (format #t "~Tmask: ~D~%" (-> this mask))
@@ -597,12 +597,12 @@
   )
 
 ;; definition for method 5 of type dead-pool-heap
-(defmethod asize-of dead-pool-heap ((this dead-pool-heap))
+(defmethod asize-of ((this dead-pool-heap))
   (+ (the-as int (- -4 (the-as int this))) (the-as int (-> this heap top)))
   )
 
 ;; definition for method 19 of type dead-pool-heap
-(defmethod memory-used dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-used ((this dead-pool-heap))
   (if (-> this alive-list prev)
       (- (memory-total this) (gap-size this (-> this alive-list prev)))
       0
@@ -610,12 +610,12 @@
   )
 
 ;; definition for method 20 of type dead-pool-heap
-(defmethod memory-total dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-total ((this dead-pool-heap))
   (&- (-> this heap top) (the-as uint (-> this heap base)))
   )
 
 ;; definition for method 25 of type dead-pool-heap
-(defmethod memory-free dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-free ((this dead-pool-heap))
   (let ((v1-0 (-> this heap top)))
     (if (-> this alive-list prev)
         (gap-size this (-> this alive-list prev))
@@ -625,12 +625,12 @@
   )
 
 ;; definition for method 26 of type dead-pool-heap
-(defmethod compact-time dead-pool-heap ((this dead-pool-heap))
+(defmethod compact-time ((this dead-pool-heap))
   (-> this compact-time)
   )
 
 ;; definition for method 24 of type dead-pool-heap
-(defmethod find-gap-by-size dead-pool-heap ((this dead-pool-heap) (arg0 int))
+(defmethod find-gap-by-size ((this dead-pool-heap) (arg0 int))
   (let ((gp-0 (-> this first-gap)))
     (while (and gp-0 (< (gap-size this gp-0) arg0))
       (set! gp-0 (-> gp-0 next))
@@ -640,7 +640,7 @@
   )
 
 ;; definition for method 14 of type dead-pool-heap
-(defmethod get-process dead-pool-heap ((this dead-pool-heap) (arg0 type) (arg1 int))
+(defmethod get-process ((this dead-pool-heap) (arg0 type) (arg1 int))
   (let ((s4-0 (-> this dead-list next))
         (s3-0 (the-as process #f))
         )
@@ -700,7 +700,7 @@
 
 ;; definition for method 15 of type dead-pool-heap
 ;; INFO: Return type mismatch int vs none.
-(defmethod return-process dead-pool-heap ((this dead-pool-heap) (arg0 process))
+(defmethod return-process ((this dead-pool-heap) (arg0 process))
   (if (!= this (-> arg0 pool))
       (format 0 "ERROR: process ~A does not belong to dead-pool-heap ~A.~%" arg0 this)
       )
@@ -733,7 +733,7 @@
   )
 
 ;; definition for method 17 of type dead-pool-heap
-(defmethod shrink-heap dead-pool-heap ((this dead-pool-heap) (arg0 process))
+(defmethod shrink-heap ((this dead-pool-heap) (arg0 process))
   (when arg0
     (let ((s5-0 (-> arg0 ppointer)))
       (when (not (or (logtest? (-> arg0 mask) (process-mask heap-shrunk))
@@ -757,7 +757,7 @@
 
 ;; definition for method 16 of type dead-pool-heap
 ;; INFO: Return type mismatch int vs none.
-(defmethod compact dead-pool-heap ((this dead-pool-heap) (arg0 int))
+(defmethod compact ((this dead-pool-heap) (arg0 int))
   (let* ((s4-0 (memory-free this))
          (v1-2 (memory-total this))
          (f0-2 (/ (the float s4-0) (the float v1-2)))
@@ -815,7 +815,7 @@
 
 ;; definition for method 18 of type dead-pool-heap
 ;; INFO: Return type mismatch int vs none.
-(defmethod churn dead-pool-heap ((this dead-pool-heap) (arg0 int))
+(defmethod churn ((this dead-pool-heap) (arg0 int))
   (while (nonzero? arg0)
     (+! arg0 -1)
     (let ((s4-0 (-> this alive-list next)))
@@ -931,7 +931,7 @@
   )
 
 ;; definition for method 12 of type process
-(defmethod run-logic? process ((this process))
+(defmethod run-logic? ((this process))
   #t
   )
 
@@ -1290,7 +1290,7 @@
   )
 
 ;; definition for method 9 of type process
-(defmethod activate process ((this process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
+(defmethod activate ((this process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
   (set! (-> this mask) (logclear (-> arg0 mask) (process-mask sleep sleep-code process-tree heap-shrunk)))
   (set! (-> this status) 'ready)
   (let ((v1-4 (-> *kernel-context* next-pid)))
@@ -1356,7 +1356,7 @@
 
 ;; definition for method 10 of type process-tree
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod deactivate process-tree ((this process-tree))
+(defmethod deactivate ((this process-tree))
   (none)
   )
 
@@ -1372,7 +1372,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
-(defmethod deactivate process ((this process))
+(defmethod deactivate ((this process))
   (local-vars (s7-0 none) (ra-0 int))
   (with-pp
     (when (!= (-> this status) 'dead)

@@ -117,30 +117,27 @@
 
 ;; definition of type tube-info
 (deftype tube-info (basic)
-  ((entity          basic              :offset-assert   4)
-   (tube            handle             :offset-assert   8)
-   (downhill        vector     :inline :offset-assert  16)
-   (centertube      vector     :inline :offset-assert  32)
-   (downtube        vector     :inline :offset-assert  48)
-   (sidetube        vector     :inline :offset-assert  64)
-   (foretube        vector     :inline :offset-assert  80)
-   (old-transv      vector     :inline :offset-assert  96)
-   (mod-x           float              :offset-assert 112)
-   (mod-y           float              :offset-assert 116)
-   (start-time      time-frame         :offset-assert 120)
-   (turn-anim-targ  float              :offset-assert 128)
-   (turn-anim-frame float              :offset-assert 132)
-   (turn-anim-vel   float              :offset-assert 136)
-   (tube-sound-id   sound-id           :offset-assert 140)
-   (tube-sound-vol  float              :offset-assert 144)
+  ((entity           basic)
+   (tube             handle)
+   (downhill         vector  :inline)
+   (centertube       vector  :inline)
+   (downtube         vector  :inline)
+   (sidetube         vector  :inline)
+   (foretube         vector  :inline)
+   (old-transv       vector  :inline)
+   (mod-x            float)
+   (mod-y            float)
+   (start-time       time-frame)
+   (turn-anim-targ   float)
+   (turn-anim-frame  float)
+   (turn-anim-vel    float)
+   (tube-sound-id    sound-id)
+   (tube-sound-vol   float)
    )
-  :method-count-assert 9
-  :size-assert         #x94
-  :flag-assert         #x900000094
   )
 
 ;; definition for method 3 of type tube-info
-(defmethod inspect tube-info ((this tube-info))
+(defmethod inspect ((this tube-info))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tentity: ~A~%" (-> this entity))
   (format #t "~Ttube: ~D~%" (-> this tube))
@@ -164,13 +161,10 @@
 ;; definition of type tube-bank
 (deftype tube-bank (basic)
   ()
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type tube-bank
-(defmethod inspect tube-bank ((this tube-bank))
+(defmethod inspect ((this tube-bank))
   (format #t "[~8x] ~A~%" this (-> this type))
   this
   )
@@ -796,7 +790,7 @@
       (combine! gp-0 arg1)
       (when (= arg0 'attack)
         (pickup-collectable!
-          (-> self fact-info-target)
+          (-> self fact)
           (pickup-type eco-green)
           (- (-> *FACT-bank* health-single-inc))
           (the-as handle #f)
@@ -830,7 +824,7 @@
         (set! (-> a0-35 quad) (-> self control transv quad))
         (s5-3 s4-2 (t9-9 a0-35 1.0) (vector-y-quaternion! (new-stack-vector0) (-> self control dir-targ)))
         )
-      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact-info-target health)))
+      (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
           (go target-tube-death (-> gp-0 mode))
           )
       )
@@ -884,24 +878,20 @@
 
 ;; definition of type slide-control
 (deftype slide-control (process-drawable)
-  ((target handle         :offset-assert 176)
-   (pos    float          :offset-assert 184)
-   (trans  vector :inline :offset-assert 192)
-   (rot    vector :inline :offset-assert 208)
-   (side   vector :inline :offset-assert 224)
+  ((target  handle)
+   (pos     float)
+   (trans   vector  :inline)
+   (rot     vector  :inline)
+   (side    vector  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 22
-  :size-assert         #xf0
-  :flag-assert         #x16008000f0
-  (:methods
-    (slide-control-watch () _type_ :state 20)
-    (slide-control-ride () _type_ :state 21)
+  (:state-methods
+    slide-control-watch
+    slide-control-ride
     )
   )
 
 ;; definition for method 3 of type slide-control
-(defmethod inspect slide-control ((this slide-control))
+(defmethod inspect ((this slide-control))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -1045,7 +1035,7 @@
 
 ;; definition for method 11 of type slide-control
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! slide-control ((this slide-control) (arg0 entity-actor))
+(defmethod init-from-entity! ((this slide-control) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))

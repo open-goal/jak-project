@@ -17,19 +17,16 @@
 
 ;; the vertex type used for load boundaries
 (deftype lbvtx (structure)
-  ((x    float           :offset-assert   0)
-   (y    float           :offset-assert   4)
-   (z    float           :offset-assert   8)
-   (v0   uint8           :offset-assert  12)
-   (v1   uint8           :offset-assert  13)
-   (v2   uint8           :offset-assert  14)
-   (ix   uint8           :offset-assert  15)
-   (quad uint128         :offset          0)
-   (v    vector  :inline :offset          0)
+  ((x     float)
+   (y     float)
+   (z     float)
+   (v0    uint8)
+   (v1    uint8)
+   (v2    uint8)
+   (ix    uint8)
+   (quad  uint128          :overlay-at x)
+   (v     vector   :inline :overlay-at x)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; the types of commands in load boundaries
@@ -47,22 +44,19 @@
 ;; command to execute when crossing.
 ;; there are 3 1-byte paramaters and 2 4-byte parameters.
 (deftype load-boundary-crossing-command (structure)
-  ((cmd        load-boundary-cmd   :offset-assert   0)
-   (bparm      uint8             3 :offset-assert   1)
-   (parm       uint32            2 :offset-assert   4)
-   (lev0       basic               :offset          4)
-   (lev1       basic               :offset          8)
-   (displev    basic               :offset          4)
-   (dispcmd    basic               :offset          8)
-   (nick       basic               :offset          4)
-   (forcelev   basic               :offset          4)
-   (forceonoff basic               :offset          8)
-   (checkname  basic               :offset          4)
+  ((cmd         load-boundary-cmd)
+   (bparm       uint8   3)
+   (parm        uint32  2)
+   (lev0        basic   :overlay-at (-> parm 0))
+   (lev1        basic   :overlay-at (-> parm 1))
+   (displev     basic   :overlay-at (-> parm 0))
+   (dispcmd     basic   :overlay-at (-> parm 1))
+   (nick        basic   :overlay-at (-> parm 0))
+   (forcelev    basic   :overlay-at (-> parm 0))
+   (forceonoff  basic   :overlay-at (-> parm 1))
+   (checkname   basic   :overlay-at (-> parm 0))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 (defenum load-boundary-flags
@@ -75,23 +69,20 @@
 ;; actual boundary
 ;; vertices come after this in memory
 (deftype load-boundary (basic)
-  ((num-points uint16                                          :offset-assert   4)
-   (flags      load-boundary-flags                             :offset-assert   6)
-   (top-plane  float                                           :offset-assert   8)
-   (bot-plane  float                                           :offset-assert  12)
-   (tri-cnt    int32                                           :offset-assert  16)
-   (next       load-boundary                                   :offset-assert  20)
-   (cmd-fwd    load-boundary-crossing-command :inline          :offset-assert  24)
-   (cmd-bwd    load-boundary-crossing-command :inline          :offset-assert  36)
-   (rejector   vector                         :inline          :offset-assert  48)
-   (data       lbvtx                          1 :inline        :offset-assert  64)
-   (data2      lbvtx                          :inline :dynamic :offset         64)
+  ((num-points  uint16)
+   (flags       load-boundary-flags)
+   (top-plane   float)
+   (bot-plane   float)
+   (tri-cnt     int32)
+   (next        load-boundary)
+   (cmd-fwd     load-boundary-crossing-command  :inline)
+   (cmd-bwd     load-boundary-crossing-command  :inline)
+   (rejector    vector                          :inline)
+   (data        lbvtx                           1 :inline)
+   (data2       lbvtx                           :inline :dynamic :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   (:methods
-    (new (symbol type int symbol symbol) _type_ 0)
+    (new (symbol type int symbol symbol) _type_)
     )
   )
 

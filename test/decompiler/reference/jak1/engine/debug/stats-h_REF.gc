@@ -3,20 +3,17 @@
 
 ;; definition of type tr-stat
 (deftype tr-stat (structure)
-  ((groups    uint16  :offset-assert   0)
-   (fragments uint16  :offset-assert   2)
-   (tris      uint32  :offset-assert   4)
-   (dverts    uint32  :offset-assert   8)
-   (instances uint16  :offset-assert  12)
-   (pad       uint16  :offset-assert  14)
+  ((groups     uint16)
+   (fragments  uint16)
+   (tris       uint32)
+   (dverts     uint32)
+   (instances  uint16)
+   (pad        uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type tr-stat
-(defmethod inspect tr-stat ((this tr-stat))
+(defmethod inspect ((this tr-stat))
   (format #t "[~8x] ~A~%" this 'tr-stat)
   (format #t "~Tgroups: ~D~%" (-> this groups))
   (format #t "~Tfragments: ~D~%" (-> this fragments))
@@ -29,16 +26,13 @@
 
 ;; definition of type merc-global-stats
 (deftype merc-global-stats (structure)
-  ((merc      tr-stat :inline :offset-assert   0)
-   (mercneric tr-stat :inline :offset-assert  16)
+  ((merc       tr-stat  :inline)
+   (mercneric  tr-stat  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type merc-global-stats
-(defmethod inspect merc-global-stats ((this merc-global-stats))
+(defmethod inspect ((this merc-global-stats))
   (format #t "[~8x] ~A~%" this 'merc-global-stats)
   (format #t "~Tmerc: #<tr-stat @ #x~X>~%" (-> this merc))
   (format #t "~Tmercneric: #<tr-stat @ #x~X>~%" (-> this mercneric))
@@ -47,35 +41,32 @@
 
 ;; definition of type perf-stat
 (deftype perf-stat (structure)
-  ((frame-number   uint32  :offset-assert   0)
-   (count          uint32  :offset-assert   4)
-   (cycles         uint32  :offset-assert   8)
-   (instructions   uint32  :offset-assert  12)
-   (icache         uint32  :offset-assert  16)
-   (dcache         uint32  :offset-assert  20)
-   (select         uint32  :offset-assert  24)
-   (ctrl           uint32  :offset-assert  28)
-   (accum0         uint32  :offset-assert  32)
-   (accum1         uint32  :offset-assert  36)
-   (to-vu0-waits   uint32  :offset-assert  40)
-   (to-spr-waits   uint32  :offset-assert  44)
-   (from-spr-waits uint32  :offset-assert  48)
+  ((frame-number    uint32)
+   (count           uint32)
+   (cycles          uint32)
+   (instructions    uint32)
+   (icache          uint32)
+   (dcache          uint32)
+   (select          uint32)
+   (ctrl            uint32)
+   (accum0          uint32)
+   (accum1          uint32)
+   (to-vu0-waits    uint32)
+   (to-spr-waits    uint32)
+   (from-spr-waits  uint32)
    )
   :pack-me
-  :method-count-assert 14
-  :size-assert         #x34
-  :flag-assert         #xe00000034
   (:methods
-    (perf-stat-method-9 (_type_) none 9)
-    (print-to-stream (_type_ string basic) none 10)
-    (reset! (_type_) none 11)
-    (read! (_type_) none 12)
-    (update-wait-stats (_type_ uint uint uint) none 13)
+    (perf-stat-method-9 (_type_) none)
+    (print-to-stream (_type_ string basic) none)
+    (reset! (_type_) none)
+    (read! (_type_) none)
+    (update-wait-stats (_type_ uint uint uint) none)
     )
   )
 
 ;; definition for method 3 of type perf-stat
-(defmethod inspect perf-stat ((this perf-stat))
+(defmethod inspect ((this perf-stat))
   (format #t "[~8x] ~A~%" this 'perf-stat)
   (format #t "~Tframe-number: ~D~%" (-> this frame-number))
   (format #t "~Tcount: ~D~%" (-> this count))
@@ -95,15 +86,12 @@
 
 ;; definition of type perf-stat-array
 (deftype perf-stat-array (inline-array-class)
-  ((data perf-stat :inline :dynamic :offset-assert  16)
+  ((data  perf-stat  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type perf-stat-array
-(defmethod inspect perf-stat-array ((this perf-stat-array))
+(defmethod inspect ((this perf-stat-array))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
@@ -116,7 +104,7 @@
 
 ;; definition for method 11 of type perf-stat
 ;; INFO: Return type mismatch int vs none.
-(defmethod reset! perf-stat ((this perf-stat))
+(defmethod reset! ((this perf-stat))
   (let ((v1-0 (-> this ctrl)))
     (+! (-> this count) 1)
     (b! (zero? v1-0) cfg-2 :delay (nop!))
@@ -138,7 +126,7 @@
 
 ;; definition for method 12 of type perf-stat
 ;; INFO: Return type mismatch int vs none.
-(defmethod read! perf-stat ((this perf-stat))
+(defmethod read! ((this perf-stat))
   (local-vars (v1-1 int) (v1-3 int))
   (b! (zero? (-> this ctrl)) cfg-2 :delay (nop!))
   (.mtc0 Perf 0)
@@ -155,7 +143,7 @@
 
 ;; definition for method 13 of type perf-stat
 ;; INFO: Return type mismatch int vs none.
-(defmethod update-wait-stats perf-stat ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+(defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
   (when (nonzero? (-> this ctrl))
     (+! (-> this to-vu0-waits) arg0)
     (+! (-> this to-spr-waits) arg1)

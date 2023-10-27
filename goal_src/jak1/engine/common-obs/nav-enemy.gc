@@ -37,13 +37,13 @@
     )
   )
 
-(defmethod eval-position! trajectory ((this trajectory) (time float) (result vector))
+(defmethod eval-position! ((this trajectory) (time float) (result vector))
   (vector+float*! result (-> this initial-position) (-> this initial-velocity) time)
   (+! (-> result y) (* 0.5 time time (-> this gravity)))
   result
   )
 
-(defmethod relocate nav-enemy ((this nav-enemy) (arg0 int))
+(defmethod relocate ((this nav-enemy) (arg0 int))
   (if (nonzero? (-> this neck))
       (set! (-> this neck) (the-as joint-mod (+ (the-as int (-> this neck)) arg0)))
       )
@@ -53,7 +53,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod new-patrol-point! nav-enemy ((this nav-enemy))
+(defmethod new-patrol-point! ((this nav-enemy))
   (local-vars (v1-11 symbol))
   (if (<= (-> this path curve num-cverts) 0)
       (go process-drawable-art-error "no path")
@@ -73,7 +73,7 @@
   0
   )
 
-(defmethod common-post nav-enemy ((this nav-enemy))
+(defmethod common-post ((this nav-enemy))
   (when (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf8))
              (or (not *target*)
                  (and (not (logtest? (-> *target* state-flags)
@@ -113,7 +113,7 @@
   (none)
   )
 
-(defmethod touch-handler nav-enemy ((this nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this nav-enemy) (arg0 process) (arg1 event-message-block))
   (if (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
            ((method-of-type touching-shapes-entry prims-touching?)
             (the-as touching-shapes-entry (-> arg1 param 0))
@@ -125,7 +125,7 @@
       )
   )
 
-(defmethod nav-enemy-touch-handler nav-enemy ((this nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod nav-enemy-touch-handler ((this nav-enemy) (arg0 process) (arg1 event-message-block))
   (if (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
            ((method-of-type touching-shapes-entry prims-touching?)
             (the-as touching-shapes-entry (-> arg1 param 0))
@@ -137,14 +137,14 @@
       )
   )
 
-(defmethod nav-enemy-attack-handler nav-enemy ((this nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod nav-enemy-attack-handler ((this nav-enemy) (arg0 process) (arg1 event-message-block))
   (send-event arg0 'get-attack-count 1)
   (logclear! (-> this mask) (process-mask actor-pause attackable))
   (go (method-of-object this nav-enemy-die))
   'die
   )
 
-(defmethod attack-handler nav-enemy ((this nav-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this nav-enemy) (arg0 process) (arg1 event-message-block))
   (cond
     ((logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf5))
      (send-event arg0 'get-attack-count 1)
@@ -262,13 +262,13 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-40 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-40 ((this nav-enemy))
   (nav-control-method-11 (-> this nav) (-> this nav target-pos))
   0
   (none)
   )
 
-(defmethod nav-enemy-method-41 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-41 ((this nav-enemy))
   (cond
     ((-> this nav-info use-align)
      (align-vel-and-quat-only!
@@ -318,7 +318,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-37 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-37 ((this nav-enemy))
   (when (logtest? (-> this nav-enemy-flags) (nav-enemy-flags enable-travel))
     (if (or (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf7))
             (logtest? (nav-control-flags navcf19) (-> this nav flags))
@@ -341,7 +341,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-38 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-38 ((this nav-enemy))
   (if (-> this nav-info move-to-ground)
       (integrate-for-enemy-with-move-to-ground!
         (-> this collide-info)
@@ -499,7 +499,7 @@ nav-enemy-default-event-handler
     )
   )
 
-(defmethod target-in-range? nav-enemy ((this nav-enemy) (arg0 float))
+(defmethod target-in-range? ((this nav-enemy) (arg0 float))
   (and *target*
        (not (logtest? (-> *target* state-flags)
                       (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
@@ -726,7 +726,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod run-logic? nav-enemy ((this nav-enemy))
+(defmethod run-logic? ((this nav-enemy))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (and (>= (+ (-> *ACTOR-bank* pause-dist) (-> this collide-info pause-adjust-distance))
@@ -1635,7 +1635,7 @@ nav-enemy-default-event-handler
                                )
   )
 
-(defmethod init-defaults! nav-enemy ((this nav-enemy) (arg0 nav-enemy-info))
+(defmethod init-defaults! ((this nav-enemy) (arg0 nav-enemy-info))
   (set! (-> this rand-gen) (new 'process 'random-generator))
   (set! (-> this rand-gen seed) (the-as uint #x666edd1e))
   (set! (-> this mask) (the-as process-mask (logior (process-mask enemy) (-> this mask))))
@@ -1671,7 +1671,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod init-jm! nav-enemy ((this nav-enemy) (arg0 nav-enemy-info))
+(defmethod init-jm! ((this nav-enemy) (arg0 nav-enemy-info))
   (set! (-> this nav-info) arg0)
   (set! (-> this rotate-speed) (-> this nav-info walk-rotate-speed))
   (set! (-> this turn-time) (-> this nav-info walk-turn-time))
@@ -1707,23 +1707,23 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod initialize-collision nav-enemy ((this nav-enemy))
+(defmethod initialize-collision ((this nav-enemy))
   0
   (none)
   )
 
-(defmethod nav-enemy-method-48 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-48 ((this nav-enemy))
   0
   (none)
   )
 
-(defmethod nav-enemy-method-59 nav-enemy ((this nav-enemy))
+(defmethod nav-enemy-method-59 ((this nav-enemy))
   (go (method-of-object this nav-enemy-idle))
   0
   (none)
   )
 
-(defmethod init-from-entity! nav-enemy ((this nav-enemy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this nav-enemy) (arg0 entity-actor))
   (initialize-collision this)
   (process-drawable-from-entity! this arg0)
   (nav-enemy-method-48 this)
@@ -1732,7 +1732,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-50 nav-enemy ((this nav-enemy) (arg0 vector))
+(defmethod nav-enemy-method-50 ((this nav-enemy) (arg0 vector))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s4-0 quad) (-> this collide-info trans quad))
     (set! (-> this collide-info trans quad) (-> arg0 quad))

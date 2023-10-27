@@ -3,40 +3,38 @@
 
 ;; definition of type plat-button
 (deftype plat-button (process-drawable)
-  ((root-override           collide-shape-moving         :offset        112)
-   (go-back-if-lost-player? symbol                       :offset-assert 176)
-   (grab-player?            symbol                       :offset-assert 180)
-   (should-grab-player?     symbol                       :offset-assert 184)
-   (path-pos                float                        :offset-assert 188)
-   (bidirectional?          symbol                       :offset-assert 192)
-   (allow-auto-kill         symbol                       :offset-assert 196)
-   (sound-id                sound-id                     :offset-assert 200)
-   (trans-off               vector               :inline :offset-assert 208)
-   (spawn-pos               vector               :inline :offset-assert 224)
+  ((root                     collide-shape-moving :override)
+   (go-back-if-lost-player?  symbol)
+   (grab-player?             symbol)
+   (should-grab-player?      symbol)
+   (path-pos                 float)
+   (bidirectional?           symbol)
+   (allow-auto-kill          symbol)
+   (sound-id                 sound-id)
+   (trans-off                vector                :inline)
+   (spawn-pos                vector                :inline)
    )
-  :heap-base #x80
-  :method-count-assert 33
-  :size-assert         #xf0
-  :flag-assert         #x21008000f0
+  (:state-methods
+    plat-button-at-end
+    plat-button-idle
+    plat-button-pressed
+    plat-button-move-downward
+    plat-button-move-upward
+    plat-button-teleport-to-other-end
+    )
   (:methods
-    (plat-button-at-end () _type_ :state 20)
-    (plat-button-idle () _type_ :state 21)
-    (plat-button-pressed () _type_ :state 22)
-    (plat-button-move-downward () _type_ :state 23)
-    (plat-button-move-upward () _type_ :state 24)
-    (plat-button-teleport-to-other-end () _type_ :state 25)
-    (can-activate? (_type_) symbol 26)
-    (plat-button-method-27 (_type_) none 27)
-    (plat-button-method-28 (_type_) collide-shape-moving 28)
-    (can-target-move? (_type_) none 29)
-    (should-teleport? (_type_) symbol 30)
-    (plat-button-method-31 (_type_) none 31)
-    (plat-button-method-32 (_type_) none 32)
+    (can-activate? (_type_) symbol)
+    (plat-button-method-27 (_type_) none)
+    (plat-button-method-28 (_type_) collide-shape-moving)
+    (can-target-move? (_type_) none)
+    (should-teleport? (_type_) symbol)
+    (plat-button-method-31 (_type_) none)
+    (plat-button-method-32 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type plat-button
-(defmethod inspect plat-button ((this plat-button))
+(defmethod inspect ((this plat-button))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -59,12 +57,12 @@
               )
 
 ;; definition for method 30 of type plat-button
-(defmethod should-teleport? plat-button ((this plat-button))
+(defmethod should-teleport? ((this plat-button))
   #f
   )
 
 ;; definition for method 26 of type plat-button
-(defmethod can-activate? plat-button ((this plat-button))
+(defmethod can-activate? ((this plat-button))
   (or (= (-> this path-pos) 0.0) (and (-> this bidirectional?) (= (-> this path-pos) 1.0)))
   )
 
@@ -77,7 +75,7 @@
        (when (can-activate? self)
          (if (and ((method-of-type touching-shapes-entry prims-touching?)
                    (the-as touching-shapes-entry (-> block param 0))
-                   (-> self root-override)
+                   (-> self root)
                    (the-as uint 1)
                    )
                   (or (not (-> self should-grab-player?)) (set! (-> self grab-player?) (process-grab? *target*)))
@@ -133,7 +131,7 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (eval-path-curve! (-> self path) gp-0 f0-0 'interp)
         (vector+! gp-0 gp-0 (-> self trans-off))
-        (move-to-point! (-> self root-override) gp-0)
+        (move-to-point! (-> self root) gp-0)
         )
       )
     (ja-post)
@@ -223,18 +221,18 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
         (vector+! gp-0 gp-0 (-> self trans-off))
-        (move-to-point! (-> self root-override) gp-0)
+        (move-to-point! (-> self root) gp-0)
         )
       )
     (sound-play "elev-loop" :id (-> self sound-id))
     (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> gp-1 command) (sound-command set-param))
       (set! (-> gp-1 id) (-> self sound-id))
-      (let ((a1-6 (-> self root-override trans)))
+      (let ((a1-6 (-> self root trans)))
         (let ((s5-0 self))
           (when (= a1-6 #t)
-            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root-override)))
-                (set! a1-6 (-> s5-0 root-override trans))
+            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root)))
+                (set! a1-6 (-> s5-0 root trans))
                 (set! a1-6 (the-as vector #f))
                 )
             )
@@ -294,18 +292,18 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
         (vector+! gp-0 gp-0 (-> self trans-off))
-        (move-to-point! (-> self root-override) gp-0)
+        (move-to-point! (-> self root) gp-0)
         )
       )
     (sound-play "elev-loop" :id (-> self sound-id))
     (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> gp-1 command) (sound-command set-param))
       (set! (-> gp-1 id) (-> self sound-id))
-      (let ((a1-6 (-> self root-override trans)))
+      (let ((a1-6 (-> self root trans)))
         (let ((s5-0 self))
           (when (= a1-6 #t)
-            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root-override)))
-                (set! a1-6 (-> s5-0 root-override trans))
+            (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root)))
+                (set! a1-6 (-> s5-0 root trans))
                 (set! a1-6 (the-as vector #f))
                 )
             )
@@ -333,9 +331,7 @@
     (sound-stop (-> self sound-id))
     (sound-play "elev-land")
     (loop
-      (if (or (not *target*)
-              (< 268435460.0 (vector-vector-xz-distance-squared (-> self root-override trans) (target-pos 0)))
-              )
+      (if (or (not *target*) (< 268435460.0 (vector-vector-xz-distance-squared (-> self root trans) (target-pos 0))))
           (go-virtual plat-button-idle)
           )
       (suspend)
@@ -344,7 +340,7 @@
   )
 
 ;; definition for method 28 of type plat-button
-(defmethod plat-button-method-28 plat-button ((this plat-button))
+(defmethod plat-button-method-28 ((this plat-button))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -380,21 +376,21 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     s5-0
     )
   )
 
 ;; definition for method 29 of type plat-button
 ;; INFO: Return type mismatch int vs none.
-(defmethod can-target-move? plat-button ((this plat-button))
+(defmethod can-target-move? ((this plat-button))
   0
   (none)
   )
 
 ;; definition for method 27 of type plat-button
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod plat-button-method-27 plat-button ((this plat-button))
+(defmethod plat-button-method-27 ((this plat-button))
   (ja-channel-set! 1)
   (cond
     ((can-activate? this)
@@ -421,13 +417,13 @@
       )
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (none)
   )
 
 ;; definition for method 31 of type plat-button
 ;; INFO: Return type mismatch int vs none.
-(defmethod plat-button-method-31 plat-button ((this plat-button))
+(defmethod plat-button-method-31 ((this plat-button))
   (initialize-skeleton this *plat-button-sg* '())
   0
   (none)
@@ -435,7 +431,7 @@
 
 ;; definition for method 32 of type plat-button
 ;; INFO: Return type mismatch int vs none.
-(defmethod plat-button-method-32 plat-button ((this plat-button))
+(defmethod plat-button-method-32 ((this plat-button))
   (go (method-of-object this plat-button-idle))
   0
   (none)
@@ -443,7 +439,7 @@
 
 ;; definition for method 11 of type plat-button
 ;; INFO: Used lq/sq
-(defmethod init-from-entity! plat-button ((this plat-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat-button) (arg0 entity-actor))
   (set! (-> this go-back-if-lost-player?) #f)
   (set! (-> this grab-player?) #f)
   (set! (-> this should-grab-player?) #f)
@@ -466,11 +462,11 @@
   (logclear! (-> this mask) (process-mask actor-pause))
   (plat-button-method-31 this)
   (logior! (-> this skel status) (janim-status inited))
-  (set! (-> this spawn-pos quad) (-> this root-override trans quad))
+  (set! (-> this spawn-pos quad) (-> this root trans quad))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> this path-pos) 0.0)
-  (let ((s5-1 (-> this root-override trans)))
+  (let ((s5-1 (-> this root trans)))
     (eval-path-curve! (-> this path) s5-1 (-> this path-pos) 'interp)
     (vector+! s5-1 s5-1 (-> this trans-off))
     )

@@ -3,23 +3,19 @@
 
 ;; definition of type flutflut-plat
 (deftype flutflut-plat (plat)
-  ((has-path?           symbol               :offset-assert 264)
-   (plat-type           int32                :offset-assert 268)
-   (rise-time           int32                :offset-assert 272)
-   (fall-time           int32                :offset-assert 276)
-   (part-ry             float                :offset-assert 280)
-   (sync-starting-val   float                :offset-assert 284)
-   (flutflut-button     entity-actor         :offset-assert 288)
-   (appear-trans-top    vector       :inline :offset-assert 304)
-   (appear-trans-bottom vector       :inline :offset-assert 320)
-   (appear-quat-top     quaternion   :inline :offset-assert 336)
-   (appear-quat-bottom  quaternion   :inline :offset-assert 352)
-   (start-trans         vector       :inline :offset-assert 368)
+  ((has-path?            symbol)
+   (plat-type            int32)
+   (rise-time            int32)
+   (fall-time            int32)
+   (part-ry              float)
+   (sync-starting-val    float)
+   (flutflut-button      entity-actor)
+   (appear-trans-top     vector      :inline)
+   (appear-trans-bottom  vector      :inline)
+   (appear-quat-top      quaternion  :inline)
+   (appear-quat-bottom   quaternion  :inline)
+   (start-trans          vector      :inline)
    )
-  :heap-base #x110
-  :method-count-assert 33
-  :size-assert         #x180
-  :flag-assert         #x2101100180
   (:states
     elevator-idle-at-cave
     elevator-idle-at-fort
@@ -32,7 +28,7 @@
   )
 
 ;; definition for method 3 of type flutflut-plat
-(defmethod inspect flutflut-plat ((this flutflut-plat))
+(defmethod inspect ((this flutflut-plat))
   (let ((t9-0 (method-of-type plat inspect)))
     (t9-0 this)
     )
@@ -53,18 +49,14 @@
 
 ;; definition of type snow-button
 (deftype snow-button (process-drawable)
-  ((root-override         collide-shape-moving         :offset        112)
-   (wiggled?              symbol                       :offset-assert 176)
-   (trying-for-fuel-cell? symbol                       :offset-assert 180)
-   (timeout               time-frame                   :offset-assert 184)
-   (delay-til-wiggle      time-frame                   :offset-assert 192)
-   (prev-button           entity-actor                 :offset-assert 200)
-   (ticker                ticky                :inline :offset-assert 208)
+  ((root                   collide-shape-moving :override)
+   (wiggled?               symbol)
+   (trying-for-fuel-cell?  symbol)
+   (timeout                time-frame)
+   (delay-til-wiggle       time-frame)
+   (prev-button            entity-actor)
+   (ticker                 ticky                 :inline)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xf0
-  :flag-assert         #x14008000f0
   (:states
     snow-button-activate
     snow-button-deactivate
@@ -73,7 +65,7 @@
   )
 
 ;; definition for method 3 of type snow-button
-(defmethod inspect snow-button ((this snow-button))
+(defmethod inspect ((this snow-button))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -270,7 +262,7 @@
       (('touch 'attack 'bonk)
        (when (and (= (-> proc type) target)
                   (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))
-                  (>= 10649.6 (vector-vector-xz-distance (-> self root-override trans) (target-pos 0)))
+                  (>= 10649.6 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
                   )
          (close-specific-task! (game-task snow-ball) (task-status need-hint))
          (logclear! (-> self mask) (process-mask actor-pause))
@@ -385,7 +377,7 @@
 
 ;; definition for method 11 of type snow-button
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! snow-button ((this snow-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this snow-button) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -428,7 +420,7 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (set! (-> this link) (new 'process 'actor-link-info this))
@@ -457,7 +449,7 @@
 ;; definition for method 26 of type flutflut-plat
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-26 flutflut-plat ((this flutflut-plat))
+(defmethod baseplat-method-26 ((this flutflut-plat))
   (let ((t9-0 (method-of-type plat baseplat-method-26)))
     (t9-0 this)
     )
@@ -469,7 +461,7 @@
   (set! (-> this flutflut-button) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (let ((f0-0 (res-lump-float (-> this entity) 'rotoffset)))
     (if (!= f0-0 0.0)
-        (quaternion-rotate-y! (-> this root-override quat) (-> this root-override quat) f0-0)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-0)
         )
     )
   (set! (-> this has-path?)
@@ -491,12 +483,12 @@
          )
        )
       (else
-        (set! (-> this appear-trans-top quad) (-> this root-override trans quad))
+        (set! (-> this appear-trans-top quad) (-> this root trans quad))
         )
       )
     (set! (-> this appear-trans-bottom quad) (-> this appear-trans-top quad))
     (+! (-> this appear-trans-bottom y) -286720.0)
-    (quaternion-copy! (-> this appear-quat-top) (-> this root-override quat))
+    (quaternion-copy! (-> this appear-quat-top) (-> this root quat))
     (let ((v1-33 (res-lump-value (-> this entity) 'extra-id uint128)))
       (set! (-> this rise-time) (the int (* 300.0 (+ 0.6 (* 0.15 (the float v1-33))))))
       )
@@ -507,7 +499,7 @@
 
 ;; definition for method 27 of type flutflut-plat
 ;; INFO: Return type mismatch symbol vs skeleton-group.
-(defmethod get-lit-skel flutflut-plat ((this flutflut-plat))
+(defmethod get-lit-skel ((this flutflut-plat))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
       (return (the-as skeleton-group #t))
       )
@@ -583,8 +575,8 @@
     )
   :code (behavior ()
     (logior! (-> self draw status) (draw-status hidden))
-    (clear-collide-with-as (-> self root-override))
-    (set! (-> self root-override trans quad) (-> self appear-trans-top quad))
+    (clear-collide-with-as (-> self root))
+    (set! (-> self root trans quad) (-> self appear-trans-top quad))
     (transform-post)
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -605,7 +597,7 @@
     (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
     (logclear! (-> self draw status) (draw-status hidden))
-    (restore-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root))
     (set! (-> self basetrans quad) (-> self appear-trans-bottom quad))
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'quaternion))
@@ -629,7 +621,7 @@
            (f30-0 (- 1.0 f0-3))
            )
       (vector-lerp! (-> self basetrans) (-> self appear-trans-bottom) (-> self appear-trans-top) f30-0)
-      (quaternion-slerp! (-> self root-override quat) (-> self appear-quat-bottom) (-> self appear-quat-top) f30-0)
+      (quaternion-slerp! (-> self root quat) (-> self appear-quat-bottom) (-> self appear-quat-top) f30-0)
       (set-vector! (-> self draw color-mult) f30-0 f30-0 f30-0 1.0)
       (when (>= f30-0 1.0)
         (baseplat-method-22 self)
@@ -747,8 +739,8 @@
   :enter (behavior ()
     (set-time! (-> self state-time))
     (logclear! (-> self mask) (process-mask actor-pause))
-    (logclear! (-> self root-override root-prim prim-core action) (collide-action rider-plat-sticky))
-    (set! (-> self start-trans quad) (-> self root-override trans quad))
+    (logclear! (-> self root root-prim prim-core action) (collide-action rider-plat-sticky))
+    (set! (-> self start-trans quad) (-> self root trans quad))
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'quaternion))
           )
@@ -762,7 +754,7 @@
     )
   :exit (behavior ()
     (logior! (-> self mask) (process-mask actor-pause))
-    (logior! (-> self root-override root-prim prim-core action) (collide-action rider-plat-sticky))
+    (logior! (-> self root root-prim prim-core action) (collide-action rider-plat-sticky))
     )
   :trans (behavior ()
     (plat-trans)
@@ -770,7 +762,7 @@
            (f30-0 (* f0-1 f0-1))
            )
       (vector-lerp! (-> self basetrans) (-> self start-trans) (-> self appear-trans-bottom) f30-0)
-      (quaternion-slerp! (-> self root-override quat) (-> self appear-quat-top) (-> self appear-quat-bottom) f30-0)
+      (quaternion-slerp! (-> self root quat) (-> self appear-quat-top) (-> self appear-quat-bottom) f30-0)
       (let ((f0-3 (- 1.0 f30-0)))
         (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 1.0)
         )
@@ -896,14 +888,10 @@
 ;; definition of type flutflut-plat-small
 (deftype flutflut-plat-small (flutflut-plat)
   ()
-  :heap-base #x110
-  :method-count-assert 33
-  :size-assert         #x180
-  :flag-assert         #x2101100180
   )
 
 ;; definition for method 3 of type flutflut-plat-small
-(defmethod inspect flutflut-plat-small ((this flutflut-plat-small))
+(defmethod inspect ((this flutflut-plat-small))
   (let ((t9-0 (method-of-type flutflut-plat inspect)))
     (t9-0 this)
     )
@@ -913,14 +901,10 @@
 ;; definition of type flutflut-plat-med
 (deftype flutflut-plat-med (flutflut-plat)
   ()
-  :heap-base #x110
-  :method-count-assert 33
-  :size-assert         #x180
-  :flag-assert         #x2101100180
   )
 
 ;; definition for method 3 of type flutflut-plat-med
-(defmethod inspect flutflut-plat-med ((this flutflut-plat-med))
+(defmethod inspect ((this flutflut-plat-med))
   (let ((t9-0 (method-of-type flutflut-plat inspect)))
     (t9-0 this)
     )
@@ -930,14 +914,10 @@
 ;; definition of type flutflut-plat-large
 (deftype flutflut-plat-large (flutflut-plat)
   ()
-  :heap-base #x110
-  :method-count-assert 33
-  :size-assert         #x180
-  :flag-assert         #x2101100180
   )
 
 ;; definition for method 3 of type flutflut-plat-large
-(defmethod inspect flutflut-plat-large ((this flutflut-plat-large))
+(defmethod inspect ((this flutflut-plat-large))
   (let ((t9-0 (method-of-type flutflut-plat inspect)))
     (t9-0 this)
     )
@@ -945,13 +925,13 @@
   )
 
 ;; definition for method 23 of type flutflut-plat-small
-(defmethod get-unlit-skel flutflut-plat-small ((this flutflut-plat-small))
+(defmethod get-unlit-skel ((this flutflut-plat-small))
   *flutflut-plat-small-sg*
   )
 
 ;; definition for method 25 of type flutflut-plat-small
 ;; INFO: Return type mismatch sparticle-launch-control vs sparticle-launch-group.
-(defmethod baseplat-method-25 flutflut-plat-small ((this flutflut-plat-small))
+(defmethod baseplat-method-25 ((this flutflut-plat-small))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 516) this)))
     (set! (-> this part) v0-0)
     (the-as sparticle-launch-group v0-0)
@@ -960,28 +940,28 @@
 
 ;; definition for method 20 of type flutflut-plat-small
 ;; INFO: Return type mismatch object vs none.
-(defmethod baseplat-method-20 flutflut-plat-small ((this flutflut-plat-small))
+(defmethod baseplat-method-20 ((this flutflut-plat-small))
   (when (nonzero? (-> this part))
     (set! (-> *part-id-table* 2087 init-specs 12 initial-valuef) (-> this part-ry))
     (set! (-> *part-id-table* 2088 init-specs 17 initial-valuef) (-> this part-ry))
-    (spawn (-> this part) (-> this root-override trans))
+    (spawn (-> this part) (-> this root trans))
     )
   (none)
   )
 
 ;; definition for method 26 of type flutflut-plat-small
 ;; INFO: Return type mismatch float vs none.
-(defmethod baseplat-method-26 flutflut-plat-small ((this flutflut-plat-small))
+(defmethod baseplat-method-26 ((this flutflut-plat-small))
   (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26)))
     (t9-0 this)
     )
-  (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root-override quat))))
+  (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root quat))))
   (none)
   )
 
 ;; definition for method 24 of type flutflut-plat-small
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-24 flutflut-plat-small ((this flutflut-plat-small))
+(defmethod baseplat-method-24 ((this flutflut-plat-small))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1000,20 +980,20 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 23 of type flutflut-plat-med
-(defmethod get-unlit-skel flutflut-plat-med ((this flutflut-plat-med))
+(defmethod get-unlit-skel ((this flutflut-plat-med))
   *flutflut-plat-med-sg*
   )
 
 ;; definition for method 25 of type flutflut-plat-med
 ;; INFO: Return type mismatch sparticle-launch-control vs sparticle-launch-group.
-(defmethod baseplat-method-25 flutflut-plat-med ((this flutflut-plat-med))
+(defmethod baseplat-method-25 ((this flutflut-plat-med))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 517) this)))
     (set! (-> this part) v0-0)
     (the-as sparticle-launch-group v0-0)
@@ -1022,7 +1002,7 @@
 
 ;; definition for method 24 of type flutflut-plat-med
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-24 flutflut-plat-med ((this flutflut-plat-med))
+(defmethod baseplat-method-24 ((this flutflut-plat-med))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1041,20 +1021,20 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
 ;; definition for method 23 of type flutflut-plat-large
-(defmethod get-unlit-skel flutflut-plat-large ((this flutflut-plat-large))
+(defmethod get-unlit-skel ((this flutflut-plat-large))
   *flutflut-plat-large-sg*
   )
 
 ;; definition for method 25 of type flutflut-plat-large
 ;; INFO: Return type mismatch sparticle-launch-control vs sparticle-launch-group.
-(defmethod baseplat-method-25 flutflut-plat-large ((this flutflut-plat-large))
+(defmethod baseplat-method-25 ((this flutflut-plat-large))
   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 518) this)))
     (set! (-> this part) v0-0)
     (the-as sparticle-launch-group v0-0)
@@ -1063,28 +1043,28 @@
 
 ;; definition for method 20 of type flutflut-plat-large
 ;; INFO: Return type mismatch object vs none.
-(defmethod baseplat-method-20 flutflut-plat-large ((this flutflut-plat-large))
+(defmethod baseplat-method-20 ((this flutflut-plat-large))
   (when (nonzero? (-> this part))
     (set! (-> *part-id-table* 2091 init-specs 12 initial-valuef) (-> this part-ry))
     (set! (-> *part-id-table* 2092 init-specs 17 initial-valuef) (-> this part-ry))
-    (spawn (-> this part) (-> this root-override trans))
+    (spawn (-> this part) (-> this root trans))
     )
   (none)
   )
 
 ;; definition for method 26 of type flutflut-plat-large
 ;; INFO: Return type mismatch float vs none.
-(defmethod baseplat-method-26 flutflut-plat-large ((this flutflut-plat-large))
+(defmethod baseplat-method-26 ((this flutflut-plat-large))
   (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26)))
     (t9-0 this)
     )
-  (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root-override quat))))
+  (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root quat))))
   (none)
   )
 
 ;; definition for method 24 of type flutflut-plat-large
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-24 flutflut-plat-large ((this flutflut-plat-large))
+(defmethod baseplat-method-24 ((this flutflut-plat-large))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -1103,7 +1083,7 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)

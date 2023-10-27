@@ -3,19 +3,16 @@
 
 ;; definition of type pris-mtx
 (deftype pris-mtx (structure)
-  ((data   float   32        :offset   0)
-   (vector vector  8 :inline :offset   0)
-   (t-mtx  matrix  :inline   :offset   0)
-   (n-mtx  matrix3 :inline   :offset  64)
-   (scale  vector  :inline   :offset 112)
+  ((data    float    32        :offset   0)
+   (vector  vector   8 :inline :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline   :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline   :overlay-at (-> data 16))
+   (scale   vector   :inline   :overlay-at (-> vector 7))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type pris-mtx
-(defmethod inspect pris-mtx ((this pris-mtx))
+(defmethod inspect ((this pris-mtx))
   (format #t "[~8x] ~A~%" this 'pris-mtx)
   (format #t "~Tdata[32] @ #x~X~%" (-> this t-mtx))
   (format #t "~Tvector[8] @ #x~X~%" (-> this t-mtx))
@@ -27,17 +24,14 @@
 
 ;; definition of type generic-pris-mtx-save
 (deftype generic-pris-mtx-save (structure)
-  ((loc-mtx pris-mtx :inline :offset-assert   0)
-   (par-mtx pris-mtx :inline :offset-assert 128)
-   (dif-mtx pris-mtx :inline :offset-assert 256)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x180
-  :flag-assert         #x900000180
   )
 
 ;; definition for method 3 of type generic-pris-mtx-save
-(defmethod inspect generic-pris-mtx-save ((this generic-pris-mtx-save))
+(defmethod inspect ((this generic-pris-mtx-save))
   (format #t "[~8x] ~A~%" this 'generic-pris-mtx-save)
   (format #t "~Tloc-mtx: #<pris-mtx @ #x~X>~%" (-> this loc-mtx))
   (format #t "~Tpar-mtx: #<pris-mtx @ #x~X>~%" (-> this par-mtx))
@@ -47,24 +41,21 @@
 
 ;; definition of type generic-constants
 (deftype generic-constants (structure)
-  ((fog         vector     :inline :offset-assert   0)
-   (adgif       gs-gif-tag :inline :offset-assert  16)
-   (giftag      gs-gif-tag :inline :offset-assert  32)
-   (hvdf-offset vector     :inline :offset-assert  48)
-   (hmge-scale  vector     :inline :offset-assert  64)
-   (invh-scale  vector     :inline :offset-assert  80)
-   (guard       vector     :inline :offset-assert  96)
-   (adnop       qword      :inline :offset-assert 112)
-   (flush       qword      :inline :offset-assert 128)
-   (stores      qword      :inline :offset-assert 144)
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (giftag       gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (adnop        qword       :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xa0
-  :flag-assert         #x9000000a0
   )
 
 ;; definition for method 3 of type generic-constants
-(defmethod inspect generic-constants ((this generic-constants))
+(defmethod inspect ((this generic-constants))
   (format #t "[~8x] ~A~%" this 'generic-constants)
   (format #t "~Tfog: #<vector @ #x~X>~%" (-> this fog))
   (format #t "~Tadgif: #<qword @ #x~X>~%" (-> this adgif))

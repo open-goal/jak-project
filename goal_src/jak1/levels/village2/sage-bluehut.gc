@@ -8,26 +8,18 @@
 ;; DECOMP BEGINS
 
 (deftype assistant-bluehut (process-taskable)
-  ((sound-id   sound-id      :offset-assert 380)
-   (jaws       handle        :offset-assert 384)
-   (sage       entity-actor  :offset-assert 392)
-   (im-talking symbol        :offset-assert 396)
+  ((sound-id    sound-id)
+   (jaws        handle)
+   (sage        entity-actor)
+   (im-talking  symbol)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x190
-  :flag-assert         #x3501200190
   )
 
 
 (deftype sage-bluehut (process-taskable)
-  ((reminder-played symbol        :offset-assert 380)
-   (assistant       entity-actor  :offset-assert 384)
+  ((reminder-played  symbol)
+   (assistant        entity-actor)
    )
-  :heap-base #x120
-  :method-count-assert 53
-  :size-assert         #x184
-  :flag-assert         #x3501200184
   )
 
 
@@ -37,7 +29,7 @@
               :shadow sage-bluehut-shadow-mg
               )
 
-(defmethod play-anim! sage-bluehut ((this sage-bluehut) (arg0 symbol))
+(defmethod play-anim! ((this sage-bluehut) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk-to-sage))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
@@ -126,7 +118,7 @@
     )
   )
 
-(defmethod process-taskable-method-45 sage-bluehut ((this sage-bluehut))
+(defmethod process-taskable-method-45 ((this sage-bluehut))
   (cond
     ((= (current-status (-> this tasks)) (task-status unknown))
      #f
@@ -144,9 +136,7 @@
           )
      #t
      )
-    ((and (-> this reminder-played)
-          (< 81920.0 (vector-vector-distance (-> this root-override trans) (camera-pos)))
-          )
+    ((and (-> this reminder-played) (< 81920.0 (vector-vector-distance (-> this root trans) (camera-pos))))
      #t
      )
     (else
@@ -155,7 +145,7 @@
     )
   )
 
-(defmethod get-art-elem sage-bluehut ((this sage-bluehut))
+(defmethod get-art-elem ((this sage-bluehut))
   (cond
     ((and (= (current-task (-> this tasks)) (game-task rolling-plants))
           (or (= (current-status (-> this tasks)) (task-status need-hint))
@@ -206,18 +196,18 @@
     )
   )
 
-(defmethod should-display? sage-bluehut ((this sage-bluehut))
+(defmethod should-display? ((this sage-bluehut))
   (and (task-closed? (game-task village2-levitator) (task-status need-introduction)) (not (sages-kidnapped?)))
   )
 
-(defmethod play-reminder sage-bluehut ((this sage-bluehut))
+(defmethod play-reminder ((this sage-bluehut))
   (the-as
     symbol
     (and (-> this will-talk) *target* (< -6365184.0 (-> (target-pos 0) z)) (< (-> (target-pos 0) x) 1612800.0))
     )
   )
 
-(defmethod target-above-threshold? sage-bluehut ((this sage-bluehut))
+(defmethod target-above-threshold? ((this sage-bluehut))
   (local-vars (v0-1 symbol))
   (if (not (play-reminder this))
       (return #f)
@@ -232,24 +222,24 @@
   v0-1
   )
 
-(defmethod process-taskable-method-43 sage-bluehut ((this sage-bluehut))
+(defmethod process-taskable-method-43 ((this sage-bluehut))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
         ((< 0.8 f0-2)
-         (play-ambient (-> this ambient) "SAGELP20" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "SAGELP20" #f (-> this root trans))
          )
         ((< 0.6 f0-2)
-         (play-ambient (-> this ambient) "SAGELP21" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "SAGELP21" #f (-> this root trans))
          )
         ((< 0.4 f0-2)
-         (play-ambient (-> this ambient) "SAGELP22" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "SAGELP22" #f (-> this root trans))
          )
         ((< 0.2 f0-2)
-         (play-ambient (-> this ambient) "SAGELP23" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "SAGELP23" #f (-> this root trans))
          )
         ((nonzero? (get-task-status (game-task citadel-sage-blue)))
-         (play-ambient (-> this ambient) "SAGELP24" #f (-> this root-override trans))
+         (play-ambient (-> this ambient) "SAGELP24" #f (-> this root trans))
          )
         )
       )
@@ -314,7 +304,7 @@
     )
   )
 
-(defmethod init-from-entity! sage-bluehut ((this sage-bluehut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sage-bluehut) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *sage-bluehut-sg* 3 40 (new 'static 'vector :w 4505.6) 5)
   (set! (-> this tasks) (get-task-control (game-task rolling-plants)))
   (set! (-> this reminder-played) #f)
