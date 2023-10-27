@@ -453,14 +453,14 @@
   )
 
 ;; definition for function debug-menu-context-grab-joypad
-(defun debug-menu-context-grab-joypad ((menu debug-menu-context) (callback-arg basic) (callback-func (function basic none)))
+(defun debug-menu-context-grab-joypad ((ctxt debug-menu-context) (callback-arg basic) (callback-func (function basic none)))
   (cond
-    ((-> menu joypad-func)
+    ((-> ctxt joypad-func)
      #f
      )
     (else
-      (set! (-> menu joypad-func) callback-func)
-      (set! (-> menu joypad-item) callback-arg)
+      (set! (-> ctxt joypad-func) callback-func)
+      (set! (-> ctxt joypad-item) callback-arg)
       #t
       )
     )
@@ -1034,32 +1034,32 @@
   )
 
 ;; definition for function debug-menu-item-render
-(defun debug-menu-item-render ((arg0 debug-menu-item) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
-  (when (> (-> arg0 refresh-delay) 0)
-    (+! (-> arg0 refresh-ctr) -1)
-    (when (<= (-> arg0 refresh-ctr) 0)
-      (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))
-      (debug-menu-item-send-msg arg0 (debug-menu-msg update))
+(defun debug-menu-item-render ((item debug-menu-item) (x int) (y int) (submenus int) (selected symbol))
+  (when (> (-> item refresh-delay) 0)
+    (+! (-> item refresh-ctr) -1)
+    (when (<= (-> item refresh-ctr) 0)
+      (set! (-> item refresh-ctr) (-> item refresh-delay))
+      (debug-menu-item-send-msg item (debug-menu-msg update))
       )
     )
   (cond
-    ((= (-> arg0 type) debug-menu-item-submenu)
-     (debug-menu-item-submenu-render (the-as debug-menu-item-submenu arg0) arg1 arg2 arg3 arg4)
+    ((= (-> item type) debug-menu-item-submenu)
+     (debug-menu-item-submenu-render (the-as debug-menu-item-submenu item) x y submenus selected)
      )
-    ((= (-> arg0 type) debug-menu-item-function)
-     (debug-menu-item-function-render (the-as debug-menu-item-function arg0) arg1 arg2 arg3 arg4)
+    ((= (-> item type) debug-menu-item-function)
+     (debug-menu-item-function-render (the-as debug-menu-item-function item) x y submenus selected)
      )
-    ((= (-> arg0 type) debug-menu-item-flag)
-     (debug-menu-item-flag-render (the-as debug-menu-item-flag arg0) arg1 arg2 arg3 arg4)
+    ((= (-> item type) debug-menu-item-flag)
+     (debug-menu-item-flag-render (the-as debug-menu-item-flag item) x y submenus selected)
      )
-    ((= (-> arg0 type) debug-menu-item-var)
-     (debug-menu-item-var-render (the-as debug-menu-item-var arg0) arg1 arg2 arg3 arg4)
+    ((= (-> item type) debug-menu-item-var)
+     (debug-menu-item-var-render (the-as debug-menu-item-var item) x y submenus selected)
      )
     (else
       (format 0 "ERROR: Found unknown item type!~%")
       )
     )
-  arg0
+  item
   )
 
 ;; definition for function debug-menu-render
@@ -1151,13 +1151,13 @@
 
 ;; definition for function debug-menu-context-render
 (defun debug-menu-context-render ((arg0 debug-menu-context))
-  (let ((s4-0 6))
-    (dotimes (s5-0 (-> arg0 sel-length))
-      (let ((s3-0 (-> arg0 sel-menu s5-0)))
-        (let ((a3-0 (-> s3-0 selected-item)))
-          (debug-menu-render s3-0 s4-0 28 a3-0 (+ (- -1 s5-0) (-> arg0 sel-length)))
+  (let ((x-pos 6))
+    (dotimes (stack-idx (-> arg0 sel-length))
+      (let ((menu (-> arg0 sel-menu stack-idx)))
+        (let ((selection (-> menu selected-item)))
+          (debug-menu-render menu x-pos 28 selection (+ (- -1 stack-idx) (-> arg0 sel-length)))
           )
-        (set! s4-0 (+ s4-0 3 (-> s3-0 pix-width)))
+        (set! x-pos (+ x-pos 3 (-> menu pix-width)))
         )
       )
     )
