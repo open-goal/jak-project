@@ -119,7 +119,14 @@ void CodeTester::clear() {
  * Execute the buffered code with no arguments, return the value of RAX.
  */
 u64 CodeTester::execute() {
+#if defined(__APPLE__) && defined(__aarch64__)
+  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  auto ret = ((u64(*)())code_buffer)();
+  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  return ret;
+#else
   return ((u64(*)())code_buffer)();
+#endif
 }
 
 /*!
@@ -127,15 +134,34 @@ u64 CodeTester::execute() {
  * arguments will appear in (will handle windows/linux differences)
  */
 u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
+#if defined(__APPLE__) && defined(__aarch64__)
+  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  auto ret = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  return ret;
+#else
   return ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+#endif
 }
 
 /*!
  * Allocate a code buffer of the given size.
  */
 void CodeTester::init_code_buffer(int capacity) {
+// TODO Apple Silicone - You cannot make a page be RWX,
+// or more specifically it can't be both writable and executable at the same time
+//
+// https://github.com/zherczeg/sljit/issues/99
+//
+// The solution to this is to flip-flop between permissions, or perhaps have two threads
+// one that has writing permission, and another with executable permission
+#if defined(__APPLE__) && defined(__aarch64__)
+  code_buffer =
+      (u8*)mmap(nullptr, capacity, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+#else
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_EXEC | PROT_READ | PROT_WRITE,
                           MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+#endif
   if (code_buffer == (u8*)(-1)) {
     ASSERT_MSG(false, "[CodeTester] Failed to map memory!");
   }

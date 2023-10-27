@@ -30,6 +30,7 @@ void __cpuidex(int result[4], int eax, int ecx) {
       : "0"(eax), "2"(ecx));
 }
 #else
+// TODO - implement ARM64 detection, check for NEON instead of AVX
 // for now, just return 0's.
 void __cpuidex(int result[4], int eax, int ecx) {
   lg::warn("cpuid not implemented on this platform");
