@@ -9,6 +9,27 @@
 ;; These are used when creating GS packets to be sent to the GIF
 ;; or for directly interfacing with the memory-mapped GS control registers.
 
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
 ;; DECOMP BEGINS
 
 ;; the GS's PMODE register makes various settings for the PCRTC.
@@ -279,6 +300,7 @@
    )
   )
 
+;; the GS's DTHE register stores settings for dithering (performed/not performed).
 (deftype gs-dthe (uint64)
   ((dthe uint8 :offset   0 :size   1)
    )
@@ -484,6 +506,7 @@
    )
   )
 
+;; the GS's ALPHA registers define the blend function of alpha blending
 (deftype gs-alpha (uint64)
   ((a   uint8 :offset   0 :size   2)
    (b   uint8 :offset   2 :size   2)
@@ -855,7 +878,7 @@
     (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4)))
     )
   ;; set register value and increment count.
-  (set! (-> (&-> packet args (-> packet reg-count)) 0) (the-as uint reg-val))
+  (set! (-> packet args (-> packet reg-count)) (the-as uint reg-val))
   (+! (-> packet reg-count) 1)
   (none)
   )
@@ -882,6 +905,7 @@
 
 
 (defmethod new draw-context ((allocation symbol) (type-to-make type) (org-x int) (org-y int) (width int) (height int) (color-0 rgba))
+  "Allocate and initialize a draw-context"
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
           (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
@@ -898,6 +922,7 @@
   )
 
 (defun draw-context-set-xy ((ctxt draw-context) (x int) (y int))
+  "Set the origin of the draw context, scaling by relative-y-scale as needed."
   (let ((v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale)))))
     (set! (-> ctxt orgx) x)
     (set! (-> ctxt orgy) v0-0)

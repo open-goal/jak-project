@@ -98,18 +98,18 @@
       (if (nonzero? (-> *target* skel))
           (set! (-> *target* skel postbind-function) target-joint-callback-pc))
 
-      (with-pp (protect ((-> *target* fact-info-target eco-source) *sound-player-enable*)
+      (with-pp (protect ((-> *target* fact eco-source) *sound-player-enable*)
       ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
-      (when (< 0 (-> *target* fact-info-target eco-level))
-          (set! (-> *target* fact-info-target eco-source) (process->handle pp))
+      (when (< 0 (-> *target* fact eco-level))
+          (set! (-> *target* fact eco-source) (process->handle pp))
           (false! *sound-player-enable*)
           )
 
       (cond
         ;; green eco!
         ((pc-cheats? (-> obj cheats) eco-green)
-         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-green))
-                   (<= (-> *target* fact-info-target eco-level) 0.0))
+         (when (or (= (-> *target* fact eco-type) (pickup-type eco-green))
+                   (<= (-> *target* fact eco-level) 0.0))
             (define-extern vent type)
             (protect ((-> pp type) (-> *target* control root-prim prim-core action))
             (set! (-> pp type) vent)
@@ -119,15 +119,15 @@
          )
         ;; red eco!
         ((pc-cheats? (-> obj cheats) eco-red)
-         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-red))
-                   (<= (-> *target* fact-info-target eco-level) 0.0))
+         (when (or (= (-> *target* fact eco-type) (pickup-type eco-red))
+                   (<= (-> *target* fact eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
             )
          )
         ;; blue eco!
         ((pc-cheats? (-> obj cheats) eco-blue)
-         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-blue))
-                   (<= (-> *target* fact-info-target eco-level) 0.0))
+         (when (or (= (-> *target* fact eco-type) (pickup-type eco-blue))
+                   (<= (-> *target* fact eco-level) 0.0))
             (protect ((-> *target* event-hook))
               (set! (-> *target* event-hook) target-generic-event-handler)
               (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
@@ -137,8 +137,8 @@
          )
         ;; yellow eco!
         ((pc-cheats? (-> obj cheats) eco-yellow)
-         (when (or (= (-> *target* fact-info-target eco-type) (pickup-type eco-yellow))
-                   (<= (-> *target* fact-info-target eco-level) 0.0))
+         (when (or (= (-> *target* fact eco-type) (pickup-type eco-yellow))
+                   (<= (-> *target* fact eco-level) 0.0))
             (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
             )
          )
@@ -340,16 +340,16 @@
     (when (-> obj controller-led-hp?)
       ;; flicker led according to hp. lower hp = faster and more intense flicker
       (cond
-        ((= (-> *target* fact-info-target health) 0.0)
+        ((= (-> *target* fact health) 0.0)
           ;; dead. just set to minimum brightness.
           (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness))
           )
         (else
           (let ((flicker-speed (lerp-scale  2.0 0.0
-                                            (-> *target* fact-info-target health)
+                                            (-> *target* fact health)
                                             1.0 (-> *FACT-bank* health-max-default)))
                 (flicker-amp (lerp-scale  (- 1.0 (-> obj controller-led-min-brightness)) (- 1.0 (-> obj controller-led-max-brightness))
-                                          (-> *target* fact-info-target health)
+                                          (-> *target* fact health)
                                           1.0 (-> *FACT-bank* health-max-default)))
                 )
             (set! (-> obj controller-led-color a) (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (-> *display* game-frame-counter))))) 2.0))))
@@ -380,7 +380,7 @@
 
     (when (-> obj controller-led-eco?)
     ;; get remaining eco as a number from 0.0 to 1.0
-    (let ((eco-remain-fac (/ (the float (- (-> *target* fact-info-target eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact-info-target eco-pickup-time))))
+    (let ((eco-remain-fac (/ (the float (- (-> *target* fact eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))
                              (the float (-> *FACT-bank* eco-full-timeout)))))
       (when set-no-eco-color?
         (set! (-> obj controller-led-color r) 1.0)
@@ -389,7 +389,7 @@
       ;; dont set eco color if we don't have eco.
       (when (< 0.0 eco-remain-fac)
         ;; set color according to eco type. matches the color in the meter!
-        (case (-> *target* fact-info-target eco-type)
+        (case (-> *target* fact eco-type)
           (((pickup-type eco-blue))
             (set! (-> obj controller-led-color r) 0.0)
             (set! (-> obj controller-led-color g) 0.5)

@@ -103,27 +103,41 @@
 
 
 (defun shrubbery-login-post-texture ((this shrubbery))
+  "Copies adgif shader crap to somewhere"
+  ;; total number of adgif shaders for this shrubbery object.
   (let* ((shader-count (-> this header data 0))
+         ;; one destination to place the data.
          (dst (the-as qword (+ (the-as uint (-> this header)) (* (+ (-> this header data 1) 1) 16))))
+         ;; the second destination to place the data
          (tex-dst (the-as qword (+ (the-as int dst) (* shader-count 64))))
+         ;; the input data (adgif shaders, each is 0x50 bytes, or 5 quads)
          (src (the-as qword (-> this textures)))
          )
+    ;; iterate over all shaders
     (dotimes (a0-1 (the-as int shader-count))
+      ;; copy the first quadword directly to the second destination
       (set! (-> tex-dst quad) (-> src quad))
+      ;; advance dst and src
       (let ((text-dst2 (the-as qword (+ (the-as int tex-dst) 16)))
             (src-2 (the-as qword (&+ (the-as pointer src) 16)))
             )
+        ;; copy second quadword, but only the first three words
         (set! (-> dst vector4w x) (the-as int (-> src-2 data 0)))
         (set! (-> dst vector4w y) (the-as int (-> src-2 data 1)))
         (set! (-> dst vector4w z) (the-as int (-> src-2 data 2)))
+        ;; advance dst and src
         (set! dst (the-as qword (+ (the-as int dst) 16)))
         (let ((src-3 (the-as qword (&+ (the-as pointer src-2) 16))))
+          ;; copy 3rd, 4th, and 5th quadwords
           (dotimes (t0-4 3)
             (set! (-> dst quad) (-> src-3 quad))
             (set! dst (the-as qword (+ (the-as int dst) 16)))
             (set! src-3 (the-as qword (&+ (the-as pointer src-3) 16)))
             )
+          ;; more texture data (isn't this reading off of the end of the source?)
           (set! (-> text-dst2 quad) (-> src-3 quad))
+
+          ;; advance to next source
           (set! tex-dst (the-as qword (+ (the-as int text-dst2) 16)))
           (set! src (the-as qword (&+ (the-as pointer src-3) 80)))
           )
@@ -220,3 +234,6 @@
    (outb       uint128  128)
    )
   )
+
+(define-extern *instance-shrub-work* instance-shrub-work)
+(define-extern draw-drawable-tree-instance-shrub (function drawable-tree-instance-shrub level none))

@@ -7,7 +7,9 @@
 
 ;; DECOMP BEGINS
 
-(define *sky-work* (new 'static 'sky-work
+(define *sky-work*
+        (new 'static 'sky-work
+             ;; usual 5x a+d
                      :adgif-tmpl (new 'static 'dma-gif-packet
                        :dma-vif (new 'static 'dma-packet
                          :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
@@ -16,6 +18,7 @@
                        :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
                        :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
                        )
+             ;; sprite with texture
                      :draw-tmpl (new 'static 'dma-gif-packet
                        :dma-vif (new 'static 'dma-packet
                          :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
@@ -36,6 +39,7 @@
                          :regs4 (gif-reg-id xyzf2)
                          )
                        )
+             ;; sprite with texture and abe (alpha blend enable)
                      :blend-tmpl (new 'static 'dma-gif-packet
                        :dma-vif (new 'static 'dma-packet
                          :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
@@ -74,6 +78,7 @@
         )
 
 (defun init-sky-tng-data ((arg0 sky-tng-data))
+  "Set up giftags and constants in a sky-tng data"
   (set! (-> arg0 giftag-base tag)
         (new 'static 'gif-tag64
           :nloop #x1
@@ -119,55 +124,151 @@
   (none)
   )
 
+
+;; create our sky data
 (define *sky-tng-data* (new 'global 'sky-tng-data))
 
 (init-sky-tng-data *sky-tng-data*)
 
+(defmethod inspect ((this sky-vertex))
+  (format #t "sky-vertex [~X]:~%" this)
+  (format #t "~TPos: [~F ~F ~F ~F]~%" (-> this pos x) (-> this pos y) (-> this pos z) (-> this pos w))
+  (format #t "~TSTQ: [~F ~F ~F ~F]~%" (-> this stq x) (-> this stq y) (-> this stq z) (-> this stq w))
+  (format #t "~TCol: [~F ~F ~F ~F]~%" (-> this col x) (-> this col y) (-> this col z) (-> this col w))
+  this
+  )
 
 (defun update-sky-tng-data ((arg0 float))
   (sky-make-sun-data *sky-parms* 0 arg0)
   (sky-make-sun-data *sky-parms* 1 arg0)
   (sky-make-moon-data *sky-parms* arg0)
   (let ((v1-0 *sky-tng-data*))
+    (case (-> *setting-control* current video-mode)
+      (('custom)
+       (+! (-> v1-0 off-s-0) (* 16.0 DISPLAY_FPS_RATIO))
+       (+! (-> v1-0 off-t-0) (* 32.0 DISPLAY_FPS_RATIO))
+       (+! (-> v1-0 off-s-1) (* -21.0 DISPLAY_FPS_RATIO))
+       (+! (-> v1-0 off-t-1) (* 42.0 DISPLAY_FPS_RATIO))
+       )
+      (else
     (+! (-> v1-0 off-s-0) 16)
     (+! (-> v1-0 off-t-0) 32)
     (+! (-> v1-0 off-s-1) -21)
     (+! (-> v1-0 off-t-1) 42)
+      ))
     (set! (-> v1-0 time) arg0)
     )
   0
   (none)
   )
 
+#|
+(defun init-sky-regs ()
+  "Initialize vf VU0 registers for sky."
+  (rlet ((vf0 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         )
+        (init-vf0-vector)
+        
+        (with-vf (vf13 vf14 vf23 vf24 vf25 vf26 vf28 vf29 vf30 vf31)
+                 :rw 'write
+                 
+                 (let ((v1-0 *math-camera*)
+                       (a0-0 (new-stack-vector0))
+                       )
+                   (set! (-> a0-0 quad) (-> v1-0 hvdf-off quad))
+                   (if (< 0.0 (-> v1-0 trans y))
+                       (set! (-> a0-0 y) 2049.0)
+                       (set! (-> a0-0 y) 2047.0)
+                       )
+                   (set-vector!
+                     (-> *sky-tng-data* fog)
+                     (-> v1-0 pfog0)
+                     (-> v1-0 fog-min)
+                     (-> v1-0 fog-max)
+                     3071.0
+                     )
+                   (.lvf vf31 (&-> v1-0 camera-temp vector 0 quad))
+                   (.lvf vf30 (&-> v1-0 camera-temp vector 1 quad))
+                   (.lvf vf29 (&-> v1-0 camera-temp vector 2 quad))
+                   (.lvf vf28 (&-> v1-0 camera-temp vector 3 quad))
+                   (.lvf vf14 (&-> v1-0 hmge-scale quad))
+                   (.lvf vf26 (&-> v1-0 inv-hmge-scale quad))
+                   (.lvf vf25 (&-> a0-0 quad))
+                   )
+                 (.lvf vf13 (&-> *sky-tng-data* fog quad))
+                 (.mul.vf vf31 vf31 vf14)
+                 (.mul.vf vf30 vf30 vf14)
+                 (.mul.vf vf29 vf29 vf14)
+                 (.mul.vf vf28 vf28 vf14)
+                 (.mov.vf vf25 vf0 :mask #b100)
+                 (.mov.vf vf24 vf0)
+                 (.mov.vf vf23 vf0)
+                 )
+        ;;(.mov v1-2 vf23)
+        0
+        (none)
+        )
+  )
+|#
+;; The init-sky-regs stashes some stuff in vf regs. We are going to stash that stuff in C++, not the usual registers
+;; because everything that uses this is in MIPS2C anyway.
 (def-mips2c init-sky-regs (function none))
+(def-mips2c set-sky-vf27 (function object none))
+(def-mips2c set-sky-vf23-value (function int none))
 
+#|
+(defun set-tex-offset ((arg0 int) (arg1 int))
+  (with-vf (vf24) :rw 'write
+           (let ((v1-0 (new-stack-vector0)))
+             (set! (-> v1-0 x) (* 0.000015258789 (the float arg0)))
+             (set! (-> v1-0 y) (* 0.000015258789 (the float arg1)))
+             (set! (-> v1-0 z) 0.0)
+             (set! (-> v1-0 w) 0.0)
+             (.lvf vf24 (&-> v1-0 quad))
+             )
+           ;;(.mov v1-1 vf24)
+           0
+           (none)
+           )
+  )
+|#
+;; same is true for set-tex-offset
 (def-mips2c set-tex-offset (function int int none))
 
-(def-mips2c draw-large-polygon function)
+;; there are a bunch of weird functions that don't use normal calling conventions.
+;; these are all handled in C++ and aren't accessible from GOAL.
 
-(def-mips2c clip-polygon-against-positive-hyperplane function)
+;; draw-large-polygon
+;; clip-polygon-against-positive-hyperplane
+;; clip-polygon-against-negative-hyperplane
 
-(def-mips2c clip-polygon-against-negative-hyperplane function)
-
+;; we do need to expose 2 functions:
 (def-mips2c render-sky-quad (function int dma-buffer none))
-
 (def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
 
-;; ERROR: function has no type analysis. Cannot decompile.
+; there's also a sky-duplicate-polys but it's never used.
 
-;; ERROR: Function may read a register that is not set: ra
-;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defun close-sky-buffer ((arg0 dma-buffer))
-  (local-vars (ra-0 none))
   (nop!)
   (let ((v1-0 #x8000)
         (v0-0 (-> arg0 base))
         )
-    (set! (-> (the-as (pointer int128) v0-0)) 0)
+    (set! (-> (the-as (pointer int128) v0-0)) (the int128 0))
     (nop!)
     (set! (-> (the-as (pointer int32) v0-0)) v1-0)
     (let ((v0-1 (&+ v0-0 16)))
-      (.jr ra-0)
+      ;; to save like 1 instruction they put this in the delay slot of the jr-ra
+      ;;(.jr ra-0)
       (set! (-> arg0 base) v0-1)
       )
     )
@@ -367,54 +468,18 @@
         )
 
 (define sky-cloud-polygon-indices (new 'static 'array uint8 48
-                                    #x0
-                                    #x1
-                                    #x9
-                                    #x8
-                                    #x1
-                                    #x2
-                                    #xa
-                                    #x9
-                                    #x2
-                                    #x3
-                                    #xb
-                                    #xa
-                                    #x3
-                                    #x0
-                                    #x8
-                                    #xb
-                                    #x8
-                                    #x9
-                                    #x5
-                                    #x4
-                                    #x9
-                                    #xa
-                                    #x6
-                                    #x5
-                                    #xa
-                                    #xb
-                                    #x7
-                                    #x6
-                                    #xb
-                                    #x8
-                                    #x4
-                                    #x7
-                                    #x4
-                                    #x5
-                                    #x6
-                                    #x7
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
-                                    #x0
+                                    #x0 #x1 #x9 #x8
+                                    #x1 #x2 #xa #x9
+                                    #x2 #x3 #xb #xa
+                                    #x3 #x0 #x8 #xb
+                                    #x8 #x9 #x5 #x4
+                                    #x9 #xa #x6 #x5
+                                    #xa #xb #x7 #x6
+                                    #xb #x8 #x4 #x7
+                                    #x4 #x5 #x6 #x7
+                                    #x0 #x0 #x0 #x0
+                                    #x0 #x0 #x0 #x0
+                                    #x0 #x0 #x0 #x0
                                     )
         )
 
@@ -611,7 +676,8 @@
           (set! (-> v1-16 base) (&+ a0-15 48))
           )
         (init-sky-regs)
-        (.lvf vf27 (&-> *sky-tng-data* giftag-roof qword))
+        ;;(.lvf vf27 (&-> *sky-tng-data* giftag-roof qword))
+        (set-sky-vf27 (&-> *sky-tng-data* giftag-roof qword))
         (when *sky-drawn*
           (let* ((v1-20 s4-0)
                  (a0-17 (the-as object (-> v1-20 base)))
@@ -697,21 +763,27 @@
             (init-sky-regs)
             (let ((s2-2 (the-as object (-> sky-cloud-polygons 0))))
               (set-tex-offset (the-as int (-> *sky-tng-data* off-s-0)) (the-as int (-> *sky-tng-data* off-t-0)))
+              ;; first cloud layer
               (dotimes (s1-4 9)
                 (render-sky-quad (the-as int s2-2) s4-0)
                 (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
                 )
               (set-tex-offset (the-as int (-> *sky-tng-data* off-s-1)) (the-as int (-> *sky-tng-data* off-t-1)))
+              ;; second cloud layer
               (dotimes (s1-5 9)
                 (render-sky-quad (the-as int s2-2) s4-0)
                 (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
                 )
               )
-            (.lvf vf27 (&-> *sky-tng-data* giftag-base qword))
-            (let ((v1-83 #x43800000))
-              (.mov vf23 v1-83)
-              )
-            (.mov v1-84 vf23)
+            ;;(.lvf vf27 (&-> *sky-tng-data* giftag-base qword))
+            ;; these draw stuff below the horizon
+            (set-sky-vf27 (&-> *sky-tng-data* giftag-base qword))
+            (set-sky-vf23-value #x43800000)
+            ; (let ((v1-83 #x43800000))
+            ;  (.mov vf23 v1-83)
+            ;  )
+            ; (.mov v1-84 vf23)
+            ; not sure what this is, but it draws on the
             (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 0)) s4-0)
             (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 3)) s4-0)
             (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 6)) s4-0)

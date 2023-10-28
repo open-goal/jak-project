@@ -93,10 +93,12 @@
   )
 
 
-(defmethod new debug-menu ((allocation symbol) (type-to-make type) (arg0 debug-menu-context) (arg1 string))
+(defmethod new debug-menu ((allocation symbol) (type-to-make type) (arg0 debug-menu-context) (name string))
+  "Create a new debug-menu"
+
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 context) arg0)
-    (set! (-> v0-0 name) arg1)
+    (set! (-> v0-0 name) name)
     (set! (-> v0-0 parent) #f)
     (set! (-> v0-0 selected-item) #f)
     (set! (-> v0-0 items) '())
@@ -104,6 +106,7 @@
     )
   )
 
+;; Parent type for an item (an individual, selectable entry within a menu)
 (deftype debug-menu-item (debug-menu-node)
   ((id  int32)
    )
@@ -119,18 +122,34 @@
   )
 
 
-(defmethod new debug-menu-item-submenu ((allocation symbol) (type-to-make type) (arg0 string) (arg1 debug-menu))
+(defmethod new debug-menu-item-submenu ((allocation symbol) (type-to-make type) (arg0 string) (menu debug-menu))
+  "Create an item that opens the given menu."
+
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
     (set! (-> v0-0 refresh-delay) 0)
     (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
-    (set! (-> v0-0 submenu) arg1)
+    (set! (-> v0-0 submenu) menu)
+    ;; in this case, the submenu's parent is set to the item, not a menu.
+    ;; it's possible that the type of parent here is just debug-menu-node, but this value is never used.
     (set! (-> v0-0 submenu parent) (the-as debug-menu v0-0))
     v0-0
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Items
+;;;;;;;;;;;;;;;;;;;;;;;;
+(defenum debug-menu-msg
+  :type int32
+  (activate 1)
+  (deactivate 2)
+  (update 3)
+  (press 4)
+  )
+
+;; An item that calls a function when you select it.
 (deftype debug-menu-item-function (debug-menu-item)
   ((activate-func  (function object object))
    (hilite-timer   int8) ;; how much longer to stay highlighted for.

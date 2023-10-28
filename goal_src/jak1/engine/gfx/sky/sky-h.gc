@@ -21,18 +21,28 @@
   )
 
 
+;; a sky-color-hour for each hour of the day.
 (deftype sky-color-day (structure)
   ((hour  sky-color-hour  24 :inline)
    )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Old Sky Renderer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; there's an old sky renderer that's no longer used.
+;; it seems like it drew the suns and moon.
+;; these types are designed for the old renderer, but partially used by the new one
+
+;; these stores points on a squashed circle (xy only)
 (deftype sky-circle-data (structure)
   ((data  vector  17 :inline)
    )
   )
 
 
+;; sun particle tracks this
 (deftype sky-sun-data (structure)
   ((data            uint128  4)
    (pos             vector   :inline :overlay-at (-> data 0))
@@ -49,6 +59,7 @@
   )
 
 
+;; moon particle tracks this
 (deftype sky-moon-data (structure)
   ((data   uint128  2)
    (pos    vector   :inline :overlay-at (-> data 0))
@@ -57,6 +68,7 @@
   )
 
 
+;; parameters for the sun/moon motion.
 (deftype sky-orbit (structure)
   ((high-noon  float)
    (tilt       float)
@@ -69,6 +81,7 @@
   )
 
 
+;; sky data to send to old sky renderer.
 (deftype sky-upload-data (basic)
   ((circle  sky-circle-data  :inline)
    (sun     sky-sun-data     2 :inline)
@@ -78,6 +91,7 @@
   )
 
 
+;; all sky data. This has a copy of sky-upload-data that's used by the new sky renderer.
 (deftype sky-parms (basic)
   ((orbit              sky-orbit        3 :inline)
    (upload-data        sky-upload-data  :inline)
@@ -93,6 +107,7 @@
 
 
 (defmethod new sky-parms ((allocation symbol) (type-to-make type))
+  "allocate a new sky-parms"
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 upload-data type) sky-upload-data)
     v0-0
@@ -101,8 +116,10 @@
 
 (define *sky-parms* (new 'global 'sky-parms))
 
+;; here's another sky-upload-data. It's just used to hold these cirlces.
 (define *sky-upload-data* (new 'global 'sky-upload-data))
 
+;; generate some points on a circle for the sky renderer.
 (dotimes (gp-0 17)
   (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
     (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
@@ -111,6 +128,10 @@
   (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
   (set! (-> *sky-upload-data* circle data gp-0 w) 0.0)
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; new sky renderer (TNG)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sky-tng-data (basic)
   ((giftag-base   gs-gif-tag  :inline)
@@ -145,6 +166,11 @@
   )
 
 
+;; the sky renderer writes sky and cloud textures to vram - these booleans tell you if
+;; it has done this, and if the sky/cloud textures should be used.
 (define *sky-drawn* #f)
-
 (define *cloud-drawn* #f)
+(declare-type time-of-day-context basic)
+(define-extern update-sky-tng-data (function float none))
+(define-extern make-sky-textures (function time-of-day-context int none))
+(define-extern sky-base-polygons (inline-array sky-vertex))
