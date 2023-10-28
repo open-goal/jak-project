@@ -52,25 +52,21 @@
   )
 
 (deftype gun-yellow-shot (projectile)
-  ((hit-actor? symbol         :offset-assert 472)
-   (tail-pos   vector :inline :offset-assert 480)
-   (hit-pos    vector :inline :offset-assert 496)
+  ((hit-actor?  symbol)
+   (tail-pos    vector  :inline)
+   (hit-pos     vector  :inline)
    )
-  :heap-base #x180
-  :method-count-assert 40
-  :size-assert         #x200
-  :flag-assert         #x2801800200
   )
 
 
-(defmethod draw-laser-sight gun-yellow-shot ((this gun-yellow-shot))
+(defmethod draw-laser-sight ((this gun-yellow-shot))
   "TODO - confirm If applicable, draw the laser sight particles"
   (draw-beam (-> *part-id-table* 227) (-> this tail-pos) (-> this starting-dir) #f #t)
   0
   (none)
   )
 
-(defmethod spawn-impact-particles gun-yellow-shot ((this gun-yellow-shot))
+(defmethod spawn-impact-particles ((this gun-yellow-shot))
   "Spawns associated particles with the projectile if applicable"
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -136,7 +132,7 @@
     )
   )
 
-(defmethod deal-damage! gun-yellow-shot ((this gun-yellow-shot) (arg0 process) (arg1 event-message-block))
+(defmethod deal-damage! ((this gun-yellow-shot) (arg0 process) (arg1 event-message-block))
   "Constructs an [[attack-info]] according to the projectile's `options`"
   (let ((t9-0 (method-of-type projectile deal-damage!)))
     (when (t9-0 this arg0 arg1)
@@ -146,7 +142,7 @@
     )
   )
 
-(defmethod spawn-shell-particles gun-yellow-shot ((this gun-yellow-shot))
+(defmethod spawn-shell-particles ((this gun-yellow-shot))
   "TODO - confirm"
   (cond
     ((-> this hit-actor?)
@@ -229,7 +225,7 @@
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod play-impact-sound gun-yellow-shot ((this gun-yellow-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this gun-yellow-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -249,7 +245,7 @@
   (none)
   )
 
-(defmethod made-impact? gun-yellow-shot ((this gun-yellow-shot))
+(defmethod made-impact? ((this gun-yellow-shot))
   "TODO - queries the collision cache, return true/false"
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
@@ -301,7 +297,7 @@
   (none)
   )
 
-(defmethod init-proj-collision! gun-yellow-shot ((this gun-yellow-shot))
+(defmethod init-proj-collision! ((this gun-yellow-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -353,7 +349,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! gun-yellow-shot ((this gun-yellow-shot))
+(defmethod init-proj-settings! ((this gun-yellow-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this hit-actor?) #f)
   (set! (-> this tail-pos quad) (-> this root trans quad))

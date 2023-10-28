@@ -223,21 +223,18 @@
 
 ;; definition of type mantis-jump-info
 (deftype mantis-jump-info (structure)
-  ((distance    float          :offset-assert   0)
-   (search-step uint32         :offset-assert   4)
-   (destination vector :inline :offset-assert  16)
-   (direction   uint16         :offset-assert  32)
-   (start-anim  uint32         :offset-assert  36)
-   (air-anim    uint32         :offset-assert  40)
-   (land-anim   uint32         :offset-assert  44)
+  ((distance     float)
+   (search-step  uint32)
+   (destination  vector  :inline)
+   (direction    uint16)
+   (start-anim   uint32)
+   (air-anim     uint32)
+   (land-anim    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type mantis-jump-info
-(defmethod inspect mantis-jump-info ((this mantis-jump-info))
+(defmethod inspect ((this mantis-jump-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -256,42 +253,40 @@
 
 ;; definition of type mantis
 (deftype mantis (nav-enemy)
-  ((base-height  float                    :offset-assert 604)
-   (flags        mantis-flag              :offset-assert 608)
-   (attack-timer time-frame               :offset-assert 616)
-   (track-timer  time-frame               :offset-assert 624)
-   (gspot-timer  time-frame               :offset-assert 632)
-   (gspot-normal vector           :inline :offset-assert 640)
-   (my-up-vector vector           :inline :offset-assert 656)
-   (jump         mantis-jump-info :inline :offset-assert 672)
+  ((base-height   float)
+   (flags         mantis-flag)
+   (attack-timer  time-frame)
+   (track-timer   time-frame)
+   (gspot-timer   time-frame)
+   (gspot-normal  vector            :inline)
+   (my-up-vector  vector            :inline)
+   (jump          mantis-jump-info  :inline)
    )
-  :heap-base #x250
-  :method-count-assert 195
-  :size-assert         #x2d0
-  :flag-assert         #xc3025002d0
+  (:state-methods
+    crawl
+    attack0
+    attack1
+    ambush-crawling
+    ambush-jumping
+    mantis-state-183
+    roll-right
+    roll-left
+    hop-away
+    )
   (:methods
-    (crawl () _type_ :state 178)
-    (attack0 () _type_ :state 179)
-    (attack1 () _type_ :state 180)
-    (ambush-crawling () _type_ :state 181)
-    (ambush-jumping () _type_ :state 182)
-    (mantis-method-183 () none 183)
-    (roll-right () _type_ :state 184)
-    (roll-left () _type_ :state 185)
-    (hop-away () _type_ :state 186)
-    (mantis-method-187 (_type_) none 187)
-    (mantis-method-188 (_type_) none 188)
-    (mantis-method-189 (_type_ vector vector) symbol 189)
-    (mantis-method-190 (_type_ vector vector) none 190)
-    (mantis-method-191 (_type_ vector vector) int 191)
-    (mantis-method-192 (_type_ vector vector) none 192)
-    (mantis-method-193 (_type_ vector) none 193)
-    (mantis-method-194 (_type_) symbol 194)
+    (mantis-method-187 (_type_) none)
+    (mantis-method-188 (_type_) none)
+    (mantis-method-189 (_type_ vector vector) symbol)
+    (mantis-method-190 (_type_ vector vector) none)
+    (mantis-method-191 (_type_ vector vector) int)
+    (mantis-method-192 (_type_ vector vector) none)
+    (mantis-method-193 (_type_ vector) none)
+    (mantis-method-194 (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type mantis
-(defmethod inspect mantis ((this mantis))
+(defmethod inspect ((this mantis))
   (when (not this)
     (set! this this)
     (goto cfg-8)
@@ -1244,7 +1239,7 @@
   )
 
 ;; definition for method 74 of type mantis
-(defmethod general-event-handler mantis ((this mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -1317,7 +1312,7 @@
   )
 
 ;; definition for method 77 of type mantis
-(defmethod enemy-method-77 mantis ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this mantis) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (ja-channel-push! 1 (seconds 0.02))
@@ -1349,7 +1344,7 @@
   )
 
 ;; definition for method 78 of type mantis
-(defmethod enemy-method-78 mantis ((this mantis) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this mantis) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.1))
@@ -1397,7 +1392,7 @@
 ;; definition for method 125 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 mantis ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod enemy-method-125 ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -1444,7 +1439,7 @@
 
 ;; definition for method 194 of type mantis
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod mantis-method-194 mantis ((this mantis))
+(defmethod mantis-method-194 ((this mantis))
   (let ((a0-2 (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 1))
         (gp-0 (new 'stack-no-clear 'vector))
         )
@@ -1459,7 +1454,7 @@
 ;; definition for method 193 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod mantis-method-193 mantis ((this mantis) (arg0 vector))
+(defmethod mantis-method-193 ((this mantis) (arg0 vector))
   (cond
     ((= (-> this root gspot-pos y) -40959590.0)
      (set! (-> arg0 y) 0.0)
@@ -1491,7 +1486,7 @@
 ;; definition for method 142 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 mantis ((this mantis) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this mantis) (arg0 nav-control))
   (let ((t9-0 (method-of-object this mantis-method-193))
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
@@ -1506,7 +1501,7 @@
 ;; definition for method 55 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! mantis ((this mantis))
+(defmethod track-target! ((this mantis))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1529,7 +1524,7 @@
 
 ;; definition for method 187 of type mantis
 ;; WARN: Return type mismatch object vs none.
-(defmethod mantis-method-187 mantis ((this mantis))
+(defmethod mantis-method-187 ((this mantis))
   (let ((s3-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s4-0 (-> this root))
         (s5-0 (lambda ((arg0 mantis) (arg1 collide-shape-moving) (arg2 vector))
@@ -1594,7 +1589,7 @@
 
 ;; definition for method 188 of type mantis
 ;; WARN: Return type mismatch int vs none.
-(defmethod mantis-method-188 mantis ((this mantis))
+(defmethod mantis-method-188 ((this mantis))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1632,7 +1627,7 @@
   )
 
 ;; definition for method 67 of type mantis
-(defmethod go-stare mantis ((this mantis))
+(defmethod go-stare ((this mantis))
   (let ((a0-2 (handle->process (-> this focus handle))))
     (if (and a0-2
              (and (< 81920.0 (vector-vector-xz-distance (-> this root trans) (get-trans (the-as process-focusable a0-2) 0)))
@@ -1647,7 +1642,7 @@
 
 ;; definition for method 190 of type mantis
 ;; WARN: Return type mismatch int vs none.
-(defmethod mantis-method-190 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-190 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (let* ((f0-0 (vector-length arg1))
            (f0-1 (if (< 102400.0 f0-0)
@@ -1672,7 +1667,7 @@
   )
 
 ;; definition for method 191 of type mantis
-(defmethod mantis-method-191 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-191 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
@@ -1696,7 +1691,7 @@
 
 ;; definition for method 192 of type mantis
 ;; WARN: Return type mismatch int vs none.
-(defmethod mantis-method-192 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-192 ((this mantis) (arg0 vector) (arg1 vector))
   (let ((s5-0 (-> this jump)))
     (vector-length arg1)
     (vector-normalize! arg1 1.0)
@@ -1720,7 +1715,7 @@
   )
 
 ;; definition for method 189 of type mantis
-(defmethod mantis-method-189 mantis ((this mantis) (arg0 vector) (arg1 vector))
+(defmethod mantis-method-189 ((this mantis) (arg0 vector) (arg1 vector))
   (let* ((s4-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0))
          (f30-0 (vector-length arg1))
          (f28-0 3640.889)
@@ -1790,7 +1785,7 @@
   )
 
 ;; definition for method 89 of type mantis
-(defmethod enemy-method-89 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this mantis) (arg0 enemy-jump-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump start-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1805,7 +1800,7 @@
   )
 
 ;; definition for method 87 of type mantis
-(defmethod enemy-method-87 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this mantis) (arg0 enemy-jump-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump air-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1821,7 +1816,7 @@
 
 ;; definition for method 92 of type mantis
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod enemy-method-92 mantis ((this mantis) (arg0 int) (arg1 nav-poly))
+(defmethod enemy-method-92 ((this mantis) (arg0 int) (arg1 nav-poly))
   "TODO - nav-poly is a guess
 @abstract"
   (let ((v1-0 arg0))
@@ -1855,7 +1850,7 @@
   )
 
 ;; definition for method 88 of type mantis
-(defmethod enemy-method-88 mantis ((this mantis) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this mantis) (arg0 enemy-jump-info))
   (cond
     ((zero? (-> this jump land-anim))
      #f
@@ -1877,14 +1872,14 @@
   )
 
 ;; definition for method 60 of type mantis
-(defmethod coin-flip? mantis ((this mantis))
+(defmethod coin-flip? ((this mantis))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 114 of type mantis
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! mantis ((this mantis))
+(defmethod init-enemy-collision! ((this mantis))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1990,7 +1985,7 @@
 ;; definition for method 115 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! mantis ((this mantis))
+(defmethod init-enemy! ((this mantis))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

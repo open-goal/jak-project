@@ -3,19 +3,16 @@
 
 ;; definition of type elevator-params
 (deftype elevator-params (structure)
-  ((xz-threshold float           :offset-assert   0)
-   (y-threshold  float           :offset-assert   4)
-   (start-pos    float           :offset-assert   8)
-   (move-rate    float           :offset-assert  12)
-   (flags        elevator-flags  :offset-assert  16)
+  ((xz-threshold  float)
+   (y-threshold   float)
+   (start-pos     float)
+   (move-rate     float)
+   (flags         elevator-flags)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 ;; definition for method 3 of type elevator-params
-(defmethod inspect elevator-params ((this elevator-params))
+(defmethod inspect ((this elevator-params))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -32,16 +29,13 @@
 
 ;; definition of type path-step
 (deftype path-step (structure)
-  ((next-pos float  :offset-assert   0)
-   (dist     float  :offset-assert   4)
+  ((next-pos  float)
+   (dist      float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type path-step
-(defmethod inspect path-step ((this path-step))
+(defmethod inspect ((this path-step))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -55,15 +49,12 @@
 
 ;; definition of type path-step-inline-array
 (deftype path-step-inline-array (inline-array-class)
-  ((data path-step :inline :dynamic :offset-assert  16)
+  ((data  path-step  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type path-step-inline-array
-(defmethod inspect path-step-inline-array ((this path-step-inline-array))
+(defmethod inspect ((this path-step-inline-array))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -81,45 +72,43 @@
 
 ;; definition of type elevator
 (deftype elevator (base-plat)
-  ((params                       elevator-params        :inline :offset-assert 272)
-   (path-seq                     path-step-inline-array         :offset-assert 296)
-   (path-dest                    float                          :offset-assert 300)
-   (bottom-top                   float                  2       :offset-assert 304)
-   (move-pos                     float                  2       :offset-assert 312)
-   (move-dist                    float                          :offset-assert 320)
-   (path-pos                     float                          :offset-assert 324)
-   (path-eased-pos               float                          :offset-assert 328)
-   (ride-timer                   time-frame                     :offset-assert 336)
-   (sticky-player-last-ride-time time-frame                     :offset-assert 344)
-   (elevator-status              elevator-status                :offset-assert 352)
-   (on-activate                  pair                           :offset-assert 360)
-   (on-deactivate                pair                           :offset-assert 364)
+  ((params                        elevator-params  :inline)
+   (path-seq                      path-step-inline-array)
+   (path-dest                     float)
+   (bottom-top                    float            2)
+   (move-pos                      float            2)
+   (move-dist                     float)
+   (path-pos                      float)
+   (path-eased-pos                float)
+   (ride-timer                    time-frame)
+   (sticky-player-last-ride-time  time-frame)
+   (elevator-status               elevator-status)
+   (on-activate                   pair)
+   (on-deactivate                 pair)
    )
-  :heap-base #xf0
-  :method-count-assert 49
-  :size-assert         #x170
-  :flag-assert         #x3100f00170
+  (:state-methods
+    dormant
+    waiting
+    running
+    arrived
+    )
   (:methods
-    (dormant () _type_ :state 34)
-    (waiting () _type_ :state 35)
-    (running () _type_ :state 36)
-    (arrived () _type_ :state 37)
-    (elevator-method-38 (_type_) none 38)
-    (calc-dist-between-points! (_type_ int int) none 39)
-    (activate-elevator (_type_) object 40)
-    (init-defaults! (_type_) none 41)
-    (set-ambient-sound! (_type_) none 42)
-    (move-between-points (_type_ vector float float) symbol 43)
-    (elevator-method-44 (_type_) symbol 44)
-    (commited-to-ride? (_type_) symbol 45)
-    (move-to-next-point! (_type_) none 46)
-    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol 47)
-    (elevator-method-48 (_type_) none 48)
+    (elevator-method-38 (_type_) none)
+    (calc-dist-between-points! (_type_ int int) none)
+    (activate-elevator (_type_) object)
+    (init-defaults! (_type_) none)
+    (set-ambient-sound! (_type_) none)
+    (move-between-points (_type_ vector float float) symbol)
+    (elevator-method-44 (_type_) symbol)
+    (commited-to-ride? (_type_) symbol)
+    (move-to-next-point! (_type_) none)
+    (find-closest-point-in-path! (_type_ vector (pointer float) symbol symbol) symbol)
+    (elevator-method-48 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type elevator
-(defmethod inspect elevator ((this elevator))
+(defmethod inspect ((this elevator))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -145,7 +134,7 @@
   )
 
 ;; definition for method 43 of type elevator
-(defmethod move-between-points elevator ((this elevator) (arg0 vector) (arg1 float) (arg2 float))
+(defmethod move-between-points ((this elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
 @param vec TODO not sure
 @param point-a The first point fetched from the elevator's path
@@ -156,7 +145,7 @@
 
 ;; definition for method 48 of type elevator
 ;; INFO: Used lq/sq
-(defmethod elevator-method-48 elevator ((this elevator))
+(defmethod elevator-method-48 ((this elevator))
   "TODO - collision related"
   (let ((target *target*))
     (when target
@@ -192,7 +181,7 @@
 
 ;; definition for method 41 of type elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-defaults! elevator ((this elevator))
+(defmethod init-defaults! ((this elevator))
   "Initializes default settings related to the [[elevator]]:
 - `elevator-xz-threshold`
 - `elevator-y-threshold`
@@ -430,7 +419,7 @@ which is obviously useful for an elevator."
 
 ;; definition for method 47 of type elevator
 ;; INFO: Used lq/sq
-(defmethod find-closest-point-in-path! elevator ((this elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
+(defmethod find-closest-point-in-path! ((this elevator) (arg0 vector) (arg1 (pointer float)) (arg2 symbol) (arg3 symbol))
   "Finds and sets the provided [[path-step]]'s `next-pos` field to the vertex index in the path which is closest to
 the provided [[vector]]
 
@@ -475,7 +464,7 @@ the provided [[vector]]
 
 ;; definition for method 44 of type elevator
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod elevator-method-44 elevator ((this elevator))
+(defmethod elevator-method-44 ((this elevator))
   (let* ((target-temp *target*)
          (target (if (type? target-temp process-focusable)
                      target-temp
@@ -490,7 +479,7 @@ the provided [[vector]]
   )
 
 ;; definition for method 45 of type elevator
-(defmethod commited-to-ride? elevator ((this elevator))
+(defmethod commited-to-ride? ((this elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   #t
   )
@@ -503,7 +492,7 @@ the provided [[vector]]
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Return type mismatch int vs none.
-(defmethod move-to-next-point! elevator ((this elevator))
+(defmethod move-to-next-point! ((this elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
 do so.
 @see [[elevator::47]]"
@@ -774,7 +763,7 @@ do so.
 
 ;; definition for method 39 of type elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod calc-dist-between-points! elevator ((this elevator) (path-point-x int) (path-point-y int))
+(defmethod calc-dist-between-points! ((this elevator) (path-point-x int) (path-point-y int))
   "Calculates the distance between two points in the elevator's path.
 
 @param path-point-x The index of the first point in the distance calculation, and where `next-pos` and `dist` are stored in the `path-seq` array
@@ -791,7 +780,7 @@ do so.
 
 ;; definition for method 42 of type elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-ambient-sound! elevator ((this elevator))
+(defmethod set-ambient-sound! ((this elevator))
   "Sets the elevator's [[ambient-sound]] up"
   (set! (-> this sound) (the-as ambient-sound 0))
   0
@@ -800,7 +789,7 @@ do so.
 
 ;; definition for method 33 of type elevator
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-plat! elevator ((this elevator))
+(defmethod init-plat! ((this elevator))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
@@ -808,7 +797,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 7 of type elevator
-(defmethod relocate elevator ((this elevator) (arg0 int))
+(defmethod relocate ((this elevator) (arg0 int))
   (if (nonzero? (-> this path-seq))
       (&+! (-> this path-seq) arg0)
       )
@@ -816,7 +805,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 40 of type elevator
-(defmethod activate-elevator elevator ((this elevator))
+(defmethod activate-elevator ((this elevator))
   "Puts the elevator initially into the correct state. This is typically based upon game completion"
   (if (logtest? (-> this params flags) (elevator-flags elevator-flags-6))
       (go (method-of-object this arrived))
@@ -841,7 +830,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Stack slot offset 32 signed mismatch
 ;; WARN: Stack slot offset 32 signed mismatch
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! elevator ((this elevator) (entity entity-actor))
+(defmethod init-from-entity! ((this elevator) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -8,27 +8,23 @@
 ;; DECOMP BEGINS
 
 (deftype under-plat-shoot (plat)
-  ((draw-test-script    script-context         :offset-assert 324)
-   (incoming-attack-id  uint32                 :offset-assert 328)
-   (angle-flip          float                  :offset-assert 332)
-   (angle-flip-vel      float                  :offset-assert 336)
-   (state-flip          uint32                 :offset-assert 340)
-   (time-flip           uint32                 :offset-assert 344)
-   (disable-track-under basic                  :offset-assert 348)
-   (dest-angle          float                  :offset-assert 352)
-   (on-shake            basic                  :offset-assert 356)
-   (hint-count          float                  :offset-assert 360)
-   (hit-time            time-frame             :offset-assert 368)
-   (knocked-sound-time  time-frame             :offset-assert 376)
-   (axe-flip            vector         :inline :offset-assert 384)
+  ((draw-test-script     script-context)
+   (incoming-attack-id   uint32)
+   (angle-flip           float)
+   (angle-flip-vel       float)
+   (state-flip           uint32)
+   (time-flip            uint32)
+   (disable-track-under  basic)
+   (dest-angle           float)
+   (on-shake             basic)
+   (hint-count           float)
+   (hit-time             time-frame)
+   (knocked-sound-time   time-frame)
+   (axe-flip             vector  :inline)
    )
-  :heap-base #x110
-  :method-count-assert 39
-  :size-assert         #x190
-  :flag-assert         #x2701100190
-  (:methods
-    (die-falling () _type_ :state 37)
-    (dormant () _type_ :state 38)
+  (:state-methods
+    die-falling
+    dormant
     )
   )
 
@@ -38,7 +34,7 @@
               :bounds (static-spherem 0 0 0 5.1)
               )
 
-(defmethod get-art-group under-plat-shoot ((this under-plat-shoot))
+(defmethod get-art-group ((this under-plat-shoot))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-under-plat-shoot" (the-as (pointer uint32) #f))
   )
@@ -57,7 +53,7 @@
     )
   )
 
-(defmethod init-plat-collision! under-plat-shoot ((this under-plat-shoot))
+(defmethod init-plat-collision! ((this under-plat-shoot))
   "TODO - collision stuff for setting up the platform"
   (set! (-> this clock) (-> *display* user0-clock))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -104,12 +100,12 @@
   (none)
   )
 
-(defmethod base-plat-method-32 under-plat-shoot ((this under-plat-shoot))
+(defmethod base-plat-method-32 ((this under-plat-shoot))
   0
   (none)
   )
 
-(defmethod init-plat! under-plat-shoot ((this under-plat-shoot))
+(defmethod init-plat! ((this under-plat-shoot))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -405,7 +401,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   )
 
-(defmethod plat-path-sync under-plat-shoot ((this under-plat-shoot))
+(defmethod plat-path-sync ((this under-plat-shoot))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
 otherwise, [[plat::34]]
 
@@ -423,16 +419,12 @@ otherwise, [[plat::34]]
   )
 
 (deftype under-break-floor (process-drawable)
-  ((root collide-shape-moving  :override)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc8
-  :flag-assert         #x17005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (die-fast () _type_ :state 22)
+  (:state-methods
+    idle
+    die
+    die-fast
     )
   )
 
@@ -535,7 +527,7 @@ otherwise, [[plat::34]]
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-break-floor ((this under-break-floor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-break-floor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -596,13 +588,9 @@ This commonly includes things such as:
 
 (deftype under-break-wall (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xc8
-  :flag-assert         #x16005000c8
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -630,7 +618,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-break-wall ((this under-break-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-break-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -691,17 +679,13 @@ This commonly includes things such as:
   )
 
 (deftype under-break-bridge (process-drawable)
-  ((root      collide-shape-moving  :override)
-   (bridge-id int8                  :offset-assert 200)
+  ((root       collide-shape-moving :override)
+   (bridge-id  int8)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc9
-  :flag-assert         #x17005000c9
-  (:methods
-    (idle () _type_ :state 20)
-    (broken () _type_ :state 21)
-    (die () _type_ :state 22)
+  (:state-methods
+    idle
+    broken
+    die
     )
   )
 
@@ -752,7 +736,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-break-bridge ((this under-break-bridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-break-bridge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -833,14 +817,10 @@ This commonly includes things such as:
 
 (deftype under-int-door (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xc8
-  :flag-assert         #x17005000c8
-  (:methods
-    (idle-closed () _type_ :state 20)
-    (open () _type_ :state 21)
-    (idle-open () _type_ :state 22)
+  (:state-methods
+    idle-closed
+    open
+    idle-open
     )
   )
 
@@ -885,7 +865,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-int-door ((this under-int-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-int-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -979,16 +959,12 @@ This commonly includes things such as:
   )
 
 (deftype under-plat-long (base-plat)
-  ((sync       sync-eased :inline :offset-assert 272)
-   (move-start vector     :inline :offset-assert 320)
-   (move-end   vector     :inline :offset-assert 336)
+  ((sync        sync-eased  :inline)
+   (move-start  vector      :inline)
+   (move-end    vector      :inline)
    )
-  :heap-base #xe0
-  :method-count-assert 35
-  :size-assert         #x160
-  :flag-assert         #x2300e00160
-  (:methods
-    (idle () _type_ :state 34)
+  (:state-methods
+    idle
     )
   )
 
@@ -1010,7 +986,7 @@ This commonly includes things such as:
   :post plat-post
   )
 
-(defmethod init-plat-collision! under-plat-long ((this under-plat-long))
+(defmethod init-plat-collision! ((this under-plat-long))
   "TODO - collision stuff for setting up the platform"
   (set! (-> this clock) (-> *display* user0-clock))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
@@ -1036,7 +1012,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-plat-long ((this under-plat-long) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-plat-long) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1106,18 +1082,14 @@ This commonly includes things such as:
   )
 
 (deftype under-plat-wall (process-drawable)
-  ((root            collide-shape-moving         :override)
-   (extended-amount float                        :offset-assert 200)
-   (in-trans        vector               :inline :offset-assert 208)
-   (out-trans       vector               :inline :offset-assert 224)
-   (sync            sync-paused          :inline :offset-assert 240)
+  ((root             collide-shape-moving :override)
+   (extended-amount  float)
+   (in-trans         vector                :inline)
+   (out-trans        vector                :inline)
+   (sync             sync-paused           :inline)
    )
-  :heap-base #x90
-  :method-count-assert 21
-  :size-assert         #x108
-  :flag-assert         #x1500900108
-  (:methods
-    (active () _type_ :state 20)
+  (:state-methods
+    active
     )
   )
 
@@ -1176,7 +1148,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! under-plat-wall ((this under-plat-wall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this under-plat-wall) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1253,20 +1225,16 @@ This commonly includes things such as:
   )
 
 (deftype under-pipe-growls (process-drawable)
-  ((volume             float       :offset-assert 200)
-   (desired-volume     float       :offset-assert 204)
-   (volume-seek-speed  float       :offset-assert 208)
-   (approach-sound-id  sound-id    :offset-assert 212)
-   (approach-play-time time-frame  :offset-assert 216)
+  ((volume              float)
+   (desired-volume      float)
+   (volume-seek-speed   float)
+   (approach-sound-id   sound-id)
+   (approach-play-time  time-frame)
    )
-  :heap-base #x60
-  :method-count-assert 23
-  :size-assert         #xe0
-  :flag-assert         #x17006000e0
-  (:methods
-    (block-puzzle () _type_ :state 20)
-    (block-puzzle-fade () _type_ :state 21)
-    (intro-shooting () _type_ :state 22)
+  (:state-methods
+    block-puzzle
+    block-puzzle-fade
+    intro-shooting
     )
   )
 

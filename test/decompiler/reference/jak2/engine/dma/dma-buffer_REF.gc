@@ -3,19 +3,16 @@
 
 ;; definition of type dma-packet
 (deftype dma-packet (structure)
-  ((dma  dma-tag  :offset-assert   0)
-   (vif0 vif-tag  :offset-assert   8)
-   (vif1 vif-tag  :offset-assert  12)
-   (quad uint128  :offset          0)
+  ((dma   dma-tag)
+   (vif0  vif-tag)
+   (vif1  vif-tag)
+   (quad  uint128  :overlay-at dma)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-packet
 ;; INFO: Used lq/sq
-(defmethod inspect dma-packet ((this dma-packet))
+(defmethod inspect ((this dma-packet))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -31,15 +28,12 @@
 
 ;; definition of type dma-packet-array
 (deftype dma-packet-array (inline-array-class)
-  ((data dma-packet :inline :dynamic :offset-assert  16)
+  ((data  dma-packet  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-packet-array
-(defmethod inspect dma-packet-array ((this dma-packet-array))
+(defmethod inspect ((this dma-packet-array))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -57,19 +51,16 @@
 
 ;; definition of type dma-gif
 (deftype dma-gif (structure)
-  ((gif  uint64  2 :offset-assert   0)
-   (quad uint128   :offset          0)
-   (gif0 uint64    :offset          0)
-   (gif1 uint64    :offset          8)
+  ((gif   uint64   2)
+   (quad  uint128  :overlay-at (-> gif 0))
+   (gif0  uint64   :overlay-at (-> gif 0))
+   (gif1  uint64   :overlay-at (-> gif 1))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type dma-gif
 ;; INFO: Used lq/sq
-(defmethod inspect dma-gif ((this dma-gif))
+(defmethod inspect ((this dma-gif))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -83,19 +74,16 @@
 
 ;; definition of type dma-gif-packet
 (deftype dma-gif-packet (structure)
-  ((dma-vif dma-packet :inline :offset-assert   0)
-   (gif     uint64     2       :offset-assert  16)
-   (gif0    uint64             :offset         16)
-   (gif1    uint64             :offset         24)
-   (quad    uint128    2       :offset          0)
+  ((dma-vif  dma-packet  :inline)
+   (gif      uint64      2)
+   (gif0     uint64        :overlay-at (-> gif 0))
+   (gif1     uint64        :overlay-at (-> gif 1))
+   (quad     uint128     2 :overlay-at (-> dma-vif dma))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type dma-gif-packet
-(defmethod inspect dma-gif-packet ((this dma-gif-packet))
+(defmethod inspect ((this dma-gif-packet))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -110,22 +98,19 @@
 
 ;; definition of type dma-buffer
 (deftype dma-buffer (basic)
-  ((allocated-length int32            :offset-assert   4)
-   (base             pointer          :offset-assert   8)
-   (end              pointer          :offset-assert  12)
-   (data             uint64  1        :offset-assert  16)
-   (data-buffer      uint8   :dynamic :offset         16)
+  ((allocated-length  int32)
+   (base              pointer)
+   (end               pointer)
+   (data              uint64  1)
+   (data-buffer       uint8   :dynamic :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 ;; definition for method 3 of type dma-buffer
-(defmethod inspect dma-buffer ((this dma-buffer))
+(defmethod inspect ((this dma-buffer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -156,12 +141,12 @@
   )
 
 ;; definition for method 4 of type dma-buffer
-(defmethod length dma-buffer ((this dma-buffer))
+(defmethod length ((this dma-buffer))
   (-> this allocated-length)
   )
 
 ;; definition for method 5 of type dma-buffer
-(defmethod asize-of dma-buffer ((this dma-buffer))
+(defmethod asize-of ((this dma-buffer))
   (+ (-> this allocated-length) -4 (-> dma-buffer size))
   )
 

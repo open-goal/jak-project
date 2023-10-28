@@ -20,23 +20,21 @@ At any point in time, there are 3 frames in progress:
 
 ;; per-frame DMA buffers, timing, and profiling info.
 (deftype display-frame (basic)
-  ((buffer        dma-buffer                11      :offset-assert   4)
-   (calc-buf      dma-buffer                        :offset          8)
-   (vu1-buf       dma-buffer                        :offset          8)
-   (debug-buf     dma-buffer                        :offset         36)
-   (global-buf    dma-buffer                        :offset         40)
-   (bucket-group  (inline-array dma-bucket)         :offset         44)
-   (profile-array profile-array             :inline :offset-assert  48)
-   (start-time    int64                             :offset-assert  56)
-   (run-time      int64                             :offset-assert  64)
+  ((buffer         dma-buffer                 11)
+   (calc-buf       dma-buffer                 :overlay-at (-> buffer 1))
+   (vu1-buf        dma-buffer                 :overlay-at (-> buffer 1))
+   (debug-buf      dma-buffer                 :overlay-at (-> buffer 8))
+   (global-buf     dma-buffer                 :overlay-at (-> buffer 9))
+   (bucket-group   (inline-array dma-bucket)  :overlay-at (-> buffer 10))
+   (profile-array  profile-array              :inline)
+   (start-time     int64)
+   (run-time       int64)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   (:methods
-    (new (symbol type) _type_ 0)
+    (new (symbol type) _type_)
     )
   )
+
 
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
   "Allocate and initialize a display frame. Does not set up dma buffers."
@@ -56,41 +54,38 @@ At any point in time, there are 3 frames in progress:
 ;; The display is the global state related to frame timing and double-buffering of frames.
 ;; it also holds the render enable mask.
 (deftype display (basic)
-  ((on-screen            int32                :offset-assert   4) ;; frame index (0 or 1)
-   (last-screen          int32                :offset-assert   8) ;; frame index (0 or 1)
-   (frames               display-frame     2  :offset-assert  12) ;; per-frame dma/timing
-   (bgcolor              gs-bgcolor           :offset-assert  24) ;; GS setting
-   (pmode                gs-pmode             :offset-assert  32) ;; GS setting
-   (clock                clock             13 :offset-assert  40)
-   (session-clock        clock                :offset         40)
-   (game-clock           clock                :offset         44)
-   (base-clock           clock                :offset         48)
-   (real-clock           clock                :offset         52)
-   (frame-clock          clock                :offset         56)
-   (real-frame-clock     clock                :offset         60)
-   (target-clock         clock                :offset         64)
-   (entity-clock         clock                :offset         68)
-   (part-clock           clock                :offset         72)
-   (bg-clock             clock                :offset         76)
-   (camera-clock         clock                :offset         80)
-   (user0-clock          clock                :offset         84)
-   (total-game-clock     clock                :offset         88)
-   (time-factor          float                :offset-assert  92)
-   (dog-ratio            float                :offset-assert  96)
-   (vblank-start-time    int64             2  :offset-assert 104)
-   (total-run-time       int64                :offset-assert 120)
-   (run-half-speed       basic                :offset-assert 128)
-   (dog-count            float                :offset-assert 132)
-   (vu1-enable-user      vu1-renderer-mask    :offset-assert 136)
-   (vu1-enable-user-menu vu1-renderer-mask    :offset-assert 144)
-   (force-sync           uint32               :offset-assert 152)
+  ((on-screen             int32) ;; frame index (0 or 1)
+   (last-screen           int32) ;; frame index (0 or 1)
+   (frames                display-frame  2) ;; per-frame dma/timing
+   (bgcolor               gs-bgcolor) ;; GS setting
+   (pmode                 gs-pmode) ;; GS setting
+   (clock                 clock          13)
+   (session-clock         clock          :overlay-at (-> clock 0))
+   (game-clock            clock          :overlay-at (-> clock 1))
+   (base-clock            clock          :overlay-at (-> clock 2))
+   (real-clock            clock          :overlay-at (-> clock 3))
+   (frame-clock           clock          :overlay-at (-> clock 4))
+   (real-frame-clock      clock          :overlay-at (-> clock 5))
+   (target-clock          clock          :overlay-at (-> clock 6))
+   (entity-clock          clock          :overlay-at (-> clock 7))
+   (part-clock            clock          :overlay-at (-> clock 8))
+   (bg-clock              clock          :overlay-at (-> clock 9))
+   (camera-clock          clock          :overlay-at (-> clock 10))
+   (user0-clock           clock          :overlay-at (-> clock 11))
+   (total-game-clock      clock          :overlay-at (-> clock 12))
+   (time-factor           float)
+   (dog-ratio             float)
+   (vblank-start-time     int64          2)
+   (total-run-time        int64)
+   (run-half-speed        basic)
+   (dog-count             float)
+   (vu1-enable-user       vu1-renderer-mask)
+   (vu1-enable-user-menu  vu1-renderer-mask)
+   (force-sync            uint32)
    )
-  :method-count-assert 10
-  :size-assert         #x9c
-  :flag-assert         #xa0000009c
   (:methods
-    (new (symbol type int int int int int) _type_ 0)
-    (set-time-ratios (_type_ float) float 9)
+    (new (symbol type int int int int int) _type_)
+    (set-time-ratios (_type_ float) float)
     )
   )
 

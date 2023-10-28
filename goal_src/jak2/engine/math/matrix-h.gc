@@ -11,16 +11,13 @@
 ;; some, but not all, functions assume that a matrix is an affine transform.
 ;; others assume that the rotation has no scale or shear (and that its inverse is its transpose)
 (deftype matrix (structure)
-  ((data   float   16      :offset-assert   0)
-   (vector vector  4       :inline :offset          0)
-   (quad   uint128 4       :offset          0)
-   (trans  vector  :inline :offset         48)
+  ((data    float    16)
+   (vector  vector   4 :inline :overlay-at (-> data 0))
+   (quad    uint128  4         :overlay-at (-> data 0))
+   (trans   vector   :inline   :overlay-at (-> data 12))
    )
-  :method-count-assert 10
-  :size-assert         #x40
-  :flag-assert         #xa00000040
   (:methods
-    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none 9)
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none)
     )
   )
 
@@ -29,13 +26,10 @@
 ;;  so this is really a 3x4 matrix.
 ;; this type is rarely used
 (deftype matrix3 (structure)
-  ((data   float   12        :offset-assert   0)
-   (vector vector  3 :inline :offset          0)
-   (quad   uint128 3         :offset          0)
+  ((data    float    12)
+   (vector  vector   3 :inline :overlay-at (-> data 0))
+   (quad    uint128  3         :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; a matrix stored using 16-bit integers.
@@ -44,26 +38,24 @@
 ;; so you generally should not unpack these to floats without knowing where they came from
 ;; and how they were originally packed (for example, in tie/shrub)
 (deftype matrix4h (structure)
-  ((data     int16    16        :offset-assert   0)
-   (vector4h vector4h 4 :inline :offset          0)
-   (long     int64    4         :offset          0)
+  ((data      int16     16)
+   (vector4h  vector4h  4 :inline :overlay-at (-> data 0))
+   (long      int64     4         :overlay-at (-> data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
+
 
 (defun matrix-copy! ((arg0 matrix) (arg1 matrix))
   "Copy arg1 to arg0"
-  (let ((v1-0 (-> arg1 vector 0 quad))
-        (a2-0 (-> arg1 vector 1 quad))
-        (a3-0 (-> arg1 vector 2 quad))
-        (a1-1 (-> arg1 vector 3 quad))
+  (let ((v1-0 (-> arg1 quad 0))
+        (a2-0 (-> arg1 quad 1))
+        (a3-0 (-> arg1 quad 2))
+        (a1-1 (-> arg1 trans quad))
         )
-    (set! (-> arg0 vector 0 quad) v1-0)
-    (set! (-> arg0 vector 1 quad) a2-0)
-    (set! (-> arg0 vector 2 quad) a3-0)
-    (set! (-> arg0 vector 3 quad) a1-1)
+    (set! (-> arg0 quad 0) v1-0)
+    (set! (-> arg0 quad 1) a2-0)
+    (set! (-> arg0 quad 2) a3-0)
+    (set! (-> arg0 trans quad) a1-1)
     )
   arg0
   )

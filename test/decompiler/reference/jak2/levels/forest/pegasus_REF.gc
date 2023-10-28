@@ -3,18 +3,15 @@
 
 ;; definition of type pegasus-path-info
 (deftype pegasus-path-info (structure)
-  ((num-data     int32            :offset-assert   0)
-   (path-data    curve-control    :offset-assert   4)
-   (control-data (pointer float)  :offset-assert   8)
+  ((num-data      int32)
+   (path-data     curve-control)
+   (control-data  (pointer float))
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type pegasus-path-info
-(defmethod inspect pegasus-path-info ((this pegasus-path-info))
+(defmethod inspect ((this pegasus-path-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -29,40 +26,36 @@
 
 ;; definition of type pegasus
 (deftype pegasus (enemy)
-  ((curve-position   float                        :offset-assert 532)
-   (speed            float                        :offset-assert 536)
-   (facing           vector            :inline    :offset-assert 544)
-   (tangent          vector            :inline    :offset-assert 560)
-   (run-blend-interp float                        :offset-assert 576)
-   (near-timer       int32                        :offset-assert 580)
-   (far-time         time-frame                   :offset-assert 584)
-   (y-offset         float                        :offset-assert 592)
-   (y-offset-desired float                        :offset-assert 596)
-   (y-vel            float                        :offset-assert 600)
-   (water-height     float                        :offset-assert 604)
-   (timeout          uint64                       :offset-assert 608)
-   (ambient-possible uint64                       :offset-assert 616)
-   (ambient-expire   uint64                       :offset-assert 624)
-   (can-run          symbol                       :offset-assert 632)
-   (on-ground        symbol                       :offset-assert 636)
-   (over-ground      symbol                       :offset-assert 640)
-   (allow-idle       symbol                       :offset-assert 644)
-   (path-info        pegasus-path-info 20 :inline :offset-assert 648)
-   (previous-path    int32                        :offset        968)
-   (current-path     int32                        :offset        972)
-   (num-paths        int32                        :offset        976)
-   (display-path     int32                        :offset        980)
-   (targetted-timer  time-frame                   :offset        984)
+  ((curve-position    float)
+   (speed             float)
+   (facing            vector             :inline)
+   (tangent           vector             :inline)
+   (run-blend-interp  float)
+   (near-timer        int32)
+   (far-time          time-frame)
+   (y-offset          float)
+   (y-offset-desired  float)
+   (y-vel             float)
+   (water-height      float)
+   (timeout           uint64)
+   (ambient-possible  uint64)
+   (ambient-expire    uint64)
+   (can-run           symbol)
+   (on-ground         symbol)
+   (over-ground       symbol)
+   (allow-idle        symbol)
+   (path-info         pegasus-path-info  20 :inline)
+   (previous-path     int32              :offset 968)
+   (current-path      int32              :offset 972)
+   (num-paths         int32              :offset 976)
+   (display-path      int32              :offset 980)
+   (targetted-timer   time-frame         :offset 984)
    )
-  :heap-base #x360
-  :method-count-assert 138
-  :size-assert         #x3e0
-  :flag-assert         #x8a036003e0
   (:methods
-    (run-logic? (_type_) symbol :replace 12)
-    (damage-amount-from-attack (_type_ process event-message-block) int :replace 56)
-    (update-target-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware :replace 57)
-    (track-how-long-aimed-at! (_type_) none 137)
+    (run-logic? (_type_) symbol :replace)
+    (damage-amount-from-attack (_type_ process event-message-block) int :replace)
+    (update-target-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware :replace)
+    (track-how-long-aimed-at! (_type_) none)
     )
   (:states
     pegasus-debug
@@ -71,7 +64,7 @@
   )
 
 ;; definition for method 3 of type pegasus
-(defmethod inspect pegasus ((this pegasus))
+(defmethod inspect ((this pegasus))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -202,7 +195,7 @@
 (set! (-> *pegasus-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 12 of type pegasus
-(defmethod run-logic? pegasus ((this pegasus))
+(defmethod run-logic? ((this pegasus))
   "Calls [[process-tree::12]] if we are considered in-range of the [[pegasus]], otherwise returns [[#t]]"
   (let ((min-distance 491520.0))
     (if (< (* min-distance min-distance) (vector-vector-distance-squared (-> this root trans) (camera-pos)))
@@ -214,7 +207,7 @@
 
 ;; definition for method 137 of type pegasus
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-how-long-aimed-at! pegasus ((this pegasus))
+(defmethod track-how-long-aimed-at! ((this pegasus))
   "Updates `targetted-timer` with the `frame-counter` while Jak is aiming at the [[pegasus]]"
   (let ((target *target*))
     (when (and target (-> target gun active?))
@@ -244,7 +237,7 @@
 
 ;; definition for method 57 of type pegasus
 ;; WARN: Return type mismatch int vs enemy-aware.
-(defmethod update-target-awareness! pegasus ((this pegasus) (proc process-focusable) (focus enemy-best-focus))
+(defmethod update-target-awareness! ((this pegasus) (proc process-focusable) (focus enemy-best-focus))
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
 For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
 @returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
@@ -256,7 +249,7 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
   )
 
 ;; definition for method 74 of type pegasus
-(defmethod general-event-handler pegasus ((this pegasus) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
+(defmethod general-event-handler ((this pegasus) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case event-type
@@ -296,7 +289,7 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
   )
 
 ;; definition for method 56 of type pegasus
-(defmethod damage-amount-from-attack pegasus ((this pegasus) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this pegasus) (arg0 process) (arg1 event-message-block))
   "Only attacks from the jetboard will deal max damage (6), but by default it will return `1`.
 This is why the scouts are technically killable by other means
 @returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
@@ -761,7 +754,7 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 ;; definition for method 55 of type pegasus
-(defmethod track-target! pegasus ((this pegasus))
+(defmethod track-target! ((this pegasus))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -773,7 +766,7 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 ;; definition for method 99 of type pegasus
-(defmethod enemy-method-99 pegasus ((this pegasus) (arg0 process-focusable))
+(defmethod enemy-method-99 ((this pegasus) (arg0 process-focusable))
   #t
   )
 
@@ -1273,7 +1266,7 @@ The faster it's moving the fast it flaps it's wings, etc
 
 ;; definition for method 114 of type pegasus
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! pegasus ((this pegasus))
+(defmethod init-enemy-collision! ((this pegasus))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
@@ -1327,19 +1320,19 @@ The faster it's moving the fast it flaps it's wings, etc
   )
 
 ;; definition for method 60 of type pegasus
-(defmethod coin-flip? pegasus ((this pegasus))
+(defmethod coin-flip? ((this pegasus))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 108 of type pegasus
-(defmethod enemy-method-108 pegasus ((this pegasus) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this pegasus) (arg0 enemy) (arg1 event-message-block))
   0
   )
 
 ;; definition for method 7 of type pegasus
 ;; WARN: Return type mismatch enemy vs pegasus.
-(defmethod relocate pegasus ((this pegasus) (arg0 int))
+(defmethod relocate ((this pegasus) (arg0 int))
   (countdown (v1-0 20)
     (if (-> this path-info v1-0 path-data)
         (&+! (-> this path-info v1-0 path-data) arg0)
@@ -1351,7 +1344,7 @@ The faster it's moving the fast it flaps it's wings, etc
 ;; definition for method 115 of type pegasus
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! pegasus ((this pegasus))
+(defmethod init-enemy! ((this pegasus))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (tag res-tag))
   (initialize-skeleton

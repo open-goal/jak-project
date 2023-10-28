@@ -343,29 +343,27 @@
   )
 
 (deftype flitter (nav-enemy)
-  ((move-angle       float                      :offset-assert 604)
-   (heading          basic                      :offset-assert 608)
-   (change-dir-time  time-frame                 :offset-assert 616)
-   (last-change-dir  uint64                     :offset-assert 624)
-   (off-screen-timer uint64                     :offset-assert 632)
-   (amb-sound-timer  uint64                     :offset-assert 640)
-   (attack-time      time-frame                 :offset-assert 648)
-   (target-pos       vector             :inline :offset-assert 656)
-   (attack-pos       vector             :inline :offset-assert 672)
-   (base-height      float                      :offset-assert 688)
-   (minimap          connection-minimap         :offset-assert 692)
+  ((move-angle        float)
+   (heading           basic)
+   (change-dir-time   time-frame)
+   (last-change-dir   uint64)
+   (off-screen-timer  uint64)
+   (amb-sound-timer   uint64)
+   (attack-time       time-frame)
+   (target-pos        vector  :inline)
+   (attack-pos        vector  :inline)
+   (base-height       float)
+   (minimap           connection-minimap)
    )
-  :heap-base #x240
-  :method-count-assert 184
-  :size-assert         #x2b8
-  :flag-assert         #xb8024002b8
+  (:state-methods
+    attack
+    ambush-jumping
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (ambush-jumping () _type_ :state 179)
-    (flitter-method-180 (_type_) none 180)
-    (flitter-method-181 (_type_) none 181)
-    (flitter-method-182 (_type_ process-focusable) symbol 182)
-    (flitter-method-183 (_type_) float 183)
+    (flitter-method-180 (_type_) none)
+    (flitter-method-181 (_type_) none)
+    (flitter-method-182 (_type_ process-focusable) symbol)
+    (flitter-method-183 (_type_) float)
     )
   )
 
@@ -531,7 +529,7 @@
 
 (set! (-> *flitter-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod flitter-method-182 flitter ((this flitter) (arg0 process-focusable))
+(defmethod flitter-method-182 ((this flitter) (arg0 process-focusable))
   (and (logtest? (-> this draw status) (draw-control-status on-screen))
        (let ((s4-0 (camera-matrix)))
          (camera-pos)
@@ -545,7 +543,7 @@
        )
   )
 
-(defmethod enemy-method-77 flitter ((this flitter) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this flitter) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -587,7 +585,7 @@
     )
   )
 
-(defmethod enemy-method-78 flitter ((this flitter) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this flitter) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -609,7 +607,7 @@
     )
   )
 
-(defmethod go-stare2 flitter ((this flitter))
+(defmethod go-stare2 ((this flitter))
   (if (and (= (-> this focus aware) (enemy-aware enemy-aware-2))
            (not (nav-enemy-method-163 this))
            (not (and (-> this next-state) (= (-> this next-state name) 'pacing)))
@@ -820,11 +818,11 @@
   :post nav-enemy-falling-post
   )
 
-(defmethod enemy-method-99 flitter ((this flitter) (arg0 process-focusable))
+(defmethod enemy-method-99 ((this flitter) (arg0 process-focusable))
   (focus-test? arg0 mech)
   )
 
-(defmethod flitter-method-180 flitter ((this flitter))
+(defmethod flitter-method-180 ((this flitter))
   (let* ((s5-0 (handle->process (-> this focus handle)))
          (s3-0 (if (type? s5-0 process-focusable)
                    (the-as process-focusable s5-0)
@@ -894,7 +892,7 @@
   )
 
 ;; WARN: Return type mismatch time-frame vs none.
-(defmethod flitter-method-181 flitter ((this flitter))
+(defmethod flitter-method-181 ((this flitter))
   (when (time-elapsed? (the-as int (-> this amb-sound-timer)) (the int (* 300.0 (rand-vu-float-range 1.5 3.0))))
     (sound-play "flitter-amb" :position (-> this root trans))
     (set! (-> this amb-sound-timer) (the-as uint (current-time)))
@@ -1122,7 +1120,7 @@
     )
   )
 
-(defmethod flitter-method-183 flitter ((this flitter))
+(defmethod flitter-method-183 ((this flitter))
   (lerp-scale 0.0 1.0 (- (-> this attack-pos y) (-> this root trans y)) 13926.4 25600.0)
   )
 
@@ -1242,7 +1240,7 @@
     )
   )
 
-(defmethod dispose! flitter ((this flitter))
+(defmethod dispose! ((this flitter))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
@@ -1252,7 +1250,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! flitter ((this flitter))
+(defmethod init-enemy-collision! ((this flitter))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1305,7 +1303,7 @@
   )
 
 ;; WARN: Return type mismatch connection-minimap vs none.
-(defmethod init-enemy! flitter ((this flitter))
+(defmethod init-enemy! ((this flitter))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

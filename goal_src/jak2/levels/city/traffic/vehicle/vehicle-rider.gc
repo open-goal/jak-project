@@ -8,37 +8,35 @@
 ;; DECOMP BEGINS
 
 (deftype vehicle-rider (process-focusable)
-  ((parent      (pointer vehicle)  :override)
-   (flags       uint8              :offset-assert 204)
-   (riding-anim int32              :offset-assert 208)
-   (anim-t      float              :offset-assert 212)
-   (anim-speed  float              :offset-assert 216)
-   (seat-index  int8               :offset-assert 220)
+  ((parent       (pointer vehicle) :override)
+   (flags        uint8)
+   (riding-anim  int32)
+   (anim-t       float)
+   (anim-speed   float)
+   (seat-index   int8)
    )
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xdd
-  :flag-assert         #x24006000dd
+  (:state-methods
+    inactive
+    active
+    taunt
+    got-passed
+    )
   (:methods
-    (inactive () _type_ :state 27)
-    (active () _type_ :state 28)
-    (taunt () _type_ :state 29)
-    (got-passed () _type_ :state 30)
-    (initialize-collision (_type_) none 31)
-    (vehicle-rider-method-32 (_type_ traffic-object-spawn-params) none 32)
-    (vehicle-rider-method-33 (_type_) none 33)
-    (vehicle-rider-method-34 (_type_) none 34)
-    (vehicle-rider-method-35 (_type_) none 35)
+    (initialize-collision (_type_) none)
+    (vehicle-rider-method-32 (_type_ traffic-object-spawn-params) none)
+    (vehicle-rider-method-33 (_type_) none)
+    (vehicle-rider-method-34 (_type_) none)
+    (vehicle-rider-method-35 (_type_) none)
     )
   )
 
 
-(defmethod get-trans vehicle-rider ((this vehicle-rider) (arg0 int))
+(defmethod get-trans ((this vehicle-rider) (arg0 int))
   "@returns the `trans` [[vector]] from the process's `root` (typically either a [[trsqv]] or a [[collide-shape]])"
   (-> this root trans)
   )
 
-(defmethod vehicle-rider-method-33 vehicle-rider ((this vehicle-rider))
+(defmethod vehicle-rider-method-33 ((this vehicle-rider))
   (let* ((s4-0 (ppointer->process (-> this parent)))
          (s5-0 (if (type? s4-0 vehicle)
                    s4-0
@@ -56,7 +54,7 @@
   (none)
   )
 
-(defmethod vehicle-rider-method-35 vehicle-rider ((this vehicle-rider))
+(defmethod vehicle-rider-method-35 ((this vehicle-rider))
   (logior! (-> this draw status) (draw-control-status no-draw))
   (put-rider-in-seat
     (the-as vehicle (ppointer->process (-> this parent)))
@@ -68,7 +66,7 @@
   (none)
   )
 
-(defmethod initialize-collision vehicle-rider ((this vehicle-rider))
+(defmethod initialize-collision ((this vehicle-rider))
   (stack-size-set! (-> this main-thread) 16)
   (lwide-entity-hack)
   (when (not (-> this entity))
@@ -81,7 +79,7 @@
   (none)
   )
 
-(defmethod vehicle-rider-method-32 vehicle-rider ((this vehicle-rider) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-rider-method-32 ((this vehicle-rider) (arg0 traffic-object-spawn-params))
   (logior! (-> this flags) 1)
   (set! (-> this draw lod-set lod 0 dist) 40960.0)
   (set! (-> this draw lod-set lod 1 dist) 122880.0)
@@ -94,7 +92,7 @@
   (none)
   )
 
-(defmethod vehicle-rider-method-34 vehicle-rider ((this vehicle-rider))
+(defmethod vehicle-rider-method-34 ((this vehicle-rider))
   (let ((a0-1 (ppointer->process (-> this parent))))
     (when a0-1
       (+! (-> this anim-t) (* 41870.223 (-> this anim-speed) (seconds-per-frame)))
@@ -230,7 +228,7 @@
   )
 
 ;; WARN: Return type mismatch entity-perm-status vs none.
-(defmethod init-from-entity! vehicle-rider ((this vehicle-rider) (arg0 entity-actor))
+(defmethod init-from-entity! ((this vehicle-rider) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -282,10 +280,6 @@ This commonly includes things such as:
 
 (deftype citizen-norm-rider (vehicle-rider)
   ()
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xdd
-  :flag-assert         #x24006000dd
   )
 
 
@@ -294,7 +288,7 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 3)
               )
 
-(defmethod vehicle-rider-method-33 citizen-norm-rider ((this citizen-norm-rider))
+(defmethod vehicle-rider-method-33 ((this citizen-norm-rider))
   (call-parent-method this)
   (setup-masks (-> this draw) 0 -1)
   (setup-masks (-> this draw) 32 0)
@@ -365,7 +359,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-rider-method-32 citizen-norm-rider ((this citizen-norm-rider) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-rider-method-32 ((this citizen-norm-rider) (arg0 traffic-object-spawn-params))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-citizen-norm-rider" (the-as (pointer uint32) #f)))
@@ -381,10 +375,6 @@ This commonly includes things such as:
 
 (deftype crimson-guard-rider (vehicle-rider)
   ()
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xdd
-  :flag-assert         #x24006000dd
   )
 
 
@@ -393,7 +383,7 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 3)
               )
 
-(defmethod vehicle-rider-method-33 crimson-guard-rider ((this crimson-guard-rider))
+(defmethod vehicle-rider-method-33 ((this crimson-guard-rider))
   (call-parent-method this)
   (setup-masks (-> this draw) 0 28)
   (setup-masks (-> this draw) 3 0)
@@ -405,7 +395,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-rider-method-32 crimson-guard-rider ((this crimson-guard-rider) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-rider-method-32 ((this crimson-guard-rider) (arg0 traffic-object-spawn-params))
   (initialize-skeleton
     this
     (the-as

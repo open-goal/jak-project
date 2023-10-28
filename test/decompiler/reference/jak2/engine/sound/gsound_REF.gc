@@ -4,13 +4,10 @@
 ;; definition of type engine-sound-pers
 (deftype engine-sound-pers (engine-pers)
   ()
-  :method-count-assert 15
-  :size-assert         #x20
-  :flag-assert         #xf00000020
   )
 
 ;; definition for method 3 of type engine-sound-pers
-(defmethod inspect engine-sound-pers ((this engine-sound-pers))
+(defmethod inspect ((this engine-sound-pers))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -30,7 +27,7 @@
 
 ;; definition for method 10 of type engine-sound-pers
 ;; WARN: Return type mismatch int vs none.
-(defmethod kill-callback engine-sound-pers ((this engine-sound-pers) (arg0 connection-pers))
+(defmethod kill-callback ((this engine-sound-pers) (arg0 connection-pers))
   (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-param))
     (set! (-> v1-0 id) (the-as sound-id (-> arg0 param-int64 0)))
@@ -72,37 +69,34 @@
 
 ;; definition of type sound-iop-info
 (deftype sound-iop-info (structure)
-  ((frame           uint32                      :offset-assert   0)
-   (strpos          int32                       :offset-assert   4)
-   (str-id          uint32                      :offset-assert   8)
-   (str-id-sign     int32                       :offset          8)
-   (freemem         uint32                      :offset-assert  12)
-   (chinfo          uint8             48        :offset-assert  16)
-   (freemem2        uint32                      :offset-assert  64)
-   (nocd            uint32                      :offset-assert  68)
-   (dirtycd         uint32                      :offset-assert  72)
-   (diskspeed       uint32            2         :offset-assert  76)
-   (lastspeed       uint32                      :offset-assert  84)
-   (dupseg          int32                       :offset-assert  88)
-   (times           int32             41        :offset-assert  92)
-   (times-seq       uint32                      :offset-assert 256)
-   (iop-ticks       uint32                      :offset-assert 260)
-   (stream-position uint32            4         :offset        272)
-   (stream-status   stream-status     4         :offset-assert 288)
-   (stream-name     sound-stream-name 4 :inline :offset-assert 304)
-   (stream-id       sound-id          4         :offset-assert 496)
-   (stream-id-int32 int32             4         :offset        496)
-   (music-register  uint8             17        :offset-assert 512)
-   (music-excite    int8                        :offset        528)
-   (ramdisk-name    uint8             48        :offset-assert 529)
+  ((frame            uint32)
+   (strpos           int32)
+   (str-id           uint32)
+   (str-id-sign      int32                :overlay-at str-id)
+   (freemem          uint32)
+   (chinfo           uint8              48)
+   (freemem2         uint32)
+   (nocd             uint32)
+   (dirtycd          uint32)
+   (diskspeed        uint32             2)
+   (lastspeed        uint32)
+   (dupseg           int32)
+   (times            int32              41)
+   (times-seq        uint32)
+   (iop-ticks        uint32)
+   (stream-position  uint32             4 :offset 272)
+   (stream-status    stream-status      4)
+   (stream-name      sound-stream-name  4 :inline)
+   (stream-id        sound-id           4)
+   (stream-id-int32  int32              4 :overlay-at (-> stream-id 0))
+   (music-register   uint8              17)
+   (music-excite     int8                 :overlay-at (-> music-register 16))
+   (ramdisk-name     uint8              48)
    )
-  :method-count-assert 9
-  :size-assert         #x241
-  :flag-assert         #x900000241
   )
 
 ;; definition for method 3 of type sound-iop-info
-(defmethod inspect sound-iop-info ((this sound-iop-info))
+(defmethod inspect ((this sound-iop-info))
   (when (not this)
     (set! this this)
     (goto cfg-16)
@@ -959,7 +953,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for method 9 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod update! ambient-sound ((this ambient-sound))
+(defmethod update! ((this ambient-sound))
   (with-pp
     (if (not *ambient-sound-class*)
         (return (the-as int #f))
@@ -1048,14 +1042,14 @@ otherwise, an explicit [[vector]] can be provided"
   )
 
 ;; definition for method 15 of type ambient-sound
-(defmethod stop! ambient-sound ((this ambient-sound))
+(defmethod stop! ((this ambient-sound))
   (sound-stop (-> this playing-id))
   0
   )
 
 ;; definition for method 11 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod update-trans! ambient-sound ((this ambient-sound) (arg0 vector))
+(defmethod update-trans! ((this ambient-sound) (arg0 vector))
   (with-pp
     (set! (-> this trans quad) (-> arg0 quad))
     (when (nonzero? (-> this playing-id))
@@ -1082,7 +1076,7 @@ otherwise, an explicit [[vector]] can be provided"
   )
 
 ;; definition for method 12 of type ambient-sound
-(defmethod update-vol! ambient-sound ((this ambient-sound) (arg0 float))
+(defmethod update-vol! ((this ambient-sound) (arg0 float))
   (when (nonzero? (-> this playing-id))
     (when *sound-player-enable*
       (let ((v1-4 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -1100,7 +1094,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for method 13 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-pitch-mod! ambient-sound ((this ambient-sound) (arg0 float))
+(defmethod update-pitch-mod! ((this ambient-sound) (arg0 float))
   (when (nonzero? (-> this playing-id))
     (when *sound-player-enable*
       (let ((v1-4 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -1119,7 +1113,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for method 14 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
-(defmethod set-falloff-far! ambient-sound ((this ambient-sound) (arg0 float))
+(defmethod set-falloff-far! ((this ambient-sound) (arg0 float))
   (set! (-> this falloff-far) (the int (* 0.00024414062 arg0)))
   0
   (none)
@@ -1127,7 +1121,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for method 10 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod change-sound! ambient-sound ((this ambient-sound) (arg0 sound-name))
+(defmethod change-sound! ((this ambient-sound) (arg0 sound-name))
   (when (not (and (= (the-as uint (-> this name)) (the-as uint arg0)) (= (-> arg0 hi) (-> this name hi))))
     (stop! this)
     (set! (-> this playing-id) (new-sound-id))

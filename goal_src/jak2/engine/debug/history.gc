@@ -88,69 +88,60 @@
   )
 
 (deftype history-elt (structure)
-  ((record-tag-bytes      uint8           4       :offset-assert   0)
-   (record-tag            uint32                  :offset          0)
-   (record-id             uint16                  :offset          0)
-   (owner                 uint8                   :offset          2)
-   (channel               history-channel         :offset-assert   4)
-   (timestamp             time-frame              :offset-assert   8)
-   (origin                vector          :inline :offset-assert  16)
-   (bytes                 uint8           16      :offset-assert  32)
-   (vector                vector          :inline :offset         32)
-   (float                 float                   :offset         32)
-   (collide-status        collide-status          :offset         32)
-   (collide-reaction-flag uint32                  :offset         40)
-   (pat                   pat-surface             :offset         32)
+  ((record-tag-bytes       uint8           4)
+   (record-tag             uint32                  :overlay-at (-> record-tag-bytes 0))
+   (record-id              uint16                  :overlay-at (-> record-tag-bytes 0))
+   (owner                  uint8                   :overlay-at (-> record-tag-bytes 2))
+   (channel                history-channel)
+   (timestamp              time-frame)
+   (origin                 vector          :inline)
+   (bytes                  uint8           16)
+   (vector                 vector          :inline :overlay-at (-> bytes 0))
+   (float                  float                   :overlay-at (-> bytes 0))
+   (collide-status         collide-status          :overlay-at (-> bytes 0))
+   (collide-reaction-flag  uint32                  :overlay-at (-> bytes 8))
+   (pat                    pat-surface             :overlay-at (-> bytes 0))
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype history-iterator (basic)
-  ((max-age      uint32   :offset-assert   4)
-   (owner        uint8    :offset-assert   8)
-   (proc         process  :offset-assert  12)
-   (out          object   :offset-assert  16)
-   (channel-mask uint64   :offset-assert  24)
-   (index        int32    :offset-assert  32)
-   (done?        symbol   :offset-assert  36)
+  ((max-age       uint32)
+   (owner         uint8)
+   (proc          process)
+   (out           object)
+   (channel-mask  uint64)
+   (index         int32)
+   (done?         symbol)
    )
-  :method-count-assert 12
-  :size-assert         #x28
-  :flag-assert         #xc00000028
   (:methods
-    (new (symbol type uint) _type_ 0)
-    (frame-counter-delta (_type_ history-elt) time-frame 9)
-    (update-entries! (_type_) history-elt 10)
-    (get-age (_type_ history-elt) float 11)
+    (new (symbol type uint) _type_)
+    (frame-counter-delta (_type_ history-elt) time-frame)
+    (update-entries! (_type_) history-elt)
+    (get-age (_type_ history-elt) float)
     )
   )
 
 
 (deftype history (basic)
-  ((alloc-index      int32                        :offset-assert   4)
-   (allocated-length int32                        :offset-assert   8)
-   (elts             history-elt :inline :dynamic :offset         16)
+  ((alloc-index       int32)
+   (allocated-length  int32)
+   (elts              history-elt  :inline :dynamic :offset  16)
    )
-  :method-count-assert 11
-  :size-assert         #x10
-  :flag-assert         #xb00000010
   (:methods
-    (new (symbol type int) _type_ 0)
-    (clear-record-tags! (_type_ history-channel uint uint) history-elt 9)
-    (clear-history-entries! (_type_) none 10)
+    (new (symbol type int) _type_)
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt)
+    (clear-history-entries! (_type_) none)
     )
   )
 
 
-(defmethod length history ((this history))
+(defmethod length ((this history))
   (-> this allocated-length)
   )
 
 ;; WARN: Return type mismatch uint vs int.
-(defmethod asize-of history ((this history))
+(defmethod asize-of ((this history))
   (the-as int (+ (-> this type size) (* 48 (-> this allocated-length))))
   )
 
@@ -161,7 +152,7 @@
     )
   )
 
-(defmethod clear-history-entries! history ((this history))
+(defmethod clear-history-entries! ((this history))
   "Iterates through each [[history-elt]] in the `elt` dynamic array
 For each entry:
 - clear `timestamp`
@@ -183,7 +174,7 @@ For each entry:
 (clear-history-entries! *history*)
 
 ;; WARN: new jak 2 until loop case, check carefully
-(defmethod clear-record-tags! history ((this history) (arg0 history-channel) (arg1 uint) (arg2 uint))
+(defmethod clear-record-tags! ((this history) (arg0 history-channel) (arg1 uint) (arg2 uint))
   "First grab the latest [[history-elt]] at `alloc-index`
 1. update it's `channel`, `record-id` and `owner` from the provided args
 2. - if it's `record-tag` is zero -- return it
@@ -235,7 +226,7 @@ For each entry:
     )
   )
 
-(defmethod update-entries! history-iterator ((this history-iterator))
+(defmethod update-entries! ((this history-iterator))
   "Iterate through each [[history-elt]] in [[*history*]]
 - If we hit the end set `done?` to true
 - If the `timestamp` on the elt, minus the current framecounter exceeds `max-age`, we are also done, return #f
@@ -269,7 +260,7 @@ For each entry:
   (the-as history-elt #f)
   )
 
-(defmethod get-age history-iterator ((this history-iterator) (arg0 history-elt))
+(defmethod get-age ((this history-iterator) (arg0 history-elt))
   "Get the age of a history element"
   (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
                       (the float (+ (-> this max-age) 1))
@@ -278,7 +269,7 @@ For each entry:
      )
   )
 
-(defmethod frame-counter-delta history-iterator ((this history-iterator) (arg0 history-elt))
+(defmethod frame-counter-delta ((this history-iterator) (arg0 history-elt))
   "Returns the difference between [[*display*]]'s `base-clock.frame-counter` and the elt's `timestamp`"
   (- (-> *display* base-clock frame-counter) (-> arg0 timestamp))
   )

@@ -8,75 +8,67 @@
 ;; DECOMP BEGINS
 
 (deftype conveyor-section (structure)
-  ((start      vector :inline :offset-assert   0)
-   (trailing   plane  :inline :offset-assert  16)
-   (pull-dir   vector :inline :offset-assert  32)
-   (radial-dir vector :inline :offset-assert  48)
+  ((start       vector  :inline)
+   (trailing    plane   :inline)
+   (pull-dir    vector  :inline)
+   (radial-dir  vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype conveyor-section-array (inline-array-class)
-  ((data conveyor-section :inline :dynamic :offset-assert  16)
+  ((data  conveyor-section  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
 (set! (-> conveyor-section-array heap-base) (the-as uint 64))
 
 (deftype conveyor (process-drawable)
-  ((speed                float                          :offset-assert 200)
-   (belt-radius          float                          :offset-assert 204)
-   (pull-y-threshold     float                          :offset-assert 208)
-   (speed-mult-array     (array float)                  :offset-assert 212)
-   (speed-mult-array-len int8                           :offset-assert 216)
-   (sections             conveyor-section-array         :offset-assert 220)
-   (leading              plane                  :inline :offset-assert 224)
-   (collide-bounds       sphere                 :inline :offset-assert 240)
+  ((speed                 float)
+   (belt-radius           float)
+   (pull-y-threshold      float)
+   (speed-mult-array      (array float))
+   (speed-mult-array-len  int8)
+   (sections              conveyor-section-array)
+   (leading               plane   :inline)
+   (collide-bounds        sphere  :inline)
    )
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
+  (:state-methods
+    idle
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (conveyor-method-21 (_type_) float 21)
-    (get-art-group (_type_) art-group 22)
-    (reset-root! (_type_) none 23)
-    (init! (_type_) none 24)
-    (set-and-get-ambient-sound! (_type_) ambient-sound 25)
-    (conveyor-method-26 (_type_ process-focusable) symbol :behavior conveyor 26)
-    (conveyor-method-27 (_type_) symbol 27)
+    (conveyor-method-21 (_type_) float)
+    (get-art-group (_type_) art-group)
+    (reset-root! (_type_) none)
+    (init! (_type_) none)
+    (set-and-get-ambient-sound! (_type_) ambient-sound)
+    (conveyor-method-26 (_type_ process-focusable) symbol :behavior conveyor)
+    (conveyor-method-27 (_type_) symbol)
     )
   )
 
 
-(defmethod relocate conveyor ((this conveyor) (new-addr int))
+(defmethod relocate ((this conveyor) (new-addr int))
   (&+! (-> this sections) new-addr)
   (call-parent-method this new-addr)
   )
 
 ;; WARN: Return type mismatch symbol vs art-group.
-(defmethod get-art-group conveyor ((this conveyor))
+(defmethod get-art-group ((this conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (go process-drawable-art-error "invalid type")
   (the-as art-group #f)
   )
 
-(defmethod reset-root! conveyor ((this conveyor))
+(defmethod reset-root! ((this conveyor))
   "Re-initializes the `root` [[trsqv]]"
   (set! (-> this root) (new 'process 'trsqv))
   0
   (none)
   )
 
-(defmethod init! conveyor ((this conveyor))
+(defmethod init! ((this conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
   (local-vars (tag res-tag))
   (set! (-> this speed) 24576.0)
@@ -98,7 +90,7 @@
   )
 
 ;; WARN: Return type mismatch object vs ambient-sound.
-(defmethod set-and-get-ambient-sound! conveyor ((this conveyor))
+(defmethod set-and-get-ambient-sound! ((this conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"
   (let ((actor-options (res-lump-value (-> this entity) 'options actor-option :time -1000000000.0)))
@@ -123,7 +115,7 @@ and return it as well.  Otherwise, set it to `0`"
     )
   )
 
-(defmethod conveyor-method-26 conveyor ((this conveyor) (proc-focus process-focusable))
+(defmethod conveyor-method-26 ((this conveyor) (proc-focus process-focusable))
   "TODO - conveyor section related, perhaps related to moving the process along the belt?"
   (let ((vec (new 'stack-no-clear 'vector)))
     (set! (-> vec quad) (-> (get-trans proc-focus 0) quad))
@@ -167,7 +159,7 @@ and return it as well.  Otherwise, set it to `0`"
     )
   )
 
-(defmethod conveyor-method-27 conveyor ((this conveyor))
+(defmethod conveyor-method-27 ((this conveyor))
   "TODO - collision related, has some dead code as well (previous iteration?)"
   (local-vars (a0-10 float) (a2-5 float) (a2-12 float))
   (rlet ((acc :class vf)
@@ -304,7 +296,7 @@ and return it as well.  Otherwise, set it to `0`"
     )
   )
 
-(defmethod conveyor-method-21 conveyor ((this conveyor))
+(defmethod conveyor-method-21 ((this conveyor))
   "TODO - quite dense, has to do with the conveyor sections and the path they are associated with"
   (local-vars (sv-32 conveyor-section) (sv-48 conveyor-section))
   (let* ((s5-0 (-> this path))
@@ -375,7 +367,7 @@ and return it as well.  Otherwise, set it to `0`"
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! conveyor ((this conveyor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this conveyor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -400,10 +392,6 @@ This commonly includes things such as:
 
 (deftype strip-conveyor (conveyor)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
   )
 
 
@@ -412,17 +400,13 @@ This commonly includes things such as:
               :bounds (static-spherem 0 0 0 36)
               )
 
-(defmethod get-art-group strip-conveyor ((this strip-conveyor))
+(defmethod get-art-group ((this strip-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-strip-conveyor" (the-as (pointer uint32) #f))
   )
 
 (deftype lgconveyor (conveyor)
   ()
-  :heap-base #x80
-  :method-count-assert 28
-  :size-assert         #x100
-  :flag-assert         #x1c00800100
   )
 
 
@@ -433,13 +417,13 @@ This commonly includes things such as:
               :origin-joint-index 3
               )
 
-(defmethod get-art-group lgconveyor ((this lgconveyor))
+(defmethod get-art-group ((this lgconveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-lgconveyor" (the-as (pointer uint32) #f))
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod init! lgconveyor ((this lgconveyor))
+(defmethod init! ((this lgconveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
   (set! (-> this speed) 30720.0)
   (set! (-> this belt-radius) 11878.4)

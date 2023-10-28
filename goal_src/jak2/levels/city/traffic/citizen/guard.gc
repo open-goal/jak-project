@@ -15,45 +15,36 @@
               )
 
 (deftype guard-anim-info (structure)
-  ((anim-index       int32 2 :offset-assert   0)
-   (anim-index-front int32   :offset          0)
-   (anim-index-back  int32   :offset          4)
+  ((anim-index        int32  2)
+   (anim-index-front  int32  :overlay-at (-> anim-index 0))
+   (anim-index-back   int32  :overlay-at (-> anim-index 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype guard-global-info (basic)
-  ((prev-yellow-hit         int8                      :offset-assert   4)
-   (prev-blue-hit           int8                      :offset-assert   5)
-   (knocked                 int32           2         :offset-assert   8)
-   (knocked-land            int32           2         :offset-assert  16)
-   (anim-knocked-front      int32                     :offset          8)
-   (anim-knocked-back       int32                     :offset         12)
-   (anim-knocked-front-land int32                     :offset         16)
-   (anim-knocked-back-land  int32                     :offset         20)
-   (yellow-hit-anim         guard-anim-info 2 :inline :offset-assert  24)
-   (yellow-land-anim        guard-anim-info 2 :inline :offset-assert  40)
-   (blue-hit-anim           int32                     :offset-assert  56)
+  ((prev-yellow-hit          int8)
+   (prev-blue-hit            int8)
+   (knocked                  int32            2)
+   (knocked-land             int32            2)
+   (anim-knocked-front       int32            :overlay-at (-> knocked 0))
+   (anim-knocked-back        int32            :overlay-at (-> knocked 1))
+   (anim-knocked-front-land  int32            :overlay-at (-> knocked-land 0))
+   (anim-knocked-back-land   int32            :overlay-at (-> knocked-land 1))
+   (yellow-hit-anim          guard-anim-info  2 :inline)
+   (yellow-land-anim         guard-anim-info  2 :inline)
+   (blue-hit-anim            int32)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 
 (deftype guard-shoot-info (structure)
-  ((anim-index int32  :offset-assert   0)
-   (start      float  :offset-assert   4)
-   (end        float  :offset-assert   8)
+  ((anim-index  int32)
+   (start       float)
+   (end         float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 
@@ -251,80 +242,78 @@
 (set! (-> *crimson-guard-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype crimson-guard (citizen)
-  ((info                    guard-global-info                     :offset-assert 964)
-   (hit-face                uint32                                :offset-assert 968)
-   (anim-get-up-front       int32                                 :offset-assert 972)
-   (anim-get-up-back        int32                                 :offset-assert 976)
-   (small-hit               int32                                 :offset-assert 980)
-   (yellow-anim             uint32                                :offset-assert 984)
-   (guard-type              uint8                                 :offset-assert 988)
-   (settings                traffic-guard-type-settings           :offset-assert 992)
-   (next-time               time-frame                            :offset-assert 1000)
-   (last-time-see-target    time-frame                            :offset-assert 1008)
-   (joint                   joint-mod                             :offset-assert 1016)
-   (joint-enable            symbol                                :offset-assert 1020)
-   (already-shot            symbol                                :offset-assert 1024)
-   (miss-amount             float                                 :offset-assert 1028)
-   (l-control               lightning-control                     :offset-assert 1032)
-   (next-shot               int64                                 :offset-assert 1040)
-   (anim-shoot              guard-shoot-info            3 :inline :offset-assert 1048)
-   (transport               handle                                :offset-assert 1088)
-   (transport-side          uint32                                :offset-assert 1096)
-   (target-flags            uint8                                 :offset-assert 1100)
-   (target-pos              vector                      :inline   :offset-assert 1104)
-   (target-pos-predict      vector                      :inline   :offset-assert 1120)
-   (target-pos-predict-miss vector                      :inline   :offset-assert 1136)
-   (target-vel-vec          vector                      :inline   :offset-assert 1152)
-   (target-vel              float                                 :offset-assert 1168)
-   (target-self             vector                      :inline   :offset-assert 1184)
-   (target-self-xz          vector                      :inline   :offset-assert 1200)
-   (target-self-dist        float                                 :offset-assert 1216)
-   (target-self-xz-dist     float                                 :offset-assert 1220)
-   (target-y-angle          degrees                               :offset-assert 1224)
-   (last-visible-target-pos vector                      :inline   :offset-assert 1232)
-   (lazer-sound             sound-id                              :offset-assert 1248)
-   (move-position           vector                      :inline   :offset-assert 1264)
-   (move-index              int32                                 :offset-assert 1280)
-   (traffic-target-status   traffic-target-status       :inline   :offset-assert 1296)
-   (minimap                 connection-minimap                    :offset-assert 1376)
-   (other-side              symbol                                :offset-assert 1380)
+  ((info                     guard-global-info)
+   (hit-face                 uint32)
+   (anim-get-up-front        int32)
+   (anim-get-up-back         int32)
+   (small-hit                int32)
+   (yellow-anim              uint32)
+   (guard-type               uint8)
+   (settings                 traffic-guard-type-settings)
+   (next-time                time-frame)
+   (last-time-see-target     time-frame)
+   (joint                    joint-mod)
+   (joint-enable             symbol)
+   (already-shot             symbol)
+   (miss-amount              float)
+   (l-control                lightning-control)
+   (next-shot                int64)
+   (anim-shoot               guard-shoot-info       3 :inline)
+   (transport                handle)
+   (transport-side           uint32)
+   (target-flags             uint8)
+   (target-pos               vector                 :inline)
+   (target-pos-predict       vector                 :inline)
+   (target-pos-predict-miss  vector                 :inline)
+   (target-vel-vec           vector                 :inline)
+   (target-vel               float)
+   (target-self              vector                 :inline)
+   (target-self-xz           vector                 :inline)
+   (target-self-dist         float)
+   (target-self-xz-dist      float)
+   (target-y-angle           degrees)
+   (last-visible-target-pos  vector                 :inline)
+   (lazer-sound              sound-id)
+   (move-position            vector                 :inline)
+   (move-index               int32)
+   (traffic-target-status    traffic-target-status  :inline)
+   (minimap                  connection-minimap)
+   (other-side               symbol)
    )
-  :heap-base #x4f0
-  :method-count-assert 227
-  :size-assert         #x568
-  :flag-assert         #xe304f00568
+  (:state-methods
+    get-up-front
+    get-up-back
+    search
+    attack
+    arrest
+    gun-shoot
+    exit-transport
+    waiting-ambush
+    close-attack
+    knocked-off-vehicle
+    roll-right
+    roll-left
+    close-attack-active
+    )
   (:methods
-    (get-up-front () _type_ :state 201)
-    (get-up-back () _type_ :state 202)
-    (search () _type_ :state 203)
-    (attack () _type_ :state 204)
-    (arrest () _type_ :state 205)
-    (gun-shoot () _type_ :state 206)
-    (exit-transport () _type_ :state 207)
-    (waiting-ambush () _type_ :state 208)
-    (close-attack () _type_ :state 209)
-    (knocked-off-vehicle () _type_ :state 210)
-    (roll-right () _type_ :state 211)
-    (roll-left () _type_ :state 212)
-    (close-attack-active () _type_ :state 213)
-    (crimson-guard-method-214 (_type_) none 214)
-    (crimson-guard-method-215 (_type_) symbol 215)
-    (crimson-guard-method-216 (_type_) symbol 216)
-    (crimson-guard-method-217 (_type_ vector vector vector) int 217)
-    (crimson-guard-method-218 (_type_ vector) none 218)
-    (crimson-guard-method-219 (_type_) none 219)
-    (crimson-guard-method-220 (_type_) none 220)
-    (crimson-guard-method-221 (_type_) none 221)
-    (crimson-guard-method-222 (_type_) none 222)
-    (crimson-guard-method-223 (_type_ float) none 223)
-    (crimson-guard-method-224 (_type_ vector) float 224)
-    (crimson-guard-method-225 (_type_ uint symbol) none 225)
-    (crimson-guard-method-226 (_type_) none 226)
+    (crimson-guard-method-214 (_type_) none)
+    (crimson-guard-method-215 (_type_) symbol)
+    (crimson-guard-method-216 (_type_) symbol)
+    (crimson-guard-method-217 (_type_ vector vector vector) int)
+    (crimson-guard-method-218 (_type_ vector) none)
+    (crimson-guard-method-219 (_type_) none)
+    (crimson-guard-method-220 (_type_) none)
+    (crimson-guard-method-221 (_type_) none)
+    (crimson-guard-method-222 (_type_) none)
+    (crimson-guard-method-223 (_type_ float) none)
+    (crimson-guard-method-224 (_type_ vector) float)
+    (crimson-guard-method-225 (_type_ uint symbol) none)
+    (crimson-guard-method-226 (_type_) none)
     )
   )
 
 
-(defmethod crimson-guard-method-218 crimson-guard ((this crimson-guard) (arg0 vector))
+(defmethod crimson-guard-method-218 ((this crimson-guard) (arg0 vector))
   (local-vars
     (sv-240 vector)
     (sv-256 (function vector vector vector))
@@ -454,7 +443,7 @@
     )
   )
 
-(defmethod crimson-guard-method-219 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-219 ((this crimson-guard))
   (quaternion-pseudo-seek (-> this joint quat) (-> this joint quat) *unity-quaternion* (seconds-per-frame))
   0
   (none)
@@ -462,7 +451,7 @@
 
 (define *guard-min-id-hack* 255)
 
-(defmethod track-target! crimson-guard ((this crimson-guard))
+(defmethod track-target! ((this crimson-guard))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -481,12 +470,12 @@
   (none)
   )
 
-(defmethod kill-prefer-falling crimson-guard ((this crimson-guard))
+(defmethod kill-prefer-falling ((this crimson-guard))
   "If available in `enemy-info`, [[go]] to the [[die-falling]] state, if not, [[die]]"
   ((method-of-type nav-enemy kill-prefer-falling) this)
   )
 
-(defmethod react-to-focus crimson-guard ((this crimson-guard))
+(defmethod react-to-focus ((this crimson-guard))
   "@TODO - flesh out docs"
   (if (not (logtest? (-> this flags) (citizen-flag hostile)))
       (go (method-of-object this active))
@@ -494,7 +483,7 @@
       )
   )
 
-(defmethod damage-amount-from-attack crimson-guard ((this crimson-guard) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this crimson-guard) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let ((v0-0 ((method-of-type nav-enemy damage-amount-from-attack) this arg0 arg1)))
     (-> arg1 param 1)
@@ -503,7 +492,7 @@
   )
 
 ;; WARN: disable def twice: 122. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod general-event-handler crimson-guard ((this crimson-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this crimson-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -691,7 +680,7 @@
     )
   )
 
-(defmethod get-inv-mass crimson-guard ((this crimson-guard))
+(defmethod get-inv-mass ((this crimson-guard))
   0.6666667
   )
 
@@ -868,7 +857,7 @@
     )
   )
 
-(defmethod enemy-method-77 crimson-guard ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard) (arg0 (pointer float)))
   (cond
     ((logtest? (-> this flags) (citizen-flag knocked-out-car))
      (ja-channel-push! 1 (seconds 0.1))
@@ -1007,7 +996,7 @@
   #t
   )
 
-(defmethod enemy-method-78 crimson-guard ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard) (arg0 (pointer float)))
   (cond
     ((<= (-> this hit-points) 0)
      (ja-channel-push! 1 (seconds 0.1))
@@ -1101,7 +1090,7 @@
     )
   )
 
-(defmethod set-behavior! crimson-guard ((this crimson-guard) (arg0 traffic-object-spawn-params))
+(defmethod set-behavior! ((this crimson-guard) (arg0 traffic-object-spawn-params))
   (let ((a1-1 (-> arg0 guard-type)))
     (if (or (and (!= a1-1 7) (!= a1-1 (-> this guard-type))) (= (-> arg0 behavior) 11))
         (crimson-guard-method-225 this a1-1 (= (-> arg0 behavior) 11))
@@ -1194,7 +1183,7 @@
   )
 
 ;; WARN: Return type mismatch int vs object.
-(defmethod go-hostile crimson-guard ((this crimson-guard))
+(defmethod go-hostile ((this crimson-guard))
   (cond
     ((handle->process (-> this focus handle))
      (logior! (-> this flags) (citizen-flag hostile))
@@ -1219,7 +1208,7 @@
   0
   )
 
-(defmethod crimson-guard-method-214 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-214 ((this crimson-guard))
   (let* ((s4-0 (-> this target-pos-predict-miss))
          (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
          (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 15)))
@@ -1360,7 +1349,7 @@
     )
   )
 
-(defmethod crimson-guard-method-217 crimson-guard ((this crimson-guard) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod crimson-guard-method-217 ((this crimson-guard) (arg0 vector) (arg1 vector) (arg2 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1469,7 +1458,7 @@
     )
   )
 
-(defmethod crimson-guard-method-220 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-220 ((this crimson-guard))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1596,7 +1585,7 @@
     )
   )
 
-(defmethod crimson-guard-method-221 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-221 ((this crimson-guard))
   (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
     (set! (-> a1-0 sphere quad) (-> this root trans quad))
     (set! (-> a1-0 sphere r) 40960.0)
@@ -1611,7 +1600,7 @@
   (none)
   )
 
-(defmethod crimson-guard-method-215 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-215 ((this crimson-guard))
   (let ((s5-0 (get-trans this 3))
         (s4-0 (new 'stack-no-clear 'vector))
         )
@@ -1623,7 +1612,7 @@
     )
   )
 
-(defmethod crimson-guard-method-216 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-216 ((this crimson-guard))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> this target-pos-predict-miss quad))
     (let* ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
@@ -2212,7 +2201,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-method-226 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-226 ((this crimson-guard))
   (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s5-0 (-> this root))
         (s3-0 (lambda ((arg0 crimson-guard) (arg1 collide-shape-moving) (arg2 vector))
@@ -2745,7 +2734,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-method-222 crimson-guard ((this crimson-guard))
+(defmethod crimson-guard-method-222 ((this crimson-guard))
   (local-vars (sv-800 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -3238,7 +3227,7 @@
     )
   )
 
-(defmethod crimson-guard-method-223 crimson-guard ((this crimson-guard) (arg0 float))
+(defmethod crimson-guard-method-223 ((this crimson-guard) (arg0 float))
   (let* ((s3-0 (handle->process (-> this transport)))
          (s4-0 (if (type? s3-0 process-focusable)
                    (the-as process-focusable s3-0)
@@ -3272,7 +3261,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defmethod crimson-guard-method-224 crimson-guard ((this crimson-guard) (arg0 vector))
+(defmethod crimson-guard-method-224 ((this crimson-guard) (arg0 vector))
   (local-vars
     (f0-8 float)
     (sv-768 vector)
@@ -3392,7 +3381,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-93 crimson-guard ((this crimson-guard))
+(defmethod enemy-method-93 ((this crimson-guard))
   (let ((s5-0 (-> this nav state))
         (v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         )
@@ -3418,11 +3407,11 @@
   (none)
   )
 
-(defmethod enemy-method-89 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this crimson-guard) (arg0 enemy-jump-info))
   #f
   )
 
-(defmethod enemy-method-87 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this crimson-guard) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -3438,7 +3427,7 @@
   #t
   )
 
-(defmethod enemy-method-88 crimson-guard ((this crimson-guard) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this crimson-guard) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -3454,7 +3443,7 @@
   #t
   )
 
-(defmethod enemy-method-90 crimson-guard ((this crimson-guard) (arg0 int) (arg1 enemy-jump-info))
+(defmethod enemy-method-90 ((this crimson-guard) (arg0 int) (arg1 enemy-jump-info))
   (local-vars (s5-0 symbol))
   (let ((v1-0 arg0))
     (cond
@@ -3609,7 +3598,7 @@
     )
   )
 
-(defmethod init-enemy-collision! crimson-guard ((this crimson-guard))
+(defmethod init-enemy-collision! ((this crimson-guard))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -3681,7 +3670,7 @@
   (none)
   )
 
-(defmethod relocate crimson-guard ((this crimson-guard) (arg0 int))
+(defmethod relocate ((this crimson-guard) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -3691,7 +3680,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! crimson-guard ((this crimson-guard))
+(defmethod init-enemy! ((this crimson-guard))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -3724,7 +3713,7 @@
   (none)
   )
 
-(defmethod crimson-guard-method-225 crimson-guard ((this crimson-guard) (arg0 uint) (arg1 symbol))
+(defmethod crimson-guard-method-225 ((this crimson-guard) (arg0 uint) (arg1 symbol))
   (set! (-> this guard-type) arg0)
   (set! (-> this settings)
         (get-traffic-guard-type-settings (-> this controller traffic) (the-as int (-> this guard-type)))
@@ -3784,7 +3773,7 @@
   (none)
   )
 
-(defmethod citizen-init! crimson-guard ((this crimson-guard))
+(defmethod citizen-init! ((this crimson-guard))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type citizen citizen-init!)))
     (t9-0 this)

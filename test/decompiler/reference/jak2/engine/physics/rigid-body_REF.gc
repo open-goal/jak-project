@@ -3,16 +3,13 @@
 
 ;; definition of type rigid-body-work
 (deftype rigid-body-work (structure)
-  ((max-ang-momentum float  :offset-assert   0)
-   (max-ang-velocity float  :offset-assert   4)
+  ((max-ang-momentum  float)
+   (max-ang-velocity  float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type rigid-body-work
-(defmethod inspect rigid-body-work ((this rigid-body-work))
+(defmethod inspect ((this rigid-body-work))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -36,14 +33,14 @@
   )
 
 ;; definition for method 7 of type rigid-body-control
-(defmethod relocate rigid-body-control ((this rigid-body-control) (arg0 int))
+(defmethod relocate ((this rigid-body-control) (arg0 int))
   (&+! (-> this process) arg0)
   this
   )
 
 ;; definition for method 9 of type rigid-body-info
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-info-method-9 rigid-body-info ((this rigid-body-info))
+(defmethod rigid-body-info-method-9 ((this rigid-body-info))
   (let ((f24-0 (-> this mass))
         (f28-0 (-> this inertial-tensor-box 0))
         (f30-0 (-> this inertial-tensor-box 1))
@@ -83,7 +80,7 @@
 ;; definition for method 16 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-force-torque! rigid-body ((this rigid-body))
+(defmethod clear-force-torque! ((this rigid-body))
   (set! (-> this force quad) (the-as uint128 0))
   (set! (-> this torque quad) (the-as uint128 0))
   0
@@ -93,7 +90,7 @@
 ;; definition for method 17 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod clear-momentum! rigid-body ((this rigid-body))
+(defmethod clear-momentum! ((this rigid-body))
   (set! (-> this lin-momentum quad) (the-as uint128 0))
   (set! (-> this ang-momentum quad) (the-as uint128 0))
   0
@@ -102,7 +99,7 @@
 
 ;; definition for method 24 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-24 rigid-body ((this rigid-body))
+(defmethod rigid-body-method-24 ((this rigid-body))
   (when #t
     (quaternion->matrix (-> this matrix) (-> this rotation))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -116,7 +113,7 @@
 
 ;; definition for method 26 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-26 rigid-body ((this rigid-body) (arg0 vector) (arg1 quaternion))
+(defmethod rigid-body-method-26 ((this rigid-body) (arg0 vector) (arg1 quaternion))
   (let ((s3-0 (new 'stack-no-clear 'inline-array 'vector 8)))
     (quaternion->matrix (the-as matrix (-> s3-0 1)) arg1)
     (vector-rotate*! (-> s3-0 0) (-> this info cm-offset-joint) (the-as matrix (-> s3-0 1)))
@@ -132,7 +129,7 @@
 ;; definition for method 25 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-25 rigid-body ((this rigid-body) (arg0 rigid-body-info) (arg1 vector) (arg2 quaternion) (arg3 function))
+(defmethod rigid-body-method-25 ((this rigid-body) (arg0 rigid-body-info) (arg1 vector) (arg2 quaternion) (arg3 function))
   (set! (-> this work) *rigid-body-work*)
   (set! (-> this info) arg0)
   (set! (-> this force-callback) (the-as (function object float none) arg3))
@@ -150,7 +147,7 @@
   )
 
 ;; definition for method 22 of type rigid-body
-(defmethod rigid-body-method-22 rigid-body ((this rigid-body) (arg0 vector) (arg1 vector))
+(defmethod rigid-body-method-22 ((this rigid-body) (arg0 vector) (arg1 vector))
   (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this position))))
     (vector-cross! arg1 (-> this ang-velocity) v1-1)
     )
@@ -185,7 +182,7 @@
 ;; definition for method 12 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-12 rigid-body ((this rigid-body) (arg0 float))
+(defmethod rigid-body-method-12 ((this rigid-body) (arg0 float))
   (local-vars (v1-6 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -252,7 +249,7 @@
 
 ;; definition for method 13 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-13 rigid-body ((this rigid-body))
+(defmethod rigid-body-method-13 ((this rigid-body))
   (let ((v1-0 (-> this info)))
     (vector-float*! (-> this lin-velocity) (-> this lin-momentum) (-> v1-0 inv-mass))
     (matrix-3x3-triple-transpose-product (-> this inv-i-world) (-> this matrix) (-> v1-0 inv-inertial-tensor))
@@ -265,7 +262,7 @@
 ;; definition for method 14 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-14 rigid-body ((this rigid-body) (arg0 float))
+(defmethod rigid-body-method-14 ((this rigid-body) (arg0 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -319,7 +316,7 @@
 
 ;; definition for method 9 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-9 rigid-body ((this rigid-body) (arg0 collide-shape-moving) (arg1 float))
+(defmethod rigid-body-method-9 ((this rigid-body) (arg0 collide-shape-moving) (arg1 float))
   (rigid-body-method-12 this arg1)
   (let ((v1-2 (-> this info)))
     (let* ((a0-2 (-> this lin-momentum))
@@ -356,7 +353,7 @@
 
 ;; definition for method 67 of type collide-shape-moving
 ;; WARN: Return type mismatch int vs none.
-(defmethod collide-with-all-collide-cache-prims collide-shape-moving ((this collide-shape-moving) (arg0 matrix) (arg1 collide-query))
+(defmethod collide-with-all-collide-cache-prims ((this collide-shape-moving) (arg0 matrix) (arg1 collide-query))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -460,7 +457,7 @@
 ;; definition for method 63 of type collide-shape-moving
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod collide-shape-moving-method-63 collide-shape-moving ((this collide-shape-moving) (arg0 rigid-body) (arg1 float))
+(defmethod collide-shape-moving-method-63 ((this collide-shape-moving) (arg0 rigid-body) (arg1 float))
   (local-vars (s3-0 rigid-body))
   (with-pp
     (rlet ((acc :class vf)
@@ -665,7 +662,7 @@
 ;; WARN: Stack slot offset 632 signed mismatch
 ;; WARN: Stack slot offset 632 signed mismatch
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-15 rigid-body ((this rigid-body) (arg0 collide-shape-moving) (arg1 float))
+(defmethod rigid-body-method-15 ((this rigid-body) (arg0 collide-shape-moving) (arg1 float))
   (local-vars
     (sv-576 vector)
     (sv-624 vector)
@@ -763,7 +760,7 @@
 
 ;; definition for method 18 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-18 rigid-body ((this rigid-body) (arg0 vector) (arg1 vector))
+(defmethod rigid-body-method-18 ((this rigid-body) (arg0 vector) (arg1 vector))
   (vector+! (-> this force) (-> this force) arg1)
   (let ((a3-1 (new 'stack-no-clear 'vector))
         (v1-1 (new 'stack-no-clear 'vector))
@@ -778,7 +775,7 @@
 
 ;; definition for method 21 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-21 rigid-body ((this rigid-body) (arg0 vector) (arg1 vector) (arg2 float))
+(defmethod rigid-body-method-21 ((this rigid-body) (arg0 vector) (arg1 vector) (arg2 float))
   (vector+! (-> this force) (-> this force) arg1)
   (let* ((t0-2 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this position)))
          (v1-3 (vector-cross! (new 'stack-no-clear 'vector) t0-2 arg1))
@@ -796,7 +793,7 @@
 
 ;; definition for method 19 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-19 rigid-body ((this rigid-body) (arg0 vector) (arg1 vector))
+(defmethod rigid-body-method-19 ((this rigid-body) (arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         )
@@ -812,14 +809,14 @@
 
 ;; definition for method 20 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-20 rigid-body ((this rigid-body) (arg0 vector))
+(defmethod rigid-body-method-20 ((this rigid-body) (arg0 vector))
   (vector+! (-> this force) (-> this force) arg0)
   0
   (none)
   )
 
 ;; definition for method 23 of type rigid-body
-(defmethod rigid-body-method-23 rigid-body ((this rigid-body) (arg0 vector))
+(defmethod rigid-body-method-23 ((this rigid-body) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-rotate*! gp-0 (-> this info cm-offset-joint) (-> this matrix))
     (vector-! arg0 (-> this position) gp-0)
@@ -829,7 +826,7 @@
 
 ;; definition for method 28 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod print-force-torque rigid-body ((this rigid-body) (arg0 object))
+(defmethod print-force-torque ((this rigid-body) (arg0 object))
   (format arg0 "  force ~M ~M ~M" (-> this force x) (-> this force y) (-> this force z))
   (format arg0 "  torque ~M ~M ~M~%" (-> this torque x) (-> this torque y) (-> this torque z))
   0
@@ -838,7 +835,7 @@
 
 ;; definition for method 30 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod print-momentum rigid-body ((this rigid-body) (arg0 object))
+(defmethod print-momentum ((this rigid-body) (arg0 object))
   (format arg0 "  lin-mom ~M ~M ~M" (-> this lin-momentum x) (-> this lin-momentum y) (-> this lin-momentum z))
   (format
     arg0
@@ -853,7 +850,7 @@
 
 ;; definition for method 31 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod print-velocity rigid-body ((this rigid-body) (arg0 object))
+(defmethod print-velocity ((this rigid-body) (arg0 object))
   (format arg0 "  lin-vel ~M ~M ~M" (-> this lin-velocity x) (-> this lin-velocity y) (-> this lin-velocity z))
   (format
     arg0
@@ -868,7 +865,7 @@
 
 ;; definition for method 29 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod print-position-rotation rigid-body ((this rigid-body) (arg0 object))
+(defmethod print-position-rotation ((this rigid-body) (arg0 object))
   (format arg0 "  position ~M ~M ~M" (-> this position x) (-> this position y) (-> this position z))
   (format
     arg0
@@ -884,7 +881,7 @@
 
 ;; definition for method 27 of type rigid-body
 ;; WARN: Return type mismatch int vs none.
-(defmethod print-physics rigid-body ((this rigid-body) (arg0 object))
+(defmethod print-physics ((this rigid-body) (arg0 object))
   (print-force-torque this arg0)
   (print-position-rotation this arg0)
   (print-momentum this arg0)
@@ -895,7 +892,7 @@
 
 ;; definition for method 10 of type rigid-body-control
 ;; WARN: Return type mismatch int vs object.
-(defmethod rigid-body-control-method-10 rigid-body-control ((this rigid-body-control) (arg0 rigid-body-object) (arg1 float) (arg2 float))
+(defmethod rigid-body-control-method-10 ((this rigid-body-control) (arg0 rigid-body-object) (arg1 float) (arg2 float))
   (let* ((s4-1 (max 1 (min 4 (+ (the int (* 0.9999 (/ arg1 arg2))) 1))))
          (f30-0 (/ arg1 (the float s4-1)))
          (s3-0 (-> this state force-callback))
@@ -917,7 +914,7 @@
 ;; definition for method 11 of type rigid-body
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-method-11 rigid-body ((this rigid-body) (arg0 collide-shape-moving))
+(defmethod rigid-body-method-11 ((this rigid-body) (arg0 collide-shape-moving))
   (quaternion-copy! (-> arg0 quat) (-> this rotation))
   (rigid-body-method-23 this (-> arg0 trans))
   (set! (-> arg0 transv quad) (-> this lin-velocity quad))
@@ -926,13 +923,13 @@
   )
 
 ;; definition for method 26 of type rigid-body-object
-(defmethod get-inv-mass rigid-body-object ((this rigid-body-object))
+(defmethod get-inv-mass ((this rigid-body-object))
   (-> this info info inv-mass)
   )
 
 ;; definition for method 35 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-35 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-35 ((this rigid-body-object))
   (let ((a0-1 (-> this info name)))
     (when (nonzero? a0-1)
       (set! (-> this info) (the-as rigid-body-object-constants (-> a0-1 value)))
@@ -947,7 +944,7 @@
 
 ;; definition for method 50 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-50 rigid-body-object ((this rigid-body-object) (arg0 float))
+(defmethod rigid-body-object-method-50 ((this rigid-body-object) (arg0 float))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-impulse-force player-contact-force))
     (when (logtest? (-> this flags) (rigid-body-object-flag player-impulse-force))
       (logclear! (-> this flags) (rigid-body-object-flag player-impulse-force))
@@ -966,7 +963,7 @@
 
 ;; definition for method 29 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-29 rigid-body-object ((this rigid-body-object) (arg0 float))
+(defmethod rigid-body-object-method-29 ((this rigid-body-object) (arg0 float))
   (let ((a1-1 (new 'stack-no-clear 'vector)))
     (vector-reset! a1-1)
     (set! (-> a1-1 y) (* -1.0 (-> this info extra gravity) (-> this rbody state info mass)))
@@ -978,7 +975,7 @@
 
 ;; definition for method 30 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-30 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-30 ((this rigid-body-object))
   (rigid-body-control-method-10 (-> this rbody) this (seconds-per-frame) (-> this max-time-step))
   (logclear! (-> this flags) (rigid-body-object-flag player-impulse-force player-contact-force))
   0
@@ -987,7 +984,7 @@
 
 ;; definition for method 51 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-51 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-51 ((this rigid-body-object))
   (rigid-body-control-method-10
     (-> this rbody)
     this
@@ -1000,7 +997,7 @@
 
 ;; definition for method 52 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-52 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-52 ((this rigid-body-object))
   (logclear! (-> this flags) (rigid-body-object-flag player-impulse-force player-contact-force))
   0
   (none)
@@ -1008,7 +1005,7 @@
 
 ;; definition for method 34 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-34 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-34 ((this rigid-body-object))
   (go (method-of-object this idle))
   0
   (none)
@@ -1016,7 +1013,7 @@
 
 ;; definition for method 31 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod alloc-and-init-rigid-body-control rigid-body-object ((this rigid-body-object) (arg0 rigid-body-object-constants))
+(defmethod alloc-and-init-rigid-body-control ((this rigid-body-object) (arg0 rigid-body-object-constants))
   (set! (-> this info) arg0)
   (set! (-> this rbody) (new 'process 'rigid-body-control this))
   (update-transforms (-> this root))
@@ -1040,7 +1037,7 @@
 
 ;; definition for method 32 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod allocate-and-init-cshape rigid-body-object ((this rigid-body-object))
+(defmethod allocate-and-init-cshape ((this rigid-body-object))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1092,7 +1089,7 @@
 
 ;; definition for method 33 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-skel-and-rigid-body rigid-body-object ((this rigid-body-object))
+(defmethod init-skel-and-rigid-body ((this rigid-body-object))
   (alloc-and-init-rigid-body-control this *rigid-body-object-constants*)
   0
   (none)
@@ -1100,7 +1097,7 @@
 
 ;; definition for method 11 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-from-entity! rigid-body-object ((this rigid-body-object) (arg0 entity-actor))
+(defmethod init-from-entity! ((this rigid-body-object) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1117,14 +1114,14 @@ This commonly includes things such as:
 
 ;; definition for method 36 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod do-engine-sounds rigid-body-object ((this rigid-body-object))
+(defmethod do-engine-sounds ((this rigid-body-object))
   0
   (none)
   )
 
 ;; definition for method 37 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-37 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-37 ((this rigid-body-object))
   (rigid-body-object-method-30 this)
   (do-engine-sounds this)
   (let ((v1-4 (-> this rbody))
@@ -1139,7 +1136,7 @@ This commonly includes things such as:
 
 ;; definition for method 40 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-40 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-40 ((this rigid-body-object))
   (logior! (-> this flags) (rigid-body-object-flag enable-collision))
   (let ((v1-3 (-> this root root-prim)))
     (set! (-> v1-3 prim-core collide-as) (-> this root backup-collide-as))
@@ -1151,7 +1148,7 @@ This commonly includes things such as:
 
 ;; definition for method 41 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-41 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-41 ((this rigid-body-object))
   (logclear! (-> this flags) (rigid-body-object-flag enable-collision))
   (let ((v1-3 (-> this root root-prim)))
     (set! (-> v1-3 prim-core collide-as) (collide-spec))
@@ -1164,7 +1161,7 @@ This commonly includes things such as:
 
 ;; definition for method 38 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-38 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-38 ((this rigid-body-object))
   (when (not (logtest? (-> this rbody state flags) (rigid-body-flag enable-physics)))
     (logior! (-> this rbody state flags) (rigid-body-flag enable-physics))
     (rigid-body-method-26 (-> this rbody state) (-> this root trans) (-> this root quat))
@@ -1177,7 +1174,7 @@ This commonly includes things such as:
 
 ;; definition for method 39 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-39 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-39 ((this rigid-body-object))
   (logclear! (-> this rbody state flags) (rigid-body-flag enable-physics))
   0
   (none)
@@ -1185,7 +1182,7 @@ This commonly includes things such as:
 
 ;; definition for method 42 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-42 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-42 ((this rigid-body-object))
   (logior! (-> this flags) (rigid-body-object-flag disturbed))
   (set-time! (-> this disturbed-time))
   (if (not (logtest? (-> this rbody state flags) (rigid-body-flag enable-physics)))
@@ -1197,7 +1194,7 @@ This commonly includes things such as:
 
 ;; definition for method 43 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-43 rigid-body-object ((this rigid-body-object))
+(defmethod rigid-body-object-method-43 ((this rigid-body-object))
   (go (method-of-object this active))
   0
   (none)
@@ -1205,14 +1202,14 @@ This commonly includes things such as:
 
 ;; definition for method 44 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod apply-damage rigid-body-object ((this rigid-body-object) (arg0 float) (arg1 rigid-body-impact))
+(defmethod apply-damage ((this rigid-body-object) (arg0 float) (arg1 rigid-body-impact))
   0
   (none)
   )
 
 ;; definition for method 45 of type rigid-body-object
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-45 rigid-body-object ((this rigid-body-object) (arg0 rigid-body-impact))
+(defmethod rigid-body-object-method-45 ((this rigid-body-object) (arg0 rigid-body-impact))
   0
   (none)
   )
@@ -1220,7 +1217,7 @@ This commonly includes things such as:
 ;; definition for method 49 of type rigid-body-object
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod rigid-body-object-method-49 rigid-body-object ((this rigid-body-object) (arg0 rigid-body-impact) (arg1 touching-shapes-entry))
+(defmethod rigid-body-object-method-49 ((this rigid-body-object) (arg0 rigid-body-impact) (arg1 touching-shapes-entry))
   (set! (-> arg0 rbody) #f)
   (set! (-> arg0 prim-id) (the-as uint 0))
   (vector-reset! (-> arg0 normal))
@@ -1252,12 +1249,12 @@ This commonly includes things such as:
 
 ;; definition for method 47 of type rigid-body-object
 ;; INFO: Used lq/sq
-(defmethod rigid-body-object-method-47 rigid-body-object ((this rigid-body-object)
-                                                        (arg0 process-drawable)
-                                                        (arg1 attack-info)
-                                                        (arg2 touching-shapes-entry)
-                                                        (arg3 penetrate)
-                                                        )
+(defmethod rigid-body-object-method-47 ((this rigid-body-object)
+                                       (arg0 process-drawable)
+                                       (arg1 attack-info)
+                                       (arg2 touching-shapes-entry)
+                                       (arg3 penetrate)
+                                       )
   (local-vars (f0-2 float))
   (when arg2
     (let ((s5-0 (new 'stack-no-clear 'rigid-body-impact)))
@@ -1336,7 +1333,7 @@ This commonly includes things such as:
 
 ;; definition for method 48 of type rigid-body-object
 ;; INFO: Used lq/sq
-(defmethod rigid-body-object-method-48 rigid-body-object ((this rigid-body-object) (arg0 process-focusable) (arg1 touching-shapes-entry))
+(defmethod rigid-body-object-method-48 ((this rigid-body-object) (arg0 process-focusable) (arg1 touching-shapes-entry))
   (local-vars (v1-2 symbol))
   (b! (not (logtest? (process-mask target crate enemy) (-> arg0 mask))) cfg-5 :likely-delay (set! v1-2 #t))
   (b! (not (logtest? (-> arg0 mask) (process-mask target))) cfg-5 :likely-delay (set! v1-2 #f))
@@ -1409,7 +1406,7 @@ This commonly includes things such as:
 
 ;; definition for method 46 of type rigid-body-object
 ;; INFO: Used lq/sq
-(defmethod rigid-body-object-method-46 rigid-body-object ((this rigid-body-object) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod rigid-body-object-method-46 ((this rigid-body-object) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('impact-impulse)
      (let ((s5-1 (-> arg3 param 0)))

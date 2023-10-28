@@ -8,18 +8,15 @@
 ;; DECOMP BEGINS
 
 (deftype rpc-buffer (basic)
-  ((elt-size  uint32           :offset-assert   4)
-   (elt-count uint32           :offset-assert   8)
-   (elt-used  uint32           :offset-assert  12)
-   (busy      basic            :offset-assert  16)
-   (base      pointer          :offset-assert  20)
-   (data      uint8   :dynamic :offset         32)
+  ((elt-size   uint32)
+   (elt-count  uint32)
+   (elt-used   uint32)
+   (busy       basic)
+   (base       pointer)
+   (data       uint8  :dynamic :offset  32)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   (:methods
-    (new (symbol type uint uint) rpc-buffer 0)
+    (new (symbol type uint uint) rpc-buffer)
     )
   )
 
@@ -38,22 +35,19 @@
   )
 
 (deftype rpc-buffer-pair (basic)
-  ((buffer           rpc-buffer 2 :offset-assert   4)
-   (current          rpc-buffer   :offset-assert  12)
-   (last-recv-buffer pointer      :offset-assert  16)
-   (rpc-port         int32        :offset-assert  20)
+  ((buffer            rpc-buffer  2)
+   (current           rpc-buffer)
+   (last-recv-buffer  pointer)
+   (rpc-port          int32)
    )
-  :method-count-assert 15
-  :size-assert         #x18
-  :flag-assert         #xf00000018
   (:methods
-    (new (symbol type uint uint int) rpc-buffer-pair 0)
-    (call (rpc-buffer-pair uint pointer uint) int 9)
-    (add-element (rpc-buffer-pair) pointer 10)
-    (decrement-elt-used (rpc-buffer-pair) int 11)
-    (sync (rpc-buffer-pair symbol) int 12)
-    (check-busy (rpc-buffer-pair) symbol 13)
-    (pop-last-received (rpc-buffer-pair) pointer 14)
+    (new (symbol type uint uint int) rpc-buffer-pair)
+    (call (rpc-buffer-pair uint pointer uint) int)
+    (add-element (rpc-buffer-pair) pointer)
+    (decrement-elt-used (rpc-buffer-pair) int)
+    (sync (rpc-buffer-pair symbol) int)
+    (check-busy (rpc-buffer-pair) symbol)
+    (pop-last-received (rpc-buffer-pair) pointer)
     )
   )
 
@@ -69,7 +63,7 @@
     )
   )
 
-(defmethod sync rpc-buffer-pair ((this rpc-buffer-pair) (arg0 symbol))
+(defmethod sync ((this rpc-buffer-pair) (arg0 symbol))
   (let ((s5-0 (if (= (-> this current) (-> this buffer 0))
                   (-> this buffer 1)
                   (-> this buffer 0)
@@ -100,7 +94,7 @@
   0
   )
 
-(defmethod check-busy rpc-buffer-pair ((this rpc-buffer-pair))
+(defmethod check-busy ((this rpc-buffer-pair))
   (let ((gp-0 (if (= (-> this current) (-> this buffer 0))
                   (-> this buffer 1)
                   (-> this buffer 0)
@@ -119,7 +113,7 @@
   #f
   )
 
-(defmethod call rpc-buffer-pair ((this rpc-buffer-pair) (arg0 uint) (arg1 pointer) (arg2 uint))
+(defmethod call ((this rpc-buffer-pair) (arg0 uint) (arg1 pointer) (arg2 uint))
   (when (nonzero? (-> this current elt-used))
     (let ((s2-0 (if (= (-> this current) (-> this buffer 0))
                     (-> this buffer 1)
@@ -164,14 +158,14 @@
   0
   )
 
-(defmethod pop-last-received rpc-buffer-pair ((this rpc-buffer-pair))
+(defmethod pop-last-received ((this rpc-buffer-pair))
   (let ((v0-0 (-> this last-recv-buffer)))
     (set! (-> this last-recv-buffer) (the-as pointer #f))
     v0-0
     )
   )
 
-(defmethod add-element rpc-buffer-pair ((this rpc-buffer-pair))
+(defmethod add-element ((this rpc-buffer-pair))
   (let ((v1-0 (-> this current)))
     (when (= (-> v1-0 elt-used) (-> v1-0 elt-count))
       (if (zero? (-> this rpc-port))
@@ -187,7 +181,7 @@
     )
   )
 
-(defmethod decrement-elt-used rpc-buffer-pair ((this rpc-buffer-pair))
+(defmethod decrement-elt-used ((this rpc-buffer-pair))
   (if (> (-> this current elt-used) 0)
       (+! (-> this current elt-used) -1)
       )

@@ -3,23 +3,20 @@
 
 ;; definition of type onin-game-event
 (deftype onin-game-event (structure)
-  ((min-count  uint16  :offset-assert   0)
-   (max-count  uint16  :offset-assert   2)
-   (min-event  uint16  :offset-assert   4)
-   (max-event  uint16  :offset-assert   6)
-   (wave-delay uint16  :offset-assert   8)
-   (min-wave   uint16  :offset-assert  10)
-   (max-wave   uint16  :offset-assert  12)
-   (gravity    meters  :offset-assert  16)
+  ((min-count   uint16)
+   (max-count   uint16)
+   (min-event   uint16)
+   (max-event   uint16)
+   (wave-delay  uint16)
+   (min-wave    uint16)
+   (max-wave    uint16)
+   (gravity     meters)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 ;; definition for method 3 of type onin-game-event
-(defmethod inspect onin-game-event ((this onin-game-event))
+(defmethod inspect ((this onin-game-event))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1860,25 +1857,21 @@
 
 ;; definition of type onin-game-bubble
 (deftype onin-game-bubble (process-drawable)
-  ((bubble-type       int32       :offset-assert 200)
-   (bubble-start-time time-frame  :offset-assert 208)
-   (gravity           meters      :offset-assert 216)
-   (dead?             symbol      :offset-assert 220)
-   (angle             float       :offset-assert 224)
-   (height            float       :offset-assert 228)
+  ((bubble-type        int32)
+   (bubble-start-time  time-frame)
+   (gravity            meters)
+   (dead?              symbol)
+   (angle              float)
+   (height             float)
    )
-  :heap-base #x70
-  :method-count-assert 22
-  :size-assert         #xe8
-  :flag-assert         #x16007000e8
-  (:methods
-    (idle () _type_ :state 20)
-    (fall () _type_ :state 21)
+  (:state-methods
+    idle
+    fall
     )
   )
 
 ;; definition for method 3 of type onin-game-bubble
-(defmethod inspect onin-game-bubble ((this onin-game-bubble))
+(defmethod inspect ((this onin-game-bubble))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -2156,46 +2149,44 @@
 
 ;; definition of type onin-game
 (deftype onin-game (process-drawable)
-  ((wave            int32                           :offset-assert 200)
-   (event           int32                           :offset-assert 204)
-   (wave-time       time-frame                      :offset-assert 208)
-   (wave-delay-time time-frame                      :offset-assert 216)
-   (wave-length     uint64                          :offset-assert 224)
-   (event-time      time-frame                      :offset-assert 232)
-   (event-length    uint64                          :offset-assert 240)
-   (hud-score       handle                          :offset-assert 248)
-   (hud-goal        handle                          :offset-assert 256)
-   (hud-miss        handle                          :offset-assert 264)
-   (score           float                           :offset-assert 272)
-   (score-time      time-frame                      :offset-assert 280)
-   (game            (inline-array onin-game-event)  :offset-assert 288)
-   (miss-max        int32                           :offset-assert 292)
-   (miss-count      int32                           :offset-assert 296)
-   (point-win       float                           :offset-assert 300)
-   (game-start-time time-frame                      :offset-assert 304)
-   (last-type       int32                           :offset-assert 312)
-   (current-bonus   float                           :offset-assert 316)
-   (last-angle      float                           :offset-assert 320)
-   (wave-start-miss int32                           :offset-assert 324)
+  ((wave             int32)
+   (event            int32)
+   (wave-time        time-frame)
+   (wave-delay-time  time-frame)
+   (wave-length      uint64)
+   (event-time       time-frame)
+   (event-length     uint64)
+   (hud-score        handle)
+   (hud-goal         handle)
+   (hud-miss         handle)
+   (score            float)
+   (score-time       time-frame)
+   (game             (inline-array onin-game-event))
+   (miss-max         int32)
+   (miss-count       int32)
+   (point-win        float)
+   (game-start-time  time-frame)
+   (last-type        int32)
+   (current-bonus    float)
+   (last-angle       float)
+   (wave-start-miss  int32)
    )
-  :heap-base #xd0
-  :method-count-assert 28
-  :size-assert         #x148
-  :flag-assert         #x1c00d00148
+  (:state-methods
+    hide
+    wait-for-start
+    (active symbol)
+    (lose symbol)
+    win
+    )
   (:methods
-    (hide () _type_ :state 20)
-    (wait-for-start () _type_ :state 21)
-    (active (symbol) _type_ :state 22)
-    (lose (symbol) _type_ :state 23)
-    (win () _type_ :state 24)
-    (onin-game-method-25 (_type_) none 25)
-    (onin-game-method-26 (_type_) none 26)
-    (onin-game-method-27 (_type_ int) none 27)
+    (onin-game-method-25 (_type_) none)
+    (onin-game-method-26 (_type_) none)
+    (onin-game-method-27 (_type_ int) none)
     )
   )
 
 ;; definition for method 3 of type onin-game
-(defmethod inspect onin-game ((this onin-game))
+(defmethod inspect ((this onin-game))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -2239,7 +2230,7 @@
 ;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 112 mismatch: defined as size 4, got size 16
 ;; WARN: Return type mismatch int vs none.
-(defmethod onin-game-method-25 onin-game ((this onin-game))
+(defmethod onin-game-method-25 ((this onin-game))
   (local-vars
     (v0-18 int)
     (sv-32 process)
@@ -2394,7 +2385,7 @@
 
 ;; definition for method 26 of type onin-game
 ;; WARN: Return type mismatch int vs none.
-(defmethod onin-game-method-26 onin-game ((this onin-game))
+(defmethod onin-game-method-26 ((this onin-game))
   (cond
     ((>= (-> *game-info* score) (-> this score))
      (set! (-> *game-info* score) (-> this score))
@@ -2412,7 +2403,7 @@
 
 ;; definition for method 27 of type onin-game
 ;; WARN: Return type mismatch number vs none.
-(defmethod onin-game-method-27 onin-game ((this onin-game) (arg0 int))
+(defmethod onin-game-method-27 ((this onin-game) (arg0 int))
   "TODO - bubble type"
   (let ((s4-0 (the-as onin-game-bubble #f)))
     (let ((s3-0 0)

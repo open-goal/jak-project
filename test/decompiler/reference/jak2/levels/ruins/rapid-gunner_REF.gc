@@ -3,45 +3,43 @@
 
 ;; definition of type rapid-gunner
 (deftype rapid-gunner (nav-enemy)
-  ((los              los-control        :inline :offset-assert 608)
-   (joint            joint-mod                  :offset-assert 756)
-   (joint-blend      float                      :offset-assert 760)
-   (joint-enable     symbol                     :offset-assert 764)
-   (shot-timer       uint64                     :offset-assert 768)
-   (predict-timer    uint64                     :offset-assert 776)
-   (target-prev-pos  vector             :inline :offset-assert 784)
-   (target-next-pos  vector             :inline :offset-assert 800)
-   (focus-dir        vector             :inline :offset-assert 816)
-   (y-diff           float                      :offset-assert 832)
-   (shots-fired      uint32                     :offset-assert 836)
-   (spin-up-angle    float                      :offset-assert 840)
-   (spin-up-timer    time-frame                 :offset-assert 848)
-   (shoot-anim-index int32                      :offset-assert 856)
-   (status-flags     rapid-gunner-flags         :offset-assert 864)
-   (start-pos        vector             :inline :offset-assert 880)
-   (dest-pos         vector             :inline :offset-assert 896)
-   (hop-dir          vector             :inline :offset-assert 912)
-   (roam-radius      float                      :offset-assert 928)
+  ((los               los-control  :inline)
+   (joint             joint-mod)
+   (joint-blend       float)
+   (joint-enable      symbol)
+   (shot-timer        uint64)
+   (predict-timer     uint64)
+   (target-prev-pos   vector       :inline)
+   (target-next-pos   vector       :inline)
+   (focus-dir         vector       :inline)
+   (y-diff            float)
+   (shots-fired       uint32)
+   (spin-up-angle     float)
+   (spin-up-timer     time-frame)
+   (shoot-anim-index  int32)
+   (status-flags      rapid-gunner-flags)
+   (start-pos         vector       :inline)
+   (dest-pos          vector       :inline)
+   (hop-dir           vector       :inline)
+   (roam-radius       float)
    )
-  :heap-base #x330
-  :method-count-assert 187
-  :size-assert         #x3a4
-  :flag-assert         #xbb033003a4
+  (:state-methods
+    attack
+    spin-attack
+    hop
+    hop-turn
+    cool-down
+    reload
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (spin-attack () _type_ :state 179)
-    (hop () _type_ :state 180)
-    (hop-turn () _type_ :state 181)
-    (cool-down () _type_ :state 182)
-    (reload () _type_ :state 183)
-    (rapid-gunner-method-184 (_type_ float) symbol 184)
-    (rapid-gunner-method-185 (_type_ vector float) none 185)
-    (rapid-gunner-method-186 (_type_ int float int int) none 186)
+    (rapid-gunner-method-184 (_type_ float) symbol)
+    (rapid-gunner-method-185 (_type_ vector float) none)
+    (rapid-gunner-method-186 (_type_ int float int int) none)
     )
   )
 
 ;; definition for method 3 of type rapid-gunner
-(defmethod inspect rapid-gunner ((this rapid-gunner))
+(defmethod inspect ((this rapid-gunner))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -260,7 +258,7 @@
 (set! (-> *rapid-gunner-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type rapid-gunner
-(defmethod general-event-handler rapid-gunner ((this rapid-gunner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this rapid-gunner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -295,7 +293,7 @@
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: Using new Jak 2 rtype-of
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 rapid-gunner ((this rapid-gunner) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this rapid-gunner) (arg0 (pointer float)))
   (let ((v1-0 (-> this incoming knocked-type)))
     (the-as
       symbol
@@ -417,7 +415,7 @@
 
 ;; definition for method 52 of type rapid-gunner
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-52 rapid-gunner ((this rapid-gunner) (arg0 vector))
+(defmethod enemy-method-52 ((this rapid-gunner) (arg0 vector))
   (cond
     ((> (-> this hit-points) 0)
      (-> this enemy-info)
@@ -438,7 +436,7 @@
   )
 
 ;; definition for method 78 of type rapid-gunner
-(defmethod enemy-method-78 rapid-gunner ((this rapid-gunner) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this rapid-gunner) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -489,7 +487,7 @@
   )
 
 ;; definition for method 98 of type rapid-gunner
-(defmethod in-aggro-range? rapid-gunner ((this rapid-gunner) (arg0 process-focusable) (arg1 vector))
+(defmethod in-aggro-range? ((this rapid-gunner) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
 - otherwise, check if the provided process is close enough
@@ -508,7 +506,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 185 rapid-gunner) has a return type of none, but the expression builder found a return statement.
-(defmethod rapid-gunner-method-185 rapid-gunner ((this rapid-gunner) (arg0 vector) (arg1 float))
+(defmethod rapid-gunner-method-185 ((this rapid-gunner) (arg0 vector) (arg1 float))
   (if (not (-> this joint-enable))
       (return #f)
       )
@@ -601,7 +599,7 @@
 
 ;; definition for method 55 of type rapid-gunner
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! rapid-gunner ((this rapid-gunner))
+(defmethod track-target! ((this rapid-gunner))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -615,12 +613,12 @@
   )
 
 ;; definition for method 96 of type rapid-gunner
-(defmethod enemy-method-96 rapid-gunner ((this rapid-gunner) (arg0 float) (arg1 symbol))
+(defmethod enemy-method-96 ((this rapid-gunner) (arg0 float) (arg1 symbol))
   (enemy-method-95 this (-> this target-next-pos) arg0)
   )
 
 ;; definition for method 184 of type rapid-gunner
-(defmethod rapid-gunner-method-184 rapid-gunner ((this rapid-gunner) (arg0 float))
+(defmethod rapid-gunner-method-184 ((this rapid-gunner) (arg0 float))
   (let* ((s4-0 (-> this node-list data 18))
          (v1-1 (vector<-cspace! (new 'stack-no-clear 'vector) s4-0))
          (s5-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this target-next-pos) v1-1) 1.0))
@@ -635,7 +633,7 @@
   )
 
 ;; definition for method 67 of type rapid-gunner
-(defmethod go-stare rapid-gunner ((this rapid-gunner))
+(defmethod go-stare ((this rapid-gunner))
   (go (method-of-object this hostile))
   )
 
@@ -876,7 +874,7 @@
 
 ;; definition for method 186 of type rapid-gunner
 ;; WARN: Return type mismatch art-element vs none.
-(defmethod rapid-gunner-method-186 rapid-gunner ((this rapid-gunner) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
+(defmethod rapid-gunner-method-186 ((this rapid-gunner) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
   (local-vars (v1-1 int))
   0
   (if (< 0.0 arg1)
@@ -1368,14 +1366,14 @@
 
 ;; definition for method 142 of type rapid-gunner
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 rapid-gunner ((this rapid-gunner) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this rapid-gunner) (arg0 nav-control))
   0
   (none)
   )
 
 ;; definition for method 63 of type rapid-gunner
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 rapid-gunner ((this rapid-gunner) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this rapid-gunner) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 this arg0 arg1)
                        (set-dst-proc! (-> this los) (-> this focus handle))
@@ -1386,7 +1384,7 @@
 
 ;; definition for method 114 of type rapid-gunner
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! rapid-gunner ((this rapid-gunner))
+(defmethod init-enemy-collision! ((this rapid-gunner))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1466,7 +1464,7 @@
   )
 
 ;; definition for method 7 of type rapid-gunner
-(defmethod relocate rapid-gunner ((this rapid-gunner) (arg0 int))
+(defmethod relocate ((this rapid-gunner) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -1476,7 +1474,7 @@
 ;; definition for method 115 of type rapid-gunner
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! rapid-gunner ((this rapid-gunner))
+(defmethod init-enemy! ((this rapid-gunner))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-48 int))
   (rlet ((acc :class vf)
@@ -1564,14 +1562,10 @@
 ;; definition of type shield-gunner
 (deftype shield-gunner (rapid-gunner)
   ()
-  :heap-base #x330
-  :method-count-assert 187
-  :size-assert         #x3a4
-  :flag-assert         #xbb033003a4
   )
 
 ;; definition for method 3 of type shield-gunner
-(defmethod inspect shield-gunner ((this shield-gunner))
+(defmethod inspect ((this shield-gunner))
   (when (not this)
     (set! this this)
     (goto cfg-4)

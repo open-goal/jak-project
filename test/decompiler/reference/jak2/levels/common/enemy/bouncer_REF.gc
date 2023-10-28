@@ -3,25 +3,23 @@
 
 ;; definition of type bouncer
 (deftype bouncer (process-drawable)
-  ((spring-height meters  :offset-assert 200)
-   (smush         float   :offset-assert 204)
-   (mods          basic   :offset-assert 208)
+  ((spring-height  meters)
+   (smush          float)
+   (mods           basic)
    )
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xd4
-  :flag-assert         #x19006000d4
+  (:state-methods
+    idle
+    fire
+    smush
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (fire () _type_ :state 21)
-    (smush () _type_ :state 22)
-    (init-skeleton! (_type_) none 23)
-    (bouncer-method-24 (_type_) none 24)
+    (init-skeleton! (_type_) none)
+    (bouncer-method-24 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type bouncer
-(defmethod inspect bouncer ((this bouncer))
+(defmethod inspect ((this bouncer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -203,7 +201,7 @@
 
 ;; definition for method 23 of type bouncer
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-skeleton! bouncer ((this bouncer))
+(defmethod init-skeleton! ((this bouncer))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-bouncer" (the-as (pointer uint32) #f)))
@@ -215,7 +213,7 @@
 
 ;; definition for method 24 of type bouncer
 ;; WARN: Return type mismatch int vs none.
-(defmethod bouncer-method-24 bouncer ((this bouncer))
+(defmethod bouncer-method-24 ((this bouncer))
   "TODO - collision stuff"
   (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
@@ -240,7 +238,7 @@
 
 ;; definition for method 11 of type bouncer
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! bouncer ((this bouncer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this bouncer) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

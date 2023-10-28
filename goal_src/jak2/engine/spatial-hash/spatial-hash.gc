@@ -8,21 +8,18 @@
 ;; DECOMP BEGINS
 
 (deftype grid-hash-work (basic)
-  ((result-words      uint8  32      :offset         16)
-   (result-bits       uint8  32      :offset         16)
-   (object-id         int32          :offset-assert  48)
-   (temp-box-min      vector :inline :offset-assert  64)
-   (temp-box-max      vector :inline :offset-assert  80)
-   (visit-count       int32          :offset-assert  96)
-   (temp-time         uint32         :offset-assert 100)
-   (queue-object-time uint32         :offset-assert 104)
-   (make-hash-time    uint32         :offset-assert 108)
-   (search-time       uint32         :offset-assert 112)
-   (add-object-time   uint32         :offset-assert 116)
+  ((result-words       uint8   32 :offset  16)
+   (result-bits        uint8   32 :overlay-at (-> result-words 0))
+   (object-id          int32)
+   (temp-box-min       vector  :inline)
+   (temp-box-max       vector  :inline)
+   (visit-count        int32)
+   (temp-time          uint32)
+   (queue-object-time  uint32)
+   (make-hash-time     uint32)
+   (search-time        uint32)
+   (add-object-time    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x78
-  :flag-assert         #x900000078
   )
 
 
@@ -52,7 +49,7 @@
     )
   )
 
-(defmethod verify-bits-in-bucket grid-hash ((this grid-hash) (arg0 grid-hash-box) (arg1 grid-hash-box))
+(defmethod verify-bits-in-bucket ((this grid-hash) (arg0 grid-hash-box) (arg1 grid-hash-box))
   (let ((s5-0 0))
     0
     (let ((v1-1 8)
@@ -80,7 +77,7 @@
   (none)
   )
 
-(defmethod box-of-everything grid-hash ((this grid-hash) (arg0 object) (arg1 grid-hash-box))
+(defmethod box-of-everything ((this grid-hash) (arg0 object) (arg1 grid-hash-box))
   (dotimes (v1-0 3)
     (set! (-> arg1 min v1-0) (-> this dimension-array v1-0))
     (set! (-> arg1 max v1-0) -1)
@@ -155,7 +152,7 @@
 
 (defmethod-mips2c "(method 20 grid-hash)" 20 grid-hash)
 
-(defmethod set-up-box grid-hash ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector))
+(defmethod set-up-box ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector))
   (dotimes (v1-0 3)
     (set! (-> arg0 min v1-0)
           (the int
@@ -183,7 +180,7 @@
 
 (defmethod-mips2c "(method 22 grid-hash)" 22 grid-hash)
 
-(defmethod line-sphere-to-grid-box grid-hash ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod line-sphere-to-grid-box ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector) (arg3 float))
   (let ((s4-0 (new 'stack-no-clear 'grid-hash-box))
         (s5-0 (new 'stack-no-clear 'grid-hash-box))
         )
@@ -208,7 +205,7 @@
   (none)
   )
 
-(defmethod clear-bucket-array grid-hash ((this grid-hash))
+(defmethod clear-bucket-array ((this grid-hash))
   (let ((v1-5 (/ (+ (* (* (* (-> this dimension-array 0) (-> this dimension-array 1)) (-> this dimension-array 2))
                        (-> this bucket-size)
                        )
@@ -229,7 +226,7 @@
   (none)
   )
 
-(defmethod update-grid grid-hash ((this grid-hash))
+(defmethod update-grid ((this grid-hash))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (dotimes (a1-0 3)
       (set! (-> v1-0 data a1-0) (fmax (-> this min-cell-size) (- (-> this box-max a1-0) (-> this box-min a1-0))))
@@ -357,7 +354,7 @@
   (none)
   )
 
-(defmethod update-grid-for-objects-in-box grid-hash ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector))
+(defmethod update-grid-for-objects-in-box ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector))
   (set! (-> this object-count) arg0)
   (dotimes (v1-0 3)
     (set! (-> this box-min v1-0) (-> arg1 data v1-0))
@@ -368,7 +365,7 @@
   (none)
   )
 
-(defmethod setup-search-box grid-hash ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector) (arg3 vector))
+(defmethod setup-search-box ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector))
         (t1-0 (new 'stack-no-clear 'vector))
         )
@@ -445,10 +442,12 @@
         )
       (+! t3-23 -1)
       (nop!)
+      ;; og:preserve-this
       (b! (nonzero? t3-23) cfg-11 :delay (set! t4-6 (&+ (the-as pointer t4-6) a0-2)))
       )
     (+! t2-28 -1)
     (nop!)
+    ;; og:preserve-this
     (b! (nonzero? t2-28) cfg-10 :delay (set! t1-3 (&+ (the-as pointer t1-3) a1-2)))
     )
   0
@@ -456,7 +455,7 @@
   (none)
   )
 
-(defmethod search-for-point grid-hash ((this grid-hash) (arg0 vector))
+(defmethod search-for-point ((this grid-hash) (arg0 vector))
   (let ((v1-0 this)
         (a0-1 (-> this search-box))
         (a2-0 arg0)
@@ -489,7 +488,7 @@
   )
 
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
-(defmethod search-for-sphere grid-hash ((this grid-hash) (arg0 vector) (arg1 float))
+(defmethod search-for-sphere ((this grid-hash) (arg0 vector) (arg1 float))
   (let ((v1-0 (new 'stack-no-clear 'sphere)))
     (set! (-> v1-0 quad) (-> arg0 quad))
     (set! (-> v1-0 r) arg1)
@@ -565,7 +564,7 @@
   (none)
   )
 
-(defmethod draw grid-hash ((this grid-hash) (arg0 rgba))
+(defmethod draw ((this grid-hash) (arg0 rgba))
   "Draws the grid-hash"
   (let ((v1-0 (new 'stack-no-clear 'vector))
         (t0-0 (new 'stack-no-clear 'vector))
@@ -580,7 +579,7 @@
   (none)
   )
 
-(defmethod dump-grid-info grid-hash ((this grid-hash))
+(defmethod dump-grid-info ((this grid-hash))
   "Prints out info about the grid-hash, also draws via [[grid-hash::draw-grid]] if `debug-draw` is `#t`"
   (if (-> this debug-draw)
       (draw this *color-light-blue*)
@@ -658,7 +657,7 @@
     )
   )
 
-(defmethod clear-objects! sphere-hash ((this sphere-hash))
+(defmethod clear-objects! ((this sphere-hash))
   (set! (-> this object-count) 0)
   (dotimes (v1-0 3)
     (set! (-> this box-min v1-0) 10000000000000000000000000000000000000.0)
@@ -680,7 +679,7 @@
 
 (defmethod-mips2c "(method 28 sphere-hash)" 28 sphere-hash)
 
-(defmethod add-a-sphere sphere-hash ((this sphere-hash) (arg0 vector))
+(defmethod add-a-sphere ((this sphere-hash) (arg0 vector))
   (let ((gp-0 (-> this object-count)))
     (cond
       ((< gp-0 (-> this max-object-count))
@@ -701,7 +700,7 @@
     )
   )
 
-(defmethod add-a-sphere-with-flag sphere-hash ((this sphere-hash) (arg0 vector) (arg1 int))
+(defmethod add-a-sphere-with-flag ((this sphere-hash) (arg0 vector) (arg1 int))
   (let ((gp-0 (-> this object-count)))
     (cond
       ((< gp-0 (-> this max-object-count))
@@ -733,7 +732,7 @@
 
 (defmethod-mips2c "(method 32 sphere-hash)" 32 sphere-hash)
 
-(defmethod dump-grid-info sphere-hash ((this sphere-hash))
+(defmethod dump-grid-info ((this sphere-hash))
   "Prints out info about the grid-hash, also draws via [[grid-hash::draw-grid]] if `debug-draw` is `#t`"
   (call-parent-method this)
   (new 'stack-no-clear 'vector)
@@ -786,7 +785,7 @@
     )
   )
 
-(defmethod clear-objects! spatial-hash ((this spatial-hash))
+(defmethod clear-objects! ((this spatial-hash))
   (set! (-> this object-count) 0)
   (dotimes (v1-0 3)
     (set! (-> this box-min v1-0) 10000000000000000000000000000000000000.0)
@@ -810,7 +809,7 @@
 
 (defmethod-mips2c "(method 33 spatial-hash)" 33 spatial-hash)
 
-(defmethod add-an-object spatial-hash ((this spatial-hash) (arg0 vector) (arg1 hash-object-info))
+(defmethod add-an-object ((this spatial-hash) (arg0 vector) (arg1 hash-object-info))
   (let ((gp-0 (-> this object-count)))
     (cond
       ((< gp-0 (-> this max-object-count))
@@ -842,7 +841,7 @@
 
 (defmethod-mips2c "(method 35 spatial-hash)" 35 spatial-hash)
 
-(defmethod fill-actor-list-for-vec+r spatial-hash ((this spatial-hash) (arg0 vector) (arg1 (pointer collide-shape)) (arg2 int))
+(defmethod fill-actor-list-for-vec+r ((this spatial-hash) (arg0 vector) (arg1 (pointer collide-shape)) (arg2 int))
   (let ((v1-0 (new 'stack-no-clear 'sphere)))
     (set! (-> v1-0 quad) (-> arg0 quad))
     (set! (-> v1-0 r) 0.0)
@@ -850,7 +849,7 @@
     )
   )
 
-(defmethod validate-objects spatial-hash ((this spatial-hash))
+(defmethod validate-objects ((this spatial-hash))
   (dotimes (s5-0 (-> this object-count))
     (let ((a0-2 (-> this object-array s5-0 object)))
       (when (not (valid? a0-2 basic "" #t 0))

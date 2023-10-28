@@ -12,7 +12,8 @@
 
 ;; DECOMP BEGINS
 
-(defmethod print sparticle-cpuinfo ((this sparticle-cpuinfo))
+;; WARN: Return type mismatch object vs sparticle-cpuinfo.
+(defmethod print ((this sparticle-cpuinfo))
   (format #t "<sparticle-cpuinfo>~%")
   (dotimes (s5-0 16)
     (format #t "~D:~F~%" s5-0 (the-as float (-> this data s5-0)))
@@ -21,6 +22,7 @@
   (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> this flags)))
   )
 
+;; WARN: Return type mismatch (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none) vs none.
 (defun sp-particle-copy! ((arg0 sparticle-cpuinfo) (arg1 sparticle-cpuinfo))
   (let ((v1-1 (-> arg1 sprite x-y-z-sx quad)))
     (set! (-> arg0 sprite x-y-z-sx quad) v1-1)
@@ -54,6 +56,7 @@
                                (arg3 pointer)
                                (arg4 (inline-array adgif-shader))
                                )
+  ;; og:preserve-this
   (#when PC_BIG_MEMORY
     (*! arg0 SPRITE_MAX_AMOUNT_MULT)
     ; (*! arg1 SPRITE_MAX_AMOUNT_MULT)
@@ -274,6 +277,7 @@
   )
 
 (def-mips2c sp-process-block-2d (function sparticle-system int int int int symbol none))
+
 (def-mips2c sp-process-block-3d (function sparticle-system int int int int symbol none))
 
 (defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
@@ -429,7 +433,7 @@
   )
 
 (defun sparticle-kill-it-level0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  (if (zero? (logand (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)))
+  (if (not (logtest? (-> arg1 flags) (sp-cpuinfo-flag sp-cpuinfo-flag-9 level0 level1)))
       (sparticle-kill-it arg0 arg1)
       )
   0
@@ -598,6 +602,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch gs-miptbp vs none.
 (defun remap-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
   (let* ((gp-0 (-> arg1 adgif))
          (a0-1 (-> gp-0 texture-id))
@@ -709,7 +714,3 @@
     (none)
     )
   )
-
-
-
-

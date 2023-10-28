@@ -219,42 +219,40 @@
 (set! (-> *metalhead-grunt-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype metalhead-grunt (citizen-enemy)
-  ((patrol-anim            grunt-anim-info         :offset-assert 980)
-   (charge-anim            grunt-anim-info         :offset-assert 984)
-   (attack-anim            grunt-anim-info         :offset-assert 988)
-   (knocked-anim           grunt-anim-info         :offset-assert 992)
-   (yellow-hit-anim        grunt-anim-info         :offset-assert 996)
-   (blue-hit-anim          grunt-anim-info         :offset-assert 1000)
-   (intro-path             path-control            :offset-assert 1004)
-   (pad-jh1b23jhb13        uint32                  :offset-assert 1008)
-   (use-charge-anim-index  int8                    :offset-assert 1012)
-   (knocked-anim-index     int8                    :offset-assert 1013)
-   (jumping-ambush-path-pt int8                    :offset-assert 1014)
-   (grunt-flags            uint8                   :offset-assert 1015)
-   (state-timeout2         uint64                  :offset-assert 1016)
-   (next-warn-time         time-frame              :offset-assert 1024)
-   (dest                   vector          :inline :offset-assert 1040)
-   (pad-kj1n23kj1n23       uint32          4       :offset-assert 1056)
+  ((patrol-anim             grunt-anim-info)
+   (charge-anim             grunt-anim-info)
+   (attack-anim             grunt-anim-info)
+   (knocked-anim            grunt-anim-info)
+   (yellow-hit-anim         grunt-anim-info)
+   (blue-hit-anim           grunt-anim-info)
+   (intro-path              path-control)
+   (pad-jh1b23jhb13         uint32)
+   (use-charge-anim-index   int8)
+   (knocked-anim-index      int8)
+   (jumping-ambush-path-pt  int8)
+   (grunt-flags             uint8)
+   (state-timeout2          uint64)
+   (next-warn-time          time-frame)
+   (dest                    vector  :inline)
+   (pad-kj1n23kj1n23        uint32  4)
    )
-  :heap-base #x3b0
-  :method-count-assert 212
-  :size-assert         #x430
-  :flag-assert         #xd403b00430
+  (:state-methods
+    attack
+    falling-ambush
+    jumping-ambush
+    jumping-ambush-cont
+    wait-for-focus
+    spin-attack
+    )
   (:methods
-    (attack () _type_ :state 203)
-    (falling-ambush () _type_ :state 204)
-    (jumping-ambush () _type_ :state 205)
-    (jumping-ambush-cont () _type_ :state 206)
-    (wait-for-focus () _type_ :state 207)
-    (spin-attack () _type_ :state 208)
-    (metalhead-grunt-method-209 (_type_ float) process-focusable 209)
-    (get-nav-info (_type_) nav-enemy-info 210)
-    (metalhead-grunt-method-211 (_type_) none 211)
+    (metalhead-grunt-method-209 (_type_ float) process-focusable)
+    (get-nav-info (_type_) nav-enemy-info)
+    (metalhead-grunt-method-211 (_type_) none)
     )
   )
 
 
-(defmethod general-event-handler metalhead-grunt ((this metalhead-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this metalhead-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -313,7 +311,7 @@
     )
   )
 
-(defmethod go-ambush metalhead-grunt ((this metalhead-grunt))
+(defmethod go-ambush ((this metalhead-grunt))
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user10))
      (go (method-of-object this falling-ambush))
@@ -379,7 +377,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-93 metalhead-grunt ((this metalhead-grunt))
+(defmethod enemy-method-93 ((this metalhead-grunt))
   (case (-> this jump-why)
     ((2)
      (go (method-of-object this jumping-ambush-cont))
@@ -568,7 +566,7 @@
     )
   )
 
-(defmethod metalhead-grunt-method-209 metalhead-grunt ((this metalhead-grunt) (arg0 float))
+(defmethod metalhead-grunt-method-209 ((this metalhead-grunt) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -918,7 +916,7 @@
     )
   )
 
-(defmethod enemy-method-77 metalhead-grunt ((this metalhead-grunt) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalhead-grunt) (arg0 (pointer float)))
   (local-vars (v1-72 int) (a2-3 int) (a2-5 int))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
@@ -1062,7 +1060,7 @@
     )
   )
 
-(defmethod enemy-method-78 metalhead-grunt ((this metalhead-grunt) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalhead-grunt) (arg0 (pointer float)))
   (cond
     ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
      (when (or (logtest? (-> this grunt-flags) 2) (let ((v1-7 (if (> (-> this skel active-channels) 0)
@@ -1161,20 +1159,20 @@
   :post (-> (method-of-type nav-enemy idle) post)
   )
 
-(defmethod metalhead-grunt-method-211 metalhead-grunt ((this metalhead-grunt))
+(defmethod metalhead-grunt-method-211 ((this metalhead-grunt))
   0
   (none)
   )
 
 ;; WARN: Return type mismatch citizen-enemy vs metalhead-grunt.
-(defmethod relocate metalhead-grunt ((this metalhead-grunt) (arg0 int))
+(defmethod relocate ((this metalhead-grunt) (arg0 int))
   (if (nonzero? (-> this intro-path))
       (&+! (-> this intro-path) arg0)
       )
   (the-as metalhead-grunt ((method-of-type citizen-enemy relocate) this arg0))
   )
 
-(defmethod init-enemy-collision! metalhead-grunt ((this metalhead-grunt))
+(defmethod init-enemy-collision! ((this metalhead-grunt))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1269,11 +1267,11 @@
   (none)
   )
 
-(defmethod get-nav-info metalhead-grunt ((this metalhead-grunt))
+(defmethod get-nav-info ((this metalhead-grunt))
   *metalhead-grunt-nav-enemy-info*
   )
 
-(defmethod init-enemy! metalhead-grunt ((this metalhead-grunt))
+(defmethod init-enemy! ((this metalhead-grunt))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

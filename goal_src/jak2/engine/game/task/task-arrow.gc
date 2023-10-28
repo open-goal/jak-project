@@ -25,14 +25,11 @@
               )
 
 (deftype task-arrow-params (structure)
-  ((flags    task-arrow-flags         :offset-assert   0)
-   (map-icon uint16                   :offset-assert   4)
-   (pos      vector           :inline :offset-assert  16)
-   (quat     quaternion       :inline :offset-assert  32)
+  ((flags     task-arrow-flags)
+   (map-icon  uint16)
+   (pos       vector      :inline)
+   (quat      quaternion  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
@@ -40,42 +37,40 @@
   "Despite the name, these are actually the beams of light that highlight
 various objections.  Such as the flag in the first ruins mission
 or collectable items on the ground (jetboard / weapon upgrades / etc)"
-  ((pos              vector             :inline :offset-assert 208)
-   (theta            float                      :offset-assert 224)
-   (phi              float                      :offset-assert 228)
-   (dist             float                      :offset-assert 232)
-   (smoothed-dist    float                      :offset-assert 236)
-   (max-dist         float                      :offset-assert 240)
-   (flags            task-arrow-flags           :offset-assert 244)
-   (map-icon         uint16                     :offset-assert 248)
-   (minimap          connection-minimap         :offset-assert 252)
-   (hud-dist         handle                     :offset-assert 256)
-   (base-quat        quaternion         :inline :offset-assert 272)
-   (rod-of-god-scale float                      :offset-assert 288)
-   (moving           symbol                     :offset-assert 292)
+  ((pos               vector      :inline)
+   (theta             float)
+   (phi               float)
+   (dist              float)
+   (smoothed-dist     float)
+   (max-dist          float)
+   (flags             task-arrow-flags)
+   (map-icon          uint16)
+   (minimap           connection-minimap)
+   (hud-dist          handle)
+   (base-quat         quaternion  :inline)
+   (rod-of-god-scale  float)
+   (moving            symbol)
    )
-  :heap-base #xb0
-  :method-count-assert 25
-  :size-assert         #x128
-  :flag-assert         #x1900b00128
+  (:state-methods
+    idle
+    die
+    leave
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (leave () _type_ :state 22)
-    (task-arrow-method-23 (_type_ vector) none 23)
-    (draw-arrow (_type_) none :behavior task-arrow 24)
+    (task-arrow-method-23 (_type_ vector) none)
+    (draw-arrow (_type_) none :behavior task-arrow)
     )
   )
 
 
-(defmethod deactivate task-arrow ((this task-arrow))
+(defmethod deactivate ((this task-arrow))
   (send-event (handle->process (-> this hud-dist)) 'hide-and-die)
   ((method-of-type process-drawable deactivate) this)
   0
   (none)
   )
 
-(defmethod task-arrow-method-23 task-arrow ((this task-arrow) (arg0 vector))
+(defmethod task-arrow-method-23 ((this task-arrow) (arg0 vector))
   "Some weird debugging code left here, but checks for collisions on the arrow"
   (let ((s5-0 (new 'stack-no-clear 'collide-query-with-vec)))
     (set! (-> s5-0 vec quad) (-> arg0 quad))
@@ -101,7 +96,7 @@ or collectable items on the ground (jetboard / weapon upgrades / etc)"
   (none)
   )
 
-(defmethod draw-arrow task-arrow ((this task-arrow))
+(defmethod draw-arrow ((this task-arrow))
   (cond
     ((logtest? (-> this flags) (task-arrow-flags task-arrow-flag-00))
      (if (and (not (handle->process (-> this hud-dist))) *target*)

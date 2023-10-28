@@ -12,128 +12,107 @@
 ;; DECOMP BEGINS
 
 (deftype collide-puss-sphere (structure)
-  ((bsphere sphere         :inline :offset-assert   0)
-   (bbox4w  bounding-box4w :inline :offset-assert  16)
+  ((bsphere  sphere          :inline)
+   (bbox4w   bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype collide-puss-work (structure)
-  ((closest-pt     vector              :inline    :offset-assert   0)
-   (tri-normal     vector              :inline    :offset-assert  16)
-   (tri-bbox4w     bounding-box4w      :inline    :offset-assert  32)
-   (spheres-bbox4w bounding-box4w      :inline    :offset-assert  64)
-   (spheres        collide-puss-sphere 64 :inline :offset-assert  96)
+  ((closest-pt      vector               :inline)
+   (tri-normal      vector               :inline)
+   (tri-bbox4w      bounding-box4w       :inline)
+   (spheres-bbox4w  bounding-box4w       :inline)
+   (spheres         collide-puss-sphere  64 :inline)
    )
-  :method-count-assert 11
-  :size-assert         #xc60
-  :flag-assert         #xb00000c60
   (:methods
-    (collide-puss-work-method-9 () none 9)
-    (collide-puss-work-method-10 () none 10)
+    (collide-puss-work-method-9 () none)
+    (collide-puss-work-method-10 () none)
     )
   )
 
 
 (deftype collide-cache-tri (structure)
-  ((vertex      vector      3 :inline :offset-assert   0)
-   (extra-quad  uint8       16        :offset-assert  48)
-   (pat         pat-surface           :offset         48)
-   (collide-ptr basic                 :offset         52)
-   (prim-index  uint16                :offset         56)
-   (user16      uint16                :offset         58)
-   (user32      uint32                :offset         60)
-   (clear-flags uint128               :offset         48)
+  ((vertex       vector       3 :inline)
+   (extra-quad   uint8        16)
+   (pat          pat-surface  :overlay-at (-> extra-quad 0))
+   (collide-ptr  basic        :overlay-at (-> extra-quad 4))
+   (prim-index   uint16       :overlay-at (-> extra-quad 8))
+   (user16       uint16       :overlay-at (-> extra-quad 10))
+   (user32       uint32       :overlay-at (-> extra-quad 12))
+   (clear-flags  uint128      :overlay-at (-> extra-quad 0))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype collide-cache-prim (structure)
-  ((prim-core    collide-prim-core  :inline :offset-assert   0)
-   (extra-quad   uint8              16      :offset-assert  32)
-   (ccache       collide-cache              :offset         32)
-   (prim         collide-shape-prim         :offset         36)
-   (first-tri    uint16                     :offset         40)
-   (num-tris     uint16                     :offset         42)
-   (unused       uint8              4       :offset         44)
-   (world-sphere vector             :inline :offset          0)
-   (collide-as   collide-spec               :offset         16)
-   (action       collide-action             :offset         24)
-   (prim-type    prim-type                  :offset         28)
+  ((prim-core     collide-prim-core   :inline)
+   (extra-quad    uint8               16)
+   (ccache        collide-cache               :overlay-at (-> extra-quad 0))
+   (prim          collide-shape-prim          :overlay-at (-> extra-quad 4))
+   (first-tri     uint16                      :overlay-at (-> extra-quad 8))
+   (num-tris      uint16                      :overlay-at (-> extra-quad 10))
+   (unused        uint8               4       :overlay-at (-> extra-quad 12))
+   (world-sphere  vector              :inline :overlay-at (-> prim-core world-sphere))
+   (collide-as    collide-spec                :overlay-at (-> prim-core collide-as))
+   (action        collide-action              :overlay-at (-> prim-core action))
+   (prim-type     prim-type                   :overlay-at (-> prim-core prim-type))
    )
-  :method-count-assert 11
-  :size-assert         #x30
-  :flag-assert         #xb00000030
   (:methods
-    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float 9)
-    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float 10)
+    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float)
+    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float)
     )
   )
 
 
 (deftype collide-cache (basic)
-  ((num-tris         int32                          :offset-assert   4)
-   (num-tris-u32     uint32                         :offset          4)
-   (num-prims        int32                          :offset-assert   8)
-   (num-prims-u32    uint32                         :offset          8)
-   (ignore-mask      pat-surface                    :offset-assert  12)
-   (ignore-processes process            2           :offset-assert  16)
-   (collide-box      bounding-box       :inline     :offset-assert  32)
-   (collide-box4w    bounding-box4w     :inline     :offset-assert  64)
-   (collide-with     collide-spec                   :offset-assert  96)
-   (unused           uint32                         :offset-assert 100)
-   (prims            collide-cache-prim 100 :inline :offset-assert 112)
-   (tris             collide-cache-tri  461 :inline :offset-assert 4912)
+  ((num-tris          int32)
+   (num-tris-u32      uint32              :overlay-at num-tris)
+   (num-prims         int32)
+   (num-prims-u32     uint32              :overlay-at num-prims)
+   (ignore-mask       pat-surface)
+   (ignore-processes  process             2)
+   (collide-box       bounding-box        :inline)
+   (collide-box4w     bounding-box4w      :inline)
+   (collide-with      collide-spec)
+   (unused            uint32)
+   (prims             collide-cache-prim  100 :inline)
+   (tris              collide-cache-tri   461 :inline)
    )
-  :method-count-assert 26
-  :size-assert         #x8670
-  :flag-assert         #x1a00008670
   (:methods
-    (debug-draw (_type_) none 9)
-    (fill-and-probe-using-line-sphere (_type_ collide-query) float 10)
-    (fill-and-probe-using-spheres (_type_ collide-query) symbol 11)
-    (fill-using-bounding-box (_type_ collide-query) none 12)
-    (fill-using-line-sphere (_type_ collide-query) none 13)
-    (fill-using-spheres (_type_ collide-query) none 14)
-    (reset (_type_) none 15)
-    (probe-using-line-sphere (_type_ collide-query) float 16)
-    (probe-using-spheres (_type_ collide-query) symbol 17)
-    (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none 18)
-    (fill-from-fg-boxes (_type_) none 19)
-    (fill-from-fg-line-sphere (_type_ collide-query) none 20)
-    (fill-from-water (_type_ water-control) none 21)
-    (collide-cache-method-22 () none 22)
-    (collide-cache-method-23 () none 23)
-    (collide-cache-method-24 () none 24)
-    (collide-cache-method-25 () none 25)
+    (debug-draw (_type_) none)
+    (fill-and-probe-using-line-sphere (_type_ collide-query) float)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol)
+    (fill-using-bounding-box (_type_ collide-query) none)
+    (fill-using-line-sphere (_type_ collide-query) none)
+    (fill-using-spheres (_type_ collide-query) none)
+    (reset (_type_) none)
+    (probe-using-line-sphere (_type_ collide-query) float)
+    (probe-using-spheres (_type_ collide-query) symbol)
+    (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none)
+    (fill-from-fg-boxes (_type_) none)
+    (fill-from-fg-line-sphere (_type_ collide-query) none)
+    (fill-from-water (_type_ water-control) none)
+    (collide-cache-method-22 () none)
+    (collide-cache-method-23 () none)
+    (collide-cache-method-24 () none)
+    (collide-cache-method-25 () none)
     )
   )
 
 
 (deftype collide-list-item (structure)
-  ((mesh instance-tie  :offset-assert   0)
-   (inst basic         :offset-assert   4)
+  ((mesh  instance-tie)
+   (inst  basic)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype collide-list (structure)
-  ((num-items int32                         :offset-assert   0)
-   (items     collide-list-item 256 :inline :offset         16)
+  ((num-items  int32)
+   (items      collide-list-item  256 :inline :offset  16)
    )
-  :method-count-assert 9
-  :size-assert         #x810
-  :flag-assert         #x900000810
   )
 
 

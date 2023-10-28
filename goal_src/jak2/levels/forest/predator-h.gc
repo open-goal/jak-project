@@ -26,41 +26,32 @@
 ;; DECOMP BEGINS
 
 (deftype predator-node (structure)
-  ((position    vector             :inline :offset-assert   0)
-   (nav-mesh-id uint32                     :offset-assert  16)
-   (edge-index  int16                      :offset-assert  20)
-   (edge-count  int16                      :offset-assert  22)
-   (radius      float                      :offset-assert  24)
-   (flags       predator-node-flag         :offset-assert  28)
-   (points      uint32                     :offset-assert  32)
-   (pos-x       float                      :offset          0)
-   (pos-y       float                      :offset          4)
-   (pos-z       float                      :offset          8)
+  ((position     vector  :inline)
+   (nav-mesh-id  uint32)
+   (edge-index   int16)
+   (edge-count   int16)
+   (radius       float)
+   (flags        predator-node-flag)
+   (points       uint32)
+   (pos-x        float   :overlay-at (-> position data 0))
+   (pos-y        float   :overlay-at (-> position data 1))
+   (pos-z        float   :overlay-at (-> position data 2))
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 
 (deftype predator-edge (structure)
-  ((dest-node-id uint16              :offset-assert   0)
-   (flags        predator-edge-flag  :offset-assert   2)
+  ((dest-node-id  uint16)
+   (flags         predator-edge-flag)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype predator-graph (structure)
-  ((node-count uint16                        :offset-assert   0)
-   (edge-count uint16                        :offset-assert   2)
-   (node       (inline-array predator-node)  :offset-assert   4)
-   (edge       (inline-array predator-edge)  :offset-assert   8)
+  ((node-count  uint16)
+   (edge-count  uint16)
+   (node        (inline-array predator-node))
+   (edge        (inline-array predator-edge))
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )

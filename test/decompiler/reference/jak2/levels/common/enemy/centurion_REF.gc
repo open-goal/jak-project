@@ -155,14 +155,10 @@
 ;; definition of type centurion-shot
 (deftype centurion-shot (metalhead-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 ;; definition for method 3 of type centurion-shot
-(defmethod inspect centurion-shot ((this centurion-shot))
+(defmethod inspect ((this centurion-shot))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -176,7 +172,7 @@
 
 ;; definition for method 28 of type centurion-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod play-impact-sound centurion-shot ((this centurion-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this centurion-shot) (arg0 projectile-options))
   (let ((v1-0 arg0))
     (cond
       ((zero? v1-0)
@@ -196,7 +192,7 @@
 
 ;; definition for method 31 of type centurion-shot
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-proj-settings! centurion-shot ((this centurion-shot))
+(defmethod init-proj-settings! ((this centurion-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (call-parent-method this)
   (set! (-> this max-speed) 327680.0)
@@ -206,34 +202,32 @@
 
 ;; definition of type centurion
 (deftype centurion (nav-enemy)
-  ((los                los-control :inline :offset-assert 608)
-   (target-pos         vector      :inline :offset-assert 768)
-   (can-shoot?         basic               :offset-assert 784)
-   (incoming-attack-id uint32              :offset-assert 788)
-   (can-take-damage?   symbol              :offset-assert 792)
-   (first-shoot?       symbol              :offset-assert 796)
-   (shoot-dir          vector      :inline :offset-assert 800)
-   (tar-pos            vector      :inline :offset-assert 816)
-   (joint              joint-mod           :offset-assert 832)
-   (joint-enable       symbol              :offset-assert 836)
-   (victory-sound      sound-id            :offset-assert 840)
-   (shield-shot        uint32              :offset-assert 844)
+  ((los                 los-control  :inline)
+   (target-pos          vector       :inline)
+   (can-shoot?          basic)
+   (incoming-attack-id  uint32)
+   (can-take-damage?    symbol)
+   (first-shoot?        symbol)
+   (shoot-dir           vector       :inline)
+   (tar-pos             vector       :inline)
+   (joint               joint-mod)
+   (joint-enable        symbol)
+   (victory-sound       sound-id)
+   (shield-shot         uint32)
    )
-  :heap-base #x2d0
-  :method-count-assert 183
-  :size-assert         #x350
-  :flag-assert         #xb702d00350
+  (:state-methods
+    attack
+    fire
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (fire () _type_ :state 179)
-    (centurion-method-180 (_type_) none 180)
-    (centurion-method-181 (_type_ vector) int 181)
-    (centurion-method-182 (_type_ vector) symbol 182)
+    (centurion-method-180 (_type_) none)
+    (centurion-method-181 (_type_ vector) int)
+    (centurion-method-182 (_type_ vector) symbol)
     )
   )
 
 ;; definition for method 3 of type centurion
-(defmethod inspect centurion ((this centurion))
+(defmethod inspect ((this centurion))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -266,15 +260,12 @@
 
 ;; definition of type centurion-anim-info
 (deftype centurion-anim-info (structure)
-  ((anim-index int32  :offset-assert   0)
+  ((anim-index  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 ;; definition for method 3 of type centurion-anim-info
-(defmethod inspect centurion-anim-info ((this centurion-anim-info))
+(defmethod inspect ((this centurion-anim-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -287,19 +278,16 @@
 
 ;; definition of type centurion-global-info
 (deftype centurion-global-info (basic)
-  ((prev-yellow-hit int8    :offset-assert   4)
-   (prev-blue-hit   int8    :offset-assert   5)
-   (yellow-hit-anim int32 1 :offset-assert   8)
-   (blue-hit-anim   int32 3 :offset-assert  12)
+  ((prev-yellow-hit  int8)
+   (prev-blue-hit    int8)
+   (yellow-hit-anim  int32  1)
+   (blue-hit-anim    int32  3)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 ;; definition for method 3 of type centurion-global-info
-(defmethod inspect centurion-global-info ((this centurion-global-info))
+(defmethod inspect ((this centurion-global-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -502,7 +490,7 @@
 (set! (-> *centurion-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type centurion
-(defmethod general-event-handler centurion ((this centurion) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this centurion) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -614,7 +602,7 @@
 
 ;; definition for method 181 of type centurion
 ;; INFO: Used lq/sq
-(defmethod centurion-method-181 centurion ((this centurion) (arg0 vector))
+(defmethod centurion-method-181 ((this centurion) (arg0 vector))
   (local-vars (sv-224 vector) (sv-240 vector) (sv-256 vector))
   (if (not (-> this joint-enable))
       (return (the-as int #f))
@@ -721,7 +709,7 @@
   )
 
 ;; definition for method 67 of type centurion
-(defmethod go-stare centurion ((this centurion))
+(defmethod go-stare ((this centurion))
   (if (not (and (-> this next-state) (= (-> this next-state name) 'hostile)))
       (go (method-of-object this hostile))
       )
@@ -756,7 +744,7 @@
 ;; definition for method 180 of type centurion
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod centurion-method-180 centurion ((this centurion))
+(defmethod centurion-method-180 ((this centurion))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -980,7 +968,7 @@
   )
 
 ;; definition for method 132 of type centurion
-(defmethod dispose! centurion ((this centurion))
+(defmethod dispose! ((this centurion))
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (play-communicator-speech! (-> *talker-speech* 58))
   (call-parent-method this)
@@ -989,7 +977,7 @@
 
 ;; definition for method 55 of type centurion
 ;; INFO: Used lq/sq
-(defmethod track-target! centurion ((this centurion))
+(defmethod track-target! ((this centurion))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1143,14 +1131,14 @@
 
 ;; definition for method 142 of type centurion
 ;; WARN: Return type mismatch int vs none.
-(defmethod nav-enemy-method-142 centurion ((this centurion) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this centurion) (arg0 nav-control))
   0
   (none)
   )
 
 ;; definition for method 182 of type centurion
 ;; INFO: Used lq/sq
-(defmethod centurion-method-182 centurion ((this centurion) (arg0 vector))
+(defmethod centurion-method-182 ((this centurion) (arg0 vector))
   (local-vars (sv-96 int) (sv-112 int))
   (when (nonzero? (-> this path))
     (let ((s5-0 (-> this path))
@@ -1379,7 +1367,7 @@
   )
 
 ;; definition for method 77 of type centurion
-(defmethod enemy-method-77 centurion ((this centurion) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this centurion) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.17))
@@ -1451,7 +1439,7 @@
   )
 
 ;; definition for method 78 of type centurion
-(defmethod enemy-method-78 centurion ((this centurion) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this centurion) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.17))
@@ -1501,14 +1489,14 @@
   )
 
 ;; definition for method 60 of type centurion
-(defmethod coin-flip? centurion ((this centurion))
+(defmethod coin-flip? ((this centurion))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
 ;; definition for method 63 of type centurion
 ;; WARN: Return type mismatch none vs symbol.
-(defmethod enemy-method-63 centurion ((this centurion) (arg0 process-focusable) (arg1 enemy-aware))
+(defmethod enemy-method-63 ((this centurion) (arg0 process-focusable) (arg1 enemy-aware))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-63)))
     (the-as symbol (if (t9-0 this arg0 arg1)
                        (set-dst-proc! (-> this los) (-> this focus handle))
@@ -1519,7 +1507,7 @@
 
 ;; definition for method 114 of type centurion
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! centurion ((this centurion))
+(defmethod init-enemy-collision! ((this centurion))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1596,7 +1584,7 @@
   )
 
 ;; definition for method 7 of type centurion
-(defmethod relocate centurion ((this centurion) (arg0 int))
+(defmethod relocate ((this centurion) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -1606,7 +1594,7 @@
 ;; definition for method 115 of type centurion
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! centurion ((this centurion))
+(defmethod init-enemy! ((this centurion))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> this main-thread) 256)
   (initialize-skeleton

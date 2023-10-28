@@ -450,34 +450,32 @@
               )
 
 (deftype warp-gate (process-drawable)
-  ((root        collide-shape          :override)
-   (level-name  uint32                 :offset-assert 200)
-   (on-notice   pair                   :offset-assert 204)
-   (on-activate pair                   :offset-assert 208)
-   (on-close    pair                   :offset-assert 212)
-   (wait-for    pair                   :offset-assert 216)
-   (continue    continue-point         :offset-assert 220)
-   (distance    meters                 :offset-assert 224)
-   (anim-speed  float                  :offset-assert 228)
-   (test-time   time-frame             :offset-assert 232)
-   (center      vector         :inline :offset-assert 240)
+  ((root         collide-shape :override)
+   (level-name   uint32)
+   (on-notice    pair)
+   (on-activate  pair)
+   (on-close     pair)
+   (wait-for     pair)
+   (continue     continue-point)
+   (distance     meters)
+   (anim-speed   float)
+   (test-time    time-frame)
+   (center       vector         :inline)
    )
-  :heap-base #x80
-  :method-count-assert 26
-  :size-assert         #x100
-  :flag-assert         #x1a00800100
+  (:state-methods
+    idle
+    (use continue-point)
+    hidden
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (use (continue-point) _type_ :state 21)
-    (hidden () _type_ :state 22)
-    (init-skel-and-collide (_type_) none 23)
-    (setup-fields (_type_) none 24)
-    (handle-notice (_type_) continue-point 25)
+    (init-skel-and-collide (_type_) none)
+    (setup-fields (_type_) none)
+    (handle-notice (_type_) continue-point)
     )
   )
 
 
-(defmethod handle-notice warp-gate ((this warp-gate))
+(defmethod handle-notice ((this warp-gate))
   (let ((s5-0 (script-eval (-> this on-notice))))
     (cond
       ((= s5-0 'hide)
@@ -709,7 +707,7 @@
   )
 
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-skel-and-collide warp-gate ((this warp-gate))
+(defmethod init-skel-and-collide ((this warp-gate))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
@@ -736,7 +734,7 @@
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod setup-fields warp-gate ((this warp-gate))
+(defmethod setup-fields ((this warp-gate))
   (set! (-> this level-name) (the-as uint (-> this level name)))
   (set! (-> this on-notice) (res-lump-struct (-> this entity) 'on-notice pair))
   (set! (-> this on-activate) #f)
@@ -781,7 +779,7 @@
   (none)
   )
 
-(defmethod init-from-entity! warp-gate ((this warp-gate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this warp-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1087,22 +1085,18 @@ This commonly includes things such as:
 
 (deftype air-train (warp-gate)
   "NOTE - I guess this is why sometimes the air-train makes the warp-gate sound"
-  ((part-exhaust-left  sparticle-launch-control         :offset-assert 256)
-   (part-exhaust-right sparticle-launch-control         :offset-assert 260)
-   (part-dust          sparticle-launch-control         :offset-assert 264)
-   (dust-y             float                            :offset-assert 268)
-   (hover-sound        sound-id                         :offset-assert 272)
-   (base-pos           vector                   :inline :offset-assert 288)
+  ((part-exhaust-left   sparticle-launch-control)
+   (part-exhaust-right  sparticle-launch-control)
+   (part-dust           sparticle-launch-control)
+   (dust-y              float)
+   (hover-sound         sound-id)
+   (base-pos            vector  :inline)
    )
-  :heap-base #xb0
-  :method-count-assert 26
-  :size-assert         #x130
-  :flag-assert         #x1a00b00130
   )
 
 
 ;; WARN: Return type mismatch warp-gate vs air-train.
-(defmethod relocate air-train ((this air-train) (arg0 int))
+(defmethod relocate ((this air-train) (arg0 int))
   (if (nonzero? (-> this part-exhaust-left))
       (&+! (-> this part-exhaust-left) arg0)
       )
@@ -1115,7 +1109,7 @@ This commonly includes things such as:
   (the-as air-train ((method-of-type warp-gate relocate) this arg0))
   )
 
-(defmethod deactivate air-train ((this air-train))
+(defmethod deactivate ((this air-train))
   (sound-stop (-> this hover-sound))
   (if (nonzero? (-> this part-exhaust-left))
       (kill-and-free-particles (-> this part-exhaust-left))
@@ -1131,7 +1125,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch draw-control vs none.
-(defmethod init-skel-and-collide air-train ((this air-train))
+(defmethod init-skel-and-collide ((this air-train))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1178,7 +1172,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch sound-id vs none.
-(defmethod setup-fields air-train ((this air-train))
+(defmethod setup-fields ((this air-train))
   (let ((t9-0 (method-of-type warp-gate setup-fields)))
     (t9-0 this)
     )
