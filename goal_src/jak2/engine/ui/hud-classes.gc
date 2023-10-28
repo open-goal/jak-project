@@ -10,9 +10,62 @@
 (define-extern dark-traffic symbol)
 
 
+(deftype cty-guard-turret (process-focusable)
+  (
+    (incoming-attack-id uint32        :offset-assert 204)
+    (jm-turret          joint-mod        :offset-assert 208)
+    (jm-gunsL           joint-mod        :offset-assert 212)
+    (jm-gunsR           joint-mod        :offset-assert 216)
+    (angle-turret       degrees       :offset-assert 220)
+    (angle-guns         degrees       :offset-assert 224)
+    (last-no-zero       int64         :offset-assert 232)
+    (next-time-shot     time-frame    :offset-assert 240)
+    (num-shots          uint32        :offset-assert 248)
+    (focus              focus :inline :offset-assert 256)
+    (id                 int32         :offset-assert 268)
+    (destroyed          symbol        :offset-assert 272)
+    (button-down?       symbol        :offset-assert 276)
+    (hit-points         int32         :offset-assert 280)
+  )
+  :method-count-assert 36
+  :size-assert         #x11c ;; 284
+  :flag-assert         #x2400a0011c
+  (:methods
+    (idle () _type_ :state 27)
+    (hostile () _type_ :state 28)
+    (explode () _type_ :state 29)
+    (wait-for-pushing () _type_ :state 30)
+    (pushed () _type_ :state 31)
+    (cty-guard-turret-method-32 (_type_) none 32)
+    (cty-guard-turret-method-33 (_type_) none 33)
+    (cty-guard-turret-method-34 (_type_) none 34)
+    (cty-guard-turret-method-35 (_type_) quaternion 35))
+  )
 
 
 
+
+  (defbehavior cty-guard-turret-init-by-other cty-guard-turret ((vec vector))
+  (cty-guard-turret-method-32 self)
+  (vector-copy! (-> self root trans) vec)
+  (vector-identity! (-> self root scale))
+  (initialize-skeleton
+    self
+    (the skeleton-group (art-group-get-by-name *level* "skel-cty-guard-turret" (the (pointer uint32) #f)))
+    (the pair 0)
+    )
+  (cty-guard-turret-method-33 self)
+  (reset-to-collide-spec (-> self focus) (collide-spec jak player-list))
+  (set! (-> self jm-turret) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 6))
+  (set! (-> self jm-gunsL) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 7))
+  (set! (-> self jm-gunsR) (new 'process 'joint-mod (joint-mod-mode joint-set*) self 8))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 186) self))
+  (set! (-> self id) 0)
+  (set! (-> self destroyed) #f)
+  (set! (-> self hit-points) 6)
+  (go (method-of-object self idle))
+  (none)
+  )
 
 
 
@@ -204,13 +257,11 @@
     (set! mod-pick #f)
           (print "[MOD] rolled for Teleport to Final Boss!
 ")
-    (when (or (!= (-> *game-info* buzzer-total) 2.0)(!= (-> *game-info* buzzer-total) 1.0))
+    (when (or (= (-> *game-info* buzzer-total) 2.0)(= (-> *game-info* buzzer-total) 1.0))
       (print "[MOD] You already beat tp-fb! rerolling...
 ")
       (set! mod-pick #t)
     )
-    (print "[MOD] rolled for Teleport to Final Boss!
-")
   )
   (when (= mod-rand 3)
     (set! (-> *game-info* fuel) 3.0)
@@ -246,21 +297,19 @@
 
 (when (= weapon-mod-toggle #t)
   ;Legendary Weapon Mod Saves
-  (when (and (= (-> *game-info* buzzer-total) 0.0)(or (= leg-random-shot #t)(= pm-extra-shot-option #f))) ;if none
+  (when (and (= (-> *game-info* buzzer-total) 0.0)(or (= leg-random-shot #f)(= pm-extra-shot-option #f))) ;if none
     (set! pm-extra-shot-option #f)
     (set! leg-random-shot #f)
     (set! leg-got? #f)
   )
   (when (and (= (-> *game-info* buzzer-total) 1.0)(= pm-extra-shot-option #f)) ;if 1, legendary extra chanced peacemaker-shot
     (set! pm-extra-shot-option #t)
-    (set! pm-extra-shot-int mod-default-gun)
     (set! leg-got? #t)
     (set! tp-fb-win #t)
   )
 
   (when (and (= (-> *game-info* buzzer-total) 2.0)(= leg-random-shot #f)) ;if 2, legendary random shot
     (set! leg-random-shot #t)
-    (set! leg-random-int mod-default-gun)
     (set! leg-got? #t)
     (set! tp-fb-win #t)
   )
@@ -382,7 +431,6 @@
   (when (and (task-node-closed? (game-task-node city-krew-delivery-resolution))(= mission-grab-1 #f)) ;after red gun, get rapid fire
     (set! mission-grab-1 #t)
     (set! rapid-fire-option #t)
-    (set! rapid-fire-int mod-default-gun)
     (print "[GUN-MOD] Rapid Fire Acquired! Weapon Mod set to mod-default-gun
 ")
   )
@@ -390,14 +438,12 @@
   (when (and (task-node-closed? (game-task-node sewer-enemy-resolution))(= mission-grab-2 #f)) ;after yellow gun, get double tap
     (set! mission-grab-2 #t)
     (set! double-tap-option #t)
-    (set! double-tap-int mod-default-gun)
     (print "[GUN-MOD] Chanced Double Tap Acquired! Weapon Mod set to mod-default-gun
 ")
   )
 
   (when (and (task-node-closed? (game-task-node ruins-enemy-introduction))(= mission-grab-3 #f)) ;after blue gun, get chanced guard shot
     (set! mission-grab-3 #t)
-    (set! guard-shot-int mod-default-gun)
     (set! guard-shot-option #t)
     (print "[GUN-MOD] Chanced Guard Shot Acquired! Weapon Mod set to mod-default-gun
 ")
@@ -1371,17 +1417,795 @@ All of the variables set are for time-based events based off of frames |#
 
 
 (when *scene-player*
-    (when (and (= mushroom-movies-start #f)(rand-vu-percent? 0.02)(= mushroom-movies #t)
+    (when (and (= mushroom-movies-start #f)(rand-vu-percent? 0.03)(= mushroom-movies #t)
       (set! mushroom-movies-start #t)
-      (set! mushroom-var (rand-vu-int-range 1 25))
+      (set! mushroom-var (rand-vu-int-range 1 15))
     )
   )
 )
 
 
 
+
 ;(logior! (cpad-pressed 0) (pad-buttons l1))
 ;(logior! (cpad-pressed 0) (pad-buttons r1))
+
+
+
+
+
+
+
+
+
+
+;city-guard-turret spawn params
+;----------------------------------------------------------------
+
+  (when (and (= (-> (level-get-target-inside *level*) name) 'ctysluma) (not spawned-turret-hideout?))
+    (set! spawned-turret-hideout? #t)
+    (print "HIDEOUT TURRET SET TO TRUE")
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters 1121.6390) :y (meters 8) :z (meters 14.6835) :w 1.0))
+  )
+  (when (and (!= (-> (level-get-target-inside *level*) name) 'ctysluma) spawned-turret-hideout? #t)
+    (set! spawned-turret-hideout? #f) 
+    (print "HIDEOUT TURRET SET TO FALSE")
+  )
+  (when (and (= (-> (level-get-target-inside *level*) name) 'ctyport) (not spawned-turrets-port?))
+    (set! spawned-turrets-port? #t)
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters -98.2844) :y (meters 7.9) :z (meters 1381.2529) :w 1.0))
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters -13.494) :y (meters 7.9) :z (meters 1324.7672) :w 1.0))
+    (print "PORT TURRETS SET TO TRUE")
+  )
+    (when (and (!= (-> (level-get-target-inside *level*) name) 'ctyport) spawned-turrets-port? #t)
+    (set! spawned-turrets-port? #f) 
+    (print "PORT TURRETS SET TO FALSE")
+  )
+  (when (and (= (-> (level-get-target-inside *level*) name) 'ctypal) (not spawned-turrets-pal?))
+    (set! spawned-turrets-pal? #t)
+    (print "PALACE TURRETS SET TO TRUE")
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters 191.8888) :y (meters 7.9) :z (meters 888.5129) :w 1.0))
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters 375.8006) :y (meters 16) :z (meters 696.1273) :w 1.0))
+  )
+    (when (and (!= (-> (level-get-target-inside *level*) name) 'ctypal) spawned-turrets-pal? #t)
+    (set! spawned-turrets-pal? #f) 
+    (print "PALACE TURRETS SET TO FALSE")
+  )
+    (when (and (= (-> (level-get-target-inside *level*) name) 'ctymarka) (not spawned-turret-market?))
+    (set! spawned-turret-market? #t)
+    (print "MARKET TURRET SET TO TRUE")
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters -319.4657) :y (meters 7.9) :z (meters 704.0290) :w 1.0))
+  )
+    (when (and (!= (-> (level-get-target-inside *level*) name) 'ctymarka) spawned-turret-market? #t)
+    (set! spawned-turret-market? #f) 
+    (print "MARKET TURRET SET TO FALSE")
+  )
+      (when (and (= (-> (level-get-target-inside *level*) name) 'ctyinda) (not spawned-turret-vin?))
+    (set! spawned-turret-vin? #t)
+    (print "VIN TURRET SET TO TRUE")
+    (process-spawn cty-guard-turret (new 'static 'vector :x (meters 778.7822) :y (meters 7.9) :z (meters 1100.5985) :w 1.0))
+  )
+    (when (and (!= (-> (level-get-target-inside *level*) name) 'ctyinda) spawned-turret-vin? #t)
+    (set! spawned-turret-vin? #f) 
+    (print "VIN TURRET SET TO FALSE")
+  )
+
+
+
+
+
+
+
+
+
+;hud-menu 
+;---------------------------------------------------------
+
+(when *target*
+(when (= menu-activate #t)
+  (when (and (= menu-pressed? #f)(= in-menu #t))
+    (print "Select your gun mod:
+  ")
+  )
+
+
+;menu-update
+;---------------------------------------Rapid Fire Main-----------------------------------------------------------
+  (when (and (= menu-pressed? #f)(= rapid-fire-option #t)(= in-menu #t)(= menu-slot 0)(= sub-menu-slot 0))
+    (print "Rapid Fire!
+")
+  )
+    (when (and (= menu-pressed? #f)(= rapid-fire-option #f)(= in-menu #t)(= menu-slot 0)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+  ;---------------------------------------Rapid Fire sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "Rapid Fire!
+")
+    (print "Red
+")
+(when (cpad-pressed? 0 square)
+    (set! rapid-fire-int 1)
+    (print "Set! red
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "Rapid Fire!
+")
+    (print "Yellow
+")
+(when (cpad-pressed? 0 square)
+    (set! rapid-fire-int 2)
+    (print "Set! yellow
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "Rapid Fire!
+")
+    (print "Blue
+")
+(when (cpad-pressed? 0 square)
+    (set! rapid-fire-int 3)
+    (print "Set! blue
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "Rapid Fire!
+")
+(print "Dark
+")
+(when (cpad-pressed? 0 square)
+    (set! rapid-fire-int 4)
+    (print "Set! dark
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "Rapid Fire!
+")
+    (print "None
+")
+(when (cpad-pressed? 0 square)
+    (set! rapid-fire-int 0)
+)
+    )
+
+;---------------------------------------Double Tap Main-----------------------------------------------------------
+  (when (and (= menu-pressed? #f)(= double-tap-option #t)(= in-menu #t)(= menu-slot 1)(= sub-menu-slot 0))
+    (print "Double Tap!
+")
+  )
+    (when (and (= menu-pressed? #f)(= double-tap-option #f)(= in-menu #t)(= menu-slot 1)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+
+  ;---------------------------------------Double Tap sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 2)(= double-tap-option #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "Double Tap!
+")
+    (print "Red
+")
+(when (cpad-pressed? 0 square)
+    (set! double-tap-int 2)
+    (print "Set! red
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 2)(= double-tap-option #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "Double Tap!
+")
+    (print "Yellow
+")
+(when (cpad-pressed? 0 square)
+    (set! double-tap-int 1)
+    (print "Set! yellow
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 2)(= double-tap-option #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "Double Tap!
+")
+    (print "Blue
+")
+(when (cpad-pressed? 0 square)
+    (set! double-tap-int 3)
+    (print "Set! blue
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 2)(= double-tap-option #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "Double Tap!
+")
+    (print "Dark
+")
+(when (cpad-pressed? 0 square)
+    (set! double-tap-int 4)
+    (print "Set! dark
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 2)(= double-tap-option #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "Double Tap!
+")
+    (print "None
+")
+(when (cpad-pressed? 0 square)
+    (set! double-tap-int 0)
+)
+    )
+    
+;---------------------------------------Guard Shot Main-----------------------------------------------------------
+  (when (and (= menu-pressed? #f)(= guard-shot-option #t)(= in-menu #t)(= menu-slot 2)(= sub-menu-slot 0))
+    (print "Guard Shot!
+")
+  )
+    (when (and (= menu-pressed? #f)(= guard-shot-option #f)(= in-menu #t)(= menu-slot 2)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+
+  ;---------------------------------------Guard Shot sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 3)(= guard-shot-option #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "Guard Shot!
+")
+    (print "Red
+")
+(when (cpad-pressed? 0 square)
+      (set! guard-shot-int 2)
+      (print "Set! red
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 3)(= guard-shot-option #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "Guard Shot!
+")
+    (print "Yellow
+")
+(when (cpad-pressed? 0 square)
+      (set! guard-shot-int 1)
+      (print "Set! yellow
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 3)(= guard-shot-option #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "Guard Shot!
+")
+    (print "Blue
+")
+(when (cpad-pressed? 0 square)
+      (set! guard-shot-int 3)
+      (print "Set! blue
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 3)(= guard-shot-option #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "Guard Shot!
+")
+      (print "Dark
+")
+(when (cpad-pressed? 0 square)
+      (set! guard-shot-int 4)
+      (print "Set! dark
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 3)(= guard-shot-option #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "Guard Shot!
+")
+    (print "None
+")
+(when (cpad-pressed? 0 square)
+      (set! guard-shot-int 0)
+)
+    )
+    
+    ;---------------------------------------Last Mission Shot Main-----------------------------------------------------------
+  (when (and (= menu-pressed? #f)(= big-shot-option #t)(= in-menu #t)(= menu-slot 3)(= sub-menu-slot 0))
+    (print "Fourth mod.. not implemented
+")
+  )
+    (when (and (= menu-pressed? #f)(= big-shot-option #f)(= in-menu #t)(= menu-slot 3)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+
+  ;---------------------------------------Leg Rand shot Shot sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "Red (doesnt work)
+")
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "Yellow (doesnt work)
+")
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "Blue (doesnt work)
+")
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "Dark (doesnt work)
+")
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "None (doesnt work)
+")
+    )
+
+
+
+
+
+    ;---------------------------------------Legendary Random Shot Main-----------------------------------------------------------
+  (when (and (= menu-pressed? #f)(= leg-random-shot #t)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
+    (print "| LEGENDARY | Random shot!
+")
+  )
+    (when (and (= menu-pressed? #f)(= leg-random-shot #f)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+
+  ;---------------------------------------Legendary Random Shot sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "| LEGENDARY | Random shot!
+")
+    (print "Red
+")
+(when (cpad-pressed? 0 square)
+    (set! leg-random-int 2)
+    (print "Set! red
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "| LEGENDARY | Random shot!
+")
+    (print "Yellow
+")
+(when (cpad-pressed? 0 square)
+    (set! leg-random-int 1)
+    (print "Set! yellow
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "| LEGENDARY | Random shot!
+")
+    (print "Blue
+")
+(when (cpad-pressed? 0 square)
+    (set! leg-random-int 3)
+    (print "Set! blue
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "| LEGENDARY | Random shot!
+")
+    (print "Dark
+")
+(when (cpad-pressed? 0 square)
+    (set! leg-random-int 4)
+    (print "Set! dark
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "| LEGENDARY | Random shot!
+")
+    (print "None
+")
+(when (cpad-pressed? 0 square)
+    (set! leg-random-int 0)
+)
+    )
+
+  ;---------------------------------------Legendary pm-extra-shot-----------------------------------------------------------
+
+  (when (and (= menu-pressed? #f)(= pm-extra-shot-option #t)(= in-menu #t)(= menu-slot 5)(= sub-menu-slot 0))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+  )
+    (when (and (= menu-pressed? #f)(= pm-extra-shot-option #f)(= in-menu #t)(= menu-slot 5)(= sub-menu-slot 0))
+    (print "??????????????
+")
+  )
+
+
+
+  ;---------------------------------------Legendary pm-extra-shot sub-----------------------------------------------------------
+    (when (and (= menu-pressed? #t)(= weapon-id 6)(= pm-extra-shot-option #t)(= in-menu #t)(= sub-menu-slot 0))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+    (print "Red
+")
+(when (cpad-pressed? 0 square)
+    (set! pm-extra-shot-int 2)
+    (print "Set! red
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 6)(= pm-extra-shot-option #t)(= in-menu #t)(= sub-menu-slot 1))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+    (print "Yellow
+")
+    (when (cpad-pressed? 0 square)
+    (set! pm-extra-shot-int 1)
+    (print "Set! yellow
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 6)(= pm-extra-shot-option #t)(= in-menu #t)(= sub-menu-slot 2))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+    (print "Blue
+")
+   (when (cpad-pressed? 0 square)
+    (set! pm-extra-shot-int 3)
+    (print "Set! blue
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 6)(= pm-extra-shot-option #t)(= in-menu #t)(= sub-menu-slot 3))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+    (print "Dark
+")
+    (when (cpad-pressed? 0 square)
+    (set! pm-extra-shot-int 4)
+    (print "Set! dark
+")
+)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 6)(= pm-extra-shot-option #t)(= in-menu #t)(= sub-menu-slot 4))
+    (print "| LEGENDARY | Chanced Peacemaker Shot!
+")
+    (print "None
+")
+    (when (cpad-pressed? 0 square)
+    (set! pm-extra-shot-int 0)
+)
+    )
+    
+  ;---------------------------------------Missing Gun Mod-----------------------------------------------------------
+  (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 0))
+    (print "You have not unlocked this weapon mod.
+")
+  (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 1))
+    (print "You have not unlocked this weapon mod.
+")
+  (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 2))
+    (print "You have not unlocked this weapon mod.
+")
+  (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 3))
+    (print "You have not unlocked this weapon mod.
+")
+  (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 4))
+    (print "You have not unlocked this weapon mod.
+")
+  (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+    )
+
+  (set! menu-activate #f)
+)
+
+
+
+
+
+
+
+;controls
+(when (and (= weapon-mod-toggle #t)(= in-menu #t)(cpad-pressed? 0 triangle)) ;exit menu
+  (print "Exited Menu
+")
+    (set! camera-locked #f)
+    (set! (-> *target* cam-user-mode) 'normal)
+    (set-setting-by-param *setting-control* 'mode-name 'cam-string 0 0)
+    (set! in-menu #f)
+    (set! menu-pressed? #f)
+    (set! wait-start #t)
+)
+
+(when (= wait-start #t)
+  (+! wait-frame 1)
+  (when (> wait-frame 5)
+    (set! wait-start #f)
+    (set! wait-frame 0)
+    (set! weapon-id 0)
+    (send-event *target* 'draw #t)
+    (process-release? *target*)
+  )
+)
+
+
+(when (and (= weapon-mod-toggle #t)(= in-menu #f)(cpad-pressed? 0 r3)) ;startup menu
+  (set! menu-activate #t)
+  (set! in-menu #t)
+  (set! sub-menu-slot 0)
+  (set! menu-slot 0)
+  (set! menu-pressed? #f)
+  (print "Entered Menu: 
+CONTROLS:
+X: Select
+SQUARE: Attach gun mod
+TRIANGLE: Exit Menu
+LEFT/RIGHT: Browse
+")
+(set! camera-locked #t)
+)
+
+
+(when (= camera-locked #t) ;lock camera
+  (set! (-> *target* cam-user-mode) 'look-around)
+  (send-event *target* 'draw #f)
+  (set-setting-by-param *setting-control* 'mode-name 'cam-eye 0 0)
+  (persist-with-delay *setting-control* 'gun (seconds 0.5) 'gun #f 0.0 0)
+  (process-grab? *target* #f)
+)
+
+
+(when (and (= in-menu #t)(= menu-slot 0)(= menu-pressed? #t)(cpad-pressed? 0 square)) ;Selected Gun Mod!
+  (set! menu-activate #t)
+  ;-------------------------rapid-fire-int--------------------------------
+  (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 0))
+        (set! rapid-fire-int 2)
+  )
+  (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 1))
+    (set! rapid-fire-int 1)
+  )
+  (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 2))
+    (set! rapid-fire-int 3)
+  )
+  (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 3))
+    (set! rapid-fire-int 4)
+  )
+  (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 4))
+    (set! rapid-fire-int 0)
+  )
+      ;-------------------------double-tap-int--------------------------------
+  (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 0))
+        (set! double-tap-int 2)
+  )
+  (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 1))
+    (set! double-tap-int 1)
+  )
+  (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 2))
+    (set! double-tap-int 3)
+  )
+  (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 3))
+    (set! double-tap-int 4)
+  )
+  (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 4))
+    (set! double-tap-int 0)
+  )
+      ;-------------------------guard-shot-int--------------------------------
+  (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 0))
+        (set! guard-shot-int 2)
+  )
+  (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 1))
+    (set! guard-shot-int 1)
+  )
+  (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 2))
+    (set! guard-shot-int 3)
+  )
+  (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 3))
+    (set! guard-shot-int 4)
+  )
+  (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 4))
+    (set! guard-shot-int 0)
+  )
+      ;-------------------------fourth-shot-int (doesnt-exist)--------------------------------
+;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 0))
+;        (set! big-shot-int 2)
+;  )
+;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 1))
+;    (set! big-shot-int 1)
+;  )
+;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 2))
+;    (set! big-shot-int 3)
+;  )
+;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 3))
+;    (set! big-shotint 4)
+;  )
+;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 4))
+;    (set! big-shot-int 0)
+;  )
+  
+      ;-------------------------rand-shot-int--------------------------------
+  (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 0))
+        (set! leg-random-int 2)
+  )
+  (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 1))
+    (set! leg-random-int 1)
+  )
+  (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 2))
+    (set! leg-random-int 3)
+  )
+  (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 3))
+    (set! leg-random-int 4)
+  )
+  (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 4))
+    (set! leg-random-int 0)
+  )
+      ;-------------------------pm-extra-shot-int--------------------------------
+  (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 0))
+        (set! pm-extra-shot-int 2)
+  )
+  (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 1))
+    (set! pm-extra-shot-int 1)
+  )
+  (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 2))
+    (set! pm-extra-shot-int 3)
+  )
+  (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 3))
+    (set! pm-extra-shot-int 4)
+  )
+  (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 4))
+    (set! pm-extra-shot-int 0)
+  )
+)
+
+(when (and (= in-menu #t)(!= weapon-id 0)(= menu-pressed? #t)(cpad-pressed? 0 circle)) ;go back from color menu
+    (set! menu-pressed? #f)
+    (set! menu-slot 0)
+    (set! sub-menu-slot 0)
+    (set! weapon-id 0)
+    (set! menu-activate #t)
+
+  )
+
+  (when (and (= in-menu #t)(cpad-pressed? 0 left))
+    (when (= menu-pressed? #f)
+      (-! menu-slot 1)
+      (set! sub-menu-slot 0)
+      (set! menu-activate #t)
+    )
+      (when (= menu-pressed? #t)
+      (set! menu-slot 0)
+      (-! sub-menu-slot 1)
+      (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #f) (or (> menu-slot 5)(< menu-slot 0))) ;max options for menu left
+      (set! menu-slot 0)
+      (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t) (or (> sub-menu-slot 4)(< sub-menu-slot 0))) ;max options for sub-menu left
+      (set! sub-menu-slot 0)
+      (set! menu-activate #t)
+    )
+  )
+
+  (when (and (= in-menu #t)(cpad-pressed? 0 right))
+    (when (= menu-pressed? #f)
+      (+! menu-slot 1)
+      (set! sub-menu-slot 0)
+      (set! menu-activate #t)
+    )
+      (when (= menu-pressed? #t)
+      (set! menu-slot 0)
+      (+! sub-menu-slot 1)
+      (set! menu-activate #t)
+
+      (when (and (= menu-pressed? #f) (or (> menu-slot 5)(< menu-slot 0))) ;max options for menu right
+      (set! menu-slot 0)
+      (set! menu-activate #t)
+    )
+    (when (and (= menu-pressed? #t) (or (> sub-menu-slot 4)(< sub-menu-slot 0))) ;max options for sub-menu right
+      (set! sub-menu-slot 0)
+      (set! menu-activate #t)
+    )
+    )
+
+  )
+    (when (and (= menu-pressed? #f)(= weapon-id 0)(= in-menu #t)(cpad-pressed? 0 x))
+      ;looks for when you have transitioned into selecting color for the weapon mod
+      (set! menu-pressed? #t)
+      (when (and (= rapid-fire-option #t)(= menu-slot 0)(= sub-menu-slot 0))
+        (set! weapon-id 1)
+      )
+      (when (and (= double-tap-option #t)(= menu-slot 1)(= sub-menu-slot 0))
+        (set! weapon-id 2)
+      )
+      (when (and (= guard-shot-option #t)(= menu-slot 2)(= sub-menu-slot 0))
+        (set! weapon-id 3)
+      )
+      (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 0))
+        (set! weapon-id 4)
+      )
+      (when (and (= leg-random-shot #t)(= menu-slot 4)(= sub-menu-slot 0))
+        (set! weapon-id 5)
+      )
+      (when (and (= pm-extra-shot-option #t)(= menu-slot 5)(= sub-menu-slot 0))
+        (set! weapon-id 6)
+      )
+      (when (and (= rapid-fire-option #f)(= menu-slot 0)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (when (and (= double-tap-option #f)(= menu-slot 1)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (when (and (= guard-shot-option #f)(= menu-slot 2)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (when (and (= big-shot-option #f)(= menu-slot 3)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (when (and (= leg-random-shot #f)(= menu-slot 4)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (when (and (= pm-extra-shot-option #f)(= menu-slot 5)(= sub-menu-slot 0))
+        (set! weapon-id 99)
+      )
+      (set! menu-activate #t)
+    )
+
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
