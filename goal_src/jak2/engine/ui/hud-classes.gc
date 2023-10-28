@@ -223,13 +223,15 @@
   (when (and (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))(< (-> *game-info* gem) 10.0))
     (print "[MOD] NOT ENOUGH GEMS, REQUIRE 10 TO REROLL
 ")
+    (set! mod-reroll-string "NOT ENOUGH GEMS")
     (set! mod-reroll #f)
   )
   (when (and (not (logtest? (-> *game-info* secrets) (game-secrets hero-mode)))(>= (-> *game-info* gem) 10.0))
     (set! (-> *game-info* gem) (- (-> *game-info* gem) 10.0))
     (set! mod-pick #t)
-    (print "[MOD] SUCCESSFULLY REROLLED :)
+    (print "[MOD] SUCCESSFULLY REROLLED >:)
 ")
+    (set! mod-reroll-string "Successfully Re-Rolled.")
     (set! mod-reroll #f)
   )
   (when (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
@@ -251,12 +253,14 @@
     (set! mod-pick #f)
     (print "[MOD] rolled for Peacemaker Ability!
 ")
+  (auto-save-user)
   )
   (when (and (or (!= (-> *game-info* buzzer-total) 2.0)(!= (-> *game-info* buzzer-total) 1.0))(= mod-rand 2))
     (set! (-> *game-info* fuel) 2.0)
     (set! mod-pick #f)
           (print "[MOD] rolled for Teleport to Final Boss!
 ")
+(auto-save-user)
     (when (or (= (-> *game-info* buzzer-total) 2.0)(= (-> *game-info* buzzer-total) 1.0))
       (print "[MOD] You already beat tp-fb! rerolling...
 ")
@@ -268,24 +272,28 @@
     (set! mod-pick #f)
     (print "[MOD] rolled for Hoverboard/Enemy Health!
 ")
+(auto-save-user)
   )
   (when (= mod-rand 4)
     (set! (-> *game-info* fuel) 4.0)
     (set! mod-pick #f)
     (print "[MOD] rolled for Dark Eco / Threatening Traffic
 ")
+(auto-save-user)
   )
   (when (= mod-rand 5)
     (set! (-> *game-info* fuel) 5.0)
     (set! mod-pick #f)
     (print "[MOD] rolled for Trip Jak / Metalheads!
 ")
+(auto-save-user)
   )
   (when (= mod-rand 6)
     (set! (-> *game-info* fuel) 6.0)
     (set! mod-pick #f)
     (print "[MOD] rolled for Target Explode / DarkJakLonger!
 ")
+(auto-save-user)
   )
 )
 
@@ -306,12 +314,20 @@
     (set! pm-extra-shot-option #t)
     (set! leg-got? #t)
     (set! tp-fb-win #t)
+    (set! recieved-gm-s6 "Chanced Peacemaker Shot!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm6 #t)
   )
 
   (when (and (= (-> *game-info* buzzer-total) 2.0)(= leg-random-shot #f)) ;if 2, legendary random shot
     (set! leg-random-shot #t)
     (set! leg-got? #t)
     (set! tp-fb-win #t)
+    (set! recieved-gm-s5 "Random Shot!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm5 #t)
   )
 
 
@@ -328,6 +344,7 @@
     (set! weapon-mod-toggle #f)
     (set! trip-metalheads #f)
     (set! target-explode #f)
+    (set! modifier-string "None")
   )
 
   (when (and (= (-> *game-info* fuel) 1.0)(= peacemaker-ability #f)) ;if 1, peacemaker ability
@@ -340,6 +357,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #f)
     (set! target-explode #f)
+    (set! modifier-string "Peacemaker Ability / 1 Hit Boss")
   )
 
 
@@ -353,6 +371,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #f)
     (set! target-explode #f)
+    (set! modifier-string "On-Death TP-FB Challenge")
   )
   (when (and (= (-> *game-info* fuel) 3.0)(= hover-damage #f)) ;if 3, hover-damage
     (set! hell-mode-option #f)
@@ -364,6 +383,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #f)
     (set! target-explode #f)
+    (set! modifier-string "Increased Hov Speed / X5 Health Enemies")
   )
   (when (and (= (-> *game-info* fuel) 4.0)(= dark-traffic #f)) ;if 4, dark-traffic
     (set! hell-mode-option #f)
@@ -375,6 +395,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #f)
     (set! target-explode #f)
+    (set! modifier-string "Chanced Max Eco collect / Traffic Max alert")
   )
   (when (and (= (-> *game-info* fuel) 5.0)(= trip-metalheads #f)) ;if 5, trip-metalheads
     (set! hell-mode-option #f)
@@ -386,6 +407,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #t)
     (set! target-explode #f)
+    (set! modifier-string "Chanced Trip / Gain 10 Metalheads")
   )
   (when (and (= (-> *game-info* fuel) 6.0)(= target-explode #f)) ;if 6, target-explode
     (set! hell-mode-option #f)
@@ -397,6 +419,7 @@
     (set! weapon-mod-toggle #t)
     (set! trip-metalheads #f)
     (set! target-explode #t)
+    (set! modifier-string "Target Explode / DJak Longer Duration")
   )
   (when (and (= (-> *game-info* fuel) 10.0)(= hell-mode-option #f)) ;if 10, hell mode }:)
     (set! hell-mode-option #t)
@@ -406,9 +429,11 @@
     (set! peacemaker-ability #t)
     (when (= tp-fb-win #f)
       (set! tp-fb #t)
+      (set! modifier-string "HELL MODE")
     )
     (when (= tp-fb-win #t)
       (set! tp-fb #f)
+      (set! modifier-string "| HELL MODE |")
     )
     (set! all-modifiers-off? #f)
     (set! weapon-mod-toggle #t)
@@ -433,6 +458,10 @@
     (set! rapid-fire-option #t)
     (print "[GUN-MOD] Rapid Fire Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s "Rapid Fire!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm #t) ;sets the draw func on
   )
 
   (when (and (task-node-closed? (game-task-node sewer-enemy-resolution))(= mission-grab-2 #f)) ;after yellow gun, get double tap
@@ -440,6 +469,10 @@
     (set! double-tap-option #t)
     (print "[GUN-MOD] Chanced Double Tap Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s2 "Double-tap!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm2 #t)  ;sets the draw func on
   )
 
   (when (and (task-node-closed? (game-task-node ruins-enemy-introduction))(= mission-grab-3 #f)) ;after blue gun, get chanced guard shot
@@ -447,6 +480,10 @@
     (set! guard-shot-option #t)
     (print "[GUN-MOD] Chanced Guard Shot Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s3 "Guard Shot!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm3 #t)  ;sets the draw func on
   )
 
   (when (and (task-node-closed? (game-task-node sewer-escort-get-gun))(= mission-grab-4 #f)) ;after dark gun, get chanced predator shot
@@ -455,6 +492,10 @@
     (set! predator-shot-option #t)
     (print "[GUN-MOD] Chanced Predator Shot Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s4 "????nil Acquired!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm4 #t)  ;sets the draw func on
   )
   ;looks for if their missions become un-completed after setting them, then takes away mission gun mods respectively
   (when (and (not (task-node-closed? (game-task-node city-krew-delivery-resolution)))(= mission-grab-1 #t))
@@ -493,6 +534,10 @@
     (set! (-> *game-info* buzzer-total) 1.0)
     (print "[GUN-MOD] | LEGENDARY |  Chanced Peacemaker Shot Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s6 "Chanced Peacemaker Shot!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm5 #t)  ;sets the draw func on
   )
   (when (and (rand-vu-percent? 0.2)(= wm-roll-numb 2)) ;checks if rolled for integer 2
     (set! wm-roll-rand #f)
@@ -500,6 +545,10 @@
     (set! (-> *game-info* buzzer-total) 1.0)
     (print "[GUN-MOD] | LEGENDARY |  Chanced Peacemaker Shot Acquired! Weapon Mod set to mod-default-gun
 ")
+    (set! recieved-gm-s5 "Random Shot!")
+    (sound-play "ammo-pickup")
+    (sound-play "board-boost")
+    (set! recieved-gm6 #t) ;sets the draw func on
   )
   (when (= wm-roll-rand #t) ;rolls the integer
     (+! wm-roll-numb 1)
@@ -1231,8 +1280,8 @@
 ;                    Teleport to final boss
 ;---------------------------------------------------------
       ;INFO
-#|tp-fb is the whole TeleportJakToFinalBoss Mod.
-All of the variables set are for time-based events based off of frames |#
+;tp-fb is the whole TeleportJakToFinalBoss Mod.
+;All of the variables set are for time-based events based off of frames |
 
 
   (when (= start-frame-count #t)
@@ -1512,21 +1561,22 @@ All of the variables set are for time-based events based off of frames |#
 ;menu-update
 ;---------------------------------------Rapid Fire Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= rapid-fire-option #t)(= in-menu #t)(= menu-slot 0)(= sub-menu-slot 0))
-    (print "Rapid Fire!
-")
+    (set! gun-mod-string "Rapid Fire")
+    (set! mod-string "Rapid Fire")
   )
     (when (and (= menu-pressed? #f)(= rapid-fire-option #f)(= in-menu #t)(= menu-slot 0)(= sub-menu-slot 0))
-    (print "??????????????
-")
-  )
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
 
-
+    )
   ;---------------------------------------Rapid Fire sub-----------------------------------------------------------
     (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 0))
     (print "Rapid Fire!
 ")
     (print "Red
 ")
+    (set! gun-string "Red Gun")
+    
 (when (cpad-pressed? 0 square)
     (set! rapid-fire-int 1)
     (print "Set! red
@@ -1538,6 +1588,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Yellow
 ")
+      (set! gun-string "Yellow Gun")
 (when (cpad-pressed? 0 square)
     (set! rapid-fire-int 2)
     (print "Set! yellow
@@ -1549,6 +1600,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Blue
 ")
+      (set! gun-string "Blue Gun")
 (when (cpad-pressed? 0 square)
     (set! rapid-fire-int 3)
     (print "Set! blue
@@ -1560,10 +1612,9 @@ All of the variables set are for time-based events based off of frames |#
 ")
 (print "Dark
 ")
+     (set! gun-string "Peacemaker Gun")
 (when (cpad-pressed? 0 square)
     (set! rapid-fire-int 4)
-    (print "Set! dark
-")
 )
     )
     (when (and (= menu-pressed? #t)(= weapon-id 1)(= rapid-fire-option #t)(= in-menu #t)(= sub-menu-slot 4))
@@ -1571,19 +1622,20 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "None
 ")
-(when (cpad-pressed? 0 square)
-    (set! rapid-fire-int 0)
-)
+          (set! gun-string "None")
+            (when (cpad-pressed? 0 square)
+                (set! rapid-fire-int 0)
+            )
     )
 
 ;---------------------------------------Double Tap Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= double-tap-option #t)(= in-menu #t)(= menu-slot 1)(= sub-menu-slot 0))
-    (print "Double Tap!
-")
+    (set! gun-mod-string "Chanced Double Tap")
+    (set! mod-string "Chanced Double Tap")
   )
     (when (and (= menu-pressed? #f)(= double-tap-option #f)(= in-menu #t)(= menu-slot 1)(= sub-menu-slot 0))
-    (print "??????????????
-")
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
   )
 
 
@@ -1594,6 +1646,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Red
 ")
+    (set! gun-string "Red Gun")
 (when (cpad-pressed? 0 square)
     (set! double-tap-int 2)
     (print "Set! red
@@ -1605,6 +1658,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Yellow
 ")
+      (set! gun-string "Yellow Gun")
 (when (cpad-pressed? 0 square)
     (set! double-tap-int 1)
     (print "Set! yellow
@@ -1616,6 +1670,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Blue
 ")
+(set! gun-string "Blue Gun")
 (when (cpad-pressed? 0 square)
     (set! double-tap-int 3)
     (print "Set! blue
@@ -1627,6 +1682,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Dark
 ")
+(set! gun-string "Peacemaker Gun")
 (when (cpad-pressed? 0 square)
     (set! double-tap-int 4)
     (print "Set! dark
@@ -1638,6 +1694,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "None
 ")
+          (set! gun-string "None")
 (when (cpad-pressed? 0 square)
     (set! double-tap-int 0)
 )
@@ -1645,12 +1702,12 @@ All of the variables set are for time-based events based off of frames |#
     
 ;---------------------------------------Guard Shot Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= guard-shot-option #t)(= in-menu #t)(= menu-slot 2)(= sub-menu-slot 0))
-    (print "Guard Shot!
-")
+    (set! gun-mod-string "Guard Shot")
+    (set! mod-string "Guard Shot")
   )
     (when (and (= menu-pressed? #f)(= guard-shot-option #f)(= in-menu #t)(= menu-slot 2)(= sub-menu-slot 0))
-    (print "??????????????
-")
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
   )
 
 
@@ -1661,6 +1718,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Red
 ")
+(set! gun-string "Red Gun")
 (when (cpad-pressed? 0 square)
       (set! guard-shot-int 2)
       (print "Set! red
@@ -1672,6 +1730,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Yellow
 ")
+   (set! gun-string "Yellow Gun")
 (when (cpad-pressed? 0 square)
       (set! guard-shot-int 1)
       (print "Set! yellow
@@ -1683,6 +1742,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Blue
 ")
+(set! gun-string "Blue Gun")
 (when (cpad-pressed? 0 square)
       (set! guard-shot-int 3)
       (print "Set! blue
@@ -1694,6 +1754,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
       (print "Dark
 ")
+    (set! gun-string "Peacemaker Gun")
 (when (cpad-pressed? 0 square)
       (set! guard-shot-int 4)
       (print "Set! dark
@@ -1705,6 +1766,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "None
 ")
+          (set! gun-string "None")
 (when (cpad-pressed? 0 square)
       (set! guard-shot-int 0)
 )
@@ -1712,12 +1774,12 @@ All of the variables set are for time-based events based off of frames |#
     
     ;---------------------------------------Last Mission Shot Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= big-shot-option #t)(= in-menu #t)(= menu-slot 3)(= sub-menu-slot 0))
-    (print "Fourth mod.. not implemented
-")
+    (set! gun-mod-string "N/A")
+    (set! mod-string "N/A")
   )
     (when (and (= menu-pressed? #f)(= big-shot-option #f)(= in-menu #t)(= menu-slot 3)(= sub-menu-slot 0))
-    (print "??????????????
-")
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
   )
 
 
@@ -1726,22 +1788,27 @@ All of the variables set are for time-based events based off of frames |#
     (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 0))
     (print "Red (doesnt work)
 ")
+      (set! gun-string "Red Gun")
     )
     (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 1))
     (print "Yellow (doesnt work)
 ")
+      (set! gun-string "Yellow Gun")
     )
     (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 2))
     (print "Blue (doesnt work)
 ")
+      (set! gun-string "Blue Gun")
     )
     (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 3))
     (print "Dark (doesnt work)
 ")
+          (set! gun-string "Peacemaker Gun")
     )
     (when (and (= menu-pressed? #t)(= weapon-id 4)(= big-shot-option #t)(= in-menu #t)(= sub-menu-slot 4))
     (print "None (doesnt work)
 ")
+          (set! gun-string "None")
     )
 
 
@@ -1750,22 +1817,23 @@ All of the variables set are for time-based events based off of frames |#
 
     ;---------------------------------------Legendary Random Shot Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= leg-random-shot #t)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
-    (print "| LEGENDARY | Random shot!
-")
+    (set! gun-mod-string " LEGENDARY  Rapid Fire Shot!")
+    (set! mod-string " LEGENDARY  Rapid Fire Shot!")
   )
     (when (and (= menu-pressed? #f)(= leg-random-shot #f)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
-    (print "??????????????
-")
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
   )
 
 
 
   ;---------------------------------------Legendary Random Shot sub-----------------------------------------------------------
     (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 0))
-    (print "| LEGENDARY | Random shot!
+    (print "LEGENDARY! Random shot!
 ")
     (print "Red
 ")
+      (set! gun-string "Red Gun")
 (when (cpad-pressed? 0 square)
     (set! leg-random-int 2)
     (print "Set! red
@@ -1773,10 +1841,11 @@ All of the variables set are for time-based events based off of frames |#
 )
     )
     (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 1))
-    (print "| LEGENDARY | Random shot!
+    (print "LEGENDARY! Random shot!
 ")
     (print "Yellow
 ")
+      (set! gun-string "Yellow Gun")
 (when (cpad-pressed? 0 square)
     (set! leg-random-int 1)
     (print "Set! yellow
@@ -1784,10 +1853,11 @@ All of the variables set are for time-based events based off of frames |#
 )
     )
     (when (and (= menu-pressed? #t)(= weapon-id 5)(= leg-random-shot #t)(= in-menu #t)(= sub-menu-slot 2))
-    (print "| LEGENDARY | Random shot!
+    (print "| LEGENDARY! Random shot!
 ")
     (print "Blue
 ")
+      (set! gun-string "Blue Gun")
 (when (cpad-pressed? 0 square)
     (set! leg-random-int 3)
     (print "Set! blue
@@ -1799,6 +1869,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Dark
 ")
+    (set! gun-string "Peacemaker Gun")
 (when (cpad-pressed? 0 square)
     (set! leg-random-int 4)
     (print "Set! dark
@@ -1810,6 +1881,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "None
 ")
+          (set! gun-string "None")
 (when (cpad-pressed? 0 square)
     (set! leg-random-int 0)
 )
@@ -1818,12 +1890,12 @@ All of the variables set are for time-based events based off of frames |#
   ;---------------------------------------Legendary pm-extra-shot-----------------------------------------------------------
 
   (when (and (= menu-pressed? #f)(= pm-extra-shot-option #t)(= in-menu #t)(= menu-slot 5)(= sub-menu-slot 0))
-    (print "| LEGENDARY | Chanced Peacemaker Shot!
-")
+    (set! gun-mod-string "| LEGENDARY | Chanced Peacemaker Shot!")
+    (set! mod-string "| LEGENDARY | Chanced Peacemaker Shot!")
   )
     (when (and (= menu-pressed? #f)(= pm-extra-shot-option #f)(= in-menu #t)(= menu-slot 5)(= sub-menu-slot 0))
-    (print "??????????????
-")
+    (set! gun-mod-string "??????????????")
+    (set! mod-string "??????????????")
   )
 
 
@@ -1834,6 +1906,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Red
 ")
+      (set! gun-string "Red Gun")
 (when (cpad-pressed? 0 square)
     (set! pm-extra-shot-int 2)
     (print "Set! red
@@ -1845,6 +1918,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Yellow
 ")
+      (set! gun-string "Yellow Gun")
     (when (cpad-pressed? 0 square)
     (set! pm-extra-shot-int 1)
     (print "Set! yellow
@@ -1856,6 +1930,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Blue
 ")
+      (set! gun-string "Blue Gun")
    (when (cpad-pressed? 0 square)
     (set! pm-extra-shot-int 3)
     (print "Set! blue
@@ -1867,6 +1942,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "Dark
 ")
+          (set! gun-string "Peacemaker Gun")
     (when (cpad-pressed? 0 square)
     (set! pm-extra-shot-int 4)
     (print "Set! dark
@@ -1878,6 +1954,7 @@ All of the variables set are for time-based events based off of frames |#
 ")
     (print "None
 ")
+          (set! gun-string "None")
     (when (cpad-pressed? 0 square)
     (set! pm-extra-shot-int 0)
 )
@@ -1885,8 +1962,8 @@ All of the variables set are for time-based events based off of frames |#
     
   ;---------------------------------------Missing Gun Mod-----------------------------------------------------------
   (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 0))
-    (print "You have not unlocked this weapon mod.
-")
+    (set! gun-mod-string "You have not unlocked this weapon mod yet")
+    (set! mod-string "You have not unlocked this weapon mod yet")
   (set! menu-pressed? #f)
     (set! menu-slot 0)
     (set! sub-menu-slot 0)
@@ -1896,6 +1973,8 @@ All of the variables set are for time-based events based off of frames |#
     (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 1))
     (print "You have not unlocked this weapon mod.
 ")
+(set! gun-mod-string "You have not unlocked this weapon mod yet")
+    (set! mod-string "You have not unlocked this weapon mod yet")
   (set! menu-pressed? #f)
     (set! menu-slot 0)
     (set! sub-menu-slot 0)
@@ -1905,6 +1984,8 @@ All of the variables set are for time-based events based off of frames |#
     (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 2))
     (print "You have not unlocked this weapon mod.
 ")
+(set! gun-mod-string "You have not unlocked this weapon mod yet")
+    (set! mod-string "You have not unlocked this weapon mod yet")
   (set! menu-pressed? #f)
     (set! menu-slot 0)
     (set! sub-menu-slot 0)
@@ -1914,6 +1995,8 @@ All of the variables set are for time-based events based off of frames |#
     (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 3))
     (print "You have not unlocked this weapon mod.
 ")
+(set! gun-mod-string "You have not unlocked this weapon mod yet")
+    (set! mod-string "You have not unlocked this weapon mod yet")
   (set! menu-pressed? #f)
     (set! menu-slot 0)
     (set! sub-menu-slot 0)
@@ -1923,6 +2006,8 @@ All of the variables set are for time-based events based off of frames |#
     (when (and (= menu-pressed? #t)(= weapon-id 99)(= in-menu #t)(= sub-menu-slot 4))
     (print "You have not unlocked this weapon mod.
 ")
+(set! gun-mod-string "You have not unlocked this weapon mod yet")
+    (set! mod-string "You have not unlocked this weapon mod yet")
   (set! menu-pressed? #f)
     (set! menu-slot 0)
     (set! sub-menu-slot 0)
@@ -1934,21 +2019,28 @@ All of the variables set are for time-based events based off of frames |#
 )
 
 
-
-
+(when (= camera-locked #t) ;lock camera
+  (set! (-> *target* cam-user-mode) 'look-around)
+  (send-event *target* 'draw #f)
+  (set-setting-by-param *setting-control* 'mode-name 'cam-eye 0 0)
+  (persist-with-delay *setting-control* 'gun (seconds 0.5) 'gun #f 0.0 0)
+  (process-grab? *target* #f)
+)
 
 
 
 ;controls
-(when (and (= weapon-mod-toggle #t)(= in-menu #t)(cpad-pressed? 0 triangle)) ;exit menu
+(when (and (= weapon-mod-toggle #t)(= (paused?) #f)(= in-menu #t)(cpad-pressed? 0 triangle)) ;exit virtual menu
   (print "Exited Menu
 ")
     (set! camera-locked #f)
-    (set! (-> *target* cam-user-mode) 'normal)
-    (set-setting-by-param *setting-control* 'mode-name 'cam-string 0 0)
+    (remove-setting-by-arg0 *setting-control* 'mode-name)
     (set! in-menu #f)
     (set! menu-pressed? #f)
     (set! wait-start #t)
+    (set! pause-menu-blocked? #f)
+    (set! string-printed? #f)
+    (sound-play "gun-putaway")
 )
 
 (when (= wait-start #t)
@@ -1963,130 +2055,415 @@ All of the variables set are for time-based events based off of frames |#
 )
 
 
-(when (and (= weapon-mod-toggle #t)(= in-menu #f)(cpad-pressed? 0 r3)) ;startup menu
-  (set! menu-activate #t)
-  (set! in-menu #t)
-  (set! sub-menu-slot 0)
-  (set! menu-slot 0)
-  (set! menu-pressed? #f)
-  (print "Entered Menu: 
-CONTROLS:
-X: Select
-SQUARE: Attach gun mod
-TRIANGLE: Exit Menu
-LEFT/RIGHT: Browse
-")
-(set! camera-locked #t)
+
+
+
+(when (not *scene-player*)
+  (when (and (= weapon-mod-toggle #t)(= in-menu #f)(cpad-pressed? 0 r3)) ;startup virtual menu
+    (set! menu-activate #t)
+    (set! in-menu #t)
+    (set! sub-menu-slot 0)
+    (set! menu-slot 0)
+    (set! menu-pressed? #f)
+    (set! string-printed? #t)
+    (set! pause-menu-blocked? #t)
+    (sound-play "gun-takeout")
+    (print "Entered Menu: 
+  CONTROLS:
+  X: Select
+  SQUARE: Attach gun mod
+  TRIANGLE: Exit Menu
+  LEFT/RIGHT: Browse
+  ")
+  (set! camera-locked #t)
+  )
 )
 
 
-(when (= camera-locked #t) ;lock camera
-  (set! (-> *target* cam-user-mode) 'look-around)
-  (send-event *target* 'draw #f)
-  (set-setting-by-param *setting-control* 'mode-name 'cam-eye 0 0)
-  (persist-with-delay *setting-control* 'gun (seconds 0.5) 'gun #f 0.0 0)
-  (process-grab? *target* #f)
+(when (= weapon-mod-toggle #t)
+(when (= gm-start #t)
+  (+! gm-frame 1)
+  (when (= gm-frame 300)
+    (set! recieved-gm #f)
+    (set! gm-frame 0)
+    (set! gm-start #f)
+  )
+)
+(when (= gm-start2 #t)
+  (+! gm-frame2 1)
+  (when (= gm-frame2 300)
+    (set! recieved-gm2 #f)
+    (set! gm-frame2 0)
+    (set! gm-start2 #f)
+  )
+)
+(when (= gm-start3 #t)
+  (+! gm-frame3 1)
+  (when (= gm-frame3 300)
+    (set! recieved-gm3 #f)
+    (set! gm-frame3 0)
+    (set! gm-start3 #f)
+  )
+)
+(when (= gm-start4 #t)
+  (+! gm-frame4 1)
+  (when (= gm-frame4 300)
+    (set! recieved-gm4 #f)
+    (set! gm-frame4 0)
+    (set! gm-start4 #f)
+  )
+)
+(when (= gm-start5 #t)
+  (+! gm-frame5 1)
+  (when (= gm-frame5 300)
+    (set! recieved-gm5 #f)
+    (set! gm-frame5 0)
+    (set! gm-start5 #f)
+  )
+)
+(when (= gm-start6 #t)
+  (+! gm-frame6 1)
+  (when (= gm-frame6 300)
+    (set! recieved-gm6 #f)
+    (set! gm-frame6 0)
+    (set! gm-start6 #f)
+  )
+)
+(when (= recieved-gm #t) ;looks for recieving a gun mod to alert for weapon id 1
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 245 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start #t)
 )
 
+(when (= recieved-gm2 #t) ;looks for recieving a gun mod to alert for weapon id 2
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s2 ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 225 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start2 #t)
+)
 
+(when (= recieved-gm3 #t) ;looks for recieving a gun mod to alert for weapon id 3
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s3 ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 205 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start3 #t)
+)
+
+(when (= recieved-gm4 #t) ;looks for recieving a gun mod to alert for weapon id 4
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s4 ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 185 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start4 #t)
+)
+
+(when (= recieved-gm5 #t) ;looks for recieving a gun mod to alert for weapon id 5
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_YELLOW> | LEGENDARY <COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s5 ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 165 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start5 #t)
+)
+
+(when (= recieved-gm6 #t) ;looks for recieving a gun mod to alert for weapon id 6
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_YELLOW> | LEGENDARY | <COLOR_WHITE>Recieved Gun Mod:~%<COLOR_GREEN>~S"
+    recieved-gm-s6 ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 145 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! gm-start6 #t)
+)
+
+)
+(when (and (= menu-pressed? #f)(= string-printed? #t)) ;draws the gunmod section
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>GUN MODS:~%<COLOR_GREEN>~S"
+    gun-mod-string ;the names of weapon mods
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 245 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+
+(when (and (= menu-pressed? #t)(= string-printed? #t)) ;draws the sub menu for gun mod
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>Attach <COLOR_GREEN>~S <COLOR_WHITE>to:~%<COLOR_RED>~S"
+    mod-string ;the name of the mod
+    gun-string ;the name of the colored gun
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 245 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+
+(when (and (= in-menu #t)(= menu-pressed? #t)(cpad-hold? 0 square)) ;draws the sub menu yellow for when you attach a mod
+(clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Attach <COLOR_GREEN>~S <COLOR_WHITE>to:~%<COLOR_YELLOW>~S"
+    mod-string
+    gun-string
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 245 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+
+(when (= in-menu #t) ;displays modifier
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>CURRENT MODIFIER:~%<COLOR_RED>~S"
+    modifier-string
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 0 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+
+(when (and (not (cpad-hold? 0 l3))(= in-menu #t)(= mod-reroll #f)) ;displays control menu
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>CONTROLS:~%LEFT/RIGHT: Browse~%X: Select~%SQUARE: Attach Gun Mod~%CIRCLE: Back to Mods~%L3: Reroll Modifier (-10 gems)~%TRIANGLE: Exit Menu"
+    modifier-string
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 30 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (set! press-frame 0)
+)
+
+(when (and (= in-menu #t)(cpad-hold? 0 l3)) ;displays control menu when you do mod reroll
+(clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+   (format *temp-string* "<COLOR_WHITE>CONTROLS:~%LEFT/RIGHT: Browse~%X: Select~%SQUARE: Attach Gun Mod~%CIRCLE: Back to Mods~%L3: <COLOR_RED>(PRESS AND HOLD):~S~%<COLOR_WHITE>TRIANGLE: Exit Menu"
+    mod-reroll-string
+    )
+
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 30 0.0 (font-color default) (font-flags right shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+        (when (< (-> *game-info* gem) 10.0)
+        (set! mod-reroll-string "NOT ENOUGH GEMS")
+        )
+        (when (>= (-> *game-info* gem) 10.0)
+        (+! press-frame 1)
+        )
+)
+(when (>= (-> *game-info* gem) 10.0)
+(when (= press-frame 1)
+    (set! mod-reroll-string "Re-Rolling")
+  )
+  (when (= press-frame 60)
+    (set! mod-reroll-string "Re-Rolling.")
+  )
+  (when (= press-frame 120)
+    (set! mod-reroll-string "Re-Rolling..")
+  )
+  (when (= press-frame 180)
+    (set! mod-reroll-string "Re-Rolling...")
+  )
+    (when (= press-frame 240)
+    (set! mod-reroll-string "Re-Rolling..!")
+  )
+      (when (= press-frame 300)
+    (set! mod-reroll-string "Re-Rolling.!!")
+  )
+        (when (= press-frame 360)
+    (set! mod-reroll-string "Re-Rolling!!!")
+  )
+  
+  (when (= press-frame 390)
+    (set! mod-reroll #t)
+    (set! press-frame 0)
+  )
+)
 (when (and (= in-menu #t)(= menu-slot 0)(= menu-pressed? #t)(cpad-pressed? 0 square)) ;Selected Gun Mod!
   (set! menu-activate #t)
   ;-------------------------rapid-fire-int--------------------------------
   (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 0))
-        (set! rapid-fire-int 2)
+    (set! rapid-fire-int 2)(sound-play "gun-takeout")
+        
   )
   (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 1))
-    (set! rapid-fire-int 1)
+    (set! rapid-fire-int 1)(sound-play "gun-takeout")
   )
   (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 2))
-    (set! rapid-fire-int 3)
+    (set! rapid-fire-int 3)(sound-play "gun-takeout")
   )
   (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 3))
-    (set! rapid-fire-int 4)
+    (set! rapid-fire-int 4)(sound-play "gun-takeout")
   )
   (when (and (= rapid-fire-option #t)(= weapon-id 1)(= sub-menu-slot 4))
-    (set! rapid-fire-int 0)
+    (set! rapid-fire-int 0)(sound-play "gun-takeout")
   )
       ;-------------------------double-tap-int--------------------------------
   (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 0))
-        (set! double-tap-int 2)
+        (set! double-tap-int 2)(sound-play "gun-takeout")
   )
   (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 1))
-    (set! double-tap-int 1)
+    (set! double-tap-int 1)(sound-play "gun-takeout")
   )
   (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 2))
-    (set! double-tap-int 3)
+    (set! double-tap-int 3)(sound-play "gun-takeout")
   )
   (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 3))
-    (set! double-tap-int 4)
+    (set! double-tap-int 4)(sound-play "gun-takeout")
   )
   (when (and (= double-tap-option #t)(= weapon-id 2)(= sub-menu-slot 4))
-    (set! double-tap-int 0)
+    (set! double-tap-int 0)(sound-play "gun-takeout")
   )
       ;-------------------------guard-shot-int--------------------------------
   (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 0))
-        (set! guard-shot-int 2)
+        (set! guard-shot-int 2)(sound-play "gun-takeout")
   )
   (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 1))
-    (set! guard-shot-int 1)
+    (set! guard-shot-int 1)(sound-play "gun-takeout")
   )
   (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 2))
-    (set! guard-shot-int 3)
+    (set! guard-shot-int 3)(sound-play "gun-takeout")
   )
   (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 3))
-    (set! guard-shot-int 4)
+    (set! guard-shot-int 4)(sound-play "gun-takeout")
   )
   (when (and (= guard-shot-option #t)(= weapon-id 3)(= sub-menu-slot 4))
-    (set! guard-shot-int 0)
+    (set! guard-shot-int 0)(sound-play "gun-takeout")
   )
       ;-------------------------fourth-shot-int (doesnt-exist)--------------------------------
 ;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 0))
-;        (set! big-shot-int 2)
+;        (set! big-shot-int 2)(sound-play "gun-takeout")
 ;  )
 ;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 1))
-;    (set! big-shot-int 1)
+;    (set! big-shot-int 1)(sound-play "gun-takeout")
 ;  )
 ;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 2))
-;    (set! big-shot-int 3)
+;    (set! big-shot-int 3)(sound-play "gun-takeout")
 ;  )
 ;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 3))
-;    (set! big-shotint 4)
+;    (set! big-shotint 4)(sound-play "gun-takeout")
 ;  )
 ;  (when (and (= big-shot-option #t)(= menu-slot 3)(= sub-menu-slot 4))
-;    (set! big-shot-int 0)
+;    (set! big-shot-int 0)(sound-play "gun-takeout")
 ;  )
   
       ;-------------------------rand-shot-int--------------------------------
   (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 0))
-        (set! leg-random-int 2)
+        (set! leg-random-int 2)(sound-play "gun-takeout")
   )
   (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 1))
-    (set! leg-random-int 1)
+    (set! leg-random-int 1)(sound-play "gun-takeout")
   )
   (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 2))
-    (set! leg-random-int 3)
+    (set! leg-random-int 3)(sound-play "gun-takeout")
   )
   (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 3))
-    (set! leg-random-int 4)
+    (set! leg-random-int 4)(sound-play "gun-takeout")
   )
   (when (and (= leg-random-shot #t)(= weapon-id 5)(= sub-menu-slot 4))
-    (set! leg-random-int 0)
+    (set! leg-random-int 0)(sound-play "gun-takeout")
   )
       ;-------------------------pm-extra-shot-int--------------------------------
   (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 0))
-        (set! pm-extra-shot-int 2)
+        (set! pm-extra-shot-int 2)(sound-play "gun-takeout")
   )
   (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 1))
-    (set! pm-extra-shot-int 1)
+    (set! pm-extra-shot-int 1)(sound-play "gun-takeout")
   )
   (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 2))
-    (set! pm-extra-shot-int 3)
+    (set! pm-extra-shot-int 3)(sound-play "gun-takeout")
   )
   (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 3))
-    (set! pm-extra-shot-int 4)
+    (set! pm-extra-shot-int 4)(sound-play "gun-takeout")
   )
   (when (and (= pm-extra-shot-option #t)(= weapon-id 6)(= sub-menu-slot 4))
-    (set! pm-extra-shot-int 0)
+    (set! pm-extra-shot-int 0)(sound-play "gun-takeout")
   )
 )
 
@@ -2109,7 +2486,7 @@ LEFT/RIGHT: Browse
       (set! menu-slot 0)
       (-! sub-menu-slot 1)
       (set! menu-activate #t)
-    )
+      )
     (when (and (= menu-pressed? #f) (or (> menu-slot 5)(< menu-slot 0))) ;max options for menu left
       (set! menu-slot 0)
       (set! menu-activate #t)
@@ -2186,7 +2563,15 @@ LEFT/RIGHT: Browse
 
 )
 
-
+(when (and *scene-player* (= in-menu #t)) ;if you're in a cutscene while youre in the menu, it disables it.
+    (set! camera-locked #f)
+    (set! (-> *target* cam-user-mode) 'normal)
+    (set-setting-by-param *setting-control* 'mode-name 'cam-string 0 0)
+    (set! in-menu #f)
+    (set! menu-pressed? #f)
+    (set! wait-start #t)
+    (set! string-printed? #f)
+)
 
 
 
