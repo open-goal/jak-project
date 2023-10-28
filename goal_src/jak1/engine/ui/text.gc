@@ -23,12 +23,7 @@
 
 ;; allocate the game text heap if it isn't already allocated.
 (when (zero? (-> *common-text-heap* base))
-  (let ((gp-0 *common-text-heap*))
-    (set! (-> gp-0 base) (malloc 'global #x8800))
-    (set! (-> gp-0 current) (-> gp-0 base))
-    (set! (-> gp-0 top-base) (&+ (-> gp-0 base) #x8800))
-    (set! (-> gp-0 top) (-> gp-0 top-base))
-    )
+  (kheap-alloc *common-text-heap* (* 64 1024)) ;; changed from 34K -> 64K
   )
 
 ;; The game-text-info stores records for each string in the loaded text on the text heap.
@@ -106,26 +101,25 @@
       )
     (cond
       ((!= (-> this data v1-2 id) arg0) ;; didn't find it :(
-       (cond
-         (arg1
-           (the-as string #f)
-           )
-         (else
-           (format (clear *temp-string*) "UNKNOWN ID ~D" arg0)
-           *temp-string*
-           )
-         )
-       )
+        (cond
+          (arg1
+            (the-as string #f)
+            )
+          (else
+            ;; First, look up the id in the fallback
+            (#if PC_PORT
+              (if *fallback-text-lookup?*
+                (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
+                  (if (!= fallback-result #f)
+                    fallback-result
+                    (string-format "UNKNOWN ID ~D" arg0)))
+                (string-format "UNKNOWN ID ~D" arg0))
+              (string-format "UNKNOWN ID ~D" arg0))
+            )
+          )
+        )
       (else
-        ;; First, look up the id in the fallback
-        (#if PC_PORT
-          (if *fallback-text-lookup?*
-            (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
-              (if (!= fallback-result #f)
-                fallback-result
-                (string-format "UNKNOWN ID ~D" arg0)))
-            (string-format "UNKNOWN ID ~D" arg0))
-          (string-format "UNKNOWN ID ~D" arg0))
+        (-> this data v1-2 text) ;; found it!
         )
       )
     )
