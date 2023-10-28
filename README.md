@@ -48,13 +48,15 @@
 
 ## Please read first
 
-Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
+> [!IMPORTANT]
+> Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
 
 For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
 
 Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website: https://opengoal.dev
 
-**Do not use this decompilation project without providing your own legally purchased copy of the game.**
+> [!WARNING]
+> **Do not use this decompilation project without providing your own legally purchased copy of the game.**
 
 ### Quick Start
 
@@ -133,7 +135,7 @@ Unfortunately you'll still need task runner on your local machine to run the gam
 Install packages and init repository:
 
 ```sh
-sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python libgl1-mesa-dev
+sudo apt install gcc make cmake build-essential g++ nasm clang-format libxrandr-dev libxinerama-dev libxcursor-dev libpulse-dev libxi-dev python libgl1-mesa-dev libssl-dev
 sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 ```
 

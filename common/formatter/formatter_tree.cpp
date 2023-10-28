@@ -96,6 +96,11 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
     // formatting So for strings, we treat them as if they should be a single token
     tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
     return;
+  } else if (curr_node_type == "quoting_lit") {
+    // same story for quoted symbols
+    // TODO - expect to have to add more here
+    tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
+    return;
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);

@@ -175,7 +175,9 @@ engine_files = {
   "light-trails": "gfx/sprite/particles",
   "lightning-new": "gfx/generic/lightning",
 
+  "hfrag": "gfx/background/hfrag",
   "hfrag-h": "gfx/background/hfrag",
+  "hfrag-vu1": "gfx/background/hfrag",
   "hfrag-vu1-h": "gfx/background/hfrag",
   "hfrag-common": "gfx/background/hfrag",
   "hfrag-work": "gfx/background/hfrag",
@@ -376,7 +378,9 @@ path_overrides = {
   "jak-pilot-hcar+0-ag": "engine/target",
   "rapid-gunner": "levels/stadium",
   "spydroid": "levels/common/enemy",
-  "credits": "levels/title"
+  "credits": "levels/title",
+  "ragdoll-edit": "engine/physics",
+  "manipulator": "engine/debug"
 }
 
 # i can be smarter than this...i swear....refactor eventually!

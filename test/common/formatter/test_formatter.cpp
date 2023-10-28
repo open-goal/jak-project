@@ -90,6 +90,8 @@ bool has_important_tests(const fs::path& file_path) {
   return false;
 }
 
+// TODO - consider adding a test that auto-formats all of goal_src (there should be no errors)
+
 bool run_tests(const fs::path& file_path, const bool only_important_tests) {
   const auto& tests = get_test_definitions(file_path);
   // Run the tests, report successes and failures
@@ -101,6 +103,9 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
       continue;
     }
     const auto formatted_result = formatter::format_code(test.input);
+    if (formatted_result && str_util::starts_with(test.name, "!?")) {
+      fmt::print("FORMATTED RESULT:\n\n{}\n\n", formatted_result.value());
+    }
     if (!formatted_result) {
       // Unable to parse, was that expected?
       if (test.output == "__THROWS__") {
@@ -122,6 +127,7 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
 }
 
 bool find_and_run_tests() {
+  // TODO - fails when it finds no tests
   try {
     // Enumerate test files
     const auto test_files = file_util::find_files_recursively(

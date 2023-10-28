@@ -298,6 +298,13 @@ int main(int argc, char** argv) {
 
   mem_log("After textures: {} MB", get_peak_rss() / (1024 * 1024));
 
+  // Merge textures before replacing them, in other words, replacements take priority
+  auto texture_merge_path = file_util::get_jak_project_dir() / "game" / "assets" /
+                            game_version_names[config.game_version] / "texture_merges";
+  if (fs::exists(texture_merge_path)) {
+    tex_db.merge_textures(texture_merge_path);
+  }
+
   auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);

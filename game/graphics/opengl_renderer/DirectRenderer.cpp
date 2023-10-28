@@ -11,7 +11,7 @@
 
 DirectRenderer::ScissorState DirectRenderer::m_scissor;
 
-constexpr PerGameVersion<int> game_height(448, 416);
+constexpr PerGameVersion<int> game_height(448, 416, 416);
 
 DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
@@ -1048,7 +1048,7 @@ void DirectRenderer::handle_xyz2_packed(const u8* data,
   handle_xyzf2_common(x << 16, y << 16, z, 0, render_state, prof, !adc);
 }
 
-PerGameVersion<u32> normal_zbp = {448, 304};
+PerGameVersion<u32> normal_zbp = {448, 304, 304};
 void DirectRenderer::handle_zbuf1(u64 val,
                                   SharedRenderState* render_state,
                                   ScopedProfilerNode& prof) {

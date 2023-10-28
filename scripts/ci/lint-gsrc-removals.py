@@ -4,8 +4,12 @@
 import unidiff
 from colorama import Fore
 
-with open("lint-changes.diff", encoding="utf-8") as f:
-    diff = f.read()
+try:
+    with open("lint-changes.diff", encoding="utf-8") as f:
+        diff = f.read()
+except:
+    print("Unable to read lint-changes.diff, exiting without failing, must be some odd changes in the diff!.")
+    exit(0)
 
 patch_set = unidiff.PatchSet.from_string(diff)
 

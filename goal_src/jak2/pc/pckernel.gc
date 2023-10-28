@@ -624,13 +624,14 @@
     ;; draw-raw-image can sometimes mess them up.
     (dma-buffer-add-gs-set-flusha buf
                                   (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
-                                  (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-                                  )
-    (draw-string-xy *pc-settings-built-sha*
-                    buf
-                    512 14
-                    (font-color flat-yellow)
-                    (font-flags right shadow kerning))))
+                                  (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (clear *pc-encoded-temp-string*)
+    (clear *temp-string*)
+    (format *temp-string* "<COLOR_WHITE>~S" *pc-settings-built-sha*)
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 403 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
 
 
 

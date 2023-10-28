@@ -18,6 +18,12 @@ class Vector {
     return result;
   }
 
+  static Vector<T, Size> unit(int idx) {
+    Vector<T, Size> result = Vector<T, Size>::zero();
+    result[idx] = T(1);
+    return result;
+  }
+
   template <typename... Args>
   constexpr Vector(Args... args) : m_data{T(args)...} {
     static_assert(sizeof...(args) == Size, "Incorrect number of args");
@@ -224,6 +230,22 @@ class Vector {
     for (int i = 0; i < Size; i++) {
       m_data[i] = std::min(m_data[i], other[i]);
     }
+  }
+
+  Vector<T, Size> min(const Vector<T, Size>& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = std::min(m_data[i], other[i]);
+    }
+    return result;
+  }
+
+  Vector<T, Size> max(const Vector<T, Size>& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = std::max(m_data[i], other[i]);
+    }
+    return result;
   }
 
   std::string to_string_aligned() const {

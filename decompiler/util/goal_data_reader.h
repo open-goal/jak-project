@@ -91,3 +91,5 @@ u8 deref_u8(const Ref& ref, int byte);
 float deref_float(const Ref& ref, int array_idx);
 u64 deref_u64(const Ref& ref, int dw_offset);
 std::string inspect_ref(const Ref& ref);
+std::vector<int> find_objects_with_type(const decompiler::LinkedObjectFile& file,
+                                        const std::string& name);

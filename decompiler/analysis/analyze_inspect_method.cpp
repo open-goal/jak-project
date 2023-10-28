@@ -294,7 +294,7 @@ struct FieldPrint {
 
 // if a field has a weird inspect, just return the FieldPrint instead of asserting,
 // there's too many edge cases in custom prints to account for all of them
-FieldPrint handle_custom_prints(FieldPrint& fp, const std::string& str) {
+FieldPrint handle_custom_prints(FieldPrint& fp, const std::string& /*str*/) {
   return fp;
 }
 

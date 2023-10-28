@@ -154,9 +154,9 @@
   )
 
 (defun custom-level-cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_levels/)"
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_levels/jak1/)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
-    (defstep :in (string-append "custom_levels/" desc-file-name)
+    (defstep :in (string-append "custom_levels/jak1/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
       )
@@ -208,7 +208,7 @@
   )
 
 (defmacro build-custom-level (name)
-  (let* ((path (string-append "custom_levels/" name "/" name ".jsonc")))
+  (let* ((path (string-append "custom_levels/jak1/" name "/" name ".jsonc")))
     `(defstep :in ,path
               :tool 'build-level
               :out '(,(string-append "$OUT/obj/" name ".go")))))
@@ -1636,7 +1636,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Set up the build system to build the level geometry
-;; this path is relative to the custom_levels/ folder
+;; this path is relative to the custom_levels/jak1 folder
 ;; it should point to the .jsonc file that specifies the level.
 (build-custom-level "test-zone")
 ;; the DGO file
