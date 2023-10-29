@@ -304,6 +304,11 @@
 )
 
 (when (= weapon-mod-toggle #t)
+  ;set params for init game
+  (when (= weapon-toggle-false? #f)
+    (set! weapon-toggle-false? #t)
+  )
+
   ;Legendary Weapon Mod Saves
   (when (and (= (-> *game-info* buzzer-total) 0.0)(or (= leg-random-shot #f)(= pm-extra-shot-option #f))) ;if none
     (set! pm-extra-shot-option #f)
@@ -1468,10 +1473,11 @@
 (when *scene-player*
     (when (and (= mushroom-movies-start #f)(rand-vu-percent? 0.03)(= mushroom-movies #t)
       (set! mushroom-movies-start #t)
-      (set! mushroom-var (rand-vu-int-range 1 15))
+      (set! mushroom-var (rand-vu-int-range 1 3))
     )
   )
 )
+
 
 
 
@@ -1541,9 +1547,180 @@
 
 
 
+;this whole block creates the hint to pull up selection for weapon mods
+(when (and *target* (not *scene-player*))
+
+  ;popup text for pressing r3
+  (when (and (= (-> (level-get-target-inside *level*) name) 'prison)(cpad-pressed? 0 r3)(= weapon-mod-toggle #f)(= weapon-toggle-false? #f)(not (task-node-closed? (game-task-node city-help-kid-introduction)))) ;is new game initialized?
+    (set! menu2-wait #t)
+  )
+
+  ;popup selection upon new game for weapon-mod enable
+  (when (and (= (-> (level-get-target-inside *level*) name) 'prison)(= hint-printed? #f)(= weapon-mod-toggle #f)(= weapon-toggle-false? #f)(not (task-node-closed? (game-task-node city-help-kid-introduction)))) ;is new game initialized?
+    (set! popup-hint #t)
+    (set! hint-start #t)
+  )
+  ;waits to set menu on
+  (when (= menu2-wait #t)
+    (+! menu2-frame 1)
+    (when (= menu2-frame 150)
+      (set! pause-menu-blocked? #t)
+      (set! camera-locked #t)
+    )
+    (when (= menu2-frame 160)
+      (set! in-menu-2 #t)
+      (set! menu2-frame 0)
+      (set! menu2-wait #f)
+    )
+  )
+  ;popup menu duration
+  (when (= hint-start #t)
+    (+! hint-numb 1)
+    (when (or (= hint-numb 500)(cpad-pressed? 0 r3))
+      (set! popup-hint #f)
+      (set! hint-start #f)
+      (set! hint-numb 0)
+      (set! hint-printed? #t)
+    )
+  )
+)
+
+;and this whole block creates the other hint to pull up your inventory
+(when (and *target* (not *scene-player*))
+
+  ;popup text for pressing r3
+  (when (and (= (-> (level-get-target-inside *level*) name) 'prison)(= hint-printed?2 #f)(= weapon-mod-toggle #t)(= weapon-toggle-false? #t)(not (task-node-closed? (game-task-node city-help-kid-introduction)))) ;is new game initialized?
+    (set! hint-start2 #t)
+  )
+
+  ;popup menu duration
+  (when (= hint-start2 #t)
+    (+! hint-numb2 1)
+    (when (or (= hint-numb2 500)(cpad-pressed? 0 r3))
+      (set! popup-hint2 #f)
+      (set! hint-start2 #f)
+      (set! hint-numb2 0)
+      (set! hint-printed?2 #t)
+    )
+  )
+)
+
+;controls
+(when (and (= in-menu-2 #t)(cpad-pressed? 0 right))
+  (set! yes-no #f)
+)
+(when (and (= in-menu-2 #t)(cpad-pressed? 0 left))
+  (set! yes-no #t)
+)
+
+(when (and (= in-menu-2 #t)(= yes-no #t)(cpad-pressed? 0 x))
+  (set! weapon-mod-toggle #t)
+  (set! weapon-toggle-false? #t)
+  (set! in-menu-2 #f)
+  (set! pause-menu-blocked? #f)
+  (set! camera-locked #f)
+  (remove-setting-by-arg0 *setting-control* 'mode-name)
+  (send-event *target* 'draw #t)
+  (process-release? *target*)
+  (initialize! *game-info* 'dead (the-as game-save #f) (the-as string #f))
+)
+(when (and (= in-menu-2 #t)(= yes-no #f)(cpad-pressed? 0 x))
+  (set! weapon-mod-toggle #f)
+  (set! weapon-toggle-false? #t)
+  (set! in-menu-2 #f)
+  (set! pause-menu-blocked? #f)
+  (set! camera-locked #f)
+  (remove-setting-by-arg0 *setting-control* 'mode-name)
+  (send-event *target* 'draw #t)
+  (process-release? *target*)
+  (initialize! *game-info* 'dead (the-as game-save #f) (the-as string #f))
+)
 
 
+(when (and (= hint-printed? #f)(= weapon-mod-toggle #f)(= popup-hint #t)) ;draws the popup hint
+    (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>INFO ~%Press <COLOR_RED>R3<COLOR_WHITE> to view Mod Information"
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 200 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
 
+(when (and (= hint-printed?2 #f)(= weapon-mod-toggle #f)(= popup-hint2 #t)) ;draws the popup hint
+    (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "<COLOR_WHITE>INFO ~%Press <COLOR_RED>R3<COLOR_WHITE> to view inventory"
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 0 200 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+
+(when (and (= in-menu-2 #t)(= yes-no #t)) ;draws the yes function being green
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "
+    <COLOR_WHITE>Welcome to HeroMode+! 
+    ~%<COLOR_BLUE>Made by Kraken
+    ~%
+    ~%
+    <COLOR_WHITE>~%Everything in the game is out to get you.
+    ~%You can gain an edge by enabling weapon mods for you to find and acquire,
+    ~%but in doing so, you also enable a random modifier.
+    ~%These can last the whole game.
+    ~%All modifiers have a give and a take
+    ~%And Hero-Mode enables all of these modifiers.
+    ~%<COLOR_YELLOW>Would you like to enable Weapon Mods?
+    ~%(hint: this option is only asked once per save)
+    ~%<COLOR_GREEN>Yes<COLOR_RED> No"
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 245 75 0.0 (font-color default) (font-flags middle shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
+(when (and (= in-menu-2 #t)(= yes-no #f)) ;draws the no function being green
+  (clear *temp-string*)
+    (clear *pc-encoded-temp-string*)
+    (format *temp-string* "
+    <COLOR_WHITE>Welcome to HeroMode+! 
+    ~%<COLOR_BLUE>Made by Kraken
+    ~%
+    ~%
+    <COLOR_WHITE>~%Everything in the game is out to get you.
+    ~%You can gain an edge by enabling weapon mods for you to find and acquire,
+    ~%but in doing so, you also enable a random modifier.
+    ~%These can last the whole game.
+    ~%All modifiers have a give and a take
+    ~%And Hero-Mode enables all of these modifiers.
+    ~%<COLOR_YELLOW>Would you like to enable Weapon Mods?
+    ~%(hint: this option is only asked once per save)
+    ~%<COLOR_RED>Yes<COLOR_GREEN> No"
+    )
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+      ;; reset bucket settings prior to drawing - font won't do this for us, and
+      ;; draw-raw-image can sometimes mess them up. (intro sequence)
+      (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 245 75 0.0 (font-color default) (font-flags middle shadow kerning large))))
+        (set! (-> font-ctx scale) 0.325)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+)
 
 
 
@@ -1817,8 +1994,8 @@
 
     ;---------------------------------------Legendary Random Shot Main-----------------------------------------------------------
   (when (and (= menu-pressed? #f)(= leg-random-shot #t)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
-    (set! gun-mod-string " LEGENDARY  Rapid Fire Shot!")
-    (set! mod-string " LEGENDARY  Rapid Fire Shot!")
+    (set! gun-mod-string "| LEGENDARY Random Shot!")
+    (set! mod-string "| LEGENDARY Random Shot!")
   )
     (when (and (= menu-pressed? #f)(= leg-random-shot #f)(= in-menu #t)(= menu-slot 4)(= sub-menu-slot 0))
     (set! gun-mod-string "??????????????")
@@ -2059,7 +2236,7 @@
 
 
 (when (not *scene-player*)
-  (when (and (= weapon-mod-toggle #t)(= in-menu #f)(cpad-pressed? 0 r3)) ;startup virtual menu
+  (when (and (= weapon-mod-toggle #t)(= in-menu #f)(= (paused?) #f)(cpad-pressed? 0 r3)) ;startup virtual menu
     (set! menu-activate #t)
     (set! in-menu #t)
     (set! sub-menu-slot 0)
@@ -2129,6 +2306,7 @@
     (set! gm-start6 #f)
   )
 )
+
 (when (= recieved-gm #t) ;looks for recieving a gun mod to alert for weapon id 1
   (clear *temp-string*)
     (clear *pc-encoded-temp-string*)
