@@ -136,7 +136,7 @@ void add_field(
           throw std::runtime_error(fmt::format("Field {} not found to override", name));
         }
       } else if (opt_name == ":overlay-at") {
-        auto param = car(rest);
+        const auto& param = car(rest);
         rest = cdr(rest);
         Field overlay_field;
         if (param.is_symbol()) {
@@ -155,19 +155,27 @@ void add_field(
           auto type_to_use = structure;
           offset_override = 0;
           while (!name_it->is_empty_list()) {
-            auto deref_field = car(name_it);
+            const auto& deref_field = car(name_it);
             if (deref_field.is_int()) {
-              auto type_to_deref = type_to_use && overlay_field.is_inline()
-                                       ? TypeSpec("inline-array")
-                                       : TypeSpec("pointer");
-              type_to_deref.add_arg(overlay_field.type());
-              auto deref_info = ts->get_deref_info(type_to_deref);
-              if (!deref_info.can_deref) {
-                throw std::runtime_error(
-                    fmt::format("Array could not be dereferenced for overlay-at in {}", name));
+              auto ref_array_field = !type_to_use && !overlay_field.is_inline()
+                                         ? ts->lookup_type_allow_partial_def(overlay_field.type())
+                                         : nullptr;
+              if (ref_array_field) {
+                // we can have an array of references (non-inline) to a forward-declared type
+                offset_override += ref_array_field->get_load_size() * deref_field.as_int();
+              } else {
+                auto type_to_deref = type_to_use && overlay_field.is_inline()
+                                         ? TypeSpec("inline-array")
+                                         : TypeSpec("pointer");
+                type_to_deref.add_arg(overlay_field.type());
+                auto deref_info = ts->get_deref_info(type_to_deref);
+                if (!deref_info.can_deref) {
+                  throw std::runtime_error(
+                      fmt::format("Array could not be dereferenced for overlay-at in {}", name));
+                }
+                // overlay_field.type() = deref_info.result_type;
+                offset_override += deref_info.stride * deref_field.as_int();
               }
-              // overlay_field.type() = deref_info.result_type;
-              offset_override += deref_info.stride * deref_field.as_int();
             } else {
               if (!type_to_use) {
                 throw std::runtime_error(
