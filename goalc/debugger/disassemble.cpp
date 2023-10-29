@@ -194,8 +194,8 @@ std::string disassemble_x86_function(
       line += print_buff;
 
       if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {
-        if (line.size() - line_size_offset < 50) {
-          line.append(50 - (line.size() - line_size_offset), ' ');
+        if (line.size() - line_size_offset < DISASM_LINE_LEN) {
+          line.append(DISASM_LINE_LEN - (line.size() - line_size_offset), ' ');
         }
         line += " ";
         line += ir_strings.at(current_ir_idx);
