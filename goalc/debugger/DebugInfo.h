@@ -40,7 +40,7 @@ struct FunctionDebugInfo {
   std::vector<u8> generated_code;
   std::optional<int> stack_usage;
 
-  std::string disassemble_debug_info(bool* had_failure, const goos::Reader* reader);
+  std::string disassemble_debug_info(bool* had_failure, const goos::Reader* reader, bool omit_ir);
 };
 
 class DebugInfo {
@@ -74,7 +74,9 @@ class DebugInfo {
 
   void clear() { m_functions.clear(); }
 
-  std::string disassemble_all_functions(bool* had_failure, const goos::Reader* reader);
+  std::string disassemble_all_functions(bool* had_failure,
+                                        const goos::Reader* reader,
+                                        bool omit_ir);
   std::string disassemble_function_by_name(const std::string& name,
                                            bool* had_failure,
                                            const goos::Reader* reader);
