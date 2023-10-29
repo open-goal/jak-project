@@ -5,6 +5,8 @@
 ;; name in dgo: nav-graph-h
 ;; dgos: CWI
 
+(declare-type nav-node structure)
+
 (defenum nav-branch-clock-type
   :type uint8
   (no-clock 0)
@@ -55,6 +57,36 @@
 
 ;; DECOMP BEGINS
 
+(deftype nav-branch (structure)
+  ((node               nav-node  2)
+   (src-node           nav-node  :overlay-at (-> node 0))
+   (dest-node          nav-node  :overlay-at (-> node 1))
+   (temp-dest-node-id  int32     :overlay-at (-> node 1))
+   (speed-limit        uint8)
+   (density            uint8)
+   (clock-type         nav-branch-clock-type)
+   (clock-mask         nav-branch-clock-mask)
+   (max-user-count     uint8)
+   (user-count         uint8)
+   (width              uint8)
+   (flags              nav-branch-flags)
+   )
+  (:methods
+    (set-default-density-speed-and-width (_type_) none)
+    (debug-print (_type_ object int) none)
+    (get-density (_type_) float)
+    (get-speed-limit (_type_) float)
+    (get-width (_type_) float)
+    (user-limit-reached? (_type_) symbol)
+    (dest-node-id-at-max? (_type_) symbol)
+    (set-density (_type_ float) none)
+    (set-speed-limit (_type_ float) none)
+    (set-width (_type_ float) none)
+    (set-src-node (_type_ nav-node) none)
+    (set-dst-node (_type_ nav-node) none)
+    )
+  )
+
 
 (deftype nav-node (structure)
   ((data          uint32                     8)
@@ -86,36 +118,6 @@
     (calc-sine-and-cosine! (_type_ vector) vector)
     (get-angle (_type_) float)
     (get-radius (_type_) float)
-    )
-  )
-
-(deftype nav-branch (structure)
-  ((node               nav-node  2)
-   (src-node           nav-node  :overlay-at (-> node 0))
-   (dest-node          nav-node  :overlay-at (-> node 1))
-   (temp-dest-node-id  int32     :overlay-at (-> node 1))
-   (speed-limit        uint8)
-   (density            uint8)
-   (clock-type         nav-branch-clock-type)
-   (clock-mask         nav-branch-clock-mask)
-   (max-user-count     uint8)
-   (user-count         uint8)
-   (width              uint8)
-   (flags              nav-branch-flags)
-   )
-  (:methods
-    (set-default-density-speed-and-width (_type_) none)
-    (debug-print (_type_ object int) none)
-    (get-density (_type_) float)
-    (get-speed-limit (_type_) float)
-    (get-width (_type_) float)
-    (user-limit-reached? (_type_) symbol)
-    (dest-node-id-at-max? (_type_) symbol)
-    (set-density (_type_ float) none)
-    (set-speed-limit (_type_ float) none)
-    (set-width (_type_ float) none)
-    (set-src-node (_type_ nav-node) none)
-    (set-dst-node (_type_ nav-node) none)
     )
   )
 
