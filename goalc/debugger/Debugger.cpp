@@ -428,7 +428,7 @@ Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
           function_mem.data(), function_mem.size(), m_reader,
           m_debug_context.base + info.map_entry->start_addr + func_info->offset_in_seg,
           rip + rip_offset, func_info->instructions, func_info->code_sources, func_info->ir_strings,
-          &result.failed, false);
+          &result.failed, false, false);
     }
   } else {
     result.failed = true;

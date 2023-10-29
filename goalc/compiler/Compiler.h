@@ -34,6 +34,7 @@ struct CompilationOptions {
   bool write = false;                   // write object file to out/obj
   bool no_code = false;                 // file shouldn't generate code, throw error if it does
   bool disassemble = false;             // either print disassembly to stdout or output_file
+  bool disasm_code_only = false;        // if on, IR and source lines are not printed
   bool print_time = false;              // print timing statistics
 };
 
@@ -210,7 +211,8 @@ class Compiler {
   std::vector<u8> codegen_object_file(FileEnv* env);
   bool codegen_and_disassemble_object_file(FileEnv* env,
                                            std::vector<u8>* data_out,
-                                           std::string* asm_out);
+                                           std::string* asm_out,
+                                           bool omit_ir);
 
   void for_each_in_list(const goos::Object& list,
                         const std::function<void(const goos::Object&)>& f);

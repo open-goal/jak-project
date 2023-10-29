@@ -324,13 +324,14 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
 
 bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
                                                    std::vector<u8>* data_out,
-                                                   std::string* asm_out) {
+                                                   std::string* asm_out,
+                                                   bool omit_ir) {
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
   CodeGenerator gen(env, debug_info, m_version);
   *data_out = gen.run(&m_ts);
   bool ok = true;
-  *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);
+  *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader, omit_ir);
   return ok;
 }
 
@@ -482,7 +483,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
     std::vector<u8> data;
     std::string disasm;
     if (options.disassemble) {
-      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+      codegen_and_disassemble_object_file(obj_file, &data, &disasm, options.disasm_code_only);
       if (options.disassembly_output_file.empty()) {
         printf("%s\n", disasm.c_str());
       } else {
