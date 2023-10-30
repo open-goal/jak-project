@@ -187,7 +187,8 @@ void add_field(
                 throw std::runtime_error(
                     fmt::format("Field {} not found to overlay for {}", field_name, name));
               }
-              type_to_use = dynamic_cast<StructureType*>(ts->lookup_type(overlay_field.type()));
+              type_to_use =
+                  dynamic_cast<StructureType*>(ts->lookup_type_no_throw(overlay_field.type()));
               offset_override += overlay_field.offset();
             }
             name_it = cdr(name_it);

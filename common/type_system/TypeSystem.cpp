@@ -452,6 +452,25 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
 }
 
 /*!
+ * Same as lookup_type, but returns null instead of throwing.
+ */
+Type* TypeSystem::lookup_type_no_throw(const std::string& name) const {
+  auto kv = m_types.find(name);
+  if (kv != m_types.end()) {
+    return kv->second.get();
+  }
+
+  return nullptr;
+}
+
+/*!
+ * Same as lookup_type, but returns null instead of throwing.
+ */
+Type* TypeSystem::lookup_type_no_throw(const TypeSpec& ts) const {
+  return lookup_type_no_throw(ts.base_type());
+}
+
+/*!
  * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
  * forward defined as a basic or structure, just get basic/structure.
  */
