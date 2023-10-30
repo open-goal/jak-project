@@ -66,19 +66,14 @@
 
 (defun set-progress-frame-rate-index ()
   "Set the frame rate option index accordingly."
-  (case (-> *pc-settings* target-fps)
-    ((30) (set! (-> *progress-state-pc* frame-rate-choice-index) 0))
-    ((50) (set! (-> *progress-state-pc* frame-rate-choice-index) 1))
-    ((60) (set! (-> *progress-state-pc* frame-rate-choice-index) 2))
-    ((75) (set! (-> *progress-state-pc* frame-rate-choice-index) 3))
-    ((120) (set! (-> *progress-state-pc* frame-rate-choice-index) 4))
-    ((144) (set! (-> *progress-state-pc* frame-rate-choice-index) 5))
-    ((165) (set! (-> *progress-state-pc* frame-rate-choice-index) 6))
-    ((240) (set! (-> *progress-state-pc* frame-rate-choice-index) 7))
-    ;; default to 60 fps
-    (else (set! (-> *progress-state-pc* frame-rate-choice-index) 2))
+  ;; default to 60 fps
+  (set! (-> *progress-state-pc* frame-rate-choice-index) 0)
+  ;; lookup entry that matches
+  (dotimes (i (-> *frame-rate-options* length))
+    (if (= (-> *pc-settings* target-fps) (-> *frame-rate-options* i))
+        (set! (-> *progress-state-pc* frame-rate-choice-index) i))
     )
-  )
+  0)
 
 
 (defmethod init-defaults ((obj progress))
@@ -623,6 +618,7 @@
               )
             (else
               (sound-play "generic-beep")
+              (set-progress-frame-rate-index)
               (pop-state arg0)
               )
             )
