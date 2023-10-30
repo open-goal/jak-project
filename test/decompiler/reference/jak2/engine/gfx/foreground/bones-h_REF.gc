@@ -3,17 +3,14 @@
 
 ;; definition of type bone-buffer
 (deftype bone-buffer (structure)
-  ((joint  matrix   16 :inline :offset-assert   0)
-   (bone   bone     16 :inline :offset-assert 1024)
-   (output pris-mtx 16 :inline :offset-assert 2304)
+  ((joint   matrix    16 :inline)
+   (bone    bone      16 :inline)
+   (output  pris-mtx  16 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x1100
-  :flag-assert         #x900001100
   )
 
 ;; definition for method 3 of type bone-buffer
-(defmethod inspect bone-buffer ((this bone-buffer))
+(defmethod inspect ((this bone-buffer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -28,19 +25,16 @@
 
 ;; definition of type bone-layout
 (deftype bone-layout (structure)
-  ((data   uint16                  8 :offset-assert   0)
-   (joint  (inline-array matrix)   2 :offset          0)
-   (bone   (inline-array bone)     2 :offset          8)
-   (output (inline-array pris-mtx) 2 :offset         16)
-   (unused uint32                  2 :offset         24)
+  ((data    uint16                   8)
+   (joint   (inline-array matrix)    2 :overlay-at (-> data 0))
+   (bone    (inline-array bone)      2 :overlay-at (-> data 4))
+   (output  (inline-array pris-mtx)  2 :offset  16)
+   (unused  uint32                   2 :offset  24)
    )
-  :method-count-assert 9
-  :size-assert         #x20
-  :flag-assert         #x900000020
   )
 
 ;; definition for method 3 of type bone-layout
-(defmethod inspect bone-layout ((this bone-layout))
+(defmethod inspect ((this bone-layout))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -57,23 +51,20 @@
 
 ;; definition of type bone-regs
 (deftype bone-regs (structure)
-  ((dma-buf    basic                    :offset-assert   0)
-   (wait-count uint32                   :offset-assert   4)
-   (in-count   uint32                   :offset-assert   8)
-   (sp-size    uint32                   :offset-assert  12)
-   (sp-bufnum  uint32                   :offset-assert  16)
-   (joint-ptr  (inline-array joint)     :offset-assert  20)
-   (bone-ptr   (inline-array bone)      :offset-assert  24)
-   (num-bones  uint32                   :offset-assert  28)
-   (mtxs       (inline-array pris-mtx)  :offset-assert  32)
+  ((dma-buf     basic)
+   (wait-count  uint32)
+   (in-count    uint32)
+   (sp-size     uint32)
+   (sp-bufnum   uint32)
+   (joint-ptr   (inline-array joint))
+   (bone-ptr    (inline-array bone))
+   (num-bones   uint32)
+   (mtxs        (inline-array pris-mtx))
    )
-  :method-count-assert 9
-  :size-assert         #x24
-  :flag-assert         #x900000024
   )
 
 ;; definition for method 3 of type bone-regs
-(defmethod inspect bone-regs ((this bone-regs))
+(defmethod inspect ((this bone-regs))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -94,16 +85,13 @@
 
 ;; definition of type bone-work
 (deftype bone-work (structure)
-  ((layout bone-layout :inline :offset-assert   0)
-   (regs   bone-regs   :inline :offset-assert  32)
+  ((layout  bone-layout  :inline)
+   (regs    bone-regs    :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x44
-  :flag-assert         #x900000044
   )
 
 ;; definition for method 3 of type bone-work
-(defmethod inspect bone-work ((this bone-work))
+(defmethod inspect ((this bone-work))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -117,16 +105,13 @@
 
 ;; definition of type bone-debug
 (deftype bone-debug (structure)
-  ((time-ctr uint32     :offset-assert   0)
-   (timing   uint32 360 :offset-assert   4)
+  ((time-ctr  uint32)
+   (timing    uint32  360)
    )
-  :method-count-assert 9
-  :size-assert         #x5a4
-  :flag-assert         #x9000005a4
   )
 
 ;; definition for method 3 of type bone-debug
-(defmethod inspect bone-debug ((this bone-debug))
+(defmethod inspect ((this bone-debug))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -140,16 +125,13 @@
 
 ;; definition of type bone-memory
 (deftype bone-memory (structure)
-  ((work   bone-work   :inline   :offset-assert   0)
-   (buffer bone-buffer 2 :inline :offset-assert  80)
+  ((work    bone-work    :inline)
+   (buffer  bone-buffer  2 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x2250
-  :flag-assert         #x900002250
   )
 
 ;; definition for method 3 of type bone-memory
-(defmethod inspect bone-memory ((this bone-memory))
+(defmethod inspect ((this bone-memory))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -163,28 +145,25 @@
 
 ;; definition of type bone-calculation
 (deftype bone-calculation (structure)
-  ((flags               bone-calc-flags                 :offset-assert   0)
-   (num-bones           uint16                          :offset-assert   2)
-   (matrix-area         (inline-array pris-mtx)         :offset-assert   4)
-   (joints              (inline-array joint)            :offset-assert   8)
-   (bones               (inline-array bone)             :offset-assert  12)
-   (ripple-scale        float                           :offset-assert  16)
-   (ripple-y-scale      float                           :offset-assert  20)
-   (ripple-normal-scale float                           :offset-assert  24)
-   (ripple-area         (inline-array vector)           :offset-assert  28)
-   (ripple-vec          vector                  :inline :offset         16)
-   (next                bone-calculation                :offset-assert  32)
-   (dummy-1             uint32                          :offset-assert  36)
-   (dummy-2             uint32                          :offset-assert  40)
-   (dummy-3             uint32                          :offset-assert  44)
+  ((flags                bone-calc-flags)
+   (num-bones            uint16)
+   (matrix-area          (inline-array pris-mtx))
+   (joints               (inline-array joint))
+   (bones                (inline-array bone))
+   (ripple-scale         float)
+   (ripple-y-scale       float)
+   (ripple-normal-scale  float)
+   (ripple-area          (inline-array vector))
+   (ripple-vec           vector  :inline :overlay-at ripple-scale)
+   (next                 bone-calculation)
+   (dummy-1              uint32)
+   (dummy-2              uint32)
+   (dummy-3              uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type bone-calculation
-(defmethod inspect bone-calculation ((this bone-calculation))
+(defmethod inspect ((this bone-calculation))
   (when (not this)
     (set! this this)
     (goto cfg-4)

@@ -3,28 +3,24 @@
 
 ;; definition of type plat-flip
 (deftype plat-flip (process-drawable)
-  ((root-override         collide-shape-moving         :offset        112)
-   (path-pos              float                        :offset-assert 176)
-   (before-turn-down-time float                        :offset-assert 180)
-   (turn-down-time        float                        :offset-assert 184)
-   (before-turn-up-time   float                        :offset-assert 188)
-   (turn-up-time          float                        :offset-assert 192)
-   (total-time            float                        :offset-assert 196)
-   (sync                  sync-info            :inline :offset-assert 200)
-   (base-pos              vector               :inline :offset-assert 208)
-   (smush                 smush-control        :inline :offset-assert 224)
+  ((root                   collide-shape-moving :override)
+   (path-pos               float)
+   (before-turn-down-time  float)
+   (turn-down-time         float)
+   (before-turn-up-time    float)
+   (turn-up-time           float)
+   (total-time             float)
+   (sync                   sync-info             :inline)
+   (base-pos               vector                :inline)
+   (smush                  smush-control         :inline)
    )
-  :heap-base #x90
-  :method-count-assert 20
-  :size-assert         #x100
-  :flag-assert         #x1400900100
   (:states
     plat-flip-idle
     )
   )
 
 ;; definition for method 3 of type plat-flip
-(defmethod inspect plat-flip ((this plat-flip))
+(defmethod inspect ((this plat-flip))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -105,7 +101,7 @@
         (let ((s5-5 (new 'stack-no-clear 'vector)))
           (set! (-> s5-5 quad) (-> self base-pos quad))
           (+! (-> s5-5 y) (* 1638.4 (update! (-> self smush))))
-          (move-to-point! (-> self root-override) s5-5)
+          (move-to-point! (-> self root) s5-5)
           )
         (suspend)
         )
@@ -117,7 +113,7 @@
 ;; definition for method 11 of type plat-flip
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! plat-flip ((this plat-flip) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat-flip) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -138,10 +134,10 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (set! (-> this base-pos quad) (-> this root-override trans quad))
+  (set! (-> this base-pos quad) (-> this root trans quad))
   (initialize-skeleton this *plat-flip-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (let ((f30-0 300.0))
@@ -192,7 +188,7 @@
         )
       )
     )
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (go plat-flip-idle)
   (none)
   )

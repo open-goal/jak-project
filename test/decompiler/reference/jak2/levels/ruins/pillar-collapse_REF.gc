@@ -3,30 +3,26 @@
 
 ;; definition of type ruins-pillar-collapse
 (deftype ruins-pillar-collapse (process-drawable)
-  ((root             collide-shape-moving   :override)
-   (player-attack-id int32                  :offset-assert 200)
-   (fall-anim-index  int32                  :offset-assert 204)
-   (hit-points       int8                   :offset-assert 208)
-   (mesh-trans       uint8                3 :offset-assert 209)
-   (mesh-joint       joint                2 :offset-assert 212)
-   (deadly?          symbol                 :offset        216)
-   (art-name         string                 :offset        220)
-   (anim             spool-anim             :offset        224)
+  ((root              collide-shape-moving :override)
+   (player-attack-id  int32)
+   (fall-anim-index   int32)
+   (hit-points        int8)
+   (mesh-trans        uint8                 3)
+   (mesh-joint        joint                 2)
+   (deadly?           symbol                :overlay-at (-> mesh-joint 1))
+   (art-name          string                :offset 220)
+   (anim              spool-anim            :offset 224)
    )
-  :heap-base #x70
-  :method-count-assert 24
-  :size-assert         #xe4
-  :flag-assert         #x18007000e4
-  (:methods
-    (idle () _type_ :state 20)
-    (bump () _type_ :state 21)
-    (hit () _type_ :state 22)
-    (fall (symbol) _type_ :state 23)
+  (:state-methods
+    idle
+    bump
+    hit
+    (fall symbol)
     )
   )
 
 ;; definition for method 3 of type ruins-pillar-collapse
-(defmethod inspect ruins-pillar-collapse ((this ruins-pillar-collapse))
+(defmethod inspect ((this ruins-pillar-collapse))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -224,7 +220,7 @@
 ;; definition for method 11 of type ruins-pillar-collapse
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! ruins-pillar-collapse ((this ruins-pillar-collapse) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ruins-pillar-collapse) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

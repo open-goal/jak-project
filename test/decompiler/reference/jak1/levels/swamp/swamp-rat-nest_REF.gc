@@ -593,23 +593,19 @@
 
 ;; definition of type swamp-rat-nest
 (deftype swamp-rat-nest (process-drawable)
-  ((child-process       (pointer swamp-rat-nest-dummy)  :offset         20)
-   (fact-override       fact-info-enemy                 :offset        144)
-   (dummy               (pointer swamp-rat-nest-dummy)  :offset-assert 176)
-   (damaged             symbol                          :offset-assert 180)
-   (dummy-type          int8                            :offset-assert 184)
-   (rat-count           int8                            :offset-assert 185)
-   (hit-points          int8                            :offset-assert 186)
-   (defensive-rat-count int8                            :offset-assert 187)
-   (spawn-period        float                           :offset-assert 188)
-   (spawn-period-scale  float                           :offset-assert 192)
-   (test-interval       time-frame                      :offset-assert 200)
-   (player-attack-id    int32                           :offset-assert 208)
+  ((fact                 fact-info-enemy                :override)
+   (child-process        (pointer swamp-rat-nest-dummy)  :overlay-at child)
+   (dummy                (pointer swamp-rat-nest-dummy))
+   (damaged              symbol)
+   (dummy-type           int8)
+   (rat-count            int8)
+   (hit-points           int8)
+   (defensive-rat-count  int8)
+   (spawn-period         float)
+   (spawn-period-scale   float)
+   (test-interval        time-frame)
+   (player-attack-id     int32)
    )
-  :heap-base #x70
-  :method-count-assert 20
-  :size-assert         #xd4
-  :flag-assert         #x14007000d4
   (:states
     swamp-rat-nest-active
     swamp-rat-nest-die
@@ -620,7 +616,7 @@
   )
 
 ;; definition for method 3 of type swamp-rat-nest
-(defmethod inspect swamp-rat-nest ((this swamp-rat-nest))
+(defmethod inspect ((this swamp-rat-nest))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -639,21 +635,17 @@
 
 ;; definition of type swamp-rat-nest-dummy
 (deftype swamp-rat-nest-dummy (process-drawable)
-  ((parent-process       (pointer swamp-rat-nest)         :offset         12)
-   (root-override        collide-shape                    :offset        112)
-   (top-sphere           sphere                   :inline :offset-assert 176)
-   (death-part           sparticle-launch-group           :offset-assert 192)
-   (spawn-joint-array    int8                     6       :offset-assert 196)
-   (spawn-joint-count    int8                             :offset-assert 202)
-   (particle-spawn-joint int8                             :offset-assert 203)
+  ((root                  collide-shape            :override)
+   (parent-process        (pointer swamp-rat-nest)  :overlay-at parent)
+   (top-sphere            sphere                    :inline)
+   (death-part            sparticle-launch-group)
+   (spawn-joint-array     int8                      6)
+   (spawn-joint-count     int8)
+   (particle-spawn-joint  int8)
    )
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16006000cc
   (:methods
-    (swamp-rat-nest-dummy-method-20 (_type_) none 20)
-    (swamp-rat-nest-dummy-method-21 (_type_) int 21)
+    (swamp-rat-nest-dummy-method-20 (_type_) none)
+    (swamp-rat-nest-dummy-method-21 (_type_) int)
     )
   (:states
     swamp-rat-nest-dummy-die
@@ -664,7 +656,7 @@
   )
 
 ;; definition for method 3 of type swamp-rat-nest-dummy
-(defmethod inspect swamp-rat-nest-dummy ((this swamp-rat-nest-dummy))
+(defmethod inspect ((this swamp-rat-nest-dummy))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -679,14 +671,10 @@
 ;; definition of type swamp-rat-nest-dummy-a
 (deftype swamp-rat-nest-dummy-a (swamp-rat-nest-dummy)
   ()
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16006000cc
   )
 
 ;; definition for method 3 of type swamp-rat-nest-dummy-a
-(defmethod inspect swamp-rat-nest-dummy-a ((this swamp-rat-nest-dummy-a))
+(defmethod inspect ((this swamp-rat-nest-dummy-a))
   (let ((t9-0 (method-of-type swamp-rat-nest-dummy inspect)))
     (t9-0 this)
     )
@@ -696,14 +684,10 @@
 ;; definition of type swamp-rat-nest-dummy-b
 (deftype swamp-rat-nest-dummy-b (swamp-rat-nest-dummy)
   ()
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16006000cc
   )
 
 ;; definition for method 3 of type swamp-rat-nest-dummy-b
-(defmethod inspect swamp-rat-nest-dummy-b ((this swamp-rat-nest-dummy-b))
+(defmethod inspect ((this swamp-rat-nest-dummy-b))
   (let ((t9-0 (method-of-type swamp-rat-nest-dummy inspect)))
     (t9-0 this)
     )
@@ -713,14 +697,10 @@
 ;; definition of type swamp-rat-nest-dummy-c
 (deftype swamp-rat-nest-dummy-c (swamp-rat-nest-dummy)
   ()
-  :heap-base #x60
-  :method-count-assert 22
-  :size-assert         #xcc
-  :flag-assert         #x16006000cc
   )
 
 ;; definition for method 3 of type swamp-rat-nest-dummy-c
-(defmethod inspect swamp-rat-nest-dummy-c ((this swamp-rat-nest-dummy-c))
+(defmethod inspect ((this swamp-rat-nest-dummy-c))
   (let ((t9-0 (method-of-type swamp-rat-nest-dummy inspect)))
     (t9-0 this)
     )
@@ -869,14 +849,14 @@
     (logior! (-> self mask) (process-mask enemy))
     (swamp-rat-nest-dummy-method-20 self)
     (process-drawable-from-entity! self gp-0)
-    (set! (-> self top-sphere quad) (-> self root-override trans quad))
+    (set! (-> self top-sphere quad) (-> self root trans quad))
     (+! (-> self top-sphere y) 24576.0)
     (set! (-> self top-sphere w) 18432.0)
     (set! (-> self entity) gp-0)
     )
-  (set! (-> self nav) (new 'process 'nav-control (-> self root-override) 16 40960.0))
+  (set! (-> self nav) (new 'process 'nav-control (-> self root) 16 40960.0))
   (logior! (-> self nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (set-current-poly! (-> self nav) (find-poly (-> self nav) (-> self root-override trans)))
+  (set-current-poly! (-> self nav) (find-poly (-> self nav) (-> self root trans)))
   (+! (-> self parent-process 0 hit-points) 3)
   (swamp-rat-nest-dummy-method-21 self)
   (when (zero? (-> self skel))
@@ -942,7 +922,7 @@ swamp-rat-nest-default-event-handler
              )
         (set! (-> gp-0 quad) (-> v1-8 transform vector 3 quad))
         (let ((s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> v1-8 transform vector 1) 1.0))
-              (s4-0 (if (= (-> self fact-override pickup-type) (pickup-type none))
+              (s4-0 (if (= (-> self fact pickup-type) (pickup-type none))
                         0
                         9
                         )
@@ -1000,9 +980,8 @@ swamp-rat-nest-default-event-handler
     (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (if (and *target* (>= (-> self fact-override idle-distance)
-                          (vector-vector-distance (-> self root trans) (-> *target* control trans))
-                          )
+    (if (and *target*
+             (>= (-> self fact idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
              )
         (go swamp-rat-nest-active)
         )
@@ -1102,7 +1081,7 @@ swamp-rat-nest-default-event-handler
   :code (behavior ()
     (process-entity-status! self (entity-perm-status complete) #t)
     (process-entity-status! self (entity-perm-status dead) #t)
-    (drop-pickup (-> self fact-override) #t *entity-pool* (-> self fact-override) 0)
+    (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)
     (while (-> self child-process)
       (suspend)
       )
@@ -1112,11 +1091,11 @@ swamp-rat-nest-default-event-handler
 
 ;; definition for method 11 of type swamp-rat-nest
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! swamp-rat-nest ((this swamp-rat-nest) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-rat-nest) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
-  (set! (-> this fact-override)
+  (set! (-> this fact)
         (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
@@ -1161,7 +1140,7 @@ swamp-rat-nest-default-event-handler
               )
 
 ;; definition for method 20 of type swamp-rat-nest-dummy-a
-(defmethod swamp-rat-nest-dummy-method-20 swamp-rat-nest-dummy-a ((this swamp-rat-nest-dummy-a))
+(defmethod swamp-rat-nest-dummy-method-20 ((this swamp-rat-nest-dummy-a))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -1174,14 +1153,14 @@ swamp-rat-nest-default-event-handler
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton this *swamp-rat-nest-dummy-a-sg* '())
   (none)
   )
 
 ;; definition for method 20 of type swamp-rat-nest-dummy-b
-(defmethod swamp-rat-nest-dummy-method-20 swamp-rat-nest-dummy-b ((this swamp-rat-nest-dummy-b))
+(defmethod swamp-rat-nest-dummy-method-20 ((this swamp-rat-nest-dummy-b))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -1194,14 +1173,14 @@ swamp-rat-nest-default-event-handler
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton this *swamp-rat-nest-dummy-b-sg* '())
   (none)
   )
 
 ;; definition for method 20 of type swamp-rat-nest-dummy-c
-(defmethod swamp-rat-nest-dummy-method-20 swamp-rat-nest-dummy-c ((this swamp-rat-nest-dummy-c))
+(defmethod swamp-rat-nest-dummy-method-20 ((this swamp-rat-nest-dummy-c))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -1214,14 +1193,14 @@ swamp-rat-nest-default-event-handler
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   (initialize-skeleton this *swamp-rat-nest-dummy-c-sg* '())
   (none)
   )
 
 ;; definition for method 21 of type swamp-rat-nest-dummy-a
-(defmethod swamp-rat-nest-dummy-method-21 swamp-rat-nest-dummy-a ((this swamp-rat-nest-dummy-a))
+(defmethod swamp-rat-nest-dummy-method-21 ((this swamp-rat-nest-dummy-a))
   (let ((v1-0 0))
     (let* ((a0-1 '(5 6 7 8 9 10))
            (a1-0 (car a0-1))
@@ -1246,7 +1225,7 @@ swamp-rat-nest-default-event-handler
   )
 
 ;; definition for method 21 of type swamp-rat-nest-dummy-b
-(defmethod swamp-rat-nest-dummy-method-21 swamp-rat-nest-dummy-b ((this swamp-rat-nest-dummy-b))
+(defmethod swamp-rat-nest-dummy-method-21 ((this swamp-rat-nest-dummy-b))
   (let ((v1-0 0))
     (let* ((a0-1 '(5 9 10 6 7 8))
            (a1-0 (car a0-1))
@@ -1271,7 +1250,7 @@ swamp-rat-nest-default-event-handler
   )
 
 ;; definition for method 21 of type swamp-rat-nest-dummy-c
-(defmethod swamp-rat-nest-dummy-method-21 swamp-rat-nest-dummy-c ((this swamp-rat-nest-dummy-c))
+(defmethod swamp-rat-nest-dummy-method-21 ((this swamp-rat-nest-dummy-c))
   (let ((v1-0 0))
     (let* ((a0-1 '(5 6))
            (a1-0 (car a0-1))

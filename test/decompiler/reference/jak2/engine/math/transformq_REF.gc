@@ -2,7 +2,7 @@
 (in-package goal)
 
 ;; definition for method 2 of type transformq
-(defmethod print transformq ((this transformq))
+(defmethod print ((this transformq))
   (format #t "#<transformq @ #x~X~%" this)
   (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
   (format #t "~T~Tquat:  ~F ~F ~F ~F ~%" (-> this quat x) (-> this quat y) (-> this quat z) (-> this quat w))
@@ -11,27 +11,27 @@
   )
 
 ;; definition for method 27 of type trsqv
-(defmethod get-quaternion trsqv ((this trsqv))
+(defmethod get-quaternion ((this trsqv))
   (-> this quat)
   )
 
 ;; definition for method 18 of type trsqv
-(defmethod set-quaternion! trsqv ((this trsqv) (arg0 quaternion))
+(defmethod set-quaternion! ((this trsqv) (arg0 quaternion))
   (quaternion-copy! (get-quaternion this) arg0)
   )
 
 ;; definition for method 21 of type trsqv
-(defmethod rot->dir-targ! trsqv ((this trsqv))
+(defmethod rot->dir-targ! ((this trsqv))
   (quaternion-copy! (-> this dir-targ) (get-quaternion this))
   )
 
 ;; definition for method 22 of type trsqv
-(defmethod y-angle trsqv ((this trsqv))
+(defmethod y-angle ((this trsqv))
   (quaternion-y-angle (get-quaternion this))
   )
 
 ;; definition for method 9 of type trsqv
-(defmethod seek-toward-heading-vec! trsqv ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
+(defmethod seek-toward-heading-vec! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   (let* ((f0-0 (deg-diff (quaternion-y-angle (-> this quat)) (vector-y-angle arg0)))
          (f1-2 (fmin (* arg1 (seconds-per-frame)) (/ (* 5.0 (fabs f0-0)) (the float arg2))))
          (f30-0 (fmax (fmin f0-0 f1-2) (- f1-2)))
@@ -60,7 +60,7 @@
   )
 
 ;; definition for method 10 of type trsqv
-(defmethod set-heading-vec! trsqv ((this trsqv) (arg0 vector))
+(defmethod set-heading-vec! ((this trsqv) (arg0 vector))
   (let ((s3-0 (get-quaternion this)))
     (forward-up-nopitch->quaternion
       s3-0
@@ -71,12 +71,12 @@
   )
 
 ;; definition for method 11 of type trsqv
-(defmethod seek-to-point-toward-point! trsqv ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
+(defmethod seek-to-point-toward-point! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
   (seek-toward-heading-vec! this (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) arg1 arg2)
   )
 
 ;; definition for method 12 of type trsqv
-(defmethod point-toward-point! trsqv ((this trsqv) (arg0 vector))
+(defmethod point-toward-point! ((this trsqv) (arg0 vector))
   (let ((s3-0 (get-quaternion this)))
     (forward-up-nopitch->quaternion
       s3-0
@@ -87,7 +87,7 @@
   )
 
 ;; definition for method 13 of type trsqv
-(defmethod seek-toward-yaw-angle! trsqv ((this trsqv) (arg0 float) (arg1 float) (arg2 time-frame))
+(defmethod seek-toward-yaw-angle! ((this trsqv) (arg0 float) (arg1 float) (arg2 time-frame))
   (let ((s3-0 (method-of-object this seek-toward-heading-vec!))
         (s2-0 (new 'stack-no-clear 'vector))
         )
@@ -100,7 +100,7 @@
   )
 
 ;; definition for method 14 of type trsqv
-(defmethod set-yaw-angle-clear-roll-pitch! trsqv ((this trsqv) (arg0 float))
+(defmethod set-yaw-angle-clear-roll-pitch! ((this trsqv) (arg0 float))
   (let ((s5-0 (method-of-object this set-heading-vec-clear-roll-pitch!))
         (s4-0 (new 'stack-no-clear 'vector))
         )
@@ -113,12 +113,12 @@
   )
 
 ;; definition for method 15 of type trsqv
-(defmethod set-roll-to-grav! trsqv ((this trsqv) (arg0 float))
+(defmethod set-roll-to-grav! ((this trsqv) (arg0 float))
   (set-roll-to-grav-2! this arg0)
   )
 
 ;; definition for method 16 of type trsqv
-(defmethod set-roll-to-grav-2! trsqv ((this trsqv) (arg0 float))
+(defmethod set-roll-to-grav-2! ((this trsqv) (arg0 float))
   (let* ((s5-0 (get-quaternion this))
          (s1-0 (-> *standard-dynamics* gravity-normal))
          (s3-0 (quaternion->matrix (new 'stack-no-clear 'matrix) s5-0))
@@ -135,7 +135,7 @@
   )
 
 ;; definition for method 25 of type trsqv
-(defmethod roll-relative-to-gravity trsqv ((this trsqv))
+(defmethod roll-relative-to-gravity ((this trsqv))
   (let* ((s5-0 (get-quaternion this))
          (gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) s5-0))
          (s5-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0))
@@ -155,7 +155,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defmethod rotate-toward-orientation! trsqv ((this trsqv) (arg0 quaternion) (arg1 float) (arg2 float) (arg3 int) (arg4 int) (arg5 float))
+(defmethod rotate-toward-orientation! ((this trsqv) (arg0 quaternion) (arg1 float) (arg2 float) (arg3 int) (arg4 int) (arg5 float))
   (local-vars
     (f0-4 float)
     (sv-192 (function quaternion vector vector float int quaternion))
@@ -222,7 +222,7 @@
   )
 
 ;; definition for method 19 of type trsqv
-(defmethod set-heading-vec-clear-roll-pitch! trsqv ((this trsqv) (arg0 vector))
+(defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (arg0 vector))
   (forward-up->quaternion
     (get-quaternion this)
     (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
@@ -231,7 +231,7 @@
   )
 
 ;; definition for method 20 of type trsqv
-(defmethod point-toward-point-clear-roll-pitch! trsqv ((this trsqv) (arg0 vector))
+(defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (arg0 vector))
   (forward-up->quaternion
     (get-quaternion this)
     (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)

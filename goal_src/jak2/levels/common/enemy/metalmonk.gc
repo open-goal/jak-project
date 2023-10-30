@@ -15,50 +15,42 @@
               )
 
 (deftype metalmonk-anim-info (structure)
-  ((anim-index int32  :offset-assert   0)
+  ((anim-index  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
 
 
 (deftype metalmonk-global-info (basic)
-  ((prev-yellow-hit int8    :offset-assert   4)
-   (prev-blue-hit   int8    :offset-assert   5)
-   (idle-anim       int32 3 :offset-assert   8)
-   (patrol-anim     int32 2 :offset-assert  20)
-   (notice-anim     int32 2 :offset-assert  28)
-   (charge-anim     int32 2 :offset-assert  36)
-   (attack-anim     int32 2 :offset-assert  44)
-   (knocked-anim    int32 2 :offset-assert  52)
-   (celebrate-anim  int32 2 :offset-assert  60)
-   (yellow-hit-anim int32 4 :offset-assert  68)
-   (blue-hit-anim   int32 3 :offset-assert  84)
+  ((prev-yellow-hit  int8)
+   (prev-blue-hit    int8)
+   (idle-anim        int32  3)
+   (patrol-anim      int32  2)
+   (notice-anim      int32  2)
+   (charge-anim      int32  2)
+   (attack-anim      int32  2)
+   (knocked-anim     int32  2)
+   (celebrate-anim   int32  2)
+   (yellow-hit-anim  int32  4)
+   (blue-hit-anim    int32  3)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x60
-  :flag-assert         #x900000060
   )
 
 
 (deftype metalmonk (nav-enemy)
-  ((new-facing vector       :inline :offset        624)
-   (old-facing vector       :inline :offset        640)
-   (high-time  time-frame           :offset        656)
-   (intro-path path-control         :offset-assert 664)
+  ((new-facing  vector      :inline :offset 624)
+   (old-facing  vector      :inline :offset 640)
+   (high-time   time-frame          :offset 656)
+   (intro-path  path-control)
    )
-  :heap-base #x220
-  :method-count-assert 183
-  :size-assert         #x29c
-  :flag-assert         #xb70220029c
+  (:state-methods
+    attack
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (metalmonk-method-179 (_type_ vector) none 179)
-    (metalmonk-method-180 (_type_ symbol) none 180)
-    (metalmonk-method-181 (_type_ float float) none 181)
-    (metalmonk-method-182 (_type_ float float) none 182)
+    (metalmonk-method-179 (_type_ vector) none)
+    (metalmonk-method-180 (_type_ symbol) none)
+    (metalmonk-method-181 (_type_ float float) none)
+    (metalmonk-method-182 (_type_ float float) none)
     )
   )
 
@@ -254,14 +246,14 @@
 (set! (-> *metalmonk-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod metalmonk-method-179 metalmonk ((this metalmonk) (arg0 vector))
+(defmethod metalmonk-method-179 ((this metalmonk) (arg0 vector))
   (set! (-> arg0 quad)
         (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)) vector 2 quad)
         )
   (none)
   )
 
-(defmethod metalmonk-method-181 metalmonk ((this metalmonk) (arg0 float) (arg1 float))
+(defmethod metalmonk-method-181 ((this metalmonk) (arg0 float) (arg1 float))
   (let ((f28-0 (vector-dot (-> this new-facing) (-> this old-facing)))
         (f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0))))
         )
@@ -315,7 +307,7 @@
   (none)
   )
 
-(defmethod metalmonk-method-182 metalmonk ((this metalmonk) (arg0 float) (arg1 float))
+(defmethod metalmonk-method-182 ((this metalmonk) (arg0 float) (arg1 float))
   (let ((f28-0 (vector-dot (-> this new-facing) (-> this old-facing)))
         (f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0))))
         )
@@ -368,7 +360,7 @@
   (none)
   )
 
-(defmethod track-target! metalmonk ((this metalmonk))
+(defmethod track-target! ((this metalmonk))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -382,7 +374,7 @@
   (none)
   )
 
-(defmethod general-event-handler metalmonk ((this metalmonk) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this metalmonk) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -441,7 +433,7 @@
     )
   )
 
-(defmethod enemy-method-104 metalmonk ((this metalmonk) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod enemy-method-104 ((this metalmonk) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
   (let* ((s3-0 arg0)
          (a0-2 (if (type? s3-0 process-focusable)
                    s3-0
@@ -483,7 +475,7 @@
     )
   )
 
-(defmethod enemy-method-84 metalmonk ((this metalmonk) (arg0 enemy-jump-info))
+(defmethod enemy-method-84 ((this metalmonk) (arg0 enemy-jump-info))
   (let* ((f0-0 (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos)))
          (f1-1 (fmax (-> this enemy-info jump-height-min) (* (-> this enemy-info jump-height-factor) f0-0)))
          (f0-3 (fmax (-> arg0 start-pos y) (-> arg0 dest-pos y)))
@@ -494,11 +486,11 @@
   (none)
   )
 
-(defmethod enemy-method-89 metalmonk ((this metalmonk) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this metalmonk) (arg0 enemy-jump-info))
   #f
   )
 
-(defmethod enemy-method-87 metalmonk ((this metalmonk) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this metalmonk) (arg0 enemy-jump-info))
   (let ((s5-0 (-> this draw art-group data (-> this enemy-info run-anim)))
         (v1-6 (if (> (-> this skel active-channels) 0)
                   (-> this skel root-channel 0 frame-group)
@@ -519,11 +511,11 @@
   #t
   )
 
-(defmethod enemy-method-88 metalmonk ((this metalmonk) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this metalmonk) (arg0 enemy-jump-info))
   #f
   )
 
-(defmethod enemy-method-90 metalmonk ((this metalmonk) (arg0 int) (arg1 enemy-jump-info))
+(defmethod enemy-method-90 ((this metalmonk) (arg0 int) (arg1 enemy-jump-info))
   (case arg0
     ((3)
      (let ((a0-1 (-> this skel root-channel 0)))
@@ -899,7 +891,7 @@
     )
   )
 
-(defmethod enemy-method-77 metalmonk ((this metalmonk) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this metalmonk) (arg0 (pointer float)))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (ja-channel-push! 1 0)
@@ -966,7 +958,7 @@
   #t
   )
 
-(defmethod enemy-method-78 metalmonk ((this metalmonk) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this metalmonk) (arg0 (pointer float)))
   (cond
     ((= (-> this incoming knocked-type) (knocked-type knocked-type-6))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -1021,7 +1013,7 @@
     )
   )
 
-(defmethod metalmonk-method-180 metalmonk ((this metalmonk) (arg0 symbol))
+(defmethod metalmonk-method-180 ((this metalmonk) (arg0 symbol))
   (let ((v1-1 (-> this root root-prim)))
     (dotimes (a0-1 1)
       (let ((a2-1 (-> (the-as collide-shape-prim-group v1-1) child a0-1)))
@@ -1036,7 +1028,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! metalmonk ((this metalmonk))
+(defmethod init-enemy-collision! ((this metalmonk))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1145,19 +1137,19 @@
   (none)
   )
 
-(defmethod coin-flip? metalmonk ((this metalmonk))
+(defmethod coin-flip? ((this metalmonk))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod relocate metalmonk ((this metalmonk) (arg0 int))
+(defmethod relocate ((this metalmonk) (arg0 int))
   (if (nonzero? (-> this intro-path))
       (&+! (-> this intro-path) arg0)
       )
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! metalmonk ((this metalmonk))
+(defmethod init-enemy! ((this metalmonk))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (stack-size-set! (-> this main-thread) 256)
   (initialize-skeleton

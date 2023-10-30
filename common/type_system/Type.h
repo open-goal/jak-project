@@ -32,6 +32,7 @@ struct MethodInfo {
   bool overrides_parent = false;
   bool only_overrides_docstring = false;
   std::optional<std::string> docstring;
+  std::optional<std::string> overlay_name;
 
   bool operator==(const MethodInfo& other) const;
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }

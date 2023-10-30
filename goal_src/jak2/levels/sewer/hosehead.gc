@@ -59,55 +59,53 @@
   )
 
 (deftype hosehead (nav-enemy)
-  ((on-wall?               symbol               :offset-assert 604)
-   (sentry?                symbol               :offset-assert 608)
-   (shot-by-ruffian?       symbol               :offset-assert 612)
-   (on-stop-sentry         function             :offset-assert 616)
-   (jump-point             vector       :inline :offset-assert 624)
-   (last-time-dist-changed time-frame           :offset-assert 640)
-   (next-lazer-time        time-frame           :offset-assert 648)
-   (fire-beam?             symbol               :offset-assert 656)
-   (head-angle             degrees              :offset-assert 660)
-   (head-angle-inc         degrees              :offset-assert 664)
-   (target-pos             vector       :inline :offset-assert 672)
-   (come-from-notice       symbol               :offset-assert 688)
-   (allow-head             symbol               :offset-assert 692)
-   (head-joint-mod         joint-mod            :offset-assert 696)
-   (joint-ik               joint-mod-ik 4       :offset-assert 700)
-   (delta-y-ik             float        4       :offset-assert 716)
-   (lazer-dist             float                :offset        740)
-   (lazer-pos-sound        vector       :inline :offset-assert 752)
-   (lazer-sound            sound-id             :offset-assert 768)
-   (lazer-sound2           sound-id             :offset-assert 772)
-   (sync                   sync-eased   :inline :offset-assert 776)
-   (angle-sentry           degrees              :offset-assert 820)
-   (lazer-length           float                :offset-assert 824)
+  ((on-wall?                symbol)
+   (sentry?                 symbol)
+   (shot-by-ruffian?        symbol)
+   (on-stop-sentry          function)
+   (jump-point              vector        :inline)
+   (last-time-dist-changed  time-frame)
+   (next-lazer-time         time-frame)
+   (fire-beam?              symbol)
+   (head-angle              degrees)
+   (head-angle-inc          degrees)
+   (target-pos              vector        :inline)
+   (come-from-notice        symbol)
+   (allow-head              symbol)
+   (head-joint-mod          joint-mod)
+   (joint-ik                joint-mod-ik  4)
+   (delta-y-ik              float         4)
+   (lazer-dist              float         :offset 740)
+   (lazer-pos-sound         vector        :inline)
+   (lazer-sound             sound-id)
+   (lazer-sound2            sound-id)
+   (sync                    sync-eased    :inline)
+   (angle-sentry            degrees)
+   (lazer-length            float)
    )
-  :heap-base #x2c0
-  :method-count-assert 198
-  :size-assert         #x33c
-  :flag-assert         #xc602c0033c
+  (:state-methods
+    ambush-land
+    idle-sentry
+    active-wall
+    notice-wall
+    hostile-sentry
+    fire
+    attack
+    )
   (:methods
-    (ambush-land () _type_ :state 178)
-    (idle-sentry () _type_ :state 179)
-    (active-wall () _type_ :state 180)
-    (notice-wall () _type_ :state 181)
-    (hostile-sentry () _type_ :state 182)
-    (fire () _type_ :state 183)
-    (attack () _type_ :state 184)
-    (hosehead-method-185 (_type_) none 185)
-    (hosehead-method-186 (_type_) none 186)
-    (hosehead-method-187 (_type_ vector) none 187)
-    (hosehead-method-188 (_type_) none 188)
-    (hosehead-method-189 (_type_) none 189)
-    (hosehead-method-190 (_type_) symbol 190)
-    (hosehead-method-191 (_type_ vector vector) none 191)
-    (hosehead-method-192 (_type_ vector) symbol 192)
-    (hosehead-method-193 (_type_) none 193)
-    (hosehead-method-194 (_type_) none 194)
-    (hosehead-method-195 (_type_) symbol 195)
-    (hosehead-method-196 (_type_) none 196)
-    (hosehead-method-197 (_type_) none 197)
+    (hosehead-method-185 (_type_) none)
+    (hosehead-method-186 (_type_) none)
+    (hosehead-method-187 (_type_ vector) none)
+    (hosehead-method-188 (_type_) none)
+    (hosehead-method-189 (_type_) none)
+    (hosehead-method-190 (_type_) symbol)
+    (hosehead-method-191 (_type_ vector vector) none)
+    (hosehead-method-192 (_type_ vector) symbol)
+    (hosehead-method-193 (_type_) none)
+    (hosehead-method-194 (_type_) none)
+    (hosehead-method-195 (_type_) symbol)
+    (hosehead-method-196 (_type_) none)
+    (hosehead-method-197 (_type_) none)
     )
   )
 
@@ -309,7 +307,7 @@
 
 (set! (-> *hosehead-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod init-enemy-collision! hosehead ((this hosehead))
+(defmethod init-enemy-collision! ((this hosehead))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -381,12 +379,9 @@
   )
 
 (deftype ik-setup (structure)
-  ((elbow-index int32  :offset-assert   0)
-   (hand-dist   float  :offset-assert   4)
+  ((elbow-index  int32)
+   (hand-dist    float)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -399,27 +394,21 @@
         )
 
 (deftype hosehead-anim-info (structure)
-  ((hit-index  int32  :offset-assert   0)
-   (land-index int32  :offset-assert   4)
+  ((hit-index   int32)
+   (land-index  int32)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
 (deftype hosehead-global-info (basic)
-  ((prev-yellow-hit int8                         :offset-assert   4)
-   (prev-blue-hit   int8                         :offset-assert   5)
-   (prev-knocked    int8                         :offset-assert   6)
-   (yellow-hit-anim hosehead-anim-info 2 :inline :offset-assert   8)
-   (blue-hit-anim   hosehead-anim-info 3 :inline :offset         24)
-   (knocked-anim    hosehead-anim-info 2 :inline :offset         48)
+  ((prev-yellow-hit  int8)
+   (prev-blue-hit    int8)
+   (prev-knocked     int8)
+   (yellow-hit-anim  hosehead-anim-info  2 :inline)
+   (blue-hit-anim    hosehead-anim-info  3 :inline :offset  24)
+   (knocked-anim     hosehead-anim-info  2 :inline :offset  48)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
@@ -440,7 +429,7 @@
                                  )
         )
 
-(defmethod enemy-method-77 hosehead ((this hosehead) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this hosehead) (arg0 (pointer float)))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.17))
@@ -510,7 +499,7 @@
     )
   )
 
-(defmethod enemy-method-78 hosehead ((this hosehead) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this hosehead) (arg0 (pointer float)))
   (local-vars (v1-15 knocked-type))
   (cond
     ((zero? (-> this hit-points))
@@ -560,7 +549,7 @@
     )
   )
 
-(defmethod hosehead-method-189 hosehead ((this hosehead))
+(defmethod hosehead-method-189 ((this hosehead))
   (let ((a0-2 (handle->process (-> this focus handle))))
     (when a0-2
       (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -574,7 +563,7 @@
   (none)
   )
 
-(defmethod hosehead-method-190 hosehead ((this hosehead))
+(defmethod hosehead-method-190 ((this hosehead))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -664,7 +653,7 @@
     )
   )
 
-(defmethod hosehead-method-197 hosehead ((this hosehead))
+(defmethod hosehead-method-197 ((this hosehead))
   (let ((s2-0 (new 'stack-no-clear 'matrix)))
     (let* ((a2-0 (-> this node-list data 12 bone transform))
            (v1-2 (-> a2-0 quad 0))
@@ -755,7 +744,7 @@
   (none)
   )
 
-(defmethod enemy-method-88 hosehead ((this hosehead) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this hosehead) (arg0 enemy-jump-info))
   (ja-channel-push! 1 (seconds 0.075))
   (let ((a1-2 (-> this draw art-group data (-> this enemy-info jump-land-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -769,7 +758,7 @@
   #t
   )
 
-(defmethod general-event-handler hosehead ((this hosehead) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this hosehead) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -805,7 +794,7 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod hosehead-method-186 hosehead ((this hosehead))
+(defmethod hosehead-method-186 ((this hosehead))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -921,7 +910,7 @@
     )
   )
 
-(defmethod hosehead-method-185 hosehead ((this hosehead))
+(defmethod hosehead-method-185 ((this hosehead))
   (countdown (s5-0 (length (-> this actor-group 1)))
     (let* ((v1-5 (-> this actor-group 1 data s5-0 actor))
            (a0-4 (if v1-5
@@ -1089,7 +1078,7 @@
     )
   )
 
-(defmethod hosehead-method-192 hosehead ((this hosehead) (arg0 vector))
+(defmethod hosehead-method-192 ((this hosehead) (arg0 vector))
   (local-vars (a2-7 float) (a2-14 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -1211,7 +1200,7 @@
   )
 
 ;; WARN: Return type mismatch float vs none.
-(defmethod hosehead-method-191 hosehead ((this hosehead) (arg0 vector) (arg1 vector))
+(defmethod hosehead-method-191 ((this hosehead) (arg0 vector) (arg1 vector))
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user10))
      (countdown (s3-0 8)
@@ -1403,7 +1392,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod hosehead-method-196 hosehead ((this hosehead))
+(defmethod hosehead-method-196 ((this hosehead))
   (local-vars (sv-768 nav-control) (sv-784 vector) (sv-800 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1661,7 +1650,7 @@
     )
   )
 
-(defmethod hosehead-method-195 hosehead ((this hosehead))
+(defmethod hosehead-method-195 ((this hosehead))
   (= *target* (handle->process (-> this focus handle)))
   )
 
@@ -1958,7 +1947,7 @@
     )
   )
 
-(defmethod hosehead-method-187 hosehead ((this hosehead) (arg0 vector))
+(defmethod hosehead-method-187 ((this hosehead) (arg0 vector))
   (local-vars (sv-128 vector))
   (set! sv-128 (new 'stack-no-clear 'vector))
   (let ((s3-0 (new 'stack-no-clear 'vector))
@@ -1992,7 +1981,7 @@
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod hosehead-method-188 hosehead ((this hosehead))
+(defmethod hosehead-method-188 ((this hosehead))
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
     (quaternion-identity! gp-0)
     (quaternion-pseudo-seek (-> this head-joint-mod quat) (-> this head-joint-mod quat) gp-0 (seconds-per-frame))
@@ -2000,7 +1989,7 @@
   (none)
   )
 
-(defmethod track-target! hosehead ((this hosehead))
+(defmethod track-target! ((this hosehead))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -2021,7 +2010,7 @@
   (none)
   )
 
-(defmethod hosehead-method-194 hosehead ((this hosehead))
+(defmethod hosehead-method-194 ((this hosehead))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -2155,7 +2144,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod enemy-method-106 hosehead ((this hosehead) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
+(defmethod enemy-method-106 ((this hosehead) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
   (let ((t9-0 (method-of-type nav-enemy enemy-method-106)))
     (t9-0 this arg0 arg1 arg2 arg3)
     )
@@ -2168,7 +2157,7 @@
   (none)
   )
 
-(defmethod damage-amount-from-attack hosehead ((this hosehead) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this hosehead) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   (let* ((t9-0 (method-of-type nav-enemy damage-amount-from-attack))
          (v0-0 (t9-0 this arg0 arg1))
@@ -2180,7 +2169,7 @@
     )
   )
 
-(defmethod enemy-method-58 hosehead ((this hosehead) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-method-58 ((this hosehead) (arg0 process) (arg1 event-message-block))
   (let* ((t9-0 (method-of-type nav-enemy enemy-method-58))
          (v0-0 (t9-0 this arg0 arg1))
          )
@@ -2191,7 +2180,7 @@
     )
   )
 
-(defmethod relocate hosehead ((this hosehead) (arg0 int))
+(defmethod relocate ((this hosehead) (arg0 int))
   (if (nonzero? (-> this head-joint-mod))
       (&+! (-> this head-joint-mod) arg0)
       )
@@ -2203,7 +2192,7 @@
   (call-parent-method this arg0)
   )
 
-(defmethod init-enemy! hosehead ((this hosehead))
+(defmethod init-enemy! ((this hosehead))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (stack-size-set! (-> this main-thread) 256)
@@ -2320,11 +2309,11 @@
   (none)
   )
 
-(defmethod go-ambush hosehead ((this hosehead))
+(defmethod go-ambush ((this hosehead))
   (go (method-of-object this ambush))
   )
 
-(defmethod go-hostile hosehead ((this hosehead))
+(defmethod go-hostile ((this hosehead))
   (if (-> this sentry?)
       (go (method-of-object this hostile-sentry))
       (go (method-of-object this hostile))
@@ -2332,7 +2321,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-idle hosehead ((this hosehead))
+(defmethod go-idle ((this hosehead))
   (if (-> this sentry?)
       (go (method-of-object this idle-sentry))
       (go (method-of-object this idle))

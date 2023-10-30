@@ -50,34 +50,28 @@
 
 (deftype camera-remote (camera-slave)
   ()
-  :heap-base #xa20
-  :method-count-assert 14
-  :size-assert         #xa94
-  :flag-assert         #xe0a200a94
   )
 
 
 (deftype remote (process-drawable)
-  ((parent        (pointer camera-slave)         :override)
-   (base-trans    vector                 :inline :offset-assert 208)
-   (focus         focus                  :inline :offset-assert 224)
-   (seeker        cam-float-seeker       :inline :offset-assert 236)
-   (start-time    time-frame                     :offset-assert 264)
-   (blend         float                          :offset-assert 272)
-   (twist         float                          :offset-assert 276)
-   (speak-effect? basic                          :offset-assert 280)
+  ((parent         (pointer camera-slave) :override)
+   (base-trans     vector                  :inline)
+   (focus          focus                   :inline)
+   (seeker         cam-float-seeker        :inline)
+   (start-time     time-frame)
+   (blend          float)
+   (twist          float)
+   (speak-effect?  basic)
    )
-  :heap-base #xa0
-  :method-count-assert 26
-  :size-assert         #x11c
-  :flag-assert         #x1a00a0011c
+  (:state-methods
+    enter
+    idle
+    exit
+    )
   (:methods
-    (enter () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (exit () _type_ :state 22)
-    (init (_type_) none 23)
-    (get-track-pt-and-scale (_type_ vector) float 24)
-    (post-common (_type_) none 25)
+    (init (_type_) none)
+    (get-track-pt-and-scale (_type_ vector) float)
+    (post-common (_type_) none)
     )
   )
 
@@ -89,7 +83,7 @@
               :sort 1
               )
 
-(defmethod get-track-pt-and-scale remote ((this remote) (arg0 vector))
+(defmethod get-track-pt-and-scale ((this remote) (arg0 vector))
   (let ((s4-0 (handle->process (-> this focus handle))))
     (when s4-0
       (set! (-> arg0 quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
@@ -101,7 +95,7 @@
   (lerp-scale 1.0 0.0 (-> this blend) 0.8 1.0)
   )
 
-(defmethod post-common remote ((this remote))
+(defmethod post-common ((this remote))
   (with-pp
     (rlet ((acc :class vf)
            (vf0 :class vf)
@@ -310,7 +304,7 @@
   )
 
 ;; WARN: Return type mismatch remote vs none.
-(defmethod init remote ((this remote))
+(defmethod init ((this remote))
   (reset-to-collide-spec (-> this focus) (collide-spec jak player-list))
   (initialize-skeleton
     this
@@ -339,12 +333,8 @@
   )
 
 (deftype voicebox (remote)
-  ((hint handle  :offset-assert 288)
+  ((hint  handle)
    )
-  :heap-base #xb0
-  :method-count-assert 26
-  :size-assert         #x128
-  :flag-assert         #x1a00b00128
   )
 
 
@@ -396,28 +386,26 @@
   )
 
 (deftype judge (remote)
-  ((total-time time-frame  :offset-assert 288)
-   (beep-time  time-frame  :offset-assert 296)
-   (hud-timer  handle      :offset-assert 304)
-   (score      uint8       :offset-assert 312)
+  ((total-time  time-frame)
+   (beep-time   time-frame)
+   (hud-timer   handle)
+   (score       uint8)
    )
-  :heap-base #xc0
-  :method-count-assert 28
-  :size-assert         #x139
-  :flag-assert         #x1c00c00139
+  (:state-methods
+    wait
+    )
   (:methods
-    (wait () _type_ :state 26)
-    (setup-collision (_type_) none 27)
+    (setup-collision (_type_) none)
     )
   )
 
 
-(defmethod get-track-pt-and-scale judge ((this judge) (arg0 vector))
+(defmethod get-track-pt-and-scale ((this judge) (arg0 vector))
   (set! (-> arg0 quad) (-> this base-trans quad))
   1.0
   )
 
-(defmethod post-common judge ((this judge))
+(defmethod post-common ((this judge))
   (ja-post)
   (if (type? (-> this root) collide-shape)
       (update-transforms (the-as collide-shape (-> this root)))
@@ -516,7 +504,7 @@
     )
   )
 
-(defmethod setup-collision judge ((this judge))
+(defmethod setup-collision ((this judge))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec collectable))
@@ -537,7 +525,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! judge ((this judge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this judge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

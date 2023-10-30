@@ -41,7 +41,7 @@
                )
            (set! gp-0 (lookup-part-group-pointer-by-name (the-as string s3-0)))
            (if (the-as (pointer object) gp-0)
-               ;; TODO - manual fix here
+               ;; og:preserve-this TODO - manual fix here
                (set! (-> (the-as (pointer int32) s4-0)) (the-as int gp-0))
                )
            )
@@ -138,7 +138,7 @@
   (none)
   )
 
-(defmethod move-along-path swingpole ((this swingpole))
+(defmethod move-along-path ((this swingpole))
   (with-pp
     (if (nonzero? (-> this draw))
         (ja-post)
@@ -240,7 +240,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! swingpole ((this swingpole) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -337,7 +337,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! process-hidden ((this process-hidden) (arg0 entity-actor))
+(defmethod init-from-entity! ((this process-hidden) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -352,17 +352,11 @@ This commonly includes things such as:
 
 (deftype target-start (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   )
 
 
 (deftype camera-start (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   )
 
 
@@ -1025,7 +1019,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate part-tracker ((this part-tracker))
+(defmethod deactivate ((this part-tracker))
   (if (nonzero? (-> this part))
       (kill-and-free-particles (-> this part))
       )
@@ -1034,7 +1028,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod notify-parent-of-death part-tracker ((this part-tracker))
+(defmethod notify-parent-of-death ((this part-tracker))
   (with-pp
     (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> gp-0 from) (process->ppointer pp))
@@ -1250,7 +1244,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod notify-parent-of-death lightning-tracker ((this lightning-tracker))
+(defmethod notify-parent-of-death ((this lightning-tracker))
   (with-pp
     (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> gp-0 from) (process->ppointer pp))
@@ -1272,7 +1266,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod update lightning-tracker ((this lightning-tracker))
+(defmethod update ((this lightning-tracker))
   (if (-> this callback)
       ((-> this callback) this)
       )
@@ -1554,9 +1548,8 @@ This commonly includes things such as:
       (set! (-> self target-joint1) -1)
       ;; og:preserve-this hack, fixed bug in original game
       (when arg5
-        (set! (-> self offset1 quad) (-> arg5 quad))
-        )
-      )
+      (set! (-> self offset1 quad) (-> arg5 quad))
+      ))
     )
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self callback) (the-as (function lightning-tracker none) arg2))
@@ -1700,16 +1693,12 @@ This commonly includes things such as:
   )
 
 (deftype med-res-level (process-drawable)
-  ((level-name basic  :offset-assert 200)
-   (part-mode  basic  :offset-assert 204)
-   (index      int32  :offset-assert 208)
+  ((level-name  basic)
+   (part-mode   basic)
+   (index       int32)
    )
-  :heap-base #x60
-  :method-count-assert 21
-  :size-assert         #xd4
-  :flag-assert         #x15006000d4
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
@@ -1745,7 +1734,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! med-res-level ((this med-res-level) (arg0 entity-actor))
+(defmethod init-from-entity! ((this med-res-level) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1773,7 +1762,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate part-spawner ((this part-spawner))
+(defmethod deactivate ((this part-spawner))
   (if (nonzero? (-> this part))
       (kill-and-free-particles (-> this part))
       )
@@ -1784,7 +1773,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod is-in-view? part-spawner ((this part-spawner))
+(defmethod is-in-view? ((this part-spawner))
   (sphere<-vector+r! (-> this world-sphere) (-> this root trans) (-> this radius))
   (sphere-in-view-frustum? (-> this world-sphere))
   )
@@ -1826,7 +1815,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! part-spawner ((this part-spawner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1889,22 +1878,18 @@ This commonly includes things such as:
   )
 
 (deftype launcher (process-drawable)
-  ((root            collide-shape         :override)
-   (spring-height   meters                :offset-assert 200)
-   (camera          state                 :offset-assert 204)
-   (active-distance float                 :offset-assert 208)
-   (seek-time       time-frame            :offset-assert 216)
-   (dest            vector        :inline :offset-assert 224)
-   (sound-id        sound-id              :offset-assert 240)
+  ((root             collide-shape :override)
+   (spring-height    meters)
+   (camera           state)
+   (active-distance  float)
+   (seek-time        time-frame)
+   (dest             vector         :inline)
+   (sound-id         sound-id)
    )
-  :heap-base #x80
-  :method-count-assert 23
-  :size-assert         #xf4
-  :flag-assert         #x17008000f4
-  (:methods
-    (idle () _type_ :state 20)
-    (active () _type_ :state 21)
-    (deactivated () _type_ :state 22)
+  (:state-methods
+    idle
+    active
+    deactivated
     )
   )
 
@@ -2433,7 +2418,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! launcher ((this launcher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this launcher) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2724,7 +2709,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod setup-explosion-collision explosion ((this explosion))
+(defmethod setup-explosion-collision ((this explosion))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 penetrate-using) (penetrate explode))
     (let ((v1-3 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
@@ -2745,7 +2730,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod explosion-method-22 explosion ((this explosion))
+(defmethod explosion-method-22 ((this explosion))
   0
   (none)
   )

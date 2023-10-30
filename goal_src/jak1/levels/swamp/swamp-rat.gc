@@ -12,22 +12,18 @@
 ;; DECOMP BEGINS
 
 (deftype swamp-rat (nav-enemy)
-  ((up-vector          vector     :inline :offset-assert 400)
-   (state-float        float              :offset-assert 416)
-   (state-vector       vector     :inline :offset-assert 432)
-   (_hack              uint64             :offset-assert 448)
-   (wiggle-time        time-frame         :offset-assert 456)
-   (wiggle-angle       float              :offset-assert 464)
-   (delta-wiggle-angle float              :offset-assert 468)
-   (wiggle-factor      float              :offset-assert 472)
-   (min-height         float              :offset-assert 476)
-   (chase-rest-time    time-frame         :offset-assert 480)
-   (target-nav-time    time-frame         :offset-assert 488)
+  ((up-vector           vector  :inline)
+   (state-float         float)
+   (state-vector        vector  :inline)
+   (_hack               uint64)
+   (wiggle-time         time-frame)
+   (wiggle-angle        float)
+   (delta-wiggle-angle  float)
+   (wiggle-factor       float)
+   (min-height          float)
+   (chase-rest-time     time-frame)
+   (target-nav-time     time-frame)
    )
-  :heap-base #x180
-  :method-count-assert 76
-  :size-assert         #x1f0
-  :flag-assert         #x4c018001f0
   (:states
     swamp-rat-spawn
     )
@@ -40,7 +36,7 @@
               :longest-edge (meters 1)
               )
 
-(defmethod touch-handler swamp-rat ((this swamp-rat) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this swamp-rat) (arg0 process) (arg1 event-message-block))
   (when ((method-of-type touching-shapes-entry prims-touching?)
          (the-as touching-shapes-entry (-> arg1 param 0))
          (-> this collide-info)
@@ -75,7 +71,7 @@
 
 swamp-rat-default-event-handler
 
-(defmethod common-post swamp-rat ((this swamp-rat))
+(defmethod common-post ((this swamp-rat))
   (when (logtest? (-> this collide-info status) (cshape-moving-flags onsurf))
     (vector-deg-seek (-> this up-vector) (-> this up-vector) (-> this collide-info surface-normal) 910.2222)
     (vector-normalize! (-> this up-vector) 1.0)
@@ -89,7 +85,7 @@ swamp-rat-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-38 swamp-rat ((this swamp-rat))
+(defmethod nav-enemy-method-38 ((this swamp-rat))
   (integrate-for-enemy-with-move-to-ground!
     (-> this collide-info)
     (-> this collide-info transv)
@@ -409,7 +405,7 @@ swamp-rat-default-event-handler
                                      )
         )
 
-(defmethod initialize-collision swamp-rat ((this swamp-rat))
+(defmethod initialize-collision ((this swamp-rat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -432,7 +428,7 @@ swamp-rat-default-event-handler
   (none)
   )
 
-(defmethod nav-enemy-method-48 swamp-rat ((this swamp-rat))
+(defmethod nav-enemy-method-48 ((this swamp-rat))
   (initialize-skeleton this *swamp-rat-sg* '())
   (init-defaults! this *swamp-rat-nav-enemy-info*)
   (vector-float*! (-> this collide-info scale) *identity-vector* 1.5)

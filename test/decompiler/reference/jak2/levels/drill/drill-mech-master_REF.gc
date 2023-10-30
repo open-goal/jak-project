@@ -3,7 +3,7 @@
 
 ;; definition for method 15 of type hud-cpanel
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw hud-cpanel ((this hud-cpanel))
+(defmethod draw ((this hud-cpanel))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 502.0 (* 130.0 (-> this offset))))
@@ -18,7 +18,7 @@
 
 ;; definition for method 16 of type hud-cpanel
 ;; WARN: Return type mismatch int vs none.
-(defmethod update-values hud-cpanel ((this hud-cpanel))
+(defmethod update-values ((this hud-cpanel))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
@@ -27,7 +27,7 @@
 
 ;; definition for method 17 of type hud-cpanel
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-callback hud-cpanel ((this hud-cpanel))
+(defmethod init-callback ((this hud-cpanel))
   (set! (-> this level) (level-get *level* 'drillmid))
   (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x10 :page #xb1e)))
   (set! (-> this gui-id)
@@ -46,36 +46,34 @@
 
 ;; definition of type drill-mech-master
 (deftype drill-mech-master (process)
-  ((cpanel-count         int8                      :offset-assert 128)
-   (alarm-sound-id       sound-id                  :offset-assert 132)
-   (explosion-sound-id   sound-id                  :offset-assert 136)
-   (exited?              symbol                    :offset-assert 140)
-   (killed-jak?          symbol                    :offset-assert 144)
-   (part-doom            sparticle-launch-control  :offset-assert 148)
-   (hud-cpanel           handle                    :offset-assert 152)
-   (hud-timer            handle                    :offset-assert 160)
-   (scene-player-handle  handle                    :offset-assert 168)
-   (state-time           time-frame                :offset-assert 176)
-   (next-warn-time       time-frame                :offset-assert 184)
-   (total-countdown-time time-frame                :offset-assert 192)
-   (started-timer-time   time-frame                :offset-assert 200)
+  ((cpanel-count          int8)
+   (alarm-sound-id        sound-id)
+   (explosion-sound-id    sound-id)
+   (exited?               symbol)
+   (killed-jak?           symbol)
+   (part-doom             sparticle-launch-control)
+   (hud-cpanel            handle)
+   (hud-timer             handle)
+   (scene-player-handle   handle)
+   (state-time            time-frame)
+   (next-warn-time        time-frame)
+   (total-countdown-time  time-frame)
+   (started-timer-time    time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xd0
-  :flag-assert         #x14005000d0
+  (:state-methods
+    idle
+    active
+    hostile
+    failed
+    victory
+    )
   (:methods
-    (idle () _type_ :state 14)
-    (active () _type_ :state 15)
-    (hostile () _type_ :state 16)
-    (failed () _type_ :state 17)
-    (victory () _type_ :state 18)
-    (spawn-hud-panel (_type_ symbol) none 19)
+    (spawn-hud-panel (_type_ symbol) none)
     )
   )
 
 ;; definition for method 3 of type drill-mech-master
-(defmethod inspect drill-mech-master ((this drill-mech-master))
+(defmethod inspect ((this drill-mech-master))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -104,7 +102,7 @@
 (define *drill-mech-master* (the-as (pointer drill-mech-master) #f))
 
 ;; definition for method 10 of type drill-mech-master
-(defmethod deactivate drill-mech-master ((this drill-mech-master))
+(defmethod deactivate ((this drill-mech-master))
   (set! *drill-mech-master* (the-as (pointer drill-mech-master) #f))
   (if (nonzero? (-> this alarm-sound-id))
       (sound-stop (-> this alarm-sound-id))
@@ -118,7 +116,7 @@
 
 ;; definition for method 7 of type drill-mech-master
 ;; WARN: Return type mismatch process vs drill-mech-master.
-(defmethod relocate drill-mech-master ((this drill-mech-master) (arg0 int))
+(defmethod relocate ((this drill-mech-master) (arg0 int))
   (if (nonzero? (-> this part-doom))
       (&+! (-> this part-doom) arg0)
       )
@@ -156,7 +154,7 @@
 
 ;; definition for method 19 of type drill-mech-master
 ;; WARN: Return type mismatch int vs none.
-(defmethod spawn-hud-panel drill-mech-master ((this drill-mech-master) (arg0 symbol))
+(defmethod spawn-hud-panel ((this drill-mech-master) (arg0 symbol))
   "Spawn the hud panel for the drill-mech mission."
   (cond
     ((and arg0 (nonzero? (-> this cpanel-count)))

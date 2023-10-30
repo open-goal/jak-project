@@ -11,7 +11,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod update-from-engine setting-data ((this setting-data) (arg0 engine))
+(defmethod update-from-engine ((this setting-data) (arg0 engine))
   "this goes through the list of desired setting changes in 
    the engine/connection list and updates the setting-data"
   (let ((conn (the-as connection (-> arg0 alive-list-end)))
@@ -45,7 +45,7 @@
            )
          )
         (('sfx-volume)
-         (when (or (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask progress)))
+         (when (or (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask progress)))
                    (= (get-process conn) (ppointer->process *progress-process*))
                    )
            (case (the-as symbol (-> conn param1))
@@ -203,14 +203,14 @@
   this
   )
 
-(defmethod add-setting setting-control ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+(defmethod add-setting ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   "add a setting for the process."
   (add-connection (-> this engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
   )
 
-(defmethod set-setting setting-control ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+(defmethod set-setting ((this setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
   "(re-)sets a setting for the process."
   (remove-setting this arg0 arg1)
   (add-connection (-> this engine) arg0 arg1 arg2 arg3 arg4)
@@ -218,7 +218,7 @@
   (none)
   )
 
-(defmethod remove-setting setting-control ((this setting-control) (arg0 process) (arg1 symbol))
+(defmethod remove-setting ((this setting-control) (arg0 process) (arg1 symbol))
   "remove a setting from the specified process.
    if arg1 = #t then remove ALL settings for that process"
   (when arg0
@@ -239,8 +239,7 @@
   (none)
   )
 
-
-(defmethod apply-settings setting-control ((this setting-control))
+(defmethod apply-settings ((this setting-control))
   "Update the current settings. This only updates settings that are 'safe' to do multiple times per frame."
   (let ((gp-0 (-> this current)))
     (let ((s5-0 (-> this target)))
@@ -278,8 +277,7 @@
     )
   )
 
-
-(defmethod update setting-control ((this setting-control))
+(defmethod update ((this setting-control))
   "Do a per-frame update of all settings"
   ;; compute all settings
   (apply-settings this)
@@ -290,19 +288,19 @@
       ;; the volume change is done slowly
       (when *sound-player-enable*
         (when (!= (-> gp-0 sfx-volume) (-> s5-1 sfx-volume))
-          (seek! (-> gp-0 sfx-volume) (-> s5-1 sfx-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (seek! (-> gp-0 sfx-volume) (-> s5-1 sfx-volume) (* 100.0 (seconds-per-frame)))
           (sound-set-volume (sound-group sfx) (-> gp-0 sfx-volume))
           )
         (when (!= (-> gp-0 music-volume) (-> s5-1 music-volume))
-          (seek! (-> gp-0 music-volume) (-> s5-1 music-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (seek! (-> gp-0 music-volume) (-> s5-1 music-volume) (* 100.0 (seconds-per-frame)))
           (sound-set-volume (sound-group music) (-> gp-0 music-volume))
           )
         (when (!= (-> gp-0 dialog-volume) (-> s5-1 dialog-volume))
-          (seek! (-> gp-0 dialog-volume) (-> s5-1 dialog-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (seek! (-> gp-0 dialog-volume) (-> s5-1 dialog-volume) (* 100.0 (seconds-per-frame)))
           (sound-set-volume (sound-group dialog) (-> gp-0 dialog-volume))
           )
         (when (!= (-> gp-0 ambient-volume) (-> s5-1 ambient-volume))
-          (seek! (-> gp-0 ambient-volume) (-> s5-1 ambient-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (seek! (-> gp-0 ambient-volume) (-> s5-1 ambient-volume) (* 100.0 (seconds-per-frame)))
           (sound-set-volume (sound-group ambient) (-> gp-0 ambient-volume))
           )
         )
@@ -329,11 +327,7 @@
       
       ;; try to load music
       (when (and (!= (-> s5-1 music) (-> gp-0 music))
-                 (and (< 0.0 (-> *setting-control* current music-volume))
-                      (zero? (rpc-busy? 1))
-                      *sound-bank-1*
-                      *sound-bank-2*
-                      )
+                 (and (< 0.0 (-> *setting-control* current music-volume)) (zero? (rpc-busy? 1)) *sound-bank-1* *sound-bank-2*)
                  )
         (cond
           ((-> s5-1 music)
@@ -384,7 +378,7 @@
       (set! (-> gp-0 bg-r) (-> s5-1 bg-r))
       (set! (-> gp-0 bg-g) (-> s5-1 bg-g))
       (set! (-> gp-0 bg-b) (-> s5-1 bg-b))
-      (seek! (-> gp-0 bg-a) (-> s5-1 bg-a) (* (-> s5-1 bg-a-speed) (-> *display* seconds-per-frame)))
+      (seek! (-> gp-0 bg-a) (-> s5-1 bg-a) (* (-> s5-1 bg-a-speed) (seconds-per-frame)))
       )
     (let ((v1-60 (-> *display* frames (-> *display* on-screen) display))
           (f0-39 (-> gp-0 bg-a))

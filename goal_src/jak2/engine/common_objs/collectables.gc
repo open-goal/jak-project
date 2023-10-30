@@ -60,57 +60,55 @@
               )
 
 (deftype collectable (process-drawable)
-  ((root            collide-shape-moving         :override)
-   (pickup-type     pickup-type                  :offset-assert 200)
-   (pickup-amount   float                        :offset-assert 204)
-   (notify          handle                       :offset-assert 208)
-   (old-base        vector               :inline :offset-assert 224)
-   (base            vector               :inline :offset-assert 240)
-   (extra-trans     vector               :inline :offset-assert 256)
-   (jump-pos        vector               :inline :offset-assert 272)
-   (flags           collectable-flag             :offset-assert 288)
-   (birth-time      seconds                      :offset-assert 296)
-   (collect-timeout seconds                      :offset-assert 304)
-   (fadeout-timeout seconds                      :offset-assert 312)
-   (bob-offset      seconds                      :offset-assert 320)
-   (bob-amount      float                        :offset-assert 328)
-   (pickup-handle   handle                       :offset-assert 336)
-   (actor-pause     symbol                       :offset-assert 344)
-   (collect-effect  basic                        :offset-assert 348)
-   (collect-effect2 basic                        :offset-assert 352)
-   (target          handle                       :offset-assert 360)
-   (suck-time       seconds                      :offset-assert 368)
-   (suck-y-offset   float                        :offset-assert 376)
-   (speed           vector               :inline :offset-assert 384)
-   (movie-pos-index int32                        :offset-assert 400)
+  ((root             collide-shape-moving :override)
+   (pickup-type      pickup-type)
+   (pickup-amount    float)
+   (notify           handle)
+   (old-base         vector                :inline)
+   (base             vector                :inline)
+   (extra-trans      vector                :inline)
+   (jump-pos         vector                :inline)
+   (flags            collectable-flag)
+   (birth-time       seconds)
+   (collect-timeout  seconds)
+   (fadeout-timeout  seconds)
+   (bob-offset       seconds)
+   (bob-amount       float)
+   (pickup-handle    handle)
+   (actor-pause      symbol)
+   (collect-effect   basic)
+   (collect-effect2  basic)
+   (target           handle)
+   (suck-time        seconds)
+   (suck-y-offset    float)
+   (speed            vector                :inline)
+   (movie-pos-index  int32)
    )
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
+  (:state-methods
+    blocked
+    wait
+    deploy
+    (suck handle)
+    jump
+    fade
+    (pickup symbol handle)
+    die
+    (notice-blue handle)
+    )
   (:methods
-    (blocked () _type_ :state 20)
-    (wait () _type_ :state 21)
-    (deploy () _type_ :state 22)
-    (suck (handle) _type_ :state 23)
-    (jump () _type_ :state 24)
-    (fade () _type_ :state 25)
-    (pickup (symbol handle) _type_ :state 26)
-    (die () _type_ :state 27)
-    (notice-blue (handle) _type_ :state 28)
-    (init-common (_type_ entity-actor pickup-type float) none 29)
-    (initialize-effects (_type_ pickup-type) none 30)
-    (go-to-initial-state (_type_) none 31)
-    (initialize-options (_type_ int float fact-info) collectable 32)
-    (initialize-allocations (_type_) none 33)
-    (common-post (_type_) none 34)
-    (do-pickup (_type_ handle) none 35)
+    (init-common (_type_ entity-actor pickup-type float) none)
+    (initialize-effects (_type_ pickup-type) none)
+    (go-to-initial-state (_type_) none)
+    (initialize-options (_type_ int float fact-info) collectable)
+    (initialize-allocations (_type_) none)
+    (common-post (_type_) none)
+    (do-pickup (_type_ handle) none)
     )
   )
 
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod go-to-initial-state collectable ((this collectable))
+(defmethod go-to-initial-state ((this collectable))
   (cond
     ((logtest? (-> this fact options) (actor-option wait-for-task-complete))
      (go (method-of-object this blocked))
@@ -125,7 +123,7 @@
   (none)
   )
 
-(defmethod initialize-options collectable ((this collectable) (arg0 int) (arg1 float) (arg2 fact-info))
+(defmethod initialize-options ((this collectable) (arg0 int) (arg1 float) (arg2 fact-info))
   (logclear! (-> this mask) (process-mask crate enemy platform ambient))
   (logior! (-> this mask) (process-mask bit18))
   (set! (-> this flags) (collectable-flag pickup no-eco-blue))
@@ -193,7 +191,7 @@
   this
   )
 
-(defmethod initialize-allocations collectable ((this collectable))
+(defmethod initialize-allocations ((this collectable))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #t)
@@ -224,7 +222,7 @@
   )
 
 ;; WARN: Return type mismatch ambient-sound vs none.
-(defmethod initialize-effects collectable ((this collectable) (arg0 pickup-type))
+(defmethod initialize-effects ((this collectable) (arg0 pickup-type))
   (let ((s5-0 (the-as sparticle-launch-group #f))
         (s4-0 (the-as sound-spec #f))
         )
@@ -344,7 +342,7 @@
   (none)
   )
 
-(defmethod init-common collectable ((this collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+(defmethod init-common ((this collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
   (set! (-> this pickup-amount) arg2)
   (set! (-> this pickup-type) arg1)
   (initialize-allocations this)
@@ -359,7 +357,7 @@
   (none)
   )
 
-(defmethod common-post collectable ((this collectable))
+(defmethod common-post ((this collectable))
   (let ((s5-0 (-> this part))
         (s4-0 (-> this root root-prim prim-core))
         )
@@ -377,7 +375,7 @@
   (none)
   )
 
-(defmethod do-pickup collectable ((this collectable) (arg0 handle))
+(defmethod do-pickup ((this collectable) (arg0 handle))
   (set! (-> this pickup-handle) arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (let ((v1-3 (-> this root root-prim)))
@@ -1148,16 +1146,12 @@
   )
 
 (deftype eco (collectable)
-  ((respan-delay seconds  :offset-assert 408)
+  ((respan-delay  seconds)
    )
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod initialize-allocations eco ((this eco))
+(defmethod initialize-allocations ((this eco))
   (let ((t9-0 (method-of-type collectable initialize-allocations)))
     (t9-0 this)
     )
@@ -1241,14 +1235,10 @@
 
 (deftype eco-yellow (eco)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod init-from-entity! eco-yellow ((this eco-yellow) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-yellow) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1261,14 +1251,10 @@ This commonly includes things such as:
 
 (deftype eco-red (eco)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod init-from-entity! eco-red ((this eco-red) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-red) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1281,14 +1267,10 @@ This commonly includes things such as:
 
 (deftype eco-blue (eco)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod init-from-entity! eco-blue ((this eco-blue) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-blue) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1301,14 +1283,10 @@ This commonly includes things such as:
 
 (deftype eco-green (eco)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod init-from-entity! eco-green ((this eco-green) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-green) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1321,14 +1299,10 @@ This commonly includes things such as:
 
 (deftype health (collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
-(defmethod init-from-entity! health ((this health) (arg0 entity-actor))
+(defmethod init-from-entity! ((this health) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1341,10 +1315,6 @@ This commonly includes things such as:
 
 (deftype eco-pill (collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
@@ -1372,7 +1342,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod init-from-entity! eco-pill ((this eco-pill) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco-pill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1383,13 +1353,13 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod deactivate eco-pill ((this eco-pill))
+(defmethod deactivate ((this eco-pill))
   (+! (-> *game-info* live-eco-pill-count) -1)
   ((method-of-type collectable deactivate) this)
   (none)
   )
 
-(defmethod initialize-allocations eco-pill ((this eco-pill))
+(defmethod initialize-allocations ((this eco-pill))
   (+! (-> *game-info* live-eco-pill-count) 1)
   (stack-size-set! (-> this main-thread) 128)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1422,14 +1392,10 @@ This commonly includes things such as:
 
 (deftype money (collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
-(defmethod run-logic? money ((this money))
+(defmethod run-logic? ((this money))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-control-status on-screen))
@@ -1443,7 +1409,7 @@ This commonly includes things such as:
       )
   )
 
-(defmethod deactivate money ((this money))
+(defmethod deactivate ((this money))
   (when (and (-> this next-state) (= (-> this next-state name) 'pickup))
     (case (-> this pickup-type)
       (((pickup-type gem))
@@ -1463,7 +1429,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod common-post money ((this money))
+(defmethod common-post ((this money))
   (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* 40049.777 (seconds-per-frame)))
   (let ((f30-0 (-> this bob-amount)))
     (when (< 0.0 f30-0)
@@ -1527,7 +1493,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod initialize-allocations money ((this money))
+(defmethod initialize-allocations ((this money))
   (stack-size-set! (-> this main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1578,7 +1544,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-from-entity! money ((this money) (arg0 entity-actor))
+(defmethod init-from-entity! ((this money) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -1656,23 +1622,19 @@ This commonly includes things such as:
   )
 
 (deftype gem (money)
-  ((roty-speed  degrees  :offset-assert 404)
-   (bounce-time seconds  :offset-assert 408)
+  ((roty-speed   degrees)
+   (bounce-time  seconds)
    )
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x1a0
-  :flag-assert         #x24012001a0
   )
 
 
-(defmethod deactivate gem ((this gem))
+(defmethod deactivate ((this gem))
   (+! (-> *game-info* live-gem-count) -1)
   (call-parent-method this)
   (none)
   )
 
-(defmethod common-post gem ((this gem))
+(defmethod common-post ((this gem))
   (seek! (-> this roty-speed) 20024.889 (* 65536.0 (seconds-per-frame)))
   (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* (-> this roty-speed) (seconds-per-frame)))
   (logclear! (-> this draw status) (draw-control-status no-draw-temp uninited))
@@ -1817,7 +1779,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod initialize-allocations gem ((this gem))
+(defmethod initialize-allocations ((this gem))
   (+! (-> *game-info* live-gem-count) 1)
   (stack-size-set! (-> this main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -1884,10 +1846,6 @@ This commonly includes things such as:
 
 (deftype skill (money)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
@@ -1912,7 +1870,7 @@ This commonly includes things such as:
     )
   )
 
-(defmethod initialize-allocations skill ((this skill))
+(defmethod initialize-allocations ((this skill))
   (stack-size-set! (-> this main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1974,31 +1932,20 @@ This commonly includes things such as:
 
 (deftype fuel-cell (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   )
 
 
 (deftype trick-point (collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
 (deftype skate-point (trick-point)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x194
-  :flag-assert         #x2401200194
   )
 
 
-(defmethod initialize-allocations trick-point ((this trick-point))
+(defmethod initialize-allocations ((this trick-point))
   (stack-size-set! (-> this main-thread) 128)
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -2031,7 +1978,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-from-entity! trick-point ((this trick-point) (arg0 entity-actor))
+(defmethod init-from-entity! ((this trick-point) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2047,16 +1994,12 @@ This commonly includes things such as:
   )
 
 (deftype ammo-collectable (collectable)
-  ((ammo-effect basic  :offset-assert 404)
+  ((ammo-effect  basic)
    )
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x198
-  :flag-assert         #x2401200198
   )
 
 
-(defmethod initialize-allocations ammo-collectable ((this ammo-collectable))
+(defmethod initialize-allocations ((this ammo-collectable))
   (stack-size-set! (-> this main-thread) 128)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this actor-pause) #f)
@@ -2102,7 +2045,7 @@ This commonly includes things such as:
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod initialize-effects ammo-collectable ((this ammo-collectable) (arg0 pickup-type))
+(defmethod initialize-effects ((this ammo-collectable) (arg0 pickup-type))
   (set! (-> this fact pickup-type) arg0)
   (case arg0
     (((pickup-type ammo-yellow))
@@ -2216,7 +2159,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-common ammo-collectable ((this ammo-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+(defmethod init-common ((this ammo-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
   (set! (-> this pickup-amount) arg2)
   (set! (-> this pickup-type) arg1)
   (initialize-allocations this)
@@ -2228,7 +2171,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod common-post ammo-collectable ((this ammo-collectable))
+(defmethod common-post ((this ammo-collectable))
   (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* 40049.777 (seconds-per-frame)))
   ((method-of-type collectable common-post) this)
   0
@@ -2244,28 +2187,16 @@ This commonly includes things such as:
 
 (deftype ammo (ammo-collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x198
-  :flag-assert         #x2401200198
   )
 
 
 (deftype shield (ammo-collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x198
-  :flag-assert         #x2401200198
   )
 
 
 (deftype upgrade-collectable (ammo-collectable)
   ()
-  :heap-base #x120
-  :method-count-assert 36
-  :size-assert         #x198
-  :flag-assert         #x2401200198
   )
 
 
@@ -2301,7 +2232,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod init-from-entity! eco ((this eco) (arg0 entity-actor))
+(defmethod init-from-entity! ((this eco) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -2536,7 +2467,7 @@ This commonly includes things such as:
   sv-40
   )
 
-(defmethod drop-pickup fact-info ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
+(defmethod drop-pickup ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int))
   (let ((s2-0 (-> this pickup-type))
         (f30-0 (-> this pickup-amount))
         )
@@ -2695,9 +2626,6 @@ This commonly includes things such as:
 
 (deftype ecovent (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   )
 
 ;; og:preserve-this added macro

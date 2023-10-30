@@ -8,18 +8,16 @@
 ;; DECOMP BEGINS
 
 (deftype plat (base-plat)
-  ((path-pos float              :offset-assert 272)
-   (sound-id sound-id           :offset-assert 276)
-   (sync     sync-eased :inline :offset-assert 280)
+  ((path-pos  float)
+   (sound-id  sound-id)
+   (sync      sync-eased  :inline)
    )
-  :heap-base #xd0
-  :method-count-assert 37
-  :size-assert         #x144
-  :flag-assert         #x2500d00144
+  (:state-methods
+    plat-idle
+    plat-path-active
+    )
   (:methods
-    (plat-idle () _type_ :state 34)
-    (plat-path-active () _type_ :state 35)
-    (plat-path-sync (_type_) object 36)
+    (plat-path-sync (_type_) object)
     )
   )
 
@@ -29,12 +27,12 @@
               :bounds (static-spherem 0 -0.5 0 3)
               )
 
-(defmethod get-art-group plat ((this plat))
+(defmethod get-art-group ((this plat))
   "@returns The associated [[art-group]]"
   (art-group-get-by-name *level* "skel-plat" (the-as (pointer uint32) #f))
   )
 
-(defmethod init-plat-collision! plat ((this plat))
+(defmethod init-plat-collision! ((this plat))
   "TODO - collision stuff for setting up the platform"
   (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
@@ -58,19 +56,19 @@
   (none)
   )
 
-(defmethod init-plat! plat ((this plat))
+(defmethod init-plat! ((this plat))
   "Does any necessary initial platform setup.
 For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
 
-(defmethod base-plat-method-32 plat ((this plat))
+(defmethod base-plat-method-32 ((this plat))
   0
   (none)
   )
 
-(defmethod plat-path-sync plat ((this plat))
+(defmethod plat-path-sync ((this plat))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
 otherwise, [[plat::34]]
 
@@ -144,7 +142,7 @@ otherwise, [[plat::34]]
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! plat ((this plat) (entity entity-actor))
+(defmethod init-from-entity! ((this plat) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size
@@ -204,25 +202,21 @@ This commonly includes things such as:
   )
 
 (deftype drop-plat (base-plat)
-  ((art-name        string             :offset-assert 272)
-   (anim            spool-anim         :offset-assert 276)
-   (break-anim-name string             :offset-assert 280)
-   (safe-time       time-frame         :offset-assert 288)
-   (hit-point       vector     :inline :offset-assert 304)
+  ((art-name         string)
+   (anim             spool-anim)
+   (break-anim-name  string)
+   (safe-time        time-frame)
+   (hit-point        vector  :inline)
    )
-  :heap-base #xc0
-  :method-count-assert 36
-  :size-assert         #x140
-  :flag-assert         #x2400c00140
-  (:methods
-    (idle () _type_ :state 34)
-    (fall (symbol) _type_ :state 35)
+  (:state-methods
+    idle
+    (fall symbol)
     )
   )
 
 
 ;; WARN: Return type mismatch base-plat vs drop-plat.
-(defmethod relocate drop-plat ((this drop-plat) (arg0 int))
+(defmethod relocate ((this drop-plat) (arg0 int))
   (if (nonzero? (-> this break-anim-name))
       (&+! (-> this break-anim-name) arg0)
       )

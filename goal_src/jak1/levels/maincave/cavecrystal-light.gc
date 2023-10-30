@@ -10,36 +10,30 @@
 (define *cavecrystal-engine* (new 'loading-level 'engine 'cavecrystal 64))
 
 (deftype cavecrystal-light (structure)
-  ((next           cavecrystal-light         :offset-assert   0)
-   (crystal-id     int32                     :offset-assert   4)
-   (intensity      float                     :offset-assert   8)
-   (fade-start     float                     :offset-assert  12)
-   (fade-end       float                     :offset-assert  16)
-   (crystal-handle handle                    :offset-assert  24)
-   (trans          vector            :inline :offset-assert  32)
+  ((next            cavecrystal-light)
+   (crystal-id      int32)
+   (intensity       float)
+   (fade-start      float)
+   (fade-end        float)
+   (crystal-handle  handle)
+   (trans           vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype cavecrystal-light-control (basic)
-  ((active-count          int32                       :offset-assert   4)
-   (head                  cavecrystal-light           :offset-assert   8)
-   (last-known-valid-time time-frame                  :offset-assert  16)
-   (crystal               cavecrystal-light 7 :inline :offset-assert  32)
+  ((active-count           int32)
+   (head                   cavecrystal-light)
+   (last-known-valid-time  time-frame)
+   (crystal                cavecrystal-light  7 :inline)
    )
-  :method-count-assert 15
-  :size-assert         #x170
-  :flag-assert         #xf00000170
   (:methods
-    (cavecrystal-light-control-method-9 (_type_ int float process-drawable) none 9)
-    (cavecrystal-light-control-method-10 (_type_ vector) float 10)
-    (inc-intensities! (_type_) none 11)
-    (cavecrystal-light-control-method-12 (_type_) none 12)
-    (create-connection! (_type_ process-drawable res-lump (function object object object object object) int float) connection 13)
-    (execute-connections (_type_) int 14)
+    (cavecrystal-light-control-method-9 (_type_ int float process-drawable) none)
+    (cavecrystal-light-control-method-10 (_type_ vector) float)
+    (inc-intensities! (_type_) none)
+    (cavecrystal-light-control-method-12 (_type_) none)
+    (create-connection! (_type_ process-drawable res-lump (function object object object object object) int float) connection)
+    (execute-connections (_type_) int)
     )
   )
 
@@ -65,23 +59,23 @@
   (none)
   )
 
-(defmethod create-connection! cavecrystal-light-control ((this cavecrystal-light-control)
-                                                       (arg0 process-drawable)
-                                                       (arg1 res-lump)
-                                                       (arg2 (function object object object object object))
-                                                       (arg3 int)
-                                                       (arg4 float)
-                                                       )
+(defmethod create-connection! ((this cavecrystal-light-control)
+                              (arg0 process-drawable)
+                              (arg1 res-lump)
+                              (arg2 (function object object object object object))
+                              (arg3 int)
+                              (arg4 float)
+                              )
   (if (nonzero? (res-lump-value arg1 'crystal-light uint128))
       (add-connection *cavecrystal-engine* arg0 arg2 (process->ppointer arg0) arg3 arg4)
       )
   )
 
-(defmethod execute-connections cavecrystal-light-control ((this cavecrystal-light-control))
+(defmethod execute-connections ((this cavecrystal-light-control))
   (execute-connections *cavecrystal-engine* #f)
   )
 
-(defmethod cavecrystal-light-control-method-12 cavecrystal-light-control ((this cavecrystal-light-control))
+(defmethod cavecrystal-light-control-method-12 ((this cavecrystal-light-control))
   (let ((v1-0 (-> this last-known-valid-time))
         (a1-1 (current-time))
         )
@@ -136,7 +130,7 @@
   (none)
   )
 
-(defmethod inc-intensities! cavecrystal-light-control ((this cavecrystal-light-control))
+(defmethod inc-intensities! ((this cavecrystal-light-control))
   (set! (-> this head) #f)
   (let ((a1-0 (the-as cavecrystal-light #f))
         (v0-0 0)
@@ -160,7 +154,7 @@
   )
 
 ;; WARN: Function (method 9 cavecrystal-light-control) has a return type of none, but the expression builder found a return statement.
-(defmethod cavecrystal-light-control-method-9 cavecrystal-light-control ((this cavecrystal-light-control) (arg0 int) (arg1 float) (arg2 process-drawable))
+(defmethod cavecrystal-light-control-method-9 ((this cavecrystal-light-control) (arg0 int) (arg1 float) (arg2 process-drawable))
   (cavecrystal-light-control-method-12 this)
   (when (or (< arg0 0) (>= arg0 7))
     (format 0 "ERROR: Bogus cavecrystal id!~%")
@@ -189,7 +183,7 @@
   (none)
   )
 
-(defmethod cavecrystal-light-control-method-10 cavecrystal-light-control ((this cavecrystal-light-control) (arg0 vector))
+(defmethod cavecrystal-light-control-method-10 ((this cavecrystal-light-control) (arg0 vector))
   (cavecrystal-light-control-method-12 this)
   (let ((s5-1 (-> this head))
         (f30-0 0.0)

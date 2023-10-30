@@ -14,28 +14,25 @@
 
 ;; definition of type sound-iop-info
 (deftype sound-iop-info (basic)
-  ((frame       uint32      :offset         16)
-   (strpos      int32       :offset-assert  20)
-   (str-id      sound-id    :offset-assert  24)
-   (str-id-sign int32       :offset         24)
-   (freemem     uint32      :offset-assert  28)
-   (chinfo      uint8    48 :offset-assert  32)
-   (freemem2    uint32      :offset-assert  80)
-   (nocd        uint32      :offset-assert  84)
-   (dirtycd     uint32      :offset-assert  88)
-   (diskspeed   uint32   2  :offset-assert  92)
-   (lastspeed   uint32      :offset-assert 100)
-   (dupseg      int32       :offset-assert 104)
-   (times       uint32   41 :offset-assert 108)
-   (times-seq   uint32      :offset-assert 272)
+  ((frame        uint32  :offset  16)
+   (strpos       int32)
+   (str-id       sound-id)
+   (str-id-sign  int32   :overlay-at str-id)
+   (freemem      uint32)
+   (chinfo       uint8   48)
+   (freemem2     uint32)
+   (nocd         uint32)
+   (dirtycd      uint32)
+   (diskspeed    uint32  2)
+   (lastspeed    uint32)
+   (dupseg       int32)
+   (times        uint32  41)
+   (times-seq    uint32)
    )
-  :method-count-assert 9
-  :size-assert         #x114
-  :flag-assert         #x900000114
   )
 
 ;; definition for method 3 of type sound-iop-info
-(defmethod inspect sound-iop-info ((this sound-iop-info))
+(defmethod inspect ((this sound-iop-info))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tframe: ~D~%" (-> this frame))
   (format #t "~Tstrpos: ~D~%" (-> this strpos))
@@ -715,7 +712,7 @@
 
 ;; definition for method 9 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod update! ambient-sound ((this ambient-sound))
+(defmethod update! ((this ambient-sound))
   (with-pp
     (if (not *ambient-sound-class*)
         (return (the-as int #f))
@@ -799,14 +796,14 @@
   )
 
 ;; definition for method 13 of type ambient-sound
-(defmethod stop! ambient-sound ((this ambient-sound))
+(defmethod stop! ((this ambient-sound))
   (sound-stop (-> this playing-id))
   0
   )
 
 ;; definition for method 11 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod update-trans! ambient-sound ((this ambient-sound) (arg0 vector))
+(defmethod update-trans! ((this ambient-sound) (arg0 vector))
   (with-pp
     (set! (-> this trans quad) (-> arg0 quad))
     (when (nonzero? (-> this playing-id))
@@ -834,7 +831,7 @@
   )
 
 ;; definition for method 12 of type ambient-sound
-(defmethod update-vol! ambient-sound ((this ambient-sound) (arg0 int))
+(defmethod update-vol! ((this ambient-sound) (arg0 int))
   (when (nonzero? (-> this playing-id))
     (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-param))
@@ -850,7 +847,7 @@
 
 ;; definition for method 10 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod change-sound! ambient-sound ((this ambient-sound) (arg0 sound-name))
+(defmethod change-sound! ((this ambient-sound) (arg0 sound-name))
   (when (not (and (= (the-as uint (-> this name)) (the-as uint arg0)) (= (-> arg0 hi) (-> this name hi))))
     (stop! this)
     (set! (-> this playing-id) (new-sound-id))
@@ -944,17 +941,14 @@
 
 ;; definition of type flava-table-row
 (deftype flava-table-row (structure)
-  ((music symbol    :offset-assert   0)
-   (flava uint8  50 :offset-assert   4)
+  ((music  symbol)
+   (flava  uint8  50)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x36
-  :flag-assert         #x900000036
   )
 
 ;; definition for method 3 of type flava-table-row
-(defmethod inspect flava-table-row ((this flava-table-row))
+(defmethod inspect ((this flava-table-row))
   (format #t "[~8x] ~A~%" this 'flava-table-row)
   (format #t "~Tmusic: ~A~%" (-> this music))
   (format #t "~Tflava[50] @ #x~X~%" (-> this flava))
@@ -963,16 +957,13 @@
 
 ;; definition of type flava-table
 (deftype flava-table (basic)
-  ((row   flava-table-row 20 :inline :offset-assert   4)
-   (count int32                      :offset-assert 1284)
+  ((row    flava-table-row  20 :inline)
+   (count  int32)
    )
-  :method-count-assert 9
-  :size-assert         #x508
-  :flag-assert         #x900000508
   )
 
 ;; definition for method 3 of type flava-table
-(defmethod inspect flava-table ((this flava-table))
+(defmethod inspect ((this flava-table))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Trow[20] @ #x~X~%" (-> this row))
   (format #t "~Tcount: ~D~%" (-> this count))

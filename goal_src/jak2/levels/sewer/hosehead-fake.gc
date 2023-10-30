@@ -11,46 +11,41 @@
 ;; DECOMP BEGINS
 
 (deftype hosehead-fake-spawn-info (basic)
-  ((id        int32              :offset-assert   4)
-   (walk-dist float              :offset-assert   8)
-   (handle    handle             :offset-assert  16)
-   (trans     vector     :inline :offset-assert  32)
-   (quat      quaternion :inline :offset-assert  48)
-   (trans-x   float              :offset         32)
-   (trans-y   float              :offset         36)
-   (trans-z   float              :offset         40)
-   (trans-w   float              :offset         44)
-   (quat-x    float              :offset         48)
-   (quat-y    float              :offset         52)
-   (quat-z    float              :offset         56)
-   (quat-w    float              :offset         60)
+  ((id         int32)
+   (walk-dist  float)
+   (handle     handle)
+   (trans      vector      :inline)
+   (quat       quaternion  :inline)
+   (trans-x    float       :overlay-at (-> trans data 0))
+   (trans-y    float       :overlay-at (-> trans data 1))
+   (trans-z    float       :overlay-at (-> trans data 2))
+   (trans-w    float       :overlay-at (-> trans data 3))
+   (quat-x     float       :overlay-at (-> quat data 0))
+   (quat-y     float       :overlay-at (-> quat data 1))
+   (quat-z     float       :overlay-at (-> quat data 2))
+   (quat-w     float       :overlay-at (-> quat data 3))
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
 (deftype hosehead-fake (process-drawable)
-  ((info      hosehead-fake-spawn-info         :offset-assert 200)
-   (id        int32                            :offset-assert 204)
-   (walk-dest vector                   :inline :offset-assert 208)
+  ((info       hosehead-fake-spawn-info)
+   (id         int32)
+   (walk-dest  vector  :inline)
    )
-  :heap-base #x60
-  :method-count-assert 25
-  :size-assert         #xe0
-  :flag-assert         #x19006000e0
+  (:state-methods
+    die-fast
+    idle
+    walk
+    )
   (:methods
-    (die-fast () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (walk () _type_ :state 22)
-    (debug-draw (_type_) none 23)
-    (print-def (_type_) none 24)
+    (debug-draw (_type_) none)
+    (print-def (_type_) none)
     )
   )
 
 
-(defmethod print-def hosehead-fake ((this hosehead-fake))
+(defmethod print-def ((this hosehead-fake))
   (let ((s5-0 (-> this root)))
     (format #t "~%")
     (format #t "(def-hosehead-fake~%")
@@ -78,7 +73,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod debug-draw hosehead-fake ((this hosehead-fake))
+(defmethod debug-draw ((this hosehead-fake))
   (let ((a2-0 (-> this info)))
     (when a2-0
       (if (!= (-> a2-0 walk-dist) 0.0)

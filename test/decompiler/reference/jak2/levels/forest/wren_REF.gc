@@ -3,39 +3,37 @@
 
 ;; definition of type wren
 (deftype wren (process-drawable)
-  ((move-dest      vector        :inline :offset-assert 208)
-   (fly-curve      curve-control 2       :offset-assert 224)
-   (fly-index      uint32                :offset-assert 232)
-   (fly-speed      float                 :offset-assert 236)
-   (fly-y-rate     float                 :offset-assert 240)
-   (fly-interp     float                 :offset-assert 244)
-   (path-u         float                 :offset-assert 248)
-   (path-du        float                 :offset-assert 252)
-   (path-du-mod    float                 :offset-assert 256)
-   (bob-level      float                 :offset-assert 260)
-   (bob-level-seek float                 :offset-assert 264)
-   (bank-angle     float                 :offset-assert 268)
-   (peck-timer     uint64                :offset-assert 272)
-   (flags          wren-flags            :offset-assert 280)
+  ((move-dest       vector         :inline)
+   (fly-curve       curve-control  2)
+   (fly-index       uint32)
+   (fly-speed       float)
+   (fly-y-rate      float)
+   (fly-interp      float)
+   (path-u          float)
+   (path-du         float)
+   (path-du-mod     float)
+   (bob-level       float)
+   (bob-level-seek  float)
+   (bank-angle      float)
+   (peck-timer      uint64)
+   (flags           wren-flags)
    )
-  :heap-base #xa0
-  :method-count-assert 28
-  :size-assert         #x11a
-  :flag-assert         #x1c00a0011a
+  (:state-methods
+    hunt
+    peck
+    fly
+    land
+    on-branch
+    die
+    )
   (:methods
-    (hunt () _type_ :state 20)
-    (peck () _type_ :state 21)
-    (fly () _type_ :state 22)
-    (land () _type_ :state 23)
-    (on-branch () _type_ :state 24)
-    (die () _type_ :state 25)
-    (spooked? (_type_) symbol 26)
-    (debug-draw-path (_type_) symbol 27)
+    (spooked? (_type_) symbol)
+    (debug-draw-path (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type wren
-(defmethod inspect wren ((this wren))
+(defmethod inspect ((this wren))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -68,7 +66,7 @@
               )
 
 ;; definition for method 27 of type wren
-(defmethod debug-draw-path wren ((this wren))
+(defmethod debug-draw-path ((this wren))
   "Draws the associated [[curve-control]]s associated with this wren"
   (dotimes (s5-0 2)
     (if (-> this fly-curve s5-0)
@@ -138,7 +136,7 @@
 
 ;; definition for method 26 of type wren
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod spooked? wren ((this wren))
+(defmethod spooked? ((this wren))
   "@returns a [[symbol]] indicating if Jak is considered close enough to the wren to spook it.
 If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
   (let* ((gp-0 *target*)
@@ -448,7 +446,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
   )
 
 ;; definition for method 7 of type wren
-(defmethod relocate wren ((this wren) (arg0 int))
+(defmethod relocate ((this wren) (arg0 int))
   (dotimes (v1-0 2)
     (when (-> this fly-curve v1-0)
       (if (nonzero? (-> this fly-curve v1-0))
@@ -461,7 +459,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
 
 ;; definition for method 11 of type wren
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! wren ((this wren) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wren) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

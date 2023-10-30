@@ -8,14 +8,10 @@
 ;; DECOMP BEGINS
 
 (deftype sunken-elevator (plat-button)
-  ((play-at-top-going-up-camera? symbol  :offset-assert 240)
-   (teleport-if-below-y          float   :offset-assert 244)
-   (teleport-if-above-y          float   :offset-assert 248)
+  ((play-at-top-going-up-camera?  symbol)
+   (teleport-if-below-y           float)
+   (teleport-if-above-y           float)
    )
-  :heap-base #x90
-  :method-count-assert 33
-  :size-assert         #xfc
-  :flag-assert         #x21009000fc
   )
 
 
@@ -24,7 +20,7 @@
               :bounds (static-spherem 0 -1 0 6.6)
               )
 
-(defmethod should-teleport? sunken-elevator ((this sunken-elevator))
+(defmethod should-teleport? ((this sunken-elevator))
   (let ((f0-0 (-> (camera-pos) y)))
     (case (-> this path-pos)
       ((0.0)
@@ -147,13 +143,13 @@
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (set! *teleport* #t)
-      (set! (-> s5-0 quad) (-> self root-override trans quad))
+      (set! (-> s5-0 quad) (-> self root trans quad))
       (let ((t9-1 (-> (find-parent-state) trans)))
         (if t9-1
             (t9-1)
             )
         )
-      (vector-! gp-0 (-> self root-override trans) s5-0)
+      (vector-! gp-0 (-> self root trans) s5-0)
       (when (< (-> self path-pos) 0.9)
         (move-by-vector! (-> *target* control) gp-0)
         (send-event *target* 'reset-height)
@@ -162,7 +158,7 @@
     )
   )
 
-(defmethod can-target-move? sunken-elevator ((this sunken-elevator))
+(defmethod can-target-move? ((this sunken-elevator))
   (set! (-> this play-at-top-going-up-camera?) #f)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (eval-path-curve! (-> this path) s5-0 0.4 'interp)
@@ -173,7 +169,7 @@
   (none)
   )
 
-(defmethod plat-button-method-27 sunken-elevator ((this sunken-elevator))
+(defmethod plat-button-method-27 ((this sunken-elevator))
   (ja-channel-set! 1)
   (cond
     ((can-activate? this)
@@ -200,11 +196,11 @@
       )
     )
   (ja-post)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (none)
   )
 
-(defmethod plat-button-method-31 sunken-elevator ((this sunken-elevator))
+(defmethod plat-button-method-31 ((this sunken-elevator))
   (initialize-skeleton this *sunken-elevator-sg* '())
   0
   (none)

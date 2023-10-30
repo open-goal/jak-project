@@ -16,17 +16,13 @@
 ;; definition of type race-signal-banner
 (deftype race-signal-banner (process-drawable)
   ()
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xc8
-  :flag-assert         #x15005000c8
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 ;; definition for method 3 of type race-signal-banner
-(defmethod inspect race-signal-banner ((this race-signal-banner))
+(defmethod inspect ((this race-signal-banner))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -89,34 +85,32 @@
 
 ;; definition of type race-signal
 (deftype race-signal (process-drawable)
-  ((pos           vector      :inline :offset-assert 208)
-   (y-offset      float               :offset-assert 224)
-   (dest-y-offset float               :offset-assert 228)
-   (bob-time      time-frame          :offset-assert 232)
-   (start-time    time-frame          :offset-assert 240)
-   (banner        handle              :offset-assert 248)
-   (curve         cubic-curve :inline :offset-assert 256)
+  ((pos            vector       :inline)
+   (y-offset       float)
+   (dest-y-offset  float)
+   (bob-time       time-frame)
+   (start-time     time-frame)
+   (banner         handle)
+   (curve          cubic-curve  :inline)
    )
-  :heap-base #xc0
-  :method-count-assert 30
-  :size-assert         #x140
-  :flag-assert         #x1e00c00140
+  (:state-methods
+    spawn-banner
+    idle
+    count-3
+    count-2
+    count-1
+    count-go
+    die
+    test
+    )
   (:methods
-    (spawn-banner () _type_ :state 20)
-    (idle () _type_ :state 21)
-    (count-3 () _type_ :state 22)
-    (count-2 () _type_ :state 23)
-    (count-1 () _type_ :state 24)
-    (count-go () _type_ :state 25)
-    (die () _type_ :state 26)
-    (test () _type_ :state 27)
-    (race-signal-method-28 (_type_) none 28)
-    (race-signal-method-29 (_type_) none 29)
+    (race-signal-method-28 (_type_) none)
+    (race-signal-method-29 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type race-signal
-(defmethod inspect race-signal ((this race-signal))
+(defmethod inspect ((this race-signal))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -138,7 +132,7 @@
 ;; definition for method 29 of type race-signal
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod race-signal-method-29 race-signal ((this race-signal))
+(defmethod race-signal-method-29 ((this race-signal))
   (+! (-> this y-offset)
       (* (- (-> this dest-y-offset) (-> this y-offset)) (fmin 1.0 (* 2.0 (seconds-per-frame))))
       )
@@ -426,16 +420,12 @@
 
 ;; definition of type stadium-racer
 (deftype stadium-racer (vehicle-rider)
-  ((rider-type uint8  :offset-assert 221)
+  ((rider-type  uint8)
    )
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
   )
 
 ;; definition for method 3 of type stadium-racer
-(defmethod inspect stadium-racer ((this stadium-racer))
+(defmethod inspect ((this stadium-racer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -456,7 +446,7 @@
 
 ;; definition for method 33 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-33 stadium-racer ((this stadium-racer))
+(defmethod vehicle-rider-method-33 ((this stadium-racer))
   (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
     (t9-0 this)
     )
@@ -585,7 +575,7 @@
 
 ;; definition for method 31 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod initialize-collision stadium-racer ((this stadium-racer))
+(defmethod initialize-collision ((this stadium-racer))
   (set! (-> this level) (level-get *level* 'lracelit))
   (stack-size-set! (-> this main-thread) 256)
   (when (not (-> this level))
@@ -599,7 +589,7 @@
 
 ;; definition for method 32 of type stadium-racer
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-32 stadium-racer ((this stadium-racer) (arg0 traffic-object-spawn-params))
+(defmethod vehicle-rider-method-32 ((this stadium-racer) (arg0 traffic-object-spawn-params))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-stadium-racer" (the-as (pointer uint32) #f)))
@@ -649,14 +639,10 @@
 ;; definition of type errol-rider
 (deftype errol-rider (stadium-racer)
   ()
-  :heap-base #x60
-  :method-count-assert 36
-  :size-assert         #xde
-  :flag-assert         #x24006000de
   )
 
 ;; definition for method 3 of type errol-rider
-(defmethod inspect errol-rider ((this errol-rider))
+(defmethod inspect ((this errol-rider))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -688,7 +674,7 @@
 
 ;; definition for method 33 of type errol-rider
 ;; WARN: Return type mismatch int vs none.
-(defmethod vehicle-rider-method-33 errol-rider ((this errol-rider))
+(defmethod vehicle-rider-method-33 ((this errol-rider))
   (let ((t9-0 (method-of-type vehicle-rider vehicle-rider-method-33)))
     (t9-0 this)
     )
@@ -703,22 +689,20 @@
 
 ;; definition of type turbo-pickup
 (deftype turbo-pickup (process-drawable)
-  ((root      collide-shape-moving  :override)
-   (available symbol                :offset-assert 200)
+  ((root       collide-shape-moving :override)
+   (available  symbol)
    )
-  :heap-base #x50
-  :method-count-assert 23
-  :size-assert         #xcc
-  :flag-assert         #x17005000cc
+  (:state-methods
+    idle
+    die
+    )
   (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
-    (find-ground (_type_) symbol 22)
+    (find-ground (_type_) symbol)
     )
   )
 
 ;; definition for method 3 of type turbo-pickup
-(defmethod inspect turbo-pickup ((this turbo-pickup))
+(defmethod inspect ((this turbo-pickup))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -733,7 +717,7 @@
 
 ;; definition for method 22 of type turbo-pickup
 ;; INFO: Used lq/sq
-(defmethod find-ground turbo-pickup ((this turbo-pickup))
+(defmethod find-ground ((this turbo-pickup))
   (let ((s4-0 #f))
     (let ((gp-0 (new 'stack-no-clear 'do-push-aways-work)))
       (set! (-> gp-0 push-vel quad) (-> this root trans quad))

@@ -3,11 +3,11 @@
 
 (define *speedrun-info* (new 'static 'speedrun-info))
 
-(defmethod set-category! speedrun-info ((this speedrun-info) (category speedrun-category))
+(defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category)
   (none))
 
-(defmethod start-run! speedrun-info ((this speedrun-info))
+(defmethod start-run! ((this speedrun-info))
   ;; randomize game id so the autosplitter knows to restart
   (reset! *autosplit-info-jak2*)
   ;; turn on speedrun verification display
@@ -22,17 +22,17 @@
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero")))
   (none))
 
-(defmethod enforce-settings! speedrun-info ((this speedrun-info))
+(defmethod enforce-settings! ((this speedrun-info))
   (set! (-> *pc-settings* ps2-actor-vis?) #t) ;; force PS2 actor visibility
   (set-frame-rate! *pc-settings* 60 #t) ;; force FPS to `60`
   (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)) ;; disable any active cheats
   (none))
 
-(defmethod hide-run-info! speedrun-info ((this speedrun-info))
+(defmethod hide-run-info! ((this speedrun-info))
   (set! (-> this display-run-info?) #f)
   (none))
 
-(defmethod update! speedrun-info ((this speedrun-info))
+(defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
   (when (and (-> *pc-settings* speedrunner-mode?)
@@ -55,7 +55,7 @@
     (enforce-settings! this))
   (none))
 
-(defmethod draw-run-info! speedrun-info ((this speedrun-info))
+(defmethod draw-run-info! ((this speedrun-info))
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?)
              (-> this display-run-info?))
@@ -97,7 +97,7 @@
   (go idle)
   (none))
 
-(defmethod deactivate speedrun-menu ((this speedrun-menu))
+(defmethod deactivate ((this speedrun-menu))
   (set! *speedrun-menu* (the-as (pointer speedrun-menu) #f))
   ((method-of-type process-drawable deactivate) this)
   (none))
@@ -123,7 +123,7 @@
   :post (behavior ()
     (none)))
 
-(defmethod draw! speedrun-menu ((this speedrun-menu))
+(defmethod draw! ((this speedrun-menu))
   ;; handle opening and closing the menu
   ;; allow the menu to be toggled again once one of the currents is released
   (when (and (-> this ignore-menu-toggle?)

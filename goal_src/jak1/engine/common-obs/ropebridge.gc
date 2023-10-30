@@ -8,29 +8,26 @@
 ;; DECOMP BEGINS
 
 (deftype ropebridge-tuning (structure)
-  ((num-springs             int32            :offset-assert   0)
-   (num-spring-points       int32            :offset-assert   4)
-   (col-mesh-indexes        (pointer uint8)  :offset-assert   8)
-   (view-frustum-radius     float            :offset-assert  12)
-   (root-prim-radius        float            :offset-assert  16)
-   (desired-spring-len      float            :offset-assert  20)
-   (gravity                 float            :offset-assert  24)
-   (spring-coefficient      float            :offset-assert  28)
-   (spring-mass             float            :offset-assert  32)
-   (friction                float            :offset-assert  36)
-   (max-influence-dist      float            :offset-assert  40)
-   (rider-max-gravity       float            :offset-assert  44)
-   (max-bonk-influence-dist float            :offset-assert  48)
-   (rider-bonk-force        float            :offset-assert  52)
-   (rider-bonk-min          float            :offset-assert  56)
-   (rider-bonk-max          float            :offset-assert  60)
-   (normal-board-len        float            :offset-assert  64)
-   (bridge-end-to-end-len   float            :offset-assert  68)
-   (rest-state              symbol           :offset-assert  72)
+  ((num-springs              int32)
+   (num-spring-points        int32)
+   (col-mesh-indexes         (pointer uint8))
+   (view-frustum-radius      float)
+   (root-prim-radius         float)
+   (desired-spring-len       float)
+   (gravity                  float)
+   (spring-coefficient       float)
+   (spring-mass              float)
+   (friction                 float)
+   (max-influence-dist       float)
+   (rider-max-gravity        float)
+   (max-bonk-influence-dist  float)
+   (rider-bonk-force         float)
+   (rider-bonk-min           float)
+   (rider-bonk-max           float)
+   (normal-board-len         float)
+   (bridge-end-to-end-len    float)
+   (rest-state               symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
 
 
@@ -458,47 +455,40 @@
   )
 
 (deftype ropebridge-spring-point (structure)
-  ((local-pos   vector :inline :offset-assert   0)
-   (vel         vector :inline :offset-assert  16)
-   (extra-force vector :inline :offset-assert  32)
+  ((local-pos    vector  :inline)
+   (vel          vector  :inline)
+   (extra-force  vector  :inline)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (deftype ropebridge (process-drawable)
-  ((root-override          collide-shape                      :offset        112)
-   (subtype                uint64                             :offset-assert 176)
-   (subtype-name           string                             :offset-assert 184)
-   (agitated-time-stamp    time-frame                         :offset-assert 192)
-   (bonk-time-stamp        time-frame                         :offset-assert 200)
-   (attack-flop-time-stamp time-frame                         :offset-assert 208)
-   (player-attack-id       uint64                             :offset-assert 216)
-   (sleep-dist             float                              :offset-assert 224)
-   (do-physics?            basic                              :offset-assert 228)
-   (tuning                 ropebridge-tuning                  :offset-assert 232)
-   (world-matrix           matrix                  :inline    :offset-assert 240)
-   (inv-world-matrix       matrix                  :inline    :offset-assert 304)
-   (extra-trans            vector                  :inline    :offset-assert 368)
-   (spring-point           ropebridge-spring-point 36 :inline :offset-assert 384)
+  ((root                    collide-shape           :override)
+   (subtype                 uint64)
+   (subtype-name            string)
+   (agitated-time-stamp     time-frame)
+   (bonk-time-stamp         time-frame)
+   (attack-flop-time-stamp  time-frame)
+   (player-attack-id        uint64)
+   (sleep-dist              float)
+   (do-physics?             basic)
+   (tuning                  ropebridge-tuning)
+   (world-matrix            matrix                   :inline)
+   (inv-world-matrix        matrix                   :inline)
+   (extra-trans             vector                   :inline)
+   (spring-point            ropebridge-spring-point  36 :inline)
    )
-  :heap-base #x7d0
-  :method-count-assert 29
-  :size-assert         #x840
-  :flag-assert         #x1d07d00840
   (:methods
-    (set-vel-from-impact (_type_ uint vector int float) none 20)
-    (set-vel-from-riders (_type_) none 21)
-    (set-vel-from-rider (_type_ uint vector int) none 22)
-    (clear-spring-forces (_type_) none 23)
-    (debug-draw (_type_) none 24)
-    (set-to-rest-state (_type_) none 25)
-    (add-collision-meshes (_type_) none 26)
-    (do-integration (_type_) none 27)
-    (ropebridge-method-28 (_type_) none 28)
+    (set-vel-from-impact (_type_ uint vector int float) none)
+    (set-vel-from-riders (_type_) none)
+    (set-vel-from-rider (_type_ uint vector int) none)
+    (clear-spring-forces (_type_) none)
+    (debug-draw (_type_) none)
+    (set-to-rest-state (_type_) none)
+    (add-collision-meshes (_type_) none)
+    (do-integration (_type_) none)
+    (ropebridge-method-28 (_type_) none)
     )
   (:states
     ropebridge-idle
@@ -573,7 +563,7 @@
                       )
                (gp-0 (the-as object (-> block param 0)))
                (a0-7 (-> (the-as touching-shapes-entry gp-0) head))
-               (s4-0 (-> self root-override))
+               (s4-0 (-> self root))
                (s5-0 (get-touched-prim a0-7 s4-0 (the-as touching-shapes-entry gp-0)))
                (v1-33 ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s4-0))
                (gp-1 (new 'stack-no-clear 'vector))
@@ -594,7 +584,7 @@
   :code (behavior ()
     (loop
       (suspend)
-      (detect-riders! (-> self root-override))
+      (detect-riders! (-> self root))
       (when (-> self do-physics?)
         (clear-spring-forces self)
         (set-vel-from-riders self)
@@ -618,7 +608,7 @@
     )
   :post (behavior ()
     (ja-post)
-    (let ((gp-0 (-> self root-override)))
+    (let ((gp-0 (-> self root)))
       (update-transforms! gp-0)
       (when (-> self do-physics?)
         (pull-riders! gp-0)
@@ -630,7 +620,7 @@
   )
 
 ;; WARN: Function (method 20 ropebridge) has a return type of none, but the expression builder found a return statement.
-(defmethod set-vel-from-impact ropebridge ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int) (arg3 float))
+(defmethod set-vel-from-impact ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int) (arg3 float))
   (loop
     (let ((f0-2 (fabs (- (-> arg1 z) (-> this spring-point (the-as int arg0) local-pos z)))))
       (if (< (-> this tuning max-bonk-influence-dist) f0-2)
@@ -653,7 +643,7 @@
   (none)
   )
 
-(defmethod clear-spring-forces ropebridge ((this ropebridge))
+(defmethod clear-spring-forces ((this ropebridge))
   (let ((v1-0 (the-as ropebridge-spring-point (-> this spring-point))))
     (countdown (a0-2 (-> this tuning num-spring-points))
       (set! (-> v1-0 extra-force quad) (the-as uint128 0))
@@ -665,8 +655,8 @@
   (none)
   )
 
-(defmethod set-vel-from-riders ropebridge ((this ropebridge))
-  (let ((v1-1 (-> this root-override riders)))
+(defmethod set-vel-from-riders ((this ropebridge))
+  (let ((v1-1 (-> this root riders)))
     (when v1-1
       (let ((s5-0 (the-as collide-sticky-rider (-> v1-1 rider))))
         (countdown (s4-0 (-> v1-1 num-riders))
@@ -697,7 +687,7 @@
   )
 
 ;; WARN: Function (method 22 ropebridge) has a return type of none, but the expression builder found a return statement.
-(defmethod set-vel-from-rider ropebridge ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int))
+(defmethod set-vel-from-rider ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int))
   (loop
     (let ((f0-0 (vector-vector-distance arg1 (the-as vector (-> this spring-point (the-as int arg0))))))
       (if (< (-> this tuning max-influence-dist) f0-0)
@@ -718,7 +708,7 @@
   (none)
   )
 
-(defmethod do-integration ropebridge ((this ropebridge))
+(defmethod do-integration ((this ropebridge))
   (local-vars (a2-1 float) (a3-0 float))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -841,7 +831,7 @@
     )
   )
 
-(defmethod debug-draw ropebridge ((this ropebridge))
+(defmethod debug-draw ((this ropebridge))
   (let ((gp-0 (-> this node-list data 0 bone transform))
         (s5-0 (the-as ropebridge-spring-point (-> this spring-point)))
         (s4-0 (new 'stack-no-clear 'vector))
@@ -855,7 +845,7 @@
   (none)
   )
 
-(defmethod set-to-rest-state ropebridge ((this ropebridge))
+(defmethod set-to-rest-state ((this ropebridge))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -940,8 +930,8 @@
   (none)
   )
 
-(defmethod add-collision-meshes ropebridge ((this ropebridge))
-  (let* ((s5-0 (-> this root-override))
+(defmethod add-collision-meshes ((this ropebridge))
+  (let* ((s5-0 (-> this root))
          (s3-0 (-> this tuning))
          (s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint (-> s3-0 num-springs)) 0))
          )
@@ -970,22 +960,22 @@
   (none)
   )
 
-(defmethod run-logic? ropebridge ((this ropebridge))
+(defmethod run-logic? ((this ropebridge))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (not (time-elapsed? (-> this agitated-time-stamp) (seconds 5)))
-      (or (>= (-> this sleep-dist) (vector-vector-distance (-> this root-override trans) (math-camera-pos)))
+      (or (>= (-> this sleep-dist) (vector-vector-distance (-> this root trans) (math-camera-pos)))
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
           (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-status no-skeleton-update)))
           )
       )
   )
 
-(defmethod ropebridge-method-28 ropebridge ((this ropebridge))
+(defmethod ropebridge-method-28 ((this ropebridge))
   0
   (none)
   )
 
-(defmethod init-from-entity! ropebridge ((this ropebridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ropebridge) (arg0 entity-actor))
   (let ((s4-0 (res-lump-struct (-> this entity) 'art-name structure)))
     (if (not s4-0)
         (set! s4-0 "ropebridge-32")
@@ -1027,7 +1017,7 @@
   (set-vector! (-> this extra-trans) 0.0 0.0 (- (* 0.5 (-> this tuning bridge-end-to-end-len))) 1.0)
   (set! (-> this do-physics?) #t)
   (let ((a0-13 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (set! (-> this root-override) a0-13)
+    (set! (-> this root) a0-13)
     (alloc-riders a0-13 3)
     )
   (add-collision-meshes this)
@@ -1044,7 +1034,7 @@
   (set! (-> this skel postbind-function) ropebridge-joint-callback)
   (matrix<-transformq+trans!
     (-> this world-matrix)
-    (the-as transformq (-> this root-override trans))
+    (the-as transformq (-> this root trans))
     (-> this extra-trans)
     )
   (matrix-4x4-inverse! (-> this inv-world-matrix) (-> this world-matrix))

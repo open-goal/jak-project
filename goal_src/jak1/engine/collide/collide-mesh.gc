@@ -7,12 +7,12 @@
 
 ;; DECOMP BEGINS
 
-(defmethod asize-of collide-mesh ((this collide-mesh))
+(defmethod asize-of ((this collide-mesh))
   "Compute the size in memory of a collide-mesh. Somehow this only counts num-tris and not verts."
   (the-as int (+ (-> collide-mesh size) (* (+ (-> this num-tris) -1) 8)))
   )
 
-(defmethod mem-usage collide-mesh ((this collide-mesh) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this collide-mesh) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a collide-mesh."
   (set! (-> arg0 length) (max 79 (-> arg0 length)))
   (set! (-> arg0 data 78 name) "collide-mesh")
@@ -31,7 +31,7 @@
   (the-as collide-mesh 0)
   )
 
-(defmethod debug-draw-tris collide-mesh ((this collide-mesh) (arg0 process-drawable) (arg1 int))
+(defmethod debug-draw-tris ((this collide-mesh) (arg0 process-drawable) (arg1 int))
   "Draw a collide-mesh."
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -87,32 +87,28 @@
   )
 
 (deftype sopt-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (defmethod-mips2c "(method 12 collide-mesh)" 12 collide-mesh)
 
-
 (deftype spat-work (structure)
-  ((intersect     vector         :inline :offset-assert   0)
-   (sphere-bbox4w bounding-box4w :inline :offset-assert  16)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
+
 
 (defmethod-mips2c "(method 11 collide-mesh)" 11 collide-mesh)
 
 (defmethod-mips2c "(method 14 collide-mesh)" 14 collide-mesh)
+
 (defmethod-mips2c "(method 15 collide-mesh)" 15 collide-mesh)
 
-(defmethod allocate! collide-mesh-cache ((this collide-mesh-cache) (arg0 int))
+(defmethod allocate! ((this collide-mesh-cache) (arg0 int))
   (local-vars (a1-2 int) (a2-2 int))
   (let* ((v1-0 (+ arg0 15))
          (a1-1 (-> this used-size))
@@ -146,7 +142,7 @@
     )
   )
 
-(defmethod populate-cache! collide-mesh ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 matrix))
+(defmethod populate-cache! ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 matrix))
   (local-vars (t0-2 uint))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -314,8 +310,14 @@
     )
   )
 
+(deftype oot-work (structure)
+  ((intersect      vector          :inline)
+   (sphere-bbox4w  bounding-box4w  :inline)
+   )
+  )
 
-(defmethod overlap-test collide-mesh ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
+
+(defmethod overlap-test ((this collide-mesh) (arg0 collide-mesh-cache-tri) (arg1 vector))
   (local-vars
     (zero uint128)
     (v1-0 uint128)

@@ -57,7 +57,7 @@
 ;; for any references.
 
 ;; Note - the actual relocation method of process is in relocate.gc.
-(defmethod relocate object ((this object) (offset int))
+(defmethod relocate ((this object) (offset int))
   this
   )
 
@@ -181,7 +181,7 @@
 ;; All threads are actually cpu-threads. It's not clear why there are two separate types.
 ;; Perhaps the thread was the public interface and cpu-thread is internal to the kernel?
 
-(defmethod delete thread ((this thread))
+(defmethod delete ((this thread))
   "Clean up a temporary thread after it is done being used.
   This assumes it's the top-thread of the process and restores the previous top thread."
   (when (eq? this (-> this process main-thread))
@@ -194,12 +194,12 @@
   (none)
   )
 
-(defmethod print thread ((this thread))
+(defmethod print ((this thread))
   "Print thread."
   (format #t "#<~A ~S of ~S pc: #x~X @ #x~X>" (-> this type) (-> this name) (-> this process name) (-> this pc) this)
   this)
 
-(defmethod stack-size-set! thread ((this thread) (stack-size int))
+(defmethod stack-size-set! ((this thread) (stack-size int))
   "Set the backup stack size of a thread. This should only be done on the main-thread.
   This should be done immediately after allocating the main-thread.
    Users can do this if they want a larger or smaller backup stack than the default."
@@ -283,7 +283,7 @@
   )
 
 
-(defmethod asize-of cpu-thread ((this cpu-thread))
+(defmethod asize-of ((this cpu-thread))
   "Get the size of a cpu-thread"
   ;; we need this because the cpu-thread is stored in the process stack
   (the int (+ (-> this type size) (-> this stack-size)))
@@ -412,7 +412,7 @@
     )
   )
 
-(defmethod inspect process ((this process))
+(defmethod inspect ((this process))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~S~%" (-> this name))
   (format #t "~Tmask: #x~X~%" (-> this mask))
@@ -447,11 +447,11 @@
   this
   )
 
-(defmethod asize-of process ((this process))
+(defmethod asize-of ((this process))
   (the int (+ (-> process size) (-> this allocated-length)))
   )
 
-(defmethod print process ((this process))
+(defmethod print ((this process))
   (format #t "#<~A ~S ~A :state ~S "
           (-> this type)
           (-> this name)
@@ -627,7 +627,7 @@
 
 ;; these are for resuming and suspending main threads.
 
-(defmethod thread-suspend cpu-thread ((unused cpu-thread))
+(defmethod thread-suspend ((unused cpu-thread))
   "Suspend the thread and return to the kernel."
 
   (declare (asm-func none))
@@ -742,7 +742,7 @@
   )
 
 
-(defmethod thread-resume cpu-thread ((thread-to-resume cpu-thread))
+(defmethod thread-resume ((thread-to-resume cpu-thread))
   "Resume a suspended thread. Call this from the kernel only.
    This is also used to start a thread initialized with set-to-run.
    As a result of MIPS/x86 differences, there is a hack for this."
@@ -904,7 +904,7 @@
     )
   )
 
-(defmethod get-process dead-pool ((this dead-pool) (type-to-make type) (stack-size int))
+(defmethod get-process ((this dead-pool) (type-to-make type) (stack-size int))
   "Get a process from this dead pool of the given type."
   (let ((proc (-> this child)))
 
@@ -938,7 +938,7 @@
   )
 
 
-(defmethod return-process dead-pool ((this dead-pool) (proc process))
+(defmethod return-process ((this dead-pool) (proc process))
   "Return a process to its pool once you are done with it."
   (change-parent proc this)
   (none)
@@ -1004,7 +1004,7 @@
     )
   )
 
-(defmethod gap-location dead-pool-heap ((this dead-pool-heap) (rec dead-pool-heap-rec))
+(defmethod gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec))
   "Get the gap after the given process.
   If root of the alive list is given, will give the first gap between the heap and the first process.
   If there is no gap, may point to the next process. Not 16-byte aligned."
@@ -1019,7 +1019,7 @@
     )
   )
 
-(defmethod gap-size dead-pool-heap ((this dead-pool-heap) (rec dead-pool-heap-rec))
+(defmethod gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec))
   "Determine the size between the given process and the next process or end of the heap.
    If you give the first rec, it will given the gap between the beginning of the heap and the next process."
   (the int
@@ -1044,7 +1044,7 @@
        )
   )
 
-(defmethod find-gap dead-pool-heap ((this dead-pool-heap) (rec dead-pool-heap-rec))
+(defmethod find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec))
   "Start at the given record and find the closest gap after it. Returns the rec
   which has the gap after it. If no gaps, returns the last rec."
   (while (and (-> rec next) (zero? (gap-size this rec)))
@@ -1055,7 +1055,7 @@
   )
 
 
-(defmethod inspect dead-pool-heap ((this dead-pool-heap))
+(defmethod inspect ((this dead-pool-heap))
   "Inspect a dead-pool-heap and all of the recs and their gaps"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
@@ -1102,12 +1102,12 @@
 
   this)
 
-(defmethod asize-of dead-pool-heap ((this dead-pool-heap))
+(defmethod asize-of ((this dead-pool-heap))
   "Get our total size. Uses the heap top as the end."
   (- (the int (-> this heap top)) (the int this) *gtype-basic-offset*)
   )
 
-(defmethod memory-used dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-used ((this dead-pool-heap))
   "Get the amount of memory used. This includes gaps between processes."
   (if (-> this last)
                                         ; we have at least one process, get the not-last-gap memory
@@ -1117,12 +1117,12 @@
       )
   )
 
-(defmethod memory-total dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-total ((this dead-pool-heap))
   "Get the total amount of memory for processes"
   (the int (&- (-> this heap top) (-> this heap base)))
   )
 
-(defmethod memory-free dead-pool-heap ((this dead-pool-heap))
+(defmethod memory-free ((this dead-pool-heap))
   "Get the total memory free."
   (let ((top (-> this heap top)))
     (if (-> this last)
@@ -1134,12 +1134,12 @@
     )
   )
 
-(defmethod compact-time dead-pool-heap ((this dead-pool-heap))
+(defmethod compact-time ((this dead-pool-heap))
   "Access the compact time field."
   (-> this compact-time)
   )
 
-(defmethod find-gap-by-size dead-pool-heap ((this dead-pool-heap) (size int))
+(defmethod find-gap-by-size ((this dead-pool-heap) (size int))
   "Find a gap which will fit at least size bytes. Returns the rec for the proc before the gap.
   Will return a #f rec if there's no gap big enough."
                                         ; start our search at first-gap
@@ -1157,7 +1157,7 @@
 ;; warn when this happens.
 (define-extern *vis-boot* basic)
 
-(defmethod get-process dead-pool-heap ((this dead-pool-heap) (type-to-make type) (stack-size int))
+(defmethod get-process ((this dead-pool-heap) (type-to-make type) (stack-size int))
   "Allocate a process"
 
   ;; get a record for the new process
@@ -1249,7 +1249,7 @@
     proc)
   )
 
-(defmethod return-process dead-pool-heap ((this dead-pool-heap) (proc process))
+(defmethod return-process ((this dead-pool-heap) (proc process))
   "Return a process to a dead pool heap"
 
   ;; check we are returning to the correct pool
@@ -1305,7 +1305,7 @@
     )
   )
 
-(defmethod shrink-heap dead-pool-heap ((this dead-pool-heap) (proc process))
+(defmethod shrink-heap ((this dead-pool-heap) (proc process))
   "Shrink the heap of a process.
   This resizes the process heap to be the exact size it is currently using."
   (when proc
@@ -1338,7 +1338,7 @@
   this
   )
 
-(defmethod compact dead-pool-heap ((this dead-pool-heap) (count int))
+(defmethod compact ((this dead-pool-heap) (count int))
   "Do heap compaction.  The count argument tells us how much work to do.
   If the heap is very full we will automatically do more work than requested."
 
@@ -1416,7 +1416,7 @@
   (none)
   )
 
-(defmethod churn dead-pool-heap ((this dead-pool-heap) (count int))
+(defmethod churn ((this dead-pool-heap) (count int))
   "Mess with the heap"
 
   (countdown (ii count)
@@ -1545,7 +1545,7 @@
 ;; Process Iterating
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod run-logic? process ((this process))
+(defmethod run-logic? ((this process))
   "Return if the process should be run or not.
    Children of process should override this with more interesting functions"
   #t)
@@ -2235,7 +2235,7 @@
 ;; Process Control
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod activate process ((this process) (dest process-tree) (name basic) (stack-top pointer))
+(defmethod activate ((this process) (dest process-tree) (name basic) (stack-top pointer))
   "Activate a process! Put it on the given active tree and set up the main thread."
 
   ;; if we got the scratchpad stack, move to the fake scratchpad.
@@ -2422,7 +2422,7 @@
 ;; Process Deactivation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod deactivate process-tree ((this process-tree))
+(defmethod deactivate ((this process-tree))
   "Can't deactivate a process-tree"
   (none)
   )
@@ -2447,7 +2447,7 @@
 
 (define-extern process-disconnect (function process int))
 
-(defmethod deactivate process ((this process))
+(defmethod deactivate ((this process))
   "Deactivate a process. This returns the process to the dead pool
    it came from. You can use this on your own process to kill yourself
   and immediately return to the kernel.

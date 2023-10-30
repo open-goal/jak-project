@@ -20,37 +20,35 @@
 ;; DECOMP BEGINS
 
 (deftype basebutton (process-focusable)
-  ((button-status     button-status                 :offset-assert 204)
-   (notify-actor      entity                        :offset-assert 208)
-   (actor-group       (pointer actor-group)         :offset-assert 212)
-   (actor-group-count int32                         :offset-assert 216)
-   (timeout           float                         :offset-assert 220)
-   (button-id         int32                         :offset-assert 224)
-   (event-going-down  symbol                        :offset-assert 228)
-   (event-down        symbol                        :offset-assert 232)
-   (event-going-up    symbol                        :offset-assert 236)
-   (event-up          symbol                        :offset-assert 240)
-   (anim-speed        float                         :offset-assert 244)
-   (move-to-pos       vector                :inline :offset-assert 256)
-   (move-to-quat      quaternion            :inline :offset-assert 272)
+  ((button-status      button-status)
+   (notify-actor       entity)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (timeout            float)
+   (button-id          int32)
+   (event-going-down   symbol)
+   (event-down         symbol)
+   (event-going-up     symbol)
+   (event-up           symbol)
+   (anim-speed         float)
+   (move-to-pos        vector      :inline)
+   (move-to-quat       quaternion  :inline)
    )
-  :heap-base #xa0
-  :method-count-assert 39
-  :size-assert         #x120
-  :flag-assert         #x2700a00120
+  (:state-methods
+    down-idle
+    going-down
+    going-up
+    up-idle
+    )
   (:methods
-    (down-idle () _type_ :state 27)
-    (going-down () _type_ :state 28)
-    (going-up () _type_ :state 29)
-    (up-idle () _type_ :state 30)
-    (reset! (_type_) none 31)
-    (idle-state-transition (_type_) object 32)
-    (basebutton-method-33 (_type_) none 33)
-    (basebutton-method-34 (_type_) none 34)
-    (prepare-trigger-event! (_type_) none 35)
-    (send-event! (_type_ symbol) none :behavior basebutton 36)
-    (move-to! (_type_ vector quaternion) none 37)
-    (press! (_type_ symbol) entity-perm-status 38)
+    (reset! (_type_) none)
+    (idle-state-transition (_type_) object)
+    (basebutton-method-33 (_type_) none)
+    (basebutton-method-34 (_type_) none)
+    (prepare-trigger-event! (_type_) none)
+    (send-event! (_type_ symbol) none :behavior basebutton)
+    (move-to! (_type_ vector quaternion) none)
+    (press! (_type_ symbol) entity-perm-status)
     )
   )
 
@@ -60,7 +58,7 @@
               :bounds (static-spherem 0 0 0 3)
               )
 
-(defmethod move-to! basebutton ((this basebutton) (vec vector) (quat quaternion))
+(defmethod move-to! ((this basebutton) (vec vector) (quat quaternion))
   (logclear! (-> this button-status) (button-status button-status-2))
   (if vec
       (set! (-> this move-to-pos quad) (-> vec quad))
@@ -74,7 +72,7 @@
   (none)
   )
 
-(defmethod idle-state-transition basebutton ((this basebutton))
+(defmethod idle-state-transition ((this basebutton))
   "If `button-status` has [[button-status:0]] set, transition to [[basebutton::27]] otherwise, [[basebutton::30]]"
   (if (logtest? (-> this button-status) (button-status pressed))
       (go (method-of-object this down-idle))
@@ -255,7 +253,7 @@
     )
   )
 
-(defmethod press! basebutton ((this basebutton) (pressed? symbol))
+(defmethod press! ((this basebutton) (pressed? symbol))
   (if pressed?
       (logior! (-> this button-status) (button-status pressed))
       (logclear! (-> this button-status) (button-status pressed))
@@ -268,7 +266,7 @@
     )
   )
 
-(defmethod send-event! basebutton ((this basebutton) (event-type symbol))
+(defmethod send-event! ((this basebutton) (event-type symbol))
   "Prepares an [[event-message-block]] using the provided type to send an event to:
 - the `notify-actor`
 - every [[entity-actor]] in the `actor-group` array
@@ -312,7 +310,7 @@
   (none)
   )
 
-(defmethod reset! basebutton ((this basebutton))
+(defmethod reset! ((this basebutton))
   (set! (-> this button-status) (button-status))
   (set! (-> this notify-actor) #f)
   (set! (-> this timeout) 0.0)
@@ -325,14 +323,14 @@
   (none)
   )
 
-(defmethod prepare-trigger-event! basebutton ((this basebutton))
+(defmethod prepare-trigger-event! ((this basebutton))
   "Sets `event-going-down` to `'trigger`"
   (set! (-> this event-going-down) 'trigger)
   0
   (none)
   )
 
-(defmethod basebutton-method-33 basebutton ((this basebutton))
+(defmethod basebutton-method-33 ((this basebutton))
   "TODO - joint stuff"
   (initialize-skeleton
     this
@@ -369,7 +367,7 @@
   (none)
   )
 
-(defmethod basebutton-method-34 basebutton ((this basebutton))
+(defmethod basebutton-method-34 ((this basebutton))
   "TODO - collision stuff"
   (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
@@ -394,7 +392,7 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! basebutton ((this basebutton) (arg0 entity-actor))
+(defmethod init-from-entity! ((this basebutton) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

@@ -27,14 +27,10 @@
 
 (deftype gun-buoy-shot (guard-shot)
   ()
-  :heap-base #x170
-  :method-count-assert 40
-  :size-assert         #x1f0
-  :flag-assert         #x28017001f0
   )
 
 
-(defmethod play-impact-sound gun-buoy-shot ((this gun-buoy-shot) (arg0 projectile-options))
+(defmethod play-impact-sound ((this gun-buoy-shot) (arg0 projectile-options))
   (if (zero? arg0)
       (sound-play "buoy-shot")
       )
@@ -116,7 +112,7 @@
     )
   )
 
-(defmethod init-proj-collision! gun-buoy-shot ((this gun-buoy-shot))
+(defmethod init-proj-collision! ((this gun-buoy-shot))
   "Init the [[projectile]]'s [[collide-shape]]"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -163,7 +159,7 @@
   (none)
   )
 
-(defmethod init-proj-settings! gun-buoy-shot ((this gun-buoy-shot))
+(defmethod init-proj-settings! ((this gun-buoy-shot))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this hit-actor?) #f)
   (set! (-> this tail-pos quad) (-> this root trans quad))
@@ -285,36 +281,34 @@
 (set! (-> *gun-buoy-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype gun-buoy (nav-enemy)
-  ((gun-elev-jmod      joint-mod              :offset-assert 604)
-   (start-pos          vector         :inline :offset-assert 608)
-   (aim-dir            vector         :inline :offset-assert 624)
-   (banking-quat       quaternion     :inline :offset        656)
-   (offset-from-player vector         :inline :offset-assert 672)
-   (offset-y-angular   float                  :offset-assert 688)
-   (elev-angle         float                  :offset-assert 692)
-   (y-final            float                  :offset-assert 696)
-   (y-offset           float                  :offset-assert 700)
-   (y-bob              float                  :offset-assert 704)
-   (y-speed            float                  :offset-assert 708)
-   (warning-interval   time-frame             :offset-assert 712)
-   (warning-timer      time-frame             :offset-assert 720)
-   (splash-timer       time-frame             :offset-assert 728)
-   (stare-down-timer   time-frame             :offset-assert 736)
-   (warning-id         sound-id               :offset-assert 744)
-   (voice-id           sound-id               :offset-assert 748)
-   (flags              gun-buoy-flags         :offset-assert 752)
+  ((gun-elev-jmod       joint-mod)
+   (start-pos           vector      :inline)
+   (aim-dir             vector      :inline)
+   (banking-quat        quaternion  :inline :offset 656)
+   (offset-from-player  vector      :inline)
+   (offset-y-angular    float)
+   (elev-angle          float)
+   (y-final             float)
+   (y-offset            float)
+   (y-bob               float)
+   (y-speed             float)
+   (warning-interval    time-frame)
+   (warning-timer       time-frame)
+   (splash-timer        time-frame)
+   (stare-down-timer    time-frame)
+   (warning-id          sound-id)
+   (voice-id            sound-id)
+   (flags               gun-buoy-flags)
    )
-  :heap-base #x280
-  :method-count-assert 184
-  :size-assert         #x2f2
-  :flag-assert         #xb8028002f2
+  (:state-methods
+    attack
+    exit-ambush
+    warning
+    stare-down
+    open-guns
+    )
   (:methods
-    (attack () _type_ :state 178)
-    (exit-ambush () _type_ :state 179)
-    (warning () _type_ :state 180)
-    (stare-down () _type_ :state 181)
-    (open-guns () _type_ :state 182)
-    (gun-buoy-method-183 (_type_ process-focusable) none 183)
+    (gun-buoy-method-183 (_type_ process-focusable) none)
     )
   )
 
@@ -879,7 +873,7 @@
     )
   )
 
-(defmethod general-event-handler gun-buoy ((this gun-buoy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this gun-buoy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -892,7 +886,7 @@
     )
   )
 
-(defmethod track-target! gun-buoy ((this gun-buoy))
+(defmethod track-target! ((this gun-buoy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -964,20 +958,20 @@
   (none)
   )
 
-(defmethod go-hostile gun-buoy ((this gun-buoy))
+(defmethod go-hostile ((this gun-buoy))
   (if (logtest? (-> this flags) (gun-buoy-flags gubflags-1))
       (go (method-of-object this hostile))
       (go (method-of-object this warning))
       )
   )
 
-(defmethod enemy-method-61 gun-buoy ((this gun-buoy) (arg0 int))
+(defmethod enemy-method-61 ((this gun-buoy) (arg0 int))
   arg0
   )
 
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 40. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod in-aggro-range? gun-buoy ((this gun-buoy) (arg0 process-focusable) (arg1 vector))
+(defmethod in-aggro-range? ((this gun-buoy) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
 - if `activate-distance` is `0.0`, always true
 - otherwise, check if the provided process is close enough
@@ -1046,7 +1040,7 @@
   )
 
 ;; WARN: Return type mismatch (pointer process) vs none.
-(defmethod gun-buoy-method-183 gun-buoy ((this gun-buoy) (arg0 process-focusable))
+(defmethod gun-buoy-method-183 ((this gun-buoy) (arg0 process-focusable))
   (let ((s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 8)))
         (s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 10)))
         (s4-0 (new 'stack-no-clear 'projectile-init-by-other-params))
@@ -1080,7 +1074,7 @@
   (none)
   )
 
-(defmethod nav-enemy-method-142 gun-buoy ((this gun-buoy) (arg0 nav-control))
+(defmethod nav-enemy-method-142 ((this gun-buoy) (arg0 nav-control))
   (local-vars (a0-19 int) (a0-21 int))
   (let* ((v1-1 (-> *perf-stats* data 33))
          (a0-1 (-> v1-1 ctrl))
@@ -1148,7 +1142,7 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs gun-buoy.
-(defmethod relocate gun-buoy ((this gun-buoy) (arg0 int))
+(defmethod relocate ((this gun-buoy) (arg0 int))
   (if (nonzero? (-> this gun-elev-jmod))
       (&+! (-> this gun-elev-jmod) arg0)
       )
@@ -1156,7 +1150,7 @@
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-enemy-collision! gun-buoy ((this gun-buoy))
+(defmethod init-enemy-collision! ((this gun-buoy))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1210,7 +1204,7 @@
   (none)
   )
 
-(defmethod init-enemy! gun-buoy ((this gun-buoy))
+(defmethod init-enemy! ((this gun-buoy))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this

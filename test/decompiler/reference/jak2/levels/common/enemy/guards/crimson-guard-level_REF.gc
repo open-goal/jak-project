@@ -14,20 +14,17 @@
 
 ;; definition of type guard-level-anim-info
 (deftype guard-level-anim-info (structure)
-  ((anim-index                int32  2 :offset-assert   0)
-   (anim-index-front          int32    :offset          0)
-   (anim-index-back           int32    :offset          4)
-   (unsigned-anim-index-front uint32   :offset          0)
-   (unsigned-anim-index-back  uint32   :offset          4)
+  ((anim-index                 int32   2)
+   (anim-index-front           int32   :overlay-at (-> anim-index 0))
+   (anim-index-back            int32   :overlay-at (-> anim-index 1))
+   (unsigned-anim-index-front  uint32  :overlay-at (-> anim-index 0))
+   (unsigned-anim-index-back   uint32  :overlay-at (-> anim-index 1))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 ;; definition for method 3 of type guard-level-anim-info
-(defmethod inspect guard-level-anim-info ((this guard-level-anim-info))
+(defmethod inspect ((this guard-level-anim-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -42,25 +39,22 @@
 
 ;; definition of type guard-level-global-info
 (deftype guard-level-global-info (basic)
-  ((prev-yellow-hit         int8                            :offset-assert   4)
-   (prev-blue-hit           int8                            :offset-assert   5)
-   (knocked                 guard-level-anim-info :inline   :offset-assert   8)
-   (anim-knocked-front      int32                           :offset          8)
-   (anim-knocked-back       int32                           :offset         12)
-   (knocked-land            guard-level-anim-info :inline   :offset-assert  16)
-   (anim-knocked-front-land int32                           :offset         16)
-   (anim-knocked-back-land  int32                           :offset         20)
-   (yellow-hit-anim         guard-level-anim-info 2 :inline :offset-assert  24)
-   (yellow-land-anim        guard-level-anim-info 2 :inline :offset-assert  40)
-   (blue-hit-anim           guard-level-anim-info 1 :inline :offset-assert  56)
+  ((prev-yellow-hit          int8)
+   (prev-blue-hit            int8)
+   (knocked                  guard-level-anim-info  :inline)
+   (anim-knocked-front       int32                  :overlay-at (-> knocked anim-index 0))
+   (anim-knocked-back        int32                  :overlay-at (-> knocked anim-index 1))
+   (knocked-land             guard-level-anim-info  :inline)
+   (anim-knocked-front-land  int32                  :overlay-at (-> knocked-land anim-index 0))
+   (anim-knocked-back-land   int32                  :overlay-at (-> knocked-land anim-index 1))
+   (yellow-hit-anim          guard-level-anim-info  2 :inline)
+   (yellow-land-anim         guard-level-anim-info  2 :inline)
+   (blue-hit-anim            guard-level-anim-info  1 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 ;; definition for method 3 of type guard-level-global-info
-(defmethod inspect guard-level-global-info ((this guard-level-global-info))
+(defmethod inspect ((this guard-level-global-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -83,18 +77,15 @@
 
 ;; definition of type guard-level-shoot-info
 (deftype guard-level-shoot-info (structure)
-  ((anim-index int32  :offset-assert   0)
-   (start      float  :offset-assert   4)
-   (end        float  :offset-assert   8)
+  ((anim-index  int32)
+   (start       float)
+   (end         float)
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type guard-level-shoot-info
-(defmethod inspect guard-level-shoot-info ((this guard-level-shoot-info))
+(defmethod inspect ((this guard-level-shoot-info))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1023,80 +1014,78 @@
 
 ;; definition of type crimson-guard-level
 (deftype crimson-guard-level (nav-enemy)
-  ((info                    guard-level-global-info           :offset-assert 604)
-   (hit-face                uint32                            :offset-assert 608)
-   (anim-get-up-front       int32                             :offset-assert 612)
-   (anim-get-up-back        int32                             :offset-assert 616)
-   (small-hit               int32                             :offset-assert 620)
-   (yellow-anim             guard-level-anim-info   :inline   :offset-assert 624)
-   (flags                   int64                             :offset-assert 632)
-   (weapon                  int32                             :offset-assert 640)
-   (pad-kjh1n23             int32                             :offset-assert 644)
-   (last-time-see-target    int64                             :offset-assert 648)
-   (joint                   joint-mod                         :offset-assert 656)
-   (joint-enable            symbol                            :offset-assert 660)
-   (l-control               lightning-control                 :offset-assert 664)
-   (already-shot            uint32                            :offset-assert 668)
-   (miss-amount             float                             :offset-assert 672)
-   (pad-k1jh2n3             int32                             :offset-assert 676)
-   (next-shot               int64                             :offset-assert 680)
-   (anim-shoot              guard-level-shoot-info  3 :inline :offset-assert 688)
-   (target-pos              vector                  :inline   :offset-assert 736)
-   (target-pos-predict      vector                  :inline   :offset-assert 752)
-   (target-pos-predict-miss vector                  :inline   :offset-assert 768)
-   (target-vel-vec          vector                  :inline   :offset-assert 784)
-   (target-vel              float                             :offset-assert 800)
-   (target-self             vector                  :inline   :offset-assert 816)
-   (target-self-xz          vector                  :inline   :offset-assert 832)
-   (target-self-dist        float                             :offset-assert 848)
-   (target-self-xz-dist     float                             :offset-assert 852)
-   (target-y-angle          float                             :offset-assert 856)
-   (lazer-sound             sound-id                          :offset-assert 860)
-   (transport               handle                            :offset-assert 864)
-   (transport-side          uint32                            :offset-assert 872)
-   (other-side              uint32                            :offset-assert 876)
-   (start-target-pos        vector                  :inline   :offset-assert 880)
-   (start-target-vel        vector                  :inline   :offset-assert 896)
-   (trigger                 symbol                            :offset-assert 912)
-   (reachable-target-pos    vector                  :inline   :offset-assert 928)
+  ((info                     guard-level-global-info)
+   (hit-face                 uint32)
+   (anim-get-up-front        int32)
+   (anim-get-up-back         int32)
+   (small-hit                int32)
+   (yellow-anim              guard-level-anim-info   :inline)
+   (flags                    int64)
+   (weapon                   int32)
+   (pad-kjh1n23              int32)
+   (last-time-see-target     int64)
+   (joint                    joint-mod)
+   (joint-enable             symbol)
+   (l-control                lightning-control)
+   (already-shot             uint32)
+   (miss-amount              float)
+   (pad-k1jh2n3              int32)
+   (next-shot                int64)
+   (anim-shoot               guard-level-shoot-info  3 :inline)
+   (target-pos               vector                  :inline)
+   (target-pos-predict       vector                  :inline)
+   (target-pos-predict-miss  vector                  :inline)
+   (target-vel-vec           vector                  :inline)
+   (target-vel               float)
+   (target-self              vector                  :inline)
+   (target-self-xz           vector                  :inline)
+   (target-self-dist         float)
+   (target-self-xz-dist      float)
+   (target-y-angle           float)
+   (lazer-sound              sound-id)
+   (transport                handle)
+   (transport-side           uint32)
+   (other-side               uint32)
+   (start-target-pos         vector                  :inline)
+   (start-target-vel         vector                  :inline)
+   (trigger                  symbol)
+   (reachable-target-pos     vector                  :inline)
    )
-  :heap-base #x330
-  :method-count-assert 205
-  :size-assert         #x3b0
-  :flag-assert         #xcd033003b0
+  (:state-methods
+    gun-shoot
+    attack
+    get-up-front
+    get-up-back
+    close-attack
+    grenade-attack
+    exit-transport
+    blast-hostile
+    grenade-hostile
+    tazer-hostile
+    roll-right
+    roll-left
+    arrest
+    )
   (:methods
-    (gun-shoot () _type_ :state 178)
-    (attack () _type_ :state 179)
-    (get-up-front () _type_ :state 180)
-    (get-up-back () _type_ :state 181)
-    (close-attack () _type_ :state 182)
-    (grenade-attack () _type_ :state 183)
-    (exit-transport () _type_ :state 184)
-    (blast-hostile () _type_ :state 185)
-    (grenade-hostile () _type_ :state 186)
-    (tazer-hostile () _type_ :state 187)
-    (roll-right () _type_ :state 188)
-    (roll-left () _type_ :state 189)
-    (arrest () _type_ :state 190)
-    (crimson-guard-level-method-191 (_type_) (pointer process) 191)
-    (crimson-guard-level-method-192 (_type_) none 192)
-    (crimson-guard-level-method-193 (_type_) symbol 193)
-    (crimson-guard-level-method-194 (_type_) symbol 194)
-    (crimson-guard-level-method-195 (_type_ vector vector vector) int 195)
-    (crimson-guard-level-method-196 (_type_ vector) none 196)
-    (crimson-guard-level-method-197 (_type_) quaternion 197)
-    (crimson-guard-level-method-198 (_type_) none 198)
-    (crimson-guard-level-method-199 (_type_ vector vector vector float) symbol 199)
-    (crimson-guard-level-method-200 (_type_) float 200)
-    (crimson-guard-level-method-201 (_type_ float) none 201)
-    (crimson-guard-level-method-202 (_type_ vector) float 202)
-    (crimson-guard-level-method-203 (_type_ int) none 203)
-    (crimson-guard-level-method-204 (_type_) none 204)
+    (crimson-guard-level-method-191 (_type_) (pointer process))
+    (crimson-guard-level-method-192 (_type_) none)
+    (crimson-guard-level-method-193 (_type_) symbol)
+    (crimson-guard-level-method-194 (_type_) symbol)
+    (crimson-guard-level-method-195 (_type_ vector vector vector) int)
+    (crimson-guard-level-method-196 (_type_ vector) none)
+    (crimson-guard-level-method-197 (_type_) quaternion)
+    (crimson-guard-level-method-198 (_type_) none)
+    (crimson-guard-level-method-199 (_type_ vector vector vector float) symbol)
+    (crimson-guard-level-method-200 (_type_) float)
+    (crimson-guard-level-method-201 (_type_ float) none)
+    (crimson-guard-level-method-202 (_type_ vector) float)
+    (crimson-guard-level-method-203 (_type_ int) none)
+    (crimson-guard-level-method-204 (_type_) none)
     )
   )
 
 ;; definition for method 3 of type crimson-guard-level
-(defmethod inspect crimson-guard-level ((this crimson-guard-level))
+(defmethod inspect ((this crimson-guard-level))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1143,7 +1132,7 @@
   )
 
 ;; definition for method 72 of type crimson-guard-level
-(defmethod react-to-focus crimson-guard-level ((this crimson-guard-level))
+(defmethod react-to-focus ((this crimson-guard-level))
   "@TODO - flesh out docs"
   (let ((s5-0 (-> this focus aware)))
     (cond
@@ -1222,7 +1211,7 @@
   )
 
 ;; definition for method 74 of type crimson-guard-level
-(defmethod general-event-handler crimson-guard-level ((this crimson-guard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this crimson-guard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -1278,7 +1267,7 @@
 
 ;; definition for method 191 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-191 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-191 ((this crimson-guard-level))
   (let* ((s4-0 (-> this target-pos-predict-miss))
          (s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
          (v1-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 15)))
@@ -1307,7 +1296,7 @@
 
 ;; definition for method 195 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-195 crimson-guard-level ((this crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod crimson-guard-level-method-195 ((this crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1420,7 +1409,7 @@
 
 ;; definition for method 193 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-193 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-193 ((this crimson-guard-level))
   (let ((s5-0 (get-trans this 3))
         (s4-0 (new 'stack-no-clear 'vector))
         )
@@ -1434,7 +1423,7 @@
 
 ;; definition for method 194 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-194 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-194 ((this crimson-guard-level))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> this target-pos-predict-miss quad))
     (let* ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14)))
@@ -1452,7 +1441,7 @@
 ;; definition for method 196 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod crimson-guard-level-method-196 crimson-guard-level ((this crimson-guard-level) (arg0 vector))
+(defmethod crimson-guard-level-method-196 ((this crimson-guard-level) (arg0 vector))
   (local-vars
     (sv-240 vector)
     (sv-256 (function vector vector vector))
@@ -1583,13 +1572,13 @@
   )
 
 ;; definition for method 197 of type crimson-guard-level
-(defmethod crimson-guard-level-method-197 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-197 ((this crimson-guard-level))
   (quaternion-pseudo-seek (-> this joint quat) (-> this joint quat) *unity-quaternion* (seconds-per-frame))
   )
 
 ;; definition for method 55 of type crimson-guard-level
 ;; WARN: Return type mismatch object vs none.
-(defmethod track-target! crimson-guard-level ((this crimson-guard-level))
+(defmethod track-target! ((this crimson-guard-level))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -1613,7 +1602,7 @@
 
 ;; definition for method 200 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-200 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-200 ((this crimson-guard-level))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -2314,7 +2303,7 @@
 
 ;; definition for method 199 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod crimson-guard-level-method-199 crimson-guard-level ((this crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+(defmethod crimson-guard-level-method-199 ((this crimson-guard-level) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (local-vars (sv-672 vector) (sv-688 vector) (sv-704 vector) (sv-720 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -2478,7 +2467,7 @@
 ;; definition for method 198 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-level-method-198 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-198 ((this crimson-guard-level))
   (local-vars (sv-784 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -2762,7 +2751,7 @@
 ;; definition for method 192 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod crimson-guard-level-method-192 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-192 ((this crimson-guard-level))
   (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 14))))
     (new 'stack-no-clear 'vector)
     (let ((s5-0 (new 'stack-no-clear 'traj3d-params)))
@@ -3231,7 +3220,7 @@
 
 ;; definition for method 204 of type crimson-guard-level
 ;; WARN: Return type mismatch object vs none.
-(defmethod crimson-guard-level-method-204 crimson-guard-level ((this crimson-guard-level))
+(defmethod crimson-guard-level-method-204 ((this crimson-guard-level))
   (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s5-0 (-> this root))
         (s3-0 (lambda ((arg0 crimson-guard-level) (arg1 collide-shape-moving) (arg2 vector))
@@ -3507,7 +3496,7 @@
   )
 
 ;; definition for method 77 of type crimson-guard-level
-(defmethod enemy-method-77 crimson-guard-level ((this crimson-guard-level) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard-level) (arg0 (pointer float)))
   (let ((v1-1 (-> this root transv)))
     (cond
       ((< (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))) 57344.0)
@@ -3605,7 +3594,7 @@
   )
 
 ;; definition for method 70 of type crimson-guard-level
-(defmethod go-hostile crimson-guard-level ((this crimson-guard-level))
+(defmethod go-hostile ((this crimson-guard-level))
   (let ((v1-0 (-> this hit-face)))
     (cond
       ((zero? v1-0)
@@ -3631,7 +3620,7 @@
   )
 
 ;; definition for method 78 of type crimson-guard-level
-(defmethod enemy-method-78 crimson-guard-level ((this crimson-guard-level) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard-level) (arg0 (pointer float)))
   (cond
     ((<= (-> this hit-points) 0)
      (let ((a1-1 (-> this draw art-group data (-> this info knocked-land anim-index (-> this hit-face))))
@@ -3835,7 +3824,7 @@
 
 ;; definition for method 201 of type crimson-guard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod crimson-guard-level-method-201 crimson-guard-level ((this crimson-guard-level) (arg0 float))
+(defmethod crimson-guard-level-method-201 ((this crimson-guard-level) (arg0 float))
   (let* ((s3-0 (handle->process (-> this transport)))
          (s4-0 (if (type? s3-0 process-focusable)
                    (the-as process-focusable s3-0)
@@ -3871,7 +3860,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-(defmethod crimson-guard-level-method-202 crimson-guard-level ((this crimson-guard-level) (arg0 vector))
+(defmethod crimson-guard-level-method-202 ((this crimson-guard-level) (arg0 vector))
   (local-vars
     (f0-8 float)
     (sv-768 vector)
@@ -3991,7 +3980,7 @@
 
 ;; definition for method 93 of type crimson-guard-level
 ;; INFO: Used lq/sq
-(defmethod enemy-method-93 crimson-guard-level ((this crimson-guard-level))
+(defmethod enemy-method-93 ((this crimson-guard-level))
   (let ((s5-0 (-> this nav state))
         (v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         )
@@ -4014,12 +4003,12 @@
   )
 
 ;; definition for method 89 of type crimson-guard-level
-(defmethod enemy-method-89 crimson-guard-level ((this crimson-guard-level) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this crimson-guard-level) (arg0 enemy-jump-info))
   #f
   )
 
 ;; definition for method 87 of type crimson-guard-level
-(defmethod enemy-method-87 crimson-guard-level ((this crimson-guard-level) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this crimson-guard-level) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -4036,7 +4025,7 @@
   )
 
 ;; definition for method 88 of type crimson-guard-level
-(defmethod enemy-method-88 crimson-guard-level ((this crimson-guard-level) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this crimson-guard-level) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -4053,7 +4042,7 @@
   )
 
 ;; definition for method 90 of type crimson-guard-level
-(defmethod enemy-method-90 crimson-guard-level ((this crimson-guard-level) (arg0 int) (arg1 enemy-jump-info))
+(defmethod enemy-method-90 ((this crimson-guard-level) (arg0 int) (arg1 enemy-jump-info))
   (local-vars (s5-0 symbol))
   (let ((v1-0 arg0))
     (cond
@@ -4210,7 +4199,7 @@
 
 ;; definition for method 114 of type crimson-guard-level
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy-collision! crimson-guard-level ((this crimson-guard-level))
+(defmethod init-enemy-collision! ((this crimson-guard-level))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -4289,7 +4278,7 @@
   )
 
 ;; definition for method 7 of type crimson-guard-level
-(defmethod relocate crimson-guard-level ((this crimson-guard-level) (arg0 int))
+(defmethod relocate ((this crimson-guard-level) (arg0 int))
   (if (nonzero? (-> this joint))
       (&+! (-> this joint) arg0)
       )
@@ -4301,7 +4290,7 @@
 
 ;; definition for method 203 of type crimson-guard-level
 ;; WARN: Return type mismatch float vs none.
-(defmethod crimson-guard-level-method-203 crimson-guard-level ((this crimson-guard-level) (arg0 int))
+(defmethod crimson-guard-level-method-203 ((this crimson-guard-level) (arg0 int))
   "TODO - probably a flag"
   (cond
     ((= arg0 1)
@@ -4326,7 +4315,7 @@
 ;; definition for method 156 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
-(defmethod nav-enemy-method-156 crimson-guard-level ((this crimson-guard-level))
+(defmethod nav-enemy-method-156 ((this crimson-guard-level))
   (cond
     ((logtest? (-> this flags) 36)
      (let ((v1-3 (-> this nav state))
@@ -4348,7 +4337,7 @@
 ;; definition for method 115 of type crimson-guard-level
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod init-enemy! crimson-guard-level ((this crimson-guard-level))
+(defmethod init-enemy! ((this crimson-guard-level))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (local-vars (sv-16 int))
   (let ((f0-0 (res-lump-float (-> this entity) 'rotoffset)))
@@ -4504,21 +4493,18 @@
 
 ;; definition of type crimson-guard-level-params
 (deftype crimson-guard-level-params (structure)
-  ((pos            vector     :inline :offset-assert   0)
-   (quat           quaternion :inline :offset-assert  16)
-   (nav-mesh       nav-mesh           :offset-assert  32)
-   (handle         uint64             :offset-assert  40)
-   (transport-side uint32             :offset-assert  48)
-   (weapon         int32              :offset-assert  52)
-   (proc           process            :offset-assert  56)
+  ((pos             vector      :inline)
+   (quat            quaternion  :inline)
+   (nav-mesh        nav-mesh)
+   (handle          uint64)
+   (transport-side  uint32)
+   (weapon          int32)
+   (proc            process)
    )
-  :method-count-assert 9
-  :size-assert         #x3c
-  :flag-assert         #x90000003c
   )
 
 ;; definition for method 3 of type crimson-guard-level-params
-(defmethod inspect crimson-guard-level-params ((this crimson-guard-level-params))
+(defmethod inspect ((this crimson-guard-level-params))
   (when (not this)
     (set! this this)
     (goto cfg-4)

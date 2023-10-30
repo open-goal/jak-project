@@ -7,7 +7,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod find-edge-grabs! target ((this target) (arg0 collide-cache))
+(defmethod find-edge-grabs! ((this target) (arg0 collide-cache))
   "Main edge grabbing method.
    Will populate *edge-grab-info* and send *target* an 'edge-grab event if successful."
   (rlet ((vf1 :class vf)
@@ -90,7 +90,7 @@
     )
   )
 
-(defmethod search-for-edges collide-edge-work ((this collide-edge-work) (arg0 collide-edge-hold-list))
+(defmethod search-for-edges ((this collide-edge-work) (arg0 collide-edge-hold-list))
   "Iterate through edges, adding them to the collide-edge-hold-list, if they are good"
   ;; reset edge list.
   (set! (-> arg0 num-allocs) (the-as uint 0))
@@ -125,20 +125,17 @@
 (defmethod-mips2c "(method 10 collide-edge-hold-list)" 10 collide-edge-hold-list)
 
 (deftype pbhp-stack-vars (structure)
-  ((edge        collide-edge-edge         :offset-assert   0)
-   (allocated   basic                     :offset-assert   4)
-   (neg-hold-pt vector            :inline :offset-assert  16)
-   (split-vec   vector            :inline :offset-assert  32)
+  ((edge         collide-edge-edge)
+   (allocated    basic)
+   (neg-hold-pt  vector  :inline)
+   (split-vec    vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
 (defmethod-mips2c "(method 18 collide-edge-work)" 18 collide-edge-work)
 
-(defmethod check-grab-for-collisions collide-edge-work ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
+(defmethod check-grab-for-collisions ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
   (local-vars (sv-144 (function vector vector vector float vector)) (sv-160 vector) (sv-176 vector))
   (let* ((s3-0 (-> arg0 edge))
          (s1-0 (-> s3-0 etri ctri))
@@ -231,7 +228,7 @@
   #t
   )
 
-(defmethod edge-grab-info-method-9 edge-grab-info ((this edge-grab-info))
+(defmethod edge-grab-info-method-9 ((this edge-grab-info))
   (local-vars (v0-0 symbol) (v1-14 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -366,7 +363,7 @@
 (defmethod-mips2c "(method 16 collide-edge-work)" 16 collide-edge-work)
 (defmethod-mips2c "(method 15 collide-edge-work)" 15 collide-edge-work)
 
-(defmethod collide-edge-work-method-14 collide-edge-work ((this collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
+(defmethod collide-edge-work-method-14 ((this collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
   (let ((f30-0 -1.0))
     (let ((s2-0 (new 'stack-no-clear 'vector)))
       (dotimes (s1-0 (the-as int (-> this num-edges)))
@@ -482,7 +479,7 @@
     )
   )
 
-(defmethod compute-center-point! collide-edge-work ((this collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
+(defmethod compute-center-point! ((this collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
   (local-vars (v0-0 float) (v1-1 float) (v1-2 float) (v1-3 float))
   (rlet ((Q :class vf)
          (vf0 :class vf)
@@ -550,7 +547,7 @@
   )
 
 
-(defmethod debug-draw edge-grab-info ((this edge-grab-info))
+(defmethod debug-draw ((this edge-grab-info))
   (add-debug-line
     #t
     (bucket-id debug-no-zbuf)
@@ -603,7 +600,7 @@
           )
   )
 
-(defmethod debug-draw-edges collide-edge-work ((this collide-edge-work))
+(defmethod debug-draw-edges ((this collide-edge-work))
   (let ((gp-0 0))
     (dotimes (s4-0 (the-as int (-> this num-edges)))
       (let* ((s3-0 (-> this edges s4-0))
@@ -652,7 +649,7 @@
     )
   )
 
-(defmethod debug-draw-sphere collide-edge-work ((this collide-edge-work))
+(defmethod debug-draw-sphere ((this collide-edge-work))
   (dotimes (s5-0 (the-as int (-> this num-verts)))
     (let ((a2-0 (-> this verts s5-0)))
       (add-debug-sphere #t (bucket-id debug-no-zbuf) a2-0 819.2 (new 'static 'rgba :r #xff :g #xff :a #x80))
@@ -661,7 +658,7 @@
   #f
   )
 
-(defmethod debug-draw collide-edge-hold-list ((this collide-edge-hold-list))
+(defmethod debug-draw ((this collide-edge-hold-list))
   (let ((s4-0 (-> this head))
         (s5-0 0)
         )
@@ -713,7 +710,7 @@
   (format *stdcon* "hold list has ~D attempt(s)~%" (-> this num-attempts))
   )
 
-(defmethod debug-draw-tris collide-edge-work ((this collide-edge-work))
+(defmethod debug-draw-tris ((this collide-edge-work))
   (dotimes (s5-0 (the-as int (-> this num-tris)))
     (let* ((v1-3 (-> this tris s5-0 ctri))
            (t1-0 (copy-and-set-field (-> *pat-mode-info* (-> v1-3 pat mode) color) a 64))

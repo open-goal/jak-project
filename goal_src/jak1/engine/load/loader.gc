@@ -8,7 +8,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod inspect load-dir ((this load-dir))
+(defmethod inspect ((this load-dir))
   "Print all the stuff in a load-dir"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlevel: ~A~%" (-> this lev))
@@ -21,7 +21,7 @@
   this
   )
 
-(defmethod mem-usage load-dir ((this load-dir) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this load-dir) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage data of a load-dir"
 
   (set! (-> arg0 length) (max 82 (-> arg0 length)))
@@ -60,7 +60,7 @@
   (the-as load-dir #f)
   )
 
-(defmethod load-to-heap-by-name load-dir-art-group ((this load-dir-art-group) (art-name string) (do-reload symbol) (heap kheap) (version int))
+(defmethod load-to-heap-by-name ((this load-dir-art-group) (art-name string) (do-reload symbol) (heap kheap) (version int))
   "Load the art with the given name to the heap and return the art.
   Won't load a thing if it's already loaded, unless you set do-reload.
   This is intended for debug only."
@@ -94,7 +94,7 @@
     )
   )
 
-(defmethod set-loaded-art load-dir-art-group ((this load-dir-art-group) (arg0 art-group))
+(defmethod set-loaded-art ((this load-dir-art-group) (arg0 art-group))
   "Add some already loaded art to the load-dir."
 
   (let ((s4-0 (-> this string-array)))
@@ -182,7 +182,7 @@
     )
   )
 
-(defmethod set-pending-file external-art-buffer ((this external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
+(defmethod set-pending-file ((this external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
   "Request a new file to be loaded into this buffer."
 
   (set! (-> this pending-load-file) arg0)
@@ -192,7 +192,7 @@
   0
   )
 
-(defmethod unlock! external-art-buffer ((this external-art-buffer))
+(defmethod unlock! ((this external-art-buffer))
   "Unlock this buffer."
 
   (declare (inline))
@@ -200,14 +200,14 @@
   #f
   )
 
-(defmethod inactive? external-art-buffer ((this external-art-buffer))
+(defmethod inactive? ((this external-art-buffer))
   "Is this buffer inactive?"
 
   (declare (inline))
   (!= (-> this status) 'active)
   )
 
-(defmethod file-status external-art-buffer ((this external-art-buffer) (name string) (part int))
+(defmethod file-status ((this external-art-buffer) (name string) (part int))
   "Get the status of a file in the buffer. #f = file is not present."
 
   (when (and (name= (-> this pending-load-file) name)
@@ -221,7 +221,7 @@
     )
   )
 
-(defmethod link-art! art-group ((this art-group))
+(defmethod link-art! ((this art-group))
   "Links the elements of this art-group.
    This will put a reference to this joint animation in the level art group.
    Level art groups have slots for temporarily loaded joint animations."
@@ -279,7 +279,7 @@
   this
   )
 
-(defmethod unlink-art! art-group ((this art-group))
+(defmethod unlink-art! ((this art-group))
   "Unlinks the elements of this art-group.  This will undo the link-art! function."
 
   (when this
@@ -320,7 +320,7 @@
   0
   )
 
-(defmethod link-file external-art-buffer ((this external-art-buffer) (ag art-group))
+(defmethod link-file ((this external-art-buffer) (ag art-group))
   "Link the art-group and set it to this buffer's art group."
 
   (when ag
@@ -330,7 +330,7 @@
   ag
   )
 
-(defmethod unlink-file external-art-buffer ((this external-art-buffer) (ag art-group))
+(defmethod unlink-file ((this external-art-buffer) (ag art-group))
   "Unlink the art-group and remove this buffer's art group."
 
   (when ag
@@ -340,7 +340,7 @@
   0
   )
 
-(defmethod update external-art-buffer ((this external-art-buffer))
+(defmethod update ((this external-art-buffer))
   "Update this buffer."
 
   (when (or (not (name= (-> this pending-load-file) (-> this load-file)))
@@ -551,7 +551,7 @@
 ;; (some processes may want to wait for the stream to be preloaded, which won't happen with this disabled)
 (define *preload-spool-anims* #t)
 
-(defmethod file-status external-art-control ((this external-art-control) (name string) (part int))
+(defmethod file-status ((this external-art-control) (name string) (part int))
   "Get the status of a file in this art control. #f = file not found"
 
   (dotimes (i 2)
@@ -562,7 +562,7 @@
   #f
   )
 
-(defmethod update external-art-control ((this external-art-control) (debug-print symbol))
+(defmethod update ((this external-art-control) (debug-print symbol))
   "Update this external-art-control. This validates the spool buffers, sorts the spools and queues the highest priority one, and does some other things.
    If debug-print, also prints some text to the display console"
 
@@ -689,13 +689,13 @@
   0
   )
 
-(defmethod none-reserved? external-art-control ((this external-art-control))
+(defmethod none-reserved? ((this external-art-control))
   "are there any reserved buffers?"
   (declare (inline))
   (zero? (-> this reserve-buffer-count))
   )
 
-(defmethod reserve-alloc external-art-control ((this external-art-control))
+(defmethod reserve-alloc ((this external-art-control))
   "Reserve a buffer!"
 
   (set! (-> this reserve-buffer-count) 1)
@@ -704,7 +704,7 @@
       )
   )
 
-(defmethod reserve-free external-art-control ((this external-art-control) (arg0 kheap))
+(defmethod reserve-free ((this external-art-control) (arg0 kheap))
   "Free the reserved buffer!"
 
   (cond
@@ -726,7 +726,7 @@
   0
   )
 
-(defmethod clear-rec external-art-control ((this external-art-control))
+(defmethod clear-rec ((this external-art-control))
   "Clears the recent spool anims from the art control."
 
   (cond
@@ -776,7 +776,7 @@
     )
   )
 
-(defmethod try-preload-stream external-art-control ((this external-art-control) (arg0 string) (arg1 int) (arg2 process) (arg3 float))
+(defmethod try-preload-stream ((this external-art-control) (arg0 string) (arg1 int) (arg2 process) (arg3 float))
   "Set a new stream to be preloaded, if appropriate."
 
   (spool-calc-priority arg3 arg2)
@@ -792,7 +792,7 @@
   0
   )
 
-(defmethod spool-push external-art-control ((this external-art-control) (name string) (part int) (proc process) (priority float))
+(defmethod spool-push ((this external-art-control) (name string) (part int) (proc process) (priority float))
   "Push a spool-anim to the spool array. There are only space for three, and only the three highest priority spool anims will be kept. (lowest priority = top)"
 
   (spool-calc-priority priority proc)

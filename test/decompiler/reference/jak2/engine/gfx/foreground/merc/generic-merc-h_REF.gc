@@ -3,17 +3,14 @@
 
 ;; definition of type merc-matrix
 (deftype merc-matrix (structure)
-  ((quad   uint128 8         :offset-assert   0)
-   (vector vector  8 :inline :offset          0)
-   (tag    uint64            :offset          0)
+  ((quad    uint128  8)
+   (vector  vector   8 :inline :overlay-at (-> quad 0))
+   (tag     uint64             :overlay-at (-> quad 0))
    )
-  :method-count-assert 9
-  :size-assert         #x80
-  :flag-assert         #x900000080
   )
 
 ;; definition for method 3 of type merc-matrix
-(defmethod inspect merc-matrix ((this merc-matrix))
+(defmethod inspect ((this merc-matrix))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -28,17 +25,14 @@
 
 ;; definition of type generic-merc-tag
 (deftype generic-merc-tag (dma-packet)
-  ((next-ptr uint32  :offset  12)
-   (size     uint32  :offset   8)
+  ((next-ptr  uint32  :overlay-at vif1)
+   (size      uint32  :overlay-at vif0)
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type generic-merc-tag
 ;; INFO: Used lq/sq
-(defmethod inspect generic-merc-tag ((this generic-merc-tag))
+(defmethod inspect ((this generic-merc-tag))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -56,18 +50,15 @@
 
 ;; definition of type generic-merc-ctrl
 (deftype generic-merc-ctrl (structure)
-  ((tag    generic-merc-tag :inline :offset-assert   0)
-   (lights vu-lights        :inline :offset-assert  16)
-   (header merc-ctrl-header :inline :offset-assert 128)
-   (effect merc-effect      :inline :offset-assert 256)
+  ((tag     generic-merc-tag  :inline)
+   (lights  vu-lights         :inline)
+   (header  merc-ctrl-header  :inline)
+   (effect  merc-effect       :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x120
-  :flag-assert         #x900000120
   )
 
 ;; definition for method 3 of type generic-merc-ctrl
-(defmethod inspect generic-merc-ctrl ((this generic-merc-ctrl))
+(defmethod inspect ((this generic-merc-ctrl))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -83,15 +74,12 @@
 
 ;; definition of type generic-merc-ctrl-with-sfx
 (deftype generic-merc-ctrl-with-sfx (generic-merc-ctrl)
-  ((sfx-data uint128 11 :offset-assert 288)
+  ((sfx-data  uint128  11)
    )
-  :method-count-assert 9
-  :size-assert         #x1d0
-  :flag-assert         #x9000001d0
   )
 
 ;; definition for method 3 of type generic-merc-ctrl-with-sfx
-(defmethod inspect generic-merc-ctrl-with-sfx ((this generic-merc-ctrl-with-sfx))
+(defmethod inspect ((this generic-merc-ctrl-with-sfx))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -108,21 +96,18 @@
 
 ;; definition of type generic-merc-input
 (deftype generic-merc-input (structure)
-  ((geo-tag     generic-merc-tag           :inline   :offset-assert   0)
-   (geo-block   uint8                      1296      :offset-assert  16)
-   (byte-header merc-byte-header           :inline   :offset         16)
-   (matrix      merc-matrix                9 :inline :offset-assert 1312)
-   (control     generic-merc-ctrl-with-sfx :inline   :offset-assert 2464)
-   (end-tag     generic-merc-tag           :inline   :offset-assert 2928)
-   (shader      adgif-shader               :inline   :offset-assert 2944)
+  ((geo-tag      generic-merc-tag            :inline)
+   (geo-block    uint8                       1296)
+   (byte-header  merc-byte-header            :inline :overlay-at (-> geo-block 0))
+   (matrix       merc-matrix                 9 :inline)
+   (control      generic-merc-ctrl-with-sfx  :inline)
+   (end-tag      generic-merc-tag            :inline)
+   (shader       adgif-shader                :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xbd0
-  :flag-assert         #x900000bd0
   )
 
 ;; definition for method 3 of type generic-merc-input
-(defmethod inspect generic-merc-input ((this generic-merc-input))
+(defmethod inspect ((this generic-merc-input))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -141,20 +126,17 @@
 
 ;; definition of type generic-merc-output
 (deftype generic-merc-output (structure)
-  ((info             gsf-info   :inline    :offset-assert   0)
-   (header           gsf-header :inline    :offset-assert  16)
-   (index-kick-table uint16     80         :offset-assert  32)
-   (index-table      uint8      160        :offset         32)
-   (inverse-table    uint8      256        :offset-assert 192)
-   (vertex-table     gsf-vertex 72 :inline :offset-assert 448)
+  ((info              gsf-info    :inline)
+   (header            gsf-header  :inline)
+   (index-kick-table  uint16      80)
+   (index-table       uint8       160 :overlay-at (-> index-kick-table 0))
+   (inverse-table     uint8       256)
+   (vertex-table      gsf-vertex  72 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #xac0
-  :flag-assert         #x900000ac0
   )
 
 ;; definition for method 3 of type generic-merc-output
-(defmethod inspect generic-merc-output ((this generic-merc-output))
+(defmethod inspect ((this generic-merc-output))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -172,20 +154,17 @@
 
 ;; definition of type generic-merc-dcache
 (deftype generic-merc-dcache (structure)
-  ((output-a    generic-merc-output :inline :offset-assert   0)
-   (output-b    generic-merc-output :inline :offset-assert 2752)
-   (inv-table-1 uint8               544     :offset-assert 5504)
-   (inv-table-7 uint8               544     :offset-assert 6048)
-   (inv-safety  uint8               16      :offset-assert 6592)
-   (effect-data uint8               1584    :offset-assert 6608)
+  ((output-a     generic-merc-output  :inline)
+   (output-b     generic-merc-output  :inline)
+   (inv-table-1  uint8                544)
+   (inv-table-7  uint8                544)
+   (inv-safety   uint8                16)
+   (effect-data  uint8                1584)
    )
-  :method-count-assert 9
-  :size-assert         #x2000
-  :flag-assert         #x900002000
   )
 
 ;; definition for method 3 of type generic-merc-dcache
-(defmethod inspect generic-merc-dcache ((this generic-merc-dcache))
+(defmethod inspect ((this generic-merc-dcache))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -203,41 +182,38 @@
 
 ;; definition of type gm-shadow
 (deftype gm-shadow (structure)
-  ((perspective                matrix              :inline :offset-assert   0)
-   (isometric                  matrix              :inline :offset-assert  64)
-   (inv-camera-rot             matrix              :inline :offset-assert 128)
-   (envmap-shader              adgif-shader        :inline :offset-assert 192)
-   (current-chain              uint32                      :offset-assert 272)
-   (next-chain                 uint32                      :offset-assert 276)
-   (buf-index                  uint32                      :offset-assert 280)
-   (fragment-count             uint32                      :offset-assert 284)
-   (write-limit                int32                       :offset-assert 288)
-   (indexed-input-base         generic-merc-input          :offset-assert 292)
-   (other-input-base           generic-merc-input          :offset-assert 296)
-   (indexed-output-base        generic-merc-output         :offset-assert 300)
-   (other-output-base          generic-merc-output         :offset-assert 304)
-   (p-input                    uint32                      :offset-assert 308)
-   (gsf-buf                    generic-merc-dcache         :offset-assert 312)
-   (p-fheader                  merc-fp-header              :offset-assert 316)
-   (curr-chain                 basic                       :offset-assert 320)
-   (mercneric-convert          basic                       :offset-assert 324)
-   (generic-prepare-dma-single basic                       :offset-assert 328)
-   (generic-prepare-dma-double basic                       :offset-assert 332)
-   (generic-light-proc         basic                       :offset-assert 336)
-   (generic-envmap-proc        basic                       :offset-assert 340)
-   (high-speed-reject          basic                       :offset-assert 344)
-   (dummy-0                    uint32                      :offset-assert 348)
-   (hsr-xmult                  vector              :inline :offset-assert 352)
-   (hsr-ymult                  vector              :inline :offset-assert 368)
-   (warp-consts                vector              :inline :offset-assert 384)
+  ((perspective                 matrix        :inline)
+   (isometric                   matrix        :inline)
+   (inv-camera-rot              matrix        :inline)
+   (envmap-shader               adgif-shader  :inline)
+   (current-chain               uint32)
+   (next-chain                  uint32)
+   (buf-index                   uint32)
+   (fragment-count              uint32)
+   (write-limit                 int32)
+   (indexed-input-base          generic-merc-input)
+   (other-input-base            generic-merc-input)
+   (indexed-output-base         generic-merc-output)
+   (other-output-base           generic-merc-output)
+   (p-input                     uint32)
+   (gsf-buf                     generic-merc-dcache)
+   (p-fheader                   merc-fp-header)
+   (curr-chain                  basic)
+   (mercneric-convert           basic)
+   (generic-prepare-dma-single  basic)
+   (generic-prepare-dma-double  basic)
+   (generic-light-proc          basic)
+   (generic-envmap-proc         basic)
+   (high-speed-reject           basic)
+   (dummy-0                     uint32)
+   (hsr-xmult                   vector        :inline)
+   (hsr-ymult                   vector        :inline)
+   (warp-consts                 vector        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x190
-  :flag-assert         #x900000190
   )
 
 ;; definition for method 3 of type gm-shadow
-(defmethod inspect gm-shadow ((this gm-shadow))
+(defmethod inspect ((this gm-shadow))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -276,19 +252,16 @@
 
 ;; definition of type generic-merc-work
 (deftype generic-merc-work (structure)
-  ((input-a generic-merc-input         :inline :offset-assert   0)
-   (input-b generic-merc-input         :inline :offset-assert 3024)
-   (ctrl    generic-merc-ctrl-with-sfx :inline :offset-assert 6048)
-   (shadow  gm-shadow                  :inline :offset-assert 6512)
-   (stack   uint128                    16      :offset-assert 6912)
+  ((input-a  generic-merc-input          :inline)
+   (input-b  generic-merc-input          :inline)
+   (ctrl     generic-merc-ctrl-with-sfx  :inline)
+   (shadow   gm-shadow                   :inline)
+   (stack    uint128                     16)
    )
-  :method-count-assert 9
-  :size-assert         #x1c00
-  :flag-assert         #x900001c00
   )
 
 ;; definition for method 3 of type generic-merc-work
-(defmethod inspect generic-merc-work ((this generic-merc-work))
+(defmethod inspect ((this generic-merc-work))
   (when (not this)
     (set! this this)
     (goto cfg-4)

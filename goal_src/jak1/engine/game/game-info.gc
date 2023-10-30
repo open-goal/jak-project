@@ -18,7 +18,7 @@
 
 ;; This border-plane seems to be unused.  This is separate from load boundaries.
 
-(defmethod debug-draw! border-plane ((this border-plane))
+(defmethod debug-draw! ((this border-plane))
   "Debug draw a border plane with a vector and text."
   (let* ((v1-0 (-> this action))
          ;; pick color based on action
@@ -37,13 +37,13 @@
   (none)
   )
 
-(defmethod point-past-plane? border-plane ((this border-plane) (arg0 vector))
+(defmethod point-past-plane? ((this border-plane) (arg0 vector))
   "Which side of the plane is the given point on?
    #t = on the plane, or on the side the normal points toward."
   (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) (-> this normal)) 0.0)
   )
 
-(defmethod task-complete? game-info ((this game-info) (arg0 game-task))
+(defmethod task-complete? ((this game-info) (arg0 game-task))
   "Likely closed, or in the process of closing"
   (logtest? (-> this task-perm-list data arg0 status) (entity-perm-status real-complete))
   )
@@ -64,7 +64,7 @@
                              )
         )
 
-(defmethod get-or-create-continue! game-info ((this game-info))
+(defmethod get-or-create-continue! ((this game-info))
   "Attempt to get a continue point, if it doesn't exist set the
    default-continue to a location in front of the camera."
   (cond
@@ -88,7 +88,7 @@
     )
   )
 
-(defmethod get-continue-by-name game-info ((this game-info) (arg0 string))
+(defmethod get-continue-by-name ((this game-info) (arg0 string))
   "Look up a continue point by string name"
   (let ((s5-0 *level-load-list*))
     ;; loop over levels
@@ -111,7 +111,7 @@
   (the-as continue-point #f)
   )
 
-(defmethod set-continue! game-info ((this game-info) (arg0 basic))
+(defmethod set-continue! ((this game-info) (arg0 basic))
   "Set the current continue point to to arg0.
    arg0 can be:
     '() or #f, in which case it does nothing.
@@ -159,12 +159,12 @@
   (-> this current-continue)
   )
 
-(defmethod get-entity-task-perm game-info ((this game-info) (arg0 game-task))
+(defmethod get-entity-task-perm ((this game-info) (arg0 game-task))
   "Get the permanent storage for a game-task"
   (-> this task-perm-list data arg0)
   )
 
-(defmethod initialize! game-info ((this game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
+(defmethod initialize! ((this game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
   "Initialize the game-info.
     The cause can be 'dead if you die, or 'game to reset everything.
     If save-to-load is not #f will load data from that.
@@ -328,7 +328,7 @@
   )
 
 
-(defmethod adjust game-info ((this game-info) (item symbol) (amount float) (source handle))
+(defmethod adjust ((this game-info) (item symbol) (amount float) (source handle))
   "Adjust the number of items by amount."
   (case item
     (('life)
@@ -439,13 +439,13 @@
     )
   )
 
-(defmethod got-buzzer? game-info ((this game-info) (arg0 game-task) (arg1 int))
+(defmethod got-buzzer? ((this game-info) (arg0 game-task) (arg1 int))
   "Do we have the arg1-th buzzer for the given buzzer task?"
   ;; buzzers mis-use their reminder bits as a bitfield of which ones have been collected
   (logtest? (get-reminder (get-task-control arg0) 0) (ash 1 arg1))
   )
 
-(defmethod buzzer-count game-info ((this game-info) (arg0 game-task))
+(defmethod buzzer-count ((this game-info) (arg0 game-task))
   "How many buzzers do we have for this task?"
   (let ((v1-1 (get-reminder (get-task-control arg0) 0)) ;; buzzer bitmask
         (v0-2 0)                                        ;; count
@@ -459,14 +459,14 @@
     )
   )
 
-(defmethod seen-text? game-info ((this game-info) (arg0 text-id))
+(defmethod seen-text? ((this game-info) (arg0 text-id))
   "Have we already displayed this text?
    This is used to display level names on only the first enter.
    It seems like hints could also display text on screen at one point in time."
   (get-bit (-> this text-ids-seen) (the-as int arg0))
   )
 
-(defmethod mark-text-as-seen game-info ((this game-info) (arg0 text-id))
+(defmethod mark-text-as-seen ((this game-info) (arg0 text-id))
   "Mark the game text as seen.  This only works if the text id < 4096, and ignores otherwise"
   (if (and (< (the-as uint arg0) (the-as uint 4095)) (> (the-as uint arg0) 0))
       (set-bit (-> this text-ids-seen) (the-as int arg0))
@@ -475,14 +475,14 @@
   (none)
   )
 
-(defmethod clear-text-seen! game-info ((this game-info) (arg0 text-id))
+(defmethod clear-text-seen! ((this game-info) (arg0 text-id))
   "Mark text as unseen. MUST be a valid text id"
   (clear-bit (-> this text-ids-seen) (the-as int arg0))
   0
   (none)
   )
 
-(defmethod reset! fact-info-target ((this fact-info-target) (arg0 symbol))
+(defmethod reset! ((this fact-info-target) (arg0 symbol))
   "Reset the facts for a given thing"
   (when (or (not arg0) (= arg0 'eco))
     (set! (-> this eco-timeout) 0)
@@ -507,7 +507,7 @@
 
 (declare-type vent process-drawable)
 
-(defmethod pickup-collectable! fact-info-target ((this fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
+(defmethod pickup-collectable! ((this fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
   "Pickup a thing!"
   (case kind
     (((pickup-type eco-green))
@@ -783,7 +783,7 @@
     )
   )
 
-(defmethod lookup-entity-perm-by-aid game-info ((this game-info) (aid actor-id))
+(defmethod lookup-entity-perm-by-aid ((this game-info) (aid actor-id))
   (let ((v1-0 (-> this perm-list)))
     (countdown (a0-1 (-> v1-0 length))
       (if (= aid (-> v1-0 data a0-1 aid))
@@ -794,7 +794,7 @@
   (the-as entity-perm #f)
   )
 
-(defmethod copy-perms-from-level! game-info ((this game-info) (lev level))
+(defmethod copy-perms-from-level! ((this game-info) (lev level))
   "Iterate through entities in the level and copy their perms into game-info"
   (let ((perms (-> this perm-list))               ;; our perms
         (lev-entities (-> lev bsp level entity)) ;; entities in the level
@@ -827,7 +827,7 @@
   (none)
   )
 
-(defmethod copy-perms-to-level! game-info ((this game-info) (lev level))
+(defmethod copy-perms-to-level! ((this game-info) (lev level))
   "Does the opposite of the previous, copies perms from game-info to level entities"
   (let ((lev-entities (-> lev bsp level entity)))
     (dotimes (lev-entity-idx (-> lev-entities length))
@@ -851,13 +851,13 @@
   (none)
   )
 
-(defmethod print continue-point ((this continue-point))
+(defmethod print ((this continue-point))
   (format #t "#<~A ~S @ #x~X>" (-> this type) (-> this name) this)
   this
   )
 
 
-(defmethod debug-draw! continue-point ((this continue-point))
+(defmethod debug-draw! ((this continue-point))
   "Draw a continue point."
   (add-debug-x #t (bucket-id debug-no-zbuf) (-> this trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d
@@ -929,7 +929,7 @@
   (enum->string game-task arg0)
   )
 
-(defmethod debug-print game-info ((this game-info) (arg0 symbol))
+(defmethod debug-print ((this game-info) (arg0 symbol))
   (inspect this)
   (when (or (not arg0) (= arg0 'game-task))
     (format #t "~Tgame-task:~%")
@@ -998,7 +998,7 @@
   (set! (-> gp-0 other-camera-handle) (the-as handle #f))
   )
 
-(defmethod get-death-count game-info ((this game-info) (arg0 symbol))
+(defmethod get-death-count ((this game-info) (arg0 symbol))
   (let ((v1-13
           (if (and arg0 *target* (>= (-> *level-task-data-remap* length) (-> *target* current-level info index)))
               (the-as
@@ -1014,6 +1014,6 @@
     )
   )
 
-(defmethod get-health-percent-lost game-info ((this game-info) (arg0 symbol))
+(defmethod get-health-percent-lost ((this game-info) (arg0 symbol))
   (* 0.25 (the float (get-death-count this #f)))
   )

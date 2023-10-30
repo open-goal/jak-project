@@ -21,7 +21,7 @@
   "Make Debug Asm Only: make + print disassembly (asm-only mode) for a file"
   (if (null? path)
       `(asm-file ,file :color :write :disassemble :disasm-code-only)
-      `(asm-file ,file :color :write :disassemble :disasm-code-only ,(first path))
+      `(asm-file ,file :color :write :disassemble ,(first path) :disasm-code-only)
       )
   )
 
@@ -290,6 +290,22 @@
        ;; we don't typecheck this.
        (define :no-typecheck #t ,name nothing)
        )
+  )
+
+(defmacro defun-debug-recursive (name return-type bindings &rest body)
+  `(begin
+    (define-extern ,name
+        (function ,@(apply (lambda (x)
+                             (if (pair? x)
+                                 (second x)
+                                 'object)
+                             )
+                           bindings)
+                  ,return-type))
+    (if *debug-segment*
+        (defun-debug ,name ,bindings ,@body)
+        (define :no-typecheck #t ,name nothing))
+    )
   )
 
 (defmacro define-once (name value)

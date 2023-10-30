@@ -8,20 +8,16 @@
 ;; DECOMP BEGINS
 
 (deftype static-screen (process)
-  ((part       sparticle-launch-control 1 :offset-assert 112)
-   (state-time time-frame                 :offset-assert 120)
+  ((part        sparticle-launch-control  1)
+   (state-time  time-frame)
    )
-  :heap-base #x10
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00100080
-  (:methods
-    (idle (int time-frame symbol) _type_ :state 14)
+  (:state-methods
+    (idle int time-frame symbol)
     )
   )
 
 
-(defmethod relocate static-screen ((this static-screen) (arg0 int))
+(defmethod relocate ((this static-screen) (arg0 int))
   (let ((v1-0 *kernel-context*))
     (set! (-> v1-0 relocating-process) this)
     (set! (-> v1-0 relocating-min) (the-as int (&-> this type)))
@@ -38,7 +34,7 @@
   (the-as static-screen ((method-of-type process relocate) this arg0))
   )
 
-(defmethod deactivate static-screen ((this static-screen))
+(defmethod deactivate ((this static-screen))
   (dotimes (s5-0 1)
     (if (nonzero? (-> this part s5-0))
         (kill-and-free-particles (-> this part s5-0))

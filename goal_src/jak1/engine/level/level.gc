@@ -34,7 +34,7 @@
   )
 
 
-(defmethod load-command-get-index level-group ((this level-group) (name symbol) (cmd-idx int))
+(defmethod load-command-get-index ((this level-group) (name symbol) (cmd-idx int))
   "Get the n-th load command for the given level."
   (let ((cmd-lst (-> (lookup-level-info name) alt-load-commands)))
    (while (nonzero? cmd-idx)
@@ -57,7 +57,7 @@
     )
   )
 
-(defmethod art-group-get-by-name level ((this level) (arg0 string))
+(defmethod art-group-get-by-name ((this level) (arg0 string))
   "Get the art group in the given level with the given name.
    If it doesn't exist, #f."
   (countdown (i (-> this art-group art-group-array length))
@@ -68,7 +68,7 @@
   (the-as art-group #f)
   )
 
-(defmethod bsp-name level ((this level))
+(defmethod bsp-name ((this level))
   "Get the name of the bsp tree of the level"
 
 (if (and (!= (-> this status) 'inactive)
@@ -103,7 +103,7 @@
   )
 
 
-(defmethod print level ((this level))
+(defmethod print ((this level))
   "print a level."
 
   (format #t "#<~A ~A ~S @ #x~X>"
@@ -115,7 +115,7 @@
   this
   )
 
-(defmethod relocate bsp-header ((this bsp-header) (dest-heap kheap) (name (pointer uint8)))
+(defmethod relocate ((this bsp-header) (dest-heap kheap) (name (pointer uint8)))
   "Handle a bsp file load."
 
   ;; we expect that we'll have a loading-level set when we link/login a bsp-header
@@ -159,7 +159,7 @@
   (none)
   )
 
-(defmethod load-required-packages level ((this level))
+(defmethod load-required-packages ((this level))
   "Load required packages for the level. This is mostly useless, but might load common.
    This will have no effect most of the time - common is often loaded at boot as part of
    game.cgo."
@@ -175,7 +175,7 @@
 ;; vis
 ;;;;;;;;;;;;;;
 
-(defmethod vis-clear level ((this level))
+(defmethod vis-clear ((this level))
   "Clear the visibility info for when the level is loading."
 
   ;; clear vis-infos, so we can't try to look up a vis string.
@@ -193,7 +193,7 @@
   )
 
 
-(defmethod vis-load level ((this level))
+(defmethod vis-load ((this level))
   "Start the initial load of a VIS file to the IOP VIS buffer. After this is done, we can use
    ramdisk-load to load chunks."
 
@@ -245,7 +245,7 @@
   0
   )
 
-(defmethod init-vis level ((this level))
+(defmethod init-vis ((this level))
   "Set up the vis info in a level from the vis info in the BSP."
 
   (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
@@ -306,7 +306,7 @@
   0
   )
 
-(defmethod level-get-for-use level-group ((this level-group) (name symbol) (want-status symbol))
+(defmethod level-get-for-use ((this level-group) (name symbol) (want-status symbol))
   "Get a level in a playable form, loading it if necessary."
 
   (local-vars (s5-1 level))
@@ -361,7 +361,7 @@
 ;; - alive: level is birthed, etc
 ;; - active: level is being drawn
 
-(defmethod level-status level-group ((this level-group) (level-name symbol))
+(defmethod level-status ((this level-group) (level-name symbol))
   "Get the status of an existing level."
 
   (let ((lev (level-get *level* level-name)))
@@ -371,7 +371,7 @@
     )
   )
 
-(defmethod level-status-set! level ((this level) (want-status symbol))
+(defmethod level-status-set! ((this level) (want-status symbol))
   "Change the status of a level, performing any cleanup and prep work as necessary.
    Only change loading statuses in order!
    Returns the level."
@@ -449,7 +449,7 @@
 (define *login-state* (new 'global 'login-state))
 (define *print-login* #t)
 
-(defmethod load-continue level ((this level))
+(defmethod load-continue ((this level))
   "Continue loading a level from where we left off last time."
 
   ;; see if we are still linking some file
@@ -536,7 +536,7 @@
   this
   )
 
-(defmethod load-begin level ((this level))
+(defmethod load-begin ((this level))
   "Start loading the level. Uses 2 megabyte heaps for loading each object."
 
   ;; set the level heap. level code logins called from linker may allocate here
@@ -586,7 +586,7 @@
   this
   )
 
-(defmethod login-begin level ((this level))
+(defmethod login-begin ((this level))
   "Start the login.  This is spread over multiple frames."
 
   ;; done with load, reset the texture page allocator
@@ -874,7 +874,7 @@
   loaded-level
   )
 
-(defmethod birth level ((this level))
+(defmethod birth ((this level))
   "Birth a level to make it alive! It must be loaded."
 
   (case (-> this status)
@@ -900,7 +900,7 @@
   this
   )
 
-(defmethod deactivate level ((this level))
+(defmethod deactivate ((this level))
   "Kill the level. This won't remove it from memory."
 
   (case (-> this status)
@@ -954,7 +954,7 @@
   this
   )
 
-(defmethod unload! level ((this level))
+(defmethod unload! ((this level))
   "Unloads the level. This does not free the heap. The level will be made inactive and ready to be loaded some other time."
 
   (deactivate this)
@@ -1053,7 +1053,7 @@
 ;; method 27 level
 
 ;; method 10 level
-(defmethod is-object-visible? level ((this level) (arg0 int))
+(defmethod is-object-visible? ((this level) (arg0 int))
   "Is arg0 visible? Note that this will return #f if the visibility data is not loaded."
 
   ;; og:preserve-this pc port added option to show every actor regardless
@@ -1082,7 +1082,7 @@
     )
   )
 
-(defmethod point-in-boxes? level ((this level) (arg0 vector))
+(defmethod point-in-boxes? ((this level) (arg0 vector))
   "Is this point in the list of level boxes?"
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp boxes)))
@@ -1115,7 +1115,7 @@
   )
 
 
-(defmethod debug-print-splitbox level ((this level) (arg0 vector) (arg1 string))
+(defmethod debug-print-splitbox ((this level) (arg0 vector) (arg1 string))
   "Print the current splitbox, if we're in one."
   (cond
    ((or (not (-> this bsp)) (zero? (-> this bsp boxes)) (zero? (-> this bsp split-box-indices)))
@@ -1147,7 +1147,7 @@
   )
 
 
-(defmethod mem-usage level ((this level) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage for a level."
 
   (when (= (-> this status) 'active)
@@ -1244,7 +1244,7 @@
   )
  )
 
-(defmethod alloc-levels! level-group ((this level-group) (compact-level-heaps symbol))
+(defmethod alloc-levels! ((this level-group) (compact-level-heaps symbol))
   "Allocate the level heaps and load the common packages for levels."
 
   ;; only do stuff if levels are not allocated
@@ -1276,7 +1276,7 @@
   )
 
 
-(defmethod level-get-with-status level-group ((this level-group) (status symbol))
+(defmethod level-get-with-status ((this level-group) (status symbol))
   (dotimes (i (-> this length))
     (if (= (-> this level i status) status)
       (return (-> this level i))
@@ -1285,7 +1285,7 @@
   (the-as level #f)
   )
 
-(defmethod level-get-most-disposable level-group ((this level-group))
+(defmethod level-get-most-disposable ((this level-group))
   "Get a level that's least likely to be in use right now. #f = all levels in use."
 
   ;; check inactive levels first
@@ -1334,7 +1334,7 @@
       )
   )
 
-(defmethod level-get level-group ((this level-group) (name symbol))
+(defmethod level-get ((this level-group) (name symbol))
   "Return the level data using its name, if it is available. Returns #f if none are found."
 
   (dotimes (lev (-> this length))
@@ -1349,7 +1349,7 @@
   (the level #f)
   )
 
-(defmethod art-group-get-by-name level-group ((this level-group) (arg0 string))
+(defmethod art-group-get-by-name ((this level-group) (arg0 string))
   (countdown (i 3)
     (let ((lev (-> this level i)))
         (countdown (ii (-> lev art-group art-group-array length))
@@ -1363,7 +1363,7 @@
   )
 
 
-(defmethod activate-levels! level-group ((this level-group))
+(defmethod activate-levels! ((this level-group))
   "Try to activate all levels."
 
   (dotimes (i (-> this length))
@@ -1372,7 +1372,7 @@
   0
   )
 
-(defmethod level-get-target-inside level-group ((this level-group))
+(defmethod level-get-target-inside ((this level-group))
   "Get the level target is in, or one it is close to.
    The distance checks do not work."
 
@@ -1416,12 +1416,12 @@
    )
   )
 
-(defmethod load-commands-set! level-group ((this level-group) (load-commands pair))
+(defmethod load-commands-set! ((this level-group) (load-commands pair))
   (set! (-> this load-commands) load-commands)
   load-commands
   )
 
-(defmethod mem-usage level-group ((this level-group) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this level-group) (arg0 memory-usage-block) (arg1 int))
   "Get the memory usage data for a level-group"
 
   ;; get memory usage of each level
@@ -1666,7 +1666,7 @@
   0
   )
 
-(defmethod update! load-state ((this load-state))
+(defmethod update! ((this load-state))
   "Updates load requests."
 
   (update-sound-banks)
@@ -1866,7 +1866,7 @@
 
 ;; method 16 level-group (debug text stuff)
 
-(defmethod level-update level-group ((this level-group))
+(defmethod level-update ((this level-group))
 
   ;; this does nothing...
   (camera-pos)

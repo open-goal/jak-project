@@ -24,7 +24,7 @@
 
 ;; there's a global shared pool of entries that you can alloc and free from.
 
-(defmethod get-free-node-count touching-prims-entry-pool ((this touching-prims-entry-pool))
+(defmethod get-free-node-count ((this touching-prims-entry-pool))
   "Get the number of nodes that are not in use."
   (let ((v0-0 0))
     (let ((v1-0 (-> this head)))
@@ -40,7 +40,7 @@
     )
   )
 
-(defmethod alloc-node touching-prims-entry-pool ((this touching-prims-entry-pool))
+(defmethod alloc-node ((this touching-prims-entry-pool))
   "Allocate a node. Will return #f if there are none left."
   (let ((gp-0 (-> this head)))
     (cond
@@ -63,7 +63,7 @@
     )
   )
 
-(defmethod free-node touching-prims-entry-pool ((this touching-prims-entry-pool) (arg0 touching-prims-entry))
+(defmethod free-node ((this touching-prims-entry-pool) (arg0 touching-prims-entry))
   "Free a node allocated with alloc-node"
   (when (-> arg0 allocated?)
     (set! (-> arg0 allocated?) #f)
@@ -85,7 +85,7 @@
 ;; a single shape entry represents a pair of shapes that collide.
 ;; There can be multiple colliding primitives.
 
-(defmethod free-touching-prims-list touching-shapes-entry ((this touching-shapes-entry))
+(defmethod free-touching-prims-list ((this touching-shapes-entry))
   "Return all nodes used by this touching-shapes-entry to the touching-prims-entry-pool"
   (when (-> this cshape1)
     (set! (-> this cshape1) #f)
@@ -112,7 +112,7 @@
 
 ;; A touching list is a list up to TOUCHING_LIST_LENGTH pairs of colliding collide-shapes.
 
-(defmethod free-all-prim-nodes touching-list ((this touching-list))
+(defmethod free-all-prim-nodes ((this touching-list))
   "Free all prim nodes used by all touching shapes in this touching-list."
   (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
     (countdown (s4-0 (-> this num-touching-shapes))
@@ -127,7 +127,7 @@
   )
 
 
-(defmethod get-shapes-entry touching-list ((this touching-list) (arg0 collide-shape) (arg1 collide-shape))
+(defmethod get-shapes-entry ((this touching-list) (arg0 collide-shape) (arg1 collide-shape))
   "Get a touching-shapes-entry for the two shapes. If one exists, it will be returned. Otherwise a new one will be made."
   (let ((v0-0 (the-as touching-shapes-entry (-> this touching-shapes)))) ;; the candidate
     (let ((v1-0 (the-as touching-shapes-entry #f)))                     ;; a good one
@@ -184,12 +184,9 @@
   )
 
 (deftype add-prims-touching-work (structure)
-  ((tri1 collide-tri-result  :offset-assert   0)
-   (tri2 collide-tri-result  :offset-assert   4)
+  ((tri1  collide-tri-result)
+   (tri2  collide-tri-result)
    )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
   )
 
 
@@ -211,7 +208,7 @@
 
 
 
-(defmethod add-touching-prims touching-list ((this touching-list)
+(defmethod add-touching-prims ((this touching-list)
                                              (arg0 collide-shape-prim)
                                              (arg1 collide-shape-prim)
                                              (arg2 float)
@@ -346,7 +343,7 @@
   (none)
   )
 
-(defmethod update-from-step-size touching-list ((this touching-list) (arg0 float))
+(defmethod update-from-step-size ((this touching-list) (arg0 float))
   "Given that we actually will take a step size of arg0, remove things we won't actually hit."
   ;; only if we have some un-updated potential collision
   (when (nonzero? (-> this resolve-u))
@@ -424,7 +421,7 @@
   (none)
   )
 
-(defmethod send-events-for-touching-shapes touching-list ((this touching-list))
+(defmethod send-events-for-touching-shapes ((this touching-list))
   "Send all events for touching shapes.
    Note that the order of event sending is basically random.
    (this could explain lava walks's unreliable behavior)"
@@ -575,7 +572,7 @@
   (the-as touching-prims-entry #f)
   )
 
-(defmethod get-touched-shape touching-shapes-entry ((this touching-shapes-entry) (arg0 collide-shape))
+(defmethod get-touched-shape ((this touching-shapes-entry) (arg0 collide-shape))
   "Get the other shape in a pair of shapes."
   (cond
     ((= (-> this cshape1) arg0)
@@ -588,7 +585,7 @@
   (the-as collide-shape #f)
   )
 
-(defmethod get-touched-prim touching-prims-entry ((this touching-prims-entry) (arg0 trsqv) (arg1 touching-shapes-entry))
+(defmethod get-touched-prim ((this touching-prims-entry) (arg0 trsqv) (arg1 touching-shapes-entry))
   "Get the primitive belonging to the collide shape that is touching."
   (cond
     ((= (-> arg1 cshape1) arg0)
@@ -601,7 +598,7 @@
   (the-as collide-shape-prim #f)
   )
 
-(defmethod get-touched-tri touching-prims-entry ((this touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
+(defmethod get-touched-tri ((this touching-prims-entry) (arg0 collide-shape) (arg1 touching-shapes-entry))
   "Get the triangle belonging to the the collide shape that is touching (if it has one, otherwise #f)"
   (let ((v0-0 (the-as collide-tri-result #f)))
     (cond
@@ -624,7 +621,7 @@
     )
   )
 
-(defmethod get-middle-of-bsphere-overlap touching-prims-entry ((this touching-prims-entry) (arg0 vector))
+(defmethod get-middle-of-bsphere-overlap ((this touching-prims-entry) (arg0 vector))
   "This is a bit weird...
    But assuming the the bounding spheres overlap, draw a line between their centers, consider the line segment
    that is inside of both spheres, and get the midpoint of that."

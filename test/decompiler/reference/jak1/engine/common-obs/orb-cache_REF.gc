@@ -3,23 +3,19 @@
 
 ;; definition of type orb-cache-top
 (deftype orb-cache-top (baseplat)
-  ((active-distance   float     :offset-assert 228)
-   (inactive-distance float     :offset-assert 232)
-   (money-list        handle 60 :offset-assert 240)
-   (money-pos-list    float  60 :offset-assert 720)
-   (money-pos-actual  float  60 :offset-assert 960)
-   (platform-pos      float     :offset-assert 1200)
-   (root-pos          float     :offset-assert 1204)
-   (money             int32     :offset-assert 1208)
-   (activated         symbol    :offset-assert 1212)
+  ((active-distance    float)
+   (inactive-distance  float)
+   (money-list         handle  60)
+   (money-pos-list     float   60)
+   (money-pos-actual   float   60)
+   (platform-pos       float)
+   (root-pos           float)
+   (money              int32)
+   (activated          symbol)
    )
-  :heap-base #x450
-  :method-count-assert 29
-  :size-assert         #x4c0
-  :flag-assert         #x1d045004c0
   (:methods
-    (pos-logic (_type_ symbol) symbol 27)
-    (calculate-pos (_type_ symbol) none 28)
+    (pos-logic (_type_ symbol) symbol)
+    (calculate-pos (_type_ symbol) none)
     )
   (:states
     (orb-cache-top-activate symbol)
@@ -29,7 +25,7 @@
   )
 
 ;; definition for method 3 of type orb-cache-top
-(defmethod inspect orb-cache-top ((this orb-cache-top))
+(defmethod inspect ((this orb-cache-top))
   (let ((t9-0 (method-of-type baseplat inspect)))
     (t9-0 this)
     )
@@ -69,7 +65,7 @@
       )
     )
   :trans (behavior ()
-    (if (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+    (if (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
              )
         (level-hint-spawn
@@ -101,7 +97,7 @@
 
 ;; definition for method 22 of type orb-cache-top
 ;; INFO: Return type mismatch int vs none.
-(defmethod baseplat-method-22 orb-cache-top ((this orb-cache-top))
+(defmethod baseplat-method-22 ((this orb-cache-top))
   (if (< 4096.0 (- (-> this basetrans y) (-> this root-pos)))
       (activate! (-> this smush) -1.0 60 150 1.0 1.0)
       (activate! (-> this smush) -0.5 60 150 1.0 1.0)
@@ -114,7 +110,7 @@
 
 ;; definition for method 28 of type orb-cache-top
 ;; INFO: Return type mismatch int vs none.
-(defmethod calculate-pos orb-cache-top ((this orb-cache-top) (arg0 symbol))
+(defmethod calculate-pos ((this orb-cache-top) (arg0 symbol))
   (let ((f0-0 0.0))
     (when arg0
       (set! f0-0 (+ 10240.0 (* 6144.0 (the float (+ (-> this money) -1)))))
@@ -136,7 +132,7 @@
 
 ;; definition for method 27 of type orb-cache-top
 ;; INFO: Used lq/sq
-(defmethod pos-logic orb-cache-top ((this orb-cache-top) (arg0 symbol))
+(defmethod pos-logic ((this orb-cache-top) (arg0 symbol))
   (dotimes (s4-0 (-> this money))
     (when (not (handle->process (-> this money-list s4-0)))
       (dotimes (v1-6 (-> this money))
@@ -166,7 +162,7 @@
           (set! s3-0 #t)
           )
         (when (and (< f30-0 15155.2)
-                   (and *target* (>= 16384.0 (vector-vector-distance (-> this root-override trans) (-> *target* control trans))))
+                   (and *target* (>= 16384.0 (vector-vector-distance (-> this root trans) (-> *target* control trans))))
                    (< (-> (target-pos 0) y) (-> this basetrans y))
                    )
           (set! f30-0 (if (< 14131.2 f28-0)
@@ -232,18 +228,16 @@
       )
     (loop
       (calculate-pos self #t)
-      (while (not (or (not *target*) (< (-> self inactive-distance)
-                                        (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
-                                        )
+      (while (not (or (not *target*)
+                      (< (-> self inactive-distance) (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))
                       )
                   )
         (pos-logic self #t)
         (suspend)
         )
       (calculate-pos self #f)
-      (while (and (not (and (and *target* (>= (-> self active-distance)
-                                              (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
-                                              )
+      (while (and (not (and (and *target*
+                                 (>= (-> self active-distance) (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))
                                  )
                             (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
                               (set! (-> a1-11 from) self)
@@ -259,9 +253,8 @@
                   )
         (suspend)
         )
-      (if (not (and (and *target* (>= (-> self active-distance)
-                                      (vector-vector-xz-distance (-> self root-override trans) (-> *target* control trans))
-                                      )
+      (if (not (and (and *target*
+                         (>= (-> self active-distance) (vector-vector-xz-distance (-> self root trans) (-> *target* control trans)))
                          )
                     (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
                       (set! (-> a1-14 from) self)
@@ -298,7 +291,7 @@
 
 ;; definition for method 11 of type orb-cache-top
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! orb-cache-top ((this orb-cache-top) (arg0 entity-actor))
+(defmethod init-from-entity! ((this orb-cache-top) (arg0 entity-actor))
   (let ((a0-1 (-> this entity)))
     (if (when a0-1
           (let ((a0-2 (-> a0-1 extra perm task)))
@@ -328,13 +321,13 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *orb-cache-top-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (set! (-> this money) (res-lump-value (-> this entity) 'orb-cache-count int :default (the-as uint128 20)))
   (set! (-> this active-distance) 61440.0)

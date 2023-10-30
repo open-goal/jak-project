@@ -127,7 +127,7 @@
 ;; definition for method 11 of type swingpole
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! swingpole ((this swingpole) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
   "Copy defaults from the entity."
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask actor-pause))
@@ -152,7 +152,7 @@
 
 ;; definition for method 11 of type process-hidden
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! process-hidden ((this process-hidden) (arg0 entity-actor))
+(defmethod init-from-entity! ((this process-hidden) (arg0 entity-actor))
   "Copy defaults from the entity."
   (process-entity-status! this (entity-perm-status dead) #t)
   (go (method-of-object this die))
@@ -162,13 +162,10 @@
 ;; definition of type target-start
 (deftype target-start (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 ;; definition for method 3 of type target-start
-(defmethod inspect target-start ((this target-start))
+(defmethod inspect ((this target-start))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
   (format #t "~Tmask: ~D~%" (-> this mask))
@@ -202,13 +199,10 @@
 ;; definition of type camera-start
 (deftype camera-start (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x70
-  :flag-assert         #xf00000070
   )
 
 ;; definition for method 3 of type camera-start
-(defmethod inspect camera-start ((this camera-start))
+(defmethod inspect ((this camera-start))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tname: ~A~%" (-> this name))
   (format #t "~Tmask: ~D~%" (-> this mask))
@@ -599,7 +593,7 @@
   )
 
 ;; definition for method 10 of type part-tracker
-(defmethod deactivate part-tracker ((this part-tracker))
+(defmethod deactivate ((this part-tracker))
   (if (nonzero? (-> this part))
       (kill-and-free-particles (-> this part))
       )
@@ -970,7 +964,7 @@
 ;; definition for method 14 of type camera-tracker
 ;; INFO: Return type mismatch object vs process.
 ;; ERROR: Failed load: (set! v1-42 (l.wu (+ a0-22 -4))) at op 159
-(defmethod eval camera-tracker ((this camera-tracker) (arg0 pair))
+(defmethod eval ((this camera-tracker) (arg0 pair))
   (with-pp
     (let ((gp-0 (the-as object #f)))
       (cond
@@ -1253,21 +1247,17 @@
 
 ;; definition of type med-res-level
 (deftype med-res-level (process-drawable)
-  ((level     symbol  :offset-assert 176)
-   (part-mode basic   :offset-assert 180)
-   (index     int32   :offset-assert 184)
+  ((level      symbol)
+   (part-mode  basic)
+   (index      int32)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xbc
-  :flag-assert         #x14005000bc
   (:states
     med-res-level-idle
     )
   )
 
 ;; definition for method 3 of type med-res-level
-(defmethod inspect med-res-level ((this med-res-level))
+(defmethod inspect ((this med-res-level))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -1339,7 +1329,7 @@
 ;; definition for method 11 of type med-res-level
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! med-res-level ((this med-res-level) (arg0 entity-actor))
+(defmethod init-from-entity! ((this med-res-level) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 128)
   "#f"
@@ -1404,7 +1394,7 @@
   )
 
 ;; definition for method 20 of type part-spawner
-(defmethod is-visible? part-spawner ((this part-spawner))
+(defmethod is-visible? ((this part-spawner))
   (sphere<-vector+r! (-> this world-sphere) (-> this root trans) (-> this radius))
   (sphere-in-view-frustum? (-> this world-sphere))
   )
@@ -1447,7 +1437,7 @@
 ;; definition for method 11 of type part-spawner
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! part-spawner ((this part-spawner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask ambient))
@@ -1509,18 +1499,14 @@
 
 ;; definition of type launcher
 (deftype launcher (process-drawable)
-  ((root-override   collide-shape         :offset        112)
-   (spring-height   meters                :offset-assert 176)
-   (camera          state                 :offset-assert 180)
-   (active-distance float                 :offset-assert 184)
-   (seek-time       time-frame            :offset-assert 192)
-   (dest            vector        :inline :offset-assert 208)
-   (sound-id        sound-id              :offset-assert 224)
+  ((root             collide-shape :override)
+   (spring-height    meters)
+   (camera           state)
+   (active-distance  float)
+   (seek-time        time-frame)
+   (dest             vector         :inline)
+   (sound-id         sound-id)
    )
-  :heap-base #x80
-  :method-count-assert 20
-  :size-assert         #xe4
-  :flag-assert         #x14008000e4
   (:states
     launcher-active
     launcher-deactivated
@@ -1529,7 +1515,7 @@
   )
 
 ;; definition for method 3 of type launcher
-(defmethod inspect launcher ((this launcher))
+(defmethod inspect ((this launcher))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -1985,15 +1971,14 @@
        (go launcher-deactivated)
        )
       (('trans)
-       (move-to-point! (-> self root-override) (the-as vector (-> block param 0)))
-       (update-transforms! (-> self root-override))
+       (move-to-point! (-> self root) (the-as vector (-> block param 0)))
+       (update-transforms! (-> self root))
        )
       )
     )
   :trans (behavior ()
-    (when (and *target* (>= (-> self active-distance)
-                            (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                            )
+    (when (and *target*
+               (>= (-> self active-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                )
       (cond
         ((send-event *target* 'query 'powerup (pickup-type eco-blue))
@@ -2007,7 +1992,7 @@
             )
           )
         )
-      (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+      (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
                )
           (level-hint-spawn
@@ -2035,8 +2020,8 @@
        (go launcher-deactivated)
        )
       ((= message 'trans)
-       (move-to-point! (-> self root-override) (the-as vector (-> block param 0)))
-       (update-transforms! (-> self root-override))
+       (move-to-point! (-> self root) (the-as vector (-> block param 0)))
+       (update-transforms! (-> self root))
        )
       )
     )
@@ -2052,18 +2037,17 @@
       )
     )
   :trans (behavior ()
-    (if (or (or (not *target*) (< (-> self active-distance)
-                                  (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
-                                  )
+    (if (or (or (not *target*)
+                (< (-> self active-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                 )
             (not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
             )
         (go launcher-idle)
         )
-    (spawn (-> self part) (-> self root-override trans))
+    (spawn (-> self part) (-> self root trans))
     (sound-play "launch-idle" :id (-> self sound-id))
-    (if (and (and *target* (>= (+ 2867.2 (-> self root-override root-prim prim-core world-sphere w))
-                               (vector-vector-distance (-> self root-override trans) (-> *target* control trans))
+    (if (and (and *target* (>= (+ 2867.2 (-> self root root-prim prim-core world-sphere w))
+                               (vector-vector-distance (-> self root trans) (-> *target* control trans))
                                )
                   )
              (not (time-elapsed? (-> self state-time) (seconds 0.5)))
@@ -2084,7 +2068,7 @@
 
 ;; definition for method 11 of type launcher
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! launcher ((this launcher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this launcher) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -2095,10 +2079,10 @@
       )
     (set! (-> s4-0 nav-radius) 13926.4)
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (update-transforms! (-> this root-override))
+  (update-transforms! (-> this root))
   (set! (-> this active-distance) 409600.0)
   (set! (-> this spring-height) (res-lump-float arg0 'spring-height :default 163840.0))
   (let ((s4-1 (res-lump-value arg0 'mode uint128)))
@@ -2140,7 +2124,7 @@
       )
     )
   (set! (-> this sound-id) (new-sound-id))
-  (nav-mesh-connect this (-> this root-override) (the-as nav-control #f))
+  (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (go launcher-idle)
   (none)
   )
@@ -2159,12 +2143,12 @@
       )
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (set-vector! (-> self root-override scale) 1.0 1.0 1.0 1.0)
-  (set-vector! (-> self root-override quat) 0.0 0.0 0.0 1.0)
-  (update-transforms! (-> self root-override))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> self root quat) 0.0 0.0 0.0 1.0)
+  (update-transforms! (-> self root))
   (set! (-> self spring-height) arg1)
   (set! (-> self active-distance) arg3)
   (let ((v1-23 (-> self entity extra level name)))
@@ -2319,9 +2303,7 @@
                        )
                  )
             (if a0-6
-                (set! (-> self root-override trans quad)
-                      (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere quad)
-                      )
+                (set! (-> self root trans quad) (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere quad))
                 )
             )
           )
@@ -2329,15 +2311,15 @@
       (if (-> self callback)
           ((-> self callback) self)
           )
-      (update-transforms! (-> self root-override))
+      (update-transforms! (-> self root))
       (let ((a1-3 (new 'stack-no-clear 'touching-shapes-entry)))
         (set! (-> a1-3 cshape1) (the-as collide-shape 2))
         (set! (-> a1-3 cshape2) (the-as collide-shape *touching-list*))
-        (find-overlapping-shapes (-> self root-override) (the-as overlaps-others-params a1-3))
+        (find-overlapping-shapes (-> self root) (the-as overlaps-others-params a1-3))
         )
       (suspend)
       )
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (suspend)
     0
     )
@@ -2363,9 +2345,9 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> s4-0 event-self) 'touched)
-    (set! (-> self root-override) s4-0)
+    (set! (-> self root) s4-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> arg0 quad))
   (set! (-> self duration) arg2)
   (set! (-> self target) (the-as handle #f))
   (set! (-> self event) #f)

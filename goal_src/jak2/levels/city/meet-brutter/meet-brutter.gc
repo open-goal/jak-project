@@ -15,7 +15,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod draw hud-lurker ((this hud-lurker))
+(defmethod draw ((this hud-lurker))
   (set-hud-piece-position!
     (the-as hud-sprite (-> this sprites))
     (the int (+ 457.0 (* 130.0 (-> this offset))))
@@ -28,14 +28,14 @@
   (none)
   )
 
-(defmethod update-values hud-lurker ((this hud-lurker))
+(defmethod update-values ((this hud-lurker))
   (set! (-> this values 0 target) (the int (-> *game-info* counter)))
   ((method-of-type hud update-values) this)
   0
   (none)
   )
 
-(defmethod init-callback hud-lurker ((this hud-lurker))
+(defmethod init-callback ((this hud-lurker))
   (set! (-> this level) (level-get *level* 'ctywide))
   (set! (-> this gui-id)
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
@@ -245,16 +245,12 @@
   )
 
 (deftype paddywagon (vehicle-guard)
-  ((current-level symbol  :offset-assert 1076)
+  ((current-level  symbol)
    )
-  :heap-base #x3c0
-  :method-count-assert 159
-  :size-assert         #x438
-  :flag-assert         #x9f03c00438
   )
 
 
-(defmethod allocate-and-init-cshape paddywagon ((this paddywagon))
+(defmethod allocate-and-init-cshape ((this paddywagon))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -310,15 +306,12 @@
   )
 
 (deftype pw-iter-seg (structure)
-  ((self        paddywagon          :offset-assert   0)
-   (desired-dir vector      :inline :offset-assert  16)
-   (score       float               :offset-assert  32)
-   (seg         nav-segment         :offset-assert  36)
-   (level       symbol              :offset-assert  40)
+  ((self         paddywagon)
+   (desired-dir  vector  :inline)
+   (score        float)
+   (seg          nav-segment)
+   (level        symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 
@@ -439,7 +432,7 @@
     )
   )
 
-(defmethod init-skel-and-rigid-body paddywagon ((this paddywagon))
+(defmethod init-skel-and-rigid-body ((this paddywagon))
   (with-pp
     (set! (-> pp level) (level-get *level* 'lmeetbrt))
     (initialize-skeleton
@@ -458,7 +451,7 @@
     )
   )
 
-(defmethod vehicle-method-120 paddywagon ((this paddywagon))
+(defmethod vehicle-method-120 ((this paddywagon))
   (let ((t9-0 (method-of-type vehicle-guard vehicle-method-120)))
     (t9-0 this)
     )
@@ -471,7 +464,7 @@
   (none)
   )
 
-(defmethod vehicle-method-128 paddywagon ((this paddywagon))
+(defmethod vehicle-method-128 ((this paddywagon))
   (let ((t9-0 (method-of-type vehicle vehicle-method-128)))
     (t9-0 this)
     )
@@ -480,19 +473,19 @@
   (none)
   )
 
-(defmethod vehicle-method-127 paddywagon ((this paddywagon))
+(defmethod vehicle-method-127 ((this paddywagon))
   ((method-of-type vehicle vehicle-method-127) this)
   0
   (none)
   )
 
-(defmethod vehicle-method-129 paddywagon ((this paddywagon))
+(defmethod vehicle-method-129 ((this paddywagon))
   ((method-of-type vehicle vehicle-method-129) this)
   0
   (none)
   )
 
-(defmethod vehicle-method-134 paddywagon ((this paddywagon) (arg0 process))
+(defmethod vehicle-method-134 ((this paddywagon) (arg0 process))
   "Stubbed"
   (logior! (-> this controller flags) (vehicle-controller-flag ignore-others))
   (set! (-> this controller target-speed-offset) 81920.0)
@@ -507,7 +500,7 @@
   (none)
   )
 
-(defmethod vehicle-method-108 paddywagon ((this paddywagon))
+(defmethod vehicle-method-108 ((this paddywagon))
   (set! (-> this flags)
         (the-as rigid-body-object-flag (logior (rigid-body-object-flag persistent in-pursuit) (-> this flags)))
         )
@@ -748,26 +741,22 @@
 (set! (-> *city-lurker-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (deftype city-lurker (civilian)
-  ((nav-mesh-aid      uint32                 :offset-assert 1060)
-   (index             uint32                 :offset-assert 1064)
-   (left-right-interp float                  :offset-assert 1068)
-   (front-back-interp float                  :offset-assert 1072)
-   (v-speed           vector         :inline :offset-assert 1088)
-   (end-pos           vector         :inline :offset-assert 1104)
-   (task-done?        symbol                 :offset-assert 1120)
-   (task-node         game-task-node         :offset-assert 1124)
-   (jump-in-pipe?     symbol                 :offset-assert 1128)
-   (pipe-name         string                 :offset-assert 1132)
-   (coming-from-pw    symbol                 :offset-assert 1136)
+  ((nav-mesh-aid       uint32)
+   (index              uint32)
+   (left-right-interp  float)
+   (front-back-interp  float)
+   (v-speed            vector  :inline)
+   (end-pos            vector  :inline)
+   (task-done?         symbol)
+   (task-node          game-task-node)
+   (jump-in-pipe?      symbol)
+   (pipe-name          string)
+   (coming-from-pw     symbol)
    )
-  :heap-base #x400
-  :method-count-assert 221
-  :size-assert         #x474
-  :flag-assert         #xdd04000474
-  (:methods
-    (go-at-end () _type_ :state 218)
-    (go-at-pipe () _type_ :state 219)
-    (wait-at-end () _type_ :state 220)
+  (:state-methods
+    go-at-end
+    go-at-pipe
+    wait-at-end
     )
   )
 
@@ -975,7 +964,7 @@
     )
   )
 
-(defmethod get-inv-mass city-lurker ((this city-lurker))
+(defmethod get-inv-mass ((this city-lurker))
   0.25
   )
 
@@ -1607,7 +1596,7 @@
     )
   )
 
-(defmethod enemy-method-86 city-lurker ((this city-lurker))
+(defmethod enemy-method-86 ((this city-lurker))
   (let ((gp-0 (-> this root)))
     (when (< (-> gp-0 transv y) 0.0)
       (when (and (< (-> gp-0 trans y) (+ 8192.0 (-> this end-pos y))) (-> this jump-in-pipe?))
@@ -1620,16 +1609,16 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod enemy-method-93 city-lurker ((this city-lurker))
+(defmethod enemy-method-93 ((this city-lurker))
   (go (method-of-object this inactive))
   (none)
   )
 
-(defmethod enemy-method-89 city-lurker ((this city-lurker) (arg0 enemy-jump-info))
+(defmethod enemy-method-89 ((this city-lurker) (arg0 enemy-jump-info))
   #f
   )
 
-(defmethod enemy-method-87 city-lurker ((this city-lurker) (arg0 enemy-jump-info))
+(defmethod enemy-method-87 ((this city-lurker) (arg0 enemy-jump-info))
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 1.0)
     (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
@@ -1645,7 +1634,7 @@
   #t
   )
 
-(defmethod enemy-method-88 city-lurker ((this city-lurker) (arg0 enemy-jump-info))
+(defmethod enemy-method-88 ((this city-lurker) (arg0 enemy-jump-info))
   #f
   )
 
@@ -1707,12 +1696,12 @@
     )
   )
 
-(defmethod coin-flip? city-lurker ((this city-lurker))
+(defmethod coin-flip? ((this city-lurker))
   "@returns The result of a 50/50 RNG roll"
   #f
   )
 
-(defmethod damage-amount-from-attack city-lurker ((this city-lurker) (arg0 process) (arg1 event-message-block))
+(defmethod damage-amount-from-attack ((this city-lurker) (arg0 process) (arg1 event-message-block))
   "@returns the amount of damage taken from an attack.  This can come straight off the [[attack-info]] or via [[penetrate-using->damage]]"
   0
   )
@@ -1887,7 +1876,7 @@
     )
   )
 
-(defmethod set-behavior! city-lurker ((this city-lurker) (arg0 traffic-object-spawn-params))
+(defmethod set-behavior! ((this city-lurker) (arg0 traffic-object-spawn-params))
   (format #t "go-traffic-startup ~D~%" (-> arg0 behavior))
   (let ((v1-0 (-> arg0 behavior)))
     (cond
@@ -1917,7 +1906,7 @@
   (none)
   )
 
-(defmethod citizen-init! city-lurker ((this city-lurker))
+(defmethod citizen-init! ((this city-lurker))
   "Initialize [[citizen]] defaults."
   (let ((t9-0 (method-of-type civilian citizen-init!)))
     (t9-0 this)
@@ -1929,7 +1918,7 @@
   (none)
   )
 
-(defmethod init-enemy-collision! city-lurker ((this city-lurker))
+(defmethod init-enemy-collision! ((this city-lurker))
   "Initializes the [[collide-shape-moving]] and any ancillary tasks to make the enemy collide properly"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1993,7 +1982,7 @@
   (none)
   )
 
-(defmethod init-enemy! city-lurker ((this city-lurker))
+(defmethod init-enemy! ((this city-lurker))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (initialize-skeleton
     this
@@ -2018,7 +2007,7 @@
   (none)
   )
 
-(defmethod general-event-handler city-lurker ((this city-lurker) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this city-lurker) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
@@ -2084,14 +2073,11 @@
   )
 
 (deftype city-meet-brutter-info (structure)
-  ((pos         vector :inline :offset-assert   0)
-   (level       symbol         :offset-assert  16)
-   (nav-mesh-id uint32         :offset-assert  20)
-   (end-pos     vector :inline :offset-assert  32)
+  ((pos          vector  :inline)
+   (level        symbol)
+   (nav-mesh-id  uint32)
+   (end-pos      vector  :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 
@@ -2622,15 +2608,12 @@
   )
 
 (deftype city-save-lurkers-info (structure)
-  ((pos         vector :inline :offset-assert   0)
-   (level       symbol         :offset-assert  16)
-   (nav-mesh-id uint32         :offset-assert  20)
-   (end-pos     vector :inline :offset-assert  32)
-   (pipe-name   string         :offset-assert  48)
+  ((pos          vector  :inline)
+   (level        symbol)
+   (nav-mesh-id  uint32)
+   (end-pos      vector  :inline)
+   (pipe-name    string)
    )
-  :method-count-assert 9
-  :size-assert         #x34
-  :flag-assert         #x900000034
   )
 
 

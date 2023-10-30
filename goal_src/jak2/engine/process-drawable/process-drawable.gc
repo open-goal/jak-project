@@ -39,7 +39,7 @@
 
 ;; DECOMP BEGINS
 
-(defmethod add-to-loading-level skeleton-group ((this skeleton-group))
+(defmethod add-to-loading-level ((this skeleton-group))
   (let ((v1-1 (-> *level* loading-level)))
     (if v1-1
         (set-loaded-art (-> v1-1 art-group) this)
@@ -234,7 +234,7 @@
     )
   )
 
-(defmethod lod-set! draw-control ((this draw-control) (arg0 int))
+(defmethod lod-set! ((this draw-control) (arg0 int))
   (let ((v1-1 (max 0 (min arg0 (-> this lod-set max-lod)))))
     (set! (-> this desired-lod) v1-1)
     (when (!= (-> this cur-lod) v1-1)
@@ -249,7 +249,7 @@
   (none)
   )
 
-(defmethod lods-assign! draw-control ((this draw-control) (arg0 lod-set))
+(defmethod lods-assign! ((this draw-control) (arg0 lod-set))
   (mem-copy! (the-as pointer (-> this lod-set)) (the-as pointer arg0) 49)
   (let ((a1-2 (min (-> this cur-lod) (-> this lod-set max-lod))))
     (set! (-> this cur-lod) -1)
@@ -259,7 +259,7 @@
   (none)
   )
 
-(defmethod setup-masks draw-control ((this draw-control) (arg0 int) (arg1 int))
+(defmethod setup-masks ((this draw-control) (arg0 int) (arg1 int))
   "TODO - use the enum types"
   (local-vars (v1-4 int) (a2-1 (array uint64)))
   (let ((a1-2 (logior (logclear (-> this seg-mask) arg0) arg1)))
@@ -287,7 +287,7 @@
   (none)
   )
 
-(defmethod setup-lods! lod-set ((this lod-set) (arg0 skeleton-group) (arg1 art-group) (arg2 entity))
+(defmethod setup-lods! ((this lod-set) (arg0 skeleton-group) (arg1 art-group) (arg2 entity))
   (local-vars (sv-16 res-tag))
   (let ((v1-0 (-> arg1 length))
         (s3-0 (-> arg0 max-lod))
@@ -325,7 +325,7 @@
   this
   )
 
-(defmethod setup-cspace-and-add draw-control ((this draw-control) (arg0 art-joint-geo) (arg1 symbol))
+(defmethod setup-cspace-and-add ((this draw-control) (arg0 art-joint-geo) (arg1 symbol))
   (let ((s5-0 ((method-of-type cspace-array new) arg1 cspace-array (+ (-> arg0 length) 1))))
     (let ((v0-1 ((method-of-type skeleton new) arg1 skeleton (+ (-> arg0 length) 1))))
       (set! (-> this skeleton) v0-1)
@@ -396,7 +396,7 @@
   0
   )
 
-(defmethod do-joint-math draw-control ((this draw-control) (arg0 cspace-array) (arg1 joint-control))
+(defmethod do-joint-math ((this draw-control) (arg0 cspace-array) (arg1 joint-control))
   (with-pp
     (cond
       ((logtest? (-> this status) (draw-control-status no-draw no-draw-temp))
@@ -485,7 +485,7 @@
     )
   )
 
-(defmethod cleanup-for-death process-drawable ((this process-drawable))
+(defmethod cleanup-for-death ((this process-drawable))
   (when (type? (-> this root) collide-shape)
     (let ((v1-2 (-> (the-as collide-shape (-> this root)) root-prim)))
       (set! (-> v1-2 prim-core collide-as) (collide-spec))
@@ -501,7 +501,7 @@
   (none)
   )
 
-(defmethod relocate-nav process-drawable ((this process-drawable) (arg0 int))
+(defmethod relocate-nav ((this process-drawable) (arg0 int))
   (set! (-> this nav) (the-as nav-control (&+ (the-as pointer (-> this nav)) arg0)))
   0
   (none)
@@ -556,7 +556,7 @@
   (none)
   )
 
-(defmethod deactivate process-drawable ((this process-drawable))
+(defmethod deactivate ((this process-drawable))
   (if (nonzero? (-> this part))
       (kill-and-free-particles (-> this part))
       )
@@ -753,7 +753,7 @@
   s2-0
   )
 
-(defmethod initialize-skeleton process-drawable ((this process-drawable) (arg0 skeleton-group) (arg1 pair))
+(defmethod initialize-skeleton ((this process-drawable) (arg0 skeleton-group) (arg1 pair))
   (local-vars (v1-14 art-element))
   (if (not arg0)
       (go process-drawable-art-error "skel-group")
@@ -824,7 +824,7 @@
   (-> this draw)
   )
 
-(defmethod initialize-skeleton-by-name process-drawable ((this process-drawable) (arg0 string))
+(defmethod initialize-skeleton-by-name ((this process-drawable) (arg0 string))
   (let* ((s4-0 *level*)
          (s3-0 (method-of-object s4-0 art-group-get-by-name))
          )
@@ -839,7 +839,7 @@
   (-> this draw)
   )
 
-(defmethod apply-alignment process-drawable ((this process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
+(defmethod apply-alignment ((this process-drawable) (arg0 align-opts) (arg1 transformq) (arg2 vector))
   (with-pp
     (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
       (let* ((s3-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
@@ -1192,7 +1192,7 @@
   0
   )
 
-(defmethod update-anim-data joint-control ((this joint-control))
+(defmethod update-anim-data ((this joint-control))
   (local-vars (s7-0 none) (ra-0 int))
   (let ((s5-0 (+ (-> this active-channels) (-> this float-channels))))
     (dotimes (s4-0 (the-as int s5-0))
@@ -1233,7 +1233,7 @@
 
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
-(defmethod evaluate-joint-control process-drawable ((this process-drawable))
+(defmethod evaluate-joint-control ((this process-drawable))
   (local-vars (s1-0 joint-control-channel) (s2-0 int) (s4-0 uint) (s7-0 none) (ra-0 int))
   (let ((gp-0 (-> this skel)))
     (let ((a0-1 (-> gp-0 top-anim)))
@@ -1345,7 +1345,7 @@
   (none)
   )
 
-(defmethod current-cycle-distance joint-control ((this joint-control))
+(defmethod current-cycle-distance ((this joint-control))
   (cond
     ((< (the-as int (-> this root-channel)) (the-as int (-> this channel (-> this active-channels))))
      (let ((s4-0 (-> this root-channel (-> this root-channel 0 group-size)))
@@ -1391,7 +1391,7 @@
   )
 
 ;; WARN: Return type mismatch top-anim-joint-control vs none.
-(defmethod reset top-anim-joint-control ((this top-anim-joint-control))
+(defmethod reset ((this top-anim-joint-control))
   (let ((v0-0 this))
     (set! (-> v0-0 interp) 0.0)
     (set! (-> v0-0 frame-targ) #f)
@@ -1409,7 +1409,7 @@
   (none)
   )
 
-(defmethod get-channel top-anim-joint-control ((this top-anim-joint-control) (arg0 int))
+(defmethod get-channel ((this top-anim-joint-control) (arg0 int))
   (case arg0
     ((1)
      (case (-> this process 0 skel float-channels)
@@ -1437,15 +1437,15 @@
     )
   )
 
-(defmethod push-anim-to-targ top-anim-joint-control ((this top-anim-joint-control)
-                                                   (arg0 art-joint-anim)
-                                                   (arg1 float)
-                                                   (arg2 int)
-                                                   (arg3 int)
-                                                   (arg4 float)
-                                                   (arg5 float)
-                                                   (arg6 symbol)
-                                                   )
+(defmethod push-anim-to-targ ((this top-anim-joint-control)
+                             (arg0 art-joint-anim)
+                             (arg1 float)
+                             (arg2 int)
+                             (arg3 int)
+                             (arg4 float)
+                             (arg5 float)
+                             (arg6 symbol)
+                             )
   (when (!= (-> this interp) 0.0)
     (let ((v1-1 this))
       (set! (-> v1-1 frame-targ) arg0)
@@ -1462,7 +1462,7 @@
                                            )
             )
       (set! (-> v1-1 frame-post-end) (/ arg5 (-> arg0 artist-step)))
-      (set! (-> v1-1 frame-push-time) (current-time))
+      (set-time! (-> v1-1 frame-push-time))
       (set! (-> v1-1 frame-post-put-away) #f)
       )
     (if arg6
@@ -1473,7 +1473,7 @@
   (none)
   )
 
-(defmethod update top-anim-joint-control ((this top-anim-joint-control))
+(defmethod update ((this top-anim-joint-control))
   (with-pp
     (let* ((v1-0 (-> this process))
            (pp (if v1-0
@@ -1587,7 +1587,9 @@
                             )
                       )
                     (when s5-0
-                      (set! (-> s5-0 frame-num) (- (the float (+ (-> s5-0 frame-group frames num-frames) -1)) (-> this frame-start)))
+                      (set! (-> s5-0 frame-num)
+                            (- (the float (+ (-> s5-0 frame-group frames num-frames) -1)) (-> this frame-start))
+                            )
                       (set! (-> this base-anim-speed) 1.0)
                       (set! (-> this base-anim-blend) 0.1333333)
                       )
@@ -1701,7 +1703,7 @@
           )
         )
       )
-    (set! (-> this update-time) (current-time))
+    (set-time! (-> this update-time))
     0
     (none)
     )
@@ -1778,7 +1780,7 @@
   (while (and *target* (focus-test? *target* in-air))
     (suspend)
     )
-  (set! (-> self state-time) (current-time))
+  (set-time! (-> self state-time))
   (process-grab? *target* #f)
   (while (or (-> *setting-control* user-current talking)
              (-> *setting-control* user-current spooling)
@@ -1787,7 +1789,7 @@
              )
     (suspend)
     )
-  (while (< (- (current-time) (-> self state-time)) arg0)
+  (while (not (time-elapsed? (-> self state-time) arg0))
     (suspend)
     )
   (process-release? *target*)

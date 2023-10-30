@@ -34,38 +34,35 @@
 ;; Although the mode is a bitfield, it appears that multiple kinds of mods cannot be
 ;; activated at the same time.
 (deftype joint-mod (basic)
-  ((mode            joint-mod-handler-mode         :offset-assert   4)
-   (process         process-drawable               :offset-assert   8)
-   (joint           cspace                         :offset-assert  12)
-   (target          vector                 :inline :offset-assert  16)
-   (twist           vector                 :inline :offset-assert  32)
-   (twist-max       vector                 :inline :offset-assert  48)
-   (trans           vector                 :inline :offset-assert  64)
-   (quat            quaternion             :inline :offset-assert  80)
-   (scale           vector                 :inline :offset-assert  96)
-   (notice-time     time-frame                     :offset-assert 112)
-   (flex-blend      float                          :offset-assert 120)
-   (blend           float                          :offset-assert 124)
-   (max-dist        meters                         :offset-assert 128)
-   (ignore-angle    degrees                        :offset-assert 132)
-   (up              uint8                          :offset-assert 136)
-   (nose            uint8                          :offset-assert 137)
-   (ear             uint8                          :offset-assert 138)
-   (shutting-down?  symbol                         :offset-assert 140)
-   (parented-scale? symbol                         :offset        128)
+  ((mode             joint-mod-handler-mode)
+   (process          process-drawable)
+   (joint            cspace)
+   (target           vector      :inline)
+   (twist            vector      :inline)
+   (twist-max        vector      :inline)
+   (trans            vector      :inline)
+   (quat             quaternion  :inline)
+   (scale            vector      :inline)
+   (notice-time      time-frame)
+   (flex-blend       float)
+   (blend            float)
+   (max-dist         meters)
+   (ignore-angle     degrees)
+   (up               uint8)
+   (nose             uint8)
+   (ear              uint8)
+   (shutting-down?   symbol)
+   (parented-scale?  symbol      :overlay-at max-dist)
    )
-  :method-count-assert 16
-  :size-assert         #x90
-  :flag-assert         #x1000000090
   (:methods
-    (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
-    (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
-    (set-target! (_type_ vector) none 10)
-    (look-at-enemy! (_type_ vector symbol process) none 11)
-    (reset-blend! (_type_) _type_ 12)
-    (set-twist! (_type_ float float float) vector 13)
-    (set-trs! (_type_ vector quaternion vector) none 14)
-    (shut-down! (_type_) none 15)
+    (new (symbol type joint-mod-handler-mode process-drawable int) _type_)
+    (set-mode! (_type_ joint-mod-handler-mode) _type_)
+    (set-target! (_type_ vector) none)
+    (look-at-enemy! (_type_ vector symbol process) none)
+    (reset-blend! (_type_) _type_)
+    (set-twist! (_type_ float float float) vector)
+    (set-trs! (_type_ vector quaternion vector) none)
+    (shut-down! (_type_) none)
     )
   )
 
@@ -78,27 +75,32 @@
   (none)
   )
 
-(defmethod new joint-mod ((allocation symbol) (type-to-make type) (mode joint-mod-handler-mode) (proc process-drawable) (joint-idx int))
+(defmethod new joint-mod ((allocation symbol)
+                        (type-to-make type)
+                        (mode joint-mod-handler-mode)
+                        (proc process-drawable)
+                        (joint-idx int)
+                        )
   "Construct a new joint-mod. It will work on the given process-drawable's joint."
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj process) proc)
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this process) proc)
     ;; grab the joint from our node-list.
-    (set! (-> obj joint) (-> (-> proc node-list) data joint-idx))
-    (set-mode! obj mode)
+    (set! (-> this joint) (-> proc node-list data joint-idx))
+    (set-mode! this mode)
     ;; set defaults.
-    (set-vector! (-> obj twist-max) 8192.0 11832.889 0.0 1.0)
-    (set! (-> obj up) (the-as uint 1))
-    (set! (-> obj nose) (the-as uint 2))
-    (set! (-> obj ear) (the-as uint 0))
-    (set! (-> obj max-dist) 122880.0)
-    (set! (-> obj ignore-angle) 65536.0)
-    (set! (-> obj flex-blend) 1.0)
-    (set! (-> obj shutting-down?) #f)
-    obj
+    (set-vector! (-> this twist-max) 8192.0 11832.889 0.0 1.0)
+    (set! (-> this up) (the-as uint 1))
+    (set! (-> this nose) (the-as uint 2))
+    (set! (-> this ear) (the-as uint 0))
+    (set! (-> this max-dist) 122880.0)
+    (set! (-> this ignore-angle) 65536.0)
+    (set! (-> this flex-blend) 1.0)
+    (set! (-> this shutting-down?) #f)
+    this
     )
   )
 
-(defmethod set-mode! joint-mod ((this joint-mod) (handler-mode joint-mod-handler-mode))
+(defmethod set-mode! ((this joint-mod) (handler-mode joint-mod-handler-mode))
   "Set up the joint-mod for the given mode. You can only pick one mode at a time."
   (set! (-> this mode) handler-mode)
   (let ((joint (-> this joint)))
@@ -156,20 +158,20 @@
   this
   )
 
-(defmethod reset-blend! joint-mod ((this joint-mod))
+(defmethod reset-blend! ((this joint-mod))
   "Reset the blend to 0."
   (set! (-> this blend) 0.0)
   this
   )
 
-(defmethod shut-down! joint-mod ((this joint-mod))
+(defmethod shut-down! ((this joint-mod))
   "Shut down and set the blend to zero."
   (set! (-> this shutting-down?) #t)
   (set! (-> this blend) 0.0)
   (none)
   )
 
-(defmethod set-twist! joint-mod ((this joint-mod) (x float) (y float) (z float))
+(defmethod set-twist! ((this joint-mod) (x float) (y float) (z float))
   "Set the twist. You can use #f to not change the current value."
   (if x
       (set! (-> this twist x) x)
@@ -183,7 +185,7 @@
   (-> this twist)
   )
 
-(defmethod set-trs! joint-mod ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
+(defmethod set-trs! ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
   (if trans
       (set! (-> this trans quad) (-> trans quad))
       )
@@ -197,7 +199,7 @@
   (none)
   )
 
-(defmethod set-target! joint-mod ((this joint-mod) (target-trans vector))
+(defmethod set-target! ((this joint-mod) (target-trans vector))
   "Set the joint-mod to look-at if we aren't in a mode, and look at the given target-trans."
   ;; set mode, if we aren't in one.
   (if (= (-> this mode) (joint-mod-handler-mode reset))
@@ -218,20 +220,17 @@
 
 ;; this type is for storing what we tried to look at last.
 (deftype try-to-look-at-info (basic)
-  ((who  handle  :offset-assert   8)
-   (horz float   :offset-assert  16)
-   (vert float   :offset-assert  20)
+  ((who   handle)
+   (horz  float)
+   (vert  float)
    )
-  :method-count-assert 9
-  :size-assert         #x18
-  :flag-assert         #x900000018
   )
 
 ;; this is the last thing we tried to look at.
 ;; There's only one global instance of this, likely used by Jak looking at enemies.
 (define last-try-to-look-at-data (new 'global 'try-to-look-at-info))
 
-(defmethod look-at-enemy! joint-mod ((this joint-mod) (target-trans vector) (option symbol) (proc process))
+(defmethod look-at-enemy! ((this joint-mod) (target-trans vector) (option symbol) (proc process))
   "Set up animation for Jak looking at an enemy. If option is 'attacking, remember when this happened.
   Will only override an existing look-at if this one is closer, or option is 'force."
 
@@ -578,17 +577,14 @@
 
 ;; These joint-mod types contain a bit of extra state required for special types of joint-mods
 (deftype joint-mod-wheel (basic)
-  ((last-position vector           :inline :offset-assert  16)
-   (angle         float                    :offset-assert  32)
-   (process       process-drawable         :offset-assert  36)
-   (wheel-radius  float                    :offset-assert  40)
-   (wheel-axis    int8                     :offset-assert  44)
+  ((last-position  vector  :inline)
+   (angle          float)
+   (process        process-drawable)
+   (wheel-radius   float)
+   (wheel-axis     int8)
    )
-  :method-count-assert 9
-  :size-assert         #x2d
-  :flag-assert         #x90000002d
   (:methods
-    (new (symbol type process-drawable int float int) _type_ 0)
+    (new (symbol type process-drawable int float int) _type_)
     )
   )
 
@@ -636,17 +632,14 @@
   )
 
 (deftype joint-mod-set-local (basic)
-  ((transform       transformq :inline :offset-assert  16)
-   (set-rotation    symbol             :offset-assert  64)
-   (set-scale       symbol             :offset-assert  68)
-   (set-translation symbol             :offset-assert  72)
-   (enable          symbol             :offset-assert  76)
+  ((transform        transformq  :inline)
+   (set-rotation     symbol)
+   (set-scale        symbol)
+   (set-translation  symbol)
+   (enable           symbol)
    )
-  :method-count-assert 9
-  :size-assert         #x50
-  :flag-assert         #x900000050
   (:methods
-    (new (symbol type process-drawable int symbol symbol symbol) _type_ 0)
+    (new (symbol type process-drawable int symbol symbol symbol) _type_)
     )
   )
 
@@ -699,15 +692,12 @@
   )
 
 (deftype joint-mod-set-world (basic)
-  ((transform  transformq :inline :offset-assert  16)
-   (node-index int32              :offset-assert  64)
-   (enable     basic              :offset-assert  68)
+  ((transform   transformq  :inline)
+   (node-index  int32)
+   (enable      basic)
    )
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
   (:methods
-    (new (symbol type process-drawable int basic) _type_ 0)
+    (new (symbol type process-drawable int basic) _type_)
     )
   )
 
@@ -738,17 +728,14 @@
   )
 
 (deftype joint-mod-blend-local (basic)
-  ((transform       transformq :inline :offset-assert  16)
-   (blend-transform transformq :inline :offset-assert  64)
-   (node-index      int32              :offset-assert 112)
-   (blend           float              :offset-assert 116)
-   (enable          basic              :offset-assert 120)
+  ((transform        transformq  :inline)
+   (blend-transform  transformq  :inline)
+   (node-index       int32)
+   (blend            float)
+   (enable           basic)
    )
-  :method-count-assert 9
-  :size-assert         #x7c
-  :flag-assert         #x90000007c
   (:methods
-    (new (symbol type process-drawable int basic) _type_ 0)
+    (new (symbol type process-drawable int basic) _type_)
     )
   )
 
@@ -792,16 +779,13 @@
   )
 
 (deftype joint-mod-spinner (basic)
-  ((spin-axis vector :inline :offset-assert  16)
-   (angle     float          :offset-assert  32)
-   (spin-rate float          :offset-assert  36)
-   (enable    basic          :offset-assert  40)
+  ((spin-axis  vector  :inline)
+   (angle      float)
+   (spin-rate  float)
+   (enable     basic)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   (:methods
-    (new (symbol type process-drawable int vector float) _type_ 0)
+    (new (symbol type process-drawable int vector float) _type_)
     )
   )
 

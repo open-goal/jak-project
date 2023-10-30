@@ -3,20 +3,17 @@
 
 ;; definition of type hud-string
 (deftype hud-string (basic)
-  ((text  string       :offset-assert   4)
-   (scale float        :offset-assert   8)
-   (color font-color   :offset-assert  12)
-   (flags font-flags   :offset-assert  16)
-   (pos   int32      4 :offset         32)
+  ((text   string)
+   (scale  float)
+   (color  font-color)
+   (flags  font-flags)
+   (pos    int32  4 :offset  32)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
   )
 
 ;; definition for method 3 of type hud-string
-(defmethod inspect hud-string ((this hud-string))
+(defmethod inspect ((this hud-string))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -33,26 +30,23 @@
 
 ;; definition of type hud-sprite
 (deftype hud-sprite (structure)
-  ((pos     vector4w :inline :offset-assert   0)
-   (color   vector4w :inline :offset-assert  16)
-   (color2  int32    4       :offset         16)
-   (flags   uint32           :offset-assert  32)
-   (scale-x float            :offset-assert  36)
-   (scale-y float            :offset-assert  40)
-   (angle   float            :offset-assert  44)
-   (tex     texture          :offset-assert  48)
+  ((pos      vector4w  :inline)
+   (color    vector4w  :inline)
+   (color2   int32     4 :overlay-at (-> color data 0))
+   (flags    uint32)
+   (scale-x  float)
+   (scale-y  float)
+   (angle    float)
+   (tex      texture)
    )
-  :method-count-assert 11
-  :size-assert         #x34
-  :flag-assert         #xb00000034
   (:methods
-    (draw (_type_ dma-buffer level) none 9)
-    (hud-sprite-method-10 (_type_ dma-buffer level int int int int) object 10)
+    (draw (_type_ dma-buffer level) none)
+    (hud-sprite-method-10 (_type_ dma-buffer level int int int int) object)
     )
   )
 
 ;; definition for method 3 of type hud-sprite
-(defmethod inspect hud-sprite ((this hud-sprite))
+(defmethod inspect ((this hud-sprite))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -71,26 +65,23 @@
 
 ;; definition of type hud-box
 (deftype hud-box (structure)
-  ((min   vector2  :inline :offset-assert   0)
-   (max   vector2  :inline :offset-assert   8)
-   (color vector4w :inline :offset-assert  16)
+  ((min    vector2   :inline)
+   (max    vector2   :inline)
+   (color  vector4w  :inline)
    )
-  :method-count-assert 16
-  :size-assert         #x20
-  :flag-assert         #x1000000020
   (:methods
-    (draw-box-prim-only (_type_ dma-buffer) none 9)
-    (draw-box-alpha-1 (_type_ dma-buffer) none 10)
-    (draw-box-alpha-2 (_type_ dma-buffer) none 11)
-    (draw-box-alpha-3 (_type_ dma-buffer) none 12)
-    (draw-scan-and-line (_type_ dma-buffer float) int 13)
-    (setup-scissor (_type_ dma-buffer) none 14)
-    (restore-scissor (_type_ dma-buffer) none 15)
+    (draw-box-prim-only (_type_ dma-buffer) none)
+    (draw-box-alpha-1 (_type_ dma-buffer) none)
+    (draw-box-alpha-2 (_type_ dma-buffer) none)
+    (draw-box-alpha-3 (_type_ dma-buffer) none)
+    (draw-scan-and-line (_type_ dma-buffer float) int)
+    (setup-scissor (_type_ dma-buffer) none)
+    (restore-scissor (_type_ dma-buffer) none)
     )
   )
 
 ;; definition for method 3 of type hud-box
-(defmethod inspect hud-box ((this hud-box))
+(defmethod inspect ((this hud-box))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -105,19 +96,16 @@
 
 ;; definition of type hud-icon
 (deftype hud-icon (basic)
-  ((icon    (pointer manipy)   :offset-assert   4)
-   (pos     int32            4 :offset         16)
-   (scale-x float              :offset-assert  32)
-   (scale-y float              :offset-assert  36)
+  ((icon     (pointer manipy))
+   (pos      int32  4 :offset  16)
+   (scale-x  float)
+   (scale-y  float)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x28
-  :flag-assert         #x900000028
   )
 
 ;; definition for method 3 of type hud-icon
-(defmethod inspect hud-icon ((this hud-icon))
+(defmethod inspect ((this hud-icon))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -133,19 +121,16 @@
 
 ;; definition of type hud-value
 (deftype hud-value (basic)
-  ((current int32   :offset-assert   4)
-   (target  int32   :offset-assert   8)
-   (flags   uint16  :offset-assert  12)
-   (counter uint16  :offset-assert  14)
+  ((current  int32)
+   (target   int32)
+   (flags    uint16)
+   (counter  uint16)
    )
   :allow-misaligned
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 ;; definition for method 3 of type hud-value
-(defmethod inspect hud-value ((this hud-value))
+(defmethod inspect ((this hud-value))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -161,34 +146,30 @@
 
 ;; definition of type hud
 (deftype hud (process)
-  ((trigger-time   time-frame            :offset-assert 128)
-   (last-hide-time time-frame            :offset-assert 136)
-   (offset         float                 :offset-assert 144)
-   (flags          hud-flags             :offset-assert 148)
-   (values         hud-value  8 :inline  :offset        148)
-   (strings        hud-string 14 :inline :offset        284)
-   (sprites        hud-sprite 30 :inline :offset        960)
-   (icons          hud-icon   2 :inline  :offset        2876)
-   (gui-id         sound-id              :offset        2976)
+  ((trigger-time    time-frame)
+   (last-hide-time  time-frame)
+   (offset          float)
+   (flags           hud-flags)
+   (values          hud-value   8 :inline  :overlay-at flags)
+   (strings         hud-string  14 :inline :offset 284)
+   (sprites         hud-sprite  30 :inline :offset 960)
+   (icons           hud-icon    2 :inline  :offset 2876)
+   (gui-id          sound-id               :offset 2976)
    )
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   (:methods
-    (hidden? (_type_) symbol 14)
-    (draw (_type_) none 15)
-    (update-values (_type_) none 16)
-    (init-callback (_type_) none 17)
-    (event-callback (_type_ process int symbol event-message-block) symbol 18)
-    (hud-method-19 (_type_) none 19)
-    (hud-method-20 (_type_) none 20)
-    (hud-method-21 (_type_) none 21)
-    (hud-method-22 (_type_) none 22)
-    (hud-method-23 (_type_) none 23)
-    (check-ready-and-maybe-show (_type_ symbol) symbol 24)
-    (update-value-callback (_type_ int int) none 25)
-    (alloc-string-if-needed (_type_ int) none 26)
+    (hidden? (_type_) symbol)
+    (draw (_type_) none)
+    (update-values (_type_) none)
+    (init-callback (_type_) none)
+    (event-callback (_type_ process int symbol event-message-block) symbol)
+    (hud-method-19 (_type_) none)
+    (hud-method-20 (_type_) none)
+    (hud-method-21 (_type_) none)
+    (hud-method-22 (_type_) none)
+    (hud-method-23 (_type_) none)
+    (check-ready-and-maybe-show (_type_ symbol) symbol)
+    (update-value-callback (_type_ int int) none)
+    (alloc-string-if-needed (_type_ int) none)
     )
   (:states
     hud-arriving
@@ -199,7 +180,7 @@
   )
 
 ;; definition for method 3 of type hud
-(defmethod inspect hud ((this hud))
+(defmethod inspect ((this hud))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -223,14 +204,10 @@
 ;; definition of type hud-ashelin
 (deftype hud-ashelin (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-ashelin
-(defmethod inspect hud-ashelin ((this hud-ashelin))
+(defmethod inspect ((this hud-ashelin))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -245,14 +222,10 @@
 ;; definition of type hud-cargo
 (deftype hud-cargo (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-cargo
-(defmethod inspect hud-cargo ((this hud-cargo))
+(defmethod inspect ((this hud-cargo))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -267,14 +240,10 @@
 ;; definition of type hud-citizen
 (deftype hud-citizen (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-citizen
-(defmethod inspect hud-citizen ((this hud-citizen))
+(defmethod inspect ((this hud-citizen))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -289,14 +258,10 @@
 ;; definition of type hud-cpanel
 (deftype hud-cpanel (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-cpanel
-(defmethod inspect hud-cpanel ((this hud-cpanel))
+(defmethod inspect ((this hud-cpanel))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -311,14 +276,10 @@
 ;; definition of type hud-dig-clasp
 (deftype hud-dig-clasp (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-dig-clasp
-(defmethod inspect hud-dig-clasp ((this hud-dig-clasp))
+(defmethod inspect ((this hud-dig-clasp))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -333,14 +294,10 @@
 ;; definition of type hud-gun
 (deftype hud-gun (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-gun
-(defmethod inspect hud-gun ((this hud-gun))
+(defmethod inspect ((this hud-gun))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -355,14 +312,10 @@
 ;; definition of type hud-health
 (deftype hud-health (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-health
-(defmethod inspect hud-health ((this hud-health))
+(defmethod inspect ((this hud-health))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -377,14 +330,10 @@
 ;; definition of type hud-dark-eco-symbol
 (deftype hud-dark-eco-symbol (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-dark-eco-symbol
-(defmethod inspect hud-dark-eco-symbol ((this hud-dark-eco-symbol))
+(defmethod inspect ((this hud-dark-eco-symbol))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -399,14 +348,10 @@
 ;; definition of type hud-helldog
 (deftype hud-helldog (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-helldog
-(defmethod inspect hud-helldog ((this hud-helldog))
+(defmethod inspect ((this hud-helldog))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -421,14 +366,10 @@
 ;; definition of type hud-lurker
 (deftype hud-lurker (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-lurker
-(defmethod inspect hud-lurker ((this hud-lurker))
+(defmethod inspect ((this hud-lurker))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -443,14 +384,10 @@
 ;; definition of type hud-map
 (deftype hud-map (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-map
-(defmethod inspect hud-map ((this hud-map))
+(defmethod inspect ((this hud-map))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -465,14 +402,10 @@
 ;; definition of type hud-moneybag
 (deftype hud-moneybag (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-moneybag
-(defmethod inspect hud-moneybag ((this hud-moneybag))
+(defmethod inspect ((this hud-moneybag))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -487,14 +420,10 @@
 ;; definition of type hud-pegasus
 (deftype hud-pegasus (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-pegasus
-(defmethod inspect hud-pegasus ((this hud-pegasus))
+(defmethod inspect ((this hud-pegasus))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -509,14 +438,10 @@
 ;; definition of type hud-plasmite
 (deftype hud-plasmite (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-plasmite
-(defmethod inspect hud-plasmite ((this hud-plasmite))
+(defmethod inspect ((this hud-plasmite))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -531,14 +456,10 @@
 ;; definition of type hud-dig-button
 (deftype hud-dig-button (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-dig-button
-(defmethod inspect hud-dig-button ((this hud-dig-button))
+(defmethod inspect ((this hud-dig-button))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -553,14 +474,10 @@
 ;; definition of type hud-predator
 (deftype hud-predator (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-predator
-(defmethod inspect hud-predator ((this hud-predator))
+(defmethod inspect ((this hud-predator))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -575,14 +492,10 @@
 ;; definition of type hud-heatmeter
 (deftype hud-heatmeter (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-heatmeter
-(defmethod inspect hud-heatmeter ((this hud-heatmeter))
+(defmethod inspect ((this hud-heatmeter))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -597,14 +510,10 @@
 ;; definition of type hud-progress
 (deftype hud-progress (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-progress
-(defmethod inspect hud-progress ((this hud-progress))
+(defmethod inspect ((this hud-progress))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -619,14 +528,10 @@
 ;; definition of type hud-rocketsensor
 (deftype hud-rocketsensor (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-rocketsensor
-(defmethod inspect hud-rocketsensor ((this hud-rocketsensor))
+(defmethod inspect ((this hud-rocketsensor))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -641,14 +546,10 @@
 ;; definition of type hud-ruffians
 (deftype hud-ruffians (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-ruffians
-(defmethod inspect hud-ruffians ((this hud-ruffians))
+(defmethod inspect ((this hud-ruffians))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -663,14 +564,10 @@
 ;; definition of type hud-score
 (deftype hud-score (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-score
-(defmethod inspect hud-score ((this hud-score))
+(defmethod inspect ((this hud-score))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -685,14 +582,10 @@
 ;; definition of type hud-sig
 (deftype hud-sig (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-sig
-(defmethod inspect hud-sig ((this hud-sig))
+(defmethod inspect ((this hud-sig))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -707,14 +600,10 @@
 ;; definition of type hud-skill
 (deftype hud-skill (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-skill
-(defmethod inspect hud-skill ((this hud-skill))
+(defmethod inspect ((this hud-skill))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -729,14 +618,10 @@
 ;; definition of type hud-skullgem
 (deftype hud-skullgem (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-skullgem
-(defmethod inspect hud-skullgem ((this hud-skullgem))
+(defmethod inspect ((this hud-skullgem))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -751,14 +636,10 @@
 ;; definition of type hud-timer
 (deftype hud-timer (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-timer
-(defmethod inspect hud-timer ((this hud-timer))
+(defmethod inspect ((this hud-timer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -773,14 +654,10 @@
 ;; definition of type hud-turret
 (deftype hud-turret (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-turret
-(defmethod inspect hud-turret ((this hud-turret))
+(defmethod inspect ((this hud-turret))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -795,14 +672,10 @@
 ;; definition of type hud-squid
 (deftype hud-squid (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-squid
-(defmethod inspect hud-squid ((this hud-squid))
+(defmethod inspect ((this hud-squid))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -817,14 +690,10 @@
 ;; definition of type hud-gunturret
 (deftype hud-gunturret (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-gunturret
-(defmethod inspect hud-gunturret ((this hud-gunturret))
+(defmethod inspect ((this hud-gunturret))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -839,14 +708,10 @@
 ;; definition of type hud-gruntegg
 (deftype hud-gruntegg (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-gruntegg
-(defmethod inspect hud-gruntegg ((this hud-gruntegg))
+(defmethod inspect ((this hud-gruntegg))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -861,14 +726,10 @@
 ;; definition of type hud-crimsonhover
 (deftype hud-crimsonhover (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-crimsonhover
-(defmethod inspect hud-crimsonhover ((this hud-crimsonhover))
+(defmethod inspect ((this hud-crimsonhover))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -883,14 +744,10 @@
 ;; definition of type hud-metalkor
 (deftype hud-metalkor (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-metalkor
-(defmethod inspect hud-metalkor ((this hud-metalkor))
+(defmethod inspect ((this hud-metalkor))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -905,14 +762,10 @@
 ;; definition of type hud-big-score
 (deftype hud-big-score (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-big-score
-(defmethod inspect hud-big-score ((this hud-big-score))
+(defmethod inspect ((this hud-big-score))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -927,14 +780,10 @@
 ;; definition of type hud-goal
 (deftype hud-goal (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-goal
-(defmethod inspect hud-goal ((this hud-goal))
+(defmethod inspect ((this hud-goal))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -949,14 +798,10 @@
 ;; definition of type hud-miss
 (deftype hud-miss (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-miss
-(defmethod inspect hud-miss ((this hud-miss))
+(defmethod inspect ((this hud-miss))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -971,14 +816,10 @@
 ;; definition of type hud-race-timer
 (deftype hud-race-timer (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-timer
-(defmethod inspect hud-race-timer ((this hud-race-timer))
+(defmethod inspect ((this hud-race-timer))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -993,14 +834,10 @@
 ;; definition of type hud-race-lap-counter
 (deftype hud-race-lap-counter (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-lap-counter
-(defmethod inspect hud-race-lap-counter ((this hud-race-lap-counter))
+(defmethod inspect ((this hud-race-lap-counter))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1015,14 +852,10 @@
 ;; definition of type hud-race-turbo-counter
 (deftype hud-race-turbo-counter (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-turbo-counter
-(defmethod inspect hud-race-turbo-counter ((this hud-race-turbo-counter))
+(defmethod inspect ((this hud-race-turbo-counter))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1037,14 +870,10 @@
 ;; definition of type hud-race-position
 (deftype hud-race-position (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-position
-(defmethod inspect hud-race-position ((this hud-race-position))
+(defmethod inspect ((this hud-race-position))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1059,14 +888,10 @@
 ;; definition of type hud-race-map
 (deftype hud-race-map (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-map
-(defmethod inspect hud-race-map ((this hud-race-map))
+(defmethod inspect ((this hud-race-map))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1081,14 +906,10 @@
 ;; definition of type hud-samos-old
 (deftype hud-samos-old (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-samos-old
-(defmethod inspect hud-samos-old ((this hud-samos-old))
+(defmethod inspect ((this hud-samos-old))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1103,14 +924,10 @@
 ;; definition of type hud-samos-young
 (deftype hud-samos-young (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-samos-young
-(defmethod inspect hud-samos-young ((this hud-samos-young))
+(defmethod inspect ((this hud-samos-young))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1125,14 +942,10 @@
 ;; definition of type hud-lurker-button
 (deftype hud-lurker-button (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-lurker-button
-(defmethod inspect hud-lurker-button ((this hud-lurker-button))
+(defmethod inspect ((this hud-lurker-button))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1147,14 +960,10 @@
 ;; definition of type hud-widow
 (deftype hud-widow (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-widow
-(defmethod inspect hud-widow ((this hud-widow))
+(defmethod inspect ((this hud-widow))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1169,14 +978,10 @@
 ;; definition of type hud-race-final-stats
 (deftype hud-race-final-stats (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-race-final-stats
-(defmethod inspect hud-race-final-stats ((this hud-race-final-stats))
+(defmethod inspect ((this hud-race-final-stats))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1191,14 +996,10 @@
 ;; definition of type hud-mech-air-tank
 (deftype hud-mech-air-tank (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-mech-air-tank
-(defmethod inspect hud-mech-air-tank ((this hud-mech-air-tank))
+(defmethod inspect ((this hud-mech-air-tank))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1213,14 +1014,10 @@
 ;; definition of type hud-homing-beacon
 (deftype hud-homing-beacon (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-homing-beacon
-(defmethod inspect hud-homing-beacon ((this hud-homing-beacon))
+(defmethod inspect ((this hud-homing-beacon))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1235,14 +1032,10 @@
 ;; definition of type hud-dark-eco-pickup
 (deftype hud-dark-eco-pickup (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-dark-eco-pickup
-(defmethod inspect hud-dark-eco-pickup ((this hud-dark-eco-pickup))
+(defmethod inspect ((this hud-dark-eco-pickup))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -1257,14 +1050,10 @@
 ;; definition of type hud-green-eco-pickup
 (deftype hud-green-eco-pickup (hud)
   ()
-  :heap-base #xb30
-  :method-count-assert 27
-  :size-assert         #xba4
-  :flag-assert         #x1b0b300ba4
   )
 
 ;; definition for method 3 of type hud-green-eco-pickup
-(defmethod inspect hud-green-eco-pickup ((this hud-green-eco-pickup))
+(defmethod inspect ((this hud-green-eco-pickup))
   (when (not this)
     (set! this this)
     (goto cfg-4)

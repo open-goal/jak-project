@@ -9,19 +9,16 @@
 
 (deftype scene-stage (process-hidden)
   ()
-  :method-count-assert 15
-  :size-assert         #x80
-  :flag-assert         #xf00000080
   )
 
 
-(defmethod print scene ((this scene))
+(defmethod print ((this scene))
   (format #t "#<scene ~A ~A @ #x~X>" (-> this art-group) (-> this anim) this)
   this
   )
 
 ;; WARN: Return type mismatch spool-anim vs none.
-(defmethod scene-method-15 scene ((this scene) (arg0 spool-anim))
+(defmethod scene-method-15 ((this scene) (arg0 spool-anim))
   (set! (-> arg0 name) (-> this anim))
   (set! (-> arg0 anim-name) (-> this anim))
   (set! (-> arg0 parts) (-> this parts))
@@ -48,7 +45,7 @@
           )
   )
 
-(defmethod scene-actor-method-9 scene-actor ((this scene-actor) (arg0 scene-player))
+(defmethod scene-actor-method-9 ((this scene-actor) (arg0 scene-player))
   (local-vars (s4-0 (pointer process)) (sv-96 process) (sv-112 process))
   (let ((s1-0 (if (-> this level)
                   (level-get *level* (-> this level))
@@ -236,7 +233,7 @@
   s4-0
   )
 
-(defmethod deactivate scene-player ((this scene-player))
+(defmethod deactivate ((this scene-player))
   (set! *scene-player* (the-as (pointer scene-player) #f))
   (kill-persister *setting-control* (the-as engine-pers 'blackout) 'bg-a-force)
   ((method-of-type process-drawable deactivate) this)
@@ -244,7 +241,7 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs scene-player.
-(defmethod relocate scene-player ((this scene-player) (arg0 int))
+(defmethod relocate ((this scene-player) (arg0 int))
   (let ((v1-0 *kernel-context*))
     (set! (-> v1-0 relocating-process) this)
     (set! (-> v1-0 relocating-min) (the-as int (&-> this type)))
@@ -263,7 +260,7 @@
   (the-as scene-player ((method-of-type process-drawable relocate) this arg0))
   )
 
-(defmethod scene-player-method-25 scene-player ((this scene-player) (arg0 float))
+(defmethod scene-player-method-25 ((this scene-player) (arg0 float))
   (local-vars (v1-11 symbol) (v1-40 symbol) (s0-0 object) (s0-1 object))
   (dotimes (s4-0 (-> this scene actor length))
     (let ((s3-0 (-> this scene actor s4-0)))
@@ -373,7 +370,7 @@
   )
 
 ;; WARN: Return type mismatch basic vs scene.
-(defmethod scene-player-method-24 scene-player ((this scene-player) (arg0 basic) (arg1 symbol))
+(defmethod scene-player-method-24 ((this scene-player) (arg0 basic) (arg1 symbol))
   "TODO - arg1 can be string/scene"
   (when (= (-> arg0 type) string)
     (let ((v1-2 (scene-lookup arg0)))
@@ -396,7 +393,7 @@
   (the-as scene arg0)
   )
 
-(defmethod scene-player-method-23 scene-player ((this scene-player) (arg0 string) (arg1 symbol))
+(defmethod scene-player-method-23 ((this scene-player) (arg0 string) (arg1 symbol))
   (let ((gp-0 (scene-player-method-24 this arg0 #t)))
     (when (-> gp-0 peaceful)
       (let ((s3-0 *traffic-manager*))
@@ -547,13 +544,10 @@
   )
 
 (deftype subtitle-work (structure)
-  ((draw-tmpl dma-gif-packet :inline :offset-assert   0)
-   (color0    vector4w       :inline :offset-assert  32)
-   (color1    vector4w       :inline :offset-assert  48)
+  ((draw-tmpl  dma-gif-packet  :inline)
+   (color0     vector4w        :inline)
+   (color1     vector4w        :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x40
-  :flag-assert         #x900000040
   )
 
 
@@ -824,7 +818,7 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    (set! (-> self state-time) (current-time))
+    (set-time! (-> self state-time))
     (when (or (-> self scene) (-> self preload-continue))
       (let ((gp-0 (scene-decode-continue (the-as basic (if (-> self scene)
                                                            (-> self scene load-point-obj)
@@ -913,7 +907,7 @@
                     (and (-> *target* next-state) (= (-> *target* next-state name) 'target-flop-hit-ground))
                     )
                 (-> self scene)
-                (< (- (current-time) (-> self state-time)) (-> self scene wait-air-time))
+                (not (time-elapsed? (-> self state-time) (-> self scene wait-air-time)))
                 )
       (suspend)
       )
@@ -951,8 +945,8 @@
             )
           )
         (when arg0
-          (while (and (-> self scene) (not (or (>= (- (current-time) s5-0) (-> self scene wait-ground-time))
-                                               (>= (- (current-time) (-> self state-time)) (-> self scene wait-max-time))
+          (while (and (-> self scene) (not (or (time-elapsed? s5-0 (-> self scene wait-ground-time))
+                                               (time-elapsed? (-> self state-time) (-> self scene wait-max-time))
                                                )
                                            )
                       )
@@ -1052,7 +1046,7 @@
         (bucket-id screen-filter)
         )
       (let ((gp-0 (current-time)))
-        (until (>= (- (current-time) gp-0) (seconds 0.05))
+        (until (time-elapsed? gp-0 (seconds 0.05))
           (suspend)
           )
         )
@@ -1213,7 +1207,7 @@
       (suspend)
       (scene-player-method-25 self 0.0)
       (set! (-> self cur-speed) 0.0)
-      (set! (-> self scene-start-time) (current-time))
+      (set-time! (-> self scene-start-time))
       (ja-play-spooled-anim
         (-> self anim)
         (the-as art-joint-anim #f)
@@ -1385,9 +1379,9 @@
       )
     (when (cpad-pressed? 0 square)
       (set! (-> *setting-control* user-default subtitle) (not (-> *setting-control* user-default subtitle)))
-      (set! (-> self subtitle-change-time) (current-time))
+      (set-time! (-> self subtitle-change-time))
       )
-    (when (and (< (- (current-time) (-> self subtitle-change-time)) (seconds 2))
+    (when (and (not (time-elapsed? (-> self subtitle-change-time) (seconds 2)))
                (< (mod (- (current-time) (-> self subtitle-change-time)) 300) 210)
                )
       (let ((gp-6
@@ -1430,7 +1424,7 @@
           (cond
             ((cpad-hold? 0 r1)
              (if (cpad-pressed? 0 circle)
-                 (set! (-> self speed-press-time) (current-time))
+                 (set-time! (-> self speed-press-time))
                  )
              (seek!
                (-> self speed-change-speed)
@@ -1442,7 +1436,7 @@
              )
             ((cpad-hold? 0 l1)
              (if (cpad-pressed? 0 square)
-                 (set! (-> self speed-press-time) (current-time))
+                 (set-time! (-> self speed-press-time))
                  )
              (seek!
                (-> self speed-change-speed)
@@ -1454,7 +1448,7 @@
              )
             ((cpad-hold? 0 x)
              (when (cpad-pressed? 0 x)
-               (set! (-> self speed-press-time) (current-time))
+               (set-time! (-> self speed-press-time))
                (cond
                  ((= (-> self cur-speed) 0.0)
                   (set! (-> self speed-change-speed) -1000.0)
@@ -1487,12 +1481,12 @@
                )
              (set! (-> self targ-speed) 0.0)
              (set! (-> self cur-speed) 0.0)
-             (set! (-> self speed-change-time) (current-time))
+             (set-time! (-> self speed-change-time))
              )
            )
           ((= (-> self speed-change-speed) -1000.0)
            (when (!= (-> self cur-speed) -1000.0)
-             (set! (-> self speed-change-time) (current-time))
+             (set-time! (-> self speed-change-time))
              (set! (-> self targ-speed) -1000.0)
              (set! (-> self cur-speed) -1000.0)
              (sound-pause (-> gp-7 id))
@@ -1502,7 +1496,7 @@
             (set! (-> self targ-speed)
                   (fmax -10.0 (fmin 10.0 (+ (-> self targ-speed) (* (-> self speed-change-speed) (seconds-per-frame)))))
                   )
-            (if (< (- (current-time) (-> self speed-change-time)) (seconds 3))
+            (if (not (time-elapsed? (-> self speed-change-time) (seconds 3)))
                 (format
                   *stdcon*
                   "id ~d speed ~f~%"
@@ -1515,7 +1509,7 @@
                 )
             (when (and gp-7 (and (!= (-> self targ-speed) (-> self cur-speed))
                                  (< (-> self speed-change-time) (current-time))
-                                 (>= (- (current-time) (-> self scene-start-time)) (seconds 1))
+                                 (time-elapsed? (-> self scene-start-time) (seconds 1))
                                  )
                        )
               (when *sound-player-enable*
@@ -1528,7 +1522,7 @@
                   )
                 )
               (set! (-> self cur-speed) (-> self targ-speed))
-              (set! (-> self speed-change-time) (current-time))
+              (set-time! (-> self speed-change-time))
               )
             )
           )
@@ -1630,7 +1624,7 @@
   (none)
   )
 
-(defmethod scene-method-16 scene ((this scene))
+(defmethod scene-method-16 ((this scene))
   (let ((v1-1 (-> *level* loading-level)))
     (if v1-1
         (set-loaded-art (-> v1-1 art-group) this)

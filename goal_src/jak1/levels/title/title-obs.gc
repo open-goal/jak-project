@@ -8,31 +8,27 @@
 ;; DECOMP BEGINS
 
 (deftype logo (process-drawable)
-  ((camera      handle      :offset-assert 176)
-   (camera-anim handle      :offset-assert 184)
-   (volumes     handle      :offset-assert 192)
-   (black       handle      :offset-assert 200)
-   (target      handle      :offset-assert 208)
-   (sidekick    handle      :offset-assert 216)
-   (main-joint  joint-mod   :offset-assert 224)
-   (anim        spool-anim  :offset-assert 228)
-   (next-anim   spool-anim  :offset-assert 232)
-   (done?       symbol      :offset-assert 236)
+  ((camera       handle)
+   (camera-anim  handle)
+   (volumes      handle)
+   (black        handle)
+   (target       handle)
+   (sidekick     handle)
+   (main-joint   joint-mod)
+   (anim         spool-anim)
+   (next-anim    spool-anim)
+   (done?        symbol)
    )
-  :heap-base #x80
-  :method-count-assert 24
-  :size-assert         #xf0
-  :flag-assert         #x18008000f0
-  (:methods
-    (idle () _type_ :state 20)
-    (startup () _type_ :state 21)
-    (hidden () _type_ :state 22)
-    (ndi () _type_ :state 23)
+  (:state-methods
+    idle
+    startup
+    hidden
+    ndi
     )
   )
 
 
-(defmethod relocate logo ((this logo) (arg0 int))
+(defmethod relocate ((this logo) (arg0 int))
   (if (nonzero? (-> this main-joint))
       (&+! (-> this main-joint) arg0)
       )
@@ -40,20 +36,16 @@
   )
 
 (deftype logo-slave (process-drawable)
-  ((parent-process (pointer logo)  :offset         12)
-   (main-joint     joint-mod       :offset-assert 176)
+  ((parent-process  (pointer logo)  :overlay-at parent)
+   (main-joint      joint-mod)
    )
-  :heap-base #x50
-  :method-count-assert 21
-  :size-assert         #xb4
-  :flag-assert         #x15005000b4
-  (:methods
-    (idle () _type_ :state 20)
+  (:state-methods
+    idle
     )
   )
 
 
-(defmethod relocate logo-slave ((this logo-slave) (arg0 int))
+(defmethod relocate ((this logo-slave) (arg0 int))
   (if (nonzero? (-> this main-joint))
       (&+! (-> this main-joint) arg0)
       )

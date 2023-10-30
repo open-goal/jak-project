@@ -19,24 +19,24 @@
 ;; contains the header for the currently logging-in thing.
 (define *merc-ctrl-header* (the-as merc-ctrl-header #f))
 
-(defmethod asize-of merc-fragment ((this merc-fragment))
+(defmethod asize-of ((this merc-fragment))
   "Get the size in memory of a merc-fragment"
   (the-as int (* (-> this header mm-quadword-size) 16))
   )
 
-(defmethod login-adgifs merc-fragment ((this merc-fragment))
+(defmethod login-adgifs ((this merc-fragment))
   "Set up a merc-fragment. Does adgifs and eye stuff"
   (let* ((fp-data (merc-fragment-fp-data this))
          (eye-ctrl (if (nonzero? (-> *merc-ctrl-header* eye-ctrl))
-                    (-> *merc-ctrl-header* eye-ctrl)
-                    (the-as merc-eye-ctrl #f)
-                    )
-           )
+                       (-> *merc-ctrl-header* eye-ctrl)
+                       (the-as merc-eye-ctrl #f)
+                       )
+                   )
          (shader (the-as adgif-shader (&+ fp-data 16)))
          )
     (dotimes (s2-0 (the-as int (-> fp-data shader-cnt)))
       (cond
-        ((and eye-ctrl (= (logand -256 (-> shader texture-id)) #x1cf06f00))
+        ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf06f00))
          ;; eye slot 0
          (adgif-shader-login shader)
          (let ((eye-tex-block (get-eye-block (-> eye-ctrl eye-slot) 0)))
@@ -49,15 +49,10 @@
          (set! (-> shader tex0 psm) 0)
          (set! (-> shader tex1 mxl) 0)
          (set! (-> shader clamp)
-               (new 'static 'gs-clamp
-                    :wms (gs-tex-wrap-mode clamp)
-                    :wmt (gs-tex-wrap-mode clamp)
-                    :maxu #x1f
-                    :maxv #x1f
-                    )
+               (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp) :maxu #x1f :maxv #x1f)
                )
          )
-        ((and eye-ctrl (= (logand -256 (-> shader texture-id)) #x1cf07000))
+        ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf07000))
          ;; eye slot 1
          (adgif-shader-login shader)
          (let ((eye-tex-block-2 (get-eye-block (-> eye-ctrl eye-slot) 1)))
@@ -70,12 +65,7 @@
          (set! (-> shader tex0 psm) 0)
          (set! (-> shader tex1 mxl) 0)
          (set! (-> shader clamp)
-               (new 'static 'gs-clamp
-                    :wms (gs-tex-wrap-mode clamp)
-                    :wmt (gs-tex-wrap-mode clamp)
-                    :maxu #x1f
-                    :maxv #x1f
-                    )
+               (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp) :maxu #x1f :maxv #x1f)
                )
          )
         (else
@@ -95,7 +85,7 @@
   (none)
   )
 
-(defmethod asize-of merc-fragment-control ((this merc-fragment-control))
+(defmethod asize-of ((this merc-fragment-control))
   (the-as int (+ (* (-> this mat-xfer-count) 2) 4))
   )
 
@@ -114,21 +104,14 @@
   this
   )
 
-(defmethod login-adgifs merc-effect ((this merc-effect))
+(defmethod login-adgifs ((this merc-effect))
   "Login everything for this merc-effect."
 
   ;; login adgifs, if we have them.
   (let ((data (-> this extra-info)))
     (when (nonzero? data)
       (when (nonzero? (-> data shader-offset))
-        (let ((tex (adgif-shader-login
-                     (the-as
-                       adgif-shader
-                       (+ (the-as uint data) (* (-> data shader-offset) 16))
-                       )
-                     )
-                   )
-              )
+        (let ((tex (adgif-shader-login (the-as adgif-shader (+ (the-as uint data) (* (-> data shader-offset) 16))))))
           (when tex
             (dotimes (seg 3)
               (logior! (-> *merc-ctrl-header* masks seg) (-> tex masks seg))
@@ -170,7 +153,7 @@
   this
   )
 
-(defmethod mem-usage merc-ctrl ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage stats for a merc-ctrl"
 
   ;; do extra
@@ -206,11 +189,10 @@
     (dotimes (effect-idx2 (the-as int (-> this header effect-count)))
       (when (nonzero? (-> this effect effect-idx2 blend-frag-count))
         (let ((bctrl (-> this effect effect-idx2 blend-ctrl)))
-          (dotimes (blend-frag-idx (the-as int (-> this effect effect-idx2 blend-frag-count)) )
-            (let ((v1-36 (+ effect-mem
-                            (* (+ (-> bctrl nonzero-index-count) 1)
-                               (the-as uint (logand (+ (* (the-as uint 6) (-> bctrl blend-vtx-count)) 15) #xfff0))
-                               )
+          (dotimes (blend-frag-idx (the-as int (-> this effect effect-idx2 blend-frag-count)))
+            (let ((v1-36 (+ effect-mem (* (+ (-> bctrl nonzero-index-count) 1)
+                                          (the-as uint (logand (+ (* (the-as uint 6) (-> bctrl blend-vtx-count)) 15) #xfff0))
+                                          )
                             )
                          )
                   )
@@ -245,7 +227,7 @@
   this
   )
 
-(defmethod login merc-ctrl ((this merc-ctrl))
+(defmethod login ((this merc-ctrl))
   "Log in a merc-ctrl."
 
   ;; so we can find it
@@ -287,7 +269,7 @@
 
   ;; login eye.
   (cond
-    ((zero? (logand -65536 (the-as int (-> this header eye-ctrl))))
+    ((not (logtest? -65536 (the-as int (-> this header eye-ctrl))))
      ;; no idea what this is for.
      (set! (-> this header eye-ctrl) (the-as merc-eye-ctrl 0))
      0
@@ -358,9 +340,9 @@
   (dotimes (gp-0 3) ;; levels
     (let ((s5-0 (-> *level* level gp-0 art-group)))
       (when (nonzero? s5-0)
-        (dotimes (s4-0 (-> s5-0 art-group-array length)) ;; art-groups
+        (dotimes (s4-0 (-> s5-0 art-group-array length))
           (let ((s3-0 (-> s5-0 art-group-array s4-0)))
-            (dotimes (s2-0 (-> s3-0 length)) ;; arts
+            (dotimes (s2-0 (-> s3-0 length))
               (let* ((s1-0 (-> s3-0 data s2-0))
                      (a0-3 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) merc-ctrl))
                                s1-0
@@ -390,19 +372,13 @@
           (let ((s3-0 (-> s5-0 art-group-array s4-0)))
             (dotimes (s2-0 (-> s3-0 length))
               (let* ((s1-0 (-> s3-0 data s2-0))
-                     (v1-10
-                       (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) merc-ctrl))
-                           s1-0
-                           )
-                       )
+                     (v1-10 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) merc-ctrl))
+                                s1-0
+                                )
+                            )
                      )
                 (if v1-10
-                    (format
-                      #t
-                      "~30s: ~f~%"
-                      (-> (the-as merc-ctrl v1-10) name)
-                      (-> (the-as merc-ctrl v1-10) header longest-edge)
-                      )
+                    (format #t "~30s: ~f~%" (-> (the-as merc-ctrl v1-10) name) (-> (the-as merc-ctrl v1-10) header longest-edge))
                     )
                 )
               )
@@ -422,22 +398,12 @@
         (dst (-> func origin))
         )
     (while (> qwc 0)
-      (let ((qwc-this-time (min 127 qwc))) ;; only 127 at a time
+      (let ((qwc-this-time (min 127 qwc)))
         (set! (-> dma dma)
-              (new 'static 'dma-tag
-                   :id (dma-tag-id ref)
-                   :qwc qwc-this-time
-                   :addr (the-as int func-data)
-                   )
+              (new 'static 'dma-tag :id (dma-tag-id ref) :qwc qwc-this-time :addr (the-as int func-data))
               )
-        (set! (-> dma vif0) (new 'static 'vif-tag :cmd (if (zero? flush-mode) (vif-cmd flushe) (vif-cmd flusha))))
-        (set! (-> dma vif1)
-              (new 'static 'vif-tag
-                   :cmd (vif-cmd mpg)
-                   :num (* qwc-this-time 2)
-                   :imm dst
-                   )
-              )
+        (set! (-> dma vif0) (new 'static 'vif-tag :cmd (if (zero? flush-mode) 16 19)))
+        (set! (-> dma vif1) (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (* qwc-this-time 2) :imm dst))
         (&+! dma 16)
         (&+! func-data (* qwc-this-time 16))
         (set! qwc (- qwc qwc-this-time))
@@ -466,36 +432,23 @@
     ;; template:
     (let ((s5-0 (the-as merc-vu1-low-mem (&+ (the-as dma-gif-packet gp-0) 32))))
       (set! (-> s5-0 tri-strip-gif tag)
-        (new 'static 'gif-tag64
-             :pre #x1
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
-             :nreg #x3
-             )
-        )
+            (new 'static 'gif-tag64
+              :pre #x1
+              :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
+              :nreg #x3
+              )
+            )
       (set! (-> s5-0 tri-strip-gif regs)
-        (new 'static 'gif-tag-regs
-             :regs0 (gif-reg-id st)
-             :regs1 (gif-reg-id rgbaq)
-             :regs2 (gif-reg-id xyzf2)
-             )
-        )
+            (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+            )
       ;; what is this, they snuck something in here...
-      (set! (-> s5-0 tri-strip-gif word 3)
-        (shr (make-u128 0 (shl #x303e4000 32)) 32)
-        )
+      (set! (-> s5-0 tri-strip-gif word 3) (shr (make-u128 0 (shl #x303e4000 32)) 32))
 
       (set! (-> s5-0 ad-gif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
       (set! (-> s5-0 ad-gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
       (set! (-> s5-0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
-
       (quad-copy! (-> s5-0 perspective) (the-as pointer (-> *math-camera* perspective)) 4)
-      (set-vector!
-        (-> s5-0 fog)
-        (-> *math-camera* pfog0)
-        (-> *math-camera* fog-min)
-        (-> *math-camera* fog-max)
-        0.0
-        )
+      (set-vector! (-> s5-0 fog) (-> *math-camera* pfog0) (-> *math-camera* fog-min) (-> *math-camera* fog-max) 0.0)
       )
     ;; end.
     (let ((v1-20 (-> (the-as (inline-array dma-packet) gp-0) 10)))
@@ -506,7 +459,6 @@
       )
     )
   )
-
 
 (defun merc-vu1-init-buffer ((dma-bucket bucket-id) (test gs-test) (arg2 int))
   "Setup merc DMA buffer."
@@ -525,43 +477,22 @@
              )
         ;; set the beginning to be the merc init stuff.
         (set! (-> dma-buf base)
-          (the-as pointer (merc-vu1-initialize-chain (the-as dma-gif-packet (-> dma-buf base))))
-          )
+              (the-as pointer (merc-vu1-initialize-chain (the-as dma-gif-packet (-> dma-buf base))))
+              )
         ;; some other merc setup for the GS.
         (let* ((v1-8 dma-buf)
                (a0-6 (the-as object (-> v1-8 base)))
                )
           (set! (-> (the-as dma-packet a0-6) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
           (set! (-> (the-as dma-packet a0-6) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet a0-6) vif1)
-            (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-            )
+          (set! (-> (the-as dma-packet a0-6) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
           (set! (-> v1-8 base) (&+ (the-as pointer a0-6) 16))
           )
         (let* ((v1-9 dma-buf)
                (a0-8 (the-as object (-> v1-9 base)))
                )
           (set! (-> (the-as gs-gif-tag a0-8) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-          (set! (-> (the-as gs-gif-tag a0-8) regs)
-            (new 'static 'gif-tag-regs
-                 :regs0 (gif-reg-id a+d)
-                 :regs1 (gif-reg-id a+d)
-                 :regs2 (gif-reg-id a+d)
-                 :regs3 (gif-reg-id a+d)
-                 :regs4 (gif-reg-id a+d)
-                 :regs5 (gif-reg-id a+d)
-                 :regs6 (gif-reg-id a+d)
-                 :regs7 (gif-reg-id a+d)
-                 :regs8 (gif-reg-id a+d)
-                 :regs9 (gif-reg-id a+d)
-                 :regs10 (gif-reg-id a+d)
-                 :regs11 (gif-reg-id a+d)
-                 :regs12 (gif-reg-id a+d)
-                 :regs13 (gif-reg-id a+d)
-                 :regs14 (gif-reg-id a+d)
-                 :regs15 (gif-reg-id a+d)
-                 )
-            )
+          (set! (-> (the-as gs-gif-tag a0-8) regs) GIF_REGS_ALL_AD)
           (set! (-> v1-9 base) (&+ (the-as pointer a0-8) 16))
           )
         (let* ((v1-10 dma-buf)
@@ -574,9 +505,7 @@
 
         ;; terminate as normal
         (let ((v1-11 (the-as object (-> dma-buf base))))
-          (set! (-> (the-as dma-packet v1-11) dma)
-            (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> bucket next))
-            )
+          (set! (-> (the-as dma-packet v1-11) dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> bucket next)))
           (set! (-> (the-as dma-packet v1-11) vif0) (new 'static 'vif-tag))
           (set! (-> (the-as dma-packet v1-11) vif1) (new 'static 'vif-tag))
           (set! (-> dma-buf base) (&+ (the-as pointer v1-11) 16))
@@ -597,91 +526,91 @@
     (merc-vu1-init-buffer
       (bucket-id merc-tfrag-tex0)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-pris0)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-tfrag-tex1)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-pris1)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-alpha-tex)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-pris-common)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x26
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x26
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-water0)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x80
-           :afail #x1
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x80
+        :afail #x1
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     (merc-vu1-init-buffer
       (bucket-id merc-water1)
       (new 'static 'gs-test
-           :ate #x1
-           :atst (gs-atest greater-equal)
-           :aref #x80
-           :afail #x1
-           :zte #x1
-           :ztst (gs-ztest greater-equal)
-           )
+        :ate #x1
+        :atst (gs-atest greater-equal)
+        :aref #x80
+        :afail #x1
+        :zte #x1
+        :ztst (gs-ztest greater-equal)
+        )
       0
       )
     )

@@ -17,32 +17,38 @@
   "Unpack run-length-encoded data. Has sections of repeated values, then normally copied."
   (local-vars (current-input int) (copy-length int))
   (nop!)
-  (while #t
-    (while #t
-      
+  (loop
+    (loop
+
       ;; read the input and see what kind it is, based on number.
       (set! current-input (-> in 0))
       (set! in (&-> in 1))
       (b! (<= current-input 0) cfg-5 :delay (nop!))
-      
+
       ;; it's a repated value, loop to copy it.
       (let ((repeated-value (-> in 0)))
         (set! in (&-> in 1))
         (label cfg-3)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
         (set! (-> out 0) repeated-value)
         )
       (set! out (&-> out 1))
       (b! (> current-input 0) cfg-3 :delay (set! current-input (+ current-input -1)))
       )
-    
+
     (label cfg-5)
     ;; check for end
     (b! (zero? current-input) cfg-8 :delay (set! copy-length (- current-input)))
-    
+
     ;; copy
     (label cfg-6)
     (let ((src-val (-> in 0)))
       (set! in (&-> in 1))
+      (nop!)
+      (nop!)
       (set! (-> out 0) src-val)
       )
     (+! copy-length -1)
@@ -53,19 +59,17 @@
   (none)
   )
 
-
 (deftype huf-dictionary-node (structure)
-  ((zero uint16  :offset-assert   0)
-   (one  uint16  :offset-assert   2)
+  ((zero  uint16)
+   (one   uint16)
    )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
   )
+
 
 (defun unpack-comp-huf ((dst (pointer uint8)) (src (pointer uint8)) (arg2 uint) (dict huf-dictionary-node))
   "Unpack data compressed with huffman encoding."
   (local-vars (t1-1 uint) (t3-2 object))
+  (nop!)
   (let ((t1-0 (-> dict zero))
         (a2-1 (+ arg2 -1028))
         (t2-0 (-> dict one))
@@ -89,13 +93,9 @@
         (let ((t3-1 (* t1-1 4)))
           (b! (< (the-as int t2-1) 0) cfg-8 :delay (set! t3-2 (+ t3-1 a2-1)))
           )
-        (b! (zero? t2-1) cfg-10
-            :delay (set! t1-0 (-> (the-as (pointer uint16) t3-2) 0))
-            )
+        (b! (zero? t2-1) cfg-10 :delay (set! t1-0 (-> (the-as (pointer uint16) t3-2) 0)))
         )
-      (b! (nonzero? v1-4) cfg-2
-          :delay (set! t2-0 (-> (the-as (pointer uint16) t3-2) 1))
-          )
+      (b! (nonzero? v1-4) cfg-2 :delay (set! t2-0 (-> (the-as (pointer uint16) t3-2) 1)))
       (b! #t cfg-1 :delay (nop!))
       (label cfg-8)
       (set! (-> dst 0) t1-1)
@@ -113,7 +113,7 @@
   (none)
   )
 
-(defmethod update-vis! level ((this level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
+(defmethod update-vis! ((this level) (vis-info level-vis-info) (arg1 uint) (arg2 uint))
   "Update the vis-bits for the level with the given vis info.
    arg1 unused. if the vis-file flag isn't set, will use arg2 as vis data."
   (local-vars (t0-3 uint128) (vis-buffer object))

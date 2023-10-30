@@ -26,12 +26,9 @@ the sprite renderer draw 2D or 3D sprites
 ;; This is the first quadword of the data sent to VU1.
 ;; It contains the number of sprites that should be drawn.
 (deftype sprite-header (structure)
-  ((header      qword 1 :inline :offset-assert   0)
-   (num-sprites int32           :offset          0)
+  ((header       qword  1 :inline)
+   (num-sprites  int32  :overlay-at (-> header 0 data 0))
    )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
 
@@ -48,22 +45,16 @@ the sprite renderer draw 2D or 3D sprites
 ;; the meaning of this is unknown.
 ;; the first one in the list is special and the remaining 75 can be allocated/freed.
 (deftype sprite-hvdf-data (structure)
-  ((data qword 76 :inline :offset-assert   0)
+  ((data  qword  76 :inline)
    )
-  :method-count-assert 9
-  :size-assert         #x4c0
-  :flag-assert         #x9000004c0
   )
 
 
 ;; Each byte indicates if the corresponding entry in
 ;; sprite-hvdf-data is allocated or not.
 (deftype sprite-hvdf-control (structure)
-  ((alloc int8 76 :offset-assert   0)
+  ((alloc  int8  76)
    )
-  :method-count-assert 9
-  :size-assert         #x4c
-  :flag-assert         #x90000004c
   )
 
 (define *sprite-hvdf-data* (new 'global 'sprite-hvdf-data))
@@ -84,33 +75,28 @@ the sprite renderer draw 2D or 3D sprites
 ;; Represents a particle in *sprite-aux-list*.
 ;; The aux-type specifies what kind of aux sprite it is (distort, glow, etc.).
 (deftype sprite-aux-elem (structure)
-  ((aux-type sprite-aux-type      :offset-assert   0)
-   (data     vector             3 :offset-assert   4)
-   (vec-data sprite-vec-data-2d   :offset          4)
-   (gif-data adgif-shader         :offset          8)
-   (aux-data sparticle-cpuinfo    :offset         12)
+  ((aux-type  sprite-aux-type)
+   (data      vector              3)
+   (vec-data  sprite-vec-data-2d  :overlay-at (-> data 0))
+   (gif-data  adgif-shader        :overlay-at (-> data 1))
+   (aux-data  sparticle-cpuinfo   :overlay-at (-> data 2))
    )
   :pack-me
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
   )
 
+
 (deftype sprite-aux-list (basic)
-  ((num-entries int32                            :offset-assert   4) ;; capacity
-   (entry       int32                            :offset-assert   8) ;; current size
-   (data        sprite-aux-elem :inline :dynamic :offset-assert  12)
+  ((num-entries  int32) ;; capacity
+   (entry        int32) ;; current size
+   (data         sprite-aux-elem  :inline :dynamic)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   (:methods
-    (new (symbol type int) _type_ 0)
+    (new (symbol type int) _type_)
     )
   )
 
 (defmethod new sprite-aux-list ((allocation symbol) (type-to-make type) (size int))
-
+  ;; og:preserve-this
   (#when PC_BIG_MEMORY
     (*! size SPRITE_AUX_MAX_AMOUNT_MULT))
 
@@ -165,44 +151,43 @@ the sprite renderer draw 2D or 3D sprites
 
 ;; The sprite-frame-data is data transferred to VU1 and remains there for all chunks of sprites.
 (deftype sprite-frame-data (structure)
-  ((cdata              vector       16 :inline :offset          0)
-   (xy-array           vector       8 :inline  :offset          0)
-   (st-array           vector       4 :inline  :offset        128)
-   (xyz-array          vector       4 :inline  :offset        192)
-   (hmge-scale         vector       :inline    :offset        256) ;; math camera value
-   (consts             vector       :inline    :offset        272)
-   (pfog0              float                   :offset        272) ;; math camera value
-   (deg-to-rad         float                   :offset        276) ;; 2*pi / 65,536
-   (min-scale          float                   :offset        280)
-   (inv-area           float                   :offset        284)
-   (adgif-giftag       gs-gif-tag   :inline    :offset-assert 288) ;; sets adgif shader values
-   (sprite-2d-giftag   gs-gif-tag   :inline    :offset-assert 304) ;; draws 2d sprites
-   (sprite-2d-giftag-2 gs-gif-tag   :inline    :offset-assert 320) ;; 2d with different settings
-   (sincos-01          vector       :inline    :offset-assert 336)
-   (sincos-23          vector       :inline    :offset-assert 352)
-   (sincos-45          vector       :inline    :offset-assert 368)
-   (sincos-67          vector       :inline    :offset-assert 384)
-   (sincos-89          vector       :inline    :offset-assert 400)
-   (basis-x            vector       :inline    :offset-assert 416)
-   (basis-y            vector       :inline    :offset-assert 432)
-   (sprite-3d-giftag   gs-gif-tag   :inline    :offset-assert 448) ;; draws 3d sprites
-   (sprite-3d-giftag-2 gs-gif-tag   :inline    :offset-assert 464)
-   (screen-shader      adgif-shader :inline    :offset-assert 480)
-   (inv-hmge-scale     vector       :inline    :offset        576) ;; math camera value
-   (stq-offset         vector       :inline    :offset-assert 592)
-   (stq-scale          vector       :inline    :offset-assert 608)
-   (rgba-plain         qword        :inline    :offset-assert 624)
-   (warp-giftag        gs-gif-tag   :inline    :offset-assert 640)
-   (fog-clamp          vector       :inline    :offset-assert 656)
-   (fog-min            float                   :offset        656)
-   (fog-max            float                   :offset        660)
-   (max-scale          float                   :offset        664)
+  ((cdata               vector        16 :inline :offset   0)
+   (xy-array            vector        8 :inline  :overlay-at (-> cdata 0))
+   (st-array            vector        4 :inline  :overlay-at (-> cdata 8))
+   (xyz-array           vector        4 :inline  :overlay-at (-> cdata 12))
+   (hmge-scale          vector        :inline    :offset 256) ;; math camera value
+   (consts              vector        :inline    :offset 272)
+   (pfog0               float                    :overlay-at (-> consts x)) ;; math camera value
+   (deg-to-rad          float                    :overlay-at (-> consts y)) ;; 2*pi / 65,536
+   (min-scale           float                    :overlay-at (-> consts z))
+   (inv-area            float                    :overlay-at (-> consts w))
+   (adgif-giftag        gs-gif-tag    :inline) ;; sets adgif shader values
+   (sprite-2d-giftag    gs-gif-tag    :inline) ;; draws 2d sprites
+   (sprite-2d-giftag-2  gs-gif-tag    :inline) ;; 2d with different settings
+   (sincos-01           vector        :inline)
+   (sincos-23           vector        :inline)
+   (sincos-45           vector        :inline)
+   (sincos-67           vector        :inline)
+   (sincos-89           vector        :inline)
+   (basis-x             vector        :inline)
+   (basis-y             vector        :inline)
+   (sprite-3d-giftag    gs-gif-tag    :inline) ;; draws 3d sprites
+   (sprite-3d-giftag-2  gs-gif-tag    :inline)
+   (screen-shader       adgif-shader  :inline)
+   (inv-hmge-scale      vector        :inline    :offset 576) ;; math camera value
+   (stq-offset          vector        :inline)
+   (stq-scale           vector        :inline)
+   (rgba-plain          qword         :inline)
+   (warp-giftag         gs-gif-tag    :inline)
+   (fog-clamp           vector        :inline)
+   (fog-min             float                    :overlay-at (-> fog-clamp data 0))
+   (fog-max             float                    :overlay-at (-> fog-clamp data 1))
+   (max-scale           float                    :overlay-at (-> fog-clamp data 2))
    )
-  :method-count-assert 9
-  :size-assert         #x2a0
-  :flag-assert         #x9000002a0
   )
 
+
+;; WARN: Return type mismatch float vs none.
 (defun sprite-setup-frame-data ((data sprite-frame-data) (tbp-offset uint))
   "Build the sprite-frame-data. This should be done once per frame"
   (set! (-> data hmge-scale quad) (-> *math-camera* hmge-scale quad))
@@ -345,9 +330,9 @@ the sprite renderer draw 2D or 3D sprites
   (set! (-> data sincos-89 w) 0.000020170546)
   ;; math camera stuff
   (set! (-> data basis-x quad) (the-as uint128 0))
-  (set! (-> data basis-x x) (- (-> *math-camera* perspective data 0)))
+  (set! (-> data basis-x x) (- (-> *math-camera* perspective vector 0 x)))
   (set! (-> data basis-y quad) (the-as uint128 0))
-  (set! (-> data basis-y y) (- (-> *math-camera* perspective data 5)))
+  (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
   (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
   (set! (-> data inv-area) (/ 1.0 (* (-> data min-scale) (-> data min-scale))))
   ;; ??
@@ -393,7 +378,7 @@ the sprite renderer draw 2D or 3D sprites
 
 (defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 2d sprites.  There are two groups, each can contain the given number."
-
+  ;; og:preserve-this
   (#when PC_BIG_MEMORY
     (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
     ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
@@ -423,7 +408,7 @@ the sprite renderer draw 2D or 3D sprites
 (defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 3d sprites.  There are two groups, each can contain the given number of sprites.
    Group 1 size is zero in practice for 3d."
-
+  ;; og:preserve-this
   (#when PC_BIG_MEMORY
     (*! group-0-size SPRITE_MAX_AMOUNT_MULT)
     ; (*! group-1-size SPRITE_MAX_AMOUNT_MULT)
@@ -466,14 +451,14 @@ the sprite renderer draw 2D or 3D sprites
     (cond
       ((< (-> quat w) 0.0)
        (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
-       (.lvf vf2 (&-> quat vec quad))
+       (.lvf vf2 (&-> quat quad))
        (.sub.vf vf1 vf0 vf2 :mask #b111)
        (.svf (&-> sprite qx-qy-qz-sy quad) vf1)
        (.mov v1-0 vf1)
        )
       (else
         (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
-        (.lvf vf2 (&-> quat vec quad))
+        (.lvf vf2 (&-> quat quad))
         (.add.vf vf1 vf0 vf2 :mask #b111)
         (.svf (&-> sprite qx-qy-qz-sy quad) vf1)
         (.mov v1-1 vf1)
@@ -519,14 +504,14 @@ the sprite renderer draw 2D or 3D sprites
        ;; send the camera-temp matrix
        (let* ((mtx (the-as matrix (-> dma-buff base)))
               (t1-0 (-> *math-camera* camera-temp))
-              (a2-4 (-> t1-0 vector 0 quad))
-              (a3-4 (-> t1-0 vector 1 quad))
-              (t0-4 (-> t1-0 vector 2 quad))
+              (a2-4 (-> t1-0 quad 0))
+              (a3-4 (-> t1-0 quad 1))
+              (t0-4 (-> t1-0 quad 2))
               (t1-1 (-> t1-0 trans quad))
               )
-         (set! (-> mtx vector 0 quad) a2-4)
-         (set! (-> mtx vector 1 quad) a3-4)
-         (set! (-> mtx vector 2 quad) t0-4)
+         (set! (-> mtx quad 0) a2-4)
+         (set! (-> mtx quad 1) a3-4)
+         (set! (-> mtx quad 2) t0-4)
          (set! (-> mtx trans quad) t1-1)
          )
        (&+! (-> dma-buff base) 64)
@@ -590,6 +575,7 @@ the sprite renderer draw 2D or 3D sprites
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
   (let ((s5-0 42))
     (let* ((v1-0 dma-buff)
@@ -606,6 +592,7 @@ the sprite renderer draw 2D or 3D sprites
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun sprite-add-2d-chunk ((sprites sprite-array-2d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer) (mscal-addr int))
   "Upload sprite data from elements in the array."
   ;; first packet is just the header
@@ -695,6 +682,7 @@ the sprite renderer draw 2D or 3D sprites
   (none)
   )
 
+;; WARN: Return type mismatch pointer vs none.
 (defun sprite-add-3d-chunk ((sprites sprite-array-3d) (start-sprite-idx int) (num-sprites int) (dma-buff dma-buffer))
   "Add DMA list data for up to 48 sprites. This is very similar to the 2D one, see that for more documentation"
   ;; first packet is just the header
@@ -928,6 +916,7 @@ the sprite renderer draw 2D or 3D sprites
   (none)
   )
 
+;; WARN: Return type mismatch qword vs vector.
 (defun sprite-get-user-hvdf ((idx int))
   "Get an HVDF entry by index"
   (the-as vector (-> *sprite-hvdf-data* data idx))

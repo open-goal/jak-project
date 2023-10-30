@@ -3,38 +3,36 @@
 
 ;; definition of type water-anim
 (deftype water-anim (process-drawable)
-  ((water-height        meters        :offset-assert 200)
-   (wade-height         meters        :offset-assert 204)
-   (swim-height         meters        :offset-assert 208)
-   (bottom-height       meters        :offset-assert 212)
-   (attack-event        symbol        :offset-assert 216)
-   (attack-id           uint32        :offset-assert 220)
-   (flow                flow-control  :offset-assert 224)
-   (target              handle        :offset-assert 232)
-   (flags               water-flags   :offset-assert 240)
-   (look                int32         :offset-assert 244)
-   (play-ambient-sound? symbol        :offset-assert 248)
-   (visible             symbol        :offset-assert 252)
+  ((water-height         meters)
+   (wade-height          meters)
+   (swim-height          meters)
+   (bottom-height        meters)
+   (attack-event         symbol)
+   (attack-id            uint32)
+   (flow                 flow-control)
+   (target               handle)
+   (flags                water-flags)
+   (look                 int32)
+   (play-ambient-sound?  symbol)
+   (visible              symbol)
    )
-  :heap-base #x80
-  :method-count-assert 29
-  :size-assert         #x100
-  :flag-assert         #x1d00800100
+  (:state-methods
+    water-anim-state-20
+    idle
+    )
   (:methods
-    (water-anim-method-20 () none 20)
-    (idle () _type_ :state 21)
-    (move-to-point! (_type_ vector) int 22)
-    (get-ripple-height (_type_ vector) float 23)
-    (init-water! (_type_) none 24)
-    (reset-root! (_type_) trsqv 25)
-    (water-anim-init! (_type_) none 26)
-    (water-anim-method-27 (_type_) none 27)
-    (offset! (_type_) none 28)
+    (move-to-point! (_type_ vector) int)
+    (get-ripple-height (_type_ vector) float)
+    (init-water! (_type_) none)
+    (reset-root! (_type_) trsqv)
+    (water-anim-init! (_type_) none)
+    (water-anim-method-27 (_type_) none)
+    (offset! (_type_) none)
     )
   )
 
 ;; definition for method 3 of type water-anim
-(defmethod inspect water-anim ((this water-anim))
+(defmethod inspect ((this water-anim))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -59,7 +57,7 @@
   )
 
 ;; definition for method 7 of type water-anim
-(defmethod relocate water-anim ((this water-anim) (arg0 int))
+(defmethod relocate ((this water-anim) (arg0 int))
   (if (nonzero? (-> this flow))
       (&+! (-> this flow) arg0)
       )
@@ -278,17 +276,14 @@
 
 ;; definition of type water-anim-look
 (deftype water-anim-look (structure)
-  ((skel-group         string      :offset-assert   0)
-   (anim               int32       :offset-assert   4)
-   (ambient-sound-spec sound-spec  :offset-assert   8)
+  ((skel-group          string)
+   (anim                int32)
+   (ambient-sound-spec  sound-spec)
    )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
   )
 
 ;; definition for method 3 of type water-anim-look
-(defmethod inspect water-anim-look ((this water-anim-look))
+(defmethod inspect ((this water-anim-look))
   (when (not this)
     (set! this this)
     (goto cfg-4)
@@ -508,7 +503,7 @@
 
 ;; definition for method 22 of type water-anim
 ;; INFO: Used lq/sq
-(defmethod move-to-point! water-anim ((this water-anim) (arg0 vector))
+(defmethod move-to-point! ((this water-anim) (arg0 vector))
   "Set a [[water-anim]]'s `trans` as specified by the [[vector]] and update `water-height`."
   (set! (-> this root trans quad) (-> arg0 quad))
   (set! (-> this water-height) (-> this root trans y))
@@ -518,13 +513,13 @@
   )
 
 ;; definition for method 23 of type water-anim
-(defmethod get-ripple-height water-anim ((this water-anim) (arg0 vector))
+(defmethod get-ripple-height ((this water-anim) (arg0 vector))
   (ripple-find-height this 0 arg0)
   )
 
 ;; definition for method 27 of type water-anim
 ;; WARN: Return type mismatch symbol vs none.
-(defmethod water-anim-method-27 water-anim ((this water-anim))
+(defmethod water-anim-method-27 ((this water-anim))
   "Empty."
   (none)
   )
@@ -532,7 +527,7 @@
 ;; definition for method 28 of type water-anim
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod offset! water-anim ((this water-anim))
+(defmethod offset! ((this water-anim))
   "Offset a [[water-anim]]'s `trans` and `quat` by the lump data in `entity`."
   (local-vars (sv-16 res-tag))
   (set! (-> this play-ambient-sound?) #t)
@@ -557,7 +552,7 @@
   )
 
 ;; definition for method 24 of type water-anim
-(defmethod init-water! water-anim ((this water-anim))
+(defmethod init-water! ((this water-anim))
   "Initialize a [[water-anim]]'s default settings, this may include applying a [[riple-control]]"
   (let ((s5-0 (-> this look)))
     (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
@@ -589,7 +584,7 @@
   )
 
 ;; definition for method 25 of type water-anim
-(defmethod reset-root! water-anim ((this water-anim))
+(defmethod reset-root! ((this water-anim))
   "Reset a [[water-anim]]'s `root`."
   (let ((v0-0 (new 'process 'trsqv)))
     (set! (-> this root) v0-0)
@@ -600,7 +595,7 @@
 ;; definition for method 26 of type water-anim
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch water-flags vs none.
-(defmethod water-anim-init! water-anim ((this water-anim))
+(defmethod water-anim-init! ((this water-anim))
   "Initialize a [[water-anim]]."
   (local-vars (sv-16 res-tag))
   (set! (-> this attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
@@ -685,7 +680,7 @@
 
 ;; definition for method 11 of type water-anim
 ;; WARN: Return type mismatch object vs none.
-(defmethod init-from-entity! water-anim ((this water-anim) (arg0 entity-actor))
+(defmethod init-from-entity! ((this water-anim) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
 This commonly includes things such as:
 - stack size

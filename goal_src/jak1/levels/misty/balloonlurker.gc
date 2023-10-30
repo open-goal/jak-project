@@ -213,20 +213,17 @@
   )
 
 (deftype balloonlurker-bank (basic)
-  ((buoyancy-depth-offset       meters  :offset-assert   4)
-   (player-mass                 float   :offset-assert   8)
-   (rudder-factor               float   :offset-assert  12)
-   (max-engine-thrust           float   :offset-assert  16)
-   (max-rudder-deflection-angle float   :offset-assert  20)
-   (throttle-factor             float   :offset-assert  24)
-   (throttle-distance           float   :offset-assert  28)
-   (throttle-close-distance     float   :offset-assert  32)
-   (explosion-force             float   :offset-assert  36)
-   (mine-weight                 float   :offset-assert  40)
+  ((buoyancy-depth-offset        meters)
+   (player-mass                  float)
+   (rudder-factor                float)
+   (max-engine-thrust            float)
+   (max-rudder-deflection-angle  float)
+   (throttle-factor              float)
+   (throttle-distance            float)
+   (throttle-close-distance      float)
+   (explosion-force              float)
+   (mine-weight                  float)
    )
-  :method-count-assert 9
-  :size-assert         #x2c
-  :flag-assert         #x90000002c
   )
 
 
@@ -272,34 +269,30 @@
         )
 
 (deftype balloonlurker (rigid-body-platform)
-  ((explosion-force-position    vector              :inline :offset-assert 736)
-   (explosion-force             vector              :inline :offset-assert 752)
-   (explosion                   symbol                      :offset-assert 768)
-   (explosion-joint-index       uint16              2       :offset-assert 772)
-   (explosion-joint-index-bytes int8                4       :offset        772)
-   (vulnerable                  symbol                      :offset-assert 776)
-   (water-y                     float                       :offset-assert 780)
-   (propeller                   joint-mod-spinner           :offset-assert 784)
-   (rudder                      joint-mod-set-local         :offset-assert 788)
-   (mine                        joint-mod-set-world 2       :offset-assert 792)
-   (buoyancy-factor             float                       :offset-assert 800)
-   (rudder-control              float                       :offset-assert 804)
-   (throttle-control            float                       :offset-assert 808)
-   (engine-thrust               float                       :offset-assert 812)
-   (dest-point                  vector              :inline :offset-assert 816)
-   (dest-point-old              vector              :inline :offset-assert 832)
-   (dest-index                  int8                        :offset-assert 848)
-   (auto-pilot                  symbol                      :offset-assert 852)
-   (dead                        symbol                      :offset-assert 856)
-   (anim-frame                  float                       :offset-assert 860)
-   (engine-sound-id             sound-id                    :offset-assert 864)
-   (pedal-sound-id              sound-id                    :offset-assert 868)
-   (frame-count                 int8                        :offset-assert 872)
+  ((explosion-force-position     vector               :inline)
+   (explosion-force              vector               :inline)
+   (explosion                    symbol)
+   (explosion-joint-index        uint16               2)
+   (explosion-joint-index-bytes  int8                 4 :overlay-at (-> explosion-joint-index 0))
+   (vulnerable                   symbol)
+   (water-y                      float)
+   (propeller                    joint-mod-spinner)
+   (rudder                       joint-mod-set-local)
+   (mine                         joint-mod-set-world  2)
+   (buoyancy-factor              float)
+   (rudder-control               float)
+   (throttle-control             float)
+   (engine-thrust                float)
+   (dest-point                   vector               :inline)
+   (dest-point-old               vector               :inline)
+   (dest-index                   int8)
+   (auto-pilot                   symbol)
+   (dead                         symbol)
+   (anim-frame                   float)
+   (engine-sound-id              sound-id)
+   (pedal-sound-id               sound-id)
+   (frame-count                  int8)
    )
-  :heap-base #x300
-  :method-count-assert 35
-  :size-assert         #x369
-  :flag-assert         #x2303000369
   (:states
     balloonlurker-die
     (balloonlurker-mine-explode int)
@@ -309,16 +302,12 @@
 
 
 (deftype balloonlurker-pilot (process-drawable)
-  ((parent-override (pointer balloonlurker)  :offset  12)
-   (root-override   collide-shape-moving     :offset 112)
+  ((root             collide-shape-moving    :override)
+   (parent-override  (pointer balloonlurker)  :overlay-at parent)
    )
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
   (:methods
-    (balloonlurker-pilot-method-20 (_type_) none 20)
-    (balloonlurker-pilot-method-21 (_type_) none 21)
+    (balloonlurker-pilot-method-20 (_type_) none)
+    (balloonlurker-pilot-method-21 (_type_) none)
     )
   (:states
     balloonlurker-pilot-die
@@ -467,7 +456,7 @@
     )
   )
 
-(defmethod rigid-body-platform-method-23 balloonlurker ((this balloonlurker) (arg0 float))
+(defmethod rigid-body-platform-method-23 ((this balloonlurker) (arg0 float))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (s4-0 (-> this rbody matrix))
@@ -803,7 +792,7 @@
   :post balloonlurker-post
   )
 
-(defmethod relocate balloonlurker ((this balloonlurker) (arg0 int))
+(defmethod relocate ((this balloonlurker) (arg0 int))
   (if (nonzero? (-> this propeller))
       (&+! (-> this propeller) arg0)
       )
@@ -838,9 +827,9 @@
       )
     )
   :post (behavior ()
-    (set! (-> self root-override trans quad) (-> self parent-override 0 root-overlay trans quad))
-    (quaternion-copy! (-> self root-override quat) (-> self parent-override 0 root-overlay quat))
-    (update-transforms! (-> self root-override))
+    (set! (-> self root trans quad) (-> self parent-override 0 root-overlay trans quad))
+    (quaternion-copy! (-> self root quat) (-> self parent-override 0 root-overlay quat))
+    (update-transforms! (-> self root))
     (ja-post)
     )
   )
@@ -856,15 +845,11 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
-    (rigid-body-method-17
-      (-> self parent-override 0 rbody)
-      (-> self root-override trans)
-      (-> self root-override transv)
-      )
-    (clear-collide-with-as (-> self root-override))
+    (rigid-body-method-17 (-> self parent-override 0 rbody) (-> self root trans) (-> self root transv))
+    (clear-collide-with-as (-> self root))
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! balloonlurker-pilot-death-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -874,16 +859,13 @@
     (cleanup-for-death self)
     )
   :post (behavior ()
-    (vector-v++!
-      (-> self root-override transv)
-      (compute-acc-due-to-gravity (-> self root-override) (new-stack-vector0) 0.0)
-      )
-    (integrate-no-collide! (-> self root-override) (-> self root-override transv))
+    (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+    (integrate-no-collide! (-> self root) (-> self root transv))
     (ja-post)
     )
   )
 
-(defmethod balloonlurker-pilot-method-20 balloonlurker-pilot ((this balloonlurker-pilot))
+(defmethod balloonlurker-pilot-method-20 ((this balloonlurker-pilot))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -900,13 +882,13 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-override) s5-0)
+    (set! (-> this root) s5-0)
     )
   0
   (none)
   )
 
-(defmethod balloonlurker-pilot-method-21 balloonlurker-pilot ((this balloonlurker-pilot))
+(defmethod balloonlurker-pilot-method-21 ((this balloonlurker-pilot))
   (initialize-skeleton this *balloonlurker-pilot-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 6))
   0
@@ -920,15 +902,15 @@
   (set! (-> self fact)
         (new 'process 'fact-info-enemy self (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
         )
-  (set! (-> self root-override trans quad) (-> arg0 root-overlay trans quad))
-  (set! (-> self root-override quat vec quad) (-> arg0 root-overlay quat vec quad))
-  (set! (-> self root-override scale quad) (-> arg0 root-overlay scale quad))
+  (set! (-> self root trans quad) (-> arg0 root-overlay trans quad))
+  (set! (-> self root quat vec quad) (-> arg0 root-overlay quat vec quad))
+  (set! (-> self root scale quad) (-> arg0 root-overlay scale quad))
   (balloonlurker-pilot-method-21 self)
   (go balloonlurker-pilot-idle)
   (none)
   )
 
-(defmethod rigid-body-platform-method-30 balloonlurker ((this balloonlurker))
+(defmethod rigid-body-platform-method-30 ((this balloonlurker))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -983,7 +965,7 @@
   (none)
   )
 
-(defmethod rigid-body-platform-method-31 balloonlurker ((this balloonlurker))
+(defmethod rigid-body-platform-method-31 ((this balloonlurker))
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *balloonlurker-sg* '())
   (set! (-> this root-overlay pause-adjust-distance) 1228800.0)
@@ -1049,7 +1031,7 @@
   )
 
 ;; WARN: Function (method 11 balloonlurker) has a return type of none, but the expression builder found a return statement.
-(defmethod init-from-entity! balloonlurker ((this balloonlurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this balloonlurker) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (rigid-body-platform-method-30 this)
   (process-drawable-from-entity! this arg0)

@@ -9,10 +9,6 @@
 
 (deftype lavabase (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavabase-idle
     )
@@ -38,7 +34,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavabase ((this lavabase) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavabase) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavabase-sg* '())
@@ -48,10 +44,6 @@
 
 (deftype lavafall (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavafall-idle
     )
@@ -77,7 +69,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavafall ((this lavafall) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavafall) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavafall-sg* '())
@@ -87,10 +79,6 @@
 
 (deftype lavashortcut (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavashortcut-idle
     )
@@ -116,7 +104,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavashortcut ((this lavashortcut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavashortcut) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavashortcut-sg* '())
@@ -343,40 +331,29 @@
   )
 
 (deftype darkecobarrel-leak (structure)
-  ((offset      vector :inline :offset-assert   0)
-   (first-frame basic          :offset-assert  16)
+  ((offset       vector  :inline)
+   (first-frame  basic)
    )
-  :method-count-assert 9
-  :size-assert         #x14
-  :flag-assert         #x900000014
   )
 
 
 (deftype darkecobarrel-base (process-drawable)
-  ((root-override collide-shape-moving  :offset        112)
-   (speed         float                 :offset-assert 176)
-   (sync          time-frame            :offset-assert 184)
+  ((root   collide-shape-moving :override)
+   (speed  float)
+   (sync   time-frame)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xc0
-  :flag-assert         #x14005000c0
   )
 
 
 (deftype darkecobarrel-mover (darkecobarrel-base)
-  ((start-time   time-frame                    :offset-assert 192)
-   (hits         int32                         :offset-assert 200)
-   (leak         darkecobarrel-leak  1 :inline :offset-assert 208)
-   (y-offset     bouncing-float      :inline   :offset-assert 240)
-   (y-offset-tgt delayed-rand-float  :inline   :offset-assert 280)
-   (down         oscillating-vector  :inline   :offset-assert 320)
-   (down-tgt     delayed-rand-vector :inline   :offset-assert 384)
+  ((start-time    time-frame)
+   (hits          int32)
+   (leak          darkecobarrel-leak   1 :inline)
+   (y-offset      bouncing-float       :inline)
+   (y-offset-tgt  delayed-rand-float   :inline)
+   (down          oscillating-vector   :inline)
+   (down-tgt      delayed-rand-vector  :inline)
    )
-  :heap-base #x140
-  :method-count-assert 20
-  :size-assert         #x1b0
-  :flag-assert         #x14014001b0
   (:states
     darkecobarrel-mover-die
     darkecobarrel-mover-move
@@ -385,21 +362,17 @@
 
 
 (deftype darkecobarrel (darkecobarrel-base)
-  ((self-override darkecobarrel  :offset         28)
-   (spawn-array   (array int64)  :offset-assert 192)
-   (cur-spawn     int32          :offset-assert 196)
+  ((self-override  darkecobarrel  :overlay-at self)
+   (spawn-array    (array int64))
+   (cur-spawn      int32)
    )
-  :heap-base #x60
-  :method-count-assert 20
-  :size-assert         #xc8
-  :flag-assert         #x14006000c8
   (:states
     darkecobarrel-spawner
     )
   )
 
 
-(defmethod relocate darkecobarrel ((this darkecobarrel) (arg0 int))
+(defmethod relocate ((this darkecobarrel) (arg0 int))
   (if (nonzero? (-> this spawn-array))
       (&+! (-> this spawn-array) arg0)
       )
@@ -442,9 +415,9 @@
     (if (darkecobarrel-base-done? f30-0)
         (deactivate self)
         )
-    (eval-path-curve! (-> self path) (-> self root-override trans) f30-0 'interp)
-    (+! (-> self root-override trans y) (* 4096.0 (-> self y-offset osc value)))
-    (+! (-> self root-override trans y) -4096.0)
+    (eval-path-curve! (-> self path) (-> self root trans) f30-0 'interp)
+    (+! (-> self root trans y) (* 4096.0 (-> self y-offset osc value)))
+    (+! (-> self root trans y) -4096.0)
     (let ((s5-0 (new 'stack-no-clear 'vector))
           (gp-0 (new 'stack-no-clear 'matrix))
           )
@@ -455,7 +428,7 @@
         (vector-normalize! s4-0 1.0)
         (forward-down-nopitch->inv-matrix gp-0 s5-0 s4-0)
         )
-      (matrix->quaternion (-> self root-override quat) gp-0)
+      (matrix->quaternion (-> self root quat) gp-0)
       (dotimes (s5-1 (-> self hits))
         (when (-> self leak s5-1 first-frame)
           (set! (-> self leak s5-1 first-frame) #f)
@@ -466,13 +439,13 @@
           )
         (let ((s4-2 (new 'stack-no-clear 'vector)))
           (vector-matrix*! s4-2 (the-as vector (-> self leak s5-1)) gp-0)
-          (vector+! s4-2 s4-2 (-> self root-override trans))
+          (vector+! s4-2 s4-2 (-> self root trans))
           (spawn (-> self part) s4-2)
           )
         )
       )
     )
-  (if (< (vector-vector-xz-distance-squared (-> self root-override trans) (camera-pos)) 1073741800.0)
+  (if (< (vector-vector-xz-distance-squared (-> self root trans) (camera-pos)) 1073741800.0)
       (logior! (-> self draw status) (draw-status skip-bones))
       (set! (-> self draw status) (the-as draw-status (logclear (-> self draw status) (draw-status skip-bones))))
       )
@@ -482,11 +455,11 @@
 (defstate darkecobarrel-mover-die (darkecobarrel-mover)
   :code (behavior ()
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "dcrate-break")
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-1 quad) (-> self root-override trans quad))
+      (set! (-> gp-1 quad) (-> self root trans quad))
       (+! (-> gp-1 y) -49152.0)
       (process-spawn
         part-tracker
@@ -520,7 +493,7 @@
             (if (and s5-0
                      ((method-of-type touching-shapes-entry prims-touching?)
                       (the-as touching-shapes-entry s5-0)
-                      (-> self root-override)
+                      (-> self root)
                       (the-as uint 1)
                       )
                      (send-event proc 'attack-invinc s5-0 (static-attack-info ((mode 'death))))
@@ -547,7 +520,7 @@
                    (set! (-> self leak (+ (-> self hits) -1) first-frame) #t)
                    (cond
                      (v1-17
-                       (vector-! gp-1 (-> (the-as process-drawable v1-17) root trans) (-> self root-override trans))
+                       (vector-! gp-1 (-> (the-as process-drawable v1-17) root trans) (-> self root trans))
                        (set! (-> self leak (+ (-> self hits) -1) offset quad) (-> gp-1 quad))
                        (vector-normalize! gp-1 -0.04)
                        (let ((v0-0 (the-as object (-> self down vel))))
@@ -556,7 +529,7 @@
                          )
                        )
                      (else
-                       (set! (-> self leak (+ (-> self hits) -1) offset quad) (-> self root-override trans quad))
+                       (set! (-> self leak (+ (-> self hits) -1) offset quad) (-> self root trans quad))
                        (set! (-> self leak (+ (-> self hits) -1) offset y)
                              (+ -49152.0 (-> self leak (+ (-> self hits) -1) offset y))
                              )
@@ -633,7 +606,7 @@
       )
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root-override) s2-0)
+    (set! (-> self root) s2-0)
     )
   (darkecobarrel-base-init arg0)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 540) self))
@@ -700,12 +673,12 @@
     )
   )
 
-(defmethod init-from-entity! darkecobarrel ((this darkecobarrel) (arg0 entity-actor))
+(defmethod init-from-entity! ((this darkecobarrel) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
-  (set! (-> this root-override) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
   (darkecobarrel-base-init arg0)
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "lav-dark-eco" :fo-max 30) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "lav-dark-eco" :fo-max 30) (-> this root trans))
         )
   (logior! (-> this draw status) (draw-status hidden))
   (set! (-> this speed) (/ 300.0 (res-lump-float (-> this entity) 'speed :default 61440.0)))
@@ -767,10 +740,6 @@
 
 (deftype lavafallsewera (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavafallsewera-idle
     )
@@ -795,7 +764,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavafallsewera ((this lavafallsewera) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavafallsewera) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavafallsewera-sg* '())
@@ -805,10 +774,6 @@
 
 (deftype lavafallsewerb (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavafallsewerb-idle
     )
@@ -833,7 +798,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavafallsewerb ((this lavafallsewerb) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavafallsewerb) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavafallsewerb-sg* '())
@@ -842,15 +807,11 @@
   )
 
 (deftype chainmine (process-drawable)
-  ((root-override collide-shape-moving  :offset 112)
+  ((root  collide-shape-moving :override)
    )
-  :heap-base #x40
-  :method-count-assert 22
-  :size-assert         #xb0
-  :flag-assert         #x16004000b0
-  (:methods
-    (die () _type_ :state 20)
-    (idle () _type_ :state 21)
+  (:state-methods
+    die
+    idle
     )
   )
 
@@ -993,11 +954,11 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "dcrate-break")
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-1 quad) (-> self root-override trans quad))
+      (set! (-> gp-1 quad) (-> self root trans quad))
       (+! (-> gp-1 y) -73728.0)
       (process-spawn
         part-tracker
@@ -1046,7 +1007,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! chainmine ((this chainmine) (arg0 entity-actor))
+(defmethod init-from-entity! ((this chainmine) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask attackable))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1065,12 +1026,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *chainmine-sg* '())
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "lava-mine-chain" :fo-max 30) (-> this root-override trans))
+        (new 'process 'ambient-sound (static-sound-spec "lava-mine-chain" :fo-max 30) (-> this root trans))
         )
   (go (method-of-object this idle))
   (none)
@@ -1082,16 +1043,12 @@
               )
 
 (deftype lavaballoon (process-drawable)
-  ((root-override collide-shape  :offset        112)
-   (move-per-tick float          :offset-assert 176)
+  ((root           collide-shape :override)
+   (move-per-tick  float)
    )
-  :heap-base #x50
-  :method-count-assert 22
-  :size-assert         #xb4
-  :flag-assert         #x16005000b4
-  (:methods
-    (idle () _type_ :state 20)
-    (die () _type_ :state 21)
+  (:state-methods
+    idle
+    die
     )
   )
 
@@ -1167,7 +1124,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-set! 0)
-    (clear-collide-with-as (-> self root-override))
+    (clear-collide-with-as (-> self root))
     (ja-post)
     (sound-play "cool-balloon")
     (process-spawn
@@ -1178,7 +1135,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (suspend)
@@ -1200,7 +1157,7 @@
   :trans (behavior ()
     (when (not (logtest? (-> self path flags) (path-control-flag not-found)))
       (let ((f0-4 (* 0.5 (+ 1.0 (sin (* (-> self move-per-tick) (the float (current-time))))))))
-        (eval-path-curve! (-> self path) (-> self root-override trans) f0-4 'interp)
+        (eval-path-curve! (-> self path) (-> self root trans) f0-4 'interp)
         )
       )
     )
@@ -1216,7 +1173,7 @@
   :post transform-post
   )
 
-(defmethod init-from-entity! lavaballoon ((this lavaballoon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavaballoon) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -1227,12 +1184,12 @@
       )
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root-override) s4-0)
+    (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavaballoon-sg* '())
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 543) this))
-  (set! (-> this root-override pause-adjust-distance) 122880.0)
+  (set! (-> this root pause-adjust-distance) 122880.0)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (when (not (logtest? (-> this path flags) (path-control-flag not-found)))
@@ -1246,10 +1203,6 @@
 
 (deftype lavatube-lava (water-anim)
   ()
-  :heap-base #x70
-  :method-count-assert 30
-  :size-assert         #xdc
-  :flag-assert         #x1e007000dc
   )
 
 
@@ -1277,7 +1230,7 @@
     )
   )
 
-(defmethod water-vol-method-22 lavatube-lava ((this lavatube-lava))
+(defmethod water-vol-method-22 ((this lavatube-lava))
   (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
     (t9-0 this)
     )
@@ -1294,10 +1247,6 @@
 
 (deftype lavayellowtarp (process-drawable)
   ()
-  :heap-base #x40
-  :method-count-assert 20
-  :size-assert         #xb0
-  :flag-assert         #x14004000b0
   (:states
     lavayellowtarp-idle
     )
@@ -1322,7 +1271,7 @@
   :post ja-post
   )
 
-(defmethod init-from-entity! lavayellowtarp ((this lavayellowtarp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lavayellowtarp) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lavayellowtarp-sg* '())

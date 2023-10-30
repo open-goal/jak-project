@@ -1,58 +1,58 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-(defmethod call-on-load generic-progress-state-entry ((this generic-progress-state-entry))
+(defmethod call-on-load ((this generic-progress-state-entry))
   (when (and (nonzero? (-> this on-load)) (!= (-> this on-load) #f))
     ((-> this on-load)))
   (none))
 
-(defmethod call-get-value-fn menu-generic-boolean-option ((this menu-generic-boolean-option))
+(defmethod call-get-value-fn ((this menu-generic-boolean-option))
   (if (and (nonzero? (-> this get-value-fn)) (!= (-> this get-value-fn) #f))
     ((-> this get-value-fn))
     #f))
 
-(defmethod call-on-confirm menu-generic-boolean-option ((this menu-generic-boolean-option) (val symbol))
+(defmethod call-on-confirm ((this menu-generic-boolean-option) (val symbol))
   (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
     ((-> this on-confirm) val))
   (none))
 
-(defmethod call-get-item-index-fn menu-generic-carousel-option ((this menu-generic-carousel-option))
+(defmethod call-get-item-index-fn ((this menu-generic-carousel-option))
   (if (and (nonzero? (-> this get-item-index-fn)) (!= (-> this get-item-index-fn) #f))
     ((-> this get-item-index-fn))
     0))
 
-(defmethod call-on-confirm menu-generic-carousel-option ((this menu-generic-carousel-option) (val int))
+(defmethod call-on-confirm ((this menu-generic-carousel-option) (val int))
   (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
     ((-> this on-confirm) val))
   (none))
 
-(defmethod call-on-confirm menu-generic-confirm-option ((this menu-generic-confirm-option))
+(defmethod call-on-confirm ((this menu-generic-confirm-option))
   (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
     ((-> this on-confirm)))
   (none))
 
-(defmethod call-get-value-fn menu-generic-slider-option ((this menu-generic-slider-option))
+(defmethod call-get-value-fn ((this menu-generic-slider-option))
   (if (and (nonzero? (-> this get-value-fn)) (!= (-> this get-value-fn) #f))
     ((-> this get-value-fn))
     0.0))
 
-(defmethod call-on-confirm menu-generic-slider-option ((this menu-generic-slider-option) (val float))
+(defmethod call-on-confirm ((this menu-generic-slider-option) (val float))
   (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
     ((-> this on-confirm) val))
   (none))
 
-(defmethod init! progress-pc-generic-store ((this progress-pc-generic-store))
+(defmethod init! ((this progress-pc-generic-store))
   (set! (-> this clear-screen?) #f)
   (set! (-> this keybind-select-time) 0)
   (set! (-> this current-highscore-page-index) 0)
   (none))
 
-(defmethod call-on-confirm menu-generic-details-confirm-entry ((this menu-generic-details-confirm-entry))
+(defmethod call-on-confirm ((this menu-generic-details-confirm-entry))
   (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
     ((-> this on-confirm)))
   (none))
 
-(defmethod navigate! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress) (target menu-option-list) (on-load (function none)))
+(defmethod navigate! ((this progress-pc-generic-store) (progress progress) (target menu-option-list) (on-load (function none)))
   (when (< (-> this history-stack-index) 9) ;; hard-coded length
     ;; if this is the first history entry, we push the current page as well
     ;; if it's not, then we update the current entry before proceeding to the next page
@@ -79,17 +79,17 @@
     (set! (-> progress selected-option) #f))
   (none))
 
-(defmethod back! progress-pc-generic-store ((this progress-pc-generic-store) (progress progress))
+(defmethod back! ((this progress-pc-generic-store) (progress progress))
   (set! (-> this history-stack-index) (max 0 (dec (-> this history-stack-index))))
   (set! (-> this clear-screen?) #t)
   (set! (-> progress next) 'generic-menu)
   (set! (-> progress selected-option) #f)
   (none))
 
-(defmethod has-history? progress-pc-generic-store ((this progress-pc-generic-store))
+(defmethod has-history? ((this progress-pc-generic-store))
   (> (-> this history-stack-index) 0))
 
-(defmethod clear-history-if-empty! progress-pc-generic-store ((this progress-pc-generic-store))
+(defmethod clear-history-if-empty! ((this progress-pc-generic-store))
   "if we have no history, just reset the entry.  This is so we don't preserve state after completely exiting the menu"
   (when (not (has-history? this))
     (set! (-> this history-stack-index) 0)
@@ -102,34 +102,34 @@
       (set! (-> stack-entry progress-id) #f)))
   (none))
 
-(defmethod clear-history! progress-pc-generic-store ((this progress-pc-generic-store))
+(defmethod clear-history! ((this progress-pc-generic-store))
   (set! (-> this history-stack-index) 0)
   (set! (-> this clear-screen?) #t)
   (set! (-> this current-menu-hover-index) 0)
   (none))
 
-(defmethod on-mount! menu-generic-option ((this menu-generic-option))
+(defmethod on-mount! ((this menu-generic-option))
   (set! (-> this mounted?) #t)
   (none))
 
 ;; TODO - call the parent methods, when there is an elegant way to do so (not having to know the ID)
 
-(defmethod on-mount! menu-generic-carousel-option ((this menu-generic-carousel-option))
+(defmethod on-mount! ((this menu-generic-carousel-option))
   (set! (-> this mounted?) #t)
   (set! (-> this item-index) 0)
   (none))
 
-(defmethod on-mount! menu-generic-scrolling-page ((this menu-generic-scrolling-page))
+(defmethod on-mount! ((this menu-generic-scrolling-page))
   (set! (-> this mounted?) #t)
   (set! (-> this selected-option-index) -1)
   (none))
 
-(defmethod on-mount! menu-generic-details-page ((this menu-generic-details-page))
+(defmethod on-mount! ((this menu-generic-details-page))
   (set! (-> this mounted?) #t)
   (set! (-> this selected-entry-index) -1)
   (none))
 
-(defmethod on-mount! menu-generic-confirm-option ((this menu-generic-confirm-option))
+(defmethod on-mount! ((this menu-generic-confirm-option))
   (set! (-> this mounted?) #t)
   (set! (-> this confirmed?) #f)
   (none))
@@ -146,7 +146,7 @@
     (((controller-keybind r-analog-right)) 2)
     (else (the int bind))))
 
-(defmethod on-mount! menu-generic-details-keybind-entry ((this menu-generic-details-keybind-entry))
+(defmethod on-mount! ((this menu-generic-details-keybind-entry))
   (set! (-> this mounted?) #t)
   (set! (-> this bind-info port) 0) ;; always port 0 for now
   (set! (-> this bind-info device-type) (the int (-> this device-type)))
@@ -164,7 +164,7 @@
 
 ;; Progress Code Overrides
 
-(defmethod respond-to-cpad progress ((obj progress))
+(defmethod respond-to-cpad ((obj progress))
   (mc-get-slot-info 0 *progress-save-info*)
   ;; ND originally did this...called this every frame in the game options, looked like a hack
   ;; there's probably a way to consistently do it synchronously
@@ -257,7 +257,7 @@
 
 ;; - input handling
 
-(defmethod respond-progress menu-generic-scrolling-page ((obj menu-generic-scrolling-page) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-scrolling-page) (progress progress) (selected? symbol))
   "Handle progress menu navigation logic."
   (let ((selected-item? #f))
     (if (= (-> obj selected-option-index) -1)
@@ -316,7 +316,7 @@
       (respond-progress (-> obj menu-options (-> *progress-pc-generic-store* current-menu-hover-index)) progress (or selected? selected-item?))))
   0)
 
-(defmethod respond-progress menu-generic-boolean-option ((obj menu-generic-boolean-option) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-boolean-option) (progress progress) (selected? symbol))
   (if selected?
     (cond
       ((cpad-pressed? 0 left l-analog-left right l-analog-right)
@@ -334,7 +334,7 @@
        (set! (-> obj value) (call-get-value-fn obj)))))
   0)
 
-(defmethod respond-progress menu-generic-carousel-option ((obj menu-generic-carousel-option) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-carousel-option) (progress progress) (selected? symbol))
   (if selected?
     (cond
       ((cpad-pressed? 0 left l-analog-left)
@@ -357,14 +357,14 @@
        (set! (-> obj item-index) (call-get-item-index-fn obj)))))
   0)
 
-(defmethod respond-progress menu-generic-link-option ((obj menu-generic-link-option) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-link-option) (progress progress) (selected? symbol))
   (when (and selected? (cpad-pressed? 0 confirm))
     (navigate! *progress-pc-generic-store* progress (-> obj target) (-> obj on-load))
     (set! (-> progress selected-option) #f)
     (sound-play "score-slide"))
   0)
 
-(defmethod respond-progress menu-generic-confirm-option ((obj menu-generic-confirm-option) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-confirm-option) (progress progress) (selected? symbol))
   (if selected?
     (cond
       ((cpad-pressed? 0 left l-analog-left right l-analog-right)
@@ -380,7 +380,7 @@
        (set! (-> obj confirmed?) #f))))
   0)
 
-(defmethod respond-progress menu-generic-slider-option ((obj menu-generic-slider-option) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-slider-option) (progress progress) (selected? symbol))
   (if selected?
     (cond
       ((and (> (-> obj value) (-> obj min-value))
@@ -407,7 +407,7 @@
        (set! (-> obj value) (call-get-value-fn obj)))))
   0)
 
-(defmethod respond-progress menu-generic-details-page ((obj menu-generic-details-page) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-details-page) (progress progress) (selected? symbol))
   (if (= (-> obj selected-entry-index) -1)
     (cond
       ((or (cpad-pressed? 0 down l-analog-down)
@@ -463,7 +463,7 @@
     (respond-progress (-> obj entries (-> *progress-pc-generic-store* current-menu-hover-index)) progress selected?))
   0)
 
-(defmethod respond-progress menu-generic-details-keybind-entry ((obj menu-generic-details-keybind-entry) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-details-keybind-entry) (progress progress) (selected? symbol))
   (when (not selected?)
     (cond
       ((cpad-pressed? 0 confirm)
@@ -472,7 +472,7 @@
        (set! (-> *progress-pc-generic-store* keybind-select-time) (current-time)))))
   0)
 
-(defmethod respond-progress menu-generic-details-confirm-entry ((obj menu-generic-details-confirm-entry) (progress progress) (selected? symbol))
+(defmethod respond-progress ((obj menu-generic-details-confirm-entry) (progress progress) (selected? symbol))
   (if selected?
     (cond
       ((cpad-pressed? 0 left l-analog-left right l-analog-right)
@@ -490,7 +490,7 @@
 
 ;; - rest of component logic
 
-(defmethod num-items menu-generic-carousel-option ((this menu-generic-carousel-option))
+(defmethod num-items ((this menu-generic-carousel-option))
   "Get the number of items in the carousel"
   (if (and (nonzero? (-> this items)) (!= (-> this items) #f))
     (-> this items length)
@@ -499,7 +499,7 @@
       ((-> this get-max-size-fn))
       0)))
 
-(defmethod get-item-label menu-generic-carousel-option ((this menu-generic-carousel-option) (item-index int))
+(defmethod get-item-label ((this menu-generic-carousel-option) (item-index int))
   "Gets the string label of the currently choosen item, preferring the `items` array if it exists"
   (if (and (nonzero? (-> this items)) (!= (-> this items) #f))
     (lookup-text! *common-text* (-> this items item-index) #f)
@@ -508,7 +508,7 @@
       "#ERROR")))
 
 ;; TODO - it could be possible to map certain controllers to buttons (ie. dualshock controllers could have nice mappings instead of SDL named ones)
-(defmethod get-keybind-string menu-generic-details-keybind-entry ((this menu-generic-details-keybind-entry))
+(defmethod get-keybind-string ((this menu-generic-details-keybind-entry))
   (case (-> this keybind)
     (((controller-keybind cross))
      "~Y~22L<~Z~Y~27L*~Z~Y~1L>~Z~Y~23L[~Z~+26H Cross")

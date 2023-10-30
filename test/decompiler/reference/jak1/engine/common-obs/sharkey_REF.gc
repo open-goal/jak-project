@@ -29,30 +29,26 @@
 
 ;; definition of type sharkey
 (deftype sharkey (nav-enemy)
-  ((dir               vector     :inline :offset-assert 400)
-   (spawn-point       vector     :inline :offset-assert 416)
-   (scale             float              :offset-assert 432)
-   (anim-speed        float              :offset-assert 436)
-   (y-max             meters             :offset-assert 440)
-   (y-min             meters             :offset-assert 444)
-   (attack-time       float              :offset-assert 448)
-   (player-water-time time-frame         :offset-assert 456)
-   (player-in-water   basic              :offset-assert 464)
-   (last-y            float              :offset-assert 468)
-   (spawn-distance    meters             :offset-assert 472)
-   (chase-speed       meters             :offset-assert 476)
-   (y-speed           meters             :offset-assert 480)
-   (sound-id          sound-id           :offset-assert 484)
-   (enable-patrol     basic              :offset-assert 488)
+  ((dir                vector  :inline)
+   (spawn-point        vector  :inline)
+   (scale              float)
+   (anim-speed         float)
+   (y-max              meters)
+   (y-min              meters)
+   (attack-time        float)
+   (player-water-time  time-frame)
+   (player-in-water    basic)
+   (last-y             float)
+   (spawn-distance     meters)
+   (chase-speed        meters)
+   (y-speed            meters)
+   (sound-id           sound-id)
+   (enable-patrol      basic)
    )
-  :heap-base #x180
-  :method-count-assert 76
-  :size-assert         #x1ec
-  :flag-assert         #x4c018001ec
   )
 
 ;; definition for method 3 of type sharkey
-(defmethod inspect sharkey ((this sharkey))
+(defmethod inspect ((this sharkey))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -82,13 +78,13 @@
 
 ;; definition for method 44 of type sharkey
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod touch-handler sharkey ((this sharkey) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this sharkey) (arg0 process) (arg1 event-message-block))
   #t
   )
 
 ;; definition for method 43 of type sharkey
 ;; INFO: Return type mismatch symbol vs object.
-(defmethod attack-handler sharkey ((this sharkey) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this sharkey) (arg0 process) (arg1 event-message-block))
   #t
   )
 
@@ -96,7 +92,7 @@
 nav-enemy-default-event-handler
 
 ;; definition for method 12 of type sharkey
-(defmethod run-logic? sharkey ((this sharkey))
+(defmethod run-logic? ((this sharkey))
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this collide-info pause-adjust-distance))
               (vector-vector-distance (-> this collide-info trans) (math-camera-pos))
@@ -109,7 +105,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 40 of type sharkey
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-40 sharkey ((this sharkey))
+(defmethod nav-enemy-method-40 ((this sharkey))
   (nav-control-method-11 (-> this nav) (-> this nav target-pos))
   (let* ((f0-0 (vector-vector-xz-distance (-> this collide-info trans) (-> this nav target-pos)))
          (f30-0 (/ (- (fmin (-> this y-max) (-> this nav target-pos y)) (-> this collide-info trans y)) f0-0))
@@ -122,7 +118,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 37 of type sharkey
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-37 sharkey ((this sharkey))
+(defmethod nav-enemy-method-37 ((this sharkey))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (when (< 8192.0 (vector-length (-> this nav travel)))
       (vector-normalize-copy! s5-0 (-> this nav travel) 1.0)
@@ -137,7 +133,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 41 of type sharkey
 ;; INFO: Return type mismatch int vs none.
-(defmethod nav-enemy-method-41 sharkey ((this sharkey))
+(defmethod nav-enemy-method-41 ((this sharkey))
   (let* ((f0-1 (- (-> this target-speed) (-> this momentum-speed)))
          (f1-3 (fmin (* (-> this acceleration) (seconds-per-frame)) (fabs f0-1)))
          )
@@ -161,7 +157,7 @@ nav-enemy-default-event-handler
 ;; definition for method 39 of type sharkey
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
-(defmethod common-post sharkey ((this sharkey))
+(defmethod common-post ((this sharkey))
   (let ((f30-0 (-> this water height))
         (s5-0 (new 'stack-no-clear 'vector))
         )
@@ -656,7 +652,7 @@ nav-enemy-default-event-handler
 ;; definition for method 11 of type sharkey
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! sharkey ((this sharkey) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sharkey) (arg0 entity-actor))
   (set! (-> this scale) (res-lump-float arg0 'scale :default 1.0))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))

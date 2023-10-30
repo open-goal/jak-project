@@ -398,26 +398,23 @@
 
 ;; definition of type joint-mod-tracker
 (deftype joint-mod-tracker (basic)
-  ((target-pos               vector                   :inline :offset-assert  16)
-   (target-pos-func          (function vector vector)         :offset-assert  32)
-   (inv-forward-scale-factor float                            :offset-assert  36)
-   (forward-scale-control    float                            :offset-assert  40)
-   (forward-scale-max        float                            :offset-assert  44)
-   (process                  kermit                           :offset-assert  48)
-   (enable                   symbol                           :offset-assert  52)
-   (up-axis                  int8                             :offset-assert  56)
-   (forward-axis             int8                             :offset-assert  57)
+  ((target-pos                vector  :inline)
+   (target-pos-func           (function vector vector))
+   (inv-forward-scale-factor  float)
+   (forward-scale-control     float)
+   (forward-scale-max         float)
+   (process                   kermit)
+   (enable                    symbol)
+   (up-axis                   int8)
+   (forward-axis              int8)
    )
-  :method-count-assert 9
-  :size-assert         #x3a
-  :flag-assert         #x90000003a
   (:methods
-    (new (symbol type kermit int function int int) _type_ 0)
+    (new (symbol type kermit int function int int) _type_)
     )
   )
 
 ;; definition for method 3 of type joint-mod-tracker
-(defmethod inspect joint-mod-tracker ((this joint-mod-tracker))
+(defmethod inspect ((this joint-mod-tracker))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Ttarget-pos: #<vector @ #x~X>~%" (-> this target-pos))
   (format #t "~Ttarget-pos-func: ~A~%" (-> this target-pos-func))
@@ -432,7 +429,7 @@
   )
 
 ;; definition for method 7 of type joint-mod-tracker
-(defmethod relocate joint-mod-tracker ((this joint-mod-tracker) (arg0 int))
+(defmethod relocate ((this joint-mod-tracker) (arg0 int))
   (&+! (-> this process) arg0)
   this
   )
@@ -534,15 +531,11 @@
 
 ;; definition of type kermit-pulse
 (deftype kermit-pulse (process-drawable)
-  ((parent-override (pointer kermit)      :offset         12)
-   (self-override   kermit-pulse          :offset         28)
-   (root-override   collide-shape-moving  :offset        112)
-   (sound-id        sound-id              :offset-assert 176)
+  ((root             collide-shape-moving :override)
+   (parent-override  (pointer kermit)      :overlay-at parent)
+   (self-override    kermit-pulse          :overlay-at self)
+   (sound-id         sound-id)
    )
-  :heap-base #x50
-  :method-count-assert 20
-  :size-assert         #xb4
-  :flag-assert         #x14005000b4
   (:states
     kermit-pulse-idle
     kermit-pulse-impact
@@ -550,7 +543,7 @@
   )
 
 ;; definition for method 3 of type kermit-pulse
-(defmethod inspect kermit-pulse ((this kermit-pulse))
+(defmethod inspect ((this kermit-pulse))
   (let ((t9-0 (method-of-type process-drawable inspect)))
     (t9-0 this)
     )
@@ -576,10 +569,10 @@
     )
   :code (behavior ()
     (while (not (time-elapsed? (-> self state-time) (seconds 4)))
-      (sound-play "kermit-loop" :id (-> self sound-id) :position (the-as symbol (-> self root-override trans)))
-      (spawn (-> self part) (-> self root-override trans))
+      (sound-play "kermit-loop" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
+      (spawn (-> self part) (-> self root trans))
       (find-ground-and-draw-shadow
-        (-> self root-override trans)
+        (-> self root trans)
         (the-as vector #f)
         8192.0
         (collide-kind background)
@@ -592,7 +585,7 @@
     (cleanup-for-death self)
     )
   :post (behavior ()
-    (update-transforms! (-> self root-override))
+    (update-transforms! (-> self root))
     )
   )
 
@@ -608,7 +601,7 @@
       #f
       #f
       #f
-      (-> self root-override trans)
+      (-> self root trans)
       :to *entity-pool*
       )
     (cleanup-for-death self)
@@ -638,12 +631,12 @@
       )
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> self root-override) s5-0)
+    (set! (-> self root) s5-0)
     )
-  (set! (-> self root-override trans quad) (-> arg0 quad))
-  (set! (-> self root-override quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
-  (vector-identity! (-> self root-override scale))
-  (vector-reset! (-> self root-override transv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
+  (vector-identity! (-> self root scale))
+  (vector-reset! (-> self root transv))
   (set! (-> self sound-id) (new-sound-id))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 300) self))
   (go kermit-pulse-idle)
@@ -660,20 +653,16 @@
 
 ;; definition of type kermit
 (deftype kermit (nav-enemy)
-  ((child-override   (pointer kermit-pulse)           :offset         20)
-   (rotate-dir       vector                   :inline :offset-assert 400)
-   (charging-part    sparticle-launch-control         :offset-assert 416)
-   (airborne         symbol                           :offset-assert 420)
-   (tongue-control   joint-mod-tracker                :offset-assert 424)
-   (tongue-pulse-pos float                            :offset-assert 428)
-   (miss-count       int8                             :offset-assert 432)
-   (charged-up       symbol                           :offset-assert 436)
-   (sound-id         sound-id                         :offset-assert 440)
+  ((child-override    (pointer kermit-pulse)  :overlay-at child)
+   (rotate-dir        vector                  :inline)
+   (charging-part     sparticle-launch-control)
+   (airborne          symbol)
+   (tongue-control    joint-mod-tracker)
+   (tongue-pulse-pos  float)
+   (miss-count        int8)
+   (charged-up        symbol)
+   (sound-id          sound-id)
    )
-  :heap-base #x150
-  :method-count-assert 76
-  :size-assert         #x1bc
-  :flag-assert         #x4c015001bc
   (:states
     kermit-attack
     kermit-chase
@@ -688,7 +677,7 @@
   )
 
 ;; definition for method 3 of type kermit
-(defmethod inspect kermit ((this kermit))
+(defmethod inspect ((this kermit))
   (let ((t9-0 (method-of-type nav-enemy inspect)))
     (t9-0 this)
     )
@@ -705,7 +694,7 @@
 
 ;; definition for method 7 of type kermit
 ;; INFO: Return type mismatch nav-enemy vs kermit.
-(defmethod relocate kermit ((this kermit) (arg0 int))
+(defmethod relocate ((this kermit) (arg0 int))
   (if (nonzero? (-> this tongue-control))
       (&+! (-> this tongue-control) arg0)
       )
@@ -716,7 +705,7 @@
   )
 
 ;; definition for method 10 of type kermit
-(defmethod deactivate kermit ((this kermit))
+(defmethod deactivate ((this kermit))
   (if (nonzero? (-> this charging-part))
       (kill-and-free-particles (-> this charging-part))
       )
@@ -925,7 +914,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 39 of type kermit
 ;; INFO: Return type mismatch int vs none.
-(defmethod common-post kermit ((this kermit))
+(defmethod common-post ((this kermit))
   (call-parent-method this)
   (when (-> this charged-up)
     )
@@ -1295,7 +1284,7 @@ nav-enemy-default-event-handler
                      )
                (v1-15 (vector-lerp! (new 'stack-no-clear 'vector) gp-0 s5-0 (-> self tongue-pulse-pos)))
                )
-          (set! (-> s4-0 root-override trans quad) (-> v1-15 quad))
+          (set! (-> s4-0 root trans quad) (-> v1-15 quad))
           )
         )
       (send-event *target* 'tongue gp-0)
@@ -1422,7 +1411,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 11 of type kermit
 ;; INFO: Return type mismatch object vs none.
-(defmethod init-from-entity! kermit ((this kermit) (arg0 entity-actor))
+(defmethod init-from-entity! ((this kermit) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))

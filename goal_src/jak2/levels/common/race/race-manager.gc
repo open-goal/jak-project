@@ -60,7 +60,7 @@
     )
   )
 
-(defmethod initialize-mesh race-info ((this race-info))
+(defmethod initialize-mesh ((this race-info))
   (let ((v1-0 (entity-by-name (-> this race-mesh-name))))
     (cond
       (v1-0
@@ -109,7 +109,7 @@
   (none)
   )
 
-(defmethod begin-lap racer-state ((this racer-state) (arg0 race-state))
+(defmethod begin-lap ((this racer-state) (arg0 race-state))
   (format #t "begin-lap racer ~d~%" (-> this rank))
   (set! (-> this lap-start) (-> arg0 current-time))
   (logior! (-> this flags) (racer-flags in-race))
@@ -117,7 +117,7 @@
   (none)
   )
 
-(defmethod end-lap racer-state ((this racer-state) (arg0 race-state))
+(defmethod end-lap ((this racer-state) (arg0 race-state))
   (+! (-> this lap-count) 1)
   (format #t "end-lap ~d racer ~d~%" (-> this lap-count) (-> this rank))
   (let ((v1-2 4)
@@ -194,7 +194,7 @@
   (none)
   )
 
-(defmethod update-lap-distance racer-state ((this racer-state) (arg0 race-state))
+(defmethod update-lap-distance ((this racer-state) (arg0 race-state))
   (local-vars (a0-29 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -309,7 +309,7 @@
     )
   )
 
-(defmethod print-laps racer-state ((this racer-state) (arg0 race-state) (arg1 string))
+(defmethod print-laps ((this racer-state) (arg0 race-state) (arg1 string))
   (let ((s4-0 (- (-> arg0 current-time) (-> this lap-start))))
     (format arg1 "lap count ~d~%" (-> this lap-count))
     (format arg1 "best lap ")
@@ -332,7 +332,7 @@
   (none)
   )
 
-(defmethod init-racer! racer-state ((this racer-state) (arg0 process-drawable))
+(defmethod init-racer! ((this racer-state) (arg0 process-drawable))
   (set! (-> this racer) (process->handle arg0))
   (set! (-> this position quad) (-> arg0 root trans quad))
   (set! (-> this flags) (racer-flags unknown))
@@ -349,7 +349,7 @@
   (none)
   )
 
-(defmethod init-racers! race-state ((this race-state) (arg0 process-drawable))
+(defmethod init-racers! ((this race-state) (arg0 process-drawable))
   (let ((v1-0 (-> this racer-count)))
     (when (< v1-0 10)
       (+! (-> this racer-count) 1)
@@ -360,7 +360,7 @@
   (none)
   )
 
-(defmethod begin-race race-state ((this race-state))
+(defmethod begin-race ((this race-state))
   (format #t "begin-race~%")
   (when (not (logtest? (-> this flags) (race-flags begun)))
     (logior! (-> this flags) (race-flags begun))
@@ -406,7 +406,7 @@
   (none)
   )
 
-(defmethod update-rankings race-state ((this race-state))
+(defmethod update-rankings ((this race-state))
   (let ((v1-0 (new 'stack-no-clear 'array 'float 10)))
     (dotimes (a0-1 (-> this racer-count))
       (let ((a1-3 (-> this racer-array a0-1)))
@@ -457,7 +457,7 @@
   (none)
   )
 
-(defmethod debug-print-rankings race-state ((this race-state))
+(defmethod debug-print-rankings ((this race-state))
   (dotimes (s5-0 (-> this racer-count))
     (let* ((s4-0 (-> this rankings s5-0))
            (s3-0 (-> this racer-array s4-0))
@@ -500,7 +500,7 @@
   (none)
   )
 
-(defmethod update-racers race-state ((this race-state))
+(defmethod update-racers ((this race-state))
   (let ((s5-0 0))
     (dotimes (s4-0 (-> this racer-count))
       (let ((s3-0 (-> this racer-array s4-0)))
@@ -519,7 +519,7 @@
   (none)
   )
 
-(defmethod setup-race race-state ((this race-state))
+(defmethod setup-race ((this race-state))
   (set-setting! 'allow-progress #f 0.0 0)
   (send-event (handle->process (-> this arrow)) 'leave)
   (when (logtest? (-> this info flags) (race-info-flags borrow))
@@ -558,7 +558,7 @@
   (none)
   )
 
-(defmethod update race-state ((this race-state))
+(defmethod update ((this race-state))
   (set! (-> this current-time) (the-as uint (current-time)))
   (case (-> this state)
     (((race-state-enum idle))
@@ -740,7 +740,7 @@
   (none)
   )
 
-(defmethod spawn-race-signal race-state ((this race-state))
+(defmethod spawn-race-signal ((this race-state))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -788,7 +788,7 @@
     )
   )
 
-(defmethod initialize race-state ((this race-state) (arg0 process) (arg1 race-info))
+(defmethod initialize ((this race-state) (arg0 process) (arg1 race-info))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -893,7 +893,7 @@
 
 (define *race-rigid-body-queue* (new 'static 'rigid-body-queue))
 
-(defmethod update race-manager ((this race-manager))
+(defmethod update ((this race-manager))
   (let ((s5-0 *display-race-marks*))
     (when (logtest? s5-0 (race-marks-controls rmc2040))
       (let ((a0-3 (entity-by-name (-> *race-info-array* *select-race* race-mesh-name))))
@@ -931,12 +931,12 @@
   0
   )
 
-(defmethod race-manager-method-22 race-manager ((this race-manager))
+(defmethod race-manager-method-22 ((this race-manager))
   0
   (none)
   )
 
-(defmethod initialize-race-state race-manager ((this race-manager))
+(defmethod initialize-race-state ((this race-manager))
   (let ((s5-0 (-> this race-state info)))
     (initialize-mesh s5-0)
     (initialize (-> this race-state) this s5-0)
@@ -954,7 +954,7 @@
   )
 
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defmethod initialize-state race-manager ((this race-manager))
+(defmethod initialize-state ((this race-manager))
   (local-vars
     (v1-0 int)
     (sv-352 task-arrow-params)
@@ -1127,7 +1127,7 @@
   (none)
   )
 
-(defmethod save-score race-manager ((this race-manager) (arg0 float))
+(defmethod save-score ((this race-manager) (arg0 float))
   (local-vars (sv-32 int))
   (let* ((s5-0 (-> this race-state info score))
          (s3-0 0)
@@ -1195,7 +1195,7 @@
   (none)
   )
 
-(defmethod stop-speech race-manager ((this race-manager))
+(defmethod stop-speech ((this race-manager))
   (set-action!
     *gui-control*
     (gui-action stop)
@@ -1220,7 +1220,7 @@
   (none)
   )
 
-(defmethod draw-message-continue race-manager ((this race-manager))
+(defmethod draw-message-continue ((this race-manager))
   (when (= (get-status *gui-control* (-> this message-id)) (gui-status active))
     (let ((gp-1
             (new 'stack 'font-context *font-default-matrix* 70 20 0.0 (font-color orange) (font-flags shadow kerning))
@@ -1248,7 +1248,7 @@
   (none)
   )
 
-(defmethod draw-message-retry race-manager ((this race-manager))
+(defmethod draw-message-retry ((this race-manager))
   (when (= (get-status *gui-control* (-> this message-id)) (gui-status active))
     (let ((gp-1
             (new 'stack 'font-context *font-default-matrix* 70 20 0.0 (font-color orange) (font-flags shadow kerning))
@@ -1563,7 +1563,7 @@
 
 (define *race-manager* (the-as (pointer race-manager) #f))
 
-(defmethod deactivate race-manager ((this race-manager))
+(defmethod deactivate ((this race-manager))
   (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.0 0)
   (send-event *traffic-manager* 'restore-default-settings)
   (call-parent-method this)
