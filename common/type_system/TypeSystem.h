@@ -155,6 +155,9 @@ class TypeSystem {
   Type* lookup_type(const TypeSpec& ts) const;
   Type* lookup_type(const std::string& name) const;
 
+  Type* lookup_type_no_throw(const TypeSpec& ts) const;
+  Type* lookup_type_no_throw(const std::string& name) const;
+
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
 
