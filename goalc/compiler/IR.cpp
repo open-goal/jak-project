@@ -862,8 +862,8 @@ RegAllocInstr IR_ConditionalBranch::to_rai() {
 void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
-  Instruction jump_instr;
   #ifndef __aarch64__
+  Instruction jump_instr;
   jump_instr = InstructionX86(0);
   ASSERT(m_resolved);
   switch (condition.kind) {
@@ -905,9 +905,6 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
     default:
       ASSERT(false);
   }
-  #else
-  // TODO - ARM64
-  #endif
 
   if (condition.is_float) {
     gen->add_instr(
@@ -921,6 +918,9 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
 
   auto jump_rec = gen->add_instr(jump_instr, irec);
   gen->link_instruction_jump(jump_rec, gen->get_future_ir_record_in_same_func(irec, label.idx));
+  #else
+  // TODO - ARM64
+  #endif
 }
 
 /////////////////////

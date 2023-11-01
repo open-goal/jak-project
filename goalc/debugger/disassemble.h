@@ -22,10 +22,10 @@ struct InstructionInfo {
   int ir_idx = -1;
   int offset = -1;
 
-  InstructionInfo(const emitter::Instruction& _instruction, Kind _kind)
+  InstructionInfo(const emitter::Instruction _instruction, Kind _kind)
       : instruction(_instruction), kind(_kind) {}
 
-  InstructionInfo(const emitter::Instruction& _instruction, Kind _kind, int _ir_idx)
+  InstructionInfo(const emitter::Instruction _instruction, Kind _kind, int _ir_idx)
       : instruction(_instruction), kind(_kind), ir_idx(_ir_idx) {}
 };
 
