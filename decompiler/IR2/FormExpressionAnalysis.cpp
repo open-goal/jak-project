@@ -3993,8 +3993,7 @@ GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& 
     if (joint_name) {
       args.push_back(pool.form<ConstantTokenElement>(joint_name.value()));
       return pool.alloc_element<GenericElement>(
-          GenericOperator::make_function(pool.form<ConstantTokenElement>("joint-node-index")),
-          args);
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("joint-node")), args);
     } else {
       lg::error("function `{}`: did not find joint node {} in {}", env.func->name(),
                 mr.maps.ints.at(0), env.joint_geo());
