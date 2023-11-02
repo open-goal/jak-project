@@ -49,6 +49,13 @@ jobs:
 
       - uses: ilammy/msvc-dev-cmd@v1
 
+      # https://github.com/actions/runner-images/issues/5459
+      # Causes binaries to be built differently, get rid of this garbage
+      - name: Remove Strawberry Perl from PATH
+        run: |
+          $env:PATH = $env:PATH -replace "C:\\Strawberry\\c\\bin;", ""
+          "PATH=$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: CMake Generation
         shell: cmd
         run: cmake -B build --preset=${{ inputs.cmakePreset }} -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
