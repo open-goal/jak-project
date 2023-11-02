@@ -972,7 +972,7 @@ void pc_get_external_speedrun_time(u32 speedrun_id_ptr,
   auto speedrun_id = std::string(Ptr<String>(speedrun_id_ptr).c()->data());
   if (external_speedrun_time_cache.find(speedrun_id) != external_speedrun_time_cache.end()) {
     const auto& runs = external_speedrun_time_cache.at(speedrun_id);
-    if (index < runs.size()) {
+    if (index < (int)runs.size()) {
       const auto& run_info = external_speedrun_time_cache.at(speedrun_id).at(index);
       std::string converted =
           get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
@@ -991,7 +991,7 @@ void pc_get_external_race_time(u32 race_id_ptr, s32 index, u32 name_dest_ptr, u3
   auto race_id = std::string(Ptr<String>(race_id_ptr).c()->data());
   if (external_race_time_cache.find(race_id) != external_race_time_cache.end()) {
     const auto& runs = external_race_time_cache.at(race_id);
-    if (index < runs.size()) {
+    if (index < (int)runs.size()) {
       const auto& run_info = external_race_time_cache.at(race_id).at(index);
       std::string converted =
           get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
@@ -1013,7 +1013,7 @@ void pc_get_external_highscore(u32 highscore_id_ptr,
   auto highscore_id = std::string(Ptr<String>(highscore_id_ptr).c()->data());
   if (external_highscores_cache.find(highscore_id) != external_highscores_cache.end()) {
     const auto& runs = external_highscores_cache.at(highscore_id);
-    if (index < runs.size()) {
+    if (index < (int)runs.size()) {
       const auto& run_info = external_highscores_cache.at(highscore_id).at(index);
       std::string converted =
           get_font_bank(GameTextVersion::JAK2)->convert_utf8_to_game(run_info.first);
