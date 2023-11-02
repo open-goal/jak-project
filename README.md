@@ -6,14 +6,24 @@
   <a href="https://opengoal.dev/docs/intro" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
   <a title="Crowdin" target="_blank" href="https://crowdin.com/project/opengoal"><img src="https://badges.crowdin.net/opengoal/localized.svg"></a>
   <a target="_blank" rel="noopener noreferrer" href="https://github.com/open-goal/jak-project/actions/workflows/build-matrix.yaml"><img src="https://github.com/open-goal/jak-project/actions/workflows/build-matrix.yaml/badge.svg" alt="Linux and Windows Build" style="max-width:100%;"></a>
-  <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&utm_medium=referral&utm_content=open-goal/jak-project&utm_campaign=Badge_Coverage" rel="nofollow"><img src="https://app.codacy.com/project/badge/Coverage/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://www.codacy.com/gh/open-goal/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=open-goal/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/29316d04a1644aa390c33be07289f3f5" alt="Codacy Badge" style="max-width:100%;"></a>
   <a href="https://discord.gg/VZbXMHXzWv"><img src="https://img.shields.io/discord/756287461377703987" alt="Discord"></a>
-  <a href="https://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt=PRs Welcome></a>
 </p>
 
-- [Please read first](#please-read-first)
-  - [Quick Start](#quick-start)
+## Please read first <!-- omit from toc -->
+
+> [!IMPORTANT]
+> Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
+
+For a setup guide on how to install and play the game there is the following video that you can check out: https://youtu.be/K84UUMnkJc4
+
+For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
+
+Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website: https://opengoal.dev
+
+> [!WARNING]
+> **Do not use this decompilation project without providing your own legally purchased copy of the game.** We do not distribute any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every retail PAL, NTSC, and NTSC-J build, including Greatest Hits copies.
+
 - [Project Description](#project-description)
   - [Current Status](#current-status)
   - [Methodology](#methodology)
@@ -45,24 +55,6 @@
     - [Running the decompiler](#running-the-decompiler)
   - [`goal_src/`](#goal_src)
   - [`game` runtime](#game-runtime)
-
-## Please read first
-
-> [!IMPORTANT]
-> Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
-
-For questions or additional information pertaining to the project, we have a Discord for discussion here: https://discord.gg/VZbXMHXzWv
-
-Additionally, you can find further documentation and answers to **frequently asked questions** on the project's main website: https://opengoal.dev
-
-> [!WARNING]
-> **Do not use this decompilation project without providing your own legally purchased copy of the game.**
-
-### Quick Start
-
-If you just want to play the game, you can follow the steps in this video: https://www.youtube.com/watch?v=p8I9NfuZOgE
-
-We do not distribute any assets from the game - you must use your own legitimately obtained PS2 copy of the game. We support every retail PAL, NTSC, and NTSC-J build, including Greatest Hits copies. 
 
 ## Project Description
 
