@@ -18,8 +18,10 @@ option(STATICALLY_LINK "Build for release purposes (statically link everything)"
 message(STATUS "Statically Link? ${STATICALLY_LINK}")
 if(STATICALLY_LINK)
     set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
 else()
     set(BUILD_SHARED_LIBS ON)
+    set(BUILD_STATIC_LIBS OFF)
 endif()
 
 # For clangd
@@ -184,8 +186,10 @@ include_directories(./)
 include_directories(SYSTEM third-party/inja)
 
 # libcurl for HTTP requests
-
 # Enable SSL Support, most URLs now-a-days use SSL!
+# TODO - probably integrate with ZSTD since we have it already
+set(CURL_USE_LIBSSH2 OFF)
+set(CURL_ZLIB OFF)
 if(WIN32)
     set(CURL_USE_SCHANNEL ON) # native Windows SSL support
 elseif(APPLE)
